@@ -64,7 +64,7 @@ public class NestedOutboxDispatchTests
                 thing.UncommittedEvents().Should().ContainSingle();
                 publisher.Count.Should().Be(0);
                 (await context.Set<OutboxMessage>().CountAsync(innerToken)).Should().Be(originalRows);
-                var error = new Error.Conflict(null, "test.rejected");
+                var error = new Error.Conflict(Resource: null, Code: "test.rejected");
                 return outcome switch
                 {
                     "failure" => Result.Fail<Trellis.Unit>(error),

@@ -79,6 +79,31 @@ public class ValidationMetricsTests
         probe.Total.Should().Be(0);
     }
 
+    [Fact]
+    public void Updating_validated_codes_with_a_with_expression_does_not_recount()
+    {
+        var field = new FieldViolation(InputPointer.Root, ValidationCodes.ValueNotNull);
+        var rule = new RuleViolation(ValidationCodes.FieldsExactlyOne);
+        using var probe = new MeterProbe();
+
+        _ = field with { ReasonCode = "field.custom" };
+        _ = rule with { ReasonCode = "rule.custom" };
+
+        probe.Total.Should().Be(0);
+    }
+
+    [Fact]
+    public void Invalid_codes_throw_before_recording_a_violation()
+    {
+        using var probe = new MeterProbe();
+        Action createField = () => _ = new FieldViolation(InputPointer.Root, "");
+        Action createRule = () => _ = new RuleViolation("");
+
+        createField.Should().Throw<ArgumentException>();
+        createRule.Should().Throw<ArgumentException>();
+        probe.Total.Should().Be(0);
+    }
+
     /// <summary>
     /// A code outside the framework vocabulary is counted, but tagged as <c>other</c>.
     /// </summary>

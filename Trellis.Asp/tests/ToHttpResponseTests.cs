@@ -144,7 +144,7 @@ public sealed class ToHttpResponseTests
         ctx.Request.Path = "/api/customers";
         ctx.Request.QueryString = new QueryString("?api-version=2026-11-12");
         var r = Result.Fail<Todo>(
-            Error.InvalidInput.ForField("title", "required", "Title is required."));
+            Error.InvalidInput.ForField(field: "title", code: "required", detail: "Title is required."));
 
         await r.ToHttpResponse(TodoResponse.From).ExecuteAsync(ctx);
 
@@ -289,7 +289,7 @@ public sealed class ToHttpResponseTests
     public async Task WithErrorMapping_overrides_status_for_specific_error()
     {
         var ctx = NewContext();
-        var r = Result.Fail<Todo>(new Error.Conflict(null, "dup"));
+        var r = Result.Fail<Todo>(new Error.Conflict(Resource: null, Code: "dup"));
 
         await r.ToHttpResponse(TodoResponse.From, o => o.WithErrorMapping<Error.Conflict>(418)).ExecuteAsync(ctx);
 

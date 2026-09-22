@@ -167,7 +167,7 @@ public static Result<Product> TryCreateExisting(ProductId id, ProductName name, 
 private static Result<Unit> Validate(ProductName name, Sku sku) =>
     Result.Ensure(
         !sku.Value.StartsWith("LEGACY-", StringComparison.OrdinalIgnoreCase),
-        () => Error.InvalidInput.ForField(nameof(sku), "sku.legacy-prefix", "SKU cannot start with LEGACY."));
+        () => Error.InvalidInput.ForField(field: nameof(sku), code: "sku.legacy-prefix", detail: "SKU cannot start with LEGACY."));
 ```
 
 > [!TIP]

@@ -194,7 +194,7 @@ public class MatchTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, string, double)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" });
+        var result = Result.Fail<(int, string, double)>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" });
 
         // Act
         var output = result.Match(

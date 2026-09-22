@@ -51,7 +51,7 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
                 throw JsonValidationPathRebase.Rebase(new TrellisJsonValidationException(message)
                 {
                     InvalidInput = Error.InvalidInput.ForField(
-                        InputPointer.Root, ValidationCodes.Unspecified, message) with
+                        field: InputPointer.Root, code: ValidationCodes.Unspecified, detail: message) with
                     {
                         Detail = message,
                     },

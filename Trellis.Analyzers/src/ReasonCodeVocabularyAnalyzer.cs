@@ -40,7 +40,7 @@ using Microsoft.CodeAnalysis.Operations;
 /// </para>
 /// <para>
 /// Only literal syntax is reported. A constant reference has a constant <em>value</em> too, so testing
-/// <c>ConstantValue</c> alone would flag <c>ForField(f, ValidationCodes.ValueNotNull)</c> — the exact
+/// <c>ConstantValue</c> alone would flag <c>ForField(ValidationCodes.ValueNotNull, f)</c> — the exact
 /// shape this rule tells authors to write. A code reached through an application's own
 /// <c>const string</c> indirection is therefore invisible here, which is the accepted trade.
 /// </para>
@@ -272,13 +272,13 @@ public sealed class ReasonCodeVocabularyAnalyzer : DiagnosticAnalyzer
 
     /// <summary>
     /// Matches the parameter every Trellis reason-code surface uses, whether written as a method
-    /// parameter (<c>ForField</c>, <c>ForRule</c>, <c>ForReason</c>, <c>For</c>) or as a positional
+    /// parameter (<c>ForField</c>, <c>ForRule</c>, <c>ForReason</c>, <c>ForPolicy</c>, <c>For</c>) or as a positional
     /// record parameter (<c>FieldViolation.ReasonCode</c>, <c>RuleViolation.ReasonCode</c>).
     /// </summary>
     /// <remarks>
     /// Keying on the parameter name rather than a list of method names and argument positions is what
-    /// keeps this rule from going stale: the eleven current factory overloads differ in arity and in
-    /// where the code sits, and a twelfth is covered the day it is added. Comparison is
+    /// keeps this rule from going stale: new factory overloads are covered through their leading
+    /// <c>code</c> parameter, regardless of named argument order. Comparison is
     /// case-insensitive because positional records declare the parameter as <c>ReasonCode</c> or
     /// <c>Code</c>.
     /// </remarks>

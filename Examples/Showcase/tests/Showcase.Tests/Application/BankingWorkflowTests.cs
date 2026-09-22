@@ -146,7 +146,7 @@ public class BankingWorkflowTests
             cancellationToken.ThrowIfCancellationRequested();
             calls.Add($"fraud:{transactionType}");
             return Result.Ensure(passes,
-                () => new Error.Conflict(null, "fraud.detected") { Detail = $"Rejected {transactionType}" }).AsTask();
+                () => new Error.Conflict(Resource: null, Code: "fraud.detected") { Detail = $"Rejected {transactionType}" }).AsTask();
         }
     }
 

@@ -122,7 +122,7 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
         ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         new(message)
         {
-            InvalidInput = Error.InvalidInput.ForField(InputPointer.Root, reasonCode, args, message) with
+            InvalidInput = Error.InvalidInput.ForField(field: InputPointer.Root, code: reasonCode, args: args, detail: message) with
             {
                 Detail = message,
             },

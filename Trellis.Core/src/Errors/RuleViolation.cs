@@ -9,7 +9,7 @@ using System.Collections.Immutable;
 /// <c>"password.mismatch"</c>, <c>"order.cancel-after-ship"</c>).
 /// </summary>
 /// <param name="ReasonCode">
-/// Stable machine-readable code identifying the rule. The framework's own cross-field rules
+/// Non-blank machine-readable code identifying the rule. The framework's own cross-field rules
 /// use the <c>fields.*</c> namespace of <see cref="ValidationCodes"/> (e.g.
 /// <see cref="ValidationCodes.FieldsMutuallyExclusive"/>); an application-specific rule code
 /// should follow the same convention — lower-case, dot-separated namespaces with
@@ -33,6 +33,8 @@ public sealed record RuleViolation(
     ImmutableDictionary<string, ValidationArgValue>? Args = null,
     string? Detail = null)
 {
+    private readonly string _reasonCode = ValidationMetrics.Observe(Error.RequireCode(ReasonCode), "rule");
+
     /// <summary>
     /// Stable machine-readable code identifying the rule that was violated.
     /// </summary>
@@ -40,7 +42,12 @@ public sealed record RuleViolation(
     /// The initializer is the counting site for <see cref="ValidationMetrics"/>, for the reasons
     /// given on <see cref="FieldViolation.ReasonCode"/>.
     /// </remarks>
-    public string ReasonCode { get; init; } = ValidationMetrics.Observe(ReasonCode, "rule");
+    /// <exception cref="ArgumentException">The assigned code is null, empty, or whitespace.</exception>
+    public string ReasonCode
+    {
+        get => _reasonCode;
+        init => _reasonCode = Error.RequireCode(value);
+    }
 
     /// <inheritdoc />
     public bool Equals(RuleViolation? other)

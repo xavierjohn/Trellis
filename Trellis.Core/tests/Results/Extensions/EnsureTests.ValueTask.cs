@@ -122,7 +122,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Bool_ErrorFactory_FailureResult_ErrorFactoryNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = new Error.Conflict(null, "conflict") { Detail = "Initial error" };
+        var initialError = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial error" };
         var initialResult = ValueTask.FromResult(Result.Fail<int>(initialError));
         var errorFactoryInvoked = false;
 
@@ -376,7 +376,7 @@ public class Ensure_ValueTask_Tests
     public async Task EnsureAsync_ValueTask_Result_WithParam_FailureResult_PredicateNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = new Error.Conflict(null, "conflict") { Detail = "Initial conflict" };
+        var initialError = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial conflict" };
         var initialResult = ValueTask.FromResult(Result.Fail<int>(initialError));
         var predicateInvoked = false;
 

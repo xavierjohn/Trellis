@@ -18,7 +18,7 @@ public static class DistancePagination
     {
         if (!ValidCoordinate(originX) || !ValidCoordinate(originY))
             return Result.Fail<Page<DistanceItem>>(Error.InvalidInput.ForField(
-                "origin", "search.origin.invalid", "Origin is outside the supported coordinate range."));
+                field: "origin", code: "search.origin.invalid", detail: "Origin is outside the supported coordinate range."));
 
         var context = ContextIdentity(scopeSnapshotId, originX, originY);
         var codec = CreateCodec(context);
@@ -39,8 +39,8 @@ public static class DistancePagination
                     ? Result.Ok(new DistanceBoundary(
                         wire.Primary.Primary, wire.Primary.Secondary, wire.Secondary))
                     : Result.Fail<DistanceBoundary>(Error.InvalidInput.ForField(
-                        field ?? "cursor", "cursor.malformed",
-                        "Cursor distance or query context is invalid.")));
+                        field: field ?? "cursor", code: "cursor.malformed",
+                        detail: "Cursor distance or query context is invalid.")));
 
     private static Page<DistanceItem> BuildPage(
         IReadOnlyList<DistanceCandidate> candidates, double x, double y,

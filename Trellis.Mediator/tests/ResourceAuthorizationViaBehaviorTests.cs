@@ -351,7 +351,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var command = new SingleHopCommand("leaf-1");
         global::Mediator.MessageHandlerDelegate<SingleHopCommand, Result<string>> next = (_, _) =>
             new ValueTask<Result<string>>(Result.Fail<string>(
-                new Error.Conflict(null, "test.conflict") { Detail = "Handler-level failure" }));
+                new Error.Conflict(Resource: null, Code: "test.conflict") { Detail = "Handler-level failure" }));
 
         var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
 

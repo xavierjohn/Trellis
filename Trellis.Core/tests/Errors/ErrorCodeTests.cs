@@ -20,6 +20,69 @@ using System.Reflection;
 /// </remarks>
 public class ErrorCodeTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public void Constructors_RequiredCode_Blank_Throws(string? code) =>
+        Assert.All<Action>(
+        [
+            () => _ = new Error.Conflict(Resource: null, Code: code!),
+            () => _ = new Error.InvariantViolation(code!),
+            () => _ = new Error.Forbidden(code!),
+            () => _ = new Error.Unexpected(code!),
+            () => _ = new FieldViolation(InputPointer.Root, code!),
+            () => _ = new RuleViolation(code!),
+        ], construct => construct.Should().Throw<ArgumentException>());
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public void Factories_RequiredCode_Blank_Throws(string? code) =>
+        Assert.All<Action>(
+        [
+            () => Error.Conflict.ForReason(code: code!),
+            () => Error.Conflict.For<object>(code!),
+            () => Error.Conflict.For(code!, ResourceRef.For("Order")),
+            () => Error.InvariantViolation.ForReason(code: code!),
+            () => Error.InvariantViolation.For<object>(code!),
+            () => Error.InvariantViolation.For(code!, ResourceRef.For("Order")),
+            () => Error.Forbidden.ForPolicy(code: code!),
+            () => Error.Forbidden.For<object>(code!),
+            () => Error.Forbidden.For(code!, ResourceRef.For("Order")),
+            () => Error.InvalidInput.ForField(field: "value", code: code!),
+            () => Error.InvalidInput.ForField(code!, InputPointer.Root),
+            () => Error.InvalidInput.ForRule(code: code!),
+        ], construct => construct.Should().Throw<ArgumentException>());
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public void With_RequiredCode_Blank_Throws(string? code) =>
+        Assert.All<Action>(
+        [
+            () => _ = new Error.Conflict(Resource: null, Code: "order.conflict") with { Code = code! },
+            () => _ = new Error.NotFound(ResourceRef.For("Order")) with { Code = code! },
+            () => _ = new FieldViolation(InputPointer.Root, "value.invalid") with { ReasonCode = code! },
+            () => _ = new RuleViolation("order.invalid") with { ReasonCode = code! },
+        ], copy => copy.Should().Throw<ArgumentException>());
+
+    [Theory]
+    [InlineData("application.custom-reason")]
+    [InlineData(" MixedCase.custom_reason ")]
+    public void Factories_CustomCode_PreservesVerbatim(string code)
+    {
+        Error.Conflict.ForReason(code).Code.Should().Be(code);
+        Error.InvariantViolation.ForReason(code).Code.Should().Be(code);
+        Error.Forbidden.ForPolicy(code).PolicyId.Should().Be(code);
+        Error.NotFound.For<object>(code).Code.Should().Be(code);
+        Error.Gone.For<object>(code).Code.Should().Be(code);
+        Error.InvalidInput.ForField(code, "value").Fields.Items[0].ReasonCode.Should().Be(code);
+        Error.InvalidInput.ForRule(code).Rules.Items[0].ReasonCode.Should().Be(code);
+    }
+
     [Fact]
     public void Code_is_the_sentinel_when_the_case_carries_no_reason() =>
         new Error.NotFound(new ResourceRef("Order", "42")).Code
@@ -37,12 +100,12 @@ public class ErrorCodeTests
 
     [Fact]
     public void Code_is_the_sentinel_when_reasons_belong_to_the_individual_violations() =>
-        Error.InvalidInput.ForField("total", "must-be-positive").Code
+        Error.InvalidInput.ForField(field: "total", code: "must-be-positive").Code
             .Should().Be(ValidationCodes.Unspecified);
 
     [Fact]
     public void Code_passes_an_explicit_reason_through() =>
-        new Error.Conflict(new ResourceRef("Order", "42"), "order.already-shipped").Code
+        new Error.Conflict(Resource: new ResourceRef("Order", "42"), Code: "order.already-shipped").Code
             .Should().Be("order.already-shipped");
 
     [Fact]
@@ -56,7 +119,7 @@ public class ErrorCodeTests
     /// </summary>
     [Fact]
     public void Code_does_not_rewrite_an_application_supplied_reason() =>
-        new Error.Conflict(null, "validation.error").Code
+        new Error.Conflict(Resource: null, Code: "validation.error").Code
             .Should().Be("validation.error");
 
     /// <summary>
@@ -64,7 +127,7 @@ public class ErrorCodeTests
     /// </summary>
     [Fact]
     public void Code_keeps_a_reason_that_restates_the_kind() =>
-        new Error.Conflict(null, "conflict").Code
+        new Error.Conflict(Resource: null, Code: "conflict").Code
             .Should().Be("conflict", "a producer that deliberately chose its kind keeps it");
 
     /// <summary>
@@ -112,7 +175,7 @@ public class ErrorCodeTests
             new Error.InvariantViolation("order.line-limit-exceeded", resource),
             new Error.NotFound(resource),
             new Error.Gone(resource),
-            new Error.Conflict(resource, "order.already-shipped"),
+            new Error.Conflict(Resource: resource, Code: "order.already-shipped"),
             new Error.AuthenticationRequired(),
             new Error.Forbidden("orders.write", resource),
             new Error.RateLimited(),

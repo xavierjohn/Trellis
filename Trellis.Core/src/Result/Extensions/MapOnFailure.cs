@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 /// 
 /// // Add context to an error
 /// var result = ValidateEmail(email)
-///     .MapOnFailure(err => Error.InvalidInput.ForField("email", "invalid", $"Email validation failed: {err.Detail}"));
+///     .MapOnFailure(err => Error.InvalidInput.ForField(field: "email", code: "invalid", detail: $"Email validation failed: {err.Detail}"));
 /// 
 /// // Async with CancellationToken using closure capture
 /// var ct = cancellationToken;

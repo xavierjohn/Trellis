@@ -323,7 +323,7 @@ public sealed class Actor : IEquatable<Actor>
         return TVo.TryParse(GetAttribute(key), CultureInfo.InvariantCulture, out var value) && value is not null
             ? Result.Ok(value)
             : Result.Fail<TVo>(Error.InvalidInput.ForField(
-                key, ValidationCodes.AttributeInvalid, $"Attribute '{key}' is missing or is not a valid {typeof(TVo).Name}."));
+                field: key, code: ValidationCodes.AttributeInvalid, detail: $"Attribute '{key}' is missing or is not a valid {typeof(TVo).Name}."));
     }
 
     /// <summary>

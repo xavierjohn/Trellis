@@ -16,8 +16,8 @@ audience: [developer]
 |---|---|---|
 | Return a typed failure from a function | `Result.Fail<T>(new Error.X(payload) { Detail = "..." })` | [Creating errors](#creating-errors) |
 | Fail but still persist staged work (worker handler) | `Result.FailAfterCommit<T>(error)` | [Persisting failure state from a worker handler](integration-mediator.md#persisting-failure-state-from-a-worker-handler) |
-| Build a single-violation 422 from a property name | `Error.InvalidInput.ForField("email", ValidationCodes.ValueNotEmpty, "...")` | [Validation failures](#validation-failures) |
-| Build a single-violation 422 from an object-level rule | `Error.InvalidInput.ForRule("password.confirmation-mismatch", "...")` | [Validation failures](#validation-failures) |
+| Build a single-violation 422 from a property name | `Error.InvalidInput.ForField(field: "email", code: ValidationCodes.ValueNotEmpty, detail: "...")` | [Validation failures](#validation-failures) |
+| Build a single-violation 422 from an object-level rule | `Error.InvalidInput.ForRule(code: "password.confirmation-mismatch", detail: "...")` | [Validation failures](#validation-failures) |
 | Aggregate per-field and cross-field violations | `new Error.InvalidInput(Fields: ..., Rules: ...)` | [Validation failures](#validation-failures) |
 | Branch on the closed catalog at a boundary | `result.Match(value => ..., error => error switch { Error.NotFound nf => ..., ... })` | [Pattern matching](#pattern-matching) |
 | Log without changing the result | `result.TapOnFailure(error => logger.LogWarning(...))` | [Propagating errors](#propagating-errors) |
@@ -98,18 +98,20 @@ new Error.NotFound(ResourceRef.For<Order>("42")) { Detail = "Order 42 not found"
 For the common single-payload shapes, the resource-bearing cases (`NotFound`, `Gone`, `Conflict`, `Forbidden`, `InvariantViolation`) and `InvalidInput` also expose **case-scoped** convenience factories that bundle the typed payload while still naming the case — they only remove the `ResourceRef` / `InputPointer` construction ceremony:
 
 ```csharp
-Error.NotFound.For<Order>(id, "Order not found")            // wraps id in ResourceRef.For<Order>(id)
-Error.Conflict.ForReason("duplicate.key", "Email in use")   // resourceless; ForReason leads with the reason code
-Error.Forbidden.ForPolicy("orders.write", "Admin required") // resourceless; or For<TResource>(policyId, id, detail)
-Error.InvariantViolation.ForReason("order.cross-aggregate-rule") // resourceless; or For<TResource>(reasonCode, id, detail)
-Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Bad email") // or ForRule(code, detail)
+Error.NotFound.For<Order>(id: id, detail: "Order not found");
+Error.Conflict.ForReason("duplicate.key", detail: "Email in use");
+Error.Forbidden.ForPolicy("orders.write", detail: "Admin required");
+Error.InvariantViolation.ForReason("order.cross-aggregate-rule");
+Error.InvalidInput.ForField(ValidationCodes.StringEmail, "email", detail: "Bad email");
 ```
+
+Factories put `code` first and `detail` last. Validation, conflict, invariant, and policy codes must be nonblank; invalid codes throw argument exceptions even through constructors or `with` assignments. Application-specific codes remain supported. `NotFound` and `Gone` still allow omission (`id: id`); blank optional factory codes retain `ValidationCodes.Unspecified`. Explicit resources use `For(code, ResourceRef.For("Order", id), detail: ...)`, not a string-resource overload. See the [complete factory signatures](../api_reference/trellis-api-core.md#construction-and-case-scoped-factories).
 
 | Pattern | Example |
 |---|---|
 | Resource not found | `new Error.NotFound(ResourceRef.For<Order>(id)) { Detail = $"Order {id} not found" }` |
-| State conflict | `new Error.Conflict(ResourceRef.For<User>(userId), "duplicate.key") { Detail = "Email is already in use" }` |
-| Domain rule conflict (no resource) | `new Error.Conflict(null, "order.cancel-after-ship") { Detail = "Cannot cancel after shipment" }` |
+| State conflict | `new Error.Conflict(Resource: ResourceRef.For<User>(userId), Code: "duplicate.key") { Detail = "Email is already in use" }` |
+| Domain rule conflict (no resource) | `new Error.Conflict(Resource: null, Code: "order.cancel-after-ship") { Detail = "Cannot cancel after shipment" }` |
 | Authentication missing | `new Error.AuthenticationRequired()` |
 | Authenticated but not allowed | `new Error.Forbidden("orders.write") { Detail = "Administrator role required" }` |
 | Soft-deleted resource | `new Error.Gone(ResourceRef.For<Document>(id))` |
@@ -122,7 +124,7 @@ Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Bad email") /
 | Aggregate invariant | `new Error.InvariantViolation("order.cross-aggregate-rule", ResourceRef.For<Order>(orderId))` |
 
 > [!TIP]
-> Reach for `new Error.Conflict(resource, "domain.violation")` when state blocks an otherwise-valid request. `Error.InvalidInput` is for input the caller can fix. `Error.InvariantViolation` is for domain rules that aren't bound to a specific request field (e.g. a cross-aggregate rule, an internal precondition).
+> Reach for `new Error.Conflict(Resource: resource, Code: "domain.violation")` when state blocks an otherwise-valid request. `Error.InvalidInput` is for input the caller can fix. `Error.InvariantViolation` is for domain rules that aren't bound to a specific request field (e.g. a cross-aggregate rule, an internal precondition).
 
 ### Validation failures
 
@@ -130,20 +132,24 @@ Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Bad email") /
 
 | Factory | Use when |
 |---|---|
-| `Error.InvalidInput.ForField(propertyName, reasonCode, detail?)` | Single property failure named by simple property (escaped via `InputPointer.ForProperty`). |
-| `Error.InvalidInput.ForField(InputPointer field, reasonCode, detail?)` | Single field failure where you already have a pointer (nested / array / `InputPointer.Root`). |
-| `Error.InvalidInput.ForRule(reasonCode, detail?)` | Single object-level invariant with no field pointer. |
+| `Error.InvalidInput.ForField(code, field: propertyName, args: args, detail: detail)` | Single property failure, escaped via `InputPointer.ForProperty`; null/empty targets the root. `args` and `detail` are optional. |
+| `Error.InvalidInput.ForField(code, field: pointer, args: args, detail: detail)` | An existing `InputPointer`, preserving nested/array path and input location. |
+| `Error.InvalidInput.ForRule(code, fields: fields, args: args, detail: detail)` | Object-level or cross-field invariant. Optional related pointers are defensively copied in order; `args` and `detail` are also optional. |
 | `new Error.InvalidInput(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | Aggregate multiple per-field and/or cross-field violations. |
 
 ```csharp
 using System.Collections.Immutable;
 using Trellis;
 
-var single = Error.InvalidInput.ForField("email", ValidationCodes.ValueNotEmpty, "Email is required");
+var single = Error.InvalidInput.ForField(field: "email", code: ValidationCodes.ValueNotEmpty, detail: "Email is required");
 
 var indexedField = InputPointer.ForBody("/items").AppendIndex(2).AppendProperty("quantity");
-var indexed = Error.InvalidInput.ForField(indexedField, ValidationCodes.ValueGreaterThan,
-    "Quantity must be greater than zero.");
+var indexed = Error.InvalidInput.ForField(field: indexedField, code: ValidationCodes.ValueGreaterThan,
+    detail: "Quantity must be greater than zero.");
+
+var crossField = Error.InvalidInput.ForRule("password.confirmation-mismatch",
+    fields: [InputPointer.ForBody("/password"), InputPointer.ForBody("/confirmation")],
+    detail: "Password and confirmation differ.");
 
 var multiField = new Error.InvalidInput(EquatableArray.Create(
     new FieldViolation(InputPointer.ForProperty("email"),    ValidationCodes.ValueNotEmpty) { Detail = "Email is required" },
@@ -254,9 +260,9 @@ static Result<string> LoadConfig(string path) =>
 | Heterogeneous (mixed cases) | One `Error.Aggregate` wrapping the children. Nested aggregates are flattened at construction. |
 
 ```csharp
-var emailErr    = Result.Fail(Error.InvalidInput.ForField("email",    ValidationCodes.ValueNotEmpty));
-var passwordErr = Result.Fail(Error.InvalidInput.ForField("password", ValidationCodes.ValueNotEmpty));
-var ageErr      = Result.Fail(Error.InvalidInput.ForField("age",      ValidationCodes.ValueNotEmpty));
+var emailErr    = Result.Fail(Error.InvalidInput.ForField(field: "email",    code: ValidationCodes.ValueNotEmpty));
+var passwordErr = Result.Fail(Error.InvalidInput.ForField(field: "password", code: ValidationCodes.ValueNotEmpty));
+var ageErr      = Result.Fail(Error.InvalidInput.ForField(field: "age",      code: ValidationCodes.ValueNotEmpty));
 
 var combined = Result.Combine(emailErr, passwordErr, ageErr);
 // combined.Error is one Error.InvalidInput with three Fields entries.
@@ -280,8 +286,8 @@ Its indexed overload keeps input positions available for precise error pointers:
 string?[] inputs = ["Ada", null, "Grace"];
 var names = inputs.TraverseAll((name, index) =>
     name.ToResult(() => Error.InvalidInput.ForField(
-        InputPointer.Root.AppendProperty("names").AppendIndex(index),
-        ValidationCodes.ValueNotNull, "Name is required.")));
+        field: InputPointer.Root.AppendProperty("names").AppendIndex(index),
+        code: ValidationCodes.ValueNotNull, detail: "Name is required.")));
 // Failure identifies /names/1; every input is examined.
 ```
 
@@ -328,7 +334,7 @@ Full mapping rules and per-case behaviour live in:
 
 | Removed | Use instead |
 |---|---|
-| `Error.BadRequest` | `Error.InvalidInput.ForRule(...)` (or `.ForField(...)` if anchored to a request field) |
+| `Error.BadRequest` | `Error.InvalidInput.ForRule(code: ...)` (or `.ForField(...)` if anchored to a request field) |
 | `Error.UnprocessableContent` | `Error.InvalidInput` |
 | `Error.Unauthorized` | `Error.AuthenticationRequired` |
 | `Error.TooManyRequests` | `Error.RateLimited` |

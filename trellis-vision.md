@@ -184,7 +184,7 @@ public async Task<Result<User>> CreateUserAsync(
         .Combine(LastName.TryCreate(lastName))
         .Combine(EmailAddress.TryCreate(email))
         .Bind((first, last, email) => User.TryCreate(first, last, email))
-        .Ensure(user => !_repository.EmailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email exists" })
+        .Ensure(user => !_repository.EmailExists(user.Email), new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Email exists" })
         .Tap(user => _repository.Save(user))
         .Tap(user => _emailService.SendWelcome(user.Email));
 ```

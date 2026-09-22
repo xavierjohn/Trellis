@@ -41,7 +41,7 @@ public class PropertyNameAwareConverterTests
             if (value == "ok@example.com")
                 return Result.Ok(new DomainOnlyEmail(value));
 
-            return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.DomainOnlyEmail>(new Error.Conflict(null, "email.domain.invalid") { Detail = string.Empty });
+            return Result.Fail<Asp.Tests.PropertyNameAwareConverterTests.DomainOnlyEmail>(new Error.Conflict(Resource: null, Code: "email.domain.invalid") { Detail = string.Empty });
         }
     }
 

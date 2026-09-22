@@ -29,7 +29,7 @@ public class CountryCode : ScalarValueObject<CountryCode, string>, IScalarValue<
     // Field-normalization + InvalidInput failure in one place (default field name: "countryCode").
     private static Result<CountryCode> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<CountryCode>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("countryCode"), reasonCode, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("countryCode"), code: reasonCode, detail: message));
 
     /// <summary>
     /// Attempts to create a country code.

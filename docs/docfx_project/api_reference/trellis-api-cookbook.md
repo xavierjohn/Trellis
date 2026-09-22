@@ -193,9 +193,9 @@ public sealed class Order : Aggregate<OrderId>
     // tuple-deconstructing overload lets the lambda bind the validated non-null values
     // directly as id/total/ownerId.
     public static Result<Order> TryCreate(OrderId? id, Money? total, ActorId? ownerId) =>
-        id.ToResult(Error.InvalidInput.ForField("id", ValidationCodes.ValueNotNull, "Order id is required."))
-            .Combine(total.ToResult(Error.InvalidInput.ForField("total", ValidationCodes.ValueNotNull, "Total is required.")))
-            .Combine(ownerId.ToResult(Error.InvalidInput.ForField("ownerId", ValidationCodes.ValueNotNull, "Owner id is required.")))
+        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Order id is required."))
+            .Combine(total.ToResult(Error.InvalidInput.ForField(field: "total", code: ValidationCodes.ValueNotNull, detail: "Total is required.")))
+            .Combine(ownerId.ToResult(Error.InvalidInput.ForField(field: "ownerId", code: ValidationCodes.ValueNotNull, detail: "Owner id is required.")))
             .Map((id, total, ownerId) => new Order(id) { Total = total, Status = OrderStatus.Draft, OwnerId = ownerId });
 }
 
@@ -341,7 +341,7 @@ public static class OrdersDi
 // FIX — MatchAsync awaits the Maybe carrier and dispatches without leaving the Result chain.
 .BindAsync(id => repo.FindAsync(id, ct)
     .MatchAsync(
-        some: _  => Result.Fail<OrderId>(new Error.Conflict(ResourceRef.For<Order>(id), "already-exists")),
+        some: _  => Result.Fail<OrderId>(new Error.Conflict(Resource: ResourceRef.For<Order>(id), Code: "already-exists")),
         none: () => Result.Ok(id)))
 ```
 
@@ -1052,9 +1052,9 @@ public sealed partial class Customer : Aggregate<CustomerId>
     }
 
     public static Result<Customer> TryCreate(CustomerId? id, string? name, ShippingAddress? shipping) =>
-        id.ToResult(Error.InvalidInput.ForField("id", ValidationCodes.ValueNotNull, "Customer id is required."))
-            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField("name", ValidationCodes.ValueNotEmpty, "Name is required.")))
-            .Combine(shipping.ToResult(Error.InvalidInput.ForField("shipping", ValidationCodes.ValueNotNull, "Shipping address is required.")))
+        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Customer id is required."))
+            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required.")))
+            .Combine(shipping.ToResult(Error.InvalidInput.ForField(field: "shipping", code: ValidationCodes.ValueNotNull, detail: "Shipping address is required.")))
             .Map((id, name, shipping) => new Customer(id, name, shipping));
 }
 
@@ -1501,7 +1501,7 @@ public sealed record OrderShipped(OrderId OrderId, TrackingNumber Tracking, Date
 public Result<Order> Submit(TimeProvider clock)
 {
     return this.ToResult()
-        .Ensure(_ => Status == OrderStatus.Draft, Error.InvalidInput.ForRule("order.already-submitted", "Already submitted"))
+        .Ensure(_ => Status == OrderStatus.Draft, Error.InvalidInput.ForRule(code: "order.already-submitted", detail: "Already submitted"))
         .Tap(_ =>
         {
             Status = OrderStatus.Submitted;
@@ -2061,7 +2061,7 @@ app.MapPut("/orders/{id:guid}", (OrderId id, ReplaceOrderRequest request, OrderD
 - **Construct errors via the closed ADT.** `new Error.NotFound(ResourceRef.For<Order>(id))` — never `new Error("not_found", "...")`, which won't compile against the abstract base record.
 - **Use `Result.Combine` (or `EnsureAll`) for accumulating validation.** Manual `IsSuccess` checks across multiple results trigger `TRLS008`.
 - **Aggregate per-item Results with `Traverse` / `Sequence` (fail-fast) or `TraverseAll` / `SequenceAll` (accumulating).** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure. When you need to surface every failure (form-style validation), use `TraverseAll` / `SequenceAll`: they run through every item and fold failures via `Error.Combine` — two `Error.InvalidInput` errors merge their fields/rules, heterogeneous errors flatten into `Error.Aggregate`. See [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) for when to choose which.
-- **Use `Error.InvalidInput.ForField` / `.ForRule` for single-violation 422s.** The most common shape (every primitive `TryCreate`, every value-object invariant, every `RequiredEnum`/`RequiredString` failure) is a single `FieldViolation` or a single `RuleViolation`. Use the factories instead of the verbose constructor: `Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "must contain @")` over `new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.StringEmail) { Detail = "must contain @" }))`. There is also `ForField(InputPointer field, …)` for nested/array pointers (e.g. `new InputPointer("/items/0/quantity")`) or `InputPointer.Root` for whole-body violations, and `ForRule(reasonCode, detail)` for global rules. For aggregating multiple per-field violations into one error (e.g. composite VO `TryCreate`), keep the manual constructor with an `EquatableArray<FieldViolation>`, or chain `.Combine(...)` across the per-field `TryCreate`s as in Recipe 1 (which folds multiple `Error.InvalidInput` into one).
+- **Use `Error.InvalidInput.ForField` / `.ForRule` for single-violation 422s.** Prefer `Error.InvalidInput.ForField(ValidationCodes.StringEmail, "email", detail: "must contain @")` over manually wrapping a single `FieldViolation`. The pointer overload is `ForField(code, pointer, args: args, detail: detail)` and preserves nested/array paths and input location. Global rules use `ForRule(code, detail: detail)`; cross-field rules can also supply `fields: [firstPointer, secondPointer]` and `args`. Optional metadata can be omitted, but required codes must be nonblank. For multiple violations, keep the `Error.InvalidInput` constructor with an `EquatableArray<FieldViolation>`, or combine per-field `TryCreate` results as in Recipe 1.
 - **`InputPointer.Root` for whole-body violations.** Use `InputPointer.ForProperty(name)` for field-level violations and `InputPointer.Root` when the rule is object-level.
 - **Only the `Trellis` namespace is auto-imported.** The template's implicit usings include `Trellis` (which exposes `Result`, `Result<T>`, `Error`, `Maybe<T>`, `RequiredString<T>`, `RequiredGuid<T>`, `RequiredInt<T>`, `RequiredDecimal<T>`, `RequiredDateTime<T>`, etc.). Every other Trellis namespace requires an explicit `using` per file — e.g. `using Trellis.Primitives;` for `Money` / `EmailAddress` / `PhoneNumber` / `MonetaryAmount` / `CurrencyCode` / `CountryCode` / etc., `using Stateless;` for the upstream `StateMachine<TState, TTrigger>` type plus `using Trellis.StateMachine;` for the Trellis `FireResult` extension and `LazyStateMachine<TState, TTrigger>`, `using Trellis.Authorization;` for permission types. This is intentional: implicit usings cannot be added at the template level without breaking services that don't reference the package.
 - **Accessing `Maybe<T>.Value` inside `Expression<Func<...>>` lambdas (EF Core `Where`/`Select`, FluentValidation `RuleFor`, Specifications):** TRLS003 still applies inside expression trees, but it now recognises the multi-clause guard — `e => e.Status == X && e.Y.HasValue && e.Y.Value == y` is analyzer-clean, and `MaybeQueryInterceptor` translates each clause faithfully to SQL when `AddTrellisInterceptors()` is wired. The single-call equivalent `e.Y.HasValueWhere(v => v == y)` is also analyzer-clean and rewritten by the interceptor — use whichever reads better. Hoist into a guarded variable for projections that the interceptor doesn't cover. Do not suppress with `#pragma warning disable TRLS003`. See [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects) for the full Specification walkthrough.
@@ -2266,8 +2266,8 @@ public sealed class Product : Aggregate<ProductId>
         Result.Ensure(
             quantity > 0 && quantity <= Stock,
             () => Error.InvalidInput.ForRule(
-                "stock.insufficient",
-                $"Cannot reserve {quantity} from stock of {Stock}."));
+                code: "stock.insufficient",
+                detail: $"Cannot reserve {quantity} from stock of {Stock}."));
 
     // Mutator — re-checks via CanReserve as defense in depth so it is safe to call
     // outside the two-pass orchestration. When called after a matching Pass 1 CanReserve
@@ -2286,8 +2286,8 @@ public sealed class Order : Aggregate<OrderId>
         Result.Ensure(
             LineItems.Count > 0,
             () => Error.InvalidInput.ForRule(
-                "order.empty",
-                "Order must have at least one line item to submit."));
+                code: "order.empty",
+                detail: "Order must have at least one line item to submit."));
 
     public Result<Order> Submit() =>
         CanSubmit().Tap(() => IsSubmitted = true).Map(_ => this);
@@ -2567,7 +2567,7 @@ public class HealthProbeWorkerTests
 
 **Problem.** A worker (or any caller) processes events that may be redelivered. It must record "I handled event X for destination Y" exactly once. A `(EventId, DestinationId)` unique index in the database is the source of truth — the second delivery should silently no-op, not crash, not double-process. Doing this with `Any(...)` + `Add` + `SaveChangesAsync` is a TOCTOU race: two concurrent deliveries both see "not present", both `Add`, one wins and the loser throws `DbUpdateException`. Catching `DbUpdateException` and string-matching on the inner exception's message is provider-specific (SQL Server says one thing, PostgreSQL another, SQLite a third) and easy to get subtly wrong.
 
-**Solution.** `DbContext.TryInsertUniqueAsync(entity, ct)` (from `Trellis.EntityFrameworkCore.DbContextIdempotencyExtensions`) adds the entity, calls `SaveChangesAsync`, and converts a provider-level unique-constraint violation into `Result.Fail(new Error.Conflict(null, "duplicate.key"))` with a generic safe `Detail`. Constraint identity (`ConstraintName`, `ConstraintTableName`) is extracted on a best-effort basis and attached to the `Error.Conflict` payload for structured logging. All other failures — concurrency, foreign-key, cancellation, connection errors — propagate to the caller so retry policies and global handlers see them. The helper requires a clean `DbContext` (no pending changes) so a duplicate-key violation can be unambiguously attributed to the entity being inserted.
+**Solution.** `DbContext.TryInsertUniqueAsync(entity, ct)` (from `Trellis.EntityFrameworkCore.DbContextIdempotencyExtensions`) adds the entity, calls `SaveChangesAsync`, and converts a provider-level unique-constraint violation into `Result.Fail(new Error.Conflict(Resource: null, Code: "duplicate.key"))` with a generic safe `Detail`. Constraint identity (`ConstraintName`, `ConstraintTableName`) is extracted on a best-effort basis and attached to the `Error.Conflict` payload for structured logging. All other failures — concurrency, foreign-key, cancellation, connection errors — propagate to the caller so retry policies and global handlers see them. The helper requires a clean `DbContext` (no pending changes) so a duplicate-key violation can be unambiguously attributed to the entity being inserted.
 
 ```csharp
 // Domain: a worker records each (EventId, DestinationId) it has dispatched.
@@ -3470,7 +3470,7 @@ public static class DistancePagination
     {
         if (!ValidCoordinate(originX) || !ValidCoordinate(originY))
             return Result.Fail<Page<DistanceItem>>(Error.InvalidInput.ForField(
-                "origin", "search.origin.invalid", "Origin is outside the supported coordinate range."));
+                field: "origin", code: "search.origin.invalid", detail: "Origin is outside the supported coordinate range."));
 
         var context = ContextIdentity(scopeSnapshotId, originX, originY);
         var codec = CreateCodec(context);
@@ -3491,8 +3491,8 @@ public static class DistancePagination
                     ? Result.Ok(new DistanceBoundary(
                         wire.Primary.Primary, wire.Primary.Secondary, wire.Secondary))
                     : Result.Fail<DistanceBoundary>(Error.InvalidInput.ForField(
-                        field ?? "cursor", "cursor.malformed",
-                        "Cursor distance or query context is invalid.")));
+                        field: field ?? "cursor", code: "cursor.malformed",
+                        detail: "Cursor distance or query context is invalid.")));
 
     private static Page<DistanceItem> BuildPage(
         IReadOnlyList<DistanceCandidate> candidates, double x, double y,

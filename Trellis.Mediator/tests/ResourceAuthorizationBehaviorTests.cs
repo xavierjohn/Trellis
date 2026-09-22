@@ -345,7 +345,7 @@ public class ResourceAuthorizationBehaviorTests
         var command = new ResourceOwnerCommand("res-1");
         MessageHandlerDelegate<ResourceOwnerCommand, Result<string>> next = (_, _) =>
             new ValueTask<Result<string>>(Result.Fail<string>(
-                new Error.Conflict(null, "test.conflict") { Detail = "Handler-level failure" }));
+                new Error.Conflict(Resource: null, Code: "test.conflict") { Detail = "Handler-level failure" }));
 
         var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
 

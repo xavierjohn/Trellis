@@ -40,7 +40,7 @@ public class MapOnFailureBenchmarks
     public Result<int> MapOnFailure_ChangeErrorType()
     {
         return _validationFailure
-            .MapOnFailure(e => new Error.Conflict(null, "conflict") { Detail = $"Conflict: {e.Detail}" });
+            .MapOnFailure(e => new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Conflict: {e.Detail}" });
     }
 
     [Benchmark]

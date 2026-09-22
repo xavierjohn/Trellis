@@ -672,7 +672,7 @@ sequenceDiagram
             Controller-->>Client: 200 OK + User JSON
         else Duplicate email
             Database-->>Repository: Duplicate key error
-            Repository-->>Controller: new Error.Conflict(null, "conflict")
+            Repository-->>Controller: new Error.Conflict("conflict")
             Controller-->>Client: 409 Conflict
         end
     else Validation fails

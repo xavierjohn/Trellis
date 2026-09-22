@@ -59,7 +59,7 @@ public sealed class DirectionalPaginationTests
     public async Task ToHttpResponse_Directional_Failure_DoesNotInvokeCallbacks(int variant)
     {
         var context = NewContext();
-        var failure = Result.Fail<Page<int>>(new Error.Conflict(null, "conflict"));
+        var failure = Result.Fail<Page<int>>(new Error.Conflict(Resource: null, Code: "conflict"));
 
         var response = await ConvertAsync(variant, failure,
             (_, _, _) => throw new InvalidOperationException("URL builder must not run"),

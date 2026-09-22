@@ -30,12 +30,12 @@ public class EnsureTests_Task_Right
     [Fact]
     public async Task Ensure_Task_Right_with_failureInput_and_successPredicate()
     {
-        var initialResult = Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "Initial Error message" });
+        var initialResult = Result.Fail<string>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial Error message" });
 
         var result = await initialResult.EnsureAsync(() => Task.FromResult(Result.Ok("Success message")));
 
         result.Should().BeFailure("Initial result is failure result")
-            .Which.Should().Be(new Error.Conflict(null, "conflict") { Detail = "Initial Error message" });
+            .Which.Should().Be(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial Error message" });
     }
 
     [Fact]
@@ -54,10 +54,10 @@ public class EnsureTests_Task_Right
     {
         var initialResult = Result.Ok("Initial Success message");
 
-        var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "Error Message" })));
+        var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Fail<string>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Error Message" })));
 
         result.Should().BeFailure("Predicate is failure result")
-            .Which.Should().Be(new Error.Conflict(null, "conflict") { Detail = "Error Message" });
+            .Which.Should().Be(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Error Message" });
     }
 
     [Fact]

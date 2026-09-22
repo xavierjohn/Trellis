@@ -41,8 +41,8 @@ public class SequenceAllTests : TestBase
     [Fact]
     public void SequenceAll_MultipleHeterogeneousFailures_ReturnsAggregate()
     {
-        var unprocessable = Error.InvalidInput.ForField("name", "validation.required", "Name is required");
-        var conflict = new Error.Conflict(new ResourceRef("Resource", null), "duplicate");
+        var unprocessable = Error.InvalidInput.ForField(field: "name", code: "validation.required", detail: "Name is required");
+        var conflict = new Error.Conflict(Resource: new ResourceRef("Resource", null), Code: "duplicate");
         var results = new[]
         {
             Result.Ok(1),

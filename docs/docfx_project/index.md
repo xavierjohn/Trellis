@@ -75,7 +75,7 @@ public static Result<User> RegisterUser(
         .Combine(LastName.TryCreate(input.LastName))
         .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email already registered." })
+        .Ensure(user => !emailExists(user.Email), new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Email already registered." })
         .Tap(saveUser)
         .Tap(user => sendWelcomeEmail(user.Email));
 }
@@ -148,7 +148,7 @@ If you want the full API surface, jump to the **[API reference](api/index.md)** 
 
 - Use `Result.Ok()` for a success-without-payload flow (returns `Result<Unit>`; `Trellis.Unit` is a public `readonly record struct` with the single value `Unit.Default`).
 - `Error.Equals(...)` is value-based for each error case. Compare `Code` when you only need the stable machine-readable category.
-- `new Error.NotFound(ResourceRef.For("Order", orderId)) { Detail = ... }`, `new Error.Conflict(null, "conflict") { Detail = ... }`, and the other case constructors create specific error subtypes whose `Code` defaults to the hyphenated `Kind` unless that case exposes a payload-specific code.
+- `new Error.NotFound(ResourceRef.For("Order", orderId)) { Detail = ... }` creates a typed error whose `Code` defaults to `ValidationCodes.Unspecified` (`"error.unspecified"`), never to `Kind`. Required-code cases such as `new Error.Conflict("conflict") { Detail = ... }` take their code explicitly.
 
 ---
 

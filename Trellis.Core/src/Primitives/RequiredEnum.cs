@@ -226,7 +226,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
             // value.not-empty here would make the same failure carry different codes depending on
             // which producer saw it -- the producer-dependence this vocabulary exists to remove.
             var emptinessCode = value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty;
-            return Result.Fail<TSelf>(Error.InvalidInput.ForField(field, emptinessCode, $"{typeof(TSelf).Name} cannot be empty."));
+            return Result.Fail<TSelf>(Error.InvalidInput.ForField(field: field, code: emptinessCode, detail: $"{typeof(TSelf).Name} cannot be empty."));
         }
 
         var cache = GetCache();
@@ -235,10 +235,10 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 
         var validNames = EnumMemberProse.ListOrNull(cache.ByName.Keys);
         return Result.Fail<TSelf>(Error.InvalidInput.ForField(
-            field,
-            ValidationCodes.EnumNameUndefined,
-            ValidationArgs.Allowed(cache.ByName.Keys),
-            validNames is null
+            field: field,
+            code: ValidationCodes.EnumNameUndefined,
+            args: ValidationArgs.Allowed(cache.ByName.Keys),
+            detail: validNames is null
                 ? $"'{value}' is not a valid {typeof(TSelf).Name}."
                 : $"'{value}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}"));
     }

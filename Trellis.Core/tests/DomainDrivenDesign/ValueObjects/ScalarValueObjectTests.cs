@@ -381,7 +381,7 @@ public class ScalarValueObjectTests
     {
         var quantity = new Quantity(42);
 
-        var error = new Error.Conflict(null, quantity.ToString(CultureInfo.InvariantCulture)) { Detail = "Insufficient quantity." };
+        var error = new Error.Conflict(Resource: null, Code: quantity.ToString(CultureInfo.InvariantCulture)) { Detail = "Insufficient quantity." };
 
         error.Code.Should().Be("42");
     }
@@ -391,7 +391,7 @@ public class ScalarValueObjectTests
     {
         var money = new MoneySimple(1234.56m);
 
-        var error = new Error.Conflict(null, money.ToString(CultureInfo.InvariantCulture)) { Detail = "Amount mismatch." };
+        var error = new Error.Conflict(Resource: null, Code: money.ToString(CultureInfo.InvariantCulture)) { Detail = "Amount mismatch." };
 
         error.Code.Should().Be("1234.56");
     }

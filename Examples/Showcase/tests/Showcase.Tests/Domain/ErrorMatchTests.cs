@@ -23,7 +23,7 @@ public class ErrorMatchTests
         {
             nameof(Error.InvalidInput) => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty),
             nameof(Error.NotFound) => new Error.NotFound(new ResourceRef("Thing", "1")),
-            nameof(Error.Conflict) => new Error.Conflict(null, "x"),
+            nameof(Error.Conflict) => new Error.Conflict(Resource: null, Code: "x"),
             nameof(Error.Forbidden) => new Error.Forbidden("policy.id"),
             nameof(Error.TransportFault) => new Error.TransportFault(new HttpError.PreconditionFailed(new ResourceRef("Thing", "1"), PreconditionKind.IfMatch)),
             nameof(Error.Unexpected) => new Error.Unexpected("test.reason", "fault-id"),

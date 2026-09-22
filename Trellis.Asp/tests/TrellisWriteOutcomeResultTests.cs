@@ -51,7 +51,7 @@ public sealed class TrellisWriteOutcomeResultTests
     public async Task Failure_uses_per_call_error_mapping()
     {
         var ctx = NewContext();
-        var r = Result.Fail<WriteOutcome<Item>>(new Error.Conflict(null, "x"));
+        var r = Result.Fail<WriteOutcome<Item>>(new Error.Conflict(Resource: null, Code: "x"));
 
         await r.ToHttpResponse(i => new ItemBody(i.Id), o => o.WithErrorMapping<Error.Conflict>(418))
             .ExecuteAsync(ctx);

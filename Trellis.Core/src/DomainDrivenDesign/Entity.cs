@@ -57,7 +57,7 @@
 ///     
 ///     public static Result&lt;Customer&gt; TryCreate(string name, EmailAddress email) =>
 ///         name.ToResult()
-///             .Ensure(n => !string.IsNullOrWhiteSpace(n), Error.InvalidInput.ForField("name", "invalid", "Name required"))
+///             .Ensure(n => !string.IsNullOrWhiteSpace(n), Error.InvalidInput.ForField(field: "name", code: "invalid", detail: "Name required"))
 ///             .Map(n => new Customer(CustomerId.NewUniqueV7(), n, email));
 ///     
 ///     public Result&lt;Customer&gt; UpdateEmail(EmailAddress newEmail) =>

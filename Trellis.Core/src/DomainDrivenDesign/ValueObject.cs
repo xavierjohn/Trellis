@@ -68,9 +68,9 @@
 ///         string street, string city, string state, string postalCode) =>
 ///         (street, city, state, postalCode).ToResult()
 ///             .Ensure(x => !string.IsNullOrWhiteSpace(x.street), 
-///                    Error.InvalidInput.ForField("street", "invalid", "Street is required"))
+///                    Error.InvalidInput.ForField(field: "street", code: "invalid", detail: "Street is required"))
 ///             .Ensure(x => !string.IsNullOrWhiteSpace(x.city),
-///                    Error.InvalidInput.ForField("city", "invalid", "City is required"))
+///                    Error.InvalidInput.ForField(field: "city", code: "invalid", detail: "City is required"))
 ///             .Map(x => new Address(x.street, x.city, x.state, x.postalCode));
 ///
 ///     // Define what makes two addresses equal
@@ -113,9 +113,9 @@
 ///     
 ///     public static Result&lt;Money&gt; TryCreate(decimal amount, string currency = "USD") =>
 ///         (amount, currency).ToResult()
-///             .Ensure(x => x.amount >= 0, Error.InvalidInput.ForField("amount", "invalid", "Amount cannot be negative"))
+///             .Ensure(x => x.amount >= 0, Error.InvalidInput.ForField(field: "amount", code: "invalid", detail: "Amount cannot be negative"))
 ///             .Ensure(x => x.currency.Length == 3, 
-///                    Error.InvalidInput.ForField("currency", "invalid", "Currency must be 3-letter ISO code"))
+///                    Error.InvalidInput.ForField(field: "currency", code: "invalid", detail: "Currency must be 3-letter ISO code"))
 ///             .Map(x => new Money(x.amount, x.currency.ToUpperInvariant()));
 ///     
 ///     protected override void GetEqualityComponents(ref EqualityComponents components)
@@ -127,7 +127,7 @@
 ///     // Domain operations return new instances (immutability)
 ///     public Result&lt;Money&gt; Add(Money other) =>
 ///         Currency != other.Currency
-///             ? Result.Fail&lt;Money&gt;(Error.InvalidInput.ForRule(ValidationCodes.MoneyCurrencyMismatch, $"Cannot add {other.Currency} to {Currency}"))
+///             ? Result.Fail&lt;Money&gt;(Error.InvalidInput.ForRule(code: ValidationCodes.MoneyCurrencyMismatch, detail: $"Cannot add {other.Currency} to {Currency}"))
 ///             : Result.Ok(new Money(Amount + other.Amount, Currency));
 ///     
 ///     public Money Multiply(decimal factor) =>

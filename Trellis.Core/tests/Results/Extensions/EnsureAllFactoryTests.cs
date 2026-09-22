@@ -10,7 +10,8 @@ public class EnsureAllFactoryTests
         var calls = 0;
 
         var result = Result.Ok("valid").EnsureAll(
-            (value => value.Length > 0, _ => { calls++; return new Error.Unexpected("unused"); }));
+            (value => value.Length > 0, _ => { calls++; return new Error.Unexpected("unused"); }
+        ));
 
         result.Should().BeSuccess().Which.Should().Be("valid");
         calls.Should().Be(0);
@@ -25,14 +26,16 @@ public class EnsureAllFactoryTests
             (_ => false, value =>
             {
                 values.Add(value);
-                return Error.InvalidInput.ForField("first", "first.invalid", value);
-            }),
+                return Error.InvalidInput.ForField(field: "first", code: "first.invalid", detail: value);
+            }
+        ),
             (_ => true, _ => new Error.Unexpected("unused")),
             (_ => false, value =>
             {
                 values.Add(value);
-                return Error.InvalidInput.ForField("second", "second.invalid", value);
-            }));
+                return Error.InvalidInput.ForField(field: "second", code: "second.invalid", detail: value);
+            }
+        ));
 
         var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Select(field => field.Field.Path).Should().Equal(["/first", "/second"]);
@@ -45,7 +48,7 @@ public class EnsureAllFactoryTests
     {
         var result = Result.Ok("value").EnsureAll(
             (_ => false, _ => new Error.Unexpected("first")),
-            (_ => false, _ => Error.InvalidInput.ForField("value", "value.invalid")));
+            (_ => false, _ => Error.InvalidInput.ForField(field: "value", code: "value.invalid")));
 
         result.Should().BeFailureOfType<Error.Aggregate>().Which.Errors.Items.Should().HaveCount(2);
     }
@@ -58,7 +61,8 @@ public class EnsureAllFactoryTests
         var calls = 0;
 
         var result = original.EnsureAll(
-            (_ => { calls++; return false; }, _ => { calls++; return new Error.Unexpected("unused"); }));
+            (_ => { calls++; return false; }, _ => { calls++; return new Error.Unexpected("unused"); }
+        ));
 
         result.Should().BeFailure().Which.Should().Be(error);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeTrue();
@@ -129,8 +133,8 @@ public class EnsureAllFactoryTests
         (Func<string, bool>, Func<string, Error>)[] checks =
         [
             (_ => true, _ => { calls++; return new Error.Unexpected("unused"); }),
-            (_ => false, value => { calls++; return Error.InvalidInput.ForField("first", "first.invalid", value); }),
-            (_ => false, value => { calls++; return Error.InvalidInput.ForField("second", "second.invalid", value); })
+            (_ => false, value => { calls++; return Error.InvalidInput.ForField(field: "first", code: "first.invalid", detail: value); }),
+            (_ => false, value => { calls++; return Error.InvalidInput.ForField(field: "second", code: "second.invalid", detail: value); })
         ];
 
         var result = valueTask

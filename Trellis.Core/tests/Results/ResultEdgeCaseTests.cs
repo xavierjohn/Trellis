@@ -128,7 +128,7 @@ public class ResultEdgeCaseTests
     public void Deconstruct_OnFailure_ShouldDeconstructCorrectly()
     {
         // Arrange
-        var expectedError = new Error.Conflict(null, "conflict") { Detail = "Conflict" };
+        var expectedError = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" };
         var result = Result.Fail<int>(expectedError);
 
         // Act
@@ -631,7 +631,7 @@ public class ResultEdgeCaseTests
     public void Failure_Unit_ShouldCreateFailureResultWithError()
     {
         // Arrange
-        var error = Error.InvalidInput.ForRule("bad.request", "Bad request");
+        var error = Error.InvalidInput.ForRule(code: "bad.request", detail: "Bad request");
 
         // Act
         var result = Result.Fail(error);

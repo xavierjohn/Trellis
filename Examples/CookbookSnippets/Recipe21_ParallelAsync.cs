@@ -46,13 +46,13 @@ public sealed class DraftOrder : Aggregate<DraftOrderId>
         if (quantity <= 0)
         {
             return Result.Fail<DraftOrder>(
-                Error.InvalidInput.ForField("quantity", ValidationCodes.ValueGreaterThan, "Quantity must be positive."));
+                Error.InvalidInput.ForField(field: "quantity", code: ValidationCodes.ValueGreaterThan, detail: "Quantity must be positive."));
         }
 
         if (product.StockOnHand < quantity)
         {
             return Result.Fail<DraftOrder>(
-                Error.InvalidInput.ForRule("stock.insufficient", "Not enough stock for the requested quantity."));
+                Error.InvalidInput.ForRule(code: "stock.insufficient", detail: "Not enough stock for the requested quantity."));
         }
 
         return DraftOrderId.TryCreate(System.Guid.NewGuid())

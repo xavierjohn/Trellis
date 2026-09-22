@@ -39,14 +39,14 @@ public sealed record SubmitBatchTransfersCommand(
 {
     public IResult Validate() =>
         Result.Ensure(Lines.Count > 0,
-                () => Error.InvalidInput.ForField(nameof(Lines), "batch.empty", "At least one line is required."))
+                () => Error.InvalidInput.ForField(field: nameof(Lines), code: "batch.empty", detail: "At least one line is required."))
             .Check(_ => Lines.TraverseAll((line, index) =>
                 Result.Ensure(line.ToAccountId != FromId,
                     () => Error.InvalidInput.ForField(
-                        InputPointer.Root.AppendProperty(nameof(Lines)).AppendIndex(index)
+                        field: InputPointer.Root.AppendProperty(nameof(Lines)).AppendIndex(index)
                             .AppendProperty(nameof(BatchTransferLine.ToAccountId)),
-                        "batch.self-transfer",
-                        "A line may not target the source account."))));
+                        code: "batch.self-transfer",
+                        detail: "A line may not target the source account."))));
 }
 
 public sealed record BatchMetadata(string Reference, string Description);

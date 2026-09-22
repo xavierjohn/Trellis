@@ -31,7 +31,7 @@ public class NestedDomainEventDispatchTests
                             innerTransaction.Handle(command, (_, _) =>
                                 ValueTask.FromResult(Result.Ok(aggregate)), commandToken), grandchildToken);
                         nested.IsSuccess.Should().BeTrue();
-                        return Result.Fail<string>(new Error.Conflict(null, "ignored"));
+                        return Result.Fail<string>(new Error.Conflict(Resource: null, Code: "ignored"));
                     }, middleToken), token);
                 intermediate.IsFailure.Should().BeTrue();
                 publisher.Events.Should().BeEmpty();
@@ -97,7 +97,7 @@ public class NestedDomainEventDispatchTests
                 NullLogger<DomainEventDispatchBehavior<InnerCommand, Result<PendingAggregate>>>.Instance);
         var outerTransaction = new TransactionalCommandBehavior<OuterCommand, Result<string>>(unitOfWork);
         var innerTransaction = new TransactionalCommandBehavior<InnerCommand, Result<PendingAggregate>>(unitOfWork);
-        var error = new Error.Conflict(null, "test.rejected");
+        var error = new Error.Conflict(Resource: null, Code: "test.rejected");
 
         async ValueTask<Result<string>> Handler(OuterCommand _, CancellationToken ct)
         {

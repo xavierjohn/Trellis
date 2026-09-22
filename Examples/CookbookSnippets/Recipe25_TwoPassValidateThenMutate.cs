@@ -62,8 +62,8 @@ public sealed class Product : Aggregate<ProductId>
         Result.Ensure(
             quantity > 0 && quantity <= Stock,
             () => Error.InvalidInput.ForRule(
-                "stock.insufficient",
-                $"Cannot reserve {quantity} from stock of {Stock}."));
+                code: "stock.insufficient",
+                detail: $"Cannot reserve {quantity} from stock of {Stock}."));
 
     // Mutator — re-checks via CanReserve so the method is safe to call outside the
     // two-pass orchestration. When called after a matching Pass 1 CanReserve succeeded
@@ -87,8 +87,8 @@ public sealed class Order : Aggregate<OrderId>
         Result.Ensure(
             LineItems.Count > 0,
             () => Error.InvalidInput.ForRule(
-                "order.empty",
-                "Order must have at least one line item to submit."));
+                code: "order.empty",
+                detail: "Order must have at least one line item to submit."));
 
     // Mutator — re-checks via CanSubmit. Same defense-in-depth shape as Product.Reserve.
     public Result<Order> Submit() =>

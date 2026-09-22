@@ -76,9 +76,9 @@ public async Task<Result<OrderResponse>> Handle(CreateDraftOrderCommand cmd, Can
 {
     // 1. Sync precondition — produces a Result<Unit>, chains synchronously.
     var preconditions = Result.Ensure(cmd.LineItems.Count > 0,
-                            () => Error.InvalidInput.ForField("lineItems", ValidationCodes.ValueNotEmpty, "..."))
+                            () => Error.InvalidInput.ForField(field: "lineItems", code: ValidationCodes.ValueNotEmpty, detail: "..."))
                         .Bind(_ => Result.Ensure(!cmd.HasDuplicates,
-                            () => Error.InvalidInput.ForField("lineItems", "line-items.duplicate-product", "...")));
+                            () => Error.InvalidInput.ForField(field: "lineItems", code: "line-items.duplicate-product", detail: "...")));
 
     if (preconditions.IsFailure) return Result.Fail<OrderResponse>(preconditions.Error);
 
@@ -140,7 +140,7 @@ Migration notes for users moving from the previous `Trellis.Core` API surface.
 | Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Try` / `Result.TryAsync` for inline exception capture, or log the exception and return `Result.Fail(new Error.Unexpected("unhandled-exception", faultId) { Detail = "An unexpected error occurred while processing the request." })`. Do not copy `ex.Message` into public `Detail`. |
 | Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` | *(removed)* | Use the explicit factory: `Result.Ok(value)` / `Result.Fail<T>(error)`. The compiler flags every site with CS0029. |
 | Non-generic `Result` for void flows | `Result` was a separate `readonly struct` for success/failure with no payload, distinct from `Result<T>`. | The non-generic `Result` instance type was removed. `Result` is now a `public static partial class` factory only; for no-payload success/failure use `Result<Unit>` (returned by parameterless `Result.Ok()` / `Result.Fail(error)` / `Result.Ensure(...)` / `Result.Try(...)` factories). The `Trellis.Unit` type is a public `readonly record struct` with a single value (`Unit.Default`). | Replace `Result` parameter/return types with `Result<Unit>`; replace `Task<Result>` with `Task<Result<Unit>>`; in lambdas after `.Bind(...)` / `BindAsync(...)` accept the `Unit` argument explicitly (`_ =>` or `(Unit _) =>`). |
-| `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **12 nested `sealed record` cases** (`Error.NotFound`, `Error.InvalidInput`, …). Closed via `private` constructor; no static factories. | Replace not-found factories with `new Error.NotFound(ResourceRef.For<TResource>(id)) { Detail = "..." }`. Replace validation factories with `Error.InvalidInput.ForField(field, code, detail)` or `Error.InvalidInput.ForRule(code, detail)`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.InvalidInput`, `Error.NotFound`. See "Error Cases (closed ADT)" below. | <!-- v1-stale-ok: migration-comparison row intentionally cites removed v1 factories -->
+| `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **12 nested `sealed record` cases** (`Error.NotFound`, `Error.InvalidInput`, …). Closed via `private` constructor; static factories live on individual cases, not the base. | Replace not-found factories with `Error.NotFound.For<TResource>(id: id, detail: "...")`. Replace validation factories with `Error.InvalidInput.ForField(code, field, detail: detail)` or `Error.InvalidInput.ForRule(code, detail: detail)`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.InvalidInput`, `Error.NotFound`. See "Error Cases (closed ADT)" below. | <!-- v1-stale-ok: migration-comparison row intentionally cites removed v1 factories -->
 | `MatchErrorExtensions` | `result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)` | *(removed)* | Use a `switch` expression on the closed ADT: `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., Error.InvalidInput uc => ..., _ => ... })`. C# verifies exhaustiveness against the closed catalog. |
 | `FlattenValidationErrorsExtensions` | `result.FlattenValidationErrors()` | *(removed)* | `Combine` over multiple `Result<T>` automatically merges `Error.InvalidInput.Fields` and `.Rules`. |
 | `Error.Instance` field | `error.Instance` (string-shaped HTTP vocabulary) | *(removed)* | The ASP wire layer populates `ProblemDetails.Instance` from the server-relative request path+query (RFC 9457 §3.1). Typed payloads expose `ResourceRef` directly via fields like `Error.NotFound.Resource` for callers that need to assert on the resource identity. |
@@ -248,7 +248,7 @@ Static factory and helper surface for `Result<TValue>`. There is no non-generic 
 | `public static Result<Unit> Fail(Error error)` | Failure without payload (returns `Result<Unit>`) |
 | `public static Result<TValue> FailAfterCommit<TValue>(Error error)` | Persist-on-failure factory. Still a failure (`IsFailure == true`), but sets [`IPersistOnFailure.PersistOnFailure`](#public-interface-ipersistonfailure) so `TransactionalCommandBehavior` (and any other opt-in pipeline behavior) commits staged changes alongside the failure. Canonical use: worker handler that converts a transient external-service rejection into a persisted `permanently_failed` row. Throws `ArgumentNullException` on null `error`. |
 
-> **`null` and `Result.Ok`.** `Ok<TValue>(TValue value)` is unconstrained and performs **no null check** — at runtime a `null` argument yields a *successful* result whose value is `null` (`IsSuccess == true`, `TryGetValue` returns `true` with a `null` out-value). Nullable-reference annotations catch only the obvious mistake: a literal `null` against a non-nullable `T` (e.g. `Result.Ok<string>(null)`) raises the nullable-reference *warning* `CS8625` — a build error only where warnings are promoted (`TreatWarningsAsErrors`, as this repo sets). They do **not** stop the common case — passing an already-nullable value, where inference widens `TValue` to the nullable type and the null success compiles silently. A success that wraps `null` is almost never intended: model optionality with `Maybe<T>` (absence is data) and a missing-but-required value with `Result.Fail(Error.NotFound.For<T>(id))`, not `Result.Ok(null)`.
+> **`null` and `Result.Ok`.** `Ok<TValue>(TValue value)` is unconstrained and performs **no null check** — at runtime a `null` argument yields a *successful* result whose value is `null` (`IsSuccess == true`, `TryGetValue` returns `true` with a `null` out-value). Nullable-reference annotations catch only the obvious mistake: a literal `null` against a non-nullable `T` (e.g. `Result.Ok<string>(null)`) raises the nullable-reference *warning* `CS8625` — a build error only where warnings are promoted (`TreatWarningsAsErrors`, as this repo sets). They do **not** stop the common case — passing an already-nullable value, where inference widens `TValue` to the nullable type and the null success compiles silently. A success that wraps `null` is almost never intended: model optionality with `Maybe<T>` (absence is data) and a missing-but-required value with `Result.Fail(Error.NotFound.For<T>(id: id))`, not `Result.Ok(null)`.
 | `public static Result<Unit> FailAfterCommit(Error error)` | No-payload persist-on-failure factory (returns `Result<Unit>`). |
 | `public static Result<Unit> Ensure(bool flag, Error error)` | Converts a boolean to `Result<Unit>` |
 | `public static Result<Unit> Ensure(bool flag, Func<Error> errorFactory)` | Boolean guard with a lazy error factory; skips the factory on success, invokes it exactly once on failure. |
@@ -548,9 +548,39 @@ Closed discriminated union of domain error values. Each case is a nested `sealed
 
 #### Construction and case-scoped factories
 
-Construct cases directly: `new Error.NotFound(payload) { Detail = "..." }`. The base `Error` type intentionally exposes no static `Error.Validation(...)` / `Error.NotFound(...)` helpers — every call site names the case it produces. <!-- v1-stale-ok: explanatory note about removed v1 factory helpers --> For the common single-payload shapes, the resource-bearing cases (`NotFound`, `Gone`, `Conflict`, `Forbidden`, `InvariantViolation`) and `InvalidInput` expose **case-scoped** convenience factories (e.g. `Error.NotFound.For<Order>(id, detail, code)`) that bundle the typed payload with an optional trailing `detail` while still naming the case. The code's position varies with whether the case requires one — `NotFound` and `Gone` take it as a trailing *optional* argument, while `InvariantViolation`, `Conflict`, and `Forbidden` require it and place it positionally. See each case row below for the exact order.
+Construct cases directly or use their **case-scoped static factories**. The base `Error` has no static `Error.Validation(...)` / `Error.NotFound(...)` helpers; every call site names the case it produces. <!-- v1-stale-ok: explanatory note about removed v1 factory helpers -->
 
-> **Why only some cases have factories.** A case-scoped factory exists to remove construction ceremony, and there is essentially one kind of it: wrapping an id into a `ResourceRef` (and, for `InvalidInput`, a field into an `InputPointer`), so **every case that carries a `ResourceRef` provides a `For<TResource>(...)` factory** — `NotFound`, `Gone`, `Conflict`, `Forbidden`, and `InvariantViolation`. The exact companions vary with each case's shape: the resource-subject cases (`NotFound`, `Gone`, `Conflict`, `InvariantViolation`) also expose a `For(type, …)` overload that names the resource type as a string; `Forbidden` leads with its `policyId` (`For<TResource>(policyId, id)` / `ForPolicy`) rather than a `For(type, …)` overload. `Conflict.ForReason` and `InvariantViolation.ForReason` are the *resourceless* companions for cases whose reason is mandatory — `ForReason` is the overload that takes a reason code and no positional resource. Where the code is **optional** rather than mandatory — `NotFound` and `Gone` — it is a trailing `code` argument on the same factory (`Error.NotFound.For<Order>(id, detail, "order.archived")`) rather than a separate overload, so one rule covers the whole family: a required code leads, an optional code trails. `Code` remains an inherited `init` property every case shares, so `new Error.NotFound(resource) { Code = "order.archived" }` and `with { Code = ... }` stay available for the cases that have no factory at all. The remaining cases (`AuthenticationRequired`, `Unavailable`, `RateLimited`, `TransportFault`) carry no resource, so the constructor plus an initializer *is* the idiomatic path (e.g. `new Error.Unexpected("db.timeout")`). (`Aggregate` is the composition case — a collection of errors built from its own multi-error constructor, not a single-payload shape.)
+**One ordering rule: `code`, subject, metadata, `detail`.** Every factory parameter that carries a reason is named `code` and comes first. Constructors whose code is required also lead with `Code`. Use named `id:` when omitting the optional code on `NotFound` or `Gone`; do not invent a reason just to populate that argument.
+
+| Case(s) | Exact factory signature(s), returning the named case |
+| --- | --- |
+| `InvalidInput` | `ForField(string code, string? field, ImmutableDictionary<string, ValidationArgValue>? args = null, string? detail = null)` |
+| `InvalidInput` | `ForField(string code, InputPointer field, ImmutableDictionary<string, ValidationArgValue>? args = null, string? detail = null)` |
+| `InvalidInput` | `ForRule(string code, IReadOnlyList<InputPointer>? fields = null, ImmutableDictionary<string, ValidationArgValue>? args = null, string? detail = null)` |
+| `Conflict`, `InvariantViolation`, `Forbidden` | `For<TResource>(string code, object? id = null, string? detail = null)` and `For(string code, ResourceRef resource, string? detail = null)` |
+| `Conflict`, `InvariantViolation` | `ForReason(string code, string? detail = null)` |
+| `Forbidden` | `ForPolicy(string code, string? detail = null)` |
+| `NotFound`, `Gone` | `For<TResource>(string? code = null, object? id = null, string? detail = null)` |
+| `NotFound`, `Gone` | `For(string? code, ResourceRef resource, string? detail = null)` and `For(ResourceRef resource, string? detail = null)` |
+
+Required codes reject null (`ArgumentNullException`), empty, or whitespace (`ArgumentException`) at construction, including direct case constructors and `FieldViolation` / `RuleViolation`. Assignments to `Error.Code`, `FieldViolation.ReasonCode`, or `RuleViolation.ReasonCode`, including `with` expressions, enforce the same invariant. This is invalid API usage, not a domain validation failure. Nonblank application codes pass through unchanged; no vocabulary membership or trimming is imposed. `NotFound` and `Gone` factories keep optional-code normalization: omission, null, empty, or whitespace means `ValidationCodes.Unspecified`.
+
+`ForField` converts a string field with `InputPointer.ForProperty`; null/empty targets the root. The pointer overload preserves its path and input location. `ForRule` defensively copies related `fields` in order; null/empty means no associated fields. Both preserve `args` and violation `detail`; `ForRule` also sets the root `Detail`. The root `InvalidInput.Code` remains the unspecified sentinel because reasons belong to its violations. Validated violation construction records one metric; `with` copies do not recount, and invalid constructor codes are rejected before recording a metric.
+
+Resource factories use `ResourceRef.For<TResource>(id)` for type naming and invariant ID formatting. The explicit-reference forms accept `ResourceRef.For("Order", id)` instead of the removed string-resource overloads, and reject a default reference or blank `Type`. Null IDs remain valid collection-level references. `ForReason` / `ForPolicy` produce resourceless errors.
+
+```csharp
+Error.InvalidInput.ForField(ValidationCodes.StringEmail, "email", detail: "Invalid email.");
+Error.InvalidInput.ForRule("password.mismatch",
+    fields: [InputPointer.ForBody("/password"), InputPointer.ForBody("/confirmation")],
+    detail: "Password and confirmation differ.");
+Error.Conflict.For<Order>("order.already-shipped", id: orderId);
+Error.Forbidden.For("orders.write", ResourceRef.For("Order", orderId));
+Error.NotFound.For<Order>(id: orderId);
+Error.Gone.For<Order>("order.purged", id: orderId);
+```
+
+Factories remove resource/pointer construction ceremony. Cases without that ceremony keep direct constructors, for example `new Error.Unexpected("db.timeout")` or `new Error.AuthenticationRequired() { Code = "token.expired" }`. `Aggregate` remains the multi-error composition constructor. `Kind`, `Code`, `Detail`, violation property names, and wire payload shapes are unchanged. See [factory migration](../../../MIGRATION_v3.md#code-first-error-factories) before porting positional string arguments; old calls can compile with a different meaning.
 
 ---
 
@@ -561,11 +591,11 @@ Nested `sealed record` cases under `Error`. The base constructor is `private`, s
 | Case | Constructor | Domain semantics |
 | --- | --- | --- |
 | `Error.InvalidInput` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | Request input failed semantic validation. Use `ForField(...)` / `ForRule(...)` for the common single-violation shapes. Reasons belong to the individual violations, so the root `Code` stays `error.unspecified`. |
-| `Error.InvariantViolation` | `(string Code, ResourceRef? Resource = null)` | Domain rule failed outside field-bound request validation; use for cross-aggregate invariants or internal preconditions. Use `For<TResource>(reasonCode, id, detail)` / `For(type, reasonCode, id, detail)` / `ForReason(reasonCode, detail)` (resourceless). `Code` leads (it is the invariant's required identity; the resource id is optional). |
-| `Error.NotFound` | `(ResourceRef Resource)` | The addressed resource does not exist. Use `For<TResource>(id, detail, code)` / `For(type, id, detail, code)` for the common shape. Name a reason when the producer can say *why* — `"order.not-found"` (no such row) and `"order.archived"` (deliberately withheld) share the 404 surface but are not the same answer to a client. `code` **trails** `detail` here because it is optional; the cases whose code is required (`Conflict`, `InvariantViolation`, `Forbidden`) lead with it. Passing `null`, `""`, or whitespace leaves the `error.unspecified` sentinel, so a blank code never reaches the wire. |
-| `Error.Forbidden` | `(string Code, ResourceRef? Resource = null)` | The caller is authenticated but not allowed by the named policy. `PolicyId` reads the same value as `Code`, so the policy that refused and the code the client sees cannot drift. Use `For<TResource>(policyId, id, detail)` or `ForPolicy(policyId, detail)` (resourceless). |
-| `Error.Conflict` | `(ResourceRef? Resource, string Code)` | The request collides with current state (for example duplicate keys or concurrent modification). Use `For<TResource>(id, reasonCode, detail)` / `For(type, id, reasonCode, detail)` / `ForReason(reasonCode, detail)` (resourceless). |
-| `Error.Gone` | `(ResourceRef Resource)` | The resource previously existed but has been permanently removed (tombstone). Use `For<TResource>(id, detail, code)` / `For(type, id, detail, code)` for the common shape, naming why it is gone (e.g. `"order.purged"`). As with `NotFound`, `code` trails `detail` because it is optional, and `null`/`""`/whitespace leaves the `error.unspecified` sentinel. |
+| `Error.InvariantViolation` | `(string Code, ResourceRef? Resource = null)` | Domain rule failed outside field-bound request validation; use for cross-aggregate invariants or internal preconditions. Code-first `For` / `For<TResource>` and resourceless `ForReason`. |
+| `Error.NotFound` | `(ResourceRef Resource)` | The addressed resource does not exist. `For<TResource>(id: id)` needs no custom code. Supply a code only when a finer reason matters; blank optional factory codes normalize to `error.unspecified`. |
+| `Error.Forbidden` | `(string Code, ResourceRef? Resource = null)` | The caller is authenticated but not allowed by the named policy. `PolicyId` reads `Code`, so they cannot drift. Code-first `For` / `For<TResource>` and resourceless `ForPolicy`. |
+| `Error.Conflict` | `(string Code, ResourceRef? Resource = null)` | The request collides with current state (for example duplicate keys or concurrent modification). Code-first `For` / `For<TResource>` and resourceless `ForReason`. |
+| `Error.Gone` | `(ResourceRef Resource)` | The resource previously existed but has been permanently removed. `For<TResource>(id: id)` needs no custom code; supply one for a finer reason such as `"order.purged"`. Optional-code handling matches `NotFound`. |
 | `Error.AuthenticationRequired` | `(string? Scheme = null)` | Authentication is missing or could not be established. Set `{ Code = ... }` to distinguish causes that share the 401 surface — e.g. `"Authentication.InvalidCredentials"` vs `"Authentication.MissingCredentials"` vs `"Authentication.TokenExpired"` — so telemetry, dashboards, and client branching don't have to parse `Detail`. |
 | `Error.Unavailable` | `(RetryAdvice? Retry = null)` | A dependency or subsystem is temporarily unavailable; retry may succeed later. Set `{ Code = ... }` to identify the kind of unavailability. |
 | `Error.RateLimited` | `(RetryAdvice? Retry = null)` | The caller exceeded a quota or rate limit. Set `{ Code = ... }` to name *which* quota (e.g. `"quota.daily-transfers"`) — a caller subject to several limits cannot back off intelligently while every one of them reports the same thing. |
@@ -808,8 +838,8 @@ Three distinctions are easy to get wrong and are worth stating outright:
 `ValidationArgs.Of(...)` builds the `Args` dictionary carried by a violation — the machine-readable operands of the rule, such as the `50` in "must be at most 50" or the `0`/`255` bounds on a byte.
 
 ```csharp
-Error.InvalidInput.ForField("age", ValidationCodes.ValueBetweenInclusive,
-    ValidationArgs.Of("from", 0, "to", 150), "Age is unrealistically high.");
+Error.InvalidInput.ForField(field: "age", code: ValidationCodes.ValueBetweenInclusive,
+    args: ValidationArgs.Of("from", 0, "to", 150), detail: "Age is unrealistically high.");
 ```
 
 Values are `ValidationArgValue`, a **closed union** with four cases. Because it is closed, a client can switch over it exhaustively, and the JSON shape of an arg follows from its case rather than from whatever a producer happened to pass:
@@ -1432,8 +1462,8 @@ null-literal calls remain unambiguous and keep their existing behavior.
 
 ```csharp
 var guard = Result.Ensure(end != start, () =>
-    Error.InvalidInput.ForField("end", ValidationCodes.ValueMustNotEqual,
-        ValidationArgs.Of("comparisonProperty", "start"), "End must differ from start."));
+    Error.InvalidInput.ForField(field: "end", code: ValidationCodes.ValueMustNotEqual,
+        args: ValidationArgs.Of("comparisonProperty", "start"), detail: "End must differ from start."));
 ```
 
 | Signature | Returns | Description |
@@ -1463,11 +1493,11 @@ have higher overload-resolution priority, preserving existing `EnsureAll()`,
 ```csharp
 Result<Quote> Validate(Quote q) =>
     Result.Ok(q).EnsureAll(
-        (x => x.Total > 0,            _ => Error.InvalidInput.ForField("total", ValidationCodes.ValueGreaterThan)),
-        (x => x.Currency.Length == 3, _ => Error.InvalidInput.ForField("currency", ValidationCodes.StringCurrencyCode)));
+        (x => x.Total > 0,            _ => Error.InvalidInput.ForField(field: "total", code: ValidationCodes.ValueGreaterThan)),
+        (x => x.Currency.Length == 3, _ => Error.InvalidInput.ForField(field: "currency", code: ValidationCodes.StringCurrencyCode)));
 
 Result<string> NotBlank(string? raw) =>
-    raw.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(InputPointer.Root, ValidationCodes.ValueNotEmpty));
+    raw.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(field: InputPointer.Root, code: ValidationCodes.ValueNotEmpty));
 ```
 
 #### Check / CheckIf families — `CheckExtensions`, `CheckExtensionsAsync`, `CheckIfExtensions`, `CheckIfExtensionsAsync`
@@ -1965,10 +1995,10 @@ The encoded boundary must match the upstream ordering and tie-breaker. Use EF [`
 | --- | --- | --- | --- |
 | `Error.InvalidInput` | `(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | `error.unspecified` (reasons live on the violations) | `invalid-input` |
 | `Error.InvariantViolation` | `(string Code, ResourceRef? Resource = null)` | required, positional | `invariant-violation` |
-| `Error.NotFound` | `(ResourceRef Resource)` | optional, `{ Code = ... }` or the factories' trailing `code` argument | `not-found` |
+| `Error.NotFound` | `(ResourceRef Resource)` | optional, `{ Code = ... }` or the factories' leading `code` argument | `not-found` |
 | `Error.Forbidden` | `(string Code, ResourceRef? Resource = null)` | required, positional; also readable as `PolicyId` | `forbidden` |
-| `Error.Conflict` | `(ResourceRef? Resource, string Code)` — plus `[JsonIgnore]` init-only `ConstraintName`/`ConstraintTableName` (telemetry-only, set by EF Core helpers such as `TryInsertUniqueAsync`) | required, positional | `conflict` |
-| `Error.Gone` | `(ResourceRef Resource)` | optional, `{ Code = ... }` or the factories' trailing `code` argument | `gone` |
+| `Error.Conflict` | `(string Code, ResourceRef? Resource = null)` — plus `[JsonIgnore]` init-only `ConstraintName`/`ConstraintTableName` (telemetry-only, set by EF Core helpers such as `TryInsertUniqueAsync`) | required, positional | `conflict` |
+| `Error.Gone` | `(ResourceRef Resource)` | optional, `{ Code = ... }` or the factories' leading `code` argument | `gone` |
 | `Error.AuthenticationRequired` | `(string? Scheme = null)` | optional, `{ Code = ... }` | `authentication-required` |
 | `Error.Unavailable` | `(RetryAdvice? Retry = null)` | optional, `{ Code = ... }` | `unavailable` |
 | `Error.RateLimited` | `(RetryAdvice? Retry = null)` | optional, `{ Code = ... }` | `rate-limited` |
@@ -1986,7 +2016,7 @@ The encoded boundary must match the upstream ordering and tie-breaker. Use EF [`
 using Trellis;
 
 Result<int> Divide(int left, int right) =>
-    Result.Ensure(right != 0, () => Error.InvalidInput.ForRule("divisor.must-not-be-zero", "Right operand must not be zero"))
+    Result.Ensure(right != 0, () => Error.InvalidInput.ForRule(code: "divisor.must-not-be-zero", detail: "Right operand must not be zero"))
         .Map(_ => left / right);
 ```
 
@@ -1998,7 +2028,7 @@ using Trellis;
 Maybe<string> maybeEmail = Maybe.From("user@example.com");
 
 Result<string> emailResult = maybeEmail.ToResult(
-    () => Error.InvalidInput.ForField("email", ValidationCodes.ValueNotNull, "Email is required"));
+    () => Error.InvalidInput.ForField(field: "email", code: ValidationCodes.ValueNotNull, detail: "Email is required"));
 ```
 
 ### Reading errors without throwing

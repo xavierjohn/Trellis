@@ -35,7 +35,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     // Field-normalization + InvalidInput failure in one place (default field name: "amount").
     private static Result<MonetaryAmount> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         Result.Fail<MonetaryAmount>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("amount"), reasonCode, args, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("amount"), code: reasonCode, args: args, detail: message));
 
     // No-span validation core. Every public factory opens exactly one span, then delegates here.
     private static Result<MonetaryAmount> Validate(decimal value, string? fieldName)
@@ -114,7 +114,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         ArgumentNullException.ThrowIfNull(other);
 
         try { return TryCreate(Value + other.Value); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Addition would overflow.")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Addition would overflow.")); }
     }
 
     /// <summary>Subtracts a monetary amount. Fails if result would be negative.</summary>
@@ -124,7 +124,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
         ArgumentNullException.ThrowIfNull(other);
 
         try { return TryCreate(Value - other.Value); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Subtraction would overflow.")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Subtraction would overflow.")); }
     }
 
     /// <summary>Multiplies by a non-negative integer quantity.</summary>
@@ -132,10 +132,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     {
         if (quantity < 0)
             return Result.Fail<MonetaryAmount>(
-                Error.InvalidInput.ForField(nameof(quantity), ValidationCodes.ValueGreaterThanOrEqual, ZeroArgs, "Quantity cannot be negative."));
+                Error.InvalidInput.ForField(field: nameof(quantity), code: ValidationCodes.ValueGreaterThanOrEqual, args: ZeroArgs, detail: "Quantity cannot be negative."));
 
         try { return TryCreate(Value * quantity); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Multiplication would overflow.")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Multiplication would overflow.")); }
     }
 
     /// <summary>Multiplies by a non-negative decimal multiplier.</summary>
@@ -143,10 +143,10 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
     {
         if (multiplier < 0)
             return Result.Fail<MonetaryAmount>(
-                Error.InvalidInput.ForField(nameof(multiplier), ValidationCodes.ValueGreaterThanOrEqual, ZeroArgs, "Multiplier cannot be negative."));
+                Error.InvalidInput.ForField(field: nameof(multiplier), code: ValidationCodes.ValueGreaterThanOrEqual, args: ZeroArgs, detail: "Multiplier cannot be negative."));
 
         try { return TryCreate(Value * multiplier); }
-        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Multiplication would overflow.")); }
+        catch (OverflowException) { return Result.Fail<MonetaryAmount>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Multiplication would overflow.")); }
     }
 
     /// <inheritdoc/>

@@ -143,7 +143,7 @@ public sealed class RegisterUserService
             .Combine(LastName.TryCreate(request.LastName, nameof(request.LastName)))
             .Bind(User.TryCreate)
             .EnsureAsync(async user => !await _repository.EmailExistsAsync(user.Email, ct),
-                user => new Error.Conflict(null, "conflict") { Detail = $"Email {user.Email} is already registered." })
+                user => new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Email {user.Email} is already registered." })
             .CheckAsync(user => _repository.AddAsync(user, ct));
 }
 ```
@@ -273,7 +273,7 @@ public sealed class User : Aggregate<UserId>
 
     public Result<User> Deactivate() =>
         Result.Ensure(IsActive,
-                () => new Error.Conflict(null, "domain.violation") { Detail = "User is already inactive." })
+                () => Error.Conflict.ForReason("domain.violation", detail: "User is already inactive."))
             .Tap(() => IsActive = false)
             .Map(_ => this);
 }
@@ -303,7 +303,7 @@ public sealed class RegisterUserHandler
     public Task<Result<User>> HandleAsync(RegisterUserCommand command, CancellationToken ct) =>
         Result.EnsureAsync(
                 async () => !await _repository.EmailExistsAsync(command.Email, ct),
-                () => new Error.Conflict(null, "conflict") { Detail = $"Email {command.Email} is already registered." })
+                () => new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Email {command.Email} is already registered." })
             .BindAsync(_ => User.TryCreate(command.Email, command.FirstName, command.LastName))
             .CheckAsync(user => _repository.AddAsync(user, ct))
             .CheckAsync(user => _welcomeEmailSender.SendAsync(user.Email, ct));

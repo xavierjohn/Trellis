@@ -84,9 +84,9 @@ public sealed partial class Customer : Aggregate<CustomerId>
     }
 
     public static Result<Customer> TryCreate(CustomerId? id, string? name, ShippingAddress? shipping) =>
-        id.ToResult(Error.InvalidInput.ForField("id", ValidationCodes.ValueNotNull, "Customer id is required."))
-            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField("name", ValidationCodes.ValueNotEmpty, "Name is required.")))
-            .Combine(shipping.ToResult(Error.InvalidInput.ForField("shipping", ValidationCodes.ValueNotNull, "Shipping address is required.")))
+        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Customer id is required."))
+            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required.")))
+            .Combine(shipping.ToResult(Error.InvalidInput.ForField(field: "shipping", code: ValidationCodes.ValueNotNull, detail: "Shipping address is required.")))
             .Map((id, name, shipping) => new Customer(id, name, shipping));
 }
 
@@ -137,7 +137,7 @@ public partial class LineItem : ValueObject
 
     public static Result<LineItem> TryCreate(string sku, int quantity) =>
         string.IsNullOrWhiteSpace(sku) || quantity <= 0
-            ? Result.Fail<LineItem>(Error.InvalidInput.ForRule("line.item.invalid"))
+            ? Result.Fail<LineItem>(Error.InvalidInput.ForRule(code: "line.item.invalid"))
             : Result.Ok(new LineItem(sku.Trim(), quantity));
 
     protected override void GetEqualityComponents(ref EqualityComponents components)

@@ -69,6 +69,12 @@ public class ReasonCodeVocabularyAnalyzerTests
             """, ExpectFrozen(0, "state-machine.invalid-transition", "FaultCodes.StateMachineInvalidTransition"));
 
     [Fact]
+    public async Task Forbidden_factory_code_has_the_same_vocabulary_checks_as_constructors() =>
+        await VerifyAsync("""
+                    Failure.ForPolicy({|#0:"error.custom"|});
+            """, Expect(0).WithArguments("error.custom", ReservedExplanation));
+
+    [Fact]
     public async Task Single_segment_fault_code_is_reported() =>
         await VerifyAsync("""
                     Failure.ForReason({|#0:"not-implemented"|});
@@ -134,7 +140,7 @@ public class ReasonCodeVocabularyAnalyzerTests
     [Fact]
     public async Task Reason_code_in_a_later_position_is_reported() =>
         // `For` puts the code third; keying on the parameter name rather than an index is what makes
-        // the differing arities across the eleven factory overloads a non-issue.
+        // differing factory arities a non-issue.
         await VerifyAsync("""
                     Failure.For("Order", {|#0:"value.not-null"|}, 1);
             """, ExpectFrozen(0, "value.not-null", "ValidationCodes.ValueNotNull"));

@@ -120,7 +120,7 @@ public sealed class ResponseFailureWriterResourceRefInstanceTests
     public async Task Conflict_with_resource_id_synthesizes_instance()
     {
         var ctx = NewContext(path: "/api/orders");
-        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Order", "ord-9"), "duplicate_key"));
+        var r = Result.Fail<T>(new Error.Conflict(Resource: ResourceRef.For("Order", "ord-9"), Code: "duplicate_key"));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
@@ -133,7 +133,7 @@ public sealed class ResponseFailureWriterResourceRefInstanceTests
     public async Task Conflict_without_resource_keeps_request_url()
     {
         var ctx = NewContext(path: "/api/orders");
-        var r = Result.Fail<T>(new Error.Conflict(null, "version_conflict"));
+        var r = Result.Fail<T>(new Error.Conflict(Resource: null, Code: "version_conflict"));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking — code-first error factories
+
+Case-scoped factories consistently put `code` first and `detail` last. `InvalidInput.ForField` accepts a property name or `InputPointer` plus optional `args`; `ForRule` adds optional related `fields`, copied defensively in order. Resource factories accept either a generic resource type or an explicit `ResourceRef`, replacing the string-resource overloads. The `Conflict` constructor and deconstruction are now code-first too.
+
+Required codes reject null, empty, and whitespace through factories, constructors, initializers, and `with` expressions. Valid application codes remain unchanged. `NotFound` and `Gone` **still allow omission**: use `For<Order>(id: id)` or `For(resource)`. Their blank optional factory codes retain `ValidationCodes.Unspecified`. Authorization factories now name their code parameter `code`, so TRLS064 covers them consistently.
+
+This supersedes the earlier optional-code argument order recorded below and is source- and binary-breaking. Positional string calls can compile with different meanings; follow the [migration table](MIGRATION_v3.md#code-first-error-factories), not compilation alone. Error kinds, payload property names, and HTTP mapping remain unchanged.
+
 ### Fixed — idempotency request identity documentation and mismatch detail
 
 Clarified that idempotency entries are keyed by `(scope, key)`, with a stored fingerprint covering method, path, query, fingerprinted headers, and body bytes. The default actor scope (or shared anonymous fallback) shares one key namespace across opted-in endpoints. API references, XML documentation, and examples now distinguish fingerprint mismatches from matching retries.

@@ -168,7 +168,7 @@ public static class HttpResponseExtensions
 
         Error error = statusCode switch
         {
-            HttpStatusCode.BadRequest => Error.InvalidInput.ForRule(ValidationCodes.HttpBadRequest),
+            HttpStatusCode.BadRequest => Error.InvalidInput.ForRule(code: ValidationCodes.HttpBadRequest),
             HttpStatusCode.Unauthorized => new Error.AuthenticationRequired(),
             HttpStatusCode.Forbidden => new Error.Forbidden(ValidationCodes.HttpForbidden),
             HttpStatusCode.NotFound => new Error.NotFound(resource),
@@ -179,7 +179,7 @@ public static class HttpResponseExtensions
             HttpStatusCode.MethodNotAllowed when ExtractAllow(response) is { IsEmpty: false } allow
                 => new Error.TransportFault(new HttpError.MethodNotAllowed(allow)),
             HttpStatusCode.NotAcceptable => new Error.TransportFault(new HttpError.NotAcceptable(EquatableArray<string>.Empty)),
-            HttpStatusCode.Conflict => new Error.Conflict(null, ValidationCodes.HttpConflict),
+            HttpStatusCode.Conflict => new Error.Conflict(Resource: null, Code: ValidationCodes.HttpConflict),
             HttpStatusCode.Gone => new Error.Gone(resource),
             HttpStatusCode.PreconditionFailed => new Error.TransportFault(new HttpError.PreconditionFailed(resource, PreconditionKind.IfMatch)),
             HttpStatusCode.RequestEntityTooLarge => new Error.TransportFault(new HttpError.ContentTooLarge()),
@@ -195,7 +195,7 @@ public static class HttpResponseExtensions
             HttpStatusCode.RequestedRangeNotSatisfiable
                 when response.Content?.Headers.ContentRange is { Length: { } length } cr
                 => new Error.TransportFault(new HttpError.RangeNotSatisfiable(length, cr.Unit ?? "bytes")),
-            HttpStatusCode.UnprocessableEntity => Error.InvalidInput.ForRule(ValidationCodes.HttpUnprocessableContent),
+            HttpStatusCode.UnprocessableEntity => Error.InvalidInput.ForRule(code: ValidationCodes.HttpUnprocessableContent),
             (HttpStatusCode)428 => new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch)),
             (HttpStatusCode)429 => new Error.RateLimited(ExtractRetryAdvice(response)),
             HttpStatusCode.NotImplemented => new Error.Unexpected(Code: FaultCodes.NotImplemented),

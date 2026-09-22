@@ -483,7 +483,7 @@ public class DebugTests : TestBase
         var error = new Error.Aggregate(
         [
             new Error.NotFound(new ResourceRef("Resource", null)) { Code = "user.not-found" },
-            new Error.Conflict(null, "account.frozen"),
+            new Error.Conflict(Resource: null, Code: "account.frozen"),
         ]);
         Result.Fail<string>(error).DebugDetailed("Aggregate reason test");
 
@@ -535,7 +535,7 @@ public class DebugTests : TestBase
     {
         using var activityTest = new ActivityTestHelper();
 
-        var error = Error.InvalidInput.ForRule("bad-request", "Invalid request");
+        var error = Error.InvalidInput.ForRule(code: "bad-request", detail: "Invalid request");
         var result = Result.Fail<string>(error);
         result.DebugOnFailure(_ => { });
 

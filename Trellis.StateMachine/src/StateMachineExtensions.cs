@@ -135,6 +135,6 @@ public static class StateMachineExtensions
     private static Result<TState> InvalidTransition<TState>(string detail) =>
         Result.Fail<TState>(
             Error.InvariantViolation.ForReason(
-                reasonCode: FaultCodes.StateMachineInvalidTransition,
+                code: FaultCodes.StateMachineInvalidTransition,
                 detail: detail));
 }

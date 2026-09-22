@@ -15,7 +15,7 @@ using Trellis;
 
 Result<string> email = Result.Ok("ada@example.com")
     .Ensure(value => value.Contains('@'),
-        _ => Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Email is invalid."))
+        _ => Error.InvalidInput.ForField(ValidationCodes.StringEmail, "email", detail: "Email is invalid."))
     .Map(value => value.Trim().ToLowerInvariant());
 ```
 
@@ -34,6 +34,17 @@ Result<string> email = Result.Ok("ada@example.com")
 - Persist staged state alongside a failure with `Result.FailAfterCommit<T>(error)` — opt-in for background-worker handlers that need a permanent-failure transition to commit even though the handler returns a failed result.
 - Classify `Error` values into `Transient` / `Permanent` / `FailFast` retry buckets with `error.Classify()` / `error.IsTransient()` / `error.GetRetryAdvice()` — transport-neutral helpers for worker, consumer, and outbound-gateway retry loops.
 - Validate pagination controls with `PageRequest`, encode typed continuation state with `ICursorCodec<TState>`, and return immutable `Page<T>` responses.
+
+## Error factories
+
+Factories put `code` first and optional `detail` last:
+
+```csharp
+Error.Conflict.For<Order>("order.already-shipped", id: orderId);
+Error.NotFound.For<Order>(id: orderId);
+```
+
+Required codes must be nonblank; `NotFound` and `Gone` still allow omission. See [factory signatures](../docs/docfx_project/api_reference/trellis-api-core.md#construction-and-case-scoped-factories) and [migration guidance](../MIGRATION_v3.md#code-first-error-factories) before changing positional string arguments.
 
 ## Typed pagination
 

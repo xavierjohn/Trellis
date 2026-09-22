@@ -184,7 +184,7 @@ public class ValidationBehaviorTests
     public async Task Handle_external_validator_returning_non_unprocessable_error_short_circuits_immediately()
     {
         var first = new StubMessageValidator<TestCommandNoValidation>(
-            Result.Fail(new Error.Conflict(null, "conflict.detected") { Detail = "concurrency" }));
+            Result.Fail(new Error.Conflict(Resource: null, Code: "conflict.detected") { Detail = "concurrency" }));
         var secondInvoked = false;
         var second = new StubMessageValidator<TestCommandNoValidation>(
             Result.Fail(UpcWith("X", "should not run")),

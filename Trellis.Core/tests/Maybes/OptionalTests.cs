@@ -58,8 +58,8 @@ public class OptionalTests
 
         public static Result<ZipCode> TryCreate(string zipCode)
         {
-            if (string.IsNullOrEmpty(zipCode)) return Result.Fail<ZipCode>(Error.InvalidInput.ForRule("bad.request", "ZipCode is required."));
-            if (zipCode.Length != 5) return Result.Fail<ZipCode>(Error.InvalidInput.ForRule("bad.request", "Invalid ZipCode."));
+            if (string.IsNullOrEmpty(zipCode)) return Result.Fail<ZipCode>(Error.InvalidInput.ForRule(code: "bad.request", detail: "ZipCode is required."));
+            if (zipCode.Length != 5) return Result.Fail<ZipCode>(Error.InvalidInput.ForRule(code: "bad.request", detail: "Invalid ZipCode."));
 
             return Result.Ok(new ZipCode(zipCode));
         }

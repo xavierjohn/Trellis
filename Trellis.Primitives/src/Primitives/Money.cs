@@ -120,7 +120,7 @@ public class Money : ValueObject
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Money) + '.' + nameof(TryCreate));
 
         if (amount < 0)
-            return Result.Fail<Money>(Error.InvalidInput.ForField(amountField, ValidationCodes.ValueGreaterThanOrEqual, ZeroArgs, "Amount cannot be negative."));
+            return Result.Fail<Money>(Error.InvalidInput.ForField(field: amountField, code: ValidationCodes.ValueGreaterThanOrEqual, args: ZeroArgs, detail: "Amount cannot be negative."));
 
         return CurrencyCode.TryCreate(currencyCode, currencyField.Path)
             .Map(currency => new Money(Math.Round(amount, GetDecimalPlaces(currency), MidpointRounding.AwayFromZero), currency));
@@ -153,10 +153,10 @@ public class Money : ValueObject
 
         if (!Currency.Equals(other.Currency))
             return Result.Fail<Money>(
-                Error.InvalidInput.ForField("currency", ValidationCodes.MoneyCurrencyMismatch, MismatchArgs(Currency, other.Currency), $"Cannot add {other.Currency} to {Currency}."));
+                Error.InvalidInput.ForField(field: "currency", code: ValidationCodes.MoneyCurrencyMismatch, args: MismatchArgs(Currency, other.Currency), detail: $"Cannot add {other.Currency} to {Currency}."));
 
         try { return TryCreate(Amount + other.Amount, Currency); }
-        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Addition would overflow.")); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Addition would overflow.")); }
     }
 
     /// <summary>
@@ -169,11 +169,11 @@ public class Money : ValueObject
 
         if (!Currency.Equals(other.Currency))
             return Result.Fail<Money>(
-                Error.InvalidInput.ForField("currency", ValidationCodes.MoneyCurrencyMismatch, MismatchArgs(Currency, other.Currency), $"Cannot subtract {other.Currency} from {Currency}."));
+                Error.InvalidInput.ForField(field: "currency", code: ValidationCodes.MoneyCurrencyMismatch, args: MismatchArgs(Currency, other.Currency), detail: $"Cannot subtract {other.Currency} from {Currency}."));
 
         if (Amount < other.Amount)
             return Result.Fail<Money>(
-                Error.InvalidInput.ForField("money", ValidationCodes.MoneyNegativeResult, "Subtraction would result in a negative amount."));
+                Error.InvalidInput.ForField(field: "money", code: ValidationCodes.MoneyNegativeResult, detail: "Subtraction would result in a negative amount."));
 
         return TryCreate(Amount - other.Amount, Currency);
     }
@@ -185,10 +185,10 @@ public class Money : ValueObject
     {
         if (multiplier < 0)
             return Result.Fail<Money>(
-                Error.InvalidInput.ForField(nameof(multiplier), ValidationCodes.ValueGreaterThanOrEqual, ZeroArgs, "Multiplier cannot be negative."));
+                Error.InvalidInput.ForField(field: nameof(multiplier), code: ValidationCodes.ValueGreaterThanOrEqual, args: ZeroArgs, detail: "Multiplier cannot be negative."));
 
         try { return TryCreate(Amount * multiplier, Currency); }
-        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Multiplication would overflow.")); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Multiplication would overflow.")); }
     }
 
     /// <summary>
@@ -198,10 +198,10 @@ public class Money : ValueObject
     {
         if (quantity < 0)
             return Result.Fail<Money>(
-                Error.InvalidInput.ForField(nameof(quantity), ValidationCodes.ValueGreaterThanOrEqual, ZeroArgs, "Quantity cannot be negative."));
+                Error.InvalidInput.ForField(field: nameof(quantity), code: ValidationCodes.ValueGreaterThanOrEqual, args: ZeroArgs, detail: "Quantity cannot be negative."));
 
         try { return TryCreate(Amount * quantity, Currency); }
-        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Multiplication would overflow.")); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Multiplication would overflow.")); }
     }
 
     /// <summary>
@@ -211,10 +211,10 @@ public class Money : ValueObject
     {
         if (divisor <= 0)
             return Result.Fail<Money>(
-                Error.InvalidInput.ForField(nameof(divisor), ValidationCodes.ValueGreaterThan, ZeroArgs, "Divisor must be positive."));
+                Error.InvalidInput.ForField(field: nameof(divisor), code: ValidationCodes.ValueGreaterThan, args: ZeroArgs, detail: "Divisor must be positive."));
 
         try { return TryCreate(Amount / divisor, Currency); }
-        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Division would overflow.")); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Division would overflow.")); }
     }
 
     /// <summary>
@@ -224,10 +224,10 @@ public class Money : ValueObject
     {
         if (divisor <= 0)
             return Result.Fail<Money>(
-                Error.InvalidInput.ForField(nameof(divisor), ValidationCodes.ValueGreaterThan, ZeroArgs, "Divisor must be positive."));
+                Error.InvalidInput.ForField(field: nameof(divisor), code: ValidationCodes.ValueGreaterThan, args: ZeroArgs, detail: "Divisor must be positive."));
 
         try { return TryCreate(Amount / divisor, Currency); }
-        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Division would overflow.")); }
+        catch (OverflowException) { return Result.Fail<Money>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Division would overflow.")); }
     }
 
     /// <summary>
@@ -242,10 +242,10 @@ public class Money : ValueObject
         ArgumentNullException.ThrowIfNull(ratios);
 
         if (ratios.Length == 0)
-            return Result.Fail<Money[]>(Error.InvalidInput.ForField(nameof(ratios), ValidationCodes.ValueNotEmpty, "At least one ratio required."));
+            return Result.Fail<Money[]>(Error.InvalidInput.ForField(field: nameof(ratios), code: ValidationCodes.ValueNotEmpty, detail: "At least one ratio required."));
 
         if (ratios.Any(r => r <= 0))
-            return Result.Fail<Money[]>(Error.InvalidInput.ForField(nameof(ratios), ValidationCodes.ValueGreaterThan, ZeroArgs, "All ratios must be positive."));
+            return Result.Fail<Money[]>(Error.InvalidInput.ForField(field: nameof(ratios), code: ValidationCodes.ValueGreaterThan, args: ZeroArgs, detail: "All ratios must be positive."));
 
         // Split overflow handling so the failure field accurately identifies the offending input:
         //   * ratios.Sum() overflowing int   -> "ratios" failure
@@ -254,7 +254,7 @@ public class Money : ValueObject
         try { totalRatio = ratios.Sum(); }
         catch (OverflowException)
         {
-            return Result.Fail<Money[]>(Error.InvalidInput.ForField(nameof(ratios), ValidationCodes.NumberOverflow, "Sum of ratios would overflow."));
+            return Result.Fail<Money[]>(Error.InvalidInput.ForField(field: nameof(ratios), code: ValidationCodes.NumberOverflow, detail: "Sum of ratios would overflow."));
         }
 
         try
@@ -284,7 +284,7 @@ public class Money : ValueObject
         }
         catch (OverflowException)
         {
-            return Result.Fail<Money[]>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Allocation arithmetic would overflow."));
+            return Result.Fail<Money[]>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Allocation arithmetic would overflow."));
         }
     }
 
@@ -432,7 +432,7 @@ public class Money : ValueObject
         using var enumerator = values.GetEnumerator();
 
         if (!enumerator.MoveNext())
-            return Result.Fail<Money>(Error.InvalidInput.ForField(nameof(values), ValidationCodes.ValueNotEmpty, "Cannot sum an empty collection."));
+            return Result.Fail<Money>(Error.InvalidInput.ForField(field: nameof(values), code: ValidationCodes.ValueNotEmpty, detail: "Cannot sum an empty collection."));
 
         return SumNonEmpty(enumerator);
     }
@@ -502,14 +502,14 @@ public class Money : ValueObject
 
                 if (!currency.Equals(current.Currency))
                     return Result.Fail<Money>(
-                        Error.InvalidInput.ForField("currency", ValidationCodes.MoneyCurrencyMismatch, MismatchArgs(currency, current.Currency), $"Cannot add {current.Currency} to {currency}."));
+                        Error.InvalidInput.ForField(field: "currency", code: ValidationCodes.MoneyCurrencyMismatch, args: MismatchArgs(currency, current.Currency), detail: $"Cannot add {current.Currency} to {currency}."));
 
                 totalAmount += current.Amount;
             }
         }
         catch (OverflowException)
         {
-            return Result.Fail<Money>(Error.InvalidInput.ForField("amount", ValidationCodes.NumberOverflow, "Addition would overflow."));
+            return Result.Fail<Money>(Error.InvalidInput.ForField(field: "amount", code: ValidationCodes.NumberOverflow, detail: "Addition would overflow."));
         }
 
         return TryCreate(totalAmount, currency.Value);

@@ -5,6 +5,41 @@
 >
 > **Trellis V2 (the current major release) introduces a separate, larger breaking change**: the `Error` type is now a closed discriminated-union ADT. The current case set is documented in [`docs/docfx_project/articles/error-handling.md`](docs/docfx_project/articles/error-handling.md). The section [Error union DDD realignment](#error-union-ddd-realignment) below covers the latest rename pass; the [CHANGELOG](CHANGELOG.md#breaking-changes--trelliscoreerror-union-ddd-realignment) carries the canonical rename and slug-change tables.
 
+## Code-first error factories
+
+The case-scoped error factories now follow **code, subject, metadata, detail**. This is a breaking source change, including callers already using the closed error union. Keep existing application codes, details, IDs, and input locations; this migration does not rename wire fields or change HTTP mappings.
+
+| Previous call | Current call |
+|---|---|
+| `Error.InvalidInput.ForField(field, code, detail)` | `Error.InvalidInput.ForField(code, field, detail: detail)` |
+| `Error.InvalidInput.ForField(field, code, args, detail)` | `Error.InvalidInput.ForField(code, field, args, detail)` |
+| `Error.InvalidInput.ForRule(code, detail)` | `Error.InvalidInput.ForRule(code, detail: detail)` |
+| `Error.InvalidInput.ForRule(code, args, detail)` | `Error.InvalidInput.ForRule(code, args: args, detail: detail)` |
+| `Error.Conflict.For<Order>(id, code, detail)` | `Error.Conflict.For<Order>(code, id: id, detail: detail)` |
+| `Error.NotFound.For<Order>(id, detail, code)` | `Error.NotFound.For<Order>(code, id: id, detail: detail)`; same rule for `Gone` |
+| `Error.NotFound.For<Order>(id)` | `Error.NotFound.For<Order>(id: id)`; same rule for `Gone` |
+| `Error.Conflict.For("Order", id, code, detail)` | `Error.Conflict.For(code, ResourceRef.For("Order", id), detail: detail)` |
+| `Error.NotFound.For("Order", id, detail)` | `Error.NotFound.For(ResourceRef.For("Order", id), detail: detail)` |
+| `Error.InvariantViolation.For("Order", code, id, detail)` | `Error.InvariantViolation.For(code, ResourceRef.For("Order", id), detail: detail)` |
+| `Error.Forbidden.ForPolicy(policyId: code, detail: detail)` | `Error.Forbidden.ForPolicy(code: code, detail: detail)` |
+| `new Error.Conflict(resource, code)` | `new Error.Conflict(code, resource)`; omit the resource for a resourceless conflict |
+
+**Do not rely on compilation alone.** Two string arguments can still bind with swapped meanings: an old string ID can become a code, and an old field name can become a validation code. Bind arguments by their old meaning first, rename `reasonCode` / `policyId` to `code` and `propertyName` to `field`, then use the new ordering or named arguments. Named arguments can preserve the original evaluation order when expressions have side effects. `Conflict` positional patterns and deconstruction now use `(Code, Resource)` too.
+
+Required codes reject null, empty, and whitespace, including direct error/violation constructors, object initializers, and `with` assignments. These throw argument exceptions for invalid API use; they do not turn programmer mistakes into domain validation results. Valid custom codes are preserved verbatim. `FieldViolation.ReasonCode` and `RuleViolation.ReasonCode` are **not renamed**.
+
+`NotFound` and `Gone` retain optional codes: omit them with `For<Order>(id: orderId)` or `For(ResourceRef.For<Order>(orderId))`. Null/empty/whitespace optional factory codes still produce `ValidationCodes.Unspecified`; direct assignments to `Code` must be nonblank. Explicit-resource factories reject default/blank-type `ResourceRef` values.
+
+`ForRule` now accepts related input pointers, copies them in order, and preserves arguments and detail:
+
+```csharp
+Error.InvalidInput.ForRule("password.mismatch",
+    fields: [InputPointer.ForBody("/password"), InputPointer.ForBody("/confirmation")],
+    detail: "Password and confirmation differ.");
+```
+
+`Conflict.ForReason`, `InvariantViolation.ForReason`, and `Forbidden.ForPolicy` remain the resourceless helpers. See the [exact factory signatures](docs/docfx_project/api_reference/trellis-api-core.md#construction-and-case-scoped-factories) for all generic and explicit-resource forms.
+
 ## End-to-end migration playbook (FunctionalDdd 2.x → Trellis 3.0)
 
 The detail sections in this file each cover one piece of the migration. For consumers upgrading a real codebase from `FunctionalDdd 2.1.x` to `Trellis 3.0`, the **order** below minimizes churn. In practice the mechanical work (Steps 1–4) usually lands as one commit — production code builds clean after Step 4; test code typically stays red until Step 5 handles the `Result<T>.Value` removal. Step 6 is an optional opt-in commit on top.
@@ -76,13 +111,13 @@ return new ValidationError(new[] { new FieldError("email", "invalid format") });
 
 // v3
 return new Error.AuthenticationRequired(Scheme: "Bearer") { Code = "Authentication.InvalidCredentials", Detail = "Invalid credentials." };
-return new Error.Conflict(ResourceRef.For<User>(userId), "user.duplicate-email")
+return new Error.Conflict("user.duplicate-email", ResourceRef.For<User>(userId))
     { Detail = "Email already in use." };
 return new Error.NotFound(ResourceRef.For<User>(userId));
-return Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Email is not a valid address.");
+return Error.InvalidInput.ForField(ValidationCodes.StringEmail, "email", detail: "Email is not a valid address.");
 ```
 
-The full case set and slug-change table is in the [Error union DDD realignment](#error-union-ddd-realignment) section below. The pre-v3 `FieldError(name, [details])` shape now uses RFC 6901 JSON Pointers (`InputPointer`) for field paths. The shortcut `Error.InvalidInput.ForField("email", ...)` calls `InputPointer.ForProperty("email")` which produces `"/email"` (RFC 6901 escapes for `~` and `/` are applied, but `.` is preserved as-is — so `ForField("Address.City", ...)` produces `"/Address.City"`, a single token). For nested paths build the pointer explicitly via `new InputPointer("/Address/City")` or the `InputPointer` overload of `ForField`. FluentValidation member chains (`Address.City`, `Items[0].Sku`) ARE auto-normalized to JSON Pointers (`"/Address/City"`, `"/Items/0/Sku"`) by the `Trellis.Mediator.FluentValidation` adapter using `JsonPointerNormalizer` from `Trellis.FluentValidation`. Tests asserting on field-error shape need updating; see [`Trellis.Testing` `Error.InvalidInput` assertions](docs/docfx_project/api_reference/trellis-api-testing-reference.md#validationerrorassertions) (`HaveFieldError`, `HaveFieldErrorWithDetail`, `HaveFieldCount`) for the v3 shape.
+The full case set and slug-change table is in the [Error union DDD realignment](#error-union-ddd-realignment) section below. The pre-v3 `FieldError(name, [details])` shape now uses RFC 6901 JSON Pointers (`InputPointer`) for field paths. The shortcut `Error.InvalidInput.ForField(code, "email")` calls `InputPointer.ForProperty("email")` which produces `"/email"` (RFC 6901 escapes for `~` and `/` are applied, but `.` is preserved as-is — so `ForField(code, "Address.City")` produces `"/Address.City"`, a single token). For nested paths build the pointer explicitly via `new InputPointer("/Address/City")` or the `InputPointer` overload of `ForField`. FluentValidation member chains (`Address.City`, `Items[0].Sku`) ARE auto-normalized to JSON Pointers (`"/Address/City"`, `"/Items/0/Sku"`) by the `Trellis.Mediator.FluentValidation` adapter using `JsonPointerNormalizer` from `Trellis.FluentValidation`. Tests asserting on field-error shape need updating; see [`Trellis.Testing` `Error.InvalidInput` assertions](docs/docfx_project/api_reference/trellis-api-testing-reference.md#validationerrorassertions) (`HaveFieldError`, `HaveFieldErrorWithDetail`, `HaveFieldCount`) for the v3 shape.
 
 ### Step 5 — DTO and test cleanup (`Result<T>.Value` removed)
 
@@ -147,7 +182,7 @@ return new Error.UnprocessableContent(EquatableArray.Create(
     }));
 
 // After
-return Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Email is not a valid address.");
+return Error.InvalidInput.ForField(ValidationCodes.StringEmail, "email", detail: "Email is not a valid address.");
 ```
 
 ### Rule (cross-field / object-level) violation
@@ -157,7 +192,7 @@ return Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Email 
 return new Error.BadRequest("password.confirmation-mismatch") { Detail = "Password and confirmation differ." };
 
 // After
-return Error.InvalidInput.ForRule("password.confirmation-mismatch", "Password and confirmation differ.");
+return Error.InvalidInput.ForRule("password.confirmation-mismatch", detail: "Password and confirmation differ.");
 ```
 
 ### Aggregate invariant violated outside the inbound-validation pipeline
@@ -181,8 +216,8 @@ return new Error.Conflict(ResourceRef.For<Order>(orderId), "concurrency_conflict
     Detail = "Order was modified by another request.",
 };
 
-// After — same call shape, but use the framework constant so the boundary recognizes it.
-return new Error.Conflict(ResourceRef.For<Order>(orderId), FaultCodes.ConcurrentModification)
+// After — code first, using the framework constant so the boundary recognizes it.
+return new Error.Conflict(FaultCodes.ConcurrentModification, ResourceRef.For<Order>(orderId))
 {
     Detail = "Order was modified by another request.",
 };
@@ -256,8 +291,8 @@ The required `Code` makes the failure addressable in telemetry. `Error.Unexpecte
 ```csharp
 // New first-class case (was previously a merged `UnprocessableContent`)
 return new Error.Aggregate(EquatableArray.Create<Error>(
-    Error.InvalidInput.ForField("email", ValidationCodes.ValueNotEmpty),
-    new Error.Conflict(ResourceRef.For<User>(userId), "user.duplicate-email")));
+    Error.InvalidInput.ForField(ValidationCodes.ValueNotEmpty, "email"),
+    new Error.Conflict("user.duplicate-email", ResourceRef.For<User>(userId))));
 ```
 
 `Combine` still merges multiple `InvalidInput` failures into a single `InvalidInput`; mixed-type combinations now produce `Error.Aggregate`.
@@ -558,7 +593,7 @@ public async Task<IActionResult> ProcessOrder(CreateOrderRequest request)
         .TapOnFailure(err => _logger.LogWarning("Order creation failed: {Error}", err)) // ✅ Changed
         
         .EnsureAsync(order => HasInventoryAsync(order.ProductId, order.Quantity),
-            new Error.Conflict(null, "inventory.insufficient") { Detail = "Insufficient inventory" })
+            Error.Conflict.ForReason("inventory.insufficient", detail: "Insufficient inventory"))
         .TapOnFailure(err => _metrics.RecordFailure("order.create", err.Code)) // ✅ Changed
         
         .RecoverOnFailure(err => err is Error.Conflict                          // ✅ Changed

@@ -28,7 +28,7 @@ public class ResultFailAfterCommitTests
     [Fact]
     public void FailAfterCommit_generic_returns_failure_with_persist_flag_set()
     {
-        var error = new Error.Conflict(null, "domain.violation") { Detail = "bad" };
+        var error = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "bad" };
 
         var result = Result.FailAfterCommit<string>(error);
 
@@ -40,7 +40,7 @@ public class ResultFailAfterCommitTests
     [Fact]
     public void FailAfterCommit_unit_returns_failure_with_persist_flag_set()
     {
-        var error = new Error.Conflict(null, "domain.violation") { Detail = "bad" };
+        var error = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "bad" };
 
         var result = Result.FailAfterCommit(error);
 
@@ -52,7 +52,7 @@ public class ResultFailAfterCommitTests
     [Fact]
     public void Ordinary_Fail_has_persist_flag_false()
     {
-        var error = new Error.Conflict(null, "domain.violation") { Detail = "bad" };
+        var error = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "bad" };
 
         var result = Result.Fail<string>(error);
 
@@ -63,7 +63,7 @@ public class ResultFailAfterCommitTests
     [Fact]
     public void Ordinary_unit_Fail_has_persist_flag_false()
     {
-        var error = new Error.Conflict(null, "domain.violation") { Detail = "bad" };
+        var error = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "bad" };
 
         var result = Result.Fail(error);
 
@@ -91,7 +91,7 @@ public class ResultFailAfterCommitTests
     [Fact]
     public void FailAfterCommit_and_Fail_with_same_error_are_not_equal()
     {
-        var error = new Error.Conflict(null, "domain.violation") { Detail = "bad" };
+        var error = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "bad" };
 
         var failAfterCommit = Result.FailAfterCommit<string>(error);
         var fail = Result.Fail<string>(error);
@@ -103,7 +103,7 @@ public class ResultFailAfterCommitTests
     [Fact]
     public void Two_FailAfterCommit_with_same_error_are_equal()
     {
-        var error = new Error.Conflict(null, "domain.violation") { Detail = "bad" };
+        var error = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "bad" };
 
         var a = Result.FailAfterCommit<string>(error);
         var b = Result.FailAfterCommit<string>(error);
@@ -115,7 +115,7 @@ public class ResultFailAfterCommitTests
     [Fact]
     public void AsUnit_propagates_persist_flag()
     {
-        var error = new Error.Conflict(null, "domain.violation") { Detail = "bad" };
+        var error = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "bad" };
 
         var unitResult = Result.FailAfterCommit<string>(error).AsUnit();
 
@@ -131,7 +131,7 @@ public class ResultFailAfterCommitTests
         // TransactionalCommandBehavior wraps the commit error via TResponse.CreateFailure(error)).
         // It must NOT promote to persist-on-failure — that would create an infinite-loop hazard
         // where a commit failure stays "persist on failure" and the next attempted commit also fails.
-        var error = new Error.Conflict(null, "commit_failed") { Detail = "row was concurrently modified" };
+        var error = new Error.Conflict(Resource: null, Code: "commit_failed") { Detail = "row was concurrently modified" };
 
         var result = Result<string>.CreateFailure(error);
 

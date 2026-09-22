@@ -24,9 +24,9 @@ public sealed class InMemoryIdentityVerifier : IIdentityVerifier
         if (verificationCode.Length != 6 || !verificationCode.All(char.IsDigit))
         {
             return Result.Fail(Error.InvalidInput.ForField(
-                "verificationCode",
-                ValidationCodes.StringPattern,
-                "Verification code must be exactly six digits.")).AsTask();
+                field: "verificationCode",
+                code: ValidationCodes.StringPattern,
+                detail: "Verification code must be exactly six digits.")).AsTask();
         }
 
         if (verificationCode == "000000")

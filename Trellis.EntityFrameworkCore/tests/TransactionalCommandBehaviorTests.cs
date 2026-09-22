@@ -32,7 +32,7 @@ public class TransactionalCommandBehaviorTests
         var ct = TestContext.Current.CancellationToken;
         var uow = new FakeUnitOfWork();
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
-        var failure = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "bad" });
+        var failure = Result.Fail<string>(new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "bad" });
 
         // Act
         var result = await behavior.Handle(
@@ -50,7 +50,7 @@ public class TransactionalCommandBehaviorTests
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
-        var uow = new FakeUnitOfWork { CommitResult = Result.Fail(new Error.Conflict(null, "conflict") { Detail = "concurrency" }) };
+        var uow = new FakeUnitOfWork { CommitResult = Result.Fail(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "concurrency" }) };
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
         var handlerResult = Result.Ok("staged");
 
@@ -152,7 +152,7 @@ public class TransactionalCommandBehaviorTests
                     (_, _) => new ValueTask<Result<string>>(Result.Ok("inner-done")),
                     innerCt);
                 innerResult.Should().BeSuccess();
-                return Result.Fail<string>(new Error.Conflict(null, "outer.failed") { Detail = "outer rejected" });
+                return Result.Fail<string>(new Error.Conflict(Resource: null, Code: "outer.failed") { Detail = "outer rejected" });
             },
             ct);
 
@@ -176,7 +176,7 @@ public class TransactionalCommandBehaviorTests
         var ct = TestContext.Current.CancellationToken;
         var uow = new FakeUnitOfWork();
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
-        var error = new Error.Conflict(null, "external.permanent_failure") { Detail = "gateway rejected the payload" };
+        var error = new Error.Conflict(Resource: null, Code: "external.permanent_failure") { Detail = "gateway rejected the payload" };
         var persistOnFailureResult = Result.FailAfterCommit<string>(error);
 
         // Act
@@ -201,10 +201,10 @@ public class TransactionalCommandBehaviorTests
     public async Task Handle_fail_after_commit_with_commit_failure_returns_commit_error()
     {
         var ct = TestContext.Current.CancellationToken;
-        var commitError = new Error.Conflict(null, FaultCodes.ConcurrentModification) { Detail = "row was concurrently modified" };
+        var commitError = new Error.Conflict(Resource: null, Code: FaultCodes.ConcurrentModification) { Detail = "row was concurrently modified" };
         var uow = new FakeUnitOfWork { CommitResult = Result.Fail(commitError) };
         var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
-        var handlerError = new Error.Conflict(null, "external.permanent_failure") { Detail = "gateway rejected" };
+        var handlerError = new Error.Conflict(Resource: null, Code: "external.permanent_failure") { Detail = "gateway rejected" };
         var persistOnFailureResult = Result.FailAfterCommit<string>(handlerError);
 
         var result = await behavior.Handle(
@@ -228,7 +228,7 @@ public class TransactionalCommandBehaviorTests
         var ct = TestContext.Current.CancellationToken;
         var uow = new FakeUnitOfWork();
         var behavior = new TransactionalCommandBehavior<FakeUnitCommand, Result<Unit>>(uow);
-        var error = new Error.Conflict(null, "external.permanent_failure") { Detail = "gateway rejected" };
+        var error = new Error.Conflict(Resource: null, Code: "external.permanent_failure") { Detail = "gateway rejected" };
         var persistOnFailureResult = Result.FailAfterCommit(error);
 
         var result = await behavior.Handle(

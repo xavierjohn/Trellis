@@ -55,7 +55,7 @@ public class TrellisAspOptionsTests
     public void GetStatusCode_ConflictError_returns_409()
     {
         var options = new TrellisAspOptions();
-        var error = new Error.Conflict(null, "conflict") { Detail = "Conflict" };
+        var error = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" };
 
         options.GetStatusCode(error).Should().Be(StatusCodes.Status409Conflict);
     }
@@ -82,7 +82,7 @@ public class TrellisAspOptionsTests
     public void GetStatusCode_DomainError_returns_422()
     {
         var options = new TrellisAspOptions();
-        var error = new Error.Conflict(null, "domain.violation") { Detail = "Business rule" };
+        var error = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "Business rule" };
 
         options.GetStatusCode(error).Should().Be(StatusCodes.Status409Conflict);
     }
@@ -133,7 +133,7 @@ public class TrellisAspOptionsTests
         var options = new TrellisAspOptions();
         options.MapError<Error.Conflict>(StatusCodes.Status400BadRequest);
 
-        options.GetStatusCode(new Error.Conflict(null, "domain.violation") { Detail = "Business rule" }).Should().Be(StatusCodes.Status400BadRequest);
+        options.GetStatusCode(new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "Business rule" }).Should().Be(StatusCodes.Status400BadRequest);
     }
 
     [Fact]
@@ -164,8 +164,8 @@ public class TrellisAspOptionsTests
             .MapError<Error.Conflict>(StatusCodes.Status409Conflict);
 
         // Last-write-wins for the same type: both instances get 409.
-        options.GetStatusCode(new Error.Conflict(null, "domain.violation") { Detail = "test" }).Should().Be(StatusCodes.Status409Conflict);
-        options.GetStatusCode(new Error.Conflict(null, "conflict") { Detail = "test" }).Should().Be(StatusCodes.Status409Conflict);
+        options.GetStatusCode(new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "test" }).Should().Be(StatusCodes.Status409Conflict);
+        options.GetStatusCode(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "test" }).Should().Be(StatusCodes.Status409Conflict);
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public class TrellisAspOptionsTests
         FluentActions.Invoking(() => options.MapError<Error.Conflict>(0))
             .Should().Throw<ArgumentOutOfRangeException>();
 
-        options.GetStatusCode(new Error.Conflict(null, "domain.violation") { Detail = "x" })
+        options.GetStatusCode(new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "x" })
             .Should().Be(StatusCodes.Status400BadRequest);
     }
 
@@ -262,7 +262,7 @@ public class TrellisAspOptionsTests
         var provider = services.BuildServiceProvider();
         var resolved = provider.GetRequiredService<TrellisAspOptions>();
 
-        resolved.GetStatusCode(new Error.Conflict(null, "domain.violation") { Detail = "test" }).Should().Be(StatusCodes.Status400BadRequest);
+        resolved.GetStatusCode(new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "test" }).Should().Be(StatusCodes.Status400BadRequest);
     }
 
     [Fact]
@@ -274,7 +274,7 @@ public class TrellisAspOptionsTests
         var provider = services.BuildServiceProvider();
         var resolved = provider.GetRequiredService<TrellisAspOptions>();
 
-        resolved.GetStatusCode(new Error.Conflict(null, "domain.violation") { Detail = "test" }).Should().Be(StatusCodes.Status409Conflict);
+        resolved.GetStatusCode(new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "test" }).Should().Be(StatusCodes.Status409Conflict);
     }
 
     [Fact]
@@ -292,7 +292,7 @@ public class TrellisAspOptionsTests
         var resolved = sp.GetRequiredService<TrellisAspOptions>();
 
         resolved
-            .GetStatusCode(new Error.Conflict(null, "k") { Detail = "x" })
+            .GetStatusCode(new Error.Conflict(Resource: null, Code: "k") { Detail = "x" })
             .Should().Be(StatusCodes.Status400BadRequest, "first AddTrellisAsp call's MapError must survive composition");
         resolved
             .GetStatusCode(new Error.TransportFault(new HttpError.PreconditionFailed(new ResourceRef("R", null), PreconditionKind.IfMatch)) { Detail = "x" })
@@ -327,7 +327,7 @@ public class TrellisAspOptionsTests
         var resolved = sp.GetRequiredService<TrellisAspOptions>();
 
         resolved
-            .GetStatusCode(new Error.Conflict(null, "k") { Detail = "x" })
+            .GetStatusCode(new Error.Conflict(Resource: null, Code: "k") { Detail = "x" })
             .Should().Be(StatusCodes.Status418ImATeapot);
     }
 
@@ -347,7 +347,7 @@ public class TrellisAspOptionsTests
         var resolved = sp.GetRequiredService<TrellisAspOptions>();
 
         resolved
-            .GetStatusCode(new Error.Conflict(null, "k") { Detail = "x" })
+            .GetStatusCode(new Error.Conflict(Resource: null, Code: "k") { Detail = "x" })
             .Should().Be(StatusCodes.Status418ImATeapot, "AddTrellisAsp must claim the TrellisAspOptions slot so its Configure delegates run, even when a host pre-registered the type");
     }
 
@@ -365,7 +365,7 @@ public class TrellisAspOptionsTests
         var ctx = new DefaultHttpContext { RequestServices = sp };
         ctx.Response.Body = new System.IO.MemoryStream();
 
-        var failed = Result.Fail<int>(new Error.Conflict(null, "k") { Detail = "x" });
+        var failed = Result.Fail<int>(new Error.Conflict(Resource: null, Code: "k") { Detail = "x" });
         await failed.ToHttpResponse().ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(StatusCodes.Status418ImATeapot);
@@ -383,7 +383,7 @@ public class TrellisAspOptionsTests
         var ctx = new DefaultHttpContext { RequestServices = sp };
         ctx.Response.Body = new System.IO.MemoryStream();
 
-        var failed = Result.Fail<int>(new Error.Conflict(null, "k") { Detail = "x" });
+        var failed = Result.Fail<int>(new Error.Conflict(Resource: null, Code: "k") { Detail = "x" });
         await failed.ToHttpResponse().ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(StatusCodes.Status409Conflict);

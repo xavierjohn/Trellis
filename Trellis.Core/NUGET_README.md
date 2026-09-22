@@ -19,9 +19,9 @@ Result<string> email = Result.Ok("ada@example.com")
     .Ensure(
         value => value.Contains('@'),
         _ => Error.InvalidInput.ForField(
-            "email",
             ValidationCodes.StringEmail,
-            "Email is invalid."))
+            "email",
+            detail: "Email is invalid."))
     .Map(value => value.Trim().ToLowerInvariant());
 ```
 
@@ -43,6 +43,12 @@ Result<string> email = Result.Ok("ada@example.com")
 `Result<T>` is deliberately not directly JSON-serializable. At an HTTP boundary, map it with `Trellis.Asp.ToHttpResponse()`; elsewhere, unwrap it through `Match` or `TryGetValue` before serialization.
 
 Generated `Required*<TSelf>` types are lenient by default: use `[NotDefault]` to reject sentinel values and `[Trim]` to normalize strings.
+
+## Error factories
+
+Case-scoped factories put `code` first and optional `detail` last. Use `Error.Conflict.For<Order>("order.already-shipped", id: orderId)` for a resource conflict, or `Error.NotFound.For<Order>(id: orderId)` without inventing a reason code. `ForField(code, field, args: ..., detail: ...)` supports a property name or `InputPointer`; `ForRule(code, fields: ..., args: ..., detail: ...)` supports related fields.
+
+Required codes reject null/empty/whitespace, including constructors and `with` assignments. Custom codes remain supported. `NotFound` and `Gone` retain optional codes and the unspecified sentinel. Explicit resources use `ResourceRef`. This is a breaking argument-order change: migrate positional string IDs and validation fields by meaning, not just until the code compiles.
 
 ## Documentation
 

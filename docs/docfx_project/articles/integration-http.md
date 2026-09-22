@@ -87,20 +87,20 @@ Bare `ToResultAsync()` uses the built-in mapper from `Trellis.Http/src/HttpRespo
 
 | HTTP status | Produced error |
 |---|---|
-| `400` | `Error.InvalidInput.ForRule("http.bad-request")` |
+| `400` | `Error.InvalidInput.ForRule(code: "http.bad-request")` |
 | `401` | `new Error.AuthenticationRequired()` |
 | `403` | `new Error.Forbidden("http.forbidden")` |
 | `404` | `new Error.NotFound(ResourceRef.For("HttpResponse"))` |
 | `405` with `Allow` | `new Error.TransportFault(new HttpError.MethodNotAllowed(allow))` |
 | `405` without `Allow` | `new Error.Unexpected(FaultCodes.HttpResponseFault, faultId)` |
 | `406` | `new Error.TransportFault(new HttpError.NotAcceptable(EquatableArray<string>.Empty))` |
-| `409` | `new Error.Conflict(null, "http.conflict")` |
+| `409` | `new Error.Conflict(Resource: null, Code: "http.conflict")` |
 | `410` | `new Error.Gone(ResourceRef.For("HttpResponse"))` |
 | `412` | `new Error.TransportFault(new HttpError.PreconditionFailed(ResourceRef.For("HttpResponse"), PreconditionKind.IfMatch))` |
 | `413` | `new Error.TransportFault(new HttpError.ContentTooLarge())` |
 | `415` | `new Error.TransportFault(new HttpError.UnsupportedMediaType(EquatableArray<string>.Empty))` |
 | `416` with known `Content-Range` length | `new Error.TransportFault(new HttpError.RangeNotSatisfiable(length, unit))` |
-| `422` | `Error.InvalidInput.ForRule("http.unprocessable-content")` |
+| `422` | `Error.InvalidInput.ForRule(code: "http.unprocessable-content")` |
 | `428` | `new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch))` |
 | `429` | `new Error.RateLimited(retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
 | `501` | `new Error.Unexpected(FaultCodes.NotImplemented)` |
@@ -217,8 +217,8 @@ public sealed class InvoicesClient(HttpClient httpClient)
                 var body = await response.Content.ReadAsStringAsync(token);
                 return response.StatusCode switch
                 {
-                    HttpStatusCode.Conflict   => new Error.Conflict(null, "invoices.conflict") { Detail = body },
-                    HttpStatusCode.BadRequest => Error.InvalidInput.ForRule("invoices.invalid-request", body),
+                    HttpStatusCode.Conflict   => new Error.Conflict(Resource: null, Code: "invoices.conflict") { Detail = body },
+                    HttpStatusCode.BadRequest => Error.InvalidInput.ForRule(code: "invoices.invalid-request", detail: body),
                     _ => new Error.Unexpected("invoices.upstream-fault", "upstream") { Detail = $"Invoice request failed with {(int)response.StatusCode}: {body}" },
                 };
             }, ct)

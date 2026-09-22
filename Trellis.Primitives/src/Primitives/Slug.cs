@@ -31,7 +31,7 @@ public partial class Slug : ScalarValueObject<Slug, string>, IScalarValue<Slug, 
     // Field-normalization + InvalidInput failure in one place (default field name: "slug").
     private static Result<Slug> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<Slug>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("slug"), reasonCode, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("slug"), code: reasonCode, detail: message));
 
     /// <summary>
     /// Attempts to create a slug.

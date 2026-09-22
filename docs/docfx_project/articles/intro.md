@@ -119,7 +119,7 @@ public static Result<User> RegisterUser(
         .Combine(LastName.TryCreate(input.LastName))
         .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email already registered." })
+        .Ensure(user => !emailExists(user.Email), new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Email already registered." })
         .Tap(saveUser)
         .Tap(user => sendWelcomeEmail(user.Email));
 }
@@ -221,7 +221,7 @@ Each one carries intent, and the defaults map naturally to HTTP semantics.
 | --- | --- | --- |
 | `new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = ... }` | `unprocessable-content` | Input or rule validation failed |
 | `new Error.NotFound(ResourceRef.For<Order>("42")) { Detail = ... }` | `not-found` | The resource does not exist |
-| `new Error.Conflict(ResourceRef.For<Order>("42")) { Detail = ... }` | `conflict` | Current state prevents the operation |
+| `new Error.Conflict(Resource: ResourceRef.For<Order>("42")) { Detail = ... }` | `conflict` | Current state prevents the operation |
 | `new Error.Forbidden("policy.id") { Detail = ... }` | `forbidden` | Caller is authenticated but not allowed |
 | `new Error.Unexpected(FaultCodes.UnhandledException, "fault-id") { Detail = ... }` | `internal-server-error` | Something unplanned failed |
 

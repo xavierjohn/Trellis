@@ -48,7 +48,7 @@ public class ErrorBenchmarks
     [Benchmark]
     public Error CreateConflictError()
     {
-        return new Error.Conflict(null, "duplicate-id") { Detail = "Resource already exists" };
+        return new Error.Conflict(Resource: null, Code: "duplicate-id") { Detail = "Resource already exists" };
     }
 
     [Benchmark]

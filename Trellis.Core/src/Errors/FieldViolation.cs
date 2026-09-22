@@ -8,7 +8,7 @@ using System.Collections.Immutable;
 /// </summary>
 /// <param name="Field">JSON Pointer locating the offending field.</param>
 /// <param name="ReasonCode">
-/// Stable machine-readable code identifying the rule that was violated. Prefer a
+/// Non-blank machine-readable code identifying the rule that was violated. Prefer a
 /// <see cref="ValidationCodes"/> constant (e.g. <see cref="ValidationCodes.ValueNotNull"/>,
 /// <see cref="ValidationCodes.StringLength"/>, <see cref="ValidationCodes.StringPattern"/>);
 /// an application-specific code should follow the same convention — lower-case,
@@ -29,6 +29,8 @@ public sealed record FieldViolation(
     ImmutableDictionary<string, ValidationArgValue>? Args = null,
     string? Detail = null)
 {
+    private readonly string _reasonCode = ValidationMetrics.Observe(Error.RequireCode(ReasonCode), "field");
+
     /// <summary>
     /// Stable machine-readable code identifying the rule that was violated.
     /// </summary>
@@ -37,9 +39,14 @@ public sealed record FieldViolation(
     /// the atom that is created once when a rule fires and only copied afterwards, which is why
     /// the count lives here rather than on the carrying <see cref="Error.InvalidInput"/> — that is
     /// rebuilt during pointer rebasing and error aggregation, and would count one firing several
-    /// times. A <c>with</c>-expression does not recount.
+    /// times. A <c>with</c>-expression does not recount. Codes are validated before recording a metric.
     /// </remarks>
-    public string ReasonCode { get; init; } = ValidationMetrics.Observe(ReasonCode, "field");
+    /// <exception cref="ArgumentException">The assigned code is null, empty, or whitespace.</exception>
+    public string ReasonCode
+    {
+        get => _reasonCode;
+        init => _reasonCode = Error.RequireCode(value);
+    }
 
     /// <inheritdoc />
     public bool Equals(FieldViolation? other)

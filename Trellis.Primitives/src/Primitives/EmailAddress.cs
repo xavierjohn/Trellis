@@ -226,18 +226,18 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
         // value that was never supplied tells the caller to fix an address they did not write, and
         // leaves them unable to distinguish "you missed this field" from "this address is wrong".
         if (value is null)
-            return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotNull, "Email address is required."));
+            return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(field: field, code: ValidationCodes.ValueNotNull, detail: "Email address is required."));
 
         // Normalize input: trim whitespace
         var trimmed = value.Trim();
 
         if (trimmed.Length == 0)
-            return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(field, ValidationCodes.ValueNotEmpty, "Email address is required."));
+            return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(field: field, code: ValidationCodes.ValueNotEmpty, detail: "Email address is required."));
 
         if (trimmed.Length <= MaxLength && HasValidLocalPartLength(trimmed) && EmailRegEx().IsMatch(trimmed))
             return Result.Ok(new EmailAddress(trimmed));
 
-        return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(field, ValidationCodes.StringEmail, "Email address is not valid."));
+        return Result.Fail<EmailAddress>(Error.InvalidInput.ForField(field: field, code: ValidationCodes.StringEmail, detail: "Email address is not valid."));
     }
 
     /// <summary>

@@ -199,7 +199,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_TaskResult_WithActionError_PassesError()
     {
         // Arrange
-        var result = Task.FromResult(Result.Fail<(int, string)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" }));
+        var result = Task.FromResult(Result.Fail<(int, string)>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" }));
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -255,7 +255,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_WithFuncErrorTask_PassesError()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(Error.InvalidInput.ForRule("bad.request", "Bad request"));
+        var result = Result.Fail<(int, string)>(Error.InvalidInput.ForRule(code: "bad.request", detail: "Bad request"));
 
         // Act
         var actual = await result.TapOnFailureAsync(error =>
@@ -342,7 +342,7 @@ public class TapOnFailureTupleTests : TestBase
     public async Task TapOnFailureAsync_2Tuple_WithFuncValueTask_Failure()
     {
         // Arrange
-        var result = Result.Fail<(int, string)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" });
+        var result = Result.Fail<(int, string)>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" });
 
         // Act
         var actual = await result.TapOnFailureAsync(() =>
@@ -439,7 +439,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_7Tuple_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int, int, int, int)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" });
+        var result = Result.Fail<(int, int, int, int, int, int, int)>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" });
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);
@@ -453,7 +453,7 @@ public class TapOnFailureTupleTests : TestBase
     public void TapOnFailure_8Tuple_Failure_ExecutesAction()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int, int, int, int, int)>(Error.InvalidInput.ForRule("bad.request", "Bad"));
+        var result = Result.Fail<(int, int, int, int, int, int, int, int)>(Error.InvalidInput.ForRule(code: "bad.request", detail: "Bad"));
 
         // Act
         var actual = result.TapOnFailure(() => _actionExecuted = true);

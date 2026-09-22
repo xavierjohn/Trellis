@@ -67,20 +67,20 @@ When `statusMap` is omitted, the default mapper in `Trellis.Http/src/HttpRespons
 
 | Status | Becomes |
 |---|---|
-| `400` | `Error.InvalidInput.ForRule("http.bad-request")` |
+| `400` | `Error.InvalidInput.ForRule(code: "http.bad-request")` |
 | `401` | `new Error.AuthenticationRequired()` |
 | `403` | `new Error.Forbidden("http.forbidden")` |
 | `404` | `new Error.NotFound(resource)` |
 | `405` (with `Allow`) | `new Error.TransportFault(new HttpError.MethodNotAllowed(allow))` |
 | `405` (no `Allow`) | `new Error.Unexpected(FaultCodes.HttpResponseFault, faultId)` |
 | `406` | `new Error.TransportFault(new HttpError.NotAcceptable(EquatableArray<string>.Empty))` |
-| `409` | `new Error.Conflict(null, "http.conflict")` |
+| `409` | `new Error.Conflict(Resource: null, Code: "http.conflict")` |
 | `410` | `new Error.Gone(resource)` |
 | `412` | `new Error.TransportFault(new HttpError.PreconditionFailed(resource, PreconditionKind.IfMatch))` |
 | `413` | `new Error.TransportFault(new HttpError.ContentTooLarge())` |
 | `415` | `new Error.TransportFault(new HttpError.UnsupportedMediaType(EquatableArray<string>.Empty))` |
 | `416` (with Content-Range length) | `new Error.TransportFault(new HttpError.RangeNotSatisfiable(length, unit))` |
-| `422` | `Error.InvalidInput.ForRule("http.unprocessable-content")` |
+| `422` | `Error.InvalidInput.ForRule(code: "http.unprocessable-content")` |
 | `428` | `new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch))` |
 | `429` | `new Error.RateLimited(retryAdvice)` (parses `Retry-After` into `RetryAdvice`) |
 | `501` | `new Error.Unexpected(FaultCodes.NotImplemented)` |

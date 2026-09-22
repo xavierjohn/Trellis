@@ -3,8 +3,13 @@
 <!--
   Deliberate binary breaks against 3.0.0-alpha.495; consumers must rebuild.
   The four Error.NotFound.For/Error.Gone.For entries preserve the previously approved
-  trailing optional code parameter change from alpha.496. Overloading was unsafe
-  because existing string IDs could otherwise bind as reason codes.
+  trailing optional code parameter change from alpha.496.
+
+  Error factories now use code-first parameters, explicit ResourceRef subjects and
+  consolidated validation metadata. Conflict construction/deconstruction is code-first.
+  These additional Error entries record that deliberate breaking redesign. NotFound
+  and Gone still allow omitted codes; migrate string IDs with named id arguments.
+  See MIGRATION_v3.md, "Code-first error factories".
 
   Typed pagination replaces Cursor, PageSize and Page<T> structs with validated
   reference records, replaces key-specific page assembly with a cursor selector,
@@ -42,6 +47,34 @@
   </Suppression>
   <Suppression>
     <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Conflict.#ctor(System.Nullable{Trellis.ResourceRef},System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Conflict.Deconstruct(System.Nullable{Trellis.ResourceRef}@,System.String@)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Conflict.For(System.String,System.Object,System.String,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.Conflict.For``1(System.Object,System.String,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
     <Target>M:Trellis.Error.Gone.For(System.String,System.Object,System.String)</Target>
     <Left>lib/net10.0/Trellis.Core.dll</Left>
     <Right>lib/net10.0/Trellis.Core.dll</Right>
@@ -50,6 +83,48 @@
   <Suppression>
     <DiagnosticId>CP0002</DiagnosticId>
     <Target>M:Trellis.Error.Gone.For``1(System.Object,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.InvalidInput.ForField(System.String,System.String,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.InvalidInput.ForField(Trellis.InputPointer,System.String,System.Collections.Immutable.ImmutableDictionary{System.String,Trellis.ValidationArgValue},System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.InvalidInput.ForField(Trellis.InputPointer,System.String,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.InvalidInput.ForRule(System.String,System.Collections.Immutable.ImmutableDictionary{System.String,Trellis.ValidationArgValue},System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.InvalidInput.ForRule(System.String,System.String)</Target>
+    <Left>lib/net10.0/Trellis.Core.dll</Left>
+    <Right>lib/net10.0/Trellis.Core.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Trellis.Error.InvariantViolation.For(System.String,System.String,System.Object,System.String)</Target>
     <Left>lib/net10.0/Trellis.Core.dll</Left>
     <Right>lib/net10.0/Trellis.Core.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>

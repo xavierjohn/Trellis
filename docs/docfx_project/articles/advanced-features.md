@@ -140,7 +140,7 @@ static Result<string> LoadFile(string path) =>
     Result.Try(() => File.ReadAllText(path));
 
 var content = LoadFile("settings.json")
-    .Ensure(text => !string.IsNullOrWhiteSpace(text), Error.InvalidInput.ForRule(ValidationCodes.ValueNotEmpty, "settings.json is empty"));
+    .Ensure(text => !string.IsNullOrWhiteSpace(text), Error.InvalidInput.ForRule(code: ValidationCodes.ValueNotEmpty, detail: "settings.json is empty"));
 ```
 
 ### `Result.TryAsync(...)`
@@ -152,7 +152,7 @@ static Task<Result<string>> LoadFileAsync(string path) =>
     Result.TryAsync(() => File.ReadAllTextAsync(path));
 
 var content = await LoadFileAsync("settings.json")
-    .EnsureAsync(text => Task.FromResult(!string.IsNullOrWhiteSpace(text)), Error.InvalidInput.ForRule(ValidationCodes.ValueNotEmpty, "settings.json is empty"));
+    .EnsureAsync(text => Task.FromResult(!string.IsNullOrWhiteSpace(text)), Error.InvalidInput.ForRule(code: ValidationCodes.ValueNotEmpty, detail: "settings.json is empty"));
 ```
 
 ### Custom exception mapping

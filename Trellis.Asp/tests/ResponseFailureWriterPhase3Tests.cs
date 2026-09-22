@@ -120,7 +120,7 @@ public sealed class ResponseFailureWriterPhase3Tests
         var ctx = NewContext();
         var agg = new Error.Aggregate(
             new Error.NotFound(ResourceRef.For("Item", "1")),
-            new Error.Conflict(ResourceRef.For("Item", "1"), "duplicate_key"));
+            new Error.Conflict(Resource: ResourceRef.For("Item", "1"), Code: "duplicate_key"));
         var r = Result.Fail<T>(agg);
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
@@ -174,7 +174,7 @@ public sealed class ResponseFailureWriterPhase3Tests
         var ctx = NewContext();
         var agg = new Error.Aggregate(
             new Error.NotFound(ResourceRef.For("Item", "42")),
-            new Error.Conflict(ResourceRef.For("Item", "42"), "duplicate_key"));
+            new Error.Conflict(Resource: ResourceRef.For("Item", "42"), Code: "duplicate_key"));
         var r = Result.Fail<T>(agg);
 
         await r.ToHttpResponse(t => t, o => o.WithErrorMapping<Error.NotFound>(StatusCodes.Status410Gone))
@@ -192,7 +192,7 @@ public sealed class ResponseFailureWriterPhase3Tests
         var ctx = NewContext();
         var agg = new Error.Aggregate(
             new Error.NotFound(ResourceRef.For("Item", "42")),
-            new Error.Conflict(ResourceRef.For("Item", "42"), "duplicate_key"));
+            new Error.Conflict(Resource: ResourceRef.For("Item", "42"), Code: "duplicate_key"));
         var r = Result.Fail<T>(agg);
 
         await r.ToHttpResponse(
@@ -283,7 +283,7 @@ public sealed class ResponseFailureWriterPhase3Tests
     public async Task Conflict_concurrent_modification_with_IfMatch_maps_to_412_precondition_failed()
     {
         var ctx = NewContext(ifMatch: "\"etag\"");
-        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), FaultCodes.ConcurrentModification));
+        var r = Result.Fail<T>(new Error.Conflict(Resource: ResourceRef.For("Item", "1"), Code: FaultCodes.ConcurrentModification));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
@@ -297,7 +297,7 @@ public sealed class ResponseFailureWriterPhase3Tests
     public async Task Conflict_concurrent_modification_without_IfMatch_stays_409_conflict()
     {
         var ctx = NewContext();
-        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), FaultCodes.ConcurrentModification));
+        var r = Result.Fail<T>(new Error.Conflict(Resource: ResourceRef.For("Item", "1"), Code: FaultCodes.ConcurrentModification));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
@@ -311,7 +311,7 @@ public sealed class ResponseFailureWriterPhase3Tests
     public async Task Conflict_other_reason_with_IfMatch_stays_409_conflict()
     {
         var ctx = NewContext(ifMatch: "\"etag\"");
-        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), "duplicate_key"));
+        var r = Result.Fail<T>(new Error.Conflict(Resource: ResourceRef.For("Item", "1"), Code: "duplicate_key"));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
@@ -422,7 +422,7 @@ public sealed class ResponseFailureWriterPhase3Tests
             { new Error.InvariantViolation("rule_x"), "unprocessable-content", 422 },
             { new Error.NotFound(rr), "not-found", 404 },
             { new Error.Forbidden("policy"), "forbidden", 403 },
-            { new Error.Conflict(rr, "duplicate_key"), "conflict", 409 },
+            { new Error.Conflict(Resource: rr, Code: "duplicate_key"), "conflict", 409 },
             { new Error.Gone(rr), "gone", 410 },
             { new Error.AuthenticationRequired(), "unauthorized", 401 },
             { new Error.RateLimited(), "too-many-requests", 429 },
@@ -451,7 +451,7 @@ public sealed class ResponseFailureWriterPhase3Tests
     public async Task Conflict_concurrent_modification_with_IfMatch_wire_round_trip()
     {
         var ctx = NewContext(ifMatch: "\"etag\"");
-        var r = Result.Fail<T>(new Error.Conflict(ResourceRef.For("Item", "1"), FaultCodes.ConcurrentModification));
+        var r = Result.Fail<T>(new Error.Conflict(Resource: ResourceRef.For("Item", "1"), Code: FaultCodes.ConcurrentModification));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 

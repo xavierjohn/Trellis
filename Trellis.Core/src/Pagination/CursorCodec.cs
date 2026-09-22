@@ -230,7 +230,7 @@ public static class CursorCodec
     }
 
     private static Result<T> Fail<T>(string? field, string detail) =>
-        Result.Fail<T>(Error.InvalidInput.ForField(field ?? "cursor", ValidationCodes.CursorMalformed, detail));
+        Result.Fail<T>(Error.InvalidInput.ForField(field: field ?? "cursor", code: ValidationCodes.CursorMalformed, detail: detail));
 
     private static void EnsureRoundTrip<T>(T state, Result<T> parsed)
     {

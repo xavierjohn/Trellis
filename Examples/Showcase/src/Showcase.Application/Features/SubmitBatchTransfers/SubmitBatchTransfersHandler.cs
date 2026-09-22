@@ -26,9 +26,9 @@ public sealed class SubmitBatchTransfersHandler
         {
             return Result.Fail<BatchTransferReceipt>(
                 Error.InvalidInput.ForField(
-                    nameof(command.Lines),
-                    "batch.empty",
-                    "At least one line is required.")).AsValueTask();
+                    field: nameof(command.Lines),
+                    code: "batch.empty",
+                    detail: "At least one line is required.")).AsValueTask();
         }
 
         var currency = command.Lines[0].Amount.Currency.Value;
@@ -39,9 +39,9 @@ public sealed class SubmitBatchTransfersHandler
             {
                 return Result.Fail<BatchTransferReceipt>(
                     Error.InvalidInput.ForField(
-                        nameof(command.Lines),
-                        "batch.mixed-currency",
-                        "All lines in a batch must share a single currency.")).AsValueTask();
+                        field: nameof(command.Lines),
+                        code: "batch.mixed-currency",
+                        detail: "All lines in a batch must share a single currency.")).AsValueTask();
             }
 
             sum += line.Amount.Amount;

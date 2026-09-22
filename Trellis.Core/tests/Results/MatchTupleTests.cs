@@ -240,7 +240,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple4_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int)>(new Error.Conflict(null, "conflict") { Detail = "Conflict occurred" });
+        var result = Result.Fail<(int, int, int, int)>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict occurred" });
 
         // Act - Use base Match since tuple destructuring is only for success
         var output = result.Match(
@@ -272,7 +272,7 @@ public class MatchTupleTests
     public void Match_WithFailureTuple5_CallsOnFailure()
     {
         // Arrange
-        var result = Result.Fail<(int, int, int, int, int)>(Error.InvalidInput.ForRule("bad.request", "Bad request"));
+        var result = Result.Fail<(int, int, int, int, int)>(Error.InvalidInput.ForRule(code: "bad.request", detail: "Bad request"));
 
         // Act
         var output = result.Match(

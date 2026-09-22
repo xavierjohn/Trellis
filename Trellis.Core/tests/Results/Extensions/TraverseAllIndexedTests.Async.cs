@@ -103,7 +103,7 @@ public class TraverseAllIndexedAsyncTests
         var owner = InputPointer.Root.AppendProperty("items");
         var result = await RunAsync(form, [8, 8, 8, 8], (value, index, _) =>
             Task.FromResult(index % 2 == 0
-                ? Result.Fail<int>(Error.InvalidInput.ForField(owner.AppendIndex(index), ValidationCodes.ValueNotEmpty))
+                ? Result.Fail<int>(Error.InvalidInput.ForField(field: owner.AppendIndex(index), code: ValidationCodes.ValueNotEmpty))
                 : Result.Ok(value)), TestContext.Current.CancellationToken);
 
         result.Should().BeFailureOfType<Error.InvalidInput>().Which.Fields.Items.Select(field => field.Field.Path)
@@ -120,7 +120,7 @@ public class TraverseAllIndexedAsyncTests
     public async Task TraverseAllAsync_Indexed_MixedFailures_PreservesPersistIntent(AsyncForm form, bool persist)
     {
         var first = new Error.Forbidden("denied");
-        var last = new Error.Conflict(null, "duplicate");
+        var last = new Error.Conflict(Resource: null, Code: "duplicate");
         var result = await RunAsync(form, [0, 1, 2], (value, index, _) =>
             Task.FromResult(index switch
             {
