@@ -61,7 +61,7 @@ public sealed class Product : Aggregate<ProductId>
     public Result<Trellis.Unit> CanReserve(int quantity) =>
         Result.Ensure(
             quantity > 0 && quantity <= Stock,
-            Error.InvalidInput.ForRule(
+            () => Error.InvalidInput.ForRule(
                 "stock.insufficient",
                 $"Cannot reserve {quantity} from stock of {Stock}."));
 
@@ -86,7 +86,7 @@ public sealed class Order : Aggregate<OrderId>
     public Result<Trellis.Unit> CanSubmit() =>
         Result.Ensure(
             LineItems.Count > 0,
-            Error.InvalidInput.ForRule(
+            () => Error.InvalidInput.ForRule(
                 "order.empty",
                 "Order must have at least one line item to submit."));
 
@@ -125,12 +125,12 @@ public sealed class SubmitOrderHandler(
         var loaded = await products.GetByIdsAsync(productIds, cancellationToken);
         var byId = loaded.ToDictionary(p => p.Id);
 
-        var missing = productIds.Where(id => !byId.ContainsKey(id)).ToArray();
-        if (missing.Length == 1)
-            return Result.Fail<Order>(new Error.NotFound(ResourceRef.For<Product>(missing[0])));
-        if (missing.Length > 1)
-            return Result.Fail<Order>(new Error.Aggregate(
-                missing.Select(id => (Error)new Error.NotFound(ResourceRef.For<Product>(id))).ToArray()));
+        var presence = productIds
+            .Select(id => Result.Ensure(byId.ContainsKey(id),
+                () => new Error.NotFound(ResourceRef.For<Product>(id))))
+            .SequenceAll();
+        if (presence.IsFailure)
+            return Result.Fail<Order>(presence.Error);
 
         // Build a stable mutation plan: aggregate duplicate line items by ProductId so the
         // CanReserve checks operate on the SAME quantity the matching Reserve call will deduct.

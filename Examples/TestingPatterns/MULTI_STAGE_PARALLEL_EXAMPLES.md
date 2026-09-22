@@ -40,14 +40,14 @@ var result = await Result.ParallelAsync(
         () => CalculateShippingWithWeightAsync(address, inventory)
     )
     .WhenAllAsync()
-    .BindAsync((fraudCheck, shipping) =>
-        Result.Ok(new CheckoutResult(
+    .MapAsync((fraudCheck, shipping) =>
+        new CheckoutResult(
             user, 
             inventory, 
             payment, 
             fraudCheck, 
             shipping
-        ))
+        )
     )
 );
 ```
@@ -85,7 +85,10 @@ var result = await Result.ParallelAsync(
 .BindAsync((user, inventory, payment) =>  // ❌ Never executes
 {
     stage2Executed = true;
-    return Result.ParallelAsync(/*...*/);
+    return Result.ParallelAsync(
+        () => RunFraudDetectionAsync(user, payment, inventory),
+        () => CalculateShippingWithWeightAsync(address, inventory))
+        .WhenAllAsync();
 });
 
 // stage2Executed == false ✅
@@ -95,7 +98,7 @@ var result = await Result.ParallelAsync(
 
 **Why this matters:**
 - ✅ **Prevents wasted work** - Don't call fraud detection if user doesn't exist
-- ✅ **Fail fast** - Return error immediately
+- ✅ **Skip later stages** - Finish the already-started operations, combine their failures, and do not start Stage 2
 - ✅ **Type safe** - Can't access `user` if Stage 1 failed
 
 ## Pattern 3: Three-Stage Pipeline
@@ -104,22 +107,23 @@ var result = await Result.ParallelAsync(
 
 ### Visual Flow
 ```
-Stage 1 (2 parallel)
+Stage 1 (3 parallel)
 ├─ FetchUser (50ms)
-└─ CheckInventory (50ms)
+├─ CheckInventory (50ms)
+└─ ValidatePayment (50ms)
         ↓ (50ms total)
         
 Stage 2 (2 parallel, depends on Stage 1)
-├─ ValidatePayment (needs user)
-└─ RunFraudDetection (needs user + inventory)
+├─ RunFraudDetection (needs user + payment + inventory)
+└─ CalculateShipping (needs inventory)
         ↓ (40ms total)
         
 Stage 3 (2 parallel, depends on Stage 2)
-├─ CalculateShipping (needs inventory)
-└─ ReserveInventory (needs fraud check pass)
+├─ CalculateTax (needs shipping quote)
+└─ FindDiscount (needs user + inventory)
         ↓ (40ms total)
         
-Total: 130ms vs 220ms sequential (1.7x faster)
+Illustrative total: 130ms; actual latency depends on the independent services.
 ```
 
 ### Code Example
@@ -127,26 +131,27 @@ Total: 130ms vs 220ms sequential (1.7x faster)
 ```csharp
 var result = await Result.ParallelAsync(
     () => FetchUserAsync(userId),
-    () => CheckInventoryAsync(productId)
+    () => CheckInventoryAsync(productId),
+    () => ValidatePaymentAsync(paymentId)
 )
 .WhenAllAsync()  // Stage 1 done
 
-.BindAsync((user, inventory) =>
+.BindAsync((user, inventory, payment) =>
     Result.ParallelAsync(
-        () => ValidatePaymentAsync(paymentId),
-        () => RunFraudDetectionAsync(user, payment, inventory)
+        () => RunFraudDetectionAsync(user, payment, inventory),
+        () => CalculateShippingWithWeightAsync(address, inventory)
     )
     .WhenAllAsync()  // Stage 2 done
     
-    .BindAsync((payment, fraudCheck) =>
+    .BindAsync((fraudCheck, shipping) =>
         Result.ParallelAsync(
-            () => CalculateShippingAsync(address, inventory),
-            () => ReserveInventoryAsync(inventory)
+            () => CalculateTaxAsync(shipping),
+            () => FindDiscountAsync(user, inventory)
         )
         .WhenAllAsync()  // Stage 3 done
         
-        .BindAsync((shipping, reservation) =>
-            Result.Ok(new OrderConfirmation(/*...*/))
+        .MapAsync((tax, discount) =>
+            new CheckoutQuote(user, inventory, payment, fraudCheck, shipping, tax, discount)
         )
     )
 );
@@ -158,7 +163,7 @@ var result = await Result.ParallelAsync(
 ```csharp
 // User not found → Stage 2 & 3 never execute
 FetchUser: ❌ Error.NotFound
-CheckInventory: ✅ (cancelled)
+CheckInventory: ✅ (already started; awaited, not automatically cancelled)
   → Result: Error.NotFound
 ```
 
@@ -172,11 +177,11 @@ Stage 2: ❌ Error.Forbidden (fraud)
 
 ### Stage 3 Failure
 ```csharp
-// Inventory reservation fails
+// Tax calculation fails
 Stage 1: ✅
 Stage 2: ✅
-Stage 3: ❌ Error.Conflict (already reserved)
-  → Result: Error.Conflict
+Stage 3: ❌ Error.InvalidInput
+  → Result: Error.InvalidInput
 ```
 
 ## Real-World Use Cases
@@ -199,7 +204,7 @@ Stage 3: Engagement Stats + Recommended Content
 ```csharp
 Stage 1: Account Balance + Transaction History + Risk Profile
 Stage 2: Fraud Check + Compliance Check (depend on Stage 1)
-Stage 3: Execute Transfer + Update Balances (only if Stage 2 passes)
+Stage 3: Execute transfer sequentially after all checks pass; do not parallelize dependent balance mutations
 ```
 
 ### 4. Microservices Fanout
@@ -220,10 +225,11 @@ Stage 3: Notification Service + Analytics Service (need order result)
 ### ❌ DON'T Use When:
 - All operations are **completely independent** (use single-stage)
 - Operations must run **strictly sequentially** (use BindAsync chain)
+- Operations share a scoped `DbContext`, or mutate related state
 - Stages have **circular dependencies** (redesign workflow)
 
 ### Performance Tips
-1. **Minimize stages** - Each stage adds ~10ms overhead for WhenAllAsync
+1. **Minimize dependency depth** - Latency is approximately the sum of each stage's slowest operation; there is no fixed 10ms cost per stage
 2. **Balance parallelism** - Aim for 2-4 operations per stage
 3. **Short-circuit early** - Put validation in Stage 1
 4. **Profile in production** - Measure actual latencies
@@ -267,11 +273,9 @@ Stage1.WhenAllAsync()
 **Better:**
 ```csharp
 // Extract to helper methods
-var stage1 = await ExecuteStage1();
-if (!stage1.TryGetValue(out var stage1Value, out var stage1Error)) return stage1Error;
-
-var stage2 = await ExecuteStage2(stage1Value);
-// ...
+var result = await ExecuteStage1()
+    .BindAsync(ExecuteStage2)
+    .BindAsync(ExecuteStage3);
 ```
 
 ### ❌ Mistake 2: False Parallelism
@@ -294,9 +298,9 @@ var result = await Result.ParallelAsync(
 
 ### ❌ Mistake 3: Ignoring Dependencies
 ```csharp
-// Fraud detection needs user + payment, but they're in different stages!
+// Fraud detection needs a payment result that is still being produced in the same stage.
 Stage 1: FetchUser
-Stage 2: ValidatePayment + RunFraudDetection // ❌ Can't access user here
+Stage 2: ValidatePayment + RunFraudDetection // ❌ Payment is not available yet
 ```
 
 **Better:**
@@ -312,7 +316,10 @@ Stage 2: RunFraudDetection(user, payment) // ✅ Both available
 .WhenAllAsync()
 .TapAsync(results => _logger.LogInformation("Stage 1 complete: {Results}", results))
 .BindAsync((user, inventory, payment) => 
-    Result.ParallelAsync(/*...*/))
+    Result.ParallelAsync(
+        () => RunFraudDetectionAsync(user, payment, inventory),
+        () => CalculateShippingWithWeightAsync(address, inventory))
+        .WhenAllAsync())
 ```
 
 ### Track Execution Times
@@ -322,7 +329,7 @@ var stage1 = await StageOne().WhenAllAsync();
 _logger.LogInformation("Stage 1: {Ms}ms", sw.ElapsedMilliseconds);
 
 sw.Restart();
-var stage2 = await StageTwo(stage1).WhenAllAsync();
+var stage2 = await stage1.BindAsync(values => StageTwo(values).WhenAllAsync());
 _logger.LogInformation("Stage 2: {Ms}ms", sw.ElapsedMilliseconds);
 ```
 
@@ -334,16 +341,15 @@ if (!r1.TryGetValue(out var r1Value, out var r1Error)) return Result.Fail<Stage2
 var r2 = await stage2(r1Value).WhenAllAsync();
 
 // ✅ Good
-var coreData = await FetchCoreDataInParallel().WhenAllAsync();
-if (!coreData.TryGetValue(out var coreDataValue, out var coreDataError)) return Result.Fail<ValidationResults>(coreDataError);
-var validationResults = await ValidateInParallel(coreDataValue).WhenAllAsync();
+var validationResults = await FetchCoreDataInParallel().WhenAllAsync()
+    .BindAsync(coreData => ValidateInParallel(coreData).WhenAllAsync());
 ```
 
 ## Summary
 
 Multi-stage `ParallelAsync` is **extremely useful** for real-world applications with dependent operations:
 
-✅ **2.4x performance improvement** (2-stage example)
+✅ **Lower latency for independent I/O** (2.4x in the illustrative 2-stage timings, not a guarantee)
 ✅ **Type-safe composition** (compiler enforces dependencies)
 ✅ **Automatic error handling** (short-circuits on failure)
 ✅ **Clean, readable code** (declarative style)

@@ -778,13 +778,13 @@ public static class Example
         var country = CountryCode.Create("US");
         var phone = PhoneNumber.Create("+14155551234");
 
-        var percentage = Percentage.FromFraction(0.15m).TryGetValue(out var p) ? p : Percentage.Zero;
         var amount = MonetaryAmount.Create(12.34m);
-        var taxAmount = percentage.Of(amount);
+        var taxAmount = Percentage.FromFraction(0.15m)
+            .Map(percentage => percentage.Of(amount));
 
         var total = Money.Create(12.34m, "USD");
         var shipping = Money.Create(2.00m, "USD");
-        var grandTotal = total.Add(shipping).TryGetValue(out var gt) ? gt : total;
+        var grandTotal = total.Add(shipping);
 
         _ = (email, country, phone, taxAmount, grandTotal);
     }
@@ -792,6 +792,10 @@ public static class Example
 ```
 
 For examples of building **your own** primitives by deriving from `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredEnum<TSelf>`, etc., see [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes).
+
+The tax and total remain `Result` values: compose them with `Map` / `Bind` or handle
+them at the boundary with `Match`. Do not substitute zero tax or the original total
+when validation or arithmetic fails.
 
 ## Cross-references
 

@@ -40,9 +40,9 @@ public sealed record CancelOrderCommand(OrderId OrderId)
     public OrderId GetResourceId() => OrderId;
 
     public IResult Authorize(Actor actor, Order resource) =>
-        resource.OwnerId == actor.Id || actor.HasPermission("orders:admin")
-            ? Result.Ok()
-            : Result.Fail(new Error.Forbidden(
+        Result.Ensure(
+            resource.OwnerId == actor.Id || actor.HasPermission("orders:admin"),
+            () => new Error.Forbidden(
                 Code: "orders.owner",
                 Resource: ResourceRef.For<Order>(OrderId)));
 }
@@ -74,7 +74,7 @@ For multi-hop authorization (the resource the actor must own is reached via one 
 | Read a required actor through a stable or explicitly cached provider after authorization | `actorProvider.RequireActorAsync(cancellationToken)` | [`ActorProviderExtensions`](#actorproviderextensions) |
 | Require static permissions on a message | Implement `IAuthorize.RequiredPermissions` | [`IAuthorize`](#iauthorize) |
 | Authorize against a loaded resource | Implement `IAuthorizeResource<TResource>.Authorize(actor, resource)` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource) |
-| Write owner/admin resource guards | `Result.Ensure(condition, new Error.Forbidden(...))` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource), [Core `Result.Ensure`](trellis-api-core.md#public-static-partial-class-result) |
+| Write owner/admin resource guards | `Result.Ensure(condition, () => new Error.Forbidden(...))` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource), [Core `Result.Ensure`](trellis-api-core.md#public-static-partial-class-result) |
 | Identify a resource by id for shared loading | `IIdentifyResource<TResource, TId>` | [`IIdentifyResource<TResource, TId>`](#iidentifyresourcetresource-tid) |
 | Authorize against a related resource one or more navigation hops away (cricket-style fan-out, owner chains) | Implement `IAuthorizeResourceVia<TOwner>` on the command + `IIdentifyRelatedResource<TRelated, TId>` (singular) or `IIdentifyRelatedResources<TRelated, TId>` (terminal plural) on entities along the path | [`IAuthorizeResourceVia<TOwner>`](#iauthorizeresourceviatowner), [`IIdentifyRelatedResource<TRelated, TId>`](#iidentifyrelatedresourcetrelated-tid), [`IIdentifyRelatedResources<TRelated, TId>`](#iidentifyrelatedresourcestrelated-tid) |
 
@@ -486,7 +486,7 @@ public sealed record CancelOrderCommand(OrderId OrderId)
     public IResult Authorize(Actor actor, Order order) =>
         Result.Ensure(
             order.OwnerId == actor.Id || actor.HasPermission("orders:cancel-any"),
-            new Error.Forbidden("orders.cancel")
+            () => new Error.Forbidden("orders.cancel")
                 { Detail = "Only the owner can cancel this order." });
 }
 
@@ -498,8 +498,8 @@ public interface IOrderRepository
 public sealed class OrderResourceLoader(IOrderRepository repo)
     : SharedResourceLoaderById<Order, OrderId>
 {
-    public override async Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken ct) =>
-        (await repo.FindByIdAsync(id, ct)).ToResult(new Error.NotFound(ResourceRef.For<Order>(id)));
+    public override Task<Result<Order>> GetByIdAsync(OrderId id, CancellationToken ct) =>
+        repo.FindByIdAsync(id, ct).ToResultAsync(() => new Error.NotFound(ResourceRef.For<Order>(id)));
 }
 ```
 
@@ -536,7 +536,7 @@ public sealed record UploadScorecardCommand(MatchId MatchId, /* fields */)
     public IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
         Result.Ensure(
             owners.Any(t => t.CreatedByActorId == actor.Id),
-            new Error.Forbidden("match.upload-scorecard")
+            () => new Error.Forbidden("match.upload-scorecard")
                 { Detail = "Actor does not own either match team." });
 }
 

@@ -87,7 +87,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
 
 FluentValidation property names are converted to JSON Pointers via [`JsonPointerNormalizer`](trellis-api-fluentvalidation.md#jsonpointernormalizer) so they round-trip through `InputPointer`:
 
-| FluentValidation `PropertyName` | Resulting `InputPointer.RawValue` |
+| FluentValidation `PropertyName` | Resulting `InputPointer.Path` |
 | --- | --- |
 | `Email` | `/email` |
 | `Address.PostCode` | `/address/postCode` |

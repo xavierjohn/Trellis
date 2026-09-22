@@ -90,19 +90,15 @@ public interface ILegacyContactRepository
 // current TryCreate constraints, so per-field failures stay on the Result track.
 public sealed class LegacyContactRepository(IReadOnlyList<ContactRow> rows) : ILegacyContactRepository
 {
-    public Task<Result<Contact>> FindByIdAsync(ContactId id, CancellationToken ct)
-    {
-        ContactRow? row = rows.FirstOrDefault(r => r.Id == id.Value);
-        if (row is null)
-            return Task.FromResult(Result.Fail<Contact>(new Error.NotFound(ResourceRef.For<Contact>(id))));
-
-        return Task.FromResult(
-            Result.Combine(
+    public Task<Result<Contact>> FindByIdAsync(ContactId id, CancellationToken ct) =>
+        rows.FirstOrDefault(r => r.Id == id.Value)
+            .ToResult(() => new Error.NotFound(ResourceRef.For<Contact>(id)))
+            .Bind(row => Result.Combine(
                     ContactId.TryCreate(row.Id, "Id"),
                     FirstName.TryCreate(row.FirstName, "FirstName"),
                     EmailAddress.TryCreate(row.Email, "Email"))
-                .Bind(Contact.TryCreate));
-    }
+                .Bind(Contact.TryCreate))
+            .AsTask();
 }
 
 internal static class Recipe30Demonstrator

@@ -19,8 +19,8 @@ public class ValidationExample
         var actual = EmailAddress.TryCreate("xavier@somewhere.com")
             .Combine(FirstName.TryCreate("Xavier"))
             .Combine(LastName.TryCreate("John"))
-            .Combine(Ensure(createdAt <= updatedAt, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "updateAt cannot be less than createdAt" }))
-            .Bind((email, firstName, lastName, _) => Result.Ok(string.Join(" ", firstName, lastName, email)));
+            .Combine(Ensure(createdAt <= updatedAt, () => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "updateAt cannot be less than createdAt" }))
+            .Map((email, firstName, lastName, _) => string.Join(" ", firstName, lastName, email));
 
         actual.Unwrap().Should().Be("Xavier John xavier@somewhere.com");
     }
@@ -42,11 +42,11 @@ public class ValidationExample
         var actual = FirstName.TryCreate("Xavier")
             .Combine(LastName.TryCreate(string.Empty))
             .Combine(EmailAddress.TryCreate("xavier @ somewhereelse.com"))
-            .Combine(Ensure(createdAt <= updatedAt, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(updatedAt)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "updateAt cannot be less than createdAt" }))))
-            .Bind((firstName, lastName, email, _) =>
+            .Combine(Ensure(createdAt <= updatedAt, () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(updatedAt)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "updateAt cannot be less than createdAt" }))))
+            .Map((firstName, lastName, email, _) =>
             {
                 true.Should().BeFalse("this code should not get executed");
-                return Result.Ok(string.Join(" ", firstName, lastName, email));
+                return string.Join(" ", firstName, lastName, email);
             });
         // Assert
         actual.IsFailure.Should().BeTrue();
@@ -65,12 +65,12 @@ public class ValidationExample
         var actual = EmailAddress.TryCreate(email)
             .Combine(Maybe.Optional(firstName, s => FirstName.TryCreate(s)))
             .Combine(Maybe.Optional(lastName, s => LastName.TryCreate(s)))
-            .Bind(Add);
+            .Map(Format);
 
         actual.Unwrap().Should().Be("xavier@somewhere.com  John");
 
-        static Result<string> Add(EmailAddress emailAddress, Maybe<FirstName> firstname, Maybe<LastName> lastname)
-            => Result.Ok(emailAddress + " " + firstname + " " + lastname);
+        static string Format(EmailAddress emailAddress, Maybe<FirstName> firstname, Maybe<LastName> lastname)
+            => emailAddress + " " + firstname + " " + lastname;
     }
 
     [Fact]
@@ -83,14 +83,14 @@ public class ValidationExample
         var actual = EmailAddress.TryCreate(email)
             .Combine(Maybe.Optional(firstName, s => FirstName.TryCreate(s)))
             .Combine(Maybe.Optional(lastName, s => LastName.TryCreate(s)))
-            .Bind(Add);
+            .Map(Format);
 
         actual.IsFailure.Should().BeTrue();
         actual.UnwrapError().Should().BeOfType<Error.InvalidInput>();
         var validationError = (Error.InvalidInput)actual.UnwrapError();
         validationError.Fields[0].Detail.Should().Be("First Name cannot be empty.");
 
-        static Result<string> Add(EmailAddress emailAddress, Maybe<FirstName> firstname, Maybe<LastName> lastname)
-            => Result.Ok(emailAddress + " " + firstname + " " + lastname);
+        static string Format(EmailAddress emailAddress, Maybe<FirstName> firstname, Maybe<LastName> lastname)
+            => emailAddress + " " + firstname + " " + lastname;
     }
 }

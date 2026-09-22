@@ -301,13 +301,12 @@ public sealed class CheckoutClient(HttpClient httpClient)
             .ReadJsonAsync(CheckoutJsonContext.Default.InventoryCheckDto, ct)
             .EnsureAsync(
                 inventory => inventory.InStock,
-                new Error.InvalidInput(EquatableArray.Create(
+                _ => new Error.InvalidInput(EquatableArray.Create(
                     new FieldViolation(InputPointer.ForProperty(nameof(productId)), "stock.insufficient") { Detail = "Out of stock." })))
             .BindAsync(
-                (_, token) => httpClient.PostAsync($"payments/{productId}", null, token)
+                _ => httpClient.PostAsync($"payments/{productId}", null, ct)
                     .ToResultAsync()
-                    .ReadJsonAsync(CheckoutJsonContext.Default.PaymentReceiptDto, token),
-                ct);
+                    .ReadJsonAsync(CheckoutJsonContext.Default.PaymentReceiptDto, ct));
 }
 ```
 
@@ -315,7 +314,7 @@ public sealed class CheckoutClient(HttpClient httpClient)
 
 - **Use source-generated JSON metadata.** Keeps the chain AOT-friendly and matches the `JsonTypeInfo<T>` overloads.
 - **Pick the right read mode.** `404` means absence → `ReadJsonOrNoneOn404Async`. `404` is an error → bare `ToResultAsync()` or `HandleNotFoundAsync`.
-- **Always pass `CancellationToken`.** Every helper accepts it.
+- **Forward `CancellationToken` to I/O.** Pass it to HTTP requests and JSON reads; capture it in `BindAsync` callbacks rather than inventing a token-taking overload.
 - **One status mapper, not many.** Prefer `ToResultAsync(statusMap)` over chaining multiple `Handle*Async` calls when you map more than one status.
 
 ## Cross-references

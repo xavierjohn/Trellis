@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Trellis.Showcase.MinimalApi;
@@ -28,20 +27,7 @@ public class ApiHttpFileReplayTests : IClassFixture<WebApplicationFactory<Progra
         using var client = _factory.CreateClient();
         var results = await HttpFileRunner.RunAsync(client, requests, Ct);
 
-        var failures = new StringBuilder();
-        foreach (var result in results)
-        {
-            try
-            {
-                HttpFileAssertions.AssertExpectationsMet(result);
-            }
-            catch (HttpFileAssertionException ex)
-            {
-                failures.AppendLine(ex.Message);
-            }
-        }
-
-        failures.Length.Should().Be(0, failures.ToString());
+        Assert.All(results, HttpFileAssertions.AssertExpectationsMet);
     }
 
     private static IReadOnlyList<HttpFileRequest> LoadRequests()

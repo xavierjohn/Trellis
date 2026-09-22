@@ -85,7 +85,7 @@ string city = customer.Email.Value;                // TRLS003
 if (customer.Email.HasValue) { var v = customer.Email.Value; }
 
 // FIX 2 — convert to Result
-Result<EmailAddress> r = customer.Email.ToResult(new Error.NotFound(ResourceRef.For("Email", customer.Id)));
+Result<EmailAddress> r = customer.Email.ToResult(() => new Error.NotFound(ResourceRef.For("Email", customer.Id)));
 ```
 
 **Guard shapes the analyzer already accepts.** TRLS003 does not require the nested `if` above — do not restructure working code to satisfy it. Any of these suppress the diagnostic:
@@ -730,16 +730,11 @@ public sealed class AutoAdvanceOrderHandler(IOrderRepository orders)
 // originating command completes. This is application-layer orchestration, not handler re-entry.
 public sealed class OrderWorkflow(IMediator mediator)
 {
-    public async ValueTask<Result<Unit>> CreateAndAdvanceAsync(CreateOrderCommand command, CancellationToken cancellationToken)
-    {
-        Result<Order> created = await mediator.Send(command, cancellationToken);
-        if (!created.TryGetValue(out var order))
-            return Result.Fail<Unit>(created.Error!);
-
-        return await mediator.Send(
-            new ChangeOrderStatusCommand(order.Id, OrderStatus.ReadyForFulfillment),
-            cancellationToken);
-    }
+    public ValueTask<Result<Unit>> CreateAndAdvanceAsync(CreateOrderCommand command, CancellationToken cancellationToken) =>
+        mediator.Send(command, cancellationToken)
+            .BindAsync(order => mediator.Send(
+                new ChangeOrderStatusCommand(order.Id, OrderStatus.ReadyForFulfillment),
+                cancellationToken));
 }
 ```
 

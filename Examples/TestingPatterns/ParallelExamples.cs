@@ -140,6 +140,34 @@ public class ParallelExamples : IClassFixture<TraceFixture>
 
     #endregion
 
+    [Theory]
+    [InlineData("order-42", true)]
+    [InlineData("invalid-payment", false)]
+    public async Task MultiStage_ParallelValidation_FailureSkipsDependentStage(string orderId, bool succeeds)
+    {
+        var secondStageStarted = false;
+
+        var result = await Result.ParallelAsync(
+                () => CheckInventoryAsync(orderId),
+                () => ValidatePaymentAsync(orderId))
+            .WhenAllAsync()
+            .BindAsync((inventory, payment) =>
+            {
+                secondStageStarted = true;
+                return Result.ParallelAsync(
+                        () => CalculateShippingAsync(orderId),
+                        () => FetchUserPreferencesAsync("user-123"))
+                    .WhenAllAsync()
+                    .MapAsync((shipping, preferences) => $"{inventory}, {payment}, {shipping}, {preferences}");
+            });
+
+        secondStageStarted.Should().Be(succeeds);
+        if (succeeds)
+            result.Should().BeSuccess().Which.Should().Contain("Shipping OK for order-42");
+        else
+            result.Should().BeFailureOfType<Error.InvalidInput>().Which.Detail.Should().Be("Invalid payment");
+    }
+
     // ----- Domain types -----
 
     private record Dashboard(string Profile, string Orders, string Preferences);
@@ -147,31 +175,29 @@ public class ParallelExamples : IClassFixture<TraceFixture>
     // ----- Helper methods -----
 
     private static Task<Result<string>> CheckInventoryAsync(string orderId) =>
-        Task.FromResult(Result.Ok($"Inventory OK for {orderId}"));
+        Result.Ok($"Inventory OK for {orderId}").AsTask();
 
-    private static Task<Result<string>> ValidatePaymentAsync(string orderId)
-    {
-        if (orderId == "invalid-payment")
-            return Task.FromResult(Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid payment" }));
-
-        return Task.FromResult(Result.Ok($"Payment OK for {orderId}"));
-    }
+    private static Task<Result<string>> ValidatePaymentAsync(string orderId) =>
+        Result.Ensure(orderId != "invalid-payment",
+                () => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid payment" })
+            .Map(_ => $"Payment OK for {orderId}")
+            .AsTask();
 
     private static Task<Result<string>> CalculateShippingAsync(string orderId) =>
-        Task.FromResult(Result.Ok($"Shipping OK for {orderId}"));
+        Result.Ok($"Shipping OK for {orderId}").AsTask();
 
     private static Task<Result<string>> FetchUserProfileAsync(string userId) =>
-        Task.FromResult(Result.Ok($"Profile for {userId}"));
+        Result.Ok($"Profile for {userId}").AsTask();
 
     private static Task<Result<string>> FetchUserOrdersAsync(string userId) =>
-        Task.FromResult(Result.Ok($"Orders for {userId}"));
+        Result.Ok($"Orders for {userId}").AsTask();
 
     private static Task<Result<string>> FetchUserPreferencesAsync(string userId) =>
-        Task.FromResult(Result.Ok($"Preferences for {userId}"));
+        Result.Ok($"Preferences for {userId}").AsTask();
 
     private static Task<Result<string>> CreateOrderSummaryAsync(string inventory, string payment, string shipping) =>
-        Task.FromResult(Result.Ok($"Order summary: {inventory}, {payment}, {shipping}"));
+        Result.Ok($"Order summary: {inventory}, {payment}, {shipping}").AsTask();
 
     private static Task<Result<string>> SaveDashboardAsync(Dashboard dashboard) =>
-        Task.FromResult(Result.Ok($"Saved dashboard for {dashboard.Profile.Split(' ').Last()}"));
+        Result.Ok($"Saved dashboard for {dashboard.Profile.Split(' ').Last()}").AsTask();
 }

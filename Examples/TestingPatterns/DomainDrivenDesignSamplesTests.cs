@@ -28,8 +28,8 @@ public class DomainDrivenDesignSamplesTests
             throw new NotImplementedException();
 
         public static Result<CustomerId> TryCreate(Guid? value) =>
-            value.ToResult(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID cannot be empty" })
-                .Ensure(v => v != Guid.Empty, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID cannot be empty" })
+            value.ToResult(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID cannot be empty" })
+                .Ensure(v => v != Guid.Empty, _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID cannot be empty" })
                 .Map(v => new CustomerId(v));
     }
 
@@ -48,8 +48,8 @@ public class DomainDrivenDesignSamplesTests
             throw new NotImplementedException();
 
         public static Result<OrderId> TryCreate(Guid? value) =>
-            value.ToResult(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Order ID cannot be empty" })
-                .Ensure(v => v != Guid.Empty, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Order ID cannot be empty" })
+            value.ToResult(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Order ID cannot be empty" })
+                .Ensure(v => v != Guid.Empty, _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Order ID cannot be empty" })
                 .Map(v => new OrderId(v));
     }
 
@@ -58,8 +58,8 @@ public class DomainDrivenDesignSamplesTests
         private ProductId(string value) : base(value) { }
 
         public static Result<ProductId> TryCreate(string? value, string? fieldName = null) =>
-            value.ToResult(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productId"), ValidationCodes.ValueNotNull) { Detail = "Product ID cannot be empty" })))
-                .Ensure(v => !string.IsNullOrWhiteSpace(v), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productId"), ValidationCodes.ValueNotEmpty) { Detail = "Product ID cannot be empty" })))
+            value.ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productId"), ValidationCodes.ValueNotNull) { Detail = "Product ID cannot be empty" })))
+                .Ensure(v => !string.IsNullOrWhiteSpace(v), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productId"), ValidationCodes.ValueNotEmpty) { Detail = "Product ID cannot be empty" })))
                 .Map(v => new ProductId(v));
     }
 
@@ -69,9 +69,9 @@ public class DomainDrivenDesignSamplesTests
         private EmailAddress(string value) : base(value) { }
 
         public static Result<EmailAddress> TryCreate(string? value, string? fieldName = null) =>
-            value.ToResult(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.ValueNotNull) { Detail = "Email cannot be empty" })))
-                .Ensure(v => !string.IsNullOrWhiteSpace(v), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.ValueNotEmpty) { Detail = "Email cannot be empty" })))
-                .Ensure(v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.StringEmail) { Detail = "Email must contain @" })))
+            value.ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.ValueNotNull) { Detail = "Email cannot be empty" })))
+                .Ensure(v => !string.IsNullOrWhiteSpace(v), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.ValueNotEmpty) { Detail = "Email cannot be empty" })))
+                .Ensure(v => v.Contains('@'), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.StringEmail) { Detail = "Email must contain @" })))
                 .Map(v => new EmailAddress(v));
     }
 
@@ -94,22 +94,16 @@ public class DomainDrivenDesignSamplesTests
         public static Result<Customer> TryCreate(string name, EmailAddress email) =>
             name.ToResult()
                 .Ensure(n => !string.IsNullOrWhiteSpace(n),
-                       new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" })
+                       _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" })
                 .Map(n => new Customer(CustomerId.NewUnique(), n, email));
 
-        public static Customer Create(string name, EmailAddress email)
-        {
-            var result = TryCreate(name, email);
-            if (result.IsFailure)
-                throw new InvalidOperationException($"Failed to create Customer: {result.UnwrapError().Detail}");
-
-            return result.Unwrap();
-        }
+        public static Customer Create(string name, EmailAddress email) =>
+            TryCreate(name, email).GetValueOrThrow();
 
         public Result<Customer> UpdateName(string newName) =>
             newName.ToResult()
                 .Ensure(n => !string.IsNullOrWhiteSpace(n),
-                       new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" })
+                       _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" })
                 .Tap(n => Name = n)
                 .Map(_ => this);
 
@@ -243,15 +237,15 @@ public class DomainDrivenDesignSamplesTests
             string country) =>
             (street, city, state, postalCode, country).ToResult()
                 .Ensure(x => !string.IsNullOrWhiteSpace(x.street),
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(street)), ValidationCodes.ValueNotEmpty) { Detail = "Street is required" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(street)), ValidationCodes.ValueNotEmpty) { Detail = "Street is required" })))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x.city),
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(city)), ValidationCodes.ValueNotEmpty) { Detail = "City is required" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(city)), ValidationCodes.ValueNotEmpty) { Detail = "City is required" })))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x.state),
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(state)), ValidationCodes.ValueNotEmpty) { Detail = "State is required" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(state)), ValidationCodes.ValueNotEmpty) { Detail = "State is required" })))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x.postalCode),
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(postalCode)), ValidationCodes.ValueNotEmpty) { Detail = "Postal code is required" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(postalCode)), ValidationCodes.ValueNotEmpty) { Detail = "Postal code is required" })))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x.country),
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(country)), ValidationCodes.ValueNotEmpty) { Detail = "Country is required" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(country)), ValidationCodes.ValueNotEmpty) { Detail = "Country is required" })))
                 .Map(x => new Address(x.street, x.city, x.state, x.postalCode, x.country));
 
         protected override void GetEqualityComponents(ref EqualityComponents components)
@@ -323,9 +317,9 @@ public class DomainDrivenDesignSamplesTests
             var field = fieldName ?? "temperature";
             return value.ToResult()
                 .Ensure(v => v >= -273.15m,
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Temperature cannot be below absolute zero" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Temperature cannot be below absolute zero" })))
                 .Ensure(v => v <= 1_000_000m,
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueLessThanOrEqual) { Detail = "Temperature exceeds physical limits" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueLessThanOrEqual) { Detail = "Temperature exceeds physical limits" })))
                 .Map(v => new Temperature(v));
         }
 
@@ -437,21 +431,15 @@ public class DomainDrivenDesignSamplesTests
         public static Result<Money> TryCreate(decimal amount, string currency = "USD") =>
             (amount, currency).ToResult()
                 .Ensure(x => x.amount >= 0,
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(amount)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Amount cannot be negative" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(amount)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Amount cannot be negative" })))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x.currency),
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(currency)), ValidationCodes.ValueNotEmpty) { Detail = "Currency is required" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(currency)), ValidationCodes.ValueNotEmpty) { Detail = "Currency is required" })))
                 .Ensure(x => x.currency.Length == 3,
-                       new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(currency)), ValidationCodes.StringExactLength) { Detail = "Currency must be 3-letter ISO code" })))
+                       _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(currency)), ValidationCodes.StringExactLength) { Detail = "Currency must be 3-letter ISO code" })))
                 .Map(x => new Money(x.amount, x.currency.ToUpperInvariant()));
 
-        public static Money Create(decimal amount, string currency = "USD")
-        {
-            var result = TryCreate(amount, currency);
-            if (result.IsFailure)
-                throw new InvalidOperationException($"Failed to create Money: {result.UnwrapError().Detail}");
-
-            return result.Unwrap();
-        }
+        public static Money Create(decimal amount, string currency = "USD") =>
+            TryCreate(amount, currency).GetValueOrThrow();
 
         public static Money Zero(string currency = "USD") => new(0, currency);
 
@@ -462,16 +450,16 @@ public class DomainDrivenDesignSamplesTests
         }
 
         public Result<Money> Add(Money other) =>
-            Currency != other.Currency
-                ? Result.Fail<Money>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"Cannot add {other.Currency} to {Currency}" })
-                : new Money(Amount + other.Amount, Currency).ToResult();
+            Result.Ensure(Currency == other.Currency,
+                    () => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"Cannot add {other.Currency} to {Currency}" })
+                .Map(_ => new Money(Amount + other.Amount, Currency));
 
         public Result<Money> Subtract(Money other) =>
-            Currency != other.Currency
-                ? Result.Fail<Money>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"Cannot subtract {other.Currency} from {Currency}" })
-                : Amount < other.Amount
-                    ? Result.Fail<Money>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Result would be negative" })
-                    : new Money(Amount - other.Amount, Currency).ToResult();
+            Result.Ensure(Currency == other.Currency,
+                    () => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"Cannot subtract {other.Currency} from {Currency}" })
+                .Ensure(_ => Amount >= other.Amount,
+                    _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Result would be negative" })
+                .Map(_ => new Money(Amount - other.Amount, Currency));
 
         public Money Multiply(decimal factor) =>
             factor < 0
@@ -513,6 +501,17 @@ public class DomainDrivenDesignSamplesTests
         // Assert
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().GetDisplayMessage().Should().Contain("Amount cannot be negative");
+    }
+
+    [Theory]
+    [InlineData(-1, "USD", "Amount cannot be negative")]
+    [InlineData(1, "", "Currency is required")]
+    [InlineData(1, "US", "Currency must be 3-letter ISO code")]
+    public void Create_Money_InvalidInput_ReportsValidationDetail(int amount, string currency, string detail)
+    {
+        Action create = () => Money.Create(amount, currency);
+
+        create.Should().Throw<InvalidOperationException>().WithMessage($"*{detail}*");
     }
 
     [Fact]
@@ -646,14 +645,8 @@ public class DomainDrivenDesignSamplesTests
             customerId.ToResult()
                 .Map(cid => new Order(OrderId.NewUnique(), cid));
 
-        public static Order Create(CustomerId customerId)
-        {
-            var result = TryCreate(customerId);
-            if (result.IsFailure)
-                throw new InvalidOperationException($"Failed to create Order: {result.UnwrapError().Detail}");
-
-            return result.Unwrap();
-        }
+        public static Order Create(CustomerId customerId) =>
+            TryCreate(customerId).GetValueOrThrow();
 
         public Result<Order> AddLine(ProductId productId, string productName, Money price, int quantity) =>
             this.ToResult()

@@ -32,9 +32,9 @@ public sealed record ArchiveDocumentCommand(DocumentId DocumentId)
     // and lives with the command. The typed accessor removes the GetAttribute(...) + TenantId.TryCreate(...)
     // ceremony, and the gate deny-closes (Forbidden) on a missing, malformed, or mismatched tenant claim.
     public Trellis.IResult Authorize(Actor actor, TenantDocument resource) =>
-        actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var tenant) && tenant == resource.TenantId
-            ? Result.Ok()
-            : Result.Fail(new Error.Forbidden(
+        Result.Ensure(
+            actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var tenant) && tenant == resource.TenantId,
+            () => new Error.Forbidden(
                 Code: "tenant.isolation",
                 Resource: ResourceRef.For<TenantDocument>(resource.Id)));
 }

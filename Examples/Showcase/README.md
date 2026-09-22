@@ -8,17 +8,18 @@ the two hosting styles side-by-side over a single, identical contract.
 
 | Concept | Where to look |
 |---|---|
-| `Error.InvalidInput` + `FieldViolation` collected before failing | `Showcase.Domain/Aggregates/BankAccount.cs` (`TryCreate`) |
+| Lazy `EnsureAll` collects every `Error.InvalidInput` before construction | `Showcase.Domain/Aggregates/BankAccount.cs` (`TryCreate`) |
+| Indexed `TraverseAll` reports every invalid row at its original position | `Showcase.Application/Features/SubmitBatchTransfers/SubmitBatchTransfersCommand.cs` |
 | `Error.Conflict` for domain rule violations | `Showcase.Domain/Aggregates/BankAccount.cs` (`Deposit`, `Withdraw`) |
 | `Error.NotFound` with `ResourceRef` | `Showcase.Application/Persistence/IAccountRepository.cs` |
 | `HttpError.PreconditionFailed` via `Error.TransportFault` envelope | `ConditionalRequestExample` (sibling sample) |
-| `Error.Forbidden` with `policyId` | `Showcase.Application/Services/InMemoryIdentityVerifier.cs` |
 | `Error.Unexpected` with `faultId` | `Showcase.Mvc/Controllers/DiagnosticsController.cs` and `Showcase.MinimalApi/Endpoints/DiagnosticsEndpoints.cs` |
 | `Error.AuthenticationRequired` from a boundary adapter | `Showcase.Application/Services/InMemoryIdentityVerifier.cs` |
 | Plain ROP (`Ensure`/`Bind`/`Tap`/`Map`) | `Showcase.Domain/Aggregates/BankAccount.cs` (money operations) |
 | `Trellis.StateMachine` lifecycle modeling | `Showcase.Domain/Aggregates/BankAccount.cs` (`Freeze`, `Unfreeze`, `Close`) |
 | Invalid state transition → `Error.InvariantViolation` via `FireResult` | `BankAccount.Unfreeze` on an Active account |
 | Application/workflow boundary (events → AcceptChanges → persist) | `Showcase.Application/Workflows/BankingWorkflow.cs` |
+| `CheckAsync` / `CheckIfAsync` preserve the account through sequential fraud and MFA checks | `Showcase.Application/Workflows/BankingWorkflow.cs` (`SecureWithdrawAsync`) |
 | `Trellis.Asp.ToHttpResponse(...).AsActionResult<T>()` mapping (MVC) | `Showcase.Mvc/Controllers/*` |
 | `Trellis.Asp.ToHttpResponseAsync(...)` mapping (Minimal API) | `Showcase.MinimalApi/Endpoints/*` |
 | **Mediator pipeline** (`AddMediator` + `AddTrellisBehaviors`) | `Showcase.MinimalApi/Program.cs` |

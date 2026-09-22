@@ -60,48 +60,34 @@ public class BankingWorkflow
         account.Withdraw(amount, description)
             .TapAsync(updated => CommitAsync(updated, cancellationToken));
 
-    public async Task<Result<BankAccount>> SecureWithdrawAsync(
+    public Task<Result<BankAccount>> SecureWithdrawAsync(
         BankAccount account,
         Money amount,
         string verificationCode,
-        CancellationToken cancellationToken = default)
-    {
-        var fraudResult = await _fraud.AnalyzeTransactionAsync(account, amount, "withdrawal", cancellationToken);
-        if (fraudResult.TryGetError(out var fraudError))
-            return Result.Fail<BankAccount>(fraudError);
-
-        if (amount.Amount > MfaThreshold)
-        {
-            var mfaResult = await _identity.VerifyAsync(account.CustomerId, verificationCode, cancellationToken);
-            if (mfaResult.TryGetError(out var mfaError))
-                return Result.Fail<BankAccount>(mfaError);
-        }
-
-        return await account.Withdraw(amount, "Secure withdrawal")
+        CancellationToken cancellationToken = default) =>
+        Result.Ok(account)
+            .CheckAsync(current => _fraud.AnalyzeTransactionAsync(current, amount, "withdrawal", cancellationToken))
+            .CheckIfAsync(_ => amount.Amount > MfaThreshold,
+                current => _identity.VerifyAsync(current.CustomerId, verificationCode, cancellationToken))
+            .BindAsync(current => current.Withdraw(amount, "Secure withdrawal"))
             .TapAsync(updated => CommitAsync(updated, cancellationToken));
-    }
 
-    public async Task<Result<(BankAccount From, BankAccount To)>> TransferAsync(
+    public Task<Result<(BankAccount From, BankAccount To)>> TransferAsync(
         BankAccount fromAccount,
         BankAccount toAccount,
         Money amount,
         string description,
-        CancellationToken cancellationToken = default)
-    {
-        var fraudCheck = await (
+        CancellationToken cancellationToken = default) =>
+        (
             _fraud.AnalyzeTransactionAsync(fromAccount, amount, "transfer-out", cancellationToken),
             _fraud.AnalyzeTransactionAsync(toAccount, amount, "transfer-in", cancellationToken)
-        ).WhenAllAsync();
-        if (fraudCheck.TryGetError(out var combinedError))
-            return Result.Fail<(BankAccount From, BankAccount To)>(combinedError);
-
-        return await fromAccount.TransferTo(toAccount, amount, description)
-            .TapAsync((Func<(BankAccount From, BankAccount To), Task>)(async pair =>
+        ).WhenAllAsync()
+            .BindAsync(_ => fromAccount.TransferTo(toAccount, amount, description))
+            .TapAsync(async pair =>
             {
                 await CommitAsync(pair.From, cancellationToken);
                 await CommitAsync(pair.To, cancellationToken);
-            }));
-    }
+            });
 
     public Task<Result<BankAccount>> FreezeAsync(BankAccount account, string reason, CancellationToken cancellationToken = default) =>
         account.Freeze(reason)

@@ -76,9 +76,9 @@ public async Task<Result<OrderResponse>> Handle(CreateDraftOrderCommand cmd, Can
 {
     // 1. Sync precondition — produces a Result<Unit>, chains synchronously.
     var preconditions = Result.Ensure(cmd.LineItems.Count > 0,
-                            Error.InvalidInput.ForField("lineItems", ValidationCodes.ValueNotEmpty, "..."))
+                            () => Error.InvalidInput.ForField("lineItems", ValidationCodes.ValueNotEmpty, "..."))
                         .Bind(_ => Result.Ensure(!cmd.HasDuplicates,
-                            Error.InvalidInput.ForField("lineItems", "line-items.duplicate-product", "...")));
+                            () => Error.InvalidInput.ForField("lineItems", "line-items.duplicate-product", "...")));
 
     if (preconditions.IsFailure) return Result.Fail<OrderResponse>(preconditions.Error);
 
@@ -1358,6 +1358,7 @@ Side effects without altering the result. `Tap` runs on success; `TapOnFailure` 
 
 | Signature | Returns | Description |
 | --- | --- | --- |
+| `public static Result<TValue> Tap<TValue>(this Result<TValue> result, Action action)` | `Result<TValue>` | Sync side effect on success when the callback does not need the carried value. |
 | `public static Result<TValue> Tap<TValue>(this Result<TValue> result, Action<TValue> action)` | `Result<TValue>` | Sync side effect on success. |
 | `public static Task<Result<TValue>> TapAsync<TValue>(this Task<Result<TValue>> resultTask, Func<TValue, Task> func)` | `Task<Result<TValue>>` | `TapExtensionsAsync` covers all sync/Task/ValueTask × value-/no-value-lambda combinations (12 overloads). |
 | `public static Result<TValue> TapOnFailure<TValue>(this Result<TValue> result, Action<Error> action)` | `Result<TValue>` | Sync side effect on failure. |
@@ -1462,8 +1463,8 @@ have higher overload-resolution priority, preserving existing `EnsureAll()`,
 ```csharp
 Result<Quote> Validate(Quote q) =>
     Result.Ok(q).EnsureAll(
-        (x => x.Total > 0,            Error.InvalidInput.ForField("total", ValidationCodes.ValueGreaterThan)),
-        (x => x.Currency.Length == 3, Error.InvalidInput.ForField("currency", ValidationCodes.StringCurrencyCode)));
+        (x => x.Total > 0,            _ => Error.InvalidInput.ForField("total", ValidationCodes.ValueGreaterThan)),
+        (x => x.Currency.Length == 3, _ => Error.InvalidInput.ForField("currency", ValidationCodes.StringCurrencyCode)));
 
 Result<string> NotBlank(string? raw) =>
     raw.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(InputPointer.Root, ValidationCodes.ValueNotEmpty));
@@ -1985,7 +1986,7 @@ The encoded boundary must match the upstream ordering and tie-breaker. Use EF [`
 using Trellis;
 
 Result<int> Divide(int left, int right) =>
-    Result.Ensure(right != 0, Error.InvalidInput.ForRule("divisor.must-not-be-zero", "Right operand must not be zero"))
+    Result.Ensure(right != 0, () => Error.InvalidInput.ForRule("divisor.must-not-be-zero", "Right operand must not be zero"))
         .Map(_ => left / right);
 ```
 
@@ -1997,7 +1998,7 @@ using Trellis;
 Maybe<string> maybeEmail = Maybe.From("user@example.com");
 
 Result<string> emailResult = maybeEmail.ToResult(
-    Error.InvalidInput.ForField("email", ValidationCodes.ValueNotNull, "Email is required"));
+    () => Error.InvalidInput.ForField("email", ValidationCodes.ValueNotNull, "Email is required"));
 ```
 
 ### Reading errors without throwing
@@ -3001,7 +3002,7 @@ public static class Example
     {
         var orderId = OrderId.NewUniqueV7();
         var name = CustomerName.Create("Ada");
-        var lines = LineCount.TryCreate("42", CultureInfo.InvariantCulture).TryGetValue(out var v) ? v : null!;
+        var lines = LineCount.TryCreate("42", CultureInfo.InvariantCulture).GetValueOrThrow();
         var submittedAt = SubmittedAt.Parse("2026-01-15T12:00:00Z", CultureInfo.InvariantCulture);
         var state = OrderState.Create("submitted");
 

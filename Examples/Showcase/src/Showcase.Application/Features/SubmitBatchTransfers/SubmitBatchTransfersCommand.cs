@@ -37,33 +37,16 @@ public sealed record SubmitBatchTransfersCommand(
     IReadOnlyList<BatchTransferLine> Lines)
     : ICommand<Result<BatchTransferReceipt>>, IValidate
 {
-    public IResult Validate()
-    {
-        var violations = new List<FieldViolation>();
-
-        if (Lines.Count == 0)
-        {
-            violations.Add(new FieldViolation(
-                InputPointer.ForProperty(nameof(Lines)),
-                "batch.empty")
-            { Detail = "At least one line is required." });
-        }
-
-        for (var i = 0; i < Lines.Count; i++)
-        {
-            if (Lines[i].ToAccountId == FromId)
-            {
-                violations.Add(new FieldViolation(
-                    new InputPointer($"/Lines/{i}/ToAccountId"),
-                    "batch.self-transfer")
-                { Detail = "A line may not target the source account." });
-            }
-        }
-
-        return violations.Count == 0
-            ? Result.Ok()
-            : Result.Fail(new Error.InvalidInput(EquatableArray.Create([.. violations])));
-    }
+    public IResult Validate() =>
+        Result.Ensure(Lines.Count > 0,
+                () => Error.InvalidInput.ForField(nameof(Lines), "batch.empty", "At least one line is required."))
+            .Check(_ => Lines.TraverseAll((line, index) =>
+                Result.Ensure(line.ToAccountId != FromId,
+                    () => Error.InvalidInput.ForField(
+                        InputPointer.Root.AppendProperty(nameof(Lines)).AppendIndex(index)
+                            .AppendProperty(nameof(BatchTransferLine.ToAccountId)),
+                        "batch.self-transfer",
+                        "A line may not target the source account."))));
 }
 
 public sealed record BatchMetadata(string Reference, string Description);

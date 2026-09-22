@@ -23,9 +23,9 @@ public static class DistancePagination
         var context = ContextIdentity(scopeSnapshotId, originX, originY);
         var codec = CreateCodec(context);
         return PageRequest.TryCreate(cursor, limit)
-            .Bind(request => request.Decode(codec)
-                .Map(boundary => BuildPage(authorizedSnapshot, originX, originY,
-                    request.Size, boundary, context, codec)));
+            .BindZip(request => request.Decode(codec))
+            .Map((request, boundary) => BuildPage(authorizedSnapshot, originX, originY,
+                request.Size, boundary, context, codec));
     }
 
     private static ICursorCodec<DistanceBoundary> CreateCodec(string context) =>

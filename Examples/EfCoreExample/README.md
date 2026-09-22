@@ -1,9 +1,9 @@
-# EF Core Example
+﻿# EF Core Example
 
 This example shows how Trellis value objects and result-based workflows stay clean when persisted with Entity Framework Core.
 
 ## What You'll Learn
-- How `ApplyTrellisConventions` removes most value-converter boilerplate
+- How generated `ApplyTrellisConventionsFor<AppDbContext>()` removes most value-converter boilerplate
 - How validated value objects work for IDs, names, email addresses, and money
 - How an order state machine can be created, queried, and saved through EF Core
 

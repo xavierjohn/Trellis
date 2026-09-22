@@ -143,8 +143,8 @@ Result<string> CreateDisplayName(string first, string last, string email) =>
     FirstName.TryCreate(first)
         .Combine(LastName.TryCreate(last))
         .Combine(EmailAddress.TryCreate(email))
-        .Bind((firstName, lastName, emailAddress) =>
-            Result.Ok($"{firstName} {lastName} <{emailAddress}>"));
+        .Map((firstName, lastName, emailAddress) =>
+            $"{firstName} {lastName} <{emailAddress}>");
 ```
 
 That is usually clearer *and* more efficient than deeply nested sequential validation.

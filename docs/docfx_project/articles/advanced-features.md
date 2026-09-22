@@ -202,8 +202,8 @@ var combined = await Result.ParallelAsync(
     () => GetPreferencesAsync("42"))
     .WhenAllAsync();
 
-var dashboard = combined.Bind((user, orders, preferences) =>
-    Result.Ok(new Dashboard(user, orders, preferences)));
+var dashboard = combined.Map((user, orders, preferences) =>
+    new Dashboard(user, orders, preferences));
 ```
 
 ### What `ParallelAsync(...)` actually does

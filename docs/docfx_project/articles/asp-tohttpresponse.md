@@ -313,7 +313,7 @@ app.MapPut("/todos/{id:guid}/title", async (Guid id, RenameTodo cmd, ITodoServic
     await svc.GetAsync(id, ct)
              .EnsureAsync(t => t.OwnerId == cmd.OwnerId,
                           new Error.Forbidden("todos.rename"))
-             .BindAsync((t, token) => svc.RenameAsync(t.Id, cmd.NewTitle, token), ct)
+             .BindAsync(t => svc.RenameAsync(t.Id, cmd.NewTitle, ct))
              .ToHttpResponseAsync(opts => opts
                  .WithETag(t => $"{t.Version}")
                  .HonorPrefer()));

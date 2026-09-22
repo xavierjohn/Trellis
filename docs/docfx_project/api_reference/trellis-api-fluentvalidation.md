@@ -399,7 +399,7 @@ using Trellis.FluentValidation;
 // Custom FluentValidation projection that needs to build an InputPointer
 // without going through the Mediator adapter.
 var pointer = new InputPointer(JsonPointerNormalizer.ToJsonPointer("Items[0].Sku"));
-// pointer.RawValue == "/items/0/sku"
+// pointer.Path == "/items/0/sku"
 ```
 
 ## Cross-references

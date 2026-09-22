@@ -402,7 +402,7 @@ public Task<Result<Unit>> WelcomeAsync(string id, CancellationToken ct) =>
                 {
                     Detail = "Customer has no email address on file.",
                 }))))
-        .BindAsync((email, token) => SendWelcomeAsync(email, token), ct);
+        .BindAsync(email => SendWelcomeAsync(email, ct));
 ```
 
 For the "no payload" success case, prefer `Result<Unit>` (`Result.Ok()` returns `Result<Unit>`); `Maybe<T>` is for *values*, not for "success/failure".

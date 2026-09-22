@@ -351,8 +351,8 @@ public sealed class UserService(
 {
     public Task<Result<Unit>> RegisterAsync(RegisterUserRequest request, CancellationToken ct) =>
         validator.ValidateToResultAsync(request, cancellationToken: ct)
-            .MapAsync(valid => new User(valid.Email, valid.FirstName, valid.LastName), ct)
-            .BindAsync((user, token) => repository.AddAsync(user, token), ct);
+            .MapAsync(valid => new User(valid.Email, valid.FirstName, valid.LastName))
+            .BindAsync(user => repository.AddAsync(user, ct));
 }
 ```
 

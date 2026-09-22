@@ -16,6 +16,18 @@ using Trellis.Testing;
 /// </summary>
 public class AppDbContextTests
 {
+    [Fact]
+    public void TryCreate_Order_NullCustomerId_PreservesValidationPayload()
+    {
+        var result = Order.TryCreate(null!);
+
+        var field = result.Should().BeFailureOfType<Trellis.Error.InvalidInput>()
+            .Which.Fields.Items.Should().ContainSingle().Which;
+        field.Field.Path.Should().Be("/customerId");
+        field.ReasonCode.Should().Be(Trellis.ValidationCodes.ValueNotNull);
+        field.Detail.Should().Be("Customer ID is required");
+    }
+
     private static AppDbContext NewContext([System.Runtime.CompilerServices.CallerMemberName] string dbName = "")
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
