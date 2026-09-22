@@ -273,6 +273,25 @@ acc = acc.Combine(new Error.Forbidden("orders.write"));
 
 `Error.Aggregate` exposes three constructor overloads (`EquatableArray<Error>`, `IEnumerable<Error>`, `params Error[]`); all three throw `ArgumentException` if no errors are supplied, and all flatten nested aggregates.
 
+For collection validation, use `TraverseAll` to accumulate failures from every item.
+Its indexed overload keeps input positions available for precise error pointers:
+
+```csharp
+string?[] inputs = ["Ada", null, "Grace"];
+var names = inputs.TraverseAll((name, index) =>
+    name.ToResult(() => Error.InvalidInput.ForField(
+        InputPointer.Root.AppendProperty("names").AppendIndex(index),
+        ValidationCodes.ValueNotNull, "Name is required.")));
+// Failure identifies /names/1; every input is examined.
+```
+
+For asynchronous validation, use
+`TraverseAllAsync((item, index, ct) => ValidateAsync(item, index, ct), cancellationToken)`,
+where the validator is application-owned. Task and ValueTask selectors are awaited sequentially;
+the call-site token is optional, but indexed async selectors always take three parameters.
+This avoids ambiguity with the existing `(item, cancellationToken)` selector. Use the
+fail-fast `Traverse` family instead when later operations must not run after a failure.
+
 ## Boundary mapping
 
 Map an `Error` to an HTTP / Problem Details response with `result.ToHttpResponse(...)` from `Trellis.Asp`. The boundary decides HTTP status, companion headers, and the problem-details `type` / `kind`. That wire `kind` can differ from the domain `Kind` for backward compatibility — `Error.InvalidInput.Kind` is `invalid-input`, but the on-wire `kind` is `unprocessable-content`. For `Result<Unit>` the success branch emits `204 No Content`.

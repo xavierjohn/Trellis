@@ -109,7 +109,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Map `Maybe<T>` or composite value objects with EF Core | [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects), [Recipe 13](#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership) |
 | Add optional request/response fields | [Recipe 14](#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport) |
 | Read optional HTTP resources where 404 means absent | [Recipe 19](#recipe-19--http-client-result-safety-and-optional-reads) |
-| Choose between fail-fast and accumulating-error collection ops | [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) |
+| Choose between fail-fast and accumulating-error collection ops, including indexed validation | [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) |
 | Return synchronous `Result` chains from `Task`/`ValueTask` APIs | [Recipe 2](#recipe-2--command--handler--fluentvalidation--ef-persistence), then `AsTask()` / `AsValueTask()` in [trellis-api-core.md](trellis-api-core.md#task-adapter-family--resulttaskadapterextensions) |
 | Create HTTP-oriented resource errors | Use `ResourceRef.For<TResource>(id)` from [trellis-api-core.md](trellis-api-core.md#supporting-types) |
 | Point `ProblemDetails.Instance` at the resource that failed, instead of leaving it null or hand-formatting a URI | [Recipe 28](#recipe-28--synthesise-problemdetailsinstance-from-a-resourceref) |
@@ -1676,6 +1676,18 @@ public Result<IReadOnlyList<EmailAddress>> ValidateAddresses(IEnumerable<CreateC
 //                            Fields/Rules concatenate every per-item violation
 //          - Mixed kinds   → flat Error.Aggregate of every distinct error
 
+// Indexed accumulation: errors identify the original row, e.g. /contacts/2/email.
+public static Result<IReadOnlyList<EmailAddress>> ValidateAddressesIndexed(IEnumerable<CreateContactRow> rows) =>
+    rows.TraverseAll((row, index) => EmailAddress.TryCreate(row.Email,
+        InputPointer.Root.AppendProperty("contacts").AppendIndex(index).AppendProperty("email").Path));
+
+// Application-owned async validation receives each row, index, and token.
+public static Task<Result<IReadOnlyList<EmailAddress>>> ValidateAddressesIndexedAsync(
+    IEnumerable<CreateContactRow> rows,
+    Func<CreateContactRow, int, CancellationToken, Task<Result<EmailAddress>>> validateAsync,
+    CancellationToken ct) =>
+    rows.TraverseAllAsync((row, index, token) => validateAsync(row, index, token), ct);
+
 // 2) Fail-fast: stop on the first upstream miss.
 public Task<Result<IReadOnlyList<Order>>> LoadOrders(IEnumerable<OrderId> ids, CancellationToken ct) =>
     ids.TraverseAsync((id, c) => repo.LoadAsync(id, c), ct);
@@ -1687,7 +1699,8 @@ public Task<Result<IReadOnlyList<Order>>> LoadOrders(IEnumerable<OrderId> ids, C
 
 - `TraverseAll` / `SequenceAll` exist precisely to solve "show me every error". They use the same `Error.Combine` extension as `EnsureAll`, so two `InvalidInput` failures merge and unrelated failures flatten into `Error.Aggregate`.
 - `Traverse` / `Sequence` exist precisely to solve "stop wasting work on the first failure". They never *accumulate into* an `Error.Aggregate`; they propagate the first failure as-is (which means if a selector itself returns `Result.Fail<T>(new Error.Aggregate(...))`, that `Aggregate` flows through unchanged — not because Traverse created it, but because Traverse preserves whatever the failing selector produced).
-- `TraverseAll` ships the same async surface as `Traverse`: sync, `Task`, `Task` + `CancellationToken`, `ValueTask`, `ValueTask` + `CancellationToken`, plus a `Task<Result<Unit>>` + `CancellationToken` overload. `SequenceAll` is sync-only because `Sequence` is sync-only; if async siblings ever land for `Sequence`, they land for `SequenceAll` at the same time.
+- The unindexed `TraverseAll` family ships the same async surface as `Traverse`: sync, `Task`, `Task` + `CancellationToken`, `ValueTask`, `ValueTask` + `CancellationToken`, plus a `Task<Result<Unit>>` + `CancellationToken` overload. `SequenceAll` is sync-only because `Sequence` is sync-only; if async siblings ever land for `Sequence`, they land for `SequenceAll` at the same time.
+- Indexed `TraverseAll` accepts `(item, index)`; indexed `TraverseAllAsync` accepts `(item, index, token)` for Task, ValueTask, and no-payload Task selectors. The token argument is optional, but the lambda keeps all three parameters to distinguish it from the existing `(item, token)` overload. Indices are zero-based source positions, not success counts; async selectors run sequentially and failures do not stop subsequent items.
 - Already have an `IEnumerable<Result<T>>` (e.g. from a `Select` over a `TryCreate`)? Pick `.Sequence()` (fail-fast) or `.SequenceAll()` (accumulating); they're the identity-selector forms of `Traverse` / `TraverseAll`.
 
 **Anti-pattern → fix.**

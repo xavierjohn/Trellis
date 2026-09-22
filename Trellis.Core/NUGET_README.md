@@ -33,6 +33,7 @@ Result<string> email = Result.Ok("ada@example.com")
 - Treat blank optional text as absent with `Maybe.OptionalNonBlank`; nonblank input reaches the factory unchanged, while `Maybe.Optional` remains null-only.
 - Return a closed set of typed errors that adapters can map consistently.
 - Accumulate failures with `EnsureAll`, including lazy value-dependent error factories.
+- Validate collections with `TraverseAll((item, index) => ...)` or sequential `TraverseAllAsync((item, index, ct) => ..., cancellationToken)`, retaining input positions while accumulating failures.
 - Compose nested validation paths with `InputPointer.AppendProperty` and `AppendIndex`, preserving location and RFC 6901 escaping.
 - Build aggregates, entities, value objects, specifications, domain events, and integration-event contracts.
 - Define source-generated `Required*<TSelf>` scalar value objects.

@@ -26,6 +26,7 @@ Result<string> email = Result.Ok("ada@example.com")
 - Treat blank optional text as absent with `Maybe.OptionalNonBlank`; nonblank input reaches the factory unchanged, while `Maybe.Optional` remains null-only.
 - Return typed errors that map cleanly to APIs, logs, and tests.
 - Accumulate failures with `EnsureAll`, including lazy value-dependent error factories.
+- Validate collections with `TraverseAll((item, index) => ...)` or sequential `TraverseAllAsync((item, index, ct) => ..., cancellationToken)`, retaining input positions while accumulating failures.
 - Compose nested validation paths with `InputPointer.AppendProperty` and `AppendIndex`, preserving location and RFC 6901 escaping.
 - Use `AsTask()` / `AsValueTask()` to return synchronous `Result` chains from async-shaped APIs.
 - Build resource-aware HTTP errors tersely with `ResourceRef.For<TResource>(id)`.

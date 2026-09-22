@@ -1624,11 +1624,15 @@ Accumulating-error counterparts to `Traverse` / `Sequence`. Run the selector ove
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Result<IReadOnlyList<TOut>> TraverseAll<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Result<TOut>> selector)` | `Result<IReadOnlyList<TOut>>` | Accumulating sync traversal; folds every failure via `Error.Combine`. |
+| `public static Result<IReadOnlyList<TOut>> TraverseAll<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, int, Result<TOut>> selector)` | `Result<IReadOnlyList<TOut>>` | Indexed sync traversal; the selector receives the item's zero-based position in source enumeration order, including failed items. |
 | `public static Task<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Task<Result<TOut>>> selector)` | `Task<Result<IReadOnlyList<TOut>>>` | Accumulating async traversal; selectors are awaited sequentially. |
 | `public static Task<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<IReadOnlyList<TOut>>>` | Accumulating async traversal with cancellation; mirrors `TraverseAsync` shape. |
 | `public static ValueTask<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, ValueTask<Result<TOut>>> selector)` | `ValueTask<Result<IReadOnlyList<TOut>>>` | Accumulating `ValueTask` traversal for zero-allocation scenarios. |
 | `public static ValueTask<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, ValueTask<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `ValueTask<Result<IReadOnlyList<TOut>>>` | Accumulating `ValueTask` traversal with cancellation. |
 | `public static Task<Result<Unit>> TraverseAllAsync<TIn>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result<Unit>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Accumulating `Result<Unit>` traversal with cancellation; void-flavoured pipelines. |
+| `public static Task<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, int, CancellationToken, Task<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<IReadOnlyList<TOut>>>` | Indexed Task traversal; sequentially awaits every selector, forwarding its source index and token. |
+| `public static ValueTask<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, int, CancellationToken, ValueTask<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `ValueTask<Result<IReadOnlyList<TOut>>>` | Indexed ValueTask traversal with the same ordering, accumulation, and cancellation semantics. |
+| `public static Task<Result<Unit>> TraverseAllAsync<TIn>(this IEnumerable<TIn> source, Func<TIn, int, CancellationToken, Task<Result<Unit>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | Indexed no-payload Task traversal; returns no list of Unit values. |
 | `public static Result<IReadOnlyList<T>> SequenceAll<T>(this IEnumerable<Result<T>> source)` | `Result<IReadOnlyList<T>>` | Identity-selector accumulating sequence; visits every item, folds failures. |
 | `public static Result<Unit> SequenceAll(this IEnumerable<Result<Unit>> source)` | `Result<Unit>` | Accumulating `Sequence` over `Result<Unit>` for void-flavoured pipelines. |
 
@@ -1642,9 +1646,33 @@ Result<IReadOnlyList<EmailAddress>> emails =
 // Heterogeneous failures flatten into Error.Aggregate:
 Result<IReadOnlyList<Order>> orders =
     operations.SequenceAll();   // Result<NotFound> + Result<Conflict> → Error.Aggregate
+
+// Original positions remain available for per-item validation pointers.
+Result<IReadOnlyList<EmailAddress>> indexedEmails =
+    raw.TraverseAll((value, index) => EmailAddress.TryCreate(value,
+        InputPointer.Root.AppendProperty("emails").AppendIndex(index).Path));
 ```
 
-`TraverseAll` matches `Traverse`'s full async surface: sync, `Task`, `Task` + `CancellationToken`, `ValueTask`, `ValueTask` + `CancellationToken`, plus a `Task<Result<Unit>>` + `CancellationToken` overload. `SequenceAll` is sync-only because the existing `Sequence` is sync-only; if `Sequence` ever gains async siblings, `SequenceAll` follows at the same time.
+**Indexed traversal.** The source is enumerated once, and indices start at zero for each call
+and advance for every item, whether that item succeeds or fails. Empty input succeeds without
+invoking the selector. Values and accumulated errors retain source order; a single error is
+preserved unchanged, and persist-on-failure intent follows the existing aggregation rules.
+An index beyond `int.MaxValue` throws `OverflowException` rather than wrapping.
+
+Indexed async selectors always take `(item, index, cancellationToken)`. The call-site token
+is optional; ignore the third selector parameter with `_` when it is not needed. There is
+deliberately no indexed two-parameter async selector: it would collide with the existing
+`(item, cancellationToken)` shape. Inline async lambdas prefer the indexed Task overload;
+pass a ValueTask-returning delegate to select that overload.
+
+Async selectors are awaited sequentially, not run in parallel. Cancellation is checked
+before each invocation and the token is forwarded to the selector. Null sources/selectors
+throw `ArgumentNullException` before enumeration; async overloads carry these exceptions
+through their returned awaitables. Selector/enumeration exceptions and cancellation propagate
+rather than becoming validation failures, abandoning accumulated state. The unindexed sync
+overload has higher overload-resolution priority to preserve existing null-literal calls.
+
+The unindexed `TraverseAll` family matches `Traverse`'s full async surface: sync, `Task`, `Task` + `CancellationToken`, `ValueTask`, `ValueTask` + `CancellationToken`, plus a `Task<Result<Unit>>` + `CancellationToken` overload. Indexed traversal additionally supports sync, Task, ValueTask, and no-payload Task selectors as listed above. `SequenceAll` is sync-only because the existing `Sequence` is sync-only; if `Sequence` ever gains async siblings, `SequenceAll` follows at the same time.
 
 #### When / WhenAll — `WhenExtensions`, `WhenExtensionsAsync`, `WhenAllExtensionsAsync`
 

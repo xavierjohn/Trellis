@@ -1,6 +1,7 @@
 ﻿// Cookbook Recipe 20 — Fail-fast vs accumulating: Sequence/Traverse vs SequenceAll/TraverseAll.
 namespace CookbookSnippets.Recipe20;
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,6 +38,16 @@ public sealed class Recipe20CompiledSurface(IOrderRepository repo)
             _ = c.CanBeCanceled;
             return repo.LoadAsync(id, c);
         }, ct);
+
+    public static Result<IReadOnlyList<EmailAddress>> ValidateAddressesIndexed(IEnumerable<CreateContactRow> rows) =>
+        rows.TraverseAll((row, index) => EmailAddress.TryCreate(row.Email,
+            InputPointer.Root.AppendProperty("contacts").AppendIndex(index).AppendProperty("email").Path));
+
+    public static Task<Result<IReadOnlyList<EmailAddress>>> ValidateAddressesIndexedAsync(
+        IEnumerable<CreateContactRow> rows,
+        Func<CreateContactRow, int, CancellationToken, Task<Result<EmailAddress>>> validateAsync,
+        CancellationToken ct) =>
+        rows.TraverseAllAsync((row, index, token) => validateAsync(row, index, token), ct);
 }
 
 internal static class Recipe20Demonstrator
