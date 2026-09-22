@@ -16,6 +16,7 @@ audience: [developer]
 |---|---|---|
 | Use a ready-made validated email / URL / phone / ISO code | Built-in concrete VOs in `Trellis.Primitives` (`EmailAddress`, `Url`, `PhoneNumber`, `CountryCode`, ...) | [Built-in primitives](#built-in-primitives) |
 | Validate coordinates or calculate approximate geographic distance | `GeoCoordinate.TryCreate(...)` / `DistanceMetersTo(...)` | [Geographic coordinates](#geographic-coordinates) |
+| Model weekly availability or check an instant in a local time zone | `WeeklyPeriod` / `WeeklySchedule` | [Weekly availability](#weekly-availability) |
 | Wrap an ID, name, count, flag, or timestamp from your own domain | `partial class X : Required*<X>` from `Trellis.Core` | [Defining custom primitives](#defining-custom-primitives) |
 | Constrain a custom string length or numeric range | `[Trellis.StringLength(...)]` / `[Trellis.Range(...)]` on the partial class | [Validation](#validation) |
 | Add a regex / pattern check | Override `static partial void ValidateAdditional(...)` | [Validation](#validation) |
@@ -35,12 +36,12 @@ audience: [developer]
 
 ## Surface at a glance
 
-`Trellis.Primitives` ships 14 ready-made concrete value objects plus the composite JSON converter and OpenTelemetry registration extension that backs them. The `Required*<TSelf>` base classes, validation attributes, source generator, scalar JSON converter, and primitive trace source that you use to define **your own** primitives all live in `Trellis.Core` and are pulled in transitively.
+`Trellis.Primitives` ships 16 ready-made concrete value objects plus the composite JSON converter and OpenTelemetry registration extension that backs them. The `Required*<TSelf>` base classes, validation attributes, source generator, scalar JSON converter, and primitive trace source that you use to define **your own** primitives all live in `Trellis.Core` and are pulled in transitively.
 
 | Area | Key APIs | Lives in |
 |---|---|---|
 | Built-in scalar VOs | `Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Percentage`, `PhoneNumber`, `Slug`, `Url` | `Trellis.Primitives` |
-| Built-in structured VOs | `Money` (`amount` + `currency`), `GeoCoordinate` (`latitude` + `longitude`) | `Trellis.Primitives` |
+| Built-in structured VOs | `Money`, `GeoCoordinate`, `WeeklyPeriod`, `WeeklySchedule` | `Trellis.Primitives` |
 | Custom-primitive bases | `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredLong<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredBool<TSelf>`, `RequiredDateTime<TSelf>`, `RequiredDateTimeOffset<TSelf>`, `RequiredEnum<TSelf>` | `Trellis.Core` |
 | Validation and behavior attributes | `[Trellis.StringLength]`, `[Trellis.Range]`, `[Trellis.EnumValue]`, `[Trellis.NotDefault]`, `[Trellis.Trim]` | `Trellis.Core` |
 | Pattern / cross-field hook | `static partial void ValidateAdditional(value, fieldName, ref string? errorMessage)` | generator-emitted |
@@ -314,7 +315,7 @@ The converter discovers properties in declaration order, populates a matching `s
 
 ## Built-in primitives
 
-`Trellis.Primitives` ships 14 concrete value objects so you do not re-derive `Email`, `Money`, `GeoCoordinate`, or `Slug` in every project.
+`Trellis.Primitives` ships 16 concrete value objects so you do not re-derive `Email`, `Money`, `GeoCoordinate`, or `Slug` in every project.
 
 | Type | Category | Wire shape | Notes |
 |---|---|---|---|
@@ -332,6 +333,8 @@ The converter discovers properties in declaration order, populates a matching `s
 | `PhoneNumber` | scalar `string` | JSON string | Strips spaces / dashes / parentheses then validates E.164; `GetCountryCode()` returns `Maybe<string>` with the calling code when the prefix is ITU-T-assigned, or `Maybe<string>.None` when `TryCreate` accepts the E.164 *shape* but the prefix is unrecognized. |
 | `Slug` | scalar `string` | JSON string | Lowercase letters, digits, single-hyphen separators. |
 | `Url` | scalar `string` | JSON string | Absolute HTTP/HTTPS only; exposes `Scheme`, `Host`, `Port`, `Path`, `Query`, `IsSecure`, `ToUri()`. |
+| `WeeklyPeriod` | structured `ValueObject` | Application DTO | Day, start/end times, and explicit all-day marker. |
+| `WeeklySchedule` | structured `ValueObject` | Application DTO | IANA time zone and immutable, sorted, non-overlapping periods. |
 
 ### Geographic coordinates
 
@@ -355,6 +358,39 @@ while remaining unequal coordinate values. Distance handles that equivalence and
 `DistanceMetersTo` uses haversine with a fixed spherical Earth radius of **6,371,008.8 m**.
 It is not an ellipsoidal or altitude-aware calculation, and is not translated into SQL.
 EF spatial queries and nearby-query helpers are outside this primitive's scope.
+
+### Weekly availability
+
+```csharp
+var schedule = WeeklySchedule.Create("America/Los_Angeles",
+[
+    WeeklyPeriod.Create(DayOfWeek.Friday, new TimeOnly(22, 0), new TimeOnly(2, 0)),
+    WeeklyPeriod.CreateAllDay(DayOfWeek.Sunday)
+]);
+
+bool fridayNight = schedule.Contains(DayOfWeek.Saturday, new TimeOnly(1, 0));
+bool activeAtInstant = schedule.IsActiveAt(new DateTimeOffset(2026, 9, 26, 8, 0, 0, TimeSpan.Zero));
+```
+
+Use the corresponding `TryCreate` / `TryCreateAllDay` factories for untrusted values.
+Normal intervals are start-inclusive/end-exclusive; an earlier end crosses midnight.
+Equal endpoints do **not** imply all-day: use the explicit factory. Empty schedules mean
+always closed. Overlaps, including Saturday-to-Sunday wrap, are invalid; touching periods
+are allowed and are not merged. Full `TimeOnly` precision is retained.
+
+The schedule stores the resolved IANA zone ID and retains its rules. Zone data must be
+installed on the host; Windows-only zone names are rejected. Local-clock semantics mean
+both repeated DST times match, while skipped times never occur. An all-day period can
+therefore span 23 or 25 elapsed hours. This is not an elapsed-duration or job-scheduling API.
+
+For JSON and persistence, project to a DTO with the zone ID and each period's `Day`, `Start`,
+`End`, and `IsAllDay`, then rehydrate through the factories. Required/nullable DTO members
+must distinguish omitted values from valid midnight/Sunday values. Do not apply
+`CompositeValueObjectJsonConverter` to these types (collections and `TimeOnly` are unsupported),
+or assume direct EF owned-type materialization: they deliberately have no parameterless
+materialization constructors. A JSON snapshot or separate storage records remain an
+application decision. No `NextChange`, holiday overrides, or new EF mapping helper is included.
+See the [complete schedule contract](../api_reference/trellis-api-primitives.md#weeklyschedule).
 
 ### `MonetaryAmount` vs `Money`
 

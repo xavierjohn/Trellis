@@ -2,6 +2,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 /// <summary>
@@ -218,6 +219,10 @@ public static partial class Result
     /// preferred form for guard clauses in current guidance.
     /// </para>
     /// <para>
+    /// To construct an error only when the condition fails, use
+    /// <see cref="Ensure(bool, Func{Error})"/> with an error factory.
+    /// </para>
+    /// <para>
     /// For an asynchronous predicate use <see cref="EnsureAsync(Func{Task{bool}}, Error)"/>. For a value-threaded
     /// guard that preserves an existing <see cref="Result{TValue}"/> on success, use the
     /// <c>Result&lt;TValue&gt;.Ensure(predicate, error)</c> extension overloads on <see cref="EnsureExtensions"/>.
@@ -241,6 +246,7 @@ public static partial class Result
     ///     .Tap(() =&gt; { Status = OrderStatus.Cancelled; CancelledAt = now; });
     /// </code>
     /// </example>
+    [OverloadResolutionPriority(1)]
     public static Result<Unit> Ensure(bool flag, Error error)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
@@ -250,8 +256,29 @@ public static partial class Result
     }
 
     /// <summary>
+    /// Returns success when the condition is true, creating the error only when it is false.
+    /// </summary>
+    /// <param name="flag">The condition to assert.</param>
+    /// <param name="errorFactory">Creates the failure error; invoked exactly once on failure and never on success.</param>
+    /// <returns>A successful no-payload result or a failure containing the factory's error.</returns>
+    /// <exception cref="ArgumentNullException">The factory is null, or an invoked factory returns null.</exception>
+    /// <remarks>
+    /// The factory is required even when the condition passes. Factory exceptions propagate.
+    /// The eager overload has higher overload-resolution priority to preserve existing null-literal calls.
+    /// </remarks>
+    public static Result<Unit> Ensure(bool flag, Func<Error> errorFactory)
+    {
+        ArgumentNullException.ThrowIfNull(errorFactory);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
+        var result = flag ? Ok() : Fail(errorFactory());
+        result.LogActivityStatus();
+        return result;
+    }
+
+    /// <summary>
     /// Returns a successful no-payload result if the predicate is true; otherwise a failure with the specified error.
     /// </summary>
+    [OverloadResolutionPriority(1)]
     public static Result<Unit> Ensure(Func<bool> predicate, Error error)
     {
         ArgumentNullException.ThrowIfNull(predicate);
@@ -262,14 +289,59 @@ public static partial class Result
     }
 
     /// <summary>
+    /// Evaluates a predicate once and creates an error only when it returns false.
+    /// </summary>
+    /// <param name="predicate">The condition to evaluate.</param>
+    /// <param name="errorFactory">Creates the failure error after a false predicate result.</param>
+    /// <returns>A successful no-payload result or a failure containing the factory's error.</returns>
+    /// <exception cref="ArgumentNullException">A delegate is null, or an invoked factory returns null.</exception>
+    /// <remarks>
+    /// Both delegates are validated before the predicate is invoked. A passing or throwing
+    /// predicate never invokes the factory. Delegate exceptions propagate.
+    /// </remarks>
+    public static Result<Unit> Ensure(Func<bool> predicate, Func<Error> errorFactory)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(errorFactory);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
+        var result = predicate() ? Ok() : Fail(errorFactory());
+        result.LogActivityStatus();
+        return result;
+    }
+
+    /// <summary>
     /// Asynchronously evaluates the predicate and returns success if true; otherwise a failure with the specified error.
     /// </summary>
+    [OverloadResolutionPriority(1)]
     public static async Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Error error)
     {
         ArgumentNullException.ThrowIfNull(predicate);
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
         var isSuccess = await predicate().ConfigureAwait(false);
         var result = isSuccess ? Ok() : Fail(error);
+        result.LogActivityStatus();
+        return result;
+    }
+
+    /// <summary>
+    /// Awaits a predicate once and creates an error only when it completes with false.
+    /// </summary>
+    /// <param name="predicate">The asynchronous condition to evaluate.</param>
+    /// <param name="errorFactory">Synchronously creates the error after a false predicate result.</param>
+    /// <returns>A task containing a successful no-payload result or the factory's failure.</returns>
+    /// <exception cref="ArgumentNullException">A delegate is null, or an invoked factory returns null.</exception>
+    /// <remarks>
+    /// Both delegates are validated before the predicate is invoked. A passing, faulted, or
+    /// cancelled predicate never invokes the factory. Exceptions and cancellation propagate
+    /// through the returned task; no errors are created for them.
+    /// </remarks>
+    public static async Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Func<Error> errorFactory)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(errorFactory);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(Ensure));
+        var isSuccess = await predicate().ConfigureAwait(false);
+        var result = isSuccess ? Ok() : Fail(errorFactory());
         result.LogActivityStatus();
         return result;
     }

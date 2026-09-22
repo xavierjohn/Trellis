@@ -38,6 +38,7 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 - Lenient-by-default generated validation (rejects `null` only); opt into sentinel rejection with `[NotDefault]` and string trimming with `[Trim]` when domain strictness is required.
 - Validation and parsing rules that stay with the type instead of leaking into handlers and controllers.
 - `GeoCoordinate` validates finite latitude/longitude and calculates approximate in-memory great-circle distances in meters.
+- `WeeklyPeriod` and `WeeklySchedule` model recurring local-clock availability in an IANA time zone.
 
 ## Geographic coordinates
 
@@ -51,6 +52,28 @@ Use `TryCreate(latitude, longitude, fieldName)` for untrusted input. It accumula
 component errors; latitude is `-90..90` and longitude is `-180..180`, inclusive. JSON is
 `{ "latitude": number, "longitude": number }`. Values are not rounded or normalized.
 Distance uses a sphere of radius 6,371,008.8 meters, not an ellipsoidal model or SQL spatial query.
+
+## Weekly availability
+
+```csharp
+var schedule = WeeklySchedule.Create("America/Los_Angeles",
+[
+    WeeklyPeriod.Create(DayOfWeek.Friday, new TimeOnly(22, 0), new TimeOnly(2, 0)),
+    WeeklyPeriod.CreateAllDay(DayOfWeek.Sunday)
+]);
+bool available = schedule.IsActiveAt(new DateTimeOffset(2026, 9, 26, 8, 0, 0, TimeSpan.Zero));
+```
+
+Use `TryCreate` / `TryCreateAllDay` for untrusted input. Intervals include their start and
+exclude their end; an earlier end means the next day. Equal endpoints require the explicit
+all-day factory. Empty schedules are always closed. Overlaps are rejected, touching periods
+are retained, and input order is normalized without losing `TimeOnly` tick precision.
+
+The host must supply the IANA time-zone data. Repeated DST clock times both match; skipped
+clock times never occur. Use `Contains(day, time)` for a local-clock query without conversion.
+JSON and persistence use application-owned DTOs and validated rehydration, not direct
+composite JSON conversion or EF owned-type materialization. Holidays and job scheduling are
+outside this primitive's scope.
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/primitives.html)

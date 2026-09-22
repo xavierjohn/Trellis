@@ -47,7 +47,7 @@ Use this table before searching the long type catalog.
 | Return success/failure with payload | `Result.Ok(value)` / `Result.Fail<T>(error)` | [`Result<TValue>`](#public-readonly-struct-resulttvalue--iresulttvalue-iequatableresulttvalue-ifailurefactoryresulttvalue-ipersistonfailure) |
 | Fail but still persist staged work (worker pattern) | `Result.FailAfterCommit<T>(error)` / `Result.FailAfterCommit(error)` | [`Result`](#public-static-partial-class-result), [`IPersistOnFailure`](#public-interface-ipersistonfailure) |
 | Classify an `Error` for a worker/consumer retry loop | `error.Classify()` / `error.IsTransient()` / `error.IsPermanent()` / `error.IsFailFast()` / `error.GetRetryAdvice()` | [`Retry classification`](#retry-classification-errorretryextensions) |
-| Turn a boolean guard into a result | `Result.Ensure(condition, error)` or `.Ensure(...)` in a chain | [`Result`](#public-static-partial-class-result), [`Ensure family`](#ensure-family--ensureextensions-ensureextensionsasync-ensureallextensions-ensureallextensionsasync) |
+| Turn a boolean guard into a result | `Result.Ensure(condition, error)` or `Result.Ensure(condition, () => error)` for lazy errors; `.Ensure(...)` in a value-threaded chain | [`Result`](#public-static-partial-class-result), [`Ensure family`](#ensure-family--ensureextensions-ensureextensionsasync-ensureallextensions-ensureallextensionsasync) |
 | Start independent async result-producing operations concurrently | `Result.ParallelAsync(...)`, then combine the returned tasks | [`Result`](#public-static-partial-class-result) |
 | Combine multiple validated *typed* fields into a tuple | static `Result.Combine<T1,T2>(Result<T1>, Result<T2>)` or instance `r1.Combine(r2)`, then `.Map(...)` | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
 | Combine multiple boolean guards | `Result.Ensure(...).Combine(Result.Ensure(...))` then `.Bind(...)` (extension `Combine` aggregates errors and adds each value as the next tuple element; pass a `Result<Unit>` from a no-payload guard and ignore it with `_` in the next lambda) | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
@@ -251,8 +251,11 @@ Static factory and helper surface for `Result<TValue>`. There is no non-generic 
 > **`null` and `Result.Ok`.** `Ok<TValue>(TValue value)` is unconstrained and performs **no null check** — at runtime a `null` argument yields a *successful* result whose value is `null` (`IsSuccess == true`, `TryGetValue` returns `true` with a `null` out-value). Nullable-reference annotations catch only the obvious mistake: a literal `null` against a non-nullable `T` (e.g. `Result.Ok<string>(null)`) raises the nullable-reference *warning* `CS8625` — a build error only where warnings are promoted (`TreatWarningsAsErrors`, as this repo sets). They do **not** stop the common case — passing an already-nullable value, where inference widens `TValue` to the nullable type and the null success compiles silently. A success that wraps `null` is almost never intended: model optionality with `Maybe<T>` (absence is data) and a missing-but-required value with `Result.Fail(Error.NotFound.For<T>(id))`, not `Result.Ok(null)`.
 | `public static Result<Unit> FailAfterCommit(Error error)` | No-payload persist-on-failure factory (returns `Result<Unit>`). |
 | `public static Result<Unit> Ensure(bool flag, Error error)` | Converts a boolean to `Result<Unit>` |
+| `public static Result<Unit> Ensure(bool flag, Func<Error> errorFactory)` | Boolean guard with a lazy error factory; skips the factory on success, invokes it exactly once on failure. |
 | `public static Result<Unit> Ensure(Func<bool> predicate, Error error)` | Deferred predicate version |
+| `public static Result<Unit> Ensure(Func<bool> predicate, Func<Error> errorFactory)` | Evaluates the predicate once, then creates the error only when it returns false. |
 | `public static Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Error error)` | Async predicate version |
+| `public static Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Func<Error> errorFactory)` | Awaits the predicate once; invokes the synchronous error factory only after a false result. |
 | `public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)` | Converts thrown exceptions to failures |
 | `public static Task<Result<T>> TryAsync<T>(Func<Task<T>> func, Func<Exception, Error>? map = null)` | Async exception capture |
 | `public static Result<Unit> Try(Action work, Func<Exception, Error>? map = null)` | No-payload exception capture (returns `Result<Unit>`) |
@@ -721,6 +724,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `StringLanguageCode` | `string.language-code` | Not an ISO 639-1 alpha-2 code. |
 | `StringCurrencyCode` | `string.currency-code` | Not an ISO 4217 code. |
 | `StringCreditCard` | `string.credit-card` | Failed credit-card validation. |
+| `StringTimeZoneIana` | `string.time-zone-iana` | Not an IANA time-zone identifier resolvable on the current system. Windows-only identifiers are rejected. |
 | `NumberFinite` | `number.finite` | An already-parsed floating-point value is NaN or infinity where a finite number is required. No args; the non-finite input is not echoed into JSON. |
 | `NumberPrecision` | `number.precision` | A parsed decimal exceeded the allowed scale or precision. |
 | `NumberOverflow` | `number.overflow` | **Arithmetic** overflow, such as `Money.Add`. Malformed input is a `format.*` code. |
@@ -747,6 +751,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `EnumUndefined` | `enum.undefined` | A numeric value parsed but is not a defined member. Args: `allowed`, the same list the name failure carries — the remedy is identical, so a client is told its options whichever form it sent. |
 | `MoneyCurrencyMismatch` | `money.currency-mismatch` | An operation combined two different currencies. Args: `expected`, `actual`. |
 | `MoneyNegativeResult` | `money.negative-result` | The operation would produce a negative amount. |
+| `SchedulePeriodsOverlap` | `schedule.periods-overlap` | Weekly periods overlap, including across the week boundary; touching endpoints are allowed. |
 | `PageSizeOutOfRange` | `page-size.out-of-range` | Page size not positive, or above the maximum. |
 | `HttpBadRequest` | `http.bad-request` | An upstream HTTP response was 400. |
 | `HttpUnprocessableContent` | `http.unprocessable-content` | An upstream HTTP response was 422. |
@@ -1411,6 +1416,24 @@ Task<Result<Settings>> Load(UserId id) =>
 #### Ensure family — `EnsureExtensions`, `EnsureExtensionsAsync`, `EnsureAllExtensions`, `EnsureAllExtensionsAsync`
 
 Predicate-based validation. `Ensure` short-circuits on the first failed predicate; `EnsureAll` accumulates every failure via `Error.Combine` (homogeneous `Error.InvalidInput` failures merge into a single `Error.InvalidInput`; heterogeneous failures fold into `Error.Aggregate`) for applicative-style validation.
+
+**Static guards need no receiver.** `Result.Ensure(condition, () => error)` returns
+`Result<Unit>` and constructs no error on success. The predicate and async-predicate
+static overloads also accept `Func<Error>`. Factories run exactly once on a false result,
+never while an async predicate is pending or after a predicate throws, faults, or cancels.
+Null delegates throw `ArgumentNullException` before evaluating the predicate, even for a
+passing guard. A factory returning null on failure also throws `ArgumentNullException`
+(parameter `error`), consistent with `Result.Fail` and the value-threaded lazy `Ensure`.
+Delegate exceptions and cancellation propagate; async failures are carried by the returned
+task. Tracing retains the static guard's `Ensure` activity name and success/failure status.
+The eager `Error` overloads have higher overload-resolution priority so existing bare
+null-literal calls remain unambiguous and keep their existing behavior.
+
+```csharp
+var guard = Result.Ensure(end != start, () =>
+    Error.InvalidInput.ForField("end", ValidationCodes.ValueMustNotEqual,
+        ValidationArgs.Of("comparisonProperty", "start"), "End must differ from start."));
+```
 
 | Signature | Returns | Description |
 | --- | --- | --- |

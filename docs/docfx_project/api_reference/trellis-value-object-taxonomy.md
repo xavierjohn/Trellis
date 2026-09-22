@@ -113,6 +113,13 @@ Concrete **structured** value object (`Latitude` + `Longitude`) for finite geogr
 coordinates. Component equality is exact; `DistanceMetersTo` is an approximate spherical
 great-circle calculation in memory, not a SQL spatial operation.
 
+### `WeeklyPeriod` and `WeeklySchedule`
+
+Concrete **structured** values for weekly local-clock availability. `WeeklyPeriod` holds a
+day, start/end times, and an explicit all-day marker. `WeeklySchedule` holds an IANA zone
+and an immutable sorted set of non-overlapping periods. Empty means always closed.
+Use DTOs for JSON and persistence, not the scalar or composite JSON converters.
+
 ## Base class hierarchy
 
 - **Scalar value objects**
@@ -142,7 +149,7 @@ great-circle calculation in memory, not a SQL spatial operation.
 - **Symbolic value objects**
   - `RequiredEnum<TSelf>` is separate from `ScalarValueObject<TSelf, T>` but still uses `Value` as its canonical public identity and implicitly unwraps to it.
 - **Structured value objects**
-  - `Money`, `GeoCoordinate` -> `ValueObject`
+  - `Money`, `GeoCoordinate`, `WeeklyPeriod`, `WeeklySchedule` -> `ValueObject`
 - **Optionality wrappers**
   - `Maybe<T>` belongs to `Trellis.Core`; it wraps presence/absence and is not a value object category peer to scalar/symbolic/structured types.
 
@@ -169,6 +176,8 @@ For a `partial` `Required*<TSelf>` type the primitive generator emits the `IScal
 | `RequiredEnum<TSelf>` derivatives | Symbolic | `Value : string` | JSON string | Finite symbolic set with behavior. |
 | `Money` | Structured | `Amount` + `Currency` | JSON object | Use for multi-currency scenarios. |
 | `GeoCoordinate` | Structured | `Latitude` + `Longitude` | JSON object | Validated decimal degrees; approximate distance in meters. |
+| `WeeklyPeriod` | Structured | `Day` + `Start` + `End` + `IsAllDay` | Application DTO | Half-open local-clock interval; explicit all-day factory. |
+| `WeeklySchedule` | Structured | `TimeZoneId` + sorted `Periods` | Application DTO | IANA-zone weekly membership, including overnight and DST cases. |
 
 ### `Money` vs `MonetaryAmount`
 

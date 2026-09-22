@@ -62,7 +62,7 @@
 ///   </description>
 /// </item>
 /// <item>
-///   <term><c>enum.*</c>, <c>money.*</c></term>
+///   <term><c>enum.*</c>, <c>money.*</c>, <c>schedule.*</c></term>
 ///   <description>Domain-specific.</description>
 /// </item>
 /// </list>
@@ -168,6 +168,9 @@ public static class ValidationCodes
     /// <summary>Not a valid credit card number.</summary>
     public const string StringCreditCard = "string.credit-card";
 
+    /// <summary>Not an IANA time-zone identifier available on the current system.</summary>
+    public const string StringTimeZoneIana = "string.time-zone-iana";
+
     // ---- number.* — validation of an already-parsed number ----
 
     /// <summary>A floating-point number is NaN or infinity where a finite value is required.</summary>
@@ -266,6 +269,11 @@ public static class ValidationCodes
 
     /// <summary>An operation would produce a negative amount where none is permitted.</summary>
     public const string MoneyNegativeResult = "money.negative-result";
+
+    // ---- schedule.* ----
+
+    /// <summary>Weekly schedule periods overlap, including across the week boundary.</summary>
+    public const string SchedulePeriodsOverlap = "schedule.periods-overlap";
 
     // ---- Pre-existing codes, brought under the convention ----
     //
