@@ -96,21 +96,11 @@ public sealed class Product : Aggregate<ProductId>
     public static Result<Product> TryCreateExisting(ProductId id, ProductName name, Sku sku) =>
         Result.Ok(new Product(id, name, sku));
 
-    public static Product Create(ProductName name, Sku sku)
-    {
-        var result = TryCreate(name, sku);
-        if (!result.TryGetValue(out var product))
-            throw new InvalidOperationException(result.Error!.Detail);
-        return product;
-    }
+    public static Product Create(ProductName name, Sku sku) =>
+        TryCreate(name, sku).GetValueOrThrow();
 
-    public static Product CreateExisting(ProductId id, ProductName name, Sku sku)
-    {
-        var result = TryCreateExisting(id, name, sku);
-        if (!result.TryGetValue(out var product))
-            throw new InvalidOperationException(result.Error!.Detail);
-        return product;
-    }
+    public static Product CreateExisting(ProductId id, ProductName name, Sku sku) =>
+        TryCreateExisting(id, name, sku).GetValueOrThrow();
 }
 ```
 
@@ -156,13 +146,8 @@ var rebuilt = Product.TryCreateExisting(knownId, name, sku); // ID preserved, no
 `Create` / `CreateExisting` are thin wrappers around the `Try*` variants. Use them only for known-good data — fixtures, seeders, inline test setup. Production code paths should consume `Result<TAgg>` directly so the failure stays observable.
 
 ```csharp
-public static Product Create(ProductName name, Sku sku)
-{
-    var result = TryCreate(name, sku);
-    if (!result.TryGetValue(out var product))
-        throw new InvalidOperationException(result.Error!.Detail);
-    return product;
-}
+public static Product Create(ProductName name, Sku sku) =>
+    TryCreate(name, sku).GetValueOrThrow();
 ```
 
 ## Centralizing validation
@@ -170,37 +155,19 @@ public static Product Create(ProductName name, Sku sku)
 Both creation paths must enforce the same rules. Extract them into a private static method that returns `Result<Unit>` (returned by the parameterless `Result.Ok()` / `Result.Fail(error)` overloads), and call it before constructing the aggregate.
 
 ```csharp
-public static Result<Product> TryCreate(ProductName name, Sku sku)
-{
-    var validation = Validate(name, sku);
-    if (validation.IsFailure)
-        return Result.Fail<Product>(validation.Error!);
+public static Result<Product> TryCreate(ProductName name, Sku sku) =>
+    Validate(name, sku)
+        .Map(_ => new Product(ProductId.NewUniqueV7(), name, sku))
+        .Tap(product => product.DomainEvents.Add(new ProductCreated(product.Id, DateTimeOffset.UtcNow)));
 
-    var product = new Product(ProductId.NewUniqueV7(), name, sku);
-    product.DomainEvents.Add(new ProductCreated(product.Id, DateTimeOffset.UtcNow));
-    return Result.Ok(product);
-}
+public static Result<Product> TryCreateExisting(ProductId id, ProductName name, Sku sku) =>
+    Validate(name, sku)
+        .Map(_ => new Product(id, name, sku));
 
-public static Result<Product> TryCreateExisting(ProductId id, ProductName name, Sku sku)
-{
-    var validation = Validate(name, sku);
-    if (validation.IsFailure)
-        return Result.Fail<Product>(validation.Error!);
-
-    return Result.Ok(new Product(id, name, sku));
-}
-
-private static Result<Unit> Validate(ProductName name, Sku sku)
-{
-    if (sku.Value.StartsWith("LEGACY-", StringComparison.OrdinalIgnoreCase))
-        return Result.Fail(new Error.InvalidInput(EquatableArray.Create(
-            new FieldViolation(InputPointer.ForProperty(nameof(sku)), "sku.legacy-prefix")
-            {
-                Detail = "SKU cannot start with LEGACY.",
-            })));
-
-    return Result.Ok();
-}
+private static Result<Unit> Validate(ProductName name, Sku sku) =>
+    Result.Ensure(
+        !sku.Value.StartsWith("LEGACY-", StringComparison.OrdinalIgnoreCase),
+        () => Error.InvalidInput.ForField(nameof(sku), "sku.legacy-prefix", "SKU cannot start with LEGACY."));
 ```
 
 > [!TIP]
@@ -268,8 +235,8 @@ public sealed class CreateProductHandler(IProductRepository repo)
         Result.Combine(
                 ProductName.TryCreate(cmd.Name, fieldName: nameof(cmd.Name)),
                 Sku.TryCreate(cmd.Sku, fieldName: nameof(cmd.Sku)))
-            .Bind(parts => Product.TryCreate(parts.Item1, parts.Item2))
-            .BindAsync((product, token) => repo.AddAsync(product, token), ct)
+            .Bind(Product.TryCreate)
+            .BindAsync(product => repo.AddAsync(product, ct))
             .AsUnitAsync();
 }
 

@@ -70,22 +70,20 @@ public sealed class InMemoryAccountRepository : IAccountRepository
     public Result<Page<BankAccount>> GetPage(int? limit, string? cursor) =>
         PageRequest.TryCreate(cursor, limit, max: ServerCap, defaultSize: 10).Bind(GetPage);
 
-    private Result<Page<BankAccount>> GetPage(PageRequest request)
-    {
-        var decoded = request.Decode(CursorCodec.Scalar<Guid>());
-        if (!decoded.TryGetValue(out var boundary, out var error))
-            return Result.Fail<Page<BankAccount>>(error);
-        Guid? afterId = boundary.TryGetValue(out var id) ? id : null;
-
-        lock (_gate)
+    private Result<Page<BankAccount>> GetPage(PageRequest request) =>
+        request.Decode(CursorCodec.Scalar<Guid>()).Map(boundary =>
         {
-            var overFetched = _accounts.Values
-                .OrderBy(a => a.Id.Value)
-                .Where(a => afterId is not Guid g || a.Id.Value.CompareTo(g) > 0)
-                .Take(request.Size.Applied + 1)
-                .ToList();
+            Guid? afterId = boundary.AsNullable();
 
-            return Result.Ok(PageBuilder.FromOverFetch(overFetched, request.Size, a => CursorCodec.Encode(a.Id.Value)));
-        }
-    }
+            lock (_gate)
+            {
+                var overFetched = _accounts.Values
+                    .OrderBy(a => a.Id.Value)
+                    .Where(a => afterId is not Guid g || a.Id.Value.CompareTo(g) > 0)
+                    .Take(request.Size.Applied + 1)
+                    .ToList();
+
+                return PageBuilder.FromOverFetch(overFetched, request.Size, a => CursorCodec.Encode(a.Id.Value));
+            }
+        });
 }

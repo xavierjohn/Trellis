@@ -848,7 +848,8 @@ public partial class Address : ValueObject
     }
 
     private static InputPointer Pointer(string? owner, string leaf) =>
-        owner is null ? InputPointer.ForProperty(leaf) : new InputPointer($"/{owner}/{leaf}");
+        (owner is null ? InputPointer.Root : InputPointer.ForProperty(owner))
+            .AppendProperty(leaf);
 
     protected override void GetEqualityComponents(ref EqualityComponents components)
     {

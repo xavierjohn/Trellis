@@ -1028,9 +1028,9 @@ public sealed record GetOrderQuery(OrderId Id)
     public IResult Validate() => Result.Ok();
 
     public IResult Authorize(Actor actor, Order resource) =>
-        resource.OwnerId == actor.Id
-            ? Result.Ok()
-            : Result.Fail(new Error.Forbidden("orders.read") { Detail = "Only the owner can view the order." });
+        Result.Ensure(
+            resource.OwnerId == actor.Id,
+            () => new Error.Forbidden("orders.read") { Detail = "Only the owner can view the order." });
 }
 
 public sealed class OrderResourceLoader : SharedResourceLoaderById<Order, OrderId>

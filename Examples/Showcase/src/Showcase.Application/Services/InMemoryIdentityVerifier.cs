@@ -18,23 +18,23 @@ public sealed class InMemoryIdentityVerifier : IIdentityVerifier
     {
         if (string.IsNullOrWhiteSpace(verificationCode))
         {
-            return Task.FromResult(Result.Fail(Unauthorized("Verification code is required.")));
+            return Result.Fail(Unauthorized("Verification code is required.")).AsTask();
         }
 
         if (verificationCode.Length != 6 || !verificationCode.All(char.IsDigit))
         {
-            return Task.FromResult(Result.Fail(Error.InvalidInput.ForField(
+            return Result.Fail(Error.InvalidInput.ForField(
                 "verificationCode",
                 ValidationCodes.StringPattern,
-                "Verification code must be exactly six digits.")));
+                "Verification code must be exactly six digits.")).AsTask();
         }
 
         if (verificationCode == "000000")
         {
-            return Task.FromResult(Result.Fail(Unauthorized("Verification code rejected.")));
+            return Result.Fail(Unauthorized("Verification code rejected.")).AsTask();
         }
 
-        return Task.FromResult(Result.Ok());
+        return Result.Ok().AsTask();
     }
 
     private static Error.AuthenticationRequired Unauthorized(string detail) =>

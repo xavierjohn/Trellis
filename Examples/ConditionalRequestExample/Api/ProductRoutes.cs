@@ -99,7 +99,7 @@ public static class RequiredETagRoutes
             db.Products
                 .FirstOrDefaultResultAsync(p => p.Id == id, new Error.NotFound(ResourceRef.For<Product>(id)) { Detail = "Product not found." })
                 .RequireETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
-                .BindAsync(p => Task.FromResult(p.UpdatePrice(request.Price)))
+                .BindAsync(p => p.UpdatePrice(request.Price))
                 .CheckAsync(_ => db.SaveChangesResultUnitAsync())
                 .MapAsync(p => (WriteOutcome<Product>)new WriteOutcome<Product>.Updated(p, RepresentationMetadata.WithStrongETag(p.ETag)))
                 .ToHttpResponseAsync(

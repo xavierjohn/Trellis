@@ -57,9 +57,7 @@ public sealed class CustomersControllerB(ISender sender) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCustomerRequestB request, CancellationToken ct)
     {
-        var shipping = request.ShippingAddress is null
-            ? Maybe<ShippingAddress>.None
-            : Maybe.From(request.ShippingAddress);
+        var shipping = Maybe.From(request.ShippingAddress);
 
         var result = await sender.Send(new CreateCustomerCommandB(request.Email, shipping), ct);
         return result.IsSuccess ? Ok() : BadRequest();

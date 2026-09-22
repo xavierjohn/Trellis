@@ -147,8 +147,8 @@ static Result<string> Register(string first, string last, string email)
 
     return nameResult
         .Combine(emailResult)
-        .Bind((firstName, lastName, emailAddress) =>
-            Result.Ok($"{firstName} {lastName} <{emailAddress}>"));
+        .Map((firstName, lastName, emailAddress) =>
+            $"{firstName} {lastName} <{emailAddress}>");
 }
 ```
 
@@ -198,9 +198,9 @@ static Result<int> DoubleIfPositive(Result<int> result) =>
         .Map(value => value * 2);
 
 static Result<int> ValidatePositive(int value) =>
-    value > 0
-        ? Result.Ok(value)
-        : new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be positive." };
+    Result.Ok(value)
+        .Ensure(number => number > 0,
+            _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be positive." });
 ```
 
 Named methods give you cleaner stack traces and more searchable logs.

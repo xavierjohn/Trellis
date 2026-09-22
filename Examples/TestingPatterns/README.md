@@ -11,11 +11,11 @@ runtime application — it is a sample of *how to test* code that uses Trellis.
 |---|---|
 | `AsyncUsageExamples.cs` | Async patterns with `Result<T>` / `Task<Result<T>>` |
 | `MaybeExamples.cs` | `Maybe<T>` test patterns and equality |
-| `ParallelExamples.cs` | xUnit v3 parallel collection setup |
+| `ParallelExamples.cs` | Tuple / factory parallel loads, dependent stages, and short-circuiting |
 | `MULTI_STAGE_PARALLEL_EXAMPLES.md` | Long-form notes on multi-stage parallel test design |
 | `DomainDrivenDesignSamplesTests.cs` | Aggregate / event / repository test patterns |
 | `FluentValidationSamplesTests.cs` | `Trellis.FluentValidation` adapter test patterns |
-| `ValidationExample.cs` | End-to-end validation test |
+| `ValidationExample.cs` | Accumulating validation with `Combine`, lazy guards, and pure `Map` projections |
 | `TraceFixture.cs` | OpenTelemetry trace assertion fixture |
 | `ValueObject/FirstName.cs`, `LastName.cs` | Test-local VOs used by the examples above |
 

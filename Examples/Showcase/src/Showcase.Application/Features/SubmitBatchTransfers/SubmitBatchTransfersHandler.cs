@@ -24,11 +24,11 @@ public sealed class SubmitBatchTransfersHandler
         // directly (e.g., from a test or a misconfigured pipeline) rather than throwing.
         if (command.Lines.Count == 0)
         {
-            return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(
+            return Result.Fail<BatchTransferReceipt>(
                 Error.InvalidInput.ForField(
                     nameof(command.Lines),
                     "batch.empty",
-                    "At least one line is required.")));
+                    "At least one line is required.")).AsValueTask();
         }
 
         var currency = command.Lines[0].Amount.Currency.Value;
@@ -37,21 +37,18 @@ public sealed class SubmitBatchTransfersHandler
         {
             if (!string.Equals(line.Amount.Currency.Value, currency, System.StringComparison.Ordinal))
             {
-                return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(
+                return Result.Fail<BatchTransferReceipt>(
                     Error.InvalidInput.ForField(
                         nameof(command.Lines),
                         "batch.mixed-currency",
-                        "All lines in a batch must share a single currency.")));
+                        "All lines in a batch must share a single currency.")).AsValueTask();
             }
 
             sum += line.Amount.Amount;
         }
 
-        var totalResult = Money.TryCreate(sum, currency);
-        if (!totalResult.TryGetValue(out var total, out var totalError))
-            return ValueTask.FromResult(Result.Fail<BatchTransferReceipt>(totalError));
-
-        return ValueTask.FromResult(Result.Ok(
-            new BatchTransferReceipt(command.Metadata.Reference, command.Lines.Count, total)));
+        return Money.TryCreate(sum, currency)
+            .Map(total => new BatchTransferReceipt(command.Metadata.Reference, command.Lines.Count, total))
+            .AsValueTask();
     }
 }

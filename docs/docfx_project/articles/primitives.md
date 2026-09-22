@@ -400,16 +400,21 @@ See the [complete schedule contract](../api_reference/trellis-api-primitives.md#
 | `Money` | Currency is part of the value's identity. | structured (`amount` + `currency`) |
 
 ```csharp
+using Trellis;
 using Trellis.Primitives;
 
 var subtotal = MonetaryAmount.Create(120.00m);
-var tax      = subtotal.Multiply(0.08m).TryGetValue(out var t) ? t : MonetaryAmount.Zero;
-var total    = subtotal.Add(tax).TryGetValue(out var s) ? s : subtotal;
+var total = subtotal.Multiply(0.08m)
+    .Bind(tax => subtotal.Add(tax));
 
 var price    = Money.Create(120.00m, "USD");
 var shipping = Money.Create(10.00m, "USD");
-var grand    = price.Add(shipping).TryGetValue(out var g) ? g : price;
+var grand = price.Add(shipping);
 ```
+
+These calculations return `Result` values. Continue the pipeline or handle the
+failure at the boundary; substituting zero tax or the original price would hide
+an invalid calculation.
 
 For full signatures of every built-in (`Add`, `Multiply`, `Allocate`, `Sum`, `FromFraction`, ...), see [trellis-api-primitives.md](../api_reference/trellis-api-primitives.md).
 

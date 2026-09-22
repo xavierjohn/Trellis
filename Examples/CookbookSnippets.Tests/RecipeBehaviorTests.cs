@@ -106,6 +106,40 @@ public class RecipeBehaviorTests
     }
 
     [Fact]
+    public async Task Return_SingleMissingProduct_PreservesBareNotFound()
+    {
+        var product = Returns.Product.ForTesting(Returns.ProductId.NewUniqueV7(), 6);
+        var missingId = Returns.ProductId.NewUniqueV7();
+        var order = Returns.Order.ForTesting(Returns.OrderId.NewUniqueV7(),
+            [new(product.Id, 3), new(missingId, 1)]);
+        var handler = new Returns.ReturnOrderHandler(new OrderRepository(order),
+            new ProductRepository(product), TimeProvider.System);
+
+        var result = await handler.Handle(new(order.Id, "damaged"), TestContext.Current.CancellationToken);
+
+        var failure = result.Should().BeFailureOfType<Error.NotFound>().Which;
+        failure.Resource.Should().Be(ResourceRef.For<Returns.Product>(missingId));
+        product.Reserved.Should().Be(6);
+        order.IsReturned.Should().BeFalse();
+        order.UncommittedEvents().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Rehydrate_LegacyContact_MissingAndInvalidRowsStayOnResultTrack()
+    {
+        var id = Recipe30.ContactId.NewUniqueV7();
+        var empty = new Recipe30.LegacyContactRepository([]);
+        var invalid = new Recipe30.LegacyContactRepository(
+            [new Recipe30.ContactRow { Id = id.Value, FirstName = null, Email = null }]);
+
+        (await empty.FindByIdAsync(id, TestContext.Current.CancellationToken))
+            .Should().BeFailureOfType<Error.NotFound>();
+        var failure = (await invalid.FindByIdAsync(id, TestContext.Current.CancellationToken))
+            .Should().BeFailureOfType<Error.InvalidInput>().Which;
+        failure.Fields.Items.Select(field => field.Field.Path).Should().Equal(["/firstName", "/email"]);
+    }
+
+    [Fact]
     public async Task Return_AlreadyReturnedOrder_DoesNotReleaseStockAgain()
     {
         var product = Returns.Product.ForTesting(Returns.ProductId.NewUniqueV7(), 6);

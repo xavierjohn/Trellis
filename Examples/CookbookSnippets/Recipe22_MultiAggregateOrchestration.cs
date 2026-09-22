@@ -33,7 +33,7 @@ public sealed class Product : Aggregate<ProductId>
     public Result<Trellis.Unit> CanReleaseStock(long quantity) =>
         Result.Ensure(
             quantity > 0 && quantity <= Reserved,
-            Error.InvalidInput.ForRule(
+            () => Error.InvalidInput.ForRule(
                 "stock.release-exceeds-reserved",
                 $"Cannot release {quantity} against {Reserved} reserved."));
 
@@ -106,11 +106,11 @@ public sealed class ReturnOrderHandler(
         {
             Detail = "Product referenced by line item is missing — cannot release stock.",
         };
-        var missing = productIds.Where(id => !byId.ContainsKey(id)).ToArray();
-        if (missing.Length == 1)
-            return Result.Fail<Order>(NotFoundFor(missing[0]));
-        if (missing.Length > 1)
-            return Result.Fail<Order>(new Error.Aggregate(missing.Select(NotFoundFor).ToArray()));
+        var presence = productIds
+            .Select(id => Result.Ensure(byId.ContainsKey(id), () => NotFoundFor(id)))
+            .SequenceAll();
+        if (presence.IsFailure)
+            return Result.Fail<Order>(presence.Error);
 
         // All related aggregates reachable. Preflight the per-aggregate domain invariants
         // (Recipe 25) before any mutation. Releasing stock on Product A and then failing on

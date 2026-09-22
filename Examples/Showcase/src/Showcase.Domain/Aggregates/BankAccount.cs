@@ -92,45 +92,35 @@ public class BankAccount : Aggregate<AccountId>
     {
         timeProvider ??= TimeProvider.System;
 
-        var violations = new List<FieldViolation>();
-        if (initialDeposit.Amount < 0)
-            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(initialDeposit)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Initial deposit must be non-negative" });
-        if (dailyWithdrawalLimit.Amount <= 0)
-            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(dailyWithdrawalLimit)), ValidationCodes.ValueGreaterThan) { Detail = "Daily withdrawal limit must be positive" });
-        if (overdraftLimit.Amount < 0)
-            violations.Add(new FieldViolation(InputPointer.ForProperty(nameof(overdraftLimit)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Overdraft limit must be non-negative" });
-
-        if (violations.Count > 0)
-            return Result.Fail<BankAccount>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())));
-
-        var account = new BankAccount(
-            AccountId.NewUniqueV4(),
-            customerId,
-            accountType,
-            initialDeposit,
-            dailyWithdrawalLimit,
-            overdraftLimit,
-            AccountStatus.Active,
-            timeProvider);
-
-        account.DomainEvents.Add(new AccountOpened(
-            account.Id,
-            customerId,
-            accountType,
-            initialDeposit,
-            timeProvider.GetUtcNow()));
-
-        return Result.Ok(account);
+        return Result.Ok()
+            .EnsureAll(
+                (_ => initialDeposit.Amount >= 0, _ => Error.InvalidInput.ForField(
+                    nameof(initialDeposit), ValidationCodes.ValueGreaterThanOrEqual, "Initial deposit must be non-negative")),
+                (_ => dailyWithdrawalLimit.Amount > 0, _ => Error.InvalidInput.ForField(
+                    nameof(dailyWithdrawalLimit), ValidationCodes.ValueGreaterThan, "Daily withdrawal limit must be positive")),
+                (_ => overdraftLimit.Amount >= 0, _ => Error.InvalidInput.ForField(
+                    nameof(overdraftLimit), ValidationCodes.ValueGreaterThanOrEqual, "Overdraft limit must be non-negative")))
+            .Map(_ => new BankAccount(
+                AccountId.NewUniqueV4(),
+                customerId,
+                accountType,
+                initialDeposit,
+                dailyWithdrawalLimit,
+                overdraftLimit,
+                AccountStatus.Active,
+                timeProvider))
+            .Tap(account => account.DomainEvents.Add(new AccountOpened(
+                account.Id, customerId, accountType, initialDeposit, timeProvider.GetUtcNow())));
     }
 
     public Result<BankAccount> Deposit(Money amount, string description = "Deposit") =>
         this.ToResult()
             .Ensure(_ => Status == AccountStatus.Active,
-                new Error.Conflict(null, "account.not-active") { Detail = $"Cannot deposit to {Status} account" })
+                _ => new Error.Conflict(null, "account.not-active") { Detail = $"Cannot deposit to {Status} account" })
             .Ensure(_ => amount.Amount > 0,
-                Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Deposit amount must be positive"))
+                _ => Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Deposit amount must be positive"))
             .Ensure(_ => amount.Amount <= 10000,
-                new Error.Conflict(null, "deposit.limit.exceeded") { Detail = "Single deposit cannot exceed $10,000" })
+                _ => new Error.Conflict(null, "deposit.limit.exceeded") { Detail = "Single deposit cannot exceed $10,000" })
             .Bind(_ => Balance.Add(amount))
             .Tap(newBalance =>
             {
@@ -147,15 +137,15 @@ public class BankAccount : Aggregate<AccountId>
 
         return this.ToResult()
             .Ensure(_ => Status == AccountStatus.Active,
-                new Error.Conflict(null, "account.not-active") { Detail = $"Cannot withdraw from {Status} account" })
+                _ => new Error.Conflict(null, "account.not-active") { Detail = $"Cannot withdraw from {Status} account" })
             .Ensure(_ => amount.Amount > 0,
-                Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Withdrawal amount must be positive"))
+                _ => Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Withdrawal amount must be positive"))
             .Bind(_ => todayTotal.Add(amount))
             .Ensure(totalWithToday => !totalWithToday.IsGreaterThanOrEqual(DailyWithdrawalLimit),
-                new Error.Conflict(null, "withdrawal.daily.limit") { Detail = $"Daily withdrawal limit of {DailyWithdrawalLimit} would be exceeded" })
+                _ => new Error.Conflict(null, "withdrawal.daily.limit") { Detail = $"Daily withdrawal limit of {DailyWithdrawalLimit} would be exceeded" })
             .Bind(_ => Balance.Subtract(amount))
             .Ensure(newBalance => newBalance.Amount >= -OverdraftLimit.Amount,
-                new Error.Conflict(null, "withdrawal.overdraft.exceeded") { Detail = $"Withdrawal would exceed overdraft limit of {OverdraftLimit}" })
+                _ => new Error.Conflict(null, "withdrawal.overdraft.exceeded") { Detail = $"Withdrawal would exceed overdraft limit of {OverdraftLimit}" })
             .Tap(newBalance =>
             {
                 Balance = newBalance;

@@ -14,8 +14,8 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
     {
         using var activity = TraceFixture.ActivitySource.StartActivity();
         var result = await GetCustomerByIdAsync(id)
-            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer with such Id is not found: " + id })
-            .EnsureAsync(customer => customer.CanBePromoted, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The customer has the highest status possible" })
+            .ToResultAsync(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer with such Id is not found: " + id })
+            .EnsureAsync(customer => customer.CanBePromoted, _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The customer has the highest status possible" })
             .TapAsync(customer => customer.Promote())
             .BindAsync(customer => EmailGateway.SendPromotionNotification(customer.Email))
             .MatchAsync(_ => "Okay", error => "Failed");
@@ -33,8 +33,8 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
         using var activity = TraceFixture.ActivitySource.StartActivity();
 
         var result = await GetCustomerByIdAsync(id)
-            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer with such Id is not found: " + id })
-            .EnsureAsync(static customer => customer.CanBePromoted, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The customer has the highest status possible" })
+            .ToResultAsync(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer with such Id is not found: " + id })
+            .EnsureAsync(static customer => customer.CanBePromoted, static _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The customer has the highest status possible" })
             .TapAsync(static customer => customer.PromoteAsync())
             .BindAsync(static customer => EmailGateway.SendPromotionNotificationAsync(customer.Email))
             .MatchAsync(static (Unit _) => "Okay", static error => error.Detail);
@@ -50,8 +50,8 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
         using var activity = TraceFixture.ActivitySource.StartActivity();
 
         var result = await GetCustomerByIdAsync(id)
-            .ToResultAsync(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer with such Id is not found: " + id })
-            .EnsureAsync(customer => customer.CanBePromoted, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Need to ask manager" })
+            .ToResultAsync(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer with such Id is not found: " + id })
+            .EnsureAsync(customer => customer.CanBePromoted, _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Need to ask manager" })
             .TapOnFailureAsync(Log)
             .RecoverOnFailureAsync(() => AskManagerAsync(id))
             .TapAsync(static customer => Log("Manager approved promotion"))
@@ -70,7 +70,7 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
     {
     }
 
-    static Task<Result<Customer>> AskManagerAsync(long id) => Task.FromResult(Result.Ok(new Customer(true)));
+    static Task<Result<Customer>> AskManagerAsync(long id) => Result.Ok(new Customer(true)).AsTask();
 
     public static Task<Customer?> GetCustomerByIdAsync(long id)
     {
@@ -107,6 +107,6 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
     {
         public static Result<Unit> SendPromotionNotification(string email) => Result.Ok();
 
-        public static Task<Result<Unit>> SendPromotionNotificationAsync(string email) => Task.FromResult(SendPromotionNotification(email));
+        public static Task<Result<Unit>> SendPromotionNotificationAsync(string email) => SendPromotionNotification(email).AsTask();
     }
 }

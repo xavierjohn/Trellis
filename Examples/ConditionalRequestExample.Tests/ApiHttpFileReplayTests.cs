@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Trellis.Testing.AspNetCore.Http;
 
@@ -31,19 +30,22 @@ public class ApiHttpFileReplayTests : IClassFixture<WebApplicationFactory<Progra
         using var client = _factory.CreateClient();
         var results = await HttpFileRunner.RunAsync(client, requests, Ct);
 
-        var failures = new StringBuilder();
-        foreach (var result in results)
-        {
-            try
-            {
-                HttpFileAssertions.AssertExpectationsMet(result);
-            }
-            catch (HttpFileAssertionException ex)
-            {
-                failures.AppendLine(ex.Message);
-            }
-        }
+        Assert.All(results, HttpFileAssertions.AssertExpectationsMet);
+    }
 
-        failures.Length.Should().Be(0, failures.ToString());
+    [Fact]
+    public void AssertAll_HttpFileFailures_ReportsEveryFailedRequest()
+    {
+        var visited = new List<string>();
+
+        var failure = Assert.Throws<Xunit.Sdk.AllException>(() =>
+            Assert.All<string>(["first request", "second request"], title =>
+            {
+                visited.Add(title);
+                throw new HttpFileAssertionException(title);
+            }));
+
+        visited.Should().Equal(["first request", "second request"]);
+        failure.Message.Should().Contain("first request").And.Contain("second request");
     }
 }

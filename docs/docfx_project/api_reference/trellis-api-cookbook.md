@@ -518,9 +518,9 @@ public sealed record UpdateOrderCommand(OrderId OrderId, Money NewTotal)
     public OrderId GetResourceId() => OrderId;
 
     public Trellis.IResult Authorize(Actor actor, Order resource) =>
-        resource.OwnerId == actor.Id || actor.HasPermission("orders:write")
-            ? Result.Ok()
-            : Result.Fail(new Error.Forbidden(Code: "orders.owner", Resource: ResourceRef.For<Order>(OrderId)));
+        Result.Ensure(
+            resource.OwnerId == actor.Id || actor.HasPermission("orders:write"),
+            () => new Error.Forbidden(Code: "orders.owner", Resource: ResourceRef.For<Order>(OrderId)));
 }
 
 // Static permission gate (no resource load needed): every actor with the named permission
@@ -1257,8 +1257,8 @@ public sealed record CustomerProfileDto(string Status, int? AgeYears, string? Ni
         CustomerProfile.TryCreate(
             Status,
             AgeYears.AsMaybe(),
-            Nickname is null ? Maybe<string>.None : Maybe.From(Nickname),
-            LoginHistory is null ? Maybe<DateTime[]>.None : Maybe.From(LoginHistory));
+            Maybe.From(Nickname),
+            Maybe.From(LoginHistory));
 
     public static CustomerProfileDto From(CustomerProfile vo) =>
         new(vo.Status.Value,
@@ -1340,9 +1340,7 @@ public sealed class CustomersController(ISender sender) : ControllerBase
     public ValueTask<ActionResult<CustomerResponse>> Create(
         [FromBody] CreateCustomerRequest request, CancellationToken ct)
     {
-        var shipping = request.ShippingAddress is null
-            ? Maybe<ShippingAddress>.None
-            : Maybe.From(request.ShippingAddress);
+        var shipping = Maybe.From(request.ShippingAddress);
 
         return sender.Send(new CreateCustomerCommand(request.Email, shipping), ct)
                      .ToHttpResponseAsync(CustomerResponse.From)
@@ -1876,11 +1874,11 @@ public sealed class ReturnOrderHandler(
         {
             Detail = "Product referenced by line item is missing — cannot release stock.",
         };
-        var missing = productIds.Where(id => !byId.ContainsKey(id)).ToArray();
-        if (missing.Length == 1)
-            return Result.Fail<Order>(NotFoundFor(missing[0]));
-        if (missing.Length > 1)
-            return Result.Fail<Order>(new Error.Aggregate(missing.Select(NotFoundFor).ToArray()));
+        var presence = productIds
+            .Select(id => Result.Ensure(byId.ContainsKey(id), () => NotFoundFor(id)))
+            .SequenceAll();
+        if (presence.IsFailure)
+            return Result.Fail<Order>(presence.Error);
 
         // All related aggregates reachable. Preflight the per-aggregate domain
         // invariants (Recipe 25: pure CanReleaseStock predicate paired with the
@@ -1981,14 +1979,12 @@ foreach (var li in order.LineItems)
 // ✅ Fail-loud with full preflight — same two-pass shape as the worked example above.
 // Compute the missing set BEFORE any side effect; only enter the release loop
 // when every related aggregate is reachable.
-var missing = order.LineItems.Select(li => li.ProductId).Distinct()
-    .Where(id => !byId.ContainsKey(id))
-    .ToArray();
-if (missing.Length > 0)
-    return Result.Fail<Order>(missing.Length == 1
-        ? new Error.NotFound(ResourceRef.For<Product>(missing[0]))
-        : new Error.Aggregate(missing.Select(id =>
-            (Error)new Error.NotFound(ResourceRef.For<Product>(id))).ToArray()));
+var presence = order.LineItems.Select(li => li.ProductId).Distinct()
+    .Select(id => Result.Ensure(byId.ContainsKey(id),
+        () => new Error.NotFound(ResourceRef.For<Product>(id))))
+    .SequenceAll();
+if (presence.IsFailure)
+    return Result.Fail<Order>(presence.Error);
 
 // Preflight the per-aggregate domain invariants (Recipe 25) BEFORE any mutation.
 // Releasing stock on Product A then failing on Product B would leave A partially
@@ -2269,7 +2265,7 @@ public sealed class Product : Aggregate<ProductId>
     public Result<Trellis.Unit> CanReserve(int quantity) =>
         Result.Ensure(
             quantity > 0 && quantity <= Stock,
-            Error.InvalidInput.ForRule(
+            () => Error.InvalidInput.ForRule(
                 "stock.insufficient",
                 $"Cannot reserve {quantity} from stock of {Stock}."));
 
@@ -2289,7 +2285,7 @@ public sealed class Order : Aggregate<OrderId>
     public Result<Trellis.Unit> CanSubmit() =>
         Result.Ensure(
             LineItems.Count > 0,
-            Error.InvalidInput.ForRule(
+            () => Error.InvalidInput.ForRule(
                 "order.empty",
                 "Order must have at least one line item to submit."));
 
@@ -2309,17 +2305,16 @@ public sealed class SubmitOrderHandler(
 
         // Recipe 22 preflight (presence check). Every line-item ProductId must resolve
         // BEFORE the plan step, otherwise byId[g.Key] would throw KeyNotFoundException
-        // and bypass the Result pipeline. Truncated here for focus — see Recipe 22 for the
-        // full Error.Aggregate-per-missing-id shape.
+        // and bypass the Result pipeline. SequenceAll reports every missing id.
         var productIds = order.LineItems.Select(li => li.ProductId).Distinct().ToArray();
         var loaded = await products.GetByIdsAsync(productIds, cancellationToken);
         var byId = loaded.ToDictionary(p => p.Id);
-        var missing = productIds.Where(id => !byId.ContainsKey(id)).ToArray();
-        if (missing.Length > 0)
-            return Result.Fail<Order>(missing.Length == 1
-                ? new Error.NotFound(ResourceRef.For<Product>(missing[0]))
-                : new Error.Aggregate(missing.Select(id =>
-                    (Error)new Error.NotFound(ResourceRef.For<Product>(id))).ToArray()));
+        var presence = productIds
+            .Select(id => Result.Ensure(byId.ContainsKey(id),
+                () => new Error.NotFound(ResourceRef.For<Product>(id))))
+            .SequenceAll();
+        if (presence.IsFailure)
+            return Result.Fail<Order>(presence.Error);
 
         // Aggregate duplicate line items into one reservation per product so the
         // CanReserve checks operate on the same quantity the matching Reserve will deduct.
@@ -2798,22 +2793,15 @@ When write-path validation cannot be guaranteed — the table predates the curre
 ```csharp
 public sealed class LegacyContactRepository(AppDbContext db) : ILegacyContactRepository
 {
-    public async Task<Result<Contact>> FindByIdAsync(ContactId id, CancellationToken ct)
-    {
-        var row = await db.ContactRows.AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == id.Value, ct);
-        if (row is null)
-            return Result.Fail<Contact>(new Error.NotFound(ResourceRef.For<Contact>(id)));
-
-        // Imported from a v1 system without our current TryCreate constraints; surface
-        // the per-field failures so the application can DLQ the row, request a fix-up
-        // from the data owner, or retry after the source system is corrected.
-        return Result.Combine(
+    public Task<Result<Contact>> FindByIdAsync(ContactId id, CancellationToken ct) =>
+        db.ContactRows.AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == id.Value, ct)
+            .ToResultAsync(() => new Error.NotFound(ResourceRef.For<Contact>(id)))
+            .BindAsync(row => Result.Combine(
                 ContactId.TryCreate(row.Id, "Id"),
                 FirstName.TryCreate(row.FirstName, "FirstName"),
                 EmailAddress.TryCreate(row.Email, "Email"))
-            .Bind((cid, firstName, email) => Contact.TryCreate(cid, firstName, email));
-    }
+                .Bind((cid, firstName, email) => Contact.TryCreate(cid, firstName, email)));
 }
 ```
 
@@ -3273,9 +3261,9 @@ public sealed record ArchiveDocumentCommand(DocumentId DocumentId)
     // command. Actor.TryGetAttribute<TenantId> parses the "tid" claim through the VO's IParsable (validating via TryCreate),
     // so the gate deny-closes (Forbidden) on a missing, malformed, or mismatched tenant claim.
     public IResult Authorize(Actor actor, TenantDocument resource) =>
-        actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var tenant) && tenant == resource.TenantId
-            ? Result.Ok()
-            : Result.Fail(new Error.Forbidden(
+        Result.Ensure(
+            actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var tenant) && tenant == resource.TenantId,
+            () => new Error.Forbidden(
                 Code: "tenant.isolation",
                 Resource: ResourceRef.For<TenantDocument>(resource.Id)));
 }
@@ -3487,9 +3475,9 @@ public static class DistancePagination
         var context = ContextIdentity(scopeSnapshotId, originX, originY);
         var codec = CreateCodec(context);
         return PageRequest.TryCreate(cursor, limit)
-            .Bind(request => request.Decode(codec)
-                .Map(boundary => BuildPage(authorizedSnapshot, originX, originY,
-                    request.Size, boundary, context, codec)));
+            .BindZip(request => request.Decode(codec))
+            .Map((request, boundary) => BuildPage(authorizedSnapshot, originX, originY,
+                request.Size, boundary, context, codec));
     }
 
     private static ICursorCodec<DistanceBoundary> CreateCodec(string context) =>

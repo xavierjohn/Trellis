@@ -49,11 +49,11 @@ app.MapPost("/users/register", (RegisterUserRequest request) =>
     FirstName.TryCreate(request.FirstName)
         .Combine(LastName.TryCreate(request.LastName))
         .Combine(EmailAddress.TryCreate(request.Email))
-        .Bind((firstName, lastName, emailAddress) =>
-            Result.Ok(new RegisterUserResponse(
+        .Map((firstName, lastName, emailAddress) =>
+            new RegisterUserResponse(
                 firstName.Value,
                 lastName.Value,
-                emailAddress.Value)))
+                emailAddress.Value))
         .ToHttpResponse());
 
 app.Run();
