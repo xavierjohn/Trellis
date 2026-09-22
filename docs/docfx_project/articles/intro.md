@@ -221,7 +221,7 @@ Each one carries intent, and the defaults map naturally to HTTP semantics.
 | --- | --- | --- |
 | `new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = ... }` | `unprocessable-content` | Input or rule validation failed |
 | `new Error.NotFound(ResourceRef.For<Order>("42")) { Detail = ... }` | `not-found` | The resource does not exist |
-| `new Error.Conflict(Resource: ResourceRef.For<Order>("42")) { Detail = ... }` | `conflict` | Current state prevents the operation |
+| `Error.Conflict.For<Order>("order.already-shipped", id: "42", detail: "Order has already shipped.")` | `conflict` | Current state prevents the operation |
 | `new Error.Forbidden("policy.id") { Detail = ... }` | `forbidden` | Caller is authenticated but not allowed |
 | `new Error.Unexpected(FaultCodes.UnhandledException, "fault-id") { Detail = ... }` | `internal-server-error` | Something unplanned failed |
 
