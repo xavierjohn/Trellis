@@ -625,7 +625,7 @@ parameterless constructors required for direct EF owned-type materialization; pe
 separate storage representation rather than attaching them as owned navigations. There is
 no implicit single-string storage format or new EF helper. See Cookbook Recipe 13's DTO
 boundary guidance. Holidays, exceptions, booking capacity, recurrence engines, and
-`NextChange` are deliberately outside this API.
+next-transition queries are deliberately outside this API.
 
 ```csharp
 var schedule = WeeklySchedule.Create("America/Los_Angeles",
