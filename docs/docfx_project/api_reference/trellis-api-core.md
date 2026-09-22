@@ -580,7 +580,7 @@ Error.NotFound.For<Order>(id: orderId);
 Error.Gone.For<Order>("order.purged", id: orderId);
 ```
 
-Factories remove resource/pointer construction ceremony. Cases without that ceremony keep direct constructors, for example `new Error.Unexpected("db.timeout")` or `new Error.AuthenticationRequired() { Code = "token.expired" }`. `Aggregate` remains the multi-error composition constructor. `Kind`, `Code`, `Detail`, violation property names, and wire payload shapes are unchanged. See [factory migration](../../../MIGRATION_v3.md#code-first-error-factories) before porting positional string arguments; old calls can compile with a different meaning.
+Factories remove resource/pointer construction ceremony. Cases without that ceremony keep direct constructors, for example `new Error.Unexpected("db.timeout")` or `new Error.AuthenticationRequired() { Code = "token.expired" }`. `Aggregate` remains the multi-error composition constructor. `Kind`, `Code`, `Detail`, violation property names, and wire payload shapes are unchanged. See [factory migration](https://github.com/xavierjohn/Trellis/blob/main/MIGRATION_v3.md#code-first-error-factories) before porting positional string arguments; old calls can compile with a different meaning.
 
 ---
 
