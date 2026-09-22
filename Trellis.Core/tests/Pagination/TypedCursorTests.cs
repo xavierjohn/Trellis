@@ -82,7 +82,7 @@ public class TypedCursorTests
             state => ((state.Distance, state.Id), state.Query),
             (state, field) => state.Primary.Primary >= 0 && state.Secondary == "query-a"
                 ? Result.Ok(new NearbyState(state.Primary.Primary, state.Primary.Secondary, state.Secondary))
-                : Result.Fail<NearbyState>(Error.InvalidInput.ForField(field ?? "cursor", "cursor.malformed", "Invalid distance or query context.")));
+                : Result.Fail<NearbyState>(Error.InvalidInput.ForField(field: field ?? "cursor", code: "cursor.malformed", detail: "Invalid distance or query context.")));
 
         var expected = new NearbyState(0.123, 5, "query-a");
         codec.TryDecode(codec.Encode(expected)).TryGetValue(out var decoded).Should().BeTrue();
@@ -101,7 +101,7 @@ public class TypedCursorTests
             key => key.Number.ToString(CultureInfo.InvariantCulture),
             (text, field) => int.TryParse(text, CultureInfo.InvariantCulture, out var value)
                 ? Result.Ok(new CustomKey(value))
-                : Result.Fail<CustomKey>(Error.InvalidInput.ForField(field ?? "cursor", "cursor.malformed", "Invalid key.")));
+                : Result.Fail<CustomKey>(Error.InvalidInput.ForField(field: field ?? "cursor", code: "cursor.malformed", detail: "Invalid key.")));
         codec.TryDecode(codec.Encode(new CustomKey(7))).TryGetValue(out var value).Should().BeTrue();
         value.Should().Be(new CustomKey(7));
     }

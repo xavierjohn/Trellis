@@ -34,8 +34,8 @@ public sealed class Product : Aggregate<ProductId>
         Result.Ensure(
             quantity > 0 && quantity <= Reserved,
             () => Error.InvalidInput.ForRule(
-                "stock.release-exceeds-reserved",
-                $"Cannot release {quantity} against {Reserved} reserved."));
+                code: "stock.release-exceeds-reserved",
+                detail: $"Cannot release {quantity} against {Reserved} reserved."));
 
     public Result<Trellis.Unit> ReleaseStock(long quantity) =>
         CanReleaseStock(quantity).Tap(() => Reserved -= (int)quantity);
@@ -52,9 +52,9 @@ public sealed class Order : Aggregate<OrderId>
     public static Order ForTesting(OrderId id, IReadOnlyList<LineItem> lineItems) => new(id, lineItems);
 
     public Result<Trellis.Unit> CanReturn(string reason) =>
-        Result.Ensure(!string.IsNullOrWhiteSpace(reason), Error.InvalidInput.ForField("reason", ValidationCodes.ValueNotEmpty))
-            .Ensure(_ => !IsReturned, Error.InvalidInput.ForRule("order.already-returned"))
-            .Ensure(_ => LineItems.All(li => li.Quantity > 0), Error.InvalidInput.ForRule("order.quantity-positive"));
+        Result.Ensure(!string.IsNullOrWhiteSpace(reason), Error.InvalidInput.ForField(field: "reason", code: ValidationCodes.ValueNotEmpty))
+            .Ensure(_ => !IsReturned, Error.InvalidInput.ForRule(code: "order.already-returned"))
+            .Ensure(_ => LineItems.All(li => li.Quantity > 0), Error.InvalidInput.ForRule(code: "order.quantity-positive"));
 
     public Result<Trellis.Unit> Return(string reason, System.DateTimeOffset occurredAt) =>
         CanReturn(reason)

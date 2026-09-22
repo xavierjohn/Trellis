@@ -31,7 +31,7 @@ using System.Diagnostics;
 ///     .Bind(firstName => LastName.TryCreate(lastNameInput)
 ///         .Bind(lastName => EmailAddress.TryCreate(emailInput)
 ///             .Ensure(email => email.Value.EndsWith("@company.com"), 
-///                     Error.InvalidInput.ForField("email", "invalid", "Must be company email"))
+///                     Error.InvalidInput.ForField(field: "email", code: "invalid", detail: "Must be company email"))
 ///             .Map(email => new User(firstName, lastName, email))));
 /// </code>
 /// </example>
@@ -101,7 +101,7 @@ public static class ResultLinqExtensions
     ///              
     /// // Better: Use Ensure for custom error
     /// var betterResult = GetUser(id)
-    ///     .Ensure(u => u.IsActive, Error.InvalidInput.ForRule("inactive", "User is not active"));
+    ///     .Ensure(u => u.IsActive, Error.InvalidInput.ForRule(code: "inactive", detail: "User is not active"));
     /// </code>
     /// </example>
     public static Result<TSource> Where<TSource>(this Result<TSource> source, Func<TSource, bool> predicate)

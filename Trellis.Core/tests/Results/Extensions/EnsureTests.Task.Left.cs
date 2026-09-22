@@ -8,7 +8,7 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_errorPredicate_does_not_throw_when_given_result_failure()
     {
-        var result = Task.FromResult(Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "initial error message" }));
+        var result = Task.FromResult(Result.Fail<string>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "initial error message" }));
         Func<Task> ensure = () => result.EnsureAsync(
             x => x != "",
             x => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "new error message: string should not be empty" });
@@ -19,13 +19,13 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_errorPredicate_initial_result_has_failure_state()
     {
-        var tResult = Task.FromResult(Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "initial error message" }));
+        var tResult = Task.FromResult(Result.Fail<string>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "initial error message" }));
 
         var result = await tResult.EnsureAsync(x => x != "",
             x => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "new error message: string should not be empty" });
 
         result.Should().BeFailure("Input Result.Fail should be returned")
-            .Which.Should().Be(new Error.Conflict(null, "conflict") { Detail = "initial error message" });
+            .Which.Should().Be(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "initial error message" });
     }
 
     [Fact]
@@ -154,7 +154,7 @@ public class EnsureTests_Task_Left
     [Fact]
     public async Task Ensure_Task_Left_with_asyncErrorPredicate_does_not_execute_when_initial_result_is_failure()
     {
-        var initialError = new Error.Conflict(null, "conflict") { Detail = "initial error message" };
+        var initialError = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "initial error message" };
         var tResult = Task.FromResult(Result.Fail<string>(initialError));
         bool predicateCalled = false;
         bool errorPredicateCalled = false;

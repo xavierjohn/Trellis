@@ -328,7 +328,7 @@ public class NullableExtensionTests
         var result = await nullableTask.ToResultAsync(() =>
         {
             factoryInvoked = true;
-            return new Error.Conflict(null, "conflict") { Detail = "MyClass already exists." };
+            return new Error.Conflict(Resource: null, Code: "conflict") { Detail = "MyClass already exists." };
         });
 
         // Assert

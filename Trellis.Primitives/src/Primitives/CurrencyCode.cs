@@ -41,7 +41,7 @@ public class CurrencyCode : ScalarValueObject<CurrencyCode, string>, IScalarValu
     // Field-normalization + InvalidInput failure in one place (default field name: "currencyCode").
     private static Result<CurrencyCode> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<CurrencyCode>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("currencyCode"), reasonCode, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("currencyCode"), code: reasonCode, detail: message));
 
     /// <summary>
     /// Attempts to create a currency code from a 3-letter ISO 4217 code.

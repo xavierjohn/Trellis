@@ -27,7 +27,7 @@ public class IpAddress : ScalarValueObject<IpAddress, string>, IScalarValue<IpAd
     // Field-normalization + InvalidInput failure in one place (default field name: "ipAddress").
     private static Result<IpAddress> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<IpAddress>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("ipAddress"), reasonCode, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("ipAddress"), code: reasonCode, detail: message));
 
     /// <summary>
     /// Attempts to create an IP address.

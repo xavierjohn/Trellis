@@ -68,7 +68,7 @@ public static Result<User> RegisterUser(
         .Combine(LastName.TryCreate(request.LastName))
         .Combine(CustomerEmail.TryCreate(request.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), new Error.Conflict(null, "conflict") { Detail = "Email already registered." })
+        .Ensure(user => !emailExists(user.Email), new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Email already registered." })
         .Tap(saveUser)
         .Tap(user => sendWelcomeEmail(user.Email));
 }

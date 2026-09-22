@@ -22,8 +22,8 @@ using Trellis.Testing;
 /// </remarks>
 public class ResultFailAfterCommitPropagationTests
 {
-    private static readonly Error PersistError = new Error.Conflict(null, "persist.intent") { Detail = "stage me" };
-    private static readonly Error PlainError = new Error.Conflict(null, "plain.intent") { Detail = "drop me" };
+    private static readonly Error PersistError = new Error.Conflict(Resource: null, Code: "persist.intent") { Detail = "stage me" };
+    private static readonly Error PlainError = new Error.Conflict(Resource: null, Code: "plain.intent") { Detail = "drop me" };
 
     private static bool PersistFlag<T>(Result<T> result) => ((IPersistOnFailure)result).PersistOnFailure;
 
@@ -116,7 +116,7 @@ public class ResultFailAfterCommitPropagationTests
     {
         var source = Result.FailAfterCommit<int>(PersistError);
 
-        var mapped = source.MapOnFailure(err => new Error.Conflict(null, "rewritten") { Detail = err.Detail });
+        var mapped = source.MapOnFailure(err => new Error.Conflict(Resource: null, Code: "rewritten") { Detail = err.Detail });
 
         mapped.Should().BeFailure();
         PersistFlag(mapped).Should().BeTrue(

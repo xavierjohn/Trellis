@@ -266,7 +266,7 @@ public sealed class VaryForActorTests
     {
         // Same partitioning requirement for the WriteOutcome failure path.
         var ctx = NewContext(new TestActorProvider(["Authorization"]));
-        var r = Result.Fail<WriteOutcome<Thing>>(new Error.Conflict(null, "duplicate"));
+        var r = Result.Fail<WriteOutcome<Thing>>(new Error.Conflict(Resource: null, Code: "duplicate"));
 
         await r.ToHttpResponse<Thing>(o => o.VaryForActor()).ExecuteAsync(ctx);
 

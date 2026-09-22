@@ -65,7 +65,7 @@ public class TraverseAllIndexedTests
 
         var result = items.TraverseAll((value, index) =>
             value.ToResult(() => Error.InvalidInput.ForField(
-                owner.AppendIndex(index), ValidationCodes.ValueNotNull)));
+                field: owner.AppendIndex(index), code: ValidationCodes.ValueNotNull)));
 
         var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Select(field => field.Field.Path).Should().Equal(["/items/0", "/items/2"]);
@@ -78,7 +78,7 @@ public class TraverseAllIndexedTests
     public void TraverseAll_Indexed_MixedFailures_AccumulatesErrorsAndPersistIntent(int persistIndex)
     {
         var first = new Error.Forbidden("denied");
-        var last = new Error.Conflict(null, "duplicate");
+        var last = new Error.Conflict(Resource: null, Code: "duplicate");
         int[] items = [0, 1, 2];
 
         var result = items.TraverseAll((value, index) =>

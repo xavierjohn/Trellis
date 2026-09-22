@@ -242,7 +242,7 @@ public static partial class Result
     /// <code>
     /// public Result&lt;Unit&gt; Cancel(DateTimeOffset now) =&gt;
     ///     Result.Ensure(Status == OrderStatus.Pending,
-    ///         new Error.Conflict(null, "order.not-cancellable") { Detail = "Only pending orders can be cancelled." })
+    ///         new Error.Conflict(Resource: null, Code: "order.not-cancellable") { Detail = "Only pending orders can be cancelled." })
     ///     .Tap(() =&gt; { Status = OrderStatus.Cancelled; CancelledAt = now; });
     /// </code>
     /// </example>

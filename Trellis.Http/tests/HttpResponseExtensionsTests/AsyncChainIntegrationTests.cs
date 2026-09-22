@@ -55,7 +55,7 @@ public class AsyncChainIntegrationTests
         // success deserializes through ReadJsonAsync.
         using var client = new HttpClient(new StubHandler(HttpStatusCode.Unauthorized));
         var unauthorized = new Error.AuthenticationRequired() { Detail = "expired" };
-        var conflict = new Error.Conflict(new ResourceRef("Order", "1"), "duplicate_key");
+        var conflict = new Error.Conflict(Resource: new ResourceRef("Order", "1"), Code: "duplicate_key");
 
         var result = await client.GetAsync("https://example/api/orders/1", CancellationToken.None)
             .ToResultAsync(status => status == HttpStatusCode.Unauthorized ? unauthorized : null)

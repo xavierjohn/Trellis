@@ -93,7 +93,7 @@ internal sealed class SmokeQuantity : ScalarValueObject<SmokeQuantity, int>, ISc
         value > 0
             ? Result.Ok(new SmokeQuantity(value))
             : Result.Fail<SmokeQuantity>(Error.InvalidInput.ForField(
-                fieldName ?? "quantity", "smoke.quantity-positive", ValidationArgs.Of("min", 1), "Quantity must be positive."));
+                field: fieldName ?? "quantity", code: "smoke.quantity-positive", args: ValidationArgs.Of("min", 1), detail: "Quantity must be positive."));
 
     public static Result<SmokeQuantity> TryCreate(string? value, string? fieldName = null) =>
         throw new NotSupportedException("The smoke probe exercises primitive JSON reads only.");

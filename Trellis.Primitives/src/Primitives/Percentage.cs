@@ -87,12 +87,12 @@ public class Percentage : ScalarValueObject<Percentage, decimal>, IScalarValue<P
     // Field-normalization + InvalidInput failure in one place (default field name: "percentage").
     private static Result<Percentage> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         Result.Fail<Percentage>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("percentage"), reasonCode, args, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("percentage"), code: reasonCode, args: args, detail: message));
 
     // Field-normalization + InvalidInput failure in one place (default field name: "fraction").
     private static Result<Percentage> InvalidFraction(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         Result.Fail<Percentage>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("fraction"), reasonCode, args, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("fraction"), code: reasonCode, args: args, detail: message));
 
     // The bound that was crossed, carried as an operand. Directional codes rather than one `between`
     // code: a client that cannot tell which end failed cannot say "over 100%" versus "negative", and

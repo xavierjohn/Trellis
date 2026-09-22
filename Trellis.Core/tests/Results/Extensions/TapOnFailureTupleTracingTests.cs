@@ -112,7 +112,7 @@ public class TapOnFailureTupleTracingTests : TestBase
             .Should().BeFailure();
 
         // Act & Assert - Error.Conflict
-        Result.Fail<(int, string)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" })
+        Result.Fail<(int, string)>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" })
             .TapOnFailure(() => { })
             .Should().BeFailure();
 
@@ -157,7 +157,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, string)>(Error.InvalidInput.ForRule("bad.request", "Bad request"));
+        var result = Result.Fail<(int, string)>(Error.InvalidInput.ForRule(code: "bad.request", detail: "Bad request"));
 
         // Act
         await result.TapOnFailureAsync(error => Task.CompletedTask);
@@ -171,7 +171,7 @@ public class TapOnFailureTupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, string)>(new Error.Conflict(null, "conflict") { Detail = "Conflict" });
+        var result = Result.Fail<(int, string)>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" });
 
         // Act
         await result.TapOnFailureAsync(() => ValueTask.CompletedTask);

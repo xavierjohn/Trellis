@@ -83,7 +83,7 @@ public class DomainEventDispatchBehaviorTests
             NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance);
 
         var persistOnFailure = Result.FailAfterCommit<TestAggregate>(
-            new Error.Conflict(null, "external.permanent_failure") { Detail = "gateway rejected" });
+            new Error.Conflict(Resource: null, Code: "external.permanent_failure") { Detail = "gateway rejected" });
         var response = await behavior.Handle(
             new AggregateCommand(aggregate),
             (_, _) => new ValueTask<Result<TestAggregate>>(persistOnFailure),

@@ -52,9 +52,9 @@ internal static class Recipe10TestingSurface
     public static void ValidationAssertionSurface()
     {
         var error = Error.InvalidInput.ForField(
-            "currency",
-            ValidationCodes.StringExactLength,
-            "Currency must be 3 characters.");
+            field: "currency",
+            code: ValidationCodes.StringExactLength,
+            detail: "Currency must be 3 characters.");
 
         ValidationErrorAssertions assertions = error.Should();
         assertions

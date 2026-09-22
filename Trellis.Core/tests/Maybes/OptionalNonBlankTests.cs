@@ -69,7 +69,7 @@ public class OptionalNonBlankTests
     [InlineData(true)]
     public void OptionalNonBlank_FactoryFailure_PreservesErrorAndPersistenceIntent(bool persistOnFailure)
     {
-        var error = Error.InvalidInput.ForField("name", "name.invalid");
+        var error = Error.InvalidInput.ForField(field: "name", code: "name.invalid");
         var calls = 0;
 
         var result = Maybe.OptionalNonBlank("invalid", _ =>

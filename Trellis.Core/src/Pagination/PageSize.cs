@@ -69,10 +69,10 @@ public sealed record PageSize
         var req = requested.Value;
         if (req <= 0)
             return Result.Fail<PageSize>(Error.InvalidInput.ForField(
-                field, ValidationCodes.PageSizeOutOfRange, ValidationArgs.Of("comparisonValue", 1), $"{field} must be positive."));
+                field: field, code: ValidationCodes.PageSizeOutOfRange, args: ValidationArgs.Of("comparisonValue", 1), detail: $"{field} must be positive."));
         if (req > max && policy == PageSizeLimitPolicy.Reject)
             return Result.Fail<PageSize>(Error.InvalidInput.ForField(
-                field, ValidationCodes.PageSizeOutOfRange, ValidationArgs.Of("comparisonValue", max), $"{field} must be at most {max}."));
+                field: field, code: ValidationCodes.PageSizeOutOfRange, args: ValidationArgs.Of("comparisonValue", max), detail: $"{field} must be at most {max}."));
         return Result.Ok(new PageSize(req, Math.Min(req, max)));
     }
 }

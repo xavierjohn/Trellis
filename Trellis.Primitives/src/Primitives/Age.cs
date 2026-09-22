@@ -30,7 +30,7 @@ public class Age : ScalarValueObject<Age, int>, IScalarValue<Age, int>, IFormatt
     // Field-normalization + InvalidInput failure in one place (default field name: "age").
     private static Result<Age> Invalid(string? fieldName, string reasonCode, string message, ImmutableDictionary<string, ValidationArgValue>? args = null) =>
         Result.Fail<Age>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("age"), reasonCode, args, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("age"), code: reasonCode, args: args, detail: message));
 
     // The bound that was crossed, carried as an operand so a client can render its own message.
     // Directional codes rather than one `between` code: a client that cannot tell which end failed

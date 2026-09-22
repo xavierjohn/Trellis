@@ -41,6 +41,6 @@ public sealed record Cursor
     public static Result<Cursor> TryCreate(string? token, string? fieldName = null) =>
         string.IsNullOrWhiteSpace(token)
             ? Result.Fail<Cursor>(Error.InvalidInput.ForField(
-                fieldName ?? "cursor", ValidationCodes.CursorMalformed, "Cursor must not be empty or whitespace."))
+                field: fieldName ?? "cursor", code: ValidationCodes.CursorMalformed, detail: "Cursor must not be empty or whitespace."))
             : Result.Ok(new Cursor(token));
 }

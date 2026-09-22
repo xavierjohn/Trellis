@@ -109,7 +109,7 @@ Prefer the early-return guard in ROP code: it keeps the happy path unindented an
 .Bind(o => throw new InvalidOperationException("bad"))   // TRLS010
 
 // FIX
-.Bind(o => Result.Fail<Order>(new Error.Conflict(ResourceRef.For<Order>(o.Id), "invalid-state")))
+.Bind(o => Result.Fail<Order>(new Error.Conflict(Resource: ResourceRef.For<Order>(o.Id), Code: "invalid-state")))
 ```
 
 ## TRLS016 — `HasIndex` on a `Maybe<T>` property
@@ -559,12 +559,12 @@ Trellis freezes a small set of reason codes and dispatches on their exact wire s
 
 ```csharp
 // WRONG — the literal is unchecked, and there are usually dozens of them
-Error.InvalidInput.ForField("email", "value.not-null");        // TRLS064
-Error.InvalidInput.ForField("name", "string.max-length");      // TRLS064
+Error.InvalidInput.ForField(field: "email", code: "value.not-null");        // TRLS064
+Error.InvalidInput.ForField(field: "name", code: "string.max-length");      // TRLS064
 
 // FIX — the constant is the same string, checked by the compiler
-Error.InvalidInput.ForField("email", ValidationCodes.ValueNotNull);
-Error.InvalidInput.ForField("name", ValidationCodes.StringMaxLength);
+Error.InvalidInput.ForField(field: "email", code: ValidationCodes.ValueNotNull);
+Error.InvalidInput.ForField(field: "name", code: ValidationCodes.StringMaxLength);
 ```
 
 A code fix applies this, and because the motivating case is one literal repeated across a codebase, fix-all is supported.
@@ -573,12 +573,12 @@ The other two shapes claim a name that is not yours to claim. `error.*` is reser
 
 ```csharp
 // WRONG — squats a reserved or framework-owned namespace
-Error.InvalidInput.ForField("token", "error.expired");         // TRLS064
-Error.InvalidInput.ForField("total", "money.over-budget");     // TRLS064
+Error.InvalidInput.ForField(field: "token", code: "error.expired");         // TRLS064
+Error.InvalidInput.ForField(field: "total", code: "money.over-budget");     // TRLS064
 
 // FIX — name it in your own domain's terms
-Error.InvalidInput.ForField("token", "session.expired");
-Error.InvalidInput.ForField("total", "budget.exceeded");
+Error.InvalidInput.ForField(field: "token", code: "session.expired");
+Error.InvalidInput.ForField(field: "total", code: "budget.exceeded");
 ```
 
 The same three findings apply wherever a reason code is written, not only to a `reasonCode` or `Code` argument. FluentValidation's `WithErrorCode` and the `Code` property on the Trellis primitive attributes both reach the wire the same way:
@@ -679,7 +679,7 @@ public async Task<Result<OrderOutcome>> Handle(ProcessOrderCommand cmd, Cancella
     // ↑ returns Result.FailAfterCommit(new Error.Unavailable(...))
 
     Result<int> independentRule = Result.Fail<int>(
-        Error.InvalidInput.ForRule("quota.downstream-limit-exceeded", "Customer is over quota."));
+        Error.InvalidInput.ForRule(code: "quota.downstream-limit-exceeded", detail: "Customer is over quota."));
 
     return stagePermanentFailure
         .Combine(independentRule)
@@ -694,7 +694,7 @@ public async Task<Result<OrderOutcome>> Handle(ProcessOrderCommand cmd, Cancella
 public async Task<Result<OrderOutcome>> Handle(ProcessOrderCommand cmd, CancellationToken ct)
 {
     Result<int> independentRule = Result.Fail<int>(
-        Error.InvalidInput.ForRule("quota.downstream-limit-exceeded", "Customer is over quota."));
+        Error.InvalidInput.ForRule(code: "quota.downstream-limit-exceeded", detail: "Customer is over quota."));
 
     if (independentRule.IsFailure)
         return Result.Fail<OrderOutcome>(independentRule.Error!);

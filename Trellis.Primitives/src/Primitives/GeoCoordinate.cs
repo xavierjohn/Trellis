@@ -115,17 +115,17 @@ public sealed class GeoCoordinate : ValueObject
     {
         if (!double.IsFinite(value))
             return Result.Fail<double>(Error.InvalidInput.ForField(
-                field, ValidationCodes.NumberFinite, $"{name} must be a finite number."));
+                field: field, code: ValidationCodes.NumberFinite, detail: $"{name} must be a finite number."));
 
         if (value < -bound)
             return Result.Fail<double>(Error.InvalidInput.ForField(
-                field, ValidationCodes.ValueGreaterThanOrEqual,
-                ValidationArgs.Of("comparisonValue", -bound), $"{name} must be at least {-bound} degrees."));
+                field: field, code: ValidationCodes.ValueGreaterThanOrEqual,
+                args: ValidationArgs.Of("comparisonValue", -bound), detail: $"{name} must be at least {-bound} degrees."));
 
         if (value > bound)
             return Result.Fail<double>(Error.InvalidInput.ForField(
-                field, ValidationCodes.ValueLessThanOrEqual,
-                ValidationArgs.Of("comparisonValue", bound), $"{name} must be at most {bound} degrees."));
+                field: field, code: ValidationCodes.ValueLessThanOrEqual,
+                args: ValidationArgs.Of("comparisonValue", bound), detail: $"{name} must be at most {bound} degrees."));
 
         return Result.Ok(value);
     }

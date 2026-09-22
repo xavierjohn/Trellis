@@ -33,10 +33,10 @@ public class MapOnFailureTests : TestBase
     {
         var original = Result.Fail<int>(Error1);
 
-        var mapped = original.MapOnFailure(e => new Error.Conflict(null, "conflict") { Detail = $"Wrapped: {e.Detail}" });
+        var mapped = original.MapOnFailure(e => new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" });
 
         mapped.Should().BeFailure();
-        mapped.Error!.Should().Be(new Error.Conflict(null, "conflict") { Detail = $"Wrapped: {Error1.Detail}" });
+        mapped.Error!.Should().Be(new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {Error1.Detail}" });
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class MapOnFailureTests : TestBase
     {
         var original = Result.Fail<int>(Error1).AsTask();
 
-        var mapped = await original.MapOnFailureAsync(e => new Error.Conflict(null, "conflict") { Detail = $"Wrapped: {e.Detail}" });
+        var mapped = await original.MapOnFailureAsync(e => new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" });
 
         mapped.Should().BeFailure();
         mapped.Error!.Should().BeOfType<Error.Conflict>();
@@ -86,7 +86,7 @@ public class MapOnFailureTests : TestBase
         Func<Error, Task<Error>> mapper = async e =>
         {
             await Task.Delay(1);
-            return new Error.Conflict(null, "conflict") { Detail = $"Wrapped: {e.Detail}" };
+            return new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" };
         };
 
         var mapped = await original.MapOnFailureAsync(mapper);
@@ -124,7 +124,7 @@ public class MapOnFailureTests : TestBase
         var mapped = await original.MapOnFailureAsync(async e =>
         {
             await Task.Delay(1);
-            return new Error.Conflict(null, "conflict") { Detail = $"Wrapped: {e.Detail}" };
+            return new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" };
         });
 
         mapped.Should().BeFailure();
@@ -140,7 +140,7 @@ public class MapOnFailureTests : TestBase
     {
         var original = Result.Fail<int>(Error1).AsValueTask();
 
-        var mapped = await original.MapOnFailureAsync(e => new Error.Conflict(null, "conflict") { Detail = $"Wrapped: {e.Detail}" });
+        var mapped = await original.MapOnFailureAsync(e => new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" });
 
         mapped.Should().BeFailure();
         mapped.Error!.Should().BeOfType<Error.Conflict>();
@@ -167,7 +167,7 @@ public class MapOnFailureTests : TestBase
         var original = Result.Fail<int>(Error1);
 
         var mapped = await original.MapOnFailureAsync(e =>
-            ValueTask.FromResult<Error>(new Error.Conflict(null, "conflict") { Detail = $"Wrapped: {e.Detail}" }));
+            ValueTask.FromResult<Error>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" }));
 
         mapped.Should().BeFailure();
         mapped.Error!.Should().BeOfType<Error.Conflict>();
@@ -195,7 +195,7 @@ public class MapOnFailureTests : TestBase
         var original = Result.Fail<int>(Error1).AsValueTask();
 
         var mapped = await original.MapOnFailureAsync(e =>
-            ValueTask.FromResult<Error>(new Error.Conflict(null, "conflict") { Detail = $"Wrapped: {e.Detail}" }));
+            ValueTask.FromResult<Error>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" }));
 
         mapped.Should().BeFailure();
         mapped.Error!.Should().BeOfType<Error.Conflict>();
@@ -209,10 +209,10 @@ public class MapOnFailureTests : TestBase
     public void MapOnFailure_ConvertsDomainErrorToApiError()
     {
         // Arrange
-        var domainResult = Result.Fail<string>(new Error.Conflict(null, "domain.violation") { Detail = "Insufficient balance" });
+        var domainResult = Result.Fail<string>(new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "Insufficient balance" });
 
         // Act
-        var apiResult = domainResult.MapOnFailure(e => Error.InvalidInput.ForRule("bad.request", $"API Error: {e.Detail}"));
+        var apiResult = domainResult.MapOnFailure(e => Error.InvalidInput.ForRule(code: "bad.request", detail: $"API Error: {e.Detail}"));
 
         // Assert
         apiResult.Should().BeFailure();
@@ -269,7 +269,7 @@ public class MapOnFailureTests : TestBase
         using var activityTest = new ActivityTestHelper();
 
         var result = await Result.Fail<int>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Bad input" })
-            .MapOnFailureAsync(error => Task.FromResult<Error>(new Error.Conflict(null, "conflict") { Detail = $"Wrapped: {error.Detail}" }));
+            .MapOnFailureAsync(error => Task.FromResult<Error>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {error.Detail}" }));
 
         result.Should().BeFailureOfType<Error.Conflict>();
         activityTest.AssertActivityCapturedWithStatus("MapOnFailure", ActivityStatusCode.Error);

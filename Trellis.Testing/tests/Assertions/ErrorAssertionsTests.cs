@@ -6,7 +6,7 @@ public class ErrorAssertionsTests
     public void HaveCode_Should_Pass_When_Code_Matches()
     {
         // Arrange
-        var error = new Error.Conflict(null, "order.already-shipped") { Detail = "Already shipped" };
+        var error = new Error.Conflict(Resource: null, Code: "order.already-shipped") { Detail = "Already shipped" };
 
         // Act & Assert
         error.Should().HaveCode("order.already-shipped");
@@ -29,7 +29,7 @@ public class ErrorAssertionsTests
     public void HaveDetail_Should_Pass_When_Detail_Matches()
     {
         // Arrange
-        Error error = Error.InvalidInput.ForRule("bad.request", "Invalid input");
+        Error error = Error.InvalidInput.ForRule(code: "bad.request", detail: "Invalid input");
 
         // Act & Assert
         error.Should().HaveDetail("Invalid input");
@@ -39,7 +39,7 @@ public class ErrorAssertionsTests
     public void HaveDetail_Should_Fail_When_Detail_Does_Not_Match()
     {
         // Arrange
-        Error error = Error.InvalidInput.ForRule("bad.request", "Invalid input");
+        Error error = Error.InvalidInput.ForRule(code: "bad.request", detail: "Invalid input");
 
         // Act
         var act = () => error.Should().HaveDetail("Wrong detail");
@@ -75,7 +75,7 @@ public class ErrorAssertionsTests
     public void Should_Allow_Chaining_Assertions()
     {
         // Arrange
-        var error = new Error.Conflict(null, "conflict") { Detail = "Resource already exists" };
+        var error = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Resource already exists" };
 
         // Act & Assert
         error.Should()
@@ -108,7 +108,7 @@ public class ErrorAssertionsTests
     public void HaveDetailContaining_Should_Support_Because_Reason()
     {
         // Arrange
-        var error = new Error.Conflict(null, "domain.violation") { Detail = "Balance insufficient for withdrawal" };
+        var error = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "Balance insufficient for withdrawal" };
 
         // Act & Assert
         error.Should().HaveDetailContaining("insufficient", "because this is a business rule");
@@ -176,7 +176,7 @@ public class ErrorAssertionsTests
     {
         // Arrange
         var error1 = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" };
-        var error2 = Error.InvalidInput.ForRule("bad.request", "Bad request");
+        var error2 = Error.InvalidInput.ForRule(code: "bad.request", detail: "Bad request");
 
         // Act
         var act = () => error1.Should().Be(error2);
@@ -189,8 +189,8 @@ public class ErrorAssertionsTests
     public void Be_Should_Support_Because_Reason()
     {
         // Arrange
-        var error1 = new Error.Conflict(null, "conflict") { Detail = "Conflict" };
-        var error2 = new Error.Conflict(null, "conflict") { Detail = "Conflict" };
+        var error1 = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" };
+        var error2 = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict" };
 
         // Act & Assert
         error1.Should().Be(error2, "because they represent the same conflict");

@@ -150,7 +150,7 @@ result.TryGetError(out var err);
 
 v1 `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`). <!-- v1-stale-ok -->
 
-The current Trellis `Error` surface is an `abstract record` with **12 domain cases** plus `Error.TransportFault` for HTTP-specific payloads. The base constructor is `private` so the catalog is closed; there are no static factories.
+The current Trellis `Error` surface is an `abstract record` with **12 cases**, including `Error.TransportFault` for transport-specific payloads. The base constructor is `private` so the catalog is closed. Static factories live on individual cases, not the base; they use code-first arguments. See [factory signatures](../api_reference/trellis-api-core.md#construction-and-case-scoped-factories) and the [migration guide](https://github.com/xavierjohn/Trellis/blob/main/MIGRATION_v3.md#code-first-error-factories).
 
 ```csharp
 // v1

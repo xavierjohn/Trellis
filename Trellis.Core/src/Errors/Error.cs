@@ -47,6 +47,7 @@ public abstract record Error
 #pragma warning restore CA1716
 {
     private readonly Error? _cause;
+    private readonly string _code = ValidationCodes.Unspecified;
 
     private Error() { }
 
@@ -81,12 +82,30 @@ public abstract record Error
     /// </para>
     /// <para>
     /// Cases whose reason is required (<see cref="InvariantViolation"/>, <see cref="Conflict"/>,
-    /// <see cref="Unexpected"/>) take it as a positional parameter, so the compiler still refuses to
-    /// build one that says nothing. Every other case leaves it optional through an object
-    /// initializer.
+    /// <see cref="Unexpected"/>, <see cref="Forbidden"/>) take it as their first positional parameter.
+    /// Every assigned code must be non-blank, including assignments through a <c>with</c> expression.
+    /// Other cases may leave the default unspecified sentinel; the <see cref="NotFound"/> and
+    /// <see cref="Gone"/> factories also normalize blank optional code arguments to that sentinel.
     /// </para>
     /// </remarks>
-    public string Code { get; init; } = ValidationCodes.Unspecified;
+    /// <exception cref="ArgumentException">The assigned code is null, empty, or whitespace.</exception>
+    public string Code
+    {
+        get => _code;
+        init => _code = RequireCode(value);
+    }
+
+    internal static string RequireCode(string code)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        return code;
+    }
+
+    private static ResourceRef RequireResource(ResourceRef resource)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(resource.Type, nameof(resource));
+        return resource;
+    }
 
     /// <summary>
     /// Gets the optional human-readable detail. When non-null the boundary renderer prefers
@@ -238,73 +257,56 @@ public abstract record Error
         /// converted to a JSON Pointer via <see cref="InputPointer.ForProperty(string)"/>; pass
         /// an empty or <see langword="null"/> string to target the document root.
         /// </summary>
-        /// <param name="propertyName">Simple property name or full JSON Pointer.</param>
-        /// <param name="reasonCode">Stable machine-readable code identifying the rule that was violated.</param>
-        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
+        /// <param name="code">Non-blank machine-readable code identifying the violated rule.</param>
+        /// <param name="field">Simple property name or full JSON Pointer; null or empty targets the root.</param>
+        /// <param name="args">Optional structured operands built with <see cref="ValidationArgs"/>.</param>
+        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="code"/>.</param>
         /// <returns>An <see cref="InvalidInput"/> wrapping the single field violation.</returns>
-        public static InvalidInput ForField(string propertyName, string reasonCode, string? detail = null) =>
-            ForField(InputPointer.ForProperty(propertyName), reasonCode, detail);
+        public static InvalidInput ForField(
+            string code,
+            string? field,
+            ImmutableDictionary<string, ValidationArgValue>? args = null,
+            string? detail = null) =>
+            ForField(code, InputPointer.ForProperty(field ?? string.Empty), args, detail);
 
         /// <summary>
         /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a
         /// single <see cref="FieldViolation"/> at the supplied <see cref="InputPointer"/>.
         /// </summary>
+        /// <param name="code">Non-blank machine-readable code identifying the violated rule.</param>
         /// <param name="field">JSON Pointer locating the offending field.</param>
-        /// <param name="reasonCode">Stable machine-readable code identifying the rule that was violated.</param>
-        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
-        /// <returns>An <see cref="InvalidInput"/> wrapping the single field violation.</returns>
-        public static InvalidInput ForField(InputPointer field, string reasonCode, string? detail = null) =>
-            new(EquatableArray.Create(new FieldViolation(field, reasonCode, Detail: detail)));
-
-        /// <summary>
-        /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a single
-        /// <see cref="FieldViolation"/> with machine-readable operands attached.
-        /// </summary>
-        /// <param name="propertyName">Simple property name or full JSON Pointer.</param>
-        /// <param name="reasonCode">Stable machine-readable code identifying the rule that was violated.</param>
         /// <param name="args">Operands of the rule (e.g. <c>maxLength</c>, <c>comparisonValue</c>), built with <see cref="ValidationArgs"/>. Never put the rejected value itself here.</param>
-        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>An <see cref="InvalidInput"/> wrapping the single field violation.</returns>
-        public static InvalidInput ForField(string propertyName, string reasonCode, ImmutableDictionary<string, ValidationArgValue>? args, string? detail = null) =>
-            ForField(InputPointer.ForProperty(propertyName), reasonCode, args, detail);
-
-        /// <summary>
-        /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a single
-        /// <see cref="FieldViolation"/> at the supplied pointer with machine-readable operands attached.
-        /// </summary>
-        /// <param name="field">JSON Pointer locating the offending field.</param>
-        /// <param name="reasonCode">Stable machine-readable code identifying the rule that was violated.</param>
-        /// <param name="args">Operands of the rule (e.g. <c>maxLength</c>, <c>comparisonValue</c>), built with <see cref="ValidationArgs"/>. Never put the rejected value itself here.</param>
-        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
-        /// <returns>An <see cref="InvalidInput"/> wrapping the single field violation.</returns>
-        public static InvalidInput ForField(InputPointer field, string reasonCode, ImmutableDictionary<string, ValidationArgValue>? args, string? detail = null) =>
-            new(EquatableArray.Create(new FieldViolation(field, reasonCode, args, detail)));
+        public static InvalidInput ForField(
+            string code,
+            InputPointer field,
+            ImmutableDictionary<string, ValidationArgValue>? args = null,
+            string? detail = null) =>
+            new(EquatableArray.Create(new FieldViolation(field, code, args, detail)));
 
         /// <summary>
         /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a
         /// single <see cref="RuleViolation"/> — the global / multi-field counterpart to
-        /// <see cref="ForField(string, string, string?)"/>. Use for invariants that are not bound
+        /// <c>ForField</c>. Use for invariants that are not bound
         /// to a single field (e.g. <c>"order.must-have-items"</c>, <c>"password.mismatch"</c>).
         /// </summary>
-        /// <param name="reasonCode">Stable machine-readable code identifying the rule.</param>
-        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
-        /// <returns>An <see cref="InvalidInput"/> wrapping the single rule violation.</returns>
-        public static InvalidInput ForRule(string reasonCode, string? detail = null) =>
-            new(EquatableArray<FieldViolation>.Empty,
-                EquatableArray.Create(new RuleViolation(reasonCode, Detail: detail)))
-            { Detail = detail };
-
-        /// <summary>
-        /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a single
-        /// <see cref="RuleViolation"/> with machine-readable operands attached.
-        /// </summary>
-        /// <param name="reasonCode">Stable machine-readable code identifying the rule.</param>
+        /// <param name="code">Non-blank machine-readable code identifying the rule.</param>
+        /// <param name="fields">Related field pointers, copied in order. Null means no associated fields.</param>
         /// <param name="args">Operands of the rule, built with <see cref="ValidationArgs"/>. Never put a rejected value itself here.</param>
-        /// <param name="detail">Optional human-readable detail; when supplied the boundary renderer prefers it over the default template for <paramref name="reasonCode"/>.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>An <see cref="InvalidInput"/> wrapping the single rule violation.</returns>
-        public static InvalidInput ForRule(string reasonCode, ImmutableDictionary<string, ValidationArgValue>? args, string? detail = null) =>
+        public static InvalidInput ForRule(
+            string code,
+            IReadOnlyList<InputPointer>? fields = null,
+            ImmutableDictionary<string, ValidationArgValue>? args = null,
+            string? detail = null) =>
             new(EquatableArray<FieldViolation>.Empty,
-                EquatableArray.Create(new RuleViolation(reasonCode, Args: args, Detail: detail)))
+                EquatableArray.Create(new RuleViolation(
+                    code,
+                    fields is null ? default : EquatableArray<InputPointer>.From(fields),
+                    args,
+                    detail)))
             { Detail = detail };
     }
 
@@ -322,39 +324,38 @@ public abstract record Error
         /// <summary>
         /// Convenience factory that builds an <see cref="InvariantViolation"/> against the resource
         /// type <typeparamref name="TResource"/> (its CLR name becomes the resource name), mirroring
-        /// the <see cref="Conflict"/> factories. <paramref name="reasonCode"/> leads because it is the
+        /// the <see cref="Conflict"/> factories. <paramref name="code"/> leads because it is the
         /// invariant's required identity, with the resource id optional.
         /// </summary>
         /// <typeparam name="TResource">The resource the invariant was evaluated against.</typeparam>
-        /// <param name="reasonCode">Stable machine-readable code identifying the violated invariant.</param>
+        /// <param name="code">Non-blank machine-readable code identifying the violated invariant.</param>
         /// <param name="id">Identifier of the instance the invariant was evaluated against; pass <see langword="null"/> for an aggregate- or type-level invariant, or use <see cref="ForReason(string, string?)"/>.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>An <see cref="InvariantViolation"/> carrying the resource.</returns>
-        public static InvariantViolation For<TResource>(string reasonCode, object? id = null, string? detail = null) =>
-            new(reasonCode, ResourceRef.For<TResource>(id)) { Detail = detail };
+        public static InvariantViolation For<TResource>(string code, object? id = null, string? detail = null) =>
+            For(code, ResourceRef.For<TResource>(id), detail);
 
         /// <summary>
         /// Convenience factory that builds an <see cref="InvariantViolation"/> from an explicit
-        /// resource type name and identifier.
+        /// resource reference.
         /// </summary>
-        /// <param name="resourceType">The resource type name the invariant was evaluated against.</param>
-        /// <param name="reasonCode">Stable machine-readable code identifying the violated invariant.</param>
-        /// <param name="id">Identifier of the instance the invariant was evaluated against.</param>
+        /// <param name="code">Non-blank machine-readable code identifying the violated invariant.</param>
+        /// <param name="resource">The resource the invariant was evaluated against.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>An <see cref="InvariantViolation"/> carrying the resource.</returns>
-        public static InvariantViolation For(string resourceType, string reasonCode, object? id = null, string? detail = null) =>
-            new(reasonCode, ResourceRef.For(resourceType, id)) { Detail = detail };
+        public static InvariantViolation For(string code, ResourceRef resource, string? detail = null) =>
+            new(code, RequireResource(resource)) { Detail = detail };
 
         /// <summary>
         /// Convenience factory for an invariant violation with no identifiable resource (e.g. a
         /// cross-field or workflow rule with no aggregate context). Bundles the optional
         /// <see cref="Error.Detail"/> that the primary constructor cannot set inline.
         /// </summary>
-        /// <param name="reasonCode">Stable machine-readable code identifying the violated invariant.</param>
+        /// <param name="code">Non-blank machine-readable code identifying the violated invariant.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>A resourceless <see cref="InvariantViolation"/>.</returns>
-        public static InvariantViolation ForReason(string reasonCode, string? detail = null) =>
-            new(reasonCode) { Detail = detail };
+        public static InvariantViolation ForReason(string code, string? detail = null) =>
+            new(code) { Detail = detail };
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -380,36 +381,35 @@ public abstract record Error
         /// <c>"order.not-found"</c> (no such row) versus <c>"order.archived"</c> (deliberately
         /// withheld), which share the 404 surface but are not the same answer to a client.
         /// Omitted, empty, or whitespace leaves the inherited <see cref="ValidationCodes.Unspecified"/>
-        /// sentinel, so an empty string never reaches the wire. The parameter trails
-        /// <paramref name="detail"/> because the code is optional here; cases whose code is
-        /// required (<see cref="Conflict"/>, <see cref="InvariantViolation"/>) lead with it.
+        /// sentinel, so an empty string never reaches the wire.
         /// </param>
         /// <returns>A <see cref="NotFound"/> wrapping the resource reference.</returns>
-        public static NotFound For<TResource>(object? id = null, string? detail = null, string? code = null) =>
-            new(ResourceRef.For<TResource>(id))
-            {
-                Detail = detail,
-                Code = string.IsNullOrWhiteSpace(code) ? ValidationCodes.Unspecified : code,
-            };
+        public static NotFound For<TResource>(string? code = null, object? id = null, string? detail = null) =>
+            For(code, ResourceRef.For<TResource>(id), detail);
 
         /// <summary>
-        /// Convenience factory that builds a <see cref="NotFound"/> from an explicit resource
-        /// type name and optional identifier.
+        /// Convenience factory that builds a <see cref="NotFound"/> from an explicit resource reference.
         /// </summary>
-        /// <param name="resourceType">The resource type name (e.g. <c>"Season"</c>).</param>
-        /// <param name="id">Optional identifier of the specific instance.</param>
+        /// <param name="resource">The addressed resource.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <param name="code">
         /// Optional stable reason code naming <em>why</em> the resource is absent. Omitted,
         /// empty, or whitespace leaves the inherited <see cref="ValidationCodes.Unspecified"/> sentinel.
         /// </param>
         /// <returns>A <see cref="NotFound"/> wrapping the resource reference.</returns>
-        public static NotFound For(string resourceType, object? id = null, string? detail = null, string? code = null) =>
-            new(ResourceRef.For(resourceType, id))
+        public static NotFound For(string? code, ResourceRef resource, string? detail = null) =>
+            new(RequireResource(resource))
             {
                 Detail = detail,
                 Code = string.IsNullOrWhiteSpace(code) ? ValidationCodes.Unspecified : code,
             };
+
+        /// <summary>Creates a not-found error without a finer reason code.</summary>
+        /// <param name="resource">The addressed resource.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="NotFound"/> with the unspecified code.</returns>
+        public static NotFound For(ResourceRef resource, string? detail = null) =>
+            For(null, resource, detail);
     }
 
     /// <summary>The resource was previously known but has been permanently removed (tombstone).</summary>
@@ -431,46 +431,45 @@ public abstract record Error
         /// <c>"order.purged"</c> versus <c>"order.superseded"</c>. Omitted, empty, or whitespace
         /// leaves the
         /// inherited <see cref="ValidationCodes.Unspecified"/> sentinel, so an empty string
-        /// never reaches the wire. The parameter trails <paramref name="detail"/> because the
-        /// code is optional here; cases whose code is required (<see cref="Conflict"/>,
-        /// <see cref="InvariantViolation"/>) lead with it.
+        /// never reaches the wire.
         /// </param>
         /// <returns>A <see cref="Gone"/> wrapping the resource reference.</returns>
-        public static Gone For<TResource>(object? id = null, string? detail = null, string? code = null) =>
-            new(ResourceRef.For<TResource>(id))
-            {
-                Detail = detail,
-                Code = string.IsNullOrWhiteSpace(code) ? ValidationCodes.Unspecified : code,
-            };
+        public static Gone For<TResource>(string? code = null, object? id = null, string? detail = null) =>
+            For(code, ResourceRef.For<TResource>(id), detail);
 
         /// <summary>
-        /// Convenience factory that builds a <see cref="Gone"/> from an explicit resource
-        /// type name and optional identifier.
+        /// Convenience factory that builds a <see cref="Gone"/> from an explicit resource reference.
         /// </summary>
-        /// <param name="resourceType">The resource type name (e.g. <c>"Season"</c>).</param>
-        /// <param name="id">Optional identifier of the specific instance.</param>
+        /// <param name="resource">The removed resource.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <param name="code">
         /// Optional stable reason code naming <em>why</em> the resource is gone. Omitted,
         /// empty, or whitespace leaves the inherited <see cref="ValidationCodes.Unspecified"/> sentinel.
         /// </param>
         /// <returns>A <see cref="Gone"/> wrapping the resource reference.</returns>
-        public static Gone For(string resourceType, object? id = null, string? detail = null, string? code = null) =>
-            new(ResourceRef.For(resourceType, id))
+        public static Gone For(string? code, ResourceRef resource, string? detail = null) =>
+            new(RequireResource(resource))
             {
                 Detail = detail,
                 Code = string.IsNullOrWhiteSpace(code) ? ValidationCodes.Unspecified : code,
             };
+
+        /// <summary>Creates a gone error without a finer reason code.</summary>
+        /// <param name="resource">The removed resource.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="Gone"/> with the unspecified code.</returns>
+        public static Gone For(ResourceRef resource, string? detail = null) =>
+            For(null, resource, detail);
     }
 
     /// <summary>The request conflicts with the current state of the resource.</summary>
+    /// <param name="Code">Non-blank machine-readable code describing the kind of conflict (e.g. <c>"duplicate-key"</c>, <c>"invalid-state"</c>).</param>
     /// <param name="Resource">
     /// The conflicting resource, when one is identifiable. May be <see langword="null"/> for
     /// stateless conflicts (e.g. workflow / state-machine guards, library code with no aggregate
     /// context).
     /// </param>
-    /// <param name="Code">Machine-readable code describing the kind of conflict (e.g. <c>"duplicate-key"</c>, <c>"invalid-state"</c>).</param>
-    public sealed record Conflict(ResourceRef? Resource, string Code) : Error(Code)
+    public sealed record Conflict(string Code, ResourceRef? Resource = null) : Error(Code)
     {
         /// <inheritdoc />
         public override string Kind => "conflict";
@@ -508,34 +507,32 @@ public abstract record Error
         /// <typeparamref name="TResource"/> (its CLR name becomes the resource name).
         /// </summary>
         /// <typeparam name="TResource">The conflicting resource type.</typeparam>
-        /// <param name="id">Identifier of the conflicting instance; pass <see langword="null"/> for a collection-level conflict, or use <see cref="ForReason(string, string?)"/>.</param>
-        /// <param name="reasonCode">Machine-readable code describing the kind of conflict.</param>
+        /// <param name="code">Non-blank machine-readable code describing the kind of conflict.</param>
+        /// <param name="id">Optional identifier of the conflicting instance; omit for a collection-level conflict, or use <see cref="ForReason(string, string?)"/>.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>A <see cref="Conflict"/> for the resource.</returns>
-        public static Conflict For<TResource>(object? id, string reasonCode, string? detail = null) =>
-            new(ResourceRef.For<TResource>(id), reasonCode) { Detail = detail };
+        public static Conflict For<TResource>(string code, object? id = null, string? detail = null) =>
+            For(code, ResourceRef.For<TResource>(id), detail);
 
         /// <summary>
-        /// Convenience factory that builds a <see cref="Conflict"/> from an explicit resource
-        /// type name and identifier.
+        /// Convenience factory that builds a <see cref="Conflict"/> from an explicit resource reference.
         /// </summary>
-        /// <param name="resourceType">The conflicting resource type name.</param>
-        /// <param name="id">Identifier of the conflicting instance.</param>
-        /// <param name="reasonCode">Machine-readable code describing the kind of conflict.</param>
+        /// <param name="code">Non-blank machine-readable code describing the kind of conflict.</param>
+        /// <param name="resource">The conflicting resource.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>A <see cref="Conflict"/> for the resource.</returns>
-        public static Conflict For(string resourceType, object? id, string reasonCode, string? detail = null) =>
-            new(ResourceRef.For(resourceType, id), reasonCode) { Detail = detail };
+        public static Conflict For(string code, ResourceRef resource, string? detail = null) =>
+            new(code, RequireResource(resource)) { Detail = detail };
 
         /// <summary>
         /// Convenience factory for a stateless conflict with no identifiable resource (e.g. a
         /// workflow / state-machine guard, or library code with no aggregate context).
         /// </summary>
-        /// <param name="reasonCode">Machine-readable code describing the kind of conflict.</param>
+        /// <param name="code">Non-blank machine-readable code describing the kind of conflict.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>A resourceless <see cref="Conflict"/>.</returns>
-        public static Conflict ForReason(string reasonCode, string? detail = null) =>
-            new(Resource: null, Code: reasonCode) { Detail = detail };
+        public static Conflict ForReason(string code, string? detail = null) =>
+            new(code) { Detail = detail };
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -572,25 +569,33 @@ public abstract record Error
         public string PolicyId => Code;
 
         /// <summary>
-        /// Convenience factory that builds a <see cref="Forbidden"/> for <paramref name="policyId"/>
+        /// Convenience factory that builds a <see cref="Forbidden"/> for <paramref name="code"/>
         /// against the resource type <typeparamref name="TResource"/> (its CLR name becomes the resource name).
         /// </summary>
         /// <typeparam name="TResource">The resource the policy was evaluated against.</typeparam>
-        /// <param name="policyId">Identifier of the policy that denied access.</param>
+        /// <param name="code">Non-blank identifier of the policy that denied access.</param>
         /// <param name="id">Optional identifier of the specific instance.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>A <see cref="Forbidden"/> carrying the policy and resource.</returns>
-        public static Forbidden For<TResource>(string policyId, object? id = null, string? detail = null) =>
-            new(policyId, ResourceRef.For<TResource>(id)) { Detail = detail };
+        public static Forbidden For<TResource>(string code, object? id = null, string? detail = null) =>
+            For(code, ResourceRef.For<TResource>(id), detail);
+
+        /// <summary>Creates a policy denial against an explicit resource reference.</summary>
+        /// <param name="code">Non-blank identifier of the policy that denied access.</param>
+        /// <param name="resource">The resource the policy was evaluated against.</param>
+        /// <param name="detail">Optional human-readable detail.</param>
+        /// <returns>A <see cref="Forbidden"/> carrying the policy and resource.</returns>
+        public static Forbidden For(string code, ResourceRef resource, string? detail = null) =>
+            new(code, RequireResource(resource)) { Detail = detail };
 
         /// <summary>
         /// Convenience factory for a policy denial with no specific resource context.
         /// </summary>
-        /// <param name="policyId">Identifier of the policy that denied access.</param>
+        /// <param name="code">Non-blank identifier of the policy that denied access.</param>
         /// <param name="detail">Optional human-readable detail.</param>
         /// <returns>A resourceless <see cref="Forbidden"/>.</returns>
-        public static Forbidden ForPolicy(string policyId, string? detail = null) =>
-            new(policyId) { Detail = detail };
+        public static Forbidden ForPolicy(string code, string? detail = null) =>
+            new(code) { Detail = detail };
     }
 
     // ───────────────────────────────────────────────────────────────────────────

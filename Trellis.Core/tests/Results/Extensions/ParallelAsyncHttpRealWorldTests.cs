@@ -585,7 +585,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         await Task.Delay(25); // Simulate reservation
 
         if (!inventory.Available)
-            return Result.Fail<InventoryReservation>(new Error.Conflict(null, "conflict") { Detail = "Cannot reserve unavailable inventory" });
+            return Result.Fail<InventoryReservation>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Cannot reserve unavailable inventory" });
 
         return Result.Ok(new InventoryReservation($"res-{Guid.NewGuid():N}", true));
     }
@@ -609,7 +609,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
         return productId switch
         {
-            "prod-out-of-stock" => Result.Fail<InventoryResponse>(new Error.Conflict(null, "conflict") { Detail = "Out of stock: product is unavailable" }),
+            "prod-out-of-stock" => Result.Fail<InventoryResponse>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Out of stock: product is unavailable" }),
             "prod-456" => Result.Ok(new InventoryResponse(productId, 100, true)),
             "prod-expensive" => Result.Ok(new InventoryResponse(productId, 5, true)),
             _ => Result.Fail<InventoryResponse>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = $"Product not found: {productId}" })

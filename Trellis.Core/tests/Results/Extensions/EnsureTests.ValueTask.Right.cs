@@ -118,7 +118,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Bool_WithParam_StaticError_FailureResult_PredicateNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = new Error.Conflict(null, "conflict") { Detail = "Initial conflict" };
+        var initialError = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial conflict" };
         var initialResult = Result.Fail<string>(initialError);
         var predicateInvoked = false;
 
@@ -439,7 +439,7 @@ public class Ensure_ValueTask_Right_Tests
     public async Task EnsureAsync_Right_Result_WithParam_FailureResult_PredicateNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = new Error.Conflict(null, "domain.violation") { Detail = "Initial domain error" };
+        var initialError = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "Initial domain error" };
         var initialResult = Result.Fail<int>(initialError);
         var predicateInvoked = false;
 

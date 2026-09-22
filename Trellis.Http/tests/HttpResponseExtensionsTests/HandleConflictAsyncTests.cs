@@ -7,7 +7,7 @@ using Trellis.Testing;
 
 public class HandleConflictAsyncTests
 {
-    readonly Error.Conflict _conflict = new(new ResourceRef("Order", "7"), "duplicate_key") { Detail = "Order 7 already exists" };
+    readonly Error.Conflict _conflict = new(Resource: new ResourceRef("Order", "7"), Code: "duplicate_key") { Detail = "Order 7 already exists" };
 
     [Fact]
     public async Task Matching_409_returns_failure_and_disposes_response()

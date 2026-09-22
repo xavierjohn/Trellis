@@ -186,7 +186,7 @@ public class ResultAssertionsTests
     public void HaveErrorCode_Should_Pass_When_Code_Matches()
     {
         // Arrange
-        var result = Result.Fail<int>(new Error.Conflict(null, "order.already-shipped") { Detail = "Already shipped" });
+        var result = Result.Fail<int>(new Error.Conflict(Resource: null, Code: "order.already-shipped") { Detail = "Already shipped" });
 
         // Act & Assert
         result.Should().HaveErrorCode("order.already-shipped");

@@ -271,7 +271,7 @@ T> : JsonConverter<T>
     private static TrellisJsonValidationException Invalid(string message, InputPointer pointer, string reasonCode, ImmutableDictionary<string, ValidationArgValue>? args) =>
         new(message)
         {
-            InvalidInput = Error.InvalidInput.ForField(pointer, reasonCode, args, message) with
+            InvalidInput = Error.InvalidInput.ForField(field: pointer, code: reasonCode, args: args, detail: message) with
             {
                 Detail = message,
             },

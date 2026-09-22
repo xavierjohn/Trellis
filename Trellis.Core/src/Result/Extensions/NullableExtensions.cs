@@ -14,7 +14,7 @@ using System.Diagnostics;
 /// <code>
 /// // Convert nullable value type to Result
 /// int? maybeAge = GetAge();
-/// var result = maybeAge.ToResult(Error.InvalidInput.ForField("age", "invalid", "Age is required"));
+/// var result = maybeAge.ToResult(Error.InvalidInput.ForField(field: "age", code: "invalid", detail: "Age is required"));
 /// 
 /// // Convert nullable reference type to Result
 /// User? maybeUser = FindUser(id);
@@ -23,7 +23,7 @@ using System.Diagnostics;
 /// // Chain with other Result operations
 /// var validatedResult = GetUser(id)
 ///     .ToResult(new Error.NotFound(new ResourceRef("User", id.ToString())) { Detail = "User not found" })
-///     .Ensure(u => u.IsActive, Error.InvalidInput.ForRule("inactive", "User is inactive"));
+///     .Ensure(u => u.IsActive, Error.InvalidInput.ForRule(code: "inactive", detail: "User is inactive"));
 /// </code>
 /// </example>
 [DebuggerStepThrough]

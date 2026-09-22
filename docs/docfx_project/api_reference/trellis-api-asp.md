@@ -440,7 +440,7 @@ That limits the `pointer`, not the `in`. A domain producer may raise a name matc
 
 ```csharp
 // Showcase.Domain — the name raised is the domain parameter…
-Error.InvalidInput.ForField(nameof(interestAmount), ValidationCodes.ValueGreaterThan, ...)
+Error.InvalidInput.ForField(field: nameof(interestAmount), code: ValidationCodes.ValueGreaterThan, detail: ...)
 
 // Showcase.Application — …and the body member is called something else.
 public sealed record InterestRequest(decimal AnnualRate);

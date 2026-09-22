@@ -283,7 +283,7 @@ public class MaybeExtensionTests
         var result = await maybeTask.ToResultAsync(() =>
         {
             factoryInvoked = true;
-            return new Error.Conflict(null, "conflict") { Detail = "MyClass already exists." };
+            return new Error.Conflict(Resource: null, Code: "conflict") { Detail = "MyClass already exists." };
         });
 
         // Assert
@@ -374,7 +374,7 @@ public class MaybeExtensionTests
         var maybeTask = ValueTask.FromResult(maybe);
 
         // Act
-        var result = await maybeTask.ToResultAsync(() => new Error.Conflict(null, "domain.violation") { Detail = "Business rule violated." });
+        var result = await maybeTask.ToResultAsync(() => new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "Business rule violated." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date);

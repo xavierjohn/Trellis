@@ -16,7 +16,7 @@ public partial class Hostname : ScalarValueObject<Hostname, string>, IScalarValu
     // Field-normalization + InvalidInput failure in one place (default field name: "hostname").
     private static Result<Hostname> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<Hostname>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("hostname"), reasonCode, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("hostname"), code: reasonCode, detail: message));
 
     /// <summary>
     /// Attempts to create a hostname.

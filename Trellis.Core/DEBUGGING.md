@@ -116,7 +116,7 @@ All methods have `Task` and `ValueTask` async variants (`DebugAsync`, `DebugDeta
 ```csharp
 var result = GetUser(id)
     .Debug("After GetUser")
-    .Ensure(u => u.IsActive, Error.InvalidInput.ForRule("user.inactive", "Inactive"))
+    .Ensure(u => u.IsActive, Error.InvalidInput.ForRule(code: "user.inactive", detail: "Inactive"))
     .Debug("After Ensure")
     .Bind(ProcessUser)
     .DebugDetailed("Final result");
@@ -146,7 +146,7 @@ var result = await GetUserAsync(id)
 ```csharp
 var result = await GetUserAsync(id)
     .TapAsync(u => _logger.LogDebug("Found user: {Id}", u.Id))
-    .EnsureAsync(u => u.IsActive, Error.InvalidInput.ForRule("user.inactive", "User inactive"))
+    .EnsureAsync(u => u.IsActive, Error.InvalidInput.ForRule(code: "user.inactive", detail: "User inactive"))
     .TapOnFailureAsync(err => _logger.LogWarning("Validation failed: {Error}", err.Detail))
     .BindAsync(u => GetOrdersAsync(u.Id))
     .TapAsync(orders => _logger.LogDebug("Found {Count} orders", orders.Count))
@@ -158,7 +158,7 @@ var result = await GetUserAsync(id)
 ```csharp
 var result = await GetUserAsync(id)
     .ToResultAsync(new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"User {id} not found" })
-    .EnsureAsync(u => u.IsActive, Error.InvalidInput.ForField("isActive", "user.inactive", "User account is inactive"))
+    .EnsureAsync(u => u.IsActive, Error.InvalidInput.ForField(field: "isActive", code: "user.inactive", detail: "User account is inactive"))
     .BindAsync(u => GetOrdersAsync(u.Id))
     .EnsureAsync(orders => orders.Any(), new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"No orders for user {id}" });
 ```
@@ -170,7 +170,7 @@ var userResult = await GetUserAsync(id)
     .ToResultAsync(new Error.NotFound(ResourceRef.For("User", id)) { Detail = "User not found" });
 
 var activeResult = userResult
-    .Ensure(u => u.IsActive, Error.InvalidInput.ForRule("user.inactive", "Inactive"));
+    .Ensure(u => u.IsActive, Error.InvalidInput.ForRule(code: "user.inactive", detail: "Inactive"));
 
 var ordersResult = await activeResult
     .BindAsync(u => GetOrdersAsync(u.Id));
@@ -281,12 +281,12 @@ public void Should_Fail_With_Validation_Error()
 // Compose from testable pieces
 public Result<User> GetActiveUser(string id) =>
     GetUser(id)
-        .Ensure(u => u.IsActive, Error.InvalidInput.ForRule("user.inactive", "User is inactive"));
+        .Ensure(u => u.IsActive, Error.InvalidInput.ForRule(code: "user.inactive", detail: "User is inactive"));
 
 public Result<User> ValidateEmail(User user) =>
     user.Email.Value.Contains('@')
         ? Result.Ok(user)
-        : Result.Fail<User>(Error.InvalidInput.ForField("email", ValidationCodes.StringEmail, "Invalid email"));
+        : Result.Fail<User>(Error.InvalidInput.ForField(field: "email", code: ValidationCodes.StringEmail, detail: "Invalid email"));
 
 // Compose
 public Result<User> ValidateAndProcess(string id) =>

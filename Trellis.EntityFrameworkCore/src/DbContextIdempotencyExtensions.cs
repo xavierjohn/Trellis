@@ -15,7 +15,7 @@ public static class DbContextIdempotencyExtensions
     /// <summary>
     /// Adds <paramref name="entity"/> to <paramref name="context"/>, persists the change
     /// via <see cref="DbContext.SaveChangesAsync(CancellationToken)"/>, and converts a
-    /// duplicate-key violation into <c>Result.Fail(new Error.Conflict(null, "duplicate.key"))</c>.
+    /// duplicate-key violation into <c>Result.Fail(new Error.Conflict(Resource: null, Code: "duplicate.key"))</c>.
     /// Use this helper to implement idempotent inserts on a unique constraint without
     /// catching <see cref="DbUpdateException"/> at the call site.
     /// </summary>

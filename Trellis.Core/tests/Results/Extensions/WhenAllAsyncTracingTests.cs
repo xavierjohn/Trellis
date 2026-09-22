@@ -164,7 +164,7 @@ public class WhenAllAsyncTracingTests : TestBase
             Task.FromResult(Result.Fail<int>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Error 5" })),
             Task.FromResult(Result.Ok(6)),
             Task.FromResult(Result.Ok(7)),
-            Task.FromResult(Result.Fail<int>(new Error.Conflict(null, "conflict") { Detail = "Error 8" })),
+            Task.FromResult(Result.Fail<int>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Error 8" })),
             Task.FromResult(Result.Ok(9))).WhenAllAsync());
 
         return data;

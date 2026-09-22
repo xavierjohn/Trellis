@@ -372,7 +372,7 @@ public class ParallelAsyncTests : TestBase
         var result = await Result.ParallelAsync(
             () => CreateDelayedSuccessTask(1, 10),
             () => CreateDelayedSuccessTask(2, 20),
-            () => CreateDelayedFailureTask<int>(new Error.Conflict(null, "conflict") { Detail = "Conflict occurred" }, 15),
+            () => CreateDelayedFailureTask<int>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Conflict occurred" }, 15),
             () => CreateDelayedSuccessTask(4, 25)
         ).WhenAllAsync();
 

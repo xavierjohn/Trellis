@@ -133,8 +133,9 @@ public sealed class ScalarValueConverterParityTests
                             : fieldName == "unexpected"
                             ? Result.Fail<Probe{{i}}>(new Error.Unexpected("test.failure") { Detail = "Safe detail." })
                             : Result.Fail<Probe{{i}}>(Error.InvalidInput.ForField(
+                                "test.rejected",
                                 fieldName == "located" ? InputPointer.ForQuery("external") : InputPointer.ForProperty(fieldName ?? "value"),
-                                "test.rejected", ValidationArgs.Of("min", 1), "Rejected."));
+                                ValidationArgs.Of("min", 1), "Rejected."));
                 """);
             if (primitive != "string")
                 source.Append(CultureInfo.InvariantCulture, $"public static Result<Probe{i}> TryCreate(string? value, string? fieldName = null) => throw new NotSupportedException();");

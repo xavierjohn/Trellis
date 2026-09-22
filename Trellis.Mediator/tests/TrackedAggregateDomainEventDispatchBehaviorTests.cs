@@ -79,7 +79,7 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
         var publisher = new RecordingPublisher();
         var behavior = NewBehavior<OutcomeDtoCommand, Result<OutcomeDto>>(source, publisher);
 
-        var failAfterCommit = Result.FailAfterCommit<OutcomeDto>(new Error.Conflict(new ResourceRef("Aggregate", "id"), "duplicate_key"));
+        var failAfterCommit = Result.FailAfterCommit<OutcomeDto>(new Error.Conflict(Resource: new ResourceRef("Aggregate", "id"), Code: "duplicate_key"));
         var response = await behavior.Handle(
             new OutcomeDtoCommand("x"),
             (_, _) => new ValueTask<Result<OutcomeDto>>(failAfterCommit),

@@ -691,7 +691,7 @@ public class OrderService
             .ToResultAsync(new Error.NotFound(ResourceRef.For("Customer", request.CustomerId)) { Detail = $"Customer {request.CustomerId} not found" })
             .EnsureAsync(
                 async (customer, ct) => await customer.IsActiveAsync(ct),
-                new Error.Conflict(null, "conflict") { Detail = "Customer account is inactive" },
+                new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Customer account is inactive" },
                 cancellationToken)
             // Validate and create order lines
             .BindAsync(
@@ -703,7 +703,7 @@ public class OrderService
                                 .EnsureAsync(
                                     async (product, productCt) => 
                                         await _inventoryService.HasStockAsync(product.Id, itemReq.Quantity, productCt),
-                                    new Error.Conflict(null, "conflict") { Detail = $"Insufficient stock for product {itemReq.ProductId}" },
+                                    new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Insufficient stock for product {itemReq.ProductId}" },
                                     innerCt)
                                 .BindAsync(
                                     async (product, productCt) =>

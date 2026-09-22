@@ -225,7 +225,7 @@ public sealed class ResponseFailureWriterProblemObjectTests
         // A code that happens to equal its own kind is still a code the producer named, and is
         // emitted verbatim. Nothing compares the two — the emitter has no notion of a code being
         // "redundant" with its kind.
-        using var body = await WriteAsync(new Error.Conflict(null, "conflict"));
+        using var body = await WriteAsync(new Error.Conflict(Resource: null, Code: "conflict"));
 
         body.RootElement.GetProperty("code").GetString().Should().Be("conflict");
     }
@@ -261,8 +261,8 @@ public sealed class ResponseFailureWriterProblemObjectTests
             new Error.InvariantViolation("order.line-limit-exceeded", resource),
             new Error.NotFound(resource),
             new Error.Gone(resource),
-            new Error.Conflict(resource, "order.already-shipped"),
-            new Error.Conflict(null, ValidationCodes.LegacyUnspecified),
+            new Error.Conflict(Resource: resource, Code: "order.already-shipped"),
+            new Error.Conflict(Resource: null, Code: ValidationCodes.LegacyUnspecified),
             new Error.AuthenticationRequired(),
             new Error.Forbidden("orders.write", resource),
             new Error.RateLimited(),

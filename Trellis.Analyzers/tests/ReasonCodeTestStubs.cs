@@ -55,6 +55,8 @@ public static class ReasonCodeTestStubs
 
                 public static object ForReason(string reasonCode, string? detail = null) => null!;
 
+                public static object ForPolicy(string code, string? detail = null) => null!;
+
                 public static object For(string resourceType, string reasonCode, object? id = null) => null!;
             }
 

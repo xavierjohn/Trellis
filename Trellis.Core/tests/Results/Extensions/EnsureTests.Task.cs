@@ -63,22 +63,22 @@ public class Ensure_Task_Tests
     [Fact]
     public async Task Ensure_Task_with_failureInput_and_parameterisedSuccessPredicate()
     {
-        var initialResult = Task.FromResult(Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "Initial Error message" }));
+        var initialResult = Task.FromResult(Result.Fail<string>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial Error message" }));
 
         var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Ok<string>("Success Message")));
 
         result.Should().BeFailure("Initial result is failure result")
-            .Which.Should().Be(new Error.Conflict(null, "conflict") { Detail = "Initial Error message" });
+            .Which.Should().Be(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial Error message" });
     }
 
     [Fact]
     public async Task Ensure_Task_with_failureInput_and_parameterisedFailurePredicate()
     {
-        var initialResult = Task.FromResult(Result.Fail<string>(new Error.Conflict(null, "conflict") { Detail = "Initial Error message" }));
+        var initialResult = Task.FromResult(Result.Fail<string>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial Error message" }));
 
         var result = await initialResult.EnsureAsync(_ => Task.FromResult(Result.Fail<string>(new Error.Unexpected("test") { Detail = "Success Message" })));
 
         result.Should().BeFailure("Initial result and predicate is failure result")
-            .Which.Should().Be(new Error.Conflict(null, "conflict") { Detail = "Initial Error message" });
+            .Which.Should().Be(new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial Error message" });
     }
 }

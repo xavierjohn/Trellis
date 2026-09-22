@@ -326,7 +326,7 @@ public sealed record ArchiveDocumentCommand(string DocumentId, bool IsArchived)
     public IResult Validate() =>
         IsArchived
             ? Result.Ok()
-            : Result.Fail(new Error.Conflict(null, "domain.violation") { Detail = "Only archived documents can be processed." });
+            : Result.Fail(new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "Only archived documents can be processed." });
 }
 
 public sealed class ArchiveDocumentHandler : ICommandHandler<ArchiveDocumentCommand, Result<Unit>>

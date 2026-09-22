@@ -104,7 +104,7 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
     // Field-normalization + InvalidInput failure in one place (default field name: "phoneNumber").
     private static Result<PhoneNumber> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<PhoneNumber>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("phoneNumber"), reasonCode, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("phoneNumber"), code: reasonCode, detail: message));
 
     /// <summary>
     /// Attempts to create a <see cref="PhoneNumber"/> from the specified string.

@@ -239,7 +239,7 @@ public sealed class TrellisHttpResultExtraTests
     public async Task Failure_response_uses_typed_error_override_status_code()
     {
         var ctx = NewContext();
-        var r = Result.Fail<Todo>(new Error.Conflict(null, "dup"));
+        var r = Result.Fail<Todo>(new Error.Conflict(Resource: null, Code: "dup"));
 
         // Override targets the actual type; verifies the dictionary lookup walks the hierarchy.
         await r.ToHttpResponse(TodoBody.From, o => o.WithErrorMapping<Error.Conflict>(418))

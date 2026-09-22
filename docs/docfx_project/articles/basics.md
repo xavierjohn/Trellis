@@ -102,7 +102,7 @@ public static Result<User> RegisterUser(RegisterUserInput input, Func<CustomerEm
         .Combine(LastName.TryCreate(input.LastName))
         .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), Error.Conflict.ForReason("conflict", "Email already registered."));
+        .Ensure(user => !emailExists(user.Email), Error.Conflict.ForReason(code: "conflict", detail: "Email already registered."));
 }
 ```
 
@@ -259,8 +259,8 @@ to avoid constructing the error when the condition passes:
 ```csharp
 var quantity = 3;
 Result<Unit> guard = Result.Ensure(quantity > 0, () =>
-    Error.InvalidInput.ForField("quantity", ValidationCodes.ValueGreaterThan,
-        ValidationArgs.Of("comparisonValue", 0), "Quantity must be positive."));
+    Error.InvalidInput.ForField(field: "quantity", code: ValidationCodes.ValueGreaterThan,
+        args: ValidationArgs.Of("comparisonValue", 0), detail: "Quantity must be positive."));
 ```
 
 `Result.Ensure(() => condition, () => error)` and
@@ -302,11 +302,11 @@ To build errors only when a check fails, supply value-dependent factories instea
 var result = Result.Ok(new CheckoutRequest("SPRING25", -5m, "USD"))
     .EnsureAll(
         (request => request.Subtotal > 0m, request =>
-            Error.InvalidInput.ForField("subtotal", ValidationCodes.ValueGreaterThan,
-                $"Subtotal {request.Subtotal} must be greater than zero.")),
+            Error.InvalidInput.ForField(field: "subtotal", code: ValidationCodes.ValueGreaterThan,
+                detail: $"Subtotal {request.Subtotal} must be greater than zero.")),
         (request => request.Currency.Length == 3, _ =>
-            Error.InvalidInput.ForField("currency", ValidationCodes.StringExactLength,
-                "Currency must be a 3-letter code.")));
+            Error.InvalidInput.ForField(field: "currency", code: ValidationCodes.StringExactLength,
+                detail: "Currency must be a 3-letter code.")));
 ```
 
 Every predicate runs on a successful input, and only failed checks invoke their factory.
@@ -369,7 +369,7 @@ public static Result<User> RegisterUser(
         .Combine(LastName.TryCreate(input.LastName))
         .Combine(CustomerEmail.TryCreate(input.Email, fieldName: "email"))
         .Bind((firstName, lastName, email) => User.TryCreate(firstName, lastName, email))
-        .Ensure(user => !emailExists(user.Email), Error.Conflict.ForReason("conflict", "Email already registered."))
+        .Ensure(user => !emailExists(user.Email), Error.Conflict.ForReason(code: "conflict", detail: "Email already registered."))
         .Tap(saveUser)
         .Tap(user => sendWelcomeEmail(user.Email));
 }

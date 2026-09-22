@@ -39,15 +39,15 @@ public sealed class Order : Aggregate<OrderId>
     private Order(OrderId id) : base(id) { }
 
     public static Result<Order> TryCreate(OrderId? id, Money? total) =>
-        id.ToResult(Error.InvalidInput.ForField("id", ValidationCodes.ValueNotNull, "Order id is required."))
-            .Combine(total.ToResult(Error.InvalidInput.ForField("total", ValidationCodes.ValueNotNull, "Total is required.")))
+        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Order id is required."))
+            .Combine(total.ToResult(Error.InvalidInput.ForField(field: "total", code: ValidationCodes.ValueNotNull, detail: "Total is required.")))
             .Map((id, total) => new Order(id) { Total = total });
 
     public Result<Order> Submit(TimeProvider clock)
     {
         var occurredAt = clock.GetUtcNow();
         return this.ToResult()
-            .Ensure(_ => Status == OrderStatus.Draft, Error.InvalidInput.ForRule("order.already-submitted", "Already submitted"))
+            .Ensure(_ => Status == OrderStatus.Draft, Error.InvalidInput.ForRule(code: "order.already-submitted", detail: "Already submitted"))
             .Tap(_ =>
             {
                 Status = OrderStatus.Submitted;

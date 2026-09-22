@@ -77,7 +77,7 @@ public sealed class HttpResponseExtensionsExtraTests
     public async Task Error_ToHttpResponse_honours_per_call_error_mapping()
     {
         var ctx = NewContext();
-        var err = new Error.Conflict(null, "x");
+        var err = new Error.Conflict(Resource: null, Code: "x");
 
         await err.ToHttpResponse(o => o.WithErrorMapping(_ => 451)).ExecuteAsync(ctx);
 
@@ -88,7 +88,7 @@ public sealed class HttpResponseExtensionsExtraTests
     public async Task Error_ToHttpResponse_honours_typed_override_chain()
     {
         var ctx = NewContext();
-        var err = new Error.Conflict(null, "x");
+        var err = new Error.Conflict(Resource: null, Code: "x");
 
         await err.ToHttpResponse(o => o.WithErrorMapping<Error.Conflict>(418)).ExecuteAsync(ctx);
 
@@ -231,7 +231,7 @@ public sealed class HttpResponseExtensionsExtraTests
     public async Task Page_failure_writes_problem_details_via_per_call_mapping()
     {
         var ctx = NewContext();
-        var r = Result.Fail<Page<Thing>>(new Error.Conflict(null, "x"));
+        var r = Result.Fail<Page<Thing>>(new Error.Conflict(Resource: null, Code: "x"));
 
         var http = r.ToHttpResponse<Thing, object>((_, _) => "next", t => t,
             o => o.WithErrorMapping<Error.Conflict>(418));

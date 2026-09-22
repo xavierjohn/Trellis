@@ -108,7 +108,7 @@ public class UsersController : ControllerBase
     public ActionResult Delete(string id) =>
         _repository.GetById(id)
             .ToResult(new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"User {id} not found" })
-            .Ensure(user => user.CanDelete, new Error.Conflict(null, "conflict") { Detail = "User has active orders" })
+            .Ensure(user => user.CanDelete, new Error.Conflict(Resource: null, Code: "conflict") { Detail = "User has active orders" })
             .Tap(user => _repository.Delete(user))
             .Map(_ => Result.Ok())
             .ToActionResult(this);
@@ -169,7 +169,7 @@ public class OrdersController : ControllerBase
             .ToResultAsync(new Error.NotFound(ResourceRef.For("Order", id)) { Detail = $"Order {id} not found" })
             .EnsureAsync(
                 order => order.CanCancelAsync(ct),
-                new Error.Conflict(null, "conflict") { Detail = "Order cannot be cancelled" })
+                new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Order cannot be cancelled" })
             .TapAsync(order => _inventoryService.ReleaseAsync(order.Items, ct))
             .TapAsync(order => _paymentService.RefundAsync(order, ct))
             .TapAsync(order => _orderService.DeleteAsync(order, ct))
@@ -182,7 +182,7 @@ public class OrdersController : ControllerBase
         await _inventoryService.CheckAvailabilityAsync(request.Items, ct)
             .EnsureAsync(
                 available => Task.FromResult(available),
-                new Error.Conflict(null, "conflict") { Detail = "Some items are out of stock" })
+                new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Some items are out of stock" })
             .Map(_ => request);
 
     private async Task<bool> CanAccessOrderAsync(
@@ -222,7 +222,7 @@ public class ProductsController : ControllerBase
             // Validate unique product name
             .Ensure(
                 tuple => !_repository.ExistsByName(tuple.name),
-                new Error.Conflict(null, "conflict") { Detail = "A product with this name already exists" })
+                new Error.Conflict(Resource: null, Code: "conflict") { Detail = "A product with this name already exists" })
             // Create product
             .Bind(tuple => Product.TryCreate(
                 tuple.name,
@@ -298,7 +298,7 @@ public class JobsController : ControllerBase
             .ToResult(new Error.NotFound(ResourceRef.For("Job", id)) { Detail = $"Job {id} not found" })
             .Ensure(
                 job => job.CanRetry,
-                new Error.Conflict(null, "conflict") { Detail = "Job cannot be retried" })
+                new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Job cannot be retried" })
             .Bind(job => job.Retry())
             .ToActionResult(this);
 
@@ -362,7 +362,7 @@ userApi.MapDelete("/{id}", (
     IUserRepository repository) =>
     repository.GetById(id)
         .ToResult(new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"User {id} not found" })
-        .Ensure(user => user.CanDelete, new Error.Conflict(null, "conflict") { Detail = "User has active orders" })
+        .Ensure(user => user.CanDelete, new Error.Conflict(Resource: null, Code: "conflict") { Detail = "User has active orders" })
         .Tap(user => repository.Delete(user))
         .Map(_ => Result.Ok())
         .ToHttpResult());
@@ -669,7 +669,7 @@ public ActionResult<User> Register([FromBody] RegisterRequest request) =>
     EmailAddress.TryCreate(request.Email)
         .Ensure(
             email => !_userRepository.ExistsByEmail(email),
-            new Error.Conflict(null, "conflict") { Detail = "A user with this email already exists" })
+            new Error.Conflict(Resource: null, Code: "conflict") { Detail = "A user with this email already exists" })
         .Bind(email => User.TryCreate(
             request.FirstName,
             request.LastName,
@@ -687,7 +687,7 @@ public async Task<ActionResult<User>> UpdateEmailAsync(
             await EmailAddress.TryCreate(request.NewEmail)
                 .EnsureAsync(
                     async email => !await _userRepository.ExistsByEmailAsync(email),
-                    new Error.Conflict(null, "conflict") { Detail = "Email already in use" })
+                    new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Email already in use" })
                 .BindAsync(email => user.UpdateEmailAsync(email)))
         .TapAsync(user => _userRepository.SaveAsync(user))
         .ToActionResultAsync(this);
@@ -698,10 +698,10 @@ public ActionResult DeleteUser(string id) =>
         .ToResult(new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"User {id} not found" })
         .Ensure(
             user => !user.HasActiveOrders,
-            new Error.Conflict(null, "conflict") { Detail = "Cannot delete user with active orders" })
+            new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Cannot delete user with active orders" })
         .Ensure(
             user => !user.HasPendingPayments,
-            new Error.Conflict(null, "conflict") { Detail = "Cannot delete user with pending payments" })
+            new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Cannot delete user with pending payments" })
         .Tap(user => _userRepository.Delete(user))
         .Map(_ => Result.Ok())
         .ToActionResult(this);
@@ -737,7 +737,7 @@ public class OrderService : IOrderService
             .ToResultAsync(new Error.NotFound(ResourceRef.For("Customer", customerId)) { Detail = $"Customer {customerId} not found" })
             .EnsureAsync(
                 customer => customer.IsActiveAsync(ct),
-                new Error.Conflict(null, "conflict") { Detail = "Customer account is inactive" });
+                new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Customer account is inactive" });
 
     private async Task<Result<IEnumerable<OrderLine>>> CreateOrderLinesAsync(
         IEnumerable<OrderLineRequest> requests,
@@ -861,7 +861,7 @@ public class UnitOfWork : IUnitOfWork
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            return new Error.Conflict(null, "conflict") { Detail = "Concurrency conflict detected" };
+            return new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Concurrency conflict detected" };
         }
         catch (DbUpdateException ex)
         {

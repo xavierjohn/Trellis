@@ -50,9 +50,9 @@ public sealed class WeeklyPeriod : ValueObject
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(WeeklyPeriod) + '.' + nameof(TryCreate));
         var owner = InputPointer.ForProperty(fieldName.NormalizeFieldName(string.Empty));
         var validEnd = Result.Ensure(end != start, () => Error.InvalidInput.ForField(
-            owner.AppendProperty("end"), ValidationCodes.ValueMustNotEqual,
-            ValidationArgs.Of("comparisonProperty", "start"),
-            "Start and end must differ. Use an explicit all-day period for a whole calendar day."));
+            field: owner.AppendProperty("end"), code: ValidationCodes.ValueMustNotEqual,
+            args: ValidationArgs.Of("comparisonProperty", "start"),
+            detail: "Start and end must differ. Use an explicit all-day period for a whole calendar day."));
 
         return ValidateDay(day, owner.AppendProperty("day"))
             .Combine(validEnd)
@@ -98,7 +98,7 @@ public sealed class WeeklyPeriod : ValueObject
 
     private static Result<DayOfWeek> ValidateDay(DayOfWeek day, InputPointer field) =>
         Result.Ensure(Enum.IsDefined(day), () => Error.InvalidInput.ForField(
-                field, ValidationCodes.EnumUndefined, ValidationArgs.Allowed(Enum.GetNames<DayOfWeek>()),
-                "Day must be a defined day of the week."))
+                field: field, code: ValidationCodes.EnumUndefined, args: ValidationArgs.Allowed(Enum.GetNames<DayOfWeek>()),
+                detail: "Day must be a defined day of the week."))
             .Map(_ => day);
 }

@@ -57,7 +57,7 @@ public class ErrorCodeStorageTests
 
     [Fact]
     public void Code_can_be_replaced_by_a_copy() =>
-        (new Error.Conflict(Order, "order.already-shipped") with { Code = "order.locked" }).Code
+        (new Error.Conflict(Resource: Order, Code: "order.already-shipped") with { Code = "order.locked" }).Code
             .Should().Be("order.locked");
 
     /// <summary>
@@ -66,7 +66,7 @@ public class ErrorCodeStorageTests
     /// </summary>
     [Fact]
     public void A_mandatory_reason_is_the_code() =>
-        new Error.Conflict(Order, "order.already-shipped").Code
+        new Error.Conflict(Resource: Order, Code: "order.already-shipped").Code
             .Should().Be("order.already-shipped");
 
     /// <summary>

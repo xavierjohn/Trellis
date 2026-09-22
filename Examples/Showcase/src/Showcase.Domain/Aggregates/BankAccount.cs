@@ -95,11 +95,11 @@ public class BankAccount : Aggregate<AccountId>
         return Result.Ok()
             .EnsureAll(
                 (_ => initialDeposit.Amount >= 0, _ => Error.InvalidInput.ForField(
-                    nameof(initialDeposit), ValidationCodes.ValueGreaterThanOrEqual, "Initial deposit must be non-negative")),
+                    field: nameof(initialDeposit), code: ValidationCodes.ValueGreaterThanOrEqual, detail: "Initial deposit must be non-negative")),
                 (_ => dailyWithdrawalLimit.Amount > 0, _ => Error.InvalidInput.ForField(
-                    nameof(dailyWithdrawalLimit), ValidationCodes.ValueGreaterThan, "Daily withdrawal limit must be positive")),
+                    field: nameof(dailyWithdrawalLimit), code: ValidationCodes.ValueGreaterThan, detail: "Daily withdrawal limit must be positive")),
                 (_ => overdraftLimit.Amount >= 0, _ => Error.InvalidInput.ForField(
-                    nameof(overdraftLimit), ValidationCodes.ValueGreaterThanOrEqual, "Overdraft limit must be non-negative")))
+                    field: nameof(overdraftLimit), code: ValidationCodes.ValueGreaterThanOrEqual, detail: "Overdraft limit must be non-negative")))
             .Map(_ => new BankAccount(
                 AccountId.NewUniqueV4(),
                 customerId,
@@ -116,11 +116,11 @@ public class BankAccount : Aggregate<AccountId>
     public Result<BankAccount> Deposit(Money amount, string description = "Deposit") =>
         this.ToResult()
             .Ensure(_ => Status == AccountStatus.Active,
-                _ => new Error.Conflict(null, "account.not-active") { Detail = $"Cannot deposit to {Status} account" })
+                _ => new Error.Conflict(Resource: null, Code: "account.not-active") { Detail = $"Cannot deposit to {Status} account" })
             .Ensure(_ => amount.Amount > 0,
-                _ => Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Deposit amount must be positive"))
+                _ => Error.InvalidInput.ForField(field: nameof(amount), code: ValidationCodes.ValueGreaterThan, detail: "Deposit amount must be positive"))
             .Ensure(_ => amount.Amount <= 10000,
-                _ => new Error.Conflict(null, "deposit.limit.exceeded") { Detail = "Single deposit cannot exceed $10,000" })
+                _ => new Error.Conflict(Resource: null, Code: "deposit.limit.exceeded") { Detail = "Single deposit cannot exceed $10,000" })
             .Bind(_ => Balance.Add(amount))
             .Tap(newBalance =>
             {
@@ -137,15 +137,15 @@ public class BankAccount : Aggregate<AccountId>
 
         return this.ToResult()
             .Ensure(_ => Status == AccountStatus.Active,
-                _ => new Error.Conflict(null, "account.not-active") { Detail = $"Cannot withdraw from {Status} account" })
+                _ => new Error.Conflict(Resource: null, Code: "account.not-active") { Detail = $"Cannot withdraw from {Status} account" })
             .Ensure(_ => amount.Amount > 0,
-                _ => Error.InvalidInput.ForField(nameof(amount), ValidationCodes.ValueGreaterThan, "Withdrawal amount must be positive"))
+                _ => Error.InvalidInput.ForField(field: nameof(amount), code: ValidationCodes.ValueGreaterThan, detail: "Withdrawal amount must be positive"))
             .Bind(_ => todayTotal.Add(amount))
             .Ensure(totalWithToday => !totalWithToday.IsGreaterThanOrEqual(DailyWithdrawalLimit),
-                _ => new Error.Conflict(null, "withdrawal.daily.limit") { Detail = $"Daily withdrawal limit of {DailyWithdrawalLimit} would be exceeded" })
+                _ => new Error.Conflict(Resource: null, Code: "withdrawal.daily.limit") { Detail = $"Daily withdrawal limit of {DailyWithdrawalLimit} would be exceeded" })
             .Bind(_ => Balance.Subtract(amount))
             .Ensure(newBalance => newBalance.Amount >= -OverdraftLimit.Amount,
-                _ => new Error.Conflict(null, "withdrawal.overdraft.exceeded") { Detail = $"Withdrawal would exceed overdraft limit of {OverdraftLimit}" })
+                _ => new Error.Conflict(Resource: null, Code: "withdrawal.overdraft.exceeded") { Detail = $"Withdrawal would exceed overdraft limit of {OverdraftLimit}" })
             .Tap(newBalance =>
             {
                 Balance = newBalance;
@@ -160,19 +160,19 @@ public class BankAccount : Aggregate<AccountId>
     {
         if (!AccountType.EarnsInterest)
             return Result.Fail<BankAccount>(
-                new Error.Conflict(null, "interest.savings.only") { Detail = "Interest is only paid on savings accounts." });
+                new Error.Conflict(Resource: null, Code: "interest.savings.only") { Detail = "Interest is only paid on savings accounts." });
 
         if (Status != AccountStatus.Active)
             return Result.Fail<BankAccount>(
-                new Error.Conflict(null, "account.not-active") { Detail = $"Cannot pay interest to {Status} account." });
+                new Error.Conflict(Resource: null, Code: "account.not-active") { Detail = $"Cannot pay interest to {Status} account." });
 
         if (Balance.Amount <= 0)
             return Result.Fail<BankAccount>(
-                new Error.Conflict(null, "interest.zero.balance") { Detail = "No interest on accounts with zero balance." });
+                new Error.Conflict(Resource: null, Code: "interest.zero.balance") { Detail = "No interest on accounts with zero balance." });
 
         if (interestAmount.Amount <= 0)
             return Result.Fail<BankAccount>(
-                Error.InvalidInput.ForField(nameof(interestAmount), ValidationCodes.ValueGreaterThan, "Interest amount must be positive"));
+                Error.InvalidInput.ForField(field: nameof(interestAmount), code: ValidationCodes.ValueGreaterThan, detail: "Interest amount must be positive"));
 
         return Balance.Add(interestAmount)
             .Tap(newBalance =>
@@ -192,24 +192,24 @@ public class BankAccount : Aggregate<AccountId>
 
         if (Id.Equals(toAccount.Id))
             return Result.Fail<(BankAccount From, BankAccount To)>(
-                new Error.Conflict(null, "transfer.same.account") { Detail = "Cannot transfer to the same account" });
+                new Error.Conflict(Resource: null, Code: "transfer.same.account") { Detail = "Cannot transfer to the same account" });
 
         // Pre-validate destination so a successful Withdraw is not followed by a failing Deposit,
         // which would leave the source account debited while the destination is unchanged.
         if (toAccount.Status != AccountStatus.Active)
             return Result.Fail<(BankAccount From, BankAccount To)>(
-                new Error.Conflict(null, "account.not-active") { Detail = $"Cannot transfer to {toAccount.Status} account" });
+                new Error.Conflict(Resource: null, Code: "account.not-active") { Detail = $"Cannot transfer to {toAccount.Status} account" });
 
         if (amount.Amount > 10000)
             return Result.Fail<(BankAccount From, BankAccount To)>(
-                new Error.Conflict(null, "deposit.limit.exceeded") { Detail = "Single deposit cannot exceed $10,000" });
+                new Error.Conflict(Resource: null, Code: "deposit.limit.exceeded") { Detail = "Single deposit cannot exceed $10,000" });
 
         if (!toAccount.Balance.Currency.Equals(amount.Currency))
             return Result.Fail<(BankAccount From, BankAccount To)>(
                 Error.InvalidInput.ForField(
-                    nameof(amount),
-                    ValidationCodes.MoneyCurrencyMismatch,
-                    $"Cannot deposit {amount.Currency} into {toAccount.Balance.Currency} account"));
+                    field: nameof(amount),
+                    code: ValidationCodes.MoneyCurrencyMismatch,
+                    detail: $"Cannot deposit {amount.Currency} into {toAccount.Balance.Currency} account"));
 
         return Withdraw(amount, $"{description} to {toAccount.Id}")
             .Bind(_ => toAccount.Deposit(amount, $"{description} from {Id}"))
@@ -222,7 +222,7 @@ public class BankAccount : Aggregate<AccountId>
         if (string.IsNullOrWhiteSpace(reason))
         {
             return Result.Fail<BankAccount>(
-                Error.InvalidInput.ForField(nameof(reason), ValidationCodes.ValueNotEmpty, "Freeze reason is required"));
+                Error.InvalidInput.ForField(field: nameof(reason), code: ValidationCodes.ValueNotEmpty, detail: "Freeze reason is required"));
         }
 
         return _lifecycle.FireResult(AccountTrigger.Freeze)
@@ -240,7 +240,7 @@ public class BankAccount : Aggregate<AccountId>
         if (Balance.Amount != 0)
         {
             return Result.Fail<BankAccount>(
-                new Error.Conflict(null, "account.close.nonzero.balance") { Detail = "Account balance must be zero to close" });
+                new Error.Conflict(Resource: null, Code: "account.close.nonzero.balance") { Detail = "Account balance must be zero to close" });
         }
 
         return _lifecycle.FireResult(AccountTrigger.Close)

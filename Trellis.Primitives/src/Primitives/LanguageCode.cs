@@ -25,7 +25,7 @@ public class LanguageCode : ScalarValueObject<LanguageCode, string>, IScalarValu
     // Field-normalization + InvalidInput failure in one place (default field name: "languageCode").
     private static Result<LanguageCode> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<LanguageCode>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("languageCode"), reasonCode, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("languageCode"), code: reasonCode, detail: message));
 
     /// <summary>
     /// Attempts to create a language code.

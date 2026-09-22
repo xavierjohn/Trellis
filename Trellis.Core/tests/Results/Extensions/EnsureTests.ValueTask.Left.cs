@@ -102,7 +102,7 @@ public class Ensure_ValueTask_Left_Tests
     public async Task EnsureAsync_Left_Bool_WithParam_StaticError_FailureResult_PredicateNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = new Error.Conflict(null, "conflict") { Detail = "Initial conflict" };
+        var initialError = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial conflict" };
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var predicateInvoked = false;
 
@@ -291,7 +291,7 @@ public class Ensure_ValueTask_Left_Tests
     public async Task EnsureAsync_Left_Bool_WithParam_AsyncErrorFactory_PredicateNotCalled_WhenResultIsFailure()
     {
         // Arrange
-        var initialError = Error.InvalidInput.ForRule("bad.request", "Initial bad request");
+        var initialError = Error.InvalidInput.ForRule(code: "bad.request", detail: "Initial bad request");
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
         var predicateInvoked = false;
         var asyncErrorFactoryInvoked = false;
@@ -415,7 +415,7 @@ public class Ensure_ValueTask_Left_Tests
     public async Task EnsureAsync_Left_Result_WithParam_FailureResult_PredicateNotInvoked_ReturnsOriginalFailure()
     {
         // Arrange
-        var initialError = new Error.Conflict(null, "domain.violation") { Detail = "Initial domain error" };
+        var initialError = new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "Initial domain error" };
         var initialResult = ValueTask.FromResult(Result.Fail<int>(initialError));
         var predicateInvoked = false;
 
@@ -636,7 +636,7 @@ public class Ensure_ValueTask_Left_Tests
         // Act
         var result = await initialResult.EnsureAsync(
             value => value >= 18,
-            new Error.Conflict(null, "domain.violation") { Detail = "Business rule: Must be 18 or older" });
+            new Error.Conflict(Resource: null, Code: "domain.violation") { Detail = "Business rule: Must be 18 or older" });
 
         // Assert
         result.Should().BeFailure("validation failed")

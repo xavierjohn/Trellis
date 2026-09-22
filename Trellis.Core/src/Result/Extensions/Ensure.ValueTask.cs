@@ -13,7 +13,7 @@ using System.Diagnostics;
 /// var ct = cancellationToken;
 /// await result.EnsureAsync(
 ///     value => ValidateAsync(value, ct),
-///     Error.InvalidInput.ForRule("invalid", "Validation failed")
+///     Error.InvalidInput.ForRule(code: "invalid", detail: "Validation failed")
 /// );
 /// </code>
 /// </example>

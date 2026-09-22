@@ -64,7 +64,7 @@ public class Url : ScalarValueObject<Url, string>, IScalarValue<Url, string>, IP
     // Field-normalization + InvalidInput failure in one place (default field name: "url").
     private static Result<Url> Invalid(string? fieldName, string reasonCode, string message) =>
         Result.Fail<Url>(
-            Error.InvalidInput.ForField(fieldName.NormalizeFieldName("url"), reasonCode, message));
+            Error.InvalidInput.ForField(field: fieldName.NormalizeFieldName("url"), code: reasonCode, detail: message));
 
     /// <summary>
     /// Attempts to create a <see cref="Url"/> from the specified string.

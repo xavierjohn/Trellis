@@ -30,7 +30,7 @@ public sealed class InMemoryFraudGateway : IFraudGateway
     {
         if (amount.Amount > SuspiciousAmountThreshold)
         {
-            return Result.Fail(new Error.Conflict(null, "fraud.detected")
+            return Result.Fail(new Error.Conflict(Resource: null, Code: "fraud.detected")
             {
                 Detail = $"Transaction amount {amount} exceeds threshold of ${SuspiciousAmountThreshold}.",
             }).AsTask();
@@ -40,7 +40,7 @@ public sealed class InMemoryFraudGateway : IFraudGateway
         var recentCount = account.Transactions.Count(t => t.Timestamp >= oneHourAgo);
         if (recentCount >= MaxTransactionsPerHour)
         {
-            return Result.Fail(new Error.Conflict(null, "fraud.detected")
+            return Result.Fail(new Error.Conflict(Resource: null, Code: "fraud.detected")
             {
                 Detail = "Too many transactions in the last hour.",
             }).AsTask();

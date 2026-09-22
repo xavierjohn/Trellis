@@ -32,11 +32,11 @@ public class ErrorRetryExtensionsTests
         { new Error.TransportFault(new SampleTransportFault("http-timeout")), RetryClassification.Permanent },
         { new Error.AuthenticationRequired(), RetryClassification.FailFast },
         { new Error.Forbidden("policy.deny"), RetryClassification.Permanent },
-        { Error.InvalidInput.ForField("name", "required"), RetryClassification.Permanent },
+        { Error.InvalidInput.ForField(field: "name", code: "required"), RetryClassification.Permanent },
         { new Error.InvariantViolation("order_must_have_items"), RetryClassification.Permanent },
         { new Error.NotFound(SampleResource), RetryClassification.Permanent },
         { new Error.Gone(SampleResource), RetryClassification.Permanent },
-        { new Error.Conflict(SampleResource, "duplicate_key"), RetryClassification.Permanent },
+        { new Error.Conflict(Resource: SampleResource, Code: "duplicate_key"), RetryClassification.Permanent },
     };
 
     [Theory]
@@ -167,11 +167,11 @@ public class ErrorRetryExtensionsTests
         new Error.TransportFault(new SampleTransportFault("timeout")),
         new Error.AuthenticationRequired(),
         new Error.Forbidden("policy.deny"),
-        Error.InvalidInput.ForField("name", "required"),
+        Error.InvalidInput.ForField(field: "name", code: "required"),
         new Error.InvariantViolation("rule"),
         new Error.NotFound(SampleResource),
         new Error.Gone(SampleResource),
-        new Error.Conflict(SampleResource, "duplicate_key"),
+        new Error.Conflict(Resource: SampleResource, Code: "duplicate_key"),
     };
 
     [Theory]
