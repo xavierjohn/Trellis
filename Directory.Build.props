@@ -110,7 +110,7 @@
       so a baseline pointing at one restores here and fails restore on CI, where the only feed
       is nuget.org.
     -->
-    <PackageValidationBaselineVersion>3.0.0-alpha.495</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>3.0.0-alpha.516</PackageValidationBaselineVersion>
 
     <!-- Release hygiene (ga-07) -->
     <!-- DotNet.ReproducibleBuilds bundles Microsoft.SourceLink.GitHub and sets
