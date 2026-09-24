@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 JSON-body validation failures for direct scalar value-object collection elements now report the element pointer itself (for example `/allergens/0`) instead of appending a synthetic type-name segment such as `/allergens/0/allergen`. Invalid values and `null` elements now behave identically in reflection mode and Native AOT; nested object elements continue to report their effective JSON leaf property (for example `/members/0/primary_email`), including names selected by a naming policy or `[JsonPropertyName]`.
 
+`StringExtensions.NormalizeFieldName` — the helper the `RequiredString<T>`/`RequiredGuid<T>`/… source generator and the built-in primitives (`EmailAddress`, `Url`, `PhoneNumber`, …) call to resolve their field name — no longer collapsed the collection-element sentinel (an empty, non-null field name) to the type's default field name. It now substitutes the default only for a `null` field name and leaves an empty one untouched, so generated and hand-written value objects alike report the element pointer correctly.
+
+The same fix now also applies to a direct scalar value nested in a string-keyed dictionary (for example `Dictionary<string, EmailAddress>`): `PathTrackingDictionaryConverter` never set the element-target sentinel for its value type, so a failing entry still reported a synthetic type-name leaf (`/prices/EUR/emailAddress`) instead of the key-precise pointer (`/prices/EUR`). It now mirrors `PathTrackingCollectionConverter`'s per-element handling.
+
 ### Breaking — code-first error factories
 
 Case-scoped factories consistently put `code` first and `detail` last. `InvalidInput.ForField` accepts a property name or `InputPointer` plus optional `args`; `ForRule` adds optional related `fields`, copied defensively in order. Resource factories accept either a generic resource type or an explicit `ResourceRef`, replacing the string-resource overloads. The `Conflict` constructor and deconstruction are now code-first too.

@@ -38,6 +38,13 @@ public sealed class NestedPathValidationTests
 
     public sealed record CreateEmailListCommand(IReadOnlyList<TestEmail> Emails);
 
+    public sealed record CreateEmailDictionaryCommand(Dictionary<string, TestEmail> Prices);
+
+    // The production EmailAddress type (Trellis.Primitives) normalizes its field name via
+    // StringExtensions.NormalizeFieldName, the same helper the RequiredString<T>/RequiredGuid<T>
+    // source generator emits — unlike TestEmail's plain `fieldName ?? "email"` above.
+    public sealed record CreateNormalizedEmailListCommand(IReadOnlyList<Trellis.Primitives.EmailAddress> Emails);
+
     public sealed record AddressDto(TestEmail Email);
 
     public sealed record CreatePersonCommand(AddressDto Contact);
@@ -127,6 +134,45 @@ public sealed class NestedPathValidationTests
             error.Should().NotBeNull();
             error!.Fields.Items.Should().ContainSingle();
             error.Fields[0].Field.Path.Should().Be("/emails/1");
+        }
+    }
+
+    [Fact]
+    public void Direct_normalize_field_name_collection_element_reports_the_element_path()
+    {
+        var options = BuildOptions();
+        const string json = """{ "emails": [ "ada@x.com", "not-an-email" ] }""";
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            JsonSerializer.Deserialize<CreateNormalizedEmailListCommand>(json, options);
+
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error.Should().NotBeNull();
+            error!.Fields.Items.Should().ContainSingle();
+            // NormalizeFieldName must preserve the empty-string "target the element itself" sentinel
+            // rather than collapsing it to the "email" default, which would produce "/emails/1/email".
+            error.Fields[0].Field.Path.Should().Be("/emails/1");
+        }
+    }
+
+    [Fact]
+    public void Direct_value_object_dictionary_value_reports_the_key_precise_path()
+    {
+        var options = BuildOptions();
+        const string json = """{ "prices": { "USD": "ada@x.com", "EUR": "not-an-email" } }""";
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            JsonSerializer.Deserialize<CreateEmailDictionaryCommand>(json, options);
+
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error.Should().NotBeNull();
+            error!.Fields.Items.Should().ContainSingle();
+            // The dictionary-entry mirror of Direct_value_object_collection_element_reports_the_element_path:
+            // a direct scalar dictionary value must report the key-precise pointer itself, not a synthetic
+            // type-name leaf (e.g. "/prices/EUR/testEmail").
+            error.Fields[0].Field.Path.Should().Be("/prices/EUR");
         }
     }
 
