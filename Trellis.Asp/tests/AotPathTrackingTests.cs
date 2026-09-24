@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -51,6 +52,10 @@ public sealed class AotPathTrackingTests : IDisposable
 
     public sealed record AotEmailListCommand(IReadOnlyList<Email> Emails);
 
+    public sealed record AotAliasedMemberDto([property: JsonPropertyName("primary_email")] Email Contact);
+
+    public sealed record AotAliasedTeamCommand(List<AotAliasedMemberDto> Members);
+
     public sealed record AotAddressDto(Email Email);
 
     public sealed record AotPersonCommand(AotAddressDto Contact);
@@ -90,6 +95,7 @@ public sealed class AotPathTrackingTests : IDisposable
     public void Registered_collection_reports_the_index_precise_path_without_runtime_generic_construction()
     {
         ScalarValuePathTracking.ClearForTests();
+        ScalarValuePathTracking.RegisterProperty<Email>();
         ScalarValuePathTracking.RegisterCollection<List<AotMemberDto>, AotMemberDto>();
 
         using var aot = ServiceCollectionExtensions.SuppressDynamicPathConverterConstructionForTests();
@@ -104,6 +110,30 @@ public sealed class AotPathTrackingTests : IDisposable
             error.Should().NotBeNull();
             error!.Fields.Items.Should().ContainSingle();
             error.Fields[0].Field.Path.Should().Be("/members/1/email");
+        }
+    }
+
+    [Theory]
+    [InlineData("""{ "members": [ { "primary_email": "not-an-email" } ] }""")]
+    [InlineData("""{ "members": [ { "primary_email": null } ] }""")]
+    public void Registered_collection_uses_the_effective_json_property_name_without_runtime_generic_construction(
+        string json)
+    {
+        ScalarValuePathTracking.ClearForTests();
+        ScalarValuePathTracking.RegisterProperty<Email>();
+        ScalarValuePathTracking.RegisterCollection<List<AotAliasedMemberDto>, AotAliasedMemberDto>();
+
+        using var aot = ServiceCollectionExtensions.SuppressDynamicPathConverterConstructionForTests();
+        var options = BuildOptions();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            JsonSerializer.Deserialize<AotAliasedTeamCommand>(json, options);
+
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error.Should().NotBeNull();
+            error!.Fields.Items.Should().ContainSingle();
+            error.Fields[0].Field.Path.Should().Be("/members/0/primary_email");
         }
     }
 
@@ -135,6 +165,7 @@ public sealed class AotPathTrackingTests : IDisposable
     public void Registered_nested_object_reports_the_full_path_without_runtime_generic_construction()
     {
         ScalarValuePathTracking.ClearForTests();
+        ScalarValuePathTracking.RegisterProperty<Email>();
         ScalarValuePathTracking.RegisterObject<AotAddressDto>();
 
         using var aot = ServiceCollectionExtensions.SuppressDynamicPathConverterConstructionForTests();
@@ -156,6 +187,7 @@ public sealed class AotPathTrackingTests : IDisposable
     public void Registrations_leave_round_trip_serialization_unchanged()
     {
         ScalarValuePathTracking.ClearForTests();
+        ScalarValuePathTracking.RegisterProperty<Email>();
         ScalarValuePathTracking.RegisterCollection<List<AotMemberDto>, AotMemberDto>();
 
         using var aot = ServiceCollectionExtensions.SuppressDynamicPathConverterConstructionForTests();

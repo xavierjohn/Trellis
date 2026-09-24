@@ -155,6 +155,13 @@ public static class ServiceCollectionExtensions
             // Check for Maybe<TValue> where TValue : IScalarValue<TValue, TPrimitive>
             if (ScalarValueTypeHelper.IsMaybeScalarValue(propertyType))
             {
+                var registeredConverter = CreateRegisteredPropertyConverter(property);
+                if (registeredConverter is not null)
+                {
+                    property.CustomConverter = registeredConverter;
+                    continue;
+                }
+
                 var innerConverter = CreateMaybeConverter(propertyType);
                 if (innerConverter is null)
                     continue;
@@ -169,17 +176,21 @@ public static class ServiceCollectionExtensions
             // Direct scalar value object (IScalarValue<TSelf, T>)?
             if (IsScalarValueProperty(property))
             {
-                // Create a validating converter for this value object
-                var innerScalarConverter = CreateValidatingConverter(propertyType);
-                if (innerScalarConverter is null)
-                    continue;
+                var registeredConverter = CreateRegisteredPropertyConverter(property);
+                if (registeredConverter is not null)
+                {
+                    property.CustomConverter = registeredConverter;
+                }
+                else
+                {
+                    var innerScalarConverter = CreateValidatingConverter(propertyType);
+                    if (innerScalarConverter is null)
+                        continue;
 
-                // Wrap it with property name awareness. In Native AOT this returns null because
-                // runtime closed-generic converter construction is disabled; source-generated
-                // converters are expected to own scalar JSON conversion there.
-                var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
-                if (wrappedScalarConverter is not null)
-                    property.CustomConverter = wrappedScalarConverter;
+                    var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
+                    if (wrappedScalarConverter is not null)
+                        property.CustomConverter = wrappedScalarConverter;
+                }
 
                 // Track non-nullable scalar VO properties for missing-property detection
                 if (!property.IsGetNullable && property.Get is not null)
@@ -243,6 +254,11 @@ public static class ServiceCollectionExtensions
     [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "PropertyType comes from JSON serialization infrastructure which preserves type information")]
     private static bool IsScalarValueProperty(JsonPropertyInfo property) =>
         ScalarValueTypeHelper.IsScalarValue(property.PropertyType);
+
+    private static JsonConverter? CreateRegisteredPropertyConverter(JsonPropertyInfo property) =>
+        ScalarValuePathTracking.HasPropertyRegistrations
+            ? ScalarValuePathTracking.TryCreateProperty(property.PropertyType, property.Name)
+            : null;
 
     private static JsonConverter? CreateValidatingConverter([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type valueType)
     {
@@ -334,9 +350,9 @@ public static class ServiceCollectionExtensions
         Justification = "Property and element types come from JSON serialization metadata which preserves type information.")]
     private static JsonConverter? CreatePathTrackingContainerConverter(JsonPropertyInfo property)
     {
-        if (ScalarValuePathTracking.HasRegistrations)
+        if (ScalarValuePathTracking.HasContainerRegistrations)
         {
-            var registered = ScalarValuePathTracking.TryCreate(property.PropertyType, property.Name);
+            var registered = ScalarValuePathTracking.TryCreateContainer(property.PropertyType, property.Name);
             if (registered is not null)
                 return registered;
         }

@@ -12,8 +12,7 @@ using Microsoft.CodeAnalysis;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The reflection pipeline builds <c>PathTrackingObjectConverter&lt;T&gt;</c> and
-/// <c>PathTrackingCollectionConverter&lt;TCollection, TElement&gt;</c> with
+/// The reflection pipeline builds property-name-aware and container converters with
 /// <c>Type.MakeGenericType</c> at runtime, which Native AOT forbids. This generator performs the
 /// equivalent DTO graph walk at compile time — starting from every type named by a
 /// <c>[JsonSerializable]</c> attribute — and emits a <c>[ModuleInitializer]</c> that hands the closed
@@ -76,7 +75,8 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
         foreach (var root in roots)
             walker.Walk(root);
 
-        if (walker.ObjectRegistrations.Count == 0
+        if (walker.PropertyRegistrations.Count == 0
+            && walker.ObjectRegistrations.Count == 0
             && walker.CollectionRegistrations.Count == 0
             && walker.DictionaryRegistrations.Count == 0)
         {
@@ -107,6 +107,9 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
         sb.AppendLine("    [ModuleInitializer]");
         sb.AppendLine("    internal static void Register()");
         sb.AppendLine("    {");
+
+        foreach (var type in walker.PropertyRegistrations)
+            sb.AppendLine($"        ScalarValuePathTracking.RegisterProperty<{type}>();");
 
         foreach (var type in walker.ObjectRegistrations)
             sb.AppendLine($"        ScalarValuePathTracking.RegisterObject<{type}>();");
@@ -148,6 +151,8 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
             _dictionaryType = compilation.GetTypeByMetadataName("System.Collections.Generic.Dictionary`2");
         }
 
+        public SortedSet<string> PropertyRegistrations { get; } = new(System.StringComparer.Ordinal);
+
         public SortedSet<string> ObjectRegistrations { get; } = new(System.StringComparer.Ordinal);
 
         public SortedSet<CollectionRegistration> CollectionRegistrations { get; } = new();
@@ -173,12 +178,15 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
             {
                 var propertyType = property.Type;
 
-                // A property that IS a scalar value object (or Maybe<scalar>) is handled by the scalar
-                // converter path in the runtime modifier, which `continue`s before ever reaching the
-                // container path. Wrapping it here would register a converter the reflection pipeline
-                // never installs, so AOT and reflection would disagree.
+                // The runtime modifier wraps scalar properties with their effective JSON name.
+                // Register the compile-time-closed equivalent for Native AOT.
                 if (IsScalarValue(propertyType) || IsMaybeScalarValue(propertyType))
+                {
+                    if (IsAccessible(propertyType))
+                        PropertyRegistrations.Add(propertyType.ToDisplayString(FullyQualified));
+
                     continue;
+                }
 
                 if (!ContainsScalarValueTransitively(propertyType, new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default)))
                     continue;
