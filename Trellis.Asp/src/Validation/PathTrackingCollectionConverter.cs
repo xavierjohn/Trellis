@@ -74,7 +74,7 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
                     // JsonValidationPathRebase for why the marker, and not a prefix check, decides.
                     try
                     {
-                        items.Add(JsonSerializer.Deserialize(ref reader, elementTypeInfo));
+                        items.Add(DeserializeElement(ref reader, elementTypeInfo));
                     }
                     catch (TrellisJsonValidationException ex) when (!JsonValidationPathRebase.IsMarked(ex))
                     {
@@ -93,6 +93,25 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
     /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, TCollection? value, JsonSerializerOptions options) =>
         JsonSerializer.Serialize(writer, value!, (JsonTypeInfo<TCollection>)options.GetTypeInfo(typeof(TCollection)));
+
+    private static TElement? DeserializeElement(ref Utf8JsonReader reader, JsonTypeInfo<TElement?> elementTypeInfo)
+    {
+        var previousPropertyName = ValidationErrorsContext.CurrentPropertyName;
+        // Converter-backed elements own their JSON value, so an empty name targets the indexed
+        // element itself. Object elements keep the prior context so their scalar converters can
+        // contribute the leaf name under Native AOT, where dynamic property wrappers do not exist.
+        if (elementTypeInfo.Kind == JsonTypeInfoKind.None)
+            ValidationErrorsContext.CurrentPropertyName = string.Empty;
+
+        try
+        {
+            return JsonSerializer.Deserialize(ref reader, elementTypeInfo);
+        }
+        finally
+        {
+            ValidationErrorsContext.CurrentPropertyName = previousPropertyName;
+        }
+    }
 
     private static TCollection Materialize(List<TElement?> items)
     {

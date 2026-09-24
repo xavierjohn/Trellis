@@ -258,7 +258,7 @@ Default mappings: `Error.InvalidInput=422`, `Error.InvariantViolation=422`, `Err
 
 The `Error.InvalidInput` mapping also governs **binder- and JSON-body value-validation failures** (`ScalarValueValidationMiddleware`, `ScalarValueValidationFilter`, and `ScalarValueValidationEndpointFilter`), so a single `MapError<Error.InvalidInput>(status)` applies uniformly to scalar/value-object validation at the route/query binder, the JSON request body, and domain handlers (default `422`). Syntactically malformed JSON is exempt — it stays `400` per RFC 9110 §15.5.1.
 
-JSON-body value-object validation reports an **index-precise field key** for a value object nested inside a collection or another object — e.g. `members[0].email` (RFC 6901 pointer `/members/0/email`) rather than the bare leaf `email` — at parity with the FluentValidation integration. This applies to both the reflection-mode pipeline and Native AOT (`List<T>`, arrays, and nested objects whose graph transitively contains a value object).
+JSON-body value-object validation reports an **index-precise field key** for a value object nested inside a collection or another object — e.g. `members[0].email` (RFC 6901 pointer `/members/0/email`) rather than the bare leaf `email` — at parity with the FluentValidation integration. A direct scalar value-object element targets the element itself: `allergens[0]` (`/allergens/0`), without a synthetic type-name leaf such as `/allergens/0/allergen`. This applies to invalid values and `null` elements in both the reflection-mode pipeline and Native AOT (`List<T>`, arrays, collection interfaces, and nested objects whose graph transitively contains a value object).
 
 Under Native AOT the runtime cannot construct the closed generic path-tracking converters itself (`Type.MakeGenericType` is unavailable), so the closed generics are produced at **compile time** instead. `PathTrackingRegistryGenerator` walks the DTO graph reachable from every `[JsonSerializable]` root on your `JsonSerializerContext`, applying the same container rules the reflection-mode modifier applies, and emits a `[ModuleInitializer]` that populates `ScalarValuePathTracking`. The runtime modifier then resolves the converter with a dictionary lookup rather than reflection. No opt-in attribute or configuration is required: the generator ships inside the `Trellis.Asp` package itself (under `analyzers/dotnet/cs`), so a package reference is sufficient.
 
@@ -1486,7 +1486,7 @@ Registry of compile-time-closed path-tracking converter factories. Populated by 
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static void RegisterObject<T>()` | `void` | Registers a factory producing `PathTrackingObjectConverter<T>` for a nested user object whose graph transitively contains a scalar value object. Idempotent. |
-| `public static void RegisterCollection<TCollection, TElement>()` | `void` | Registers a factory producing `PathTrackingCollectionConverter<TCollection, TElement>` for a collection property, so element indexes appear in the reported path. Idempotent. |
+| `public static void RegisterCollection<TCollection, TElement>()` | `void` | Registers a factory producing `PathTrackingCollectionConverter<TCollection, TElement>` for a collection property, so element indexes appear in the reported path. A direct scalar element reports the indexed element pointer itself (for example `/allergens/0`); a scalar nested in an element object appends its JSON property name (for example `/members/0/email`). Idempotent. |
 | `public static void RegisterDictionary<TDictionary, TValue>()` | `void` | Registers a factory producing `PathTrackingDictionaryConverter<TDictionary, TValue>` for a **string-keyed** dictionary property, so the key appears in the reported path (`/prices/USD/amount`). Idempotent. Non-string keys are deliberately unsupported: they have no faithful RFC 6901 rendering, so such properties fall back to leaf-only paths rather than emitting a pointer the client cannot map back to the input it sent. Keys are escaped per RFC 6901 (`~`→`~0`, `/`→`~1`), so a key containing those characters stays one segment. |
 ### `ValidationErrorsContext`
 
@@ -1499,7 +1499,7 @@ public static class ValidationErrorsContext
 | Name | Type | Description |
 | --- | --- | --- |
 | `HasErrors` | `bool` | `true` when the current async-local scope contains at least one collected validation error. |
-| `CurrentPropertyName` | `string?` (get/set) | Async-local property name for the property currently being deserialized. Set by `PropertyNameAwareConverter<T>` (reflection mode) and read by both the reflection-mode `ScalarValueJsonConverterBase<,,>` and the AOT-generated converter (which falls back to a camel-cased type name when this is `null`). |
+| `CurrentPropertyName` | `string?` (get/set) | Async-local property name for the property currently being deserialized. Set by `PropertyNameAwareConverter<T>` for object properties and temporarily set to the empty string by `PathTrackingCollectionConverter<,>` for a direct converter-backed collection element; the empty string resolves to the current indexed ancestor. Read by both the reflection-mode `ScalarValueJsonConverterBase<,,>` and the AOT-generated converter, which falls back to a camel-cased type name only when this is `null`. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |

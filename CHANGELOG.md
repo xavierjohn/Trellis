@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — direct scalar collection errors target the collection element
+
+JSON-body validation failures for direct scalar value-object collection elements now report the element pointer itself (for example `/allergens/0`) instead of appending a synthetic type-name segment such as `/allergens/0/allergen`. Invalid values and `null` elements now behave identically in reflection mode and Native AOT; nested object elements continue to report their leaf property (for example `/members/0/email`).
+
 ### Breaking — code-first error factories
 
 Case-scoped factories consistently put `code` first and `detail` last. `InvalidInput.ForField` accepts a property name or `InputPointer` plus optional `args`; `ForRule` adds optional related `fields`, copied defensively in order. Resource factories accept either a generic resource type or an explicit `ResourceRef`, replacing the string-resource overloads. The `Conflict` constructor and deconstruction are now code-first too.
