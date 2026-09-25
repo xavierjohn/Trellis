@@ -285,6 +285,7 @@ Configuration for the inbox.
 | Property | Type | Default | Notes |
 |---|---|---|---|
 | `ConsumerId` | `string` | `""` (must be set) | **Required.** A stable identifier for this subscriber / consumer-group; part of the dedup key, so two services consuming the same message each get one effective processing. Keep it stable across deploys — renaming it resets dedup history. `Validate()` throws `InvalidOperationException` if it is blank, or if it exceeds `MaxConsumerIdLength`. |
+| `ActivitySource` | `ActivitySource` | `null` (dispatcher creates and owns its own) | The source the dispatcher starts consumer activities on. Left unset, `InboxDispatcher<TContext>` creates a default-named source and disposes it with itself; supplying one hands ownership to the caller. Tests that assert on sampled activities should supply their own uniquely-named source rather than subscribing to the shared default by name, since an `ActivityListener` is process-wide and matches by source name. |
 
 | Constant | Value | Notes |
 |---|---|---|

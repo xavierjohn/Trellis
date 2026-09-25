@@ -664,6 +664,7 @@ public static class IntegrationMessageContext
     public static string? TraceState { get; }
     public static IDisposable BeginCorrelation(string correlationId, string? messageSource = null);
     public static IDisposable BeginProcessing(IntegrationEnvelope envelope);
+    public static bool TryParseRemoteContext(string? traceParent, string? traceState, out ActivityContext context);
 }
 ```
 
@@ -681,6 +682,11 @@ correlation, trace, and explicitly supplied producer namespace after an outer sc
 ends. The child can open fresh scopes without inheriting the disposed parent's
 values; disposing those scopes restores the child's prior scope in order.
 No actor or arbitrary OpenTelemetry baggage is copied.
+
+`TryParseRemoteContext` parses a W3C `traceparent`/`tracestate` pair as a remote `ActivityContext`
+(`isRemote: true`), returning `false` for a `null`, blank, or malformed pair. It is the single place
+that performs this parsing — `InboxDispatcher`, `OutboxCaptureInterceptor`, and `OutboxRelay` all call
+it instead of each re-implementing `ActivityContext.TryParse` with their own fallback shape.
 
 ### IntegrationEventNameMap
 **Declaration**
