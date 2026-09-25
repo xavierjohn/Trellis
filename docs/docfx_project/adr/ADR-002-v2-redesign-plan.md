@@ -1219,7 +1219,7 @@ public static class RetryAfterValueHttpExtensions
 
 **Why `RepresentationMetadata` stays in `Trellis.Asp`:** Per the template, it is *only* constructed inside controllers (`RepresentationMetadata.WithStrongETag(...)`) when the API decides what to put in the response. It bundles HTTP-specific concepts (`Vary` headers, `Last-Modified`, conditional-eval policies) — there is no Application-layer use case in the template.
 
-**Layer reference rules** (canonical, documented in the template's `AGENTS.md`):
+**Layer reference rules** (canonical, documented in the current template's `.github/copilot-instructions.md`; Phase 6 moves them to root `AGENTS.md`):
 - **Domain** → references `Trellis.Core` (Result + Maybe + Error + DDD primitives + VO base classes — single package after Phase 2), `Trellis.Primitives` (optional concrete VOs), `Trellis.StateMachine` (optional). Never references `Trellis.Asp`, `Trellis.Http`, `Trellis.EntityFrameworkCore`, `Trellis.Mediator`.
 - **Application** → references everything Domain references + `Trellis.Mediator`, `Trellis.Authorization`. May use `EntityTagValue` and `RetryAfterValue` (both in `Trellis.Core`). Never references `Trellis.Asp` or `Trellis.EntityFrameworkCore`.
 - **ACL** → references everything Application references + `Trellis.Http`, `Trellis.EntityFrameworkCore`. Never references `Trellis.Asp`. Constructs `RateLimitError(..., RetryAfter: ...)` from upstream HTTP responses.
@@ -1228,7 +1228,7 @@ public static class RetryAfterValueHttpExtensions
 ### 12.3 Documentation contract
 - `docs/docfx_project/api_reference/trellis-api-*.md` is generated from source by an analyzer-time tool (Roslyn-driven).
 - Each NuGet package ships its own `trellis-api-*.md` file as content (already done via `Trellis.ApiReference.targets` — keep that).
-- The template's `AGENTS.md` references the generated docs by relative path — they always match the installed version.
+- The current template's `.github/copilot-instructions.md` references the generated docs by relative path; Phase 6 preserves those links when it moves the instructions to root `AGENTS.md`, so they continue to match the installed version.
 
 ### 12.4 Versioning, deprecation, target framework, and library defaults
 - All packages versioned together (already done via Nerdbank.GitVersioning).
