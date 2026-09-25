@@ -446,6 +446,29 @@ public class PathTrackingRegistryGeneratorTests
     }
 
     [Fact]
+    public void Direct_scalar_dictionary_property_is_registered()
+    {
+        var source = $$"""
+            {{ValueObject}}
+
+            namespace TestNamespace
+            {
+                using System.Collections.Generic;
+                using System.Text.Json.Serialization;
+
+                public sealed record TeamCommand(Dictionary<string, Email> Prices);
+
+                [JsonSerializable(typeof(TeamCommand))]
+                public partial class AppContext : JsonSerializerContext { }
+            }
+            """;
+
+        var generated = RunGenerator(source);
+
+        generated.Should().Contain("RegisterDictionary<global::System.Collections.Generic.Dictionary<string, global::Email>, global::Email>()");
+    }
+
+    [Fact]
     public void Type_without_a_json_serializable_root_emits_nothing()
     {
         var source = $$"""

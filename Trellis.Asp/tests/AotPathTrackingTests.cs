@@ -52,6 +52,8 @@ public sealed class AotPathTrackingTests : IDisposable
 
     public sealed record AotEmailListCommand(IReadOnlyList<Email> Emails);
 
+    public sealed record AotEmailDictionaryCommand(Dictionary<string, Email> Prices);
+
     public sealed record AotAliasedMemberDto([property: JsonPropertyName("primary_email")] Email Contact);
 
     public sealed record AotAliasedTeamCommand(List<AotAliasedMemberDto> Members);
@@ -158,6 +160,29 @@ public sealed class AotPathTrackingTests : IDisposable
             error.Should().NotBeNull();
             error!.Fields.Items.Should().ContainSingle();
             error.Fields[0].Field.Path.Should().Be(expectedPath);
+        }
+    }
+
+    [Theory]
+    [InlineData("""{ "prices": { "USD": "ada@x.com", "EUR": "not-an-email" } }""")]
+    [InlineData("""{ "prices": { "EUR": null } }""")]
+    public void Registered_direct_scalar_dictionary_reports_the_key_path_without_runtime_generic_construction(
+        string json)
+    {
+        ScalarValuePathTracking.ClearForTests();
+        ScalarValuePathTracking.RegisterDictionary<Dictionary<string, Email>, Email>();
+
+        using var aot = ServiceCollectionExtensions.SuppressDynamicPathConverterConstructionForTests();
+        var options = BuildOptions();
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            JsonSerializer.Deserialize<AotEmailDictionaryCommand>(json, options);
+
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error.Should().NotBeNull();
+            error!.Fields.Items.Should().ContainSingle();
+            error.Fields[0].Field.Path.Should().Be("/prices/EUR");
         }
     }
 

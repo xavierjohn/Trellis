@@ -1,4 +1,4 @@
-namespace Trellis.Core.Tests.Primitives;
+﻿namespace Trellis.Core.Tests.Primitives;
 
 using Trellis;
 

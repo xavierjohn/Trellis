@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed — direct scalar collection errors target the collection element
+### Fixed — direct scalar container errors target the element or keyed value
 
-JSON-body validation failures for direct scalar value-object collection elements now report the element pointer itself (for example `/allergens/0`) instead of appending a synthetic type-name segment such as `/allergens/0/allergen`. Invalid values and `null` elements now behave identically in reflection mode and Native AOT; nested object elements continue to report their effective JSON leaf property (for example `/members/0/primary_email`), including names selected by a naming policy or `[JsonPropertyName]`.
+JSON-body validation failures for direct scalar value-object collection elements and string-keyed dictionary values now report the entry pointer itself (for example `/allergens/0` or `/prices/USD`) instead of appending a synthetic type-name segment such as `/allergens/0/allergen`. Invalid values and `null` entries now behave identically in reflection mode and Native AOT; nested object entries continue to report their effective JSON leaf property (for example `/members/0/primary_email`), including names selected by a naming policy or `[JsonPropertyName]`.
 
 `StringExtensions.NormalizeFieldName` — the helper the `RequiredString<T>`/`RequiredGuid<T>`/… source generator and the built-in primitives (`EmailAddress`, `Url`, `PhoneNumber`, …) call to resolve their field name — no longer collapsed the collection-element sentinel (an empty, non-null field name) to the type's default field name. It now substitutes the default only for a `null` field name and leaves an empty one untouched, so generated and hand-written value objects alike report the element pointer correctly.
 
