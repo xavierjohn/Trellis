@@ -1,6 +1,5 @@
 ﻿<Solution>
   <Folder Name="/.github/">
-    <File Path=".github/copilot-instructions.md" />
     <File Path=".github/dependabot.yml" />
   </Folder>
   <Folder Name="/.github/workflows/">
@@ -56,7 +55,7 @@
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
-    <File Path=".github/copilot-instructions.md" />
+    <File Path="AGENTS.md" />
     <File Path="BENCHMARKS.md" />
     <File Path="build/test.props" />
     <File Path="Directory.Build.props" />

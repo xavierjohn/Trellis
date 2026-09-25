@@ -1,4 +1,6 @@
-﻿# GitHub Copilot Instructions for Trellis
+﻿# Agent Instructions for Trellis
+
+> This is the canonical repository instruction file for all coding agents.
 
 ## Project overview
 
@@ -20,7 +22,7 @@ The full reference set is ~301K tokens — it does not fit in context and is not
 
 This trade is safe only because the index is a complete map, which **TRLDOC007** enforces: every live recipe is reachable from `## Patterns Index`, and rows are phrased as the reader's task or failure mode rather than the recipe's title. If you find yourself guessing whether a recipe exists, re-read the index rows — do not assume its absence.
 
-Then pull in only the 1–3 area-specific references the cookbook points you at. Do not infer Trellis API behavior from these Copilot instructions.
+Then pull in only the 1–3 area-specific references the cookbook points you at. Do not infer Trellis API behavior from these repository instructions.
 
 If context is too tight to hold the routing head plus one area reference, you are too tight to write correct Trellis code — say so rather than guessing at API shapes.
 
@@ -211,7 +213,7 @@ This is enforced, not advisory. **TRLDOC008** fails the build when any public ty
 
 When the hit is a static extension class, prefer giving it its own `###` section over name-dropping it in prose: the usual cause is that its methods were documented under a neighbouring class's heading, which is an accuracy defect in its own right.
 
-Keep framework usage guidance in the API reference and cookbook files, not in this Copilot instruction file.
+Keep framework usage guidance in the API reference and cookbook files, not in `AGENTS.md`.
 
 DocFX artifact checklist for package or public API changes:
 
@@ -275,5 +277,5 @@ Before committing any changes after explicit approval:
 
 1. Confirm the **Validation before handoff** steps passed (build, test, docs in sync).
 2. Confirm the diff contains only intended changes.
-3. Run a code-review agent over the changed code with `gpt-6-sol` (substitute the strongest available model if that ID is retired) and address substantive findings. Apply the **Validating sub-agent findings** rule above to each one.
+3. Run an independent code review over the changed code with the strongest reviewer or model available and address substantive findings. Apply the **Validating sub-agent findings** rule above to each one.
 4. Present the final summary to the user.

@@ -4,7 +4,7 @@
     Declares TrellisApiReference items pointing to the API reference markdown
     shipped in the package's trellis/ folder, and copies them to the nearest
     .github/ directory (walking up from the project, bounded by the .git repo
-    root) so GitHub Copilot can consume them.
+    root) so repository agent instructions can route AI tools to them.
 
     Override TrellisApiReferenceRoot to change the destination root.
     Set TrellisDisableApiReferenceSync=true to disable automatic sync.
