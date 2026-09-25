@@ -124,16 +124,9 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
         if (context is null)
             return;
 
-        var activity = Activity.Current;
-        var inboundTraceParent = IntegrationMessageContext.TraceParent;
-        var inboundTraceState = IntegrationMessageContext.TraceState;
-        var useActivity = activity?.IdFormat == ActivityIdFormat.W3C
-            && (!ActivityContext.TryParse(inboundTraceParent, inboundTraceState, isRemote: true, out var inboundContext)
-                || activity.TraceId == inboundContext.TraceId);
-        var traceParent = useActivity ? activity?.Id : inboundTraceParent;
-        var traceState = useActivity ? activity?.TraceStateString : inboundTraceState;
-
         List<OutboxMessage>? messages = null;
+        string? traceParent = null;
+        string? traceState = null;
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
@@ -144,7 +137,12 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
             if (events.Count == 0)
                 continue;
 
-            messages ??= [];
+            if (messages is null)
+            {
+                messages = [];
+                (traceParent, traceState) = ResolveTrace();
+            }
+
             foreach (var domainEvent in events)
             {
                 var type = domainEvent.GetType();
@@ -169,6 +167,19 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
         // change. The aggregates' events are cleared later, in SavedChanges, only once the save succeeds.
         if (messages is not null)
             context.Set<OutboxMessage>().AddRange(messages);
+    }
+
+    private static (string? TraceParent, string? TraceState) ResolveTrace()
+    {
+        var activity = Activity.Current;
+        var inboundTraceParent = IntegrationMessageContext.TraceParent;
+        var inboundTraceState = IntegrationMessageContext.TraceState;
+        var useActivity = activity?.IdFormat == ActivityIdFormat.W3C
+            && (!IntegrationMessageContext.TryParseRemoteContext(inboundTraceParent, inboundTraceState, out var inboundContext)
+                || activity.TraceId == inboundContext.TraceId);
+        return (
+            useActivity ? activity?.Id : inboundTraceParent,
+            useActivity ? activity?.TraceStateString : inboundTraceState);
     }
 
     /// <summary>

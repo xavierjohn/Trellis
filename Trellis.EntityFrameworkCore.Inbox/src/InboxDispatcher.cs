@@ -29,15 +29,19 @@ using Trellis.Mediator;
 /// </para>
 /// </remarks>
 /// <typeparam name="TContext">The consumer's <see cref="DbContext"/> that owns the inbox table.</typeparam>
-internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
+internal sealed class InboxDispatcher<TContext> : IInboxDispatcher, IDisposable
     where TContext : DbContext
 {
+    private const string DefaultActivitySourceName = "Trellis.EntityFrameworkCore.Inbox";
+
     private static readonly ConcurrentDictionary<Type, HandlerInvoker> s_invokerCache = new();
-    private static readonly ActivitySource s_activitySource = new("Trellis.EntityFrameworkCore.Inbox");
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly InboxOptions _options;
     private readonly ILogger<InboxDispatcher<TContext>> _logger;
+    private readonly ActivitySource _activitySource;
+    private readonly bool _ownsActivitySource;
+    private bool _disposed;
 
     public InboxDispatcher(
         IServiceScopeFactory scopeFactory,
@@ -47,6 +51,27 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
         _scopeFactory = scopeFactory;
         _options = options;
         _logger = logger;
+
+        if (options.ActivitySource is null)
+        {
+            _activitySource = new ActivitySource(DefaultActivitySourceName);
+            _ownsActivitySource = true;
+        }
+        else
+        {
+            _activitySource = options.ActivitySource;
+        }
+    }
+
+    /// <summary>Disposes the internally-created <see cref="ActivitySource"/> if this instance created it.</summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        if (_ownsActivitySource)
+            _activitySource.Dispose();
     }
 
     /// <inheritdoc />
@@ -55,10 +80,9 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
         ArgumentNullException.ThrowIfNull(envelope);
 
         using var processing = IntegrationMessageContext.BeginProcessing(envelope);
-        using var activity = !string.IsNullOrWhiteSpace(envelope.TraceParent)
-            && ActivityContext.TryParse(envelope.TraceParent, envelope.TraceState, isRemote: true, out var remoteContext)
-                ? s_activitySource.StartActivity("integration.event.process", ActivityKind.Consumer, remoteContext)
-                : s_activitySource.StartActivity("integration.event.process", ActivityKind.Consumer);
+        using var activity = IntegrationMessageContext.TryParseRemoteContext(envelope.TraceParent, envelope.TraceState, out var remoteContext)
+            ? _activitySource.StartActivity("integration.event.process", ActivityKind.Consumer, remoteContext)
+            : _activitySource.StartActivity("integration.event.process", ActivityKind.Consumer);
 
         var scope = _scopeFactory.CreateAsyncScope();
         await using var scopeLifetime = scope.ConfigureAwait(false);

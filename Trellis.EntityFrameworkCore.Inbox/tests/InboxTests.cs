@@ -320,13 +320,19 @@ public sealed class InboxTests
         await connection.OpenAsync(ct);
         var probe = new ProcessingProbe();
         var interceptor = new ProcessingCommitInterceptor();
-        await using var provider = BuildProvider(connection, "billing", probe: probe, interceptor: interceptor);
+
+        // A uniquely-named, test-owned source rather than the dispatcher's shared default: an
+        // ActivityListener subscribes process-wide by source name, so sharing the default with a
+        // concurrently-running test (e.g. InboxSqlServerIntegrationTests) risks this listener also
+        // observing that test's unrelated activities.
+        using var testActivitySource = new ActivitySource("InboxTests.RemoteTrace");
+        await using var provider = BuildProvider(connection, "billing", probe: probe, interceptor: interceptor, activitySource: testActivitySource);
         await EnsureCreatedAsync(provider, ct);
 
         bool? sampledRemoteParent = null;
         using var listener = new ActivityListener
         {
-            ShouldListenTo = source => source.Name == "Trellis.EntityFrameworkCore.Inbox",
+            ShouldListenTo = source => ReferenceEquals(source, testActivitySource),
             Sample = (ref ActivityCreationOptions<ActivityContext> options) =>
             {
                 sampledRemoteParent = options.Parent.IsRemote;
@@ -476,7 +482,8 @@ public sealed class InboxTests
 
     private static ServiceProvider BuildProvider(
         SqliteConnection connection, string consumerId, bool throwing = false, FailFirstGate? gate = null,
-        ProcessingProbe? probe = null, ProcessingCommitInterceptor? interceptor = null)
+        ProcessingProbe? probe = null, ProcessingCommitInterceptor? interceptor = null,
+        ActivitySource? activitySource = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -506,7 +513,12 @@ public sealed class InboxTests
             services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, ReceiptHandler>();
         }
 
-        services.AddTrellisInbox<InboxTestDbContext>(o => o.ConsumerId = consumerId);
+        services.AddTrellisInbox<InboxTestDbContext>(o =>
+        {
+            o.ConsumerId = consumerId;
+            if (activitySource is not null)
+                o.ActivitySource = activitySource;
+        });
         return services.BuildServiceProvider();
     }
 }

@@ -1,5 +1,7 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
+using System.Diagnostics;
+
 /// <summary>
 /// Tuning for the transactional inbox (idempotent integration-event consumption).
 /// </summary>
@@ -17,6 +19,16 @@ public sealed class InboxOptions
     public string ConsumerId { get; set; } = string.Empty;
 
     /// <summary>
+    /// The <see cref="ActivitySource"/> the dispatcher starts consumer activities on. Left unset (the
+    /// default), the dispatcher creates its own source and disposes it with itself; supplying one hands
+    /// ownership to the caller, who must dispose it. Tests that assert on sampled activities should supply
+    /// their own uniquely-named source here rather than subscribing to the shared default by name — an
+    /// <see cref="ActivityListener"/> is process-wide and matches by source name, so two tests sharing one
+    /// default-named source can observe each other's activities when they run concurrently.
+    /// </summary>
+    public ActivitySource ActivitySource { get; set; } = null!;
+
+    /// <summary>
     /// Creates an independent copy so a repeated registration can apply its <c>configure</c> callback
     /// and validate the result before the new state is committed to the container. Keep in sync with
     /// the properties above; <c>InboxRegistrationTests.InboxOptions_Clone_copies_every_public_settable_property</c>
@@ -25,6 +37,7 @@ public sealed class InboxOptions
     internal InboxOptions Clone() => new()
     {
         ConsumerId = ConsumerId,
+        ActivitySource = ActivitySource,
     };
 
     /// <summary>

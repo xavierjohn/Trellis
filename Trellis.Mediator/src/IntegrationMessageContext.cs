@@ -25,13 +25,17 @@ public static class IntegrationMessageContext
     /// <summary>The inbound W3C trace state when no activity is available.</summary>
     public static string? TraceState => ProcessingFrame?.TraceState;
 
+    /// <summary>Parses a W3C remote trace context; returns false for a null, blank, or malformed pair.</summary>
+    public static bool TryParseRemoteContext(string? traceParent, string? traceState, out ActivityContext context) =>
+        ActivityContext.TryParse(traceParent, traceState, isRemote: true, out context);
+
     private static Frame? ProcessingFrame
     {
         get
         {
-            for (var frame = s_current.Value; frame is { IsActive: true }; frame = frame.Previous)
+            for (var frame = s_current.Value; frame is not null; frame = frame.Previous)
             {
-                if (frame.MessageId is not null)
+                if (frame is { IsActive: true, MessageId: not null })
                     return frame;
             }
 
@@ -41,9 +45,9 @@ public static class IntegrationMessageContext
 
     private static string? FindExplicitCorrelationId()
     {
-        for (var frame = s_current.Value; frame is { IsActive: true }; frame = frame.Previous)
+        for (var frame = s_current.Value; frame is not null; frame = frame.Previous)
         {
-            if (frame.ExplicitCorrelationId is { } correlationId)
+            if (frame is { IsActive: true, ExplicitCorrelationId: { } correlationId })
                 return correlationId;
         }
 
@@ -52,9 +56,9 @@ public static class IntegrationMessageContext
 
     private static string? FindMessageSource()
     {
-        for (var frame = s_current.Value; frame is { IsActive: true }; frame = frame.Previous)
+        for (var frame = s_current.Value; frame is not null; frame = frame.Previous)
         {
-            if (frame.MessageSource is { } messageSource)
+            if (frame is { IsActive: true, MessageSource: { } messageSource })
                 return messageSource;
         }
 
@@ -85,7 +89,7 @@ public static class IntegrationMessageContext
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        var validTrace = ActivityContext.TryParse(envelope.TraceParent, envelope.TraceState, isRemote: true, out _);
+        var validTrace = TryParseRemoteContext(envelope.TraceParent, envelope.TraceState, out _);
         return Push(new Frame(
             s_current.Value,
             messageId: envelope.MessageId,
