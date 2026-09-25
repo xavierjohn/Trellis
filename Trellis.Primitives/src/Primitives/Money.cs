@@ -99,8 +99,8 @@ public class Money : ValueObject
     /// </remarks>
     /// <param name="amount">The monetary amount.</param>
     /// <param name="currencyCode">ISO 4217 currency code (e.g., "USD", "EUR"); case-insensitive.</param>
-    /// <param name="amountFieldName">Field carrying the amount; defaults to <c>amount</c> when null or empty.</param>
-    /// <param name="currencyFieldName">Field carrying the currency; defaults to <c>currency</c> when null or empty.</param>
+    /// <param name="amountFieldName">Field carrying the amount; defaults to <c>amount</c> when null. An empty string explicitly targets the document root.</param>
+    /// <param name="currencyFieldName">Field carrying the currency; defaults to <c>currency</c> when null. An empty string explicitly targets the document root.</param>
     /// <returns>Result containing the Money instance or validation errors.</returns>
     public static Result<Money> TryCreate(decimal amount, string currencyCode, string? amountFieldName, string? currencyFieldName) =>
         TryCreateCore(

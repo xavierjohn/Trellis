@@ -674,7 +674,7 @@ public class MoneyTests
     }
 
     [Fact]
-    public void TryCreate_with_empty_string_fieldName_falls_back_to_component_defaults()
+    public void TryCreate_with_empty_string_fieldName_targets_components_at_the_document_root()
     {
         PathOf(Money.TryCreate(-1m, "USD", fieldName: "")).Should().Be("/amount");
         PathOf(Money.TryCreate(1m, "INVALID", fieldName: "")).Should().Be("/currency");
@@ -715,6 +715,13 @@ public class MoneyTests
     {
         PathOf(Money.TryCreate(-1m, "USD", null, null)).Should().Be("/amount");
         PathOf(Money.TryCreate(1m, "INVALID", null, null)).Should().Be("/currency");
+    }
+
+    [Fact]
+    public void TryCreate_with_empty_per_component_field_names_targets_the_document_root()
+    {
+        PathOf(Money.TryCreate(-1m, "USD", "", "")).Should().BeEmpty();
+        PathOf(Money.TryCreate(1m, "INVALID", "", "")).Should().BeEmpty();
     }
 
     private static string PathOf(Result<Money> result)

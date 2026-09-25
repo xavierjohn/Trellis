@@ -16,7 +16,7 @@ public sealed class StringExtensionsNormalizeFieldNameTests
         ((string?)null).NormalizeFieldName("age").Should().Be("age");
 
     [Fact]
-    public void Empty_field_name_is_preserved_rather_than_replaced_by_the_default() =>
+    public void Empty_field_name_is_preserved_as_the_root_pointer() =>
         string.Empty.NormalizeFieldName("age").Should().Be(string.Empty);
 
     [Fact]
