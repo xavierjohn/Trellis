@@ -31,10 +31,18 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Supports created-resource locations, ETags, conditional requests, `Prefer`, cache controls, and pagination links.
 - Validates scalar value objects during MVC and Minimal API binding and JSON deserialization.
 - Provides claims, Entra, Easy Auth, development, caching, and worker actor-provider composition.
+- Maps ASP.NET Core rate-limit middleware rejections to the standard Trellis 429 Problem Details envelope and `Retry-After`.
 - Adds opt-in `Idempotency-Key` middleware with pluggable stores.
 - Includes the AOT-friendly scalar JSON-converter source generator.
 
 Minimal API scalar validation also requires `app.UseScalarValueValidation()` and `.WithScalarValueValidation()` on participating endpoints. Version-aware `Location` and pagination links live in `Trellis.Asp.ApiVersioning`.
+
+For ASP.NET Core rate limiting, keep policies and partitioning in the application and call
+`options.UseTrellisRejectionHandler()` inside `AddRateLimiter(...)`. The adapter owns
+`RateLimiterOptions.OnRejected` and writes the same Trellis Problem Details envelope as endpoint
+failures. Use named endpoint policies without policy-level `OnRejected` callbacks; ASP.NET Core
+gives those callbacks precedence and skips the options handler for inline
+`RequireRateLimiting(policy)` even when the policy callback is null.
 
 ## Documentation
 

@@ -362,9 +362,10 @@ public static class ValidationCodes
 /// it is the expected outcome of a lost write race rather than a defect, and a client may reasonably
 /// present it to a user ("someone else changed this"). What they share is that Trellis itself
 /// produces the value: some of them it also matches on to pick a status code, where a literal is a
-/// silent dispatch break rather than a misspelt label; the rest (the <c>http.response-*</c> family and
-/// <see cref="ResponseLocationUnresolved"/>) are emitted by the framework's own adapters, and they are
-/// constants so that a caller can branch on a stable, aggregatable code instead of parsing prose.
+/// silent dispatch break rather than a misspelt label. <see cref="RateLimitExceeded"/>, the
+/// <c>http.response-*</c> family, and <see cref="ResponseLocationUnresolved"/> are emitted by
+/// framework adapters; they are constants so that a caller can branch on a stable, aggregatable
+/// code instead of parsing prose.
 /// </para>
 /// </remarks>
 public static class FaultCodes
@@ -395,6 +396,12 @@ public static class FaultCodes
     /// same punctuation guard as every other framework code.
     /// </summary>
     public const string StateMachineInvalidTransition = "state-machine.invalid-transition";
+
+    /// <summary>
+    /// ASP.NET Core rate-limiting middleware rejected a request before it reached the endpoint.
+    /// Carried by <see cref="Error.RateLimited"/> and emitted by <c>Trellis.Asp</c>.
+    /// </summary>
+    public const string RateLimitExceeded = "rate-limit.exceeded";
 
     /// <summary>
     /// An HTTP response carried a non-success status on a path that needed its body. Carried by

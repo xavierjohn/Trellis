@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Asp
 namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.Idempotency, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
-types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
+types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, RateLimiterOptionsExtensions, UseTrellisRejectionHandler, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
@@ -10,7 +10,7 @@ audience: [llm]
 
 **Package:** `Trellis.Asp` (bundles the AOT-friendly `Trellis.AspSourceGenerator.dll` at `analyzers/dotnet/cs/` — installing `Trellis.Asp` attaches the generator automatically — and contains the ASP.NET actor providers formerly published as `Trellis.Asp.Authorization`).
 **Namespaces:** `Trellis.Asp`, `Trellis.Asp.Authorization`, `Trellis.Asp.Idempotency`, `Trellis.Asp.ModelBinding`, `Trellis.Asp.Routing`, `Trellis.Asp.Validation`
-**Purpose:** ASP.NET Core integration for mapping Trellis `Result`/`Result<T>`/`WriteOutcome<T>`/`Page<T>` values to HTTP responses, evaluating HTTP preconditions and `Prefer` preferences, hydrating actors from JWT claims, validating scalar value objects in MVC and Minimal APIs, and emitting AOT-friendly `JsonConverter`s for Trellis scalar values.
+**Purpose:** ASP.NET Core integration for mapping Trellis `Result`/`Result<T>`/`WriteOutcome<T>`/`Page<T>` values and rate-limit middleware rejections to HTTP responses, evaluating HTTP preconditions and `Prefer` preferences, hydrating actors from JWT claims, validating scalar value objects in MVC and Minimal APIs, and emitting AOT-friendly `JsonConverter`s for Trellis scalar values.
 
 The single supported response verb is `result.ToHttpResponse(...)`. It returns `Microsoft.AspNetCore.Http.IResult` and works in both Minimal API and MVC hosts (.NET 7+ executes `IResult` natively in MVC). For typed `ActionResult<T>` signatures, chain `.AsActionResult<T>()`. Configure protocol semantics via the fluent `HttpResponseOptionsBuilder<T>` (`WithETag`, `WithLastModified`, `Vary`, `WithCacheControl`, `Created`/`CreatedAtRoute`/`CreatedAtAction`, `EvaluatePreconditions`, `HonorPrefer`, `WithErrorMapping`, …).
 
@@ -42,6 +42,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#task---recipe-lookup
 | Compose a system actor for background workers | `AddTrellisWorkerActor` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Bind scalar value objects from routes/query/body | `AddTrellisAspWithScalarValidation()` (or `AddTrellisAsp()` + `AddScalarValueValidation()`), plus route constraints / validation middleware as needed | [`Trellis.Asp.ModelBinding`](#namespace-trellisaspmodelbinding), [`Trellis.Asp.Validation`](#namespace-trellisaspvalidation) |
 | Add Trellis ProblemDetails recipe (trace id from `Activity.Current`, friendly 500 detail, `allow` extension on 405) | `services.AddTrellisProblemDetails()` plus `app.UseTrellisProblemDetails()` (or `options.UseProblemDetails()` via [`Trellis.ServiceDefaults`](trellis-api-servicedefaults.md#trellisservicebuilder)) | [`ServiceCollectionExtensions`](#servicecollectionextensions), [`ApplicationBuilderExtensions`](#applicationbuilderextensions) |
+| Render ASP.NET Core rate-limit rejections as Trellis Problem Details | Inside `services.AddRateLimiter(options => ...)`, call `options.UseTrellisRejectionHandler()`; keep algorithms, policies, and partition keys in application configuration. | [`RateLimiterOptionsExtensions`](#ratelimiteroptionsextensions) |
 | Add the IETF `Idempotency-Key` middleware to opted-in `POST` / `PATCH` endpoints | `services.AddTrellisIdempotency(...)` (or `options.UseIdempotency(...)`), `services.AddInMemoryIdempotencyStore()`, `app.UseTrellisIdempotency()`, and mark each opted-in endpoint with `[Idempotent]` | [`Trellis.Asp.Idempotency`](#namespace-trellisaspidempotency), Cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency) |
 
 ## Endpoint checklist for generated APIs
@@ -735,6 +736,63 @@ The middleware pipeline surface for `Trellis.Asp` (in folder `Extensions/`).
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static IApplicationBuilder UseTrellisProblemDetails(this IApplicationBuilder app)` | `IApplicationBuilder` | Wires the canonical ProblemDetails request pipeline: `UseExceptionHandler()` then `UseStatusCodePages()`. Must be registered **early** in the pipeline — `UseStatusCodePages` only rewrites status-code responses produced by middleware registered after it (routing, authorization, endpoint execution). Pair with `services.AddTrellisProblemDetails()` so the rewritten responses pick up Trellis defaults (trace id, friendly 500 detail, 405 `allow` array). |
+
+### `RateLimiterOptionsExtensions`
+
+**Declaration**
+
+```csharp
+public static class RateLimiterOptionsExtensions
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static RateLimiterOptions UseTrellisRejectionHandler(this RateLimiterOptions options, Func<OnRejectedContext, CancellationToken, ValueTask>? observer = null)` | `RateLimiterOptions` | Owns `options.OnRejected`, sets `options.RejectionStatusCode` to 429, and renders supported rejections through the normal `Error.ToHttpResponse()` path. Throws `InvalidOperationException` when an `OnRejected` handler already exists or the optional observer mutates/starts the response. |
+
+Configure policies and partitioning with ASP.NET Core, then install the Trellis-owned writer:
+
+```csharp
+builder.Services.AddTrellisAsp();
+builder.Services.AddTrellisProblemDetails();
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("catalog-write", CreateCatalogWritePolicy);
+    options.UseTrellisRejectionHandler();
+});
+
+// In the request pipeline, at the placement required by ASP.NET Core:
+app.UseRateLimiter();
+```
+
+The adapter reads `MetadataName.RetryAfter` from the rejected lease and constructs
+`new Error.RateLimited(new RetryAdvice(After: retryAfter)) { Code = FaultCodes.RateLimitExceeded }`.
+The standard writer maps it to HTTP 429, the `too-many-requests` kind, the frozen
+`rate-limit.exceeded` code, and a delta-seconds `Retry-After` header. When lease metadata is absent,
+the response is still a normal 429 Problem Details document and omits `Retry-After`.
+`AddTrellisProblemDetails()` adds the standard trace-id customization.
+
+The optional observer receives ASP.NET Core's `OnRejectedContext` and cancellation token before
+Trellis writes. The adapter sets `RejectionStatusCode` to 429 so the observer sees the same status
+as the eventual default Trellis response (rather than ASP.NET Core's default 503). It is for
+logging or metrics only. Changing the status, headers, or response body, including from an
+`OnStarting` callback, or starting the response throws rather than producing a mixed two-writer
+response. Earlier middleware's `OnStarting` callbacks still run normally. An existing
+`OnRejected` handler also causes setup to throw; move non-writing work into the observer parameter,
+or do not install this adapter when the application owns a custom rejection response.
+
+**Policy-level limitation:** ASP.NET Core calls a named `IRateLimiterPolicy<T>.OnRejected` in
+preference to `RateLimiterOptions.OnRejected`; the adapter cannot intercept that callback.
+Register endpoint policies by name with no policy-level rejection handler, as in the example
+above. Avoid inline `endpoint.RequireRateLimiting(policy)` with this adapter: ASP.NET Core skips
+the options handler for an inline policy even when its `OnRejected` is null, producing a bare
+429 without the Trellis envelope or lease `Retry-After`. The options API does not expose all
+registered policies or endpoint metadata to inspect at setup, so these configurations cannot
+be rejected by `UseTrellisRejectionHandler()`. Use a named policy without a handler or leave the
+response writer entirely application-owned.
+
+This is an options extension used inside the application's existing `AddRateLimiter` callback, not
+an `IServiceCollection` registration. It deliberately has no `TrellisServiceBuilder` slot: Trellis
+does not choose limiter algorithms, policies, permit counts, queues, or partition keys.
 
 ### `IdempotencyApplicationBuilderExtensions`
 

@@ -685,7 +685,7 @@ When `Error.TransportFault` wraps one, the error's `Code` is the fault's `Code`,
 
 ### `ValidationCodes` — the reason-code vocabulary
 
-`ValidationCodes` (namespace `Trellis`) is the closed set of reason codes the framework itself emits on `FieldViolation.ReasonCode` and `RuleViolation.ReasonCode`. `FaultCodes` is its counterpart for `Error.Unexpected`.
+`ValidationCodes` (namespace `Trellis`) is the closed set of reason codes the framework itself emits on `FieldViolation.ReasonCode` and `RuleViolation.ReasonCode`. `FaultCodes` carries framework-owned codes for non-validation outcomes across the applicable `Error` cases.
 
 **These values are frozen.** They are wire contract: a client branches on them, and renaming one silently breaks that client at runtime with no compile error anywhere. Codes may be *added*; an existing code's spelling and meaning may not change.
 
@@ -797,6 +797,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 
 | Constant | Wire value | Emitted when |
 | --- | --- | --- |
+| `RateLimitExceeded` | `rate-limit.exceeded` | ASP.NET Core rate-limiting middleware rejected the request before endpoint execution. Carried by `Error.RateLimited`; emitted by `Trellis.Asp`'s `UseTrellisRejectionHandler`. |
 | `DefaultInitialized` | `default-initialized` | A `Result` was default-initialized and never assigned. |
 | `UnhandledException` | `unhandled-exception` | An exception escaped to a boundary that converts it into a failed `Result`. |
 | `NotImplemented` | `not-implemented` | A boundary reached a path the framework does not implement. Carried by `Error.Unexpected`; surfaces as HTTP 501. |
@@ -808,14 +809,16 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `HttpResponseFault` | `http.response-fault` | A response status has no more specific mapping in the status-to-error table. Carried by `Error.Unexpected`; emitted by `Trellis.Http`'s `ToResultAsync`. |
 | `ResponseLocationUnresolved` | `response.location-unresolved` | A response was configured to emit a `Location` header but the URI could not be resolved. Carried by `Error.Unexpected`; emitted by `Trellis.Asp`. |
 
-The `http.response-*` family and `ResponseLocationUnresolved` are *not* dispatch keys — nothing branches on
-them to pick a status code. They are constants for the other reason a code exists: they are what a caller
-groups on. Each of these previously passed `Guid.NewGuid().ToString("N")` as the `Code` positional argument
+`RateLimitExceeded`, the `http.response-*` family, and `ResponseLocationUnresolved` are *not* dispatch keys —
+nothing branches on them to pick a status code. They are constants for the other reason a code exists: they
+are what a caller groups on. The HTTP-response and location failures previously passed
+`Guid.NewGuid().ToString("N")` as the `Code` positional argument
 of the `Error.Unexpected` constructor — `Unexpected(string Code, string? FaultId = null)` — which gave
 every single incident its own `code`
 on the wire — an unbounded cardinality that no dashboard can aggregate — while leaving `FaultId`, the field
 that exists for exactly that per-incident value, null. The identifier now goes to `FaultId` and the code
-stays stable.
+stays stable. `RateLimitExceeded` instead gives the ASP rate-limiter adapter an explicit code where a bare
+`Error.RateLimited` would otherwise emit `error.unspecified`.
 
 `NotImplemented` and `ConcurrentModification` are *control* values: the framework matches on them to select
 HTTP behaviour, so they are dispatch keys as well as presentation. That is exactly why they belong here as

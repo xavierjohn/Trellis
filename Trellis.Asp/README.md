@@ -31,6 +31,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Supports `Created`, named-route and action locations, ETags, conditional requests, `Prefer`, cache controls, and pagination links.
 - Validates scalar value objects during MVC and Minimal API binding and JSON deserialization.
 - Provides claims, nested-JSON claims, Entra, Easy Auth, development, caching, and worker actor-provider composition.
+- Maps ASP.NET Core rate-limit middleware rejections to the standard Trellis 429 Problem Details envelope and `Retry-After`.
 - Adds opt-in `Idempotency-Key` middleware with in-memory and pluggable distributed stores.
 - Includes the AOT-friendly scalar JSON-converter source generator.
 
@@ -40,6 +41,7 @@ Default failure mappings include 401 for `AuthenticationRequired`, 403 for `Forb
 
 - Minimal API scalar validation also requires `app.UseScalarValueValidation()` and `.WithScalarValueValidation()` on participating endpoints.
 - `AddTrellisProblemDetails()` pairs with `app.UseTrellisProblemDetails()`.
+- Inside `AddRateLimiter(...)`, call `options.UseTrellisRejectionHandler()` to let Trellis own `OnRejected`; use named endpoint policies without policy-level `OnRejected` callbacks. Inline `RequireRateLimiting(policy)` bypasses the options handler, even without a policy callback. Rate-limit policies and partitioning remain application-owned.
 - Idempotency requires `AddTrellisIdempotency(...)`, exactly one store registration, `app.UseTrellisIdempotency()`, and `[Idempotent]` on opted-in endpoints.
 - Version-aware `Location` and pagination links live in `Trellis.Asp.ApiVersioning`.
 
