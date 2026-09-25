@@ -23,7 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 /// not ship.
 /// </para>
 /// <para>
-/// The rule previously lived only in prose in <c>.github/copilot-instructions.md</c>, alongside a
+/// The rule previously lived only in prose in <c>AGENTS.md</c>, alongside a
 /// hand-maintained exception list that drifted. These tests make it mechanical: every registration
 /// helper reachable from <c>Trellis.ServiceDefaults</c> must be classified below, and a new helper
 /// fails the build until someone records the decision and the reason for it. A classification that

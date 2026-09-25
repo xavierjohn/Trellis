@@ -175,7 +175,7 @@ Acceptance:
 
 **Reconcile ADR-002.** On acceptance, ADR-006 supersedes ADR-002 §2 (package map) and §5.1 item 7 (which
 pins `TransactionalCommandBehavior` to `Trellis.EntityFrameworkCore`) for these contracts; updating both
-ADR-002 passages (and any contradicting `README.md` / `copilot-instructions.md` package lists) is part of
+ADR-002 passages (and any contradicting `README.md` / `AGENTS.md` package lists) is part of
 this ADR's implementation, not a follow-up.
 
 **Explicitly deferred — the dispatcher rewrite.** Making the inbox *orchestration* store-agnostic

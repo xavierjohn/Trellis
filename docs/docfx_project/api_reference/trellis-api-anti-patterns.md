@@ -16,7 +16,7 @@ audience: [llm]
 This file is the canonical reference for analyzer-triggered anti-patterns. It used to live as Recipe 11 in `trellis-api-cookbook.md` and was extracted so that:
 
 1. It can be loaded independently when you are debugging an analyzer warning.
-2. The reference list in `copilot-instructions.md` can name it directly, so AI sessions are more likely to load it.
+2. The reference list in `AGENTS.md` can name it directly, so AI sessions are more likely to load it.
 3. The cookbook's Patterns Index can route by symptom into this file when the symptom is "I am getting `TRLSxxx`."
 
 The analyzer rules themselves are documented in `trellis-api-analyzers.md` (severity, when they fire, suppression guidance). This file is the *applied* form — the snippets you adapt.
