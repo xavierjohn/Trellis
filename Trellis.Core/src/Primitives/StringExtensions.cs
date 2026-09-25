@@ -11,10 +11,15 @@ public static class StringExtensions
     /// Normalizes an optional field name to camelCase, falling back to a default name.
     /// </summary>
     /// <param name="fieldName">The optional field name to normalize.</param>
-    /// <param name="defaultName">The default field name if <paramref name="fieldName"/> is null or empty.</param>
-    /// <returns>The camelCased field name, or <paramref name="defaultName"/> if not provided.</returns>
+    /// <param name="defaultName">The default field name if <paramref name="fieldName"/> is <see langword="null"/>.</param>
+    /// <returns>
+    /// The camelCased field name, or <paramref name="defaultName"/> if <paramref name="fieldName"/> is
+    /// <see langword="null"/>. An empty string is preserved as-is (not substituted): it is the
+    /// established sentinel meaning "target the current pointer itself, with no property leaf",
+    /// used by the ASP.NET Core validation pipeline's ambient current-property-name tracking.
+    /// </returns>
     public static string NormalizeFieldName(this string? fieldName, string defaultName) =>
-        !string.IsNullOrEmpty(fieldName) ? fieldName.ToCamelCase() : defaultName;
+        fieldName is null ? defaultName : fieldName.ToCamelCase();
 
     /// <summary>
     /// Parses a string value using the specified <see cref="IScalarValue{TSelf, TPrimitive}"/> factory.

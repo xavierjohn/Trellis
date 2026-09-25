@@ -80,8 +80,32 @@ public class PathTrackingRegistryGeneratorTests
 
         var generated = RunGenerator(source);
 
+        generated.Should().Contain("RegisterProperty<global::Email>()");
         generated.Should().Contain("RegisterCollection<global::System.Collections.Generic.List<global::TestNamespace.MemberDto>, global::TestNamespace.MemberDto>()");
         generated.Should().Contain("[ModuleInitializer]");
+    }
+
+    [Fact]
+    public void Scalar_property_is_registered_for_effective_json_name_tracking()
+    {
+        var source = $$"""
+            {{ValueObject}}
+
+            namespace TestNamespace
+            {
+                using System.Text.Json.Serialization;
+
+                public sealed record Command(
+                    [property: JsonPropertyName("primary_email")] Email Contact);
+
+                [JsonSerializable(typeof(Command))]
+                public partial class AppContext : JsonSerializerContext { }
+            }
+            """;
+
+        var generated = RunGenerator(source);
+
+        generated.Should().Contain("RegisterProperty<global::Email>()");
     }
 
     [Fact]
@@ -396,6 +420,52 @@ public class PathTrackingRegistryGeneratorTests
         var generated = RunGenerator(source);
 
         generated.Should().Contain("RegisterCollection<global::System.Collections.Generic.IReadOnlyList<global::TestNamespace.MemberDto>, global::TestNamespace.MemberDto>()");
+    }
+
+    [Fact]
+    public void Direct_scalar_interface_collection_property_is_registered()
+    {
+        var source = $$"""
+            {{ValueObject}}
+
+            namespace TestNamespace
+            {
+                using System.Collections.Generic;
+                using System.Text.Json.Serialization;
+
+                public sealed record TeamCommand(IReadOnlyList<Email> Emails);
+
+                [JsonSerializable(typeof(TeamCommand))]
+                public partial class AppContext : JsonSerializerContext { }
+            }
+            """;
+
+        var generated = RunGenerator(source);
+
+        generated.Should().Contain("RegisterCollection<global::System.Collections.Generic.IReadOnlyList<global::Email>, global::Email>()");
+    }
+
+    [Fact]
+    public void Direct_scalar_dictionary_property_is_registered()
+    {
+        var source = $$"""
+            {{ValueObject}}
+
+            namespace TestNamespace
+            {
+                using System.Collections.Generic;
+                using System.Text.Json.Serialization;
+
+                public sealed record TeamCommand(Dictionary<string, Email> Prices);
+
+                [JsonSerializable(typeof(TeamCommand))]
+                public partial class AppContext : JsonSerializerContext { }
+            }
+            """;
+
+        var generated = RunGenerator(source);
+
+        generated.Should().Contain("RegisterDictionary<global::System.Collections.Generic.Dictionary<string, global::Email>, global::Email>()");
     }
 
     [Fact]

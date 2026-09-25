@@ -2576,7 +2576,7 @@ public static class StringExtensions
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static string NormalizeFieldName(this string? fieldName, string defaultName)` | `string` | Camel-cases `fieldName` when present; otherwise returns `defaultName` verbatim. |
+| `public static string NormalizeFieldName(this string? fieldName, string defaultName)` | `string` | Returns `defaultName` verbatim only when `fieldName` is `null`; otherwise camel-cases `fieldName`. An empty string is preserved as the root/current-pointer sentinel used by pointer-aware validation pipelines. |
 | `public static T ParseScalarValue<T>(string? s) where T : class, IScalarValue<T, string>` | `T` | Throws `FormatException` based on `T.TryCreate`. |
 | `public static bool TryParseScalarValue<T>([NotNullWhen(true)] string? s, [MaybeNullWhen(false)] out T result) where T : class, IScalarValue<T, string>` | `bool` | Safe parsing helper based on `T.TryCreate`. |
 | `public static string ToCamelCase(this string? str)` | `string` | Lowercases the first character only. |

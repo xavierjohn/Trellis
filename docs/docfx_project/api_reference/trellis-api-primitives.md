@@ -441,7 +441,7 @@ public class Money : ValueObject
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Result<Money> TryCreate(decimal amount, string currencyCode, string? fieldName = null)` | `Result<Money>` | Rejects negative amounts. `fieldName` names the money value as a whole; component failures are reported at nested pointers beneath it (`/price/amount`, `/price/currency`), defaulting to `/amount` and `/currency`. Currency validation is delegated to [`CurrencyCode.TryCreate`](#currencycode) and is syntactic only — three ASCII letters (case-insensitive input; normalized to uppercase). Codes outside the ISO 4217 active list (`XXX`, `XTS`, `ZZZ`, etc.) are accepted because they satisfy the format. Layer an application-level allow-list when active-code enforcement is required. |
-| `public static Result<Money> TryCreate(decimal amount, string currencyCode, string? amountFieldName, string? currencyFieldName)` | `Result<Money>` | Flat-payload overload: names each component independently instead of nesting, for documents that carry amount and currency as siblings. Each argument accepts a simple property name or a full JSON Pointer, and falls back to `amount` / `currency` when null or empty. The last two parameters intentionally have no default values, which keeps this overload out of the set `CompositeValueObjectJsonConverter<Money>` resolves. |
+| `public static Result<Money> TryCreate(decimal amount, string currencyCode, string? amountFieldName, string? currencyFieldName)` | `Result<Money>` | Flat-payload overload: names each component independently instead of nesting, for documents that carry amount and currency as siblings. Each argument accepts a simple property name or a full JSON Pointer. `null` falls back to `amount` / `currency`; an empty string is the explicit RFC 6901 document-root pointer. The last two parameters intentionally have no default values, which keeps this overload out of the set `CompositeValueObjectJsonConverter<Money>` resolves. |
 | `public static Money Create(decimal amount, string currencyCode)` | `Money` | Throwing factory. |
 | `public Result<Money> Add(Money other)` | `Result<Money>` | Requires matching currencies. Throws `ArgumentNullException` when `other` is null. Returns `Error.InvalidInput` on currency mismatch or addition overflow. |
 | `public Result<Money> Subtract(Money other)` | `Result<Money>` | Requires matching currencies and non-negative result. Throws `ArgumentNullException` when `other` is null. |
@@ -759,6 +759,8 @@ var email = EmailAddress.TryCreate(request.BillingEmail, nameof(request.BillingE
 > // → /price and /currency respectively
 > Money.TryCreate(request.Price, request.Currency, nameof(request.Price), nameof(request.Currency));
 > ```
+>
+> `fieldName` follows the JSON Pointer distinction used throughout Trellis: `null` means “use the documented default,” while an empty string explicitly targets the document root. For the flat overload, pass `null` to obtain `/amount` or `/currency`; pass `""` only when the component error should target the whole document.
 >
 > The four-argument overload deliberately has **no default values** on its last two parameters; that is what keeps it out of the overload set `CompositeValueObjectJsonConverter<Money>` resolves, which requires an unambiguous `TryCreate` whose trailing parameters are all optional.
 

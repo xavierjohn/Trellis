@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — direct scalar container errors target the element or keyed value
+
+JSON-body validation failures for direct scalar value-object collection elements and string-keyed dictionary values now report the entry pointer itself (for example `/allergens/0` or `/prices/USD`) instead of appending a synthetic type-name segment such as `/allergens/0/allergen`. Invalid values and `null` entries now behave identically in reflection mode and Native AOT; nested object entries continue to report their effective JSON leaf property (for example `/members/0/primary_email`), including names selected by a naming policy or `[JsonPropertyName]`.
+
+`StringExtensions.NormalizeFieldName` — the helper the `RequiredString<T>`/`RequiredGuid<T>`/… source generator and the built-in primitives (`EmailAddress`, `Url`, `PhoneNumber`, …) call to resolve their field name — now distinguishes an omitted name from the RFC 6901 root pointer: `null` selects the type's default field name, while an empty string remains empty. This lets generated and hand-written value objects report a direct container entry without a synthetic leaf. It also means the flat `Money.TryCreate` overload defaults component names only when they are `null`; an empty component name explicitly targets the whole document.
+
+Properties with an explicit property-level `[JsonConverter]` remain consumer-owned in reflection mode and Native AOT; Trellis no longer replaces their converter while installing scalar validation/path tracking.
+
+The same fix now also applies to a direct scalar value nested in a string-keyed dictionary (for example `Dictionary<string, EmailAddress>`): `PathTrackingDictionaryConverter` never set the element-target sentinel for its value type, so a failing entry still reported a synthetic type-name leaf (`/prices/EUR/emailAddress`) instead of the key-precise pointer (`/prices/EUR`). It now mirrors `PathTrackingCollectionConverter`'s per-element handling.
+
 ### Breaking — code-first error factories
 
 Case-scoped factories consistently put `code` first and `detail` last. `InvalidInput.ForField` accepts a property name or `InputPointer` plus optional `args`; `ForRule` adds optional related `fields`, copied defensively in order. Resource factories accept either a generic resource type or an explicit `ResourceRef`, replacing the string-resource overloads. The `Conflict` constructor and deconstruction are now code-first too.

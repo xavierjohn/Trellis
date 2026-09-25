@@ -155,6 +155,16 @@ public static class ServiceCollectionExtensions
             // Check for Maybe<TValue> where TValue : IScalarValue<TValue, TPrimitive>
             if (ScalarValueTypeHelper.IsMaybeScalarValue(propertyType))
             {
+                if (property.CustomConverter is not null)
+                    continue;
+
+                var registeredConverter = CreateRegisteredPropertyConverter(property);
+                if (registeredConverter is not null)
+                {
+                    property.CustomConverter = registeredConverter;
+                    continue;
+                }
+
                 var innerConverter = CreateMaybeConverter(propertyType);
                 if (innerConverter is null)
                     continue;
@@ -169,17 +179,24 @@ public static class ServiceCollectionExtensions
             // Direct scalar value object (IScalarValue<TSelf, T>)?
             if (IsScalarValueProperty(property))
             {
-                // Create a validating converter for this value object
-                var innerScalarConverter = CreateValidatingConverter(propertyType);
-                if (innerScalarConverter is null)
-                    continue;
+                if (property.CustomConverter is null)
+                {
+                    var registeredConverter = CreateRegisteredPropertyConverter(property);
+                    if (registeredConverter is not null)
+                    {
+                        property.CustomConverter = registeredConverter;
+                    }
+                    else
+                    {
+                        var innerScalarConverter = CreateValidatingConverter(propertyType);
+                        if (innerScalarConverter is null)
+                            continue;
 
-                // Wrap it with property name awareness. In Native AOT this returns null because
-                // runtime closed-generic converter construction is disabled; source-generated
-                // converters are expected to own scalar JSON conversion there.
-                var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
-                if (wrappedScalarConverter is not null)
-                    property.CustomConverter = wrappedScalarConverter;
+                        var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
+                        if (wrappedScalarConverter is not null)
+                            property.CustomConverter = wrappedScalarConverter;
+                    }
+                }
 
                 // Track non-nullable scalar VO properties for missing-property detection
                 if (!property.IsGetNullable && property.Get is not null)
@@ -244,8 +261,16 @@ public static class ServiceCollectionExtensions
     private static bool IsScalarValueProperty(JsonPropertyInfo property) =>
         ScalarValueTypeHelper.IsScalarValue(property.PropertyType);
 
+    private static JsonConverter? CreateRegisteredPropertyConverter(JsonPropertyInfo property) =>
+        ScalarValuePathTracking.HasPropertyRegistrations
+            ? ScalarValuePathTracking.TryCreateProperty(property.PropertyType, property.Name)
+            : null;
+
     private static JsonConverter? CreateValidatingConverter([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type valueType)
     {
+        if (s_suppressDynamicPathConverterConstruction.Value)
+            return null;
+
         var primitiveType = ScalarValueTypeHelper.GetPrimitiveType(valueType);
         return primitiveType is null
             ? null
@@ -258,6 +283,9 @@ public static class ServiceCollectionExtensions
     [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Value object types are preserved by JSON serialization infrastructure")]
     private static JsonConverter? CreateMaybeConverter(Type maybeType)
     {
+        if (s_suppressDynamicPathConverterConstruction.Value)
+            return null;
+
         var innerType = ScalarValueTypeHelper.GetMaybeInnerType(maybeType);
         if (innerType is null)
             return null;
@@ -277,37 +305,35 @@ public static class ServiceCollectionExtensions
         Justification = "Reflection-enabled fallback only. PropertyNameAwareConverter<T> is constructed only for property types already present in JSON serialization metadata.")]
     private static JsonConverter? CreatePropertyNameAwareConverter(JsonConverter innerConverter, string propertyName, Type type)
     {
-        if (!RuntimeFeature.IsDynamicCodeSupported)
+        if (!RuntimeFeature.IsDynamicCodeSupported || s_suppressDynamicPathConverterConstruction.Value)
             return null;
 
         var wrapperType = typeof(PropertyNameAwareConverter<>).MakeGenericType(type);
         return Activator.CreateInstance(wrapperType, innerConverter, propertyName) as JsonConverter;
     }
 
-    // Test seam: simulates Native AOT by disabling the reflection fallback, so tests can prove the
-    // source-generated registry alone produces index-precise paths (issue #664). AsyncLocal keeps it
-    // isolated per test flow, which matters because the test suite runs classes in parallel. Never set
-    // in production; under AOT the branch that reads it is folded away entirely.
-    private static readonly AsyncLocal<bool> s_suppressReflectionPathTrackingFallback = new();
+    // Test seam: simulates Native AOT path resolution by disabling dynamic property wrappers and the
+    // reflection container fallback. AsyncLocal keeps it isolated per test flow.
+    private static readonly AsyncLocal<bool> s_suppressDynamicPathConverterConstruction = new();
 
     /// <summary>
-    /// Disables the reflection-mode path-tracking fallback for the current async flow so tests can
-    /// exercise the Native AOT resolution path. Returns a scope that restores the previous value.
+    /// Disables dynamic path-converter construction for the current async flow so tests can exercise
+    /// the Native AOT resolution path. Returns a scope that restores the previous value.
     /// </summary>
-    internal static IDisposable SuppressReflectionPathTrackingFallbackForTests()
+    internal static IDisposable SuppressDynamicPathConverterConstructionForTests()
     {
-        var previous = s_suppressReflectionPathTrackingFallback.Value;
-        s_suppressReflectionPathTrackingFallback.Value = true;
-        return new RestoreFallback(previous);
+        var previous = s_suppressDynamicPathConverterConstruction.Value;
+        s_suppressDynamicPathConverterConstruction.Value = true;
+        return new RestoreDynamicPathConverterConstruction(previous);
     }
 
-    private sealed class RestoreFallback : IDisposable
+    private sealed class RestoreDynamicPathConverterConstruction : IDisposable
     {
         private readonly bool _previous;
 
-        public RestoreFallback(bool previous) => _previous = previous;
+        public RestoreDynamicPathConverterConstruction(bool previous) => _previous = previous;
 
-        public void Dispose() => s_suppressReflectionPathTrackingFallback.Value = _previous;
+        public void Dispose() => s_suppressDynamicPathConverterConstruction.Value = _previous;
     }
 
     // Wraps a container property (collection or nested object) whose graph transitively contains a
@@ -330,9 +356,9 @@ public static class ServiceCollectionExtensions
         Justification = "Property and element types come from JSON serialization metadata which preserves type information.")]
     private static JsonConverter? CreatePathTrackingContainerConverter(JsonPropertyInfo property)
     {
-        if (ScalarValuePathTracking.HasRegistrations)
+        if (ScalarValuePathTracking.HasContainerRegistrations)
         {
-            var registered = ScalarValuePathTracking.TryCreate(property.PropertyType, property.Name);
+            var registered = ScalarValuePathTracking.TryCreateContainer(property.PropertyType, property.Name);
             if (registered is not null)
                 return registered;
         }
@@ -340,7 +366,7 @@ public static class ServiceCollectionExtensions
         if (!RuntimeFeature.IsDynamicCodeSupported)
             return null;
 
-        if (s_suppressReflectionPathTrackingFallback.Value)
+        if (s_suppressDynamicPathConverterConstruction.Value)
             return null;
 
         var propertyType = property.PropertyType;

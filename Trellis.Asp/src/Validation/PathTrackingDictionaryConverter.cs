@@ -67,7 +67,7 @@ internal sealed class PathTrackingDictionaryConverter<TDictionary, TValue> : Jso
                     // JsonValidationPathRebase for why the marker, and not a prefix check, decides.
                     try
                     {
-                        entries[key] = JsonSerializer.Deserialize(ref reader, valueTypeInfo);
+                        entries[key] = DeserializeValue(ref reader, valueTypeInfo);
                     }
                     catch (TrellisJsonValidationException ex) when (!JsonValidationPathRebase.IsMarked(ex))
                     {
@@ -87,4 +87,24 @@ internal sealed class PathTrackingDictionaryConverter<TDictionary, TValue> : Jso
     /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, TDictionary? value, JsonSerializerOptions options) =>
         JsonSerializer.Serialize(writer, value!, (JsonTypeInfo<TDictionary>)options.GetTypeInfo(typeof(TDictionary)));
+
+    private static TValue? DeserializeValue(ref Utf8JsonReader reader, JsonTypeInfo<TValue?> valueTypeInfo)
+    {
+        var previousPropertyName = ValidationErrorsContext.CurrentPropertyName;
+        // Converter-backed values own their JSON value, so an empty name targets the keyed entry
+        // itself. Object values keep the prior context so their scalar converters can contribute
+        // the leaf name under Native AOT, where dynamic property wrappers do not exist. Mirrors
+        // PathTrackingCollectionConverter.DeserializeElement.
+        if (valueTypeInfo.Kind == JsonTypeInfoKind.None)
+            ValidationErrorsContext.CurrentPropertyName = string.Empty;
+
+        try
+        {
+            return JsonSerializer.Deserialize(ref reader, valueTypeInfo);
+        }
+        finally
+        {
+            ValidationErrorsContext.CurrentPropertyName = previousPropertyName;
+        }
+    }
 }

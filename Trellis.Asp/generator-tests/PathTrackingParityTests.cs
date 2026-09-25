@@ -139,11 +139,12 @@ public class PathTrackingParityTests
     }
 
     [Fact]
-    public void The_corpus_actually_exercises_both_wrapper_kinds()
+    public void The_corpus_exercises_each_wrapper_kind()
     {
         // Guards the guard: an empty-vs-empty comparison would pass while asserting nothing.
         var fromGenerator = ParseRegistrations(RunGenerator(CreateCompilation(Corpus + ContextDeclaration)));
 
+        fromGenerator.Should().Contain("property:Corpus.Email");
         fromGenerator.Should().Contain("collection:System.Collections.Generic.List<Corpus.MemberDto>,Corpus.MemberDto");
         fromGenerator.Should().Contain("object:Corpus.ContactDto");
         fromGenerator.Should().Contain("object:Corpus.Address");
@@ -163,6 +164,9 @@ public class PathTrackingParityTests
     private static SortedSet<string> ParseRegistrations(string generated)
     {
         var results = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (Match match in Regex.Matches(generated, @"RegisterProperty<([^>]*(?:<[^>]*>)?[^>]*)>\(\)"))
+            results.Add($"property:{Normalize(match.Groups[1].Value)}");
 
         foreach (Match match in Regex.Matches(generated, @"RegisterObject<([^>]*(?:<[^>]*>)?[^>]*)>\(\)"))
             results.Add($"object:{Normalize(match.Groups[1].Value)}");
@@ -240,6 +244,12 @@ public class PathTrackingParityTests
                 if (converterType is { IsGenericType: true })
                 {
                     var arguments = converterType.GetGenericArguments();
+                    if (converterType.Name.StartsWith("PropertyNameAwareConverter", StringComparison.Ordinal))
+                    {
+                        results.Add($"property:{Display(arguments[0])}");
+                        continue;
+                    }
+
                     if (converterType.Name.StartsWith("PathTrackingObjectConverter", StringComparison.Ordinal))
                     {
                         results.Add($"object:{Display(arguments[0])}");
