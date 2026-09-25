@@ -59,28 +59,6 @@ Missing optional metadata is valid for legacy messages. Blank `CorrelationId` an
 
 The default layout is **one topic per contract**, named after the wire name. Subscribers declare interest by subscribing to the topics they want rather than filtering a firehose. Override `TopicNameResolver` to prefix an environment segment or to collapse contracts onto a shared topic — if you collapse them, filter subscriptions on `sys.Label`, which always carries the wire name.
 
-## Producing
-
-```csharp
-services.AddAzureServiceBusIntegrationEventPublisher(
-    IntegrationEventNameMap.FromAssemblies(typeof(OrderPlaced).Assembly),
-    options => options.MessageSource = "orders-service");
-```
-
-This **replaces** the in-process publisher rather than adding to it. The two are alternatives, not layers: registering both would deliver each event locally *and* over the wire, so a service subscribed to its own topic would handle everything twice.
-
-Register a `ServiceBusClient` in the container; the publisher does not own its lifetime.
-
-## Consuming
-
-```csharp
-services.AddAzureServiceBusIntegrationEventConsumer(
-    IntegrationEventNameMap.FromAssemblies(typeof(OrderPlaced).Assembly),
-    options => options.Subscribe("orders.order-placed.v1", "billing"));
-```
-
-Requires an `IInboxDispatcher` (`AddTrellisInbox<TContext>()`). Consuming without one would run handlers with no deduplication — the failure the inbox exists to prevent.
-
 ### Settlement
 
 | Situation | Action | Why |
