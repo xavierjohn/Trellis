@@ -37,6 +37,7 @@ Translate domain events into integration events by adding them to `IIntegrationE
 ## Key Features
 
 - Captures domain-event rows in the same transaction as aggregate changes.
+- Persists optional W3C trace context and business lineage on domain rows and translated integration rows.
 - Dispatches domain events only after a successful commit.
 - Publishes pending integration events through a resilient background service.
 - Supports configurable batching, locking, lease recovery, retry scheduling, and dead-lettering.
@@ -44,6 +45,8 @@ Translate domain events into integration events by adding them to `IIntegrationE
 - Requires no broker dependency; transport packages implement `IIntegrationEventPublisher`.
 
 All three wiring steps are required: map the table, register `AddTrellisOutboxInterceptor()` for capture, and register the relay. Let the unit-of-work pipeline own `SaveChangesAsync()`. Carry `OutboundIntegrationMessage.MessageId` unchanged as the transport message ID so inbox consumers can deduplicate end to end.
+
+The alpha outbox schema includes nullable `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration or backfill is provided. Use `IntegrationMessageContext.BeginCorrelation("workflow-id")` to supply an application-owned business correlation id; one is never inferred from the trace.
 
 ## Documentation
 

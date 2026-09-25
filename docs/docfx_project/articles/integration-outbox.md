@@ -74,10 +74,13 @@ public sealed record OrderPlaced(OrderId OrderId, DateTimeOffset OccurredAt) : I
 The capture is a `SaveChangesInterceptor` with a deliberate three-phase lifecycle so a failed save never loses or double-captures events:
 
 1. **`SavingChanges`** — scan the change tracker for aggregates with uncommitted events, serialize each event, and add one `OutboxMessage` row per event to the **current** `SaveChanges`. The rows enrol in the same transaction as the aggregate. The aggregate's in-memory events are *not* cleared yet.
+   Capture also persists the current W3C trace context and any explicit application-owned business correlation. When a handler is running under the inbox dispatcher, the inbound message id is stored as the domain row's direct cause.
 2. **`SavedChanges`** (commit succeeded) — call each aggregate's `AcceptChanges()` to clear its events. Because this happens only after a successful commit, the in-pipeline `DomainEventDispatchBehavior` that runs next sees an empty event list and dispatches nothing — the relay is now the single dispatcher.
 3. **`SaveChangesFailed`** — detach the outbox rows the interceptor staged. The aggregate keeps its events, so a retry re-captures cleanly without leaving orphaned rows.
 
 The relay (`OutboxRelay<TContext>`) is a hosted `BackgroundService`. Each poll it opens a bookkeeping scope, reads a batch of pending rows ordered by the monotonic `Sequence` column, rehydrates each event from its stored type name, and publishes it through `IDomainEventPublisher` (the same fan-out the pipeline would use) **in its own per-message scope** — so a handler that injects `TContext` gets a fresh context, not the relay's bookkeeping one, and its tracked changes never ride the relay's save. It then marks each row processed and saves the batch.
+
+**Alpha schema change:** The `TrellisOutboxMessages` mapping includes nullable `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration or backfill is provided. Rows with null metadata remain valid. To collect the relay's child spans, add `Trellis.EntityFrameworkCore.Outbox` to your tracer provider's sources.
 
 ## Delivery semantics
 
@@ -164,6 +167,8 @@ builder.Services.AddTrellis(trellis => trellis
 ```
 
 **How delivery flows.** The relay opens `IIntegrationEventCollector.BeginTranslation()` around domain publishing and draining. All drained events become new integration rows in the same save as partial handler progress, even if a sibling failed or a translator threw after adding an event. A later drain publishes them through `IIntegrationEventPublisher`. The source domain change is durable, but the domain row need not yet be fully processed. Completed translators are skipped on retries; failed translators can create fresh rows with new IDs, requiring business-identity deduplication. `Add` outside an active relay lease throws instead of silently losing events.
+
+**Lineage and trace.** A translated integration row copies its source domain row's persisted trace and business `CorrelationId`; its `CausationId` points to that domain row's `Id` (the domain row points to the inbound `MessageId`, if any). Applications can supply an opaque business id with `using (IntegrationMessageContext.BeginCorrelation("workflow-id"))` around the producing transaction. Neither an HTTP request id nor a W3C trace id is automatically promoted to business correlation. Transport adapters should carry `OutboundIntegrationMessage.TraceParent` and `TraceState` alongside lineage and the stable `MessageId`, without copying baggage or actor claims.
 
 **Startup validation.** Before its background loop starts, the relay resolves `IReportingDomainEventPublisher` in a fresh scope. Integration-enabled hosts must also resolve `IIntegrationEventPublisher`; domain-only hosts need none. This validates DI construction, not broker connectivity. Post-commit Trellis ETag synchronization and event clearing ignore a newly canceled token because persistence already succeeded.
 

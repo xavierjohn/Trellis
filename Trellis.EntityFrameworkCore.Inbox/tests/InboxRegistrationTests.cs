@@ -1,5 +1,6 @@
 ﻿namespace Trellis.EntityFrameworkCore.Inbox.Tests;
 
+using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -60,7 +61,8 @@ public sealed class InboxRegistrationTests
     {
         // Guards the hand-written Clone() against a property being added and not copied,
         // which would silently drop that setting on a repeated registration.
-        var source = new InboxOptions { ConsumerId = "consumer-42" };
+        using var activitySource = new ActivitySource("consumer-42-source");
+        var source = new InboxOptions { ConsumerId = "consumer-42", ActivitySource = activitySource };
 
         var clone = source.Clone();
 

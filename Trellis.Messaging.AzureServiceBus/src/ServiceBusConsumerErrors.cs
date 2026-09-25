@@ -19,6 +19,9 @@ internal static class ServiceBusConsumerErrors
     /// <summary>Reason code for a body that does not deserialize to its declared contract.</summary>
     public const string MalformedBodyCode = "servicebus_malformed_body";
 
+    /// <summary>Reason code for a present optional property with an invalid type or value.</summary>
+    public const string MalformedMetadataCode = "servicebus_malformed_metadata";
+
     /// <summary>
     /// The message carries no usable dedup identity. Processing it would defeat the inbox: without a stable
     /// id the consumer cannot tell a redelivery from a new message, so handlers would run again on every
@@ -52,5 +55,12 @@ internal static class ServiceBusConsumerErrors
         new Error.InvariantViolation(MalformedBodyCode)
         {
             Detail = $"The body of '{wireName}' could not be deserialized: {reason}",
+        };
+
+    /// <summary>A present optional member does not match the expected wire shape.</summary>
+    public static Error MalformedMetadata(string member, string expected) =>
+        new Error.InvariantViolation(MalformedMetadataCode)
+        {
+            Detail = $"'{member}' must be {expected} when present.",
         };
 }

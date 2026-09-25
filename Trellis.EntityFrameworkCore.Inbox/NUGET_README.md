@@ -34,6 +34,7 @@ Your transport adapter passes each received event to `IInboxDispatcher.DispatchA
 - Commits the deduplication row and handler writes atomically in one `DbContext`.
 - Returns `Processed` or `SkippedDuplicate` so transports can settle both outcomes.
 - Propagates handler failures so the transaction rolls back and the transport redelivers.
+- Restores inbound business correlation and W3C trace context during handlers and their atomic commit.
 - Uses a composite `(ConsumerId, MessageId)` key as the concurrency guard.
 - Supports anti-join filtering and optional pull-consumer checkpoints.
 

@@ -1,9 +1,11 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Trellis.Mediator;
 
 /// <summary>
 /// Captures uncommitted domain events from tracked aggregates into <see cref="OutboxMessage"/> rows
@@ -123,6 +125,8 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
             return;
 
         List<OutboxMessage>? messages = null;
+        string? traceParent = null;
+        string? traceState = null;
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
@@ -133,7 +137,12 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
             if (events.Count == 0)
                 continue;
 
-            messages ??= [];
+            if (messages is null)
+            {
+                messages = [];
+                (traceParent, traceState) = ResolveTrace();
+            }
+
             foreach (var domainEvent in events)
             {
                 var type = domainEvent.GetType();
@@ -145,7 +154,12 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
                     domainEvent.OccurredAt,
                     eventType,
                     JsonSerializer.Serialize(domainEvent, type, OutboxEventSerialization.Options),
-                    OutboxMessageKind.Domain));
+                    OutboxMessageKind.Domain,
+                    IntegrationMessageContext.MessageSource,
+                    IntegrationMessageContext.CurrentMessageId,
+                    IntegrationMessageContext.CorrelationId,
+                    traceParent,
+                    traceState));
             }
         }
 
@@ -153,6 +167,19 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
         // change. The aggregates' events are cleared later, in SavedChanges, only once the save succeeds.
         if (messages is not null)
             context.Set<OutboxMessage>().AddRange(messages);
+    }
+
+    private static (string? TraceParent, string? TraceState) ResolveTrace()
+    {
+        var activity = Activity.Current;
+        var inboundTraceParent = IntegrationMessageContext.TraceParent;
+        var inboundTraceState = IntegrationMessageContext.TraceState;
+        var useActivity = activity?.IdFormat == ActivityIdFormat.W3C
+            && (!IntegrationMessageContext.TryParseRemoteContext(inboundTraceParent, inboundTraceState, out var inboundContext)
+                || activity.TraceId == inboundContext.TraceId);
+        return (
+            useActivity ? activity?.Id : inboundTraceParent,
+            useActivity ? activity?.TraceStateString : inboundTraceState);
     }
 
     /// <summary>

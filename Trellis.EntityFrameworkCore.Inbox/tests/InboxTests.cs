@@ -1,8 +1,10 @@
 ﻿namespace Trellis.EntityFrameworkCore.Inbox.Tests;
 
+using System.Diagnostics;
 using global::Trellis.Mediator;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 #pragma warning disable CA1707 // readable xUnit test names
@@ -310,6 +312,164 @@ public sealed class InboxTests
         row.ProcessedAt.Should().NotBe(default);
     }
 
+    [Fact]
+    public async Task Dispatch_continues_the_remote_trace_and_exposes_inbound_lineage_through_commit()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+        var probe = new ProcessingProbe();
+        var interceptor = new ProcessingCommitInterceptor();
+
+        // A uniquely-named, test-owned source rather than the dispatcher's shared default: an
+        // ActivityListener subscribes process-wide by source name, so sharing the default with a
+        // concurrently-running test (e.g. InboxSqlServerIntegrationTests) risks this listener also
+        // observing that test's unrelated activities.
+        using var testActivitySource = new ActivitySource("InboxTests.RemoteTrace");
+        await using var provider = BuildProvider(connection, "billing", probe: probe, interceptor: interceptor, activitySource: testActivitySource);
+        await EnsureCreatedAsync(provider, ct);
+
+        bool? sampledRemoteParent = null;
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => ReferenceEquals(source, testActivitySource),
+            Sample = (ref ActivityCreationOptions<ActivityContext> options) =>
+            {
+                sampledRemoteParent = options.Parent.IsRemote;
+                return ActivitySamplingResult.AllDataAndRecorded;
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var traceId = ActivityTraceId.CreateRandom();
+        var spanId = ActivitySpanId.CreateRandom();
+        var traceParent = $"00-{traceId}-{spanId}-01";
+        var messageId = Guid.CreateVersion7();
+        var envelope = Envelope() with { MessageId = messageId, TraceParent = traceParent, TraceState = "vendor=key" };
+        envelope = envelope with { CorrelationId = "workflow-42" };
+
+        var priorActivity = Activity.Current;
+        using (IntegrationMessageContext.BeginCorrelation("outer-workflow"))
+        {
+            (await provider.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct))
+                .Should().Be(InboxDispatchOutcome.Processed);
+
+            probe.Attempts.Should().ContainSingle();
+            var seen = probe.Attempts.Single();
+            seen.MessageId.Should().Be(messageId);
+            seen.CorrelationId.Should().Be("workflow-42");
+            seen.TraceParent.Should().Be(traceParent);
+            seen.TraceState.Should().Be("vendor=key");
+            seen.ActivityTraceId.Should().Be(traceId);
+            seen.ParentSpanId.Should().Be(spanId);
+            seen.ActivityTraceState.Should().Be("vendor=key");
+            sampledRemoteParent.Should().BeTrue();
+            interceptor.MessageIdAtCommit.Should().Be(messageId);
+            interceptor.CorrelationIdAtCommit.Should().Be("workflow-42");
+            IntegrationMessageContext.CurrentMessageId.Should().BeNull();
+            IntegrationMessageContext.CorrelationId.Should().Be("outer-workflow");
+        }
+
+        IntegrationMessageContext.CurrentMessageId.Should().BeNull();
+        IntegrationMessageContext.CorrelationId.Should().BeNull();
+        Activity.Current.Should().BeSameAs(priorActivity);
+    }
+
+    [Fact]
+    public async Task Dispatch_retry_and_redelivery_restore_ambient_context()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+        var probe = new ProcessingProbe(failFirst: true);
+        await using var provider = BuildProvider(connection, "billing", probe: probe);
+        await EnsureCreatedAsync(provider, ct);
+        var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
+        var envelope = Envelope() with { CorrelationId = "workflow-retry" };
+
+        using (IntegrationMessageContext.BeginCorrelation("outer"))
+        {
+            var first = async () => await dispatcher.DispatchAsync(envelope, ct);
+            await first.Should().ThrowAsync<InvalidOperationException>();
+            IntegrationMessageContext.CurrentMessageId.Should().BeNull();
+            IntegrationMessageContext.CorrelationId.Should().Be("outer");
+
+            (await dispatcher.DispatchAsync(envelope, ct)).Should().Be(InboxDispatchOutcome.Processed);
+            (await dispatcher.DispatchAsync(envelope, ct)).Should().Be(InboxDispatchOutcome.SkippedDuplicate);
+            IntegrationMessageContext.CurrentMessageId.Should().BeNull();
+            IntegrationMessageContext.CorrelationId.Should().Be("outer");
+        }
+
+        probe.Attempts.Should().HaveCount(2);
+        probe.Attempts.Should().OnlyContain(a => a.MessageId == envelope.MessageId && a.CorrelationId == "workflow-retry");
+        IntegrationMessageContext.CorrelationId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Dispatch_uses_explicit_correlation_when_inbound_correlation_is_blank()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+        var probe = new ProcessingProbe();
+        await using var provider = BuildProvider(connection, "billing", probe: probe);
+        await EnsureCreatedAsync(provider, ct);
+        var envelope = Envelope() with { CorrelationId = " " };
+
+        using (IntegrationMessageContext.BeginCorrelation("application-workflow"))
+        {
+            await provider.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct);
+            probe.Attempts.Single().CorrelationId.Should().Be("application-workflow");
+        }
+
+        IntegrationMessageContext.CorrelationId.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("invalid-traceparent", "invalid-tracestate")]
+    [InlineData("", "")]
+    public async Task Dispatch_missing_or_malformed_trace_metadata_still_processes(
+        string? traceParent, string? traceState)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+        var probe = new ProcessingProbe();
+        await using var provider = BuildProvider(connection, "billing", probe: probe);
+        await EnsureCreatedAsync(provider, ct);
+        var envelope = Envelope() with { TraceParent = traceParent, TraceState = traceState };
+
+        var priorActivity = Activity.Current;
+        (await provider.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct))
+            .Should().Be(InboxDispatchOutcome.Processed);
+
+        probe.Attempts.Should().ContainSingle();
+        probe.Attempts.Single().CorrelationId.Should().BeNull();
+        IntegrationMessageContext.CurrentMessageId.Should().BeNull();
+        IntegrationMessageContext.CorrelationId.Should().BeNull();
+        Activity.Current.Should().BeSameAs(priorActivity);
+    }
+
+    [Fact]
+    public async Task Dispatch_invalid_tracestate_does_not_prevent_processing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+        var probe = new ProcessingProbe();
+        await using var provider = BuildProvider(connection, "billing", probe: probe);
+        await EnsureCreatedAsync(provider, ct);
+        var validParent = $"00-{ActivityTraceId.CreateRandom()}-{ActivitySpanId.CreateRandom()}-01";
+        var envelope = Envelope() with { TraceParent = validParent, TraceState = "invalid=;" };
+
+        (await provider.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct))
+            .Should().Be(InboxDispatchOutcome.Processed);
+
+        probe.Attempts.Should().ContainSingle();
+        IntegrationMessageContext.CurrentMessageId.Should().BeNull();
+    }
+
     private static IntegrationEnvelope Envelope() =>
         new(Guid.CreateVersion7(), new OrderPlacedIntegrationEvent(Guid.NewGuid(), DateTimeOffset.UnixEpoch));
 
@@ -321,13 +481,25 @@ public sealed class InboxTests
     }
 
     private static ServiceProvider BuildProvider(
-        SqliteConnection connection, string consumerId, bool throwing = false, FailFirstGate? gate = null)
+        SqliteConnection connection, string consumerId, bool throwing = false, FailFirstGate? gate = null,
+        ProcessingProbe? probe = null, ProcessingCommitInterceptor? interceptor = null,
+        ActivitySource? activitySource = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDbContext<InboxTestDbContext>(o => o.UseSqlite(connection));
+        services.AddDbContext<InboxTestDbContext>(o =>
+        {
+            o.UseSqlite(connection);
+            if (interceptor is not null)
+                o.AddInterceptors(interceptor);
+        });
 
-        if (gate is not null)
+        if (probe is not null)
+        {
+            services.AddSingleton(probe);
+            services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, ProcessingProbeHandler>();
+        }
+        else if (gate is not null)
         {
             services.AddSingleton(gate);
             services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, FailFirstHandler>();
@@ -341,7 +513,12 @@ public sealed class InboxTests
             services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, ReceiptHandler>();
         }
 
-        services.AddTrellisInbox<InboxTestDbContext>(o => o.ConsumerId = consumerId);
+        services.AddTrellisInbox<InboxTestDbContext>(o =>
+        {
+            o.ConsumerId = consumerId;
+            if (activitySource is not null)
+                o.ActivitySource = activitySource;
+        });
         return services.BuildServiceProvider();
     }
 }
@@ -379,6 +556,45 @@ internal sealed class ThrowingReceiptHandler(InboxTestDbContext context) : IInte
 internal sealed class FailFirstGate
 {
     public int Calls;
+}
+
+internal sealed record ProcessingSnapshot(
+    Guid? MessageId, string? CorrelationId, string? TraceParent, string? TraceState,
+    ActivityTraceId? ActivityTraceId, ActivitySpanId? ParentSpanId, string? ActivityTraceState);
+
+internal sealed class ProcessingProbe(bool failFirst = false)
+{
+    public List<ProcessingSnapshot> Attempts { get; } = [];
+    public bool FailFirst { get; } = failFirst;
+}
+
+internal sealed class ProcessingProbeHandler(ProcessingProbe probe) : IIntegrationEventHandler<OrderPlacedIntegrationEvent>
+{
+    public ValueTask HandleAsync(OrderPlacedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    {
+        var activity = Activity.Current;
+        probe.Attempts.Add(new ProcessingSnapshot(
+            IntegrationMessageContext.CurrentMessageId, IntegrationMessageContext.CorrelationId,
+            IntegrationMessageContext.TraceParent, IntegrationMessageContext.TraceState,
+            activity?.TraceId, activity?.ParentSpanId, activity?.TraceStateString));
+        if (probe.FailFirst && probe.Attempts.Count == 1)
+            throw new InvalidOperationException("transient handler failure");
+        return ValueTask.CompletedTask;
+    }
+}
+
+internal sealed class ProcessingCommitInterceptor : SaveChangesInterceptor
+{
+    public Guid? MessageIdAtCommit { get; private set; }
+    public string? CorrelationIdAtCommit { get; private set; }
+
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+    {
+        MessageIdAtCommit = IntegrationMessageContext.CurrentMessageId;
+        CorrelationIdAtCommit = IntegrationMessageContext.CorrelationId;
+        return ValueTask.FromResult(result);
+    }
 }
 
 // Fails the first delivery, succeeds the second — proving a redelivery reprocesses a previously-failed message.

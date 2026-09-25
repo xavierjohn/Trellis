@@ -60,6 +60,7 @@ public sealed class OrderPlacedTranslator(
 ## Key Features
 
 - Captures domain-event rows in the same transaction as aggregate changes.
+- Persists optional W3C trace context and business lineage on domain rows, and inherits them when staging translated integration rows.
 - Dispatches domain events only after a successful commit.
 - Publishes pending integration events through a resilient background service.
 - Supports configurable batching, locking, lease recovery, retry scheduling, and dead-lettering.
@@ -74,6 +75,7 @@ public sealed class OrderPlacedTranslator(
 - Do not manually call `SaveChangesAsync()` inside a transactional command handler; the unit-of-work pipeline owns the commit.
 - Make integration events immutable records with unique, stable `[IntegrationEventName("...")]` values.
 - Carry `OutboundIntegrationMessage.MessageId` unchanged as the transport message ID so inbox consumers can deduplicate end to end.
+- The alpha `TrellisOutboxMessages` schema includes nullable `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration is provided. Use `IntegrationMessageContext.BeginCorrelation("workflow-id")` around a producing transaction to supply an application-owned business correlation id; inbound inbox handlers inherit nonblank envelope correlation and use the inbound message id as their domain row's cause.
 
 The package suppresses recursive domain-event generation while appending outbox rows, preventing outbox persistence from creating more domain events.
 

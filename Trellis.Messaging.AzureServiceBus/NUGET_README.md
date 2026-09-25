@@ -27,9 +27,10 @@ Register a `ServiceBusClient` separately. Consumers also require an `IInboxDispa
 ## Key Features
 
 - Carries the producer's outbox row ID verbatim as the Service Bus `MessageId`, preserving inbox deduplication across redelivery.
+- Carries persisted business correlation and causation plus W3C traceparent/tracestate unchanged across retries.
 - Uses one topic per stable integration-event wire name by default.
 - Replaces the in-process publisher to prevent duplicate local and broker delivery.
-- Completes processed or duplicate messages, retries handler failures, and dead-letters unusable payloads with a reason code.
+- Completes processed or duplicate messages, retries handler failures, and dead-letters unusable payloads or malformed causation/source values with a reason code. Blank correlation and malformed W3C trace metadata remain processable.
 
 ## Documentation
 

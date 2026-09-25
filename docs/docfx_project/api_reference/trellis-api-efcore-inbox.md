@@ -46,6 +46,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - **`ConsumerId` must be stable across deploys.** It is part of the dedup key, so renaming it resets dedup history and the consumer reprocesses everything still inside the transport's redelivery window. Each independent subscriber/consumer-group uses its own stable `ConsumerId`.
 - **The guarantee is local-side-effects-only.** The dedup row and the handlers' writes through the injected `TContext` commit in one `SaveChanges`. Effects that are *not* part of that save — sending an email, calling a downstream API, writing through a different `DbContext`/connection — are not covered and need their own idempotency. A handler that writes through a second context escapes the dedup unit of work.
 - **Handlers run before the save and must propagate failures.** Unlike the default `IIntegrationEventPublisher` (which logs and swallows handler exceptions), the inbox dispatcher is non-swallowing: a handler throw aborts the unit of work before anything is saved — no dedup row, no side effects — and propagates so the transport redelivers. Make handlers safe to re-run, and do not call `SaveChanges` inside a handler (it would break the single-save atomicity).
+- **Inbound trace context is optional.** Valid W3C `TraceParent` / `TraceState` continue the producer's trace; missing or malformed headers do not prevent processing. Correlation is an application-owned business identifier, not the W3C trace id. The dispatcher does not forward arbitrary baggage or authenticated actor identity.
 - **An absent `ConsumerId` fails fast at registration.** `AddTrellisInbox` calls `InboxOptions.Validate()`, which throws `InvalidOperationException` if `ConsumerId` is blank, so the misconfiguration surfaces at startup rather than on the first message.
 - **The checkpoint is not a dedup substitute.** `IConsumerCheckpointStore` is a performance resume cursor, not the correctness boundary — a high-water cursor can skip a row committed out of order. Always pair it with an overlap window **and** `FilterUnprocessedAsync`; never advance it past rows that aren't known processed. See [Pull-consumer checkpoint](#pull-consumer-checkpoint-resume-cursor).
 
@@ -84,6 +85,8 @@ public sealed class BrokerConsumer(IInboxDispatcher inbox)
         {
             MessageSource = raw.SourceService,
             CorrelationId = raw.CorrelationId,
+            TraceParent = raw.TraceParent,
+            TraceState = raw.TraceState,
         };
         return inbox.DispatchAsync(envelope, ct);
     }
@@ -144,6 +147,7 @@ public interface IInboxDispatcher
 
 - A first delivery runs the handlers and commits the dedup row, returning `InboxDispatchOutcome.Processed`. A redelivery of the same `(ConsumerId, MessageId)` returns `InboxDispatchOutcome.SkippedDuplicate` — caught by the existence check on the fast path (no handler runs), or by the duplicate-key guard when a concurrent dispatch won the race (the handlers ran but rolled back). Either way this call commits nothing; both outcomes mean the message is durably accounted for, so a pull consumer can advance its checkpoint on either.
 - A handler exception is **not** swallowed: it rolls the transaction back and propagates out of `DispatchAsync`, so the adapter can let the transport redeliver.
+- The dispatcher opens `IntegrationMessageContext.BeginProcessing(envelope)` for the handler and commit, restoring the previous async-local context even on failure or deduplication. A nonblank inbound `CorrelationId` is available to handler-side domain-event capture; `CurrentMessageId` is the inbound message's stable id, the direct cause of any resulting domain row. A surrounding application-supplied correlation remains available if the envelope has none. The dispatcher starts a consumer `Activity` from a valid remote W3C `TraceParent` / `TraceState` pair; invalid or missing trace metadata is ignored for activity parent selection rather than throwing or dead-lettering. The activity and ambient message scope end when dispatch completes.
 
 ## InboxDispatchOutcome
 
@@ -238,6 +242,8 @@ public sealed record IntegrationEnvelope(Guid MessageId, IIntegrationEvent Event
     public string? MessageSource { get; init; }
     public Guid? CausationId { get; init; }
     public string? CorrelationId { get; init; }
+    public string? TraceParent { get; init; }
+    public string? TraceState { get; init; }
 }
 ```
 
@@ -248,8 +254,10 @@ public sealed record IntegrationEnvelope(Guid MessageId, IIntegrationEvent Event
 | `MessageSource` | `string?` | Optional. The producing service / bounded context, for observability. |
 | `CausationId` | `Guid?` | Optional lineage: the id of the message that directly caused this one. |
 | `CorrelationId` | `string?` | Optional lineage: the workflow / conversation id shared across a business transaction. |
+| `TraceParent` | `string?` | Optional persisted W3C traceparent from the producer; valid values parent the consumer activity. |
+| `TraceState` | `string?` | Optional persisted W3C tracestate; carried alongside the traceparent. |
 
-Only `MessageId` and `Event` participate in processing; the lineage members are recorded for audit/observability and never affect dedup.
+Only `MessageId` and `Event` participate in deduplication. `MessageSource`, `CausationId`, and `CorrelationId` are recorded in the dedup row for audit. The W3C fields are used for the scoped consumer activity and are **not** columns in `InboxMessage`.
 
 ## InboxMessage
 
@@ -277,6 +285,7 @@ Configuration for the inbox.
 | Property | Type | Default | Notes |
 |---|---|---|---|
 | `ConsumerId` | `string` | `""` (must be set) | **Required.** A stable identifier for this subscriber / consumer-group; part of the dedup key, so two services consuming the same message each get one effective processing. Keep it stable across deploys — renaming it resets dedup history. `Validate()` throws `InvalidOperationException` if it is blank, or if it exceeds `MaxConsumerIdLength`. |
+| `ActivitySource` | `ActivitySource` | `null` (dispatcher creates and owns its own) | The source the dispatcher starts consumer activities on. Left unset, `InboxDispatcher<TContext>` creates a default-named source and disposes it with itself; supplying one hands ownership to the caller. Tests that assert on sampled activities should supply their own uniquely-named source rather than subscribing to the shared default by name, since an `ActivityListener` is process-wide and matches by source name. |
 
 | Constant | Value | Notes |
 |---|---|---|

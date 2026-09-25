@@ -58,6 +58,21 @@ public sealed class OutboxMessage
     /// <summary>The JSON-serialized event.</summary>
     public string Payload { get; private set; }
 
+    /// <summary>The optional producer namespace, supplied by the application.</summary>
+    public string? MessageSource { get; private set; }
+
+    /// <summary>The direct predecessor: inbound message id on a domain row, domain row id on a translation.</summary>
+    public Guid? CausationId { get; private set; }
+
+    /// <summary>The optional application-owned business workflow identifier.</summary>
+    public string? CorrelationId { get; private set; }
+
+    /// <summary>The W3C traceparent captured in the producing transaction.</summary>
+    public string? TraceParent { get; private set; }
+
+    /// <summary>The W3C tracestate captured in the producing transaction.</summary>
+    public string? TraceState { get; private set; }
+
     /// <summary>When the message was successfully relayed; <c>null</c> while pending.</summary>
     public DateTimeOffset? ProcessedAt { get; private set; }
 
@@ -95,8 +110,18 @@ public sealed class OutboxMessage
     /// </remarks>
     public IReadOnlyList<string> CompletedHandlers { get; private set; } = [];
 
-    internal static OutboxMessage Create(Guid id, DateTimeOffset occurredAt, string eventType, string payload, OutboxMessageKind kind) =>
-        new(id, occurredAt, eventType, payload, kind);
+    internal static OutboxMessage Create(
+        Guid id, DateTimeOffset occurredAt, string eventType, string payload, OutboxMessageKind kind,
+        string? messageSource = null, Guid? causationId = null, string? correlationId = null,
+        string? traceParent = null, string? traceState = null) =>
+        new(id, occurredAt, eventType, payload, kind)
+        {
+            MessageSource = messageSource,
+            CausationId = causationId,
+            CorrelationId = correlationId,
+            TraceParent = traceParent,
+            TraceState = traceState,
+        };
 
     // Cumulative by contract: the publisher's report already carries forward the handlers it skipped, so
     // this overwrites rather than merges.

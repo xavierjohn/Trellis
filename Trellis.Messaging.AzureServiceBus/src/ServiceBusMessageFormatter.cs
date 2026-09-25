@@ -33,10 +33,21 @@ internal static class ServiceBusMessageFormatter
             MessageId = message.MessageId.ToString(),
             Subject = wireName,
             ContentType = ServiceBusMessageFormat.JsonContentType,
+            CorrelationId = message.CorrelationId,
         };
 
-        if (!string.IsNullOrWhiteSpace(messageSource))
-            serviceBusMessage.ApplicationProperties[ServiceBusMessageFormat.MessageSourceProperty] = messageSource;
+        var source = message.MessageSource ?? messageSource;
+        if (!string.IsNullOrWhiteSpace(source))
+            serviceBusMessage.ApplicationProperties[ServiceBusMessageFormat.MessageSourceProperty] = source;
+
+        if (message.CausationId is { } causationId)
+            serviceBusMessage.ApplicationProperties[ServiceBusMessageFormat.CausationIdProperty] = causationId.ToString();
+
+        if (!string.IsNullOrWhiteSpace(message.TraceParent))
+            serviceBusMessage.ApplicationProperties[ServiceBusMessageFormat.TraceParentProperty] = message.TraceParent;
+
+        if (!string.IsNullOrWhiteSpace(message.TraceState))
+            serviceBusMessage.ApplicationProperties[ServiceBusMessageFormat.TraceStateProperty] = message.TraceState;
 
         return serviceBusMessage;
     }
@@ -84,10 +95,43 @@ internal static class ServiceBusMessageFormatter
         if (integrationEvent is null)
             return Result.Fail<IntegrationEnvelope>(ServiceBusConsumerErrors.MalformedBody(message.Subject, "the body deserialized to null"));
 
-        var source = message.ApplicationProperties.TryGetValue(ServiceBusMessageFormat.MessageSourceProperty, out var raw)
-            ? raw as string
-            : null;
+        var properties = message.ApplicationProperties;
+        string? source = null;
+        if (properties.TryGetValue(ServiceBusMessageFormat.MessageSourceProperty, out var rawSource))
+        {
+            if (rawSource is not null and not string)
+                return Result.Fail<IntegrationEnvelope>(ServiceBusConsumerErrors.MalformedMetadata(
+                    ServiceBusMessageFormat.MessageSourceProperty, "a string"));
 
-        return Result.Ok(new IntegrationEnvelope(messageId, integrationEvent) { MessageSource = source });
+            source = rawSource as string;
+            if (string.IsNullOrWhiteSpace(source))
+                source = null;
+        }
+
+        Guid? causation = null;
+        if (properties.TryGetValue(ServiceBusMessageFormat.CausationIdProperty, out var rawCausation))
+        {
+            if (rawCausation is not string causationText
+                || !Guid.TryParse(causationText, out var causationId)
+                || causationId == Guid.Empty)
+                return Result.Fail<IntegrationEnvelope>(ServiceBusConsumerErrors.MalformedMetadata(
+                    ServiceBusMessageFormat.CausationIdProperty, "a non-empty GUID string"));
+
+            causation = causationId;
+        }
+
+        var traceParent = properties.TryGetValue(ServiceBusMessageFormat.TraceParentProperty, out var rawTraceParent)
+            ? rawTraceParent as string : null;
+        var traceState = properties.TryGetValue(ServiceBusMessageFormat.TraceStateProperty, out var rawTraceState)
+            ? rawTraceState as string : null;
+
+        return Result.Ok(new IntegrationEnvelope(messageId, integrationEvent)
+        {
+            MessageSource = source,
+            CausationId = causation,
+            CorrelationId = string.IsNullOrWhiteSpace(message.CorrelationId) ? null : message.CorrelationId,
+            TraceParent = traceParent,
+            TraceState = traceState,
+        });
     }
 }

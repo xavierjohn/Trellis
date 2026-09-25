@@ -83,19 +83,28 @@ public sealed class OrdersBrokerConsumer(IInboxDispatcher inbox)
         {
             MessageSource = raw.SourceService,   // optional lineage / observability
             CorrelationId = raw.CorrelationId,
+            TraceParent = raw.TraceParent,
+            TraceState = raw.TraceState,
         };
         return inbox.DispatchAsync(envelope, ct);
     }
 }
 ```
 
-Trellis deliberately does **not** ship a broker adapter — there are too many transports (Service Bus, Event Hubs, Kafka, SQS, an HTTP webhook) to bless one. The inbox gives you the `IInboxDispatcher` seam to call and the `IInboxStore` seam to re-back with a non-EF store; the few lines that read your broker are yours.
+Trellis ships an optional [Azure Service Bus adapter](../api_reference/trellis-api-messaging-azureservicebus.md#wire-format). For other transports the inbox gives you the `IInboxDispatcher` seam to call and the `IInboxStore` seam to re-back with a non-EF store; the few lines that read your broker are yours.
 
 > Prefer raw DI over the builder? Call `services.AddTrellisInbox<AppDbContext>(o => o.ConsumerId = "orders-service")` directly instead of `.UseInbox<AppDbContext>()`. The table wiring (step 1) is identical; the `UseInbox` slot simply also fails fast if you configure the inbox twice.
 
 ## How it works
 
 `DispatchAsync` runs one short unit of work per message:
+
+Before handlers run, the dispatcher scopes the inbound `MessageId` and nonblank business
+`CorrelationId`, and starts a consumer activity from valid W3C `TraceParent` / `TraceState`.
+Domain events captured during handling can then record the inbound message as their direct
+cause. Missing or malformed traceparent does not prevent processing, and no actor identity or
+arbitrary baggage is propagated. Register the `Trellis.EntityFrameworkCore.Inbox` activity
+source with your tracer provider to collect the consumer span.
 
 1. **Open a unit of work.** The dispatcher creates a DI scope and resolves your `TContext` and the inbox store.
 2. **Deduplicate.** It asks the store whether a row already exists for this `(ConsumerId, MessageId)`. If it does, the message was already processed — the dispatcher returns having staged nothing, and the adapter acknowledges the redelivery.

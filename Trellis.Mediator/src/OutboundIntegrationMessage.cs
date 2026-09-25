@@ -21,10 +21,8 @@
 /// row with its own id. Consumers still dedupe that on business identity.
 /// </para>
 /// <para>
-/// Lineage members present on <see cref="IntegrationEnvelope"/> (<c>MessageSource</c>, <c>CausationId</c>,
-/// <c>CorrelationId</c>) are deliberately absent here: nothing in the current relay can populate them
-/// without new persisted outbox columns, and an always-null member on a publish contract is worse than no
-/// member at all. They can be added once the outbox records them.
+/// Optional lineage and W3C trace context are copied from the persisted outbox row, not from the relay's
+/// ambient activity, so retries and redeliveries keep the same identity and parent context.
 /// </para>
 /// </remarks>
 /// <param name="MessageId">
@@ -63,4 +61,19 @@ public sealed record OutboundIntegrationMessage(Guid MessageId, IIntegrationEven
         get => _event;
         init => _event = value ?? throw new ArgumentNullException(nameof(value));
     }
+
+    /// <summary>The optional producer namespace.</summary>
+    public string? MessageSource { get; init; }
+
+    /// <summary>The source domain outbox row's id, when this event was translated.</summary>
+    public Guid? CausationId { get; init; }
+
+    /// <summary>The optional, application-owned business workflow identifier.</summary>
+    public string? CorrelationId { get; init; }
+
+    /// <summary>The persisted W3C traceparent value, when available.</summary>
+    public string? TraceParent { get; init; }
+
+    /// <summary>The persisted W3C tracestate value, when available.</summary>
+    public string? TraceState { get; init; }
 }

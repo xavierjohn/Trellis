@@ -42,6 +42,11 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(m => m.EventType).IsRequired();
         builder.Property(m => m.Payload).IsRequired();
         builder.Property(m => m.Attempts).IsRequired();
+        builder.Property(m => m.MessageSource);
+        builder.Property(m => m.CausationId);
+        builder.Property(m => m.CorrelationId);
+        builder.Property(m => m.TraceParent);
+        builder.Property(m => m.TraceState);
 
         // Per-handler retry bookkeeping. Non-nullable with an empty default so adding the column to an
         // existing outbox table backfills cleanly: pre-existing rows simply have no completed handlers.

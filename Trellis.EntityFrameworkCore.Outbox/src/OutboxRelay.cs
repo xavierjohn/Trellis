@@ -1,5 +1,6 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,6 +40,9 @@ using Trellis.Mediator;
 internal sealed class OutboxRelay<TContext> : BackgroundService
     where TContext : DbContext
 {
+    internal const string ActivitySourceName = "Trellis.EntityFrameworkCore.Outbox";
+    private static readonly ActivitySource s_activitySource = new(ActivitySourceName);
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly TimeProvider _timeProvider;
     private readonly OutboxOptions _options;
@@ -175,10 +179,11 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         {
             try
             {
+                using var delivery = StartDeliveryActivity(message);
                 if (message.Kind == OutboxMessageKind.Integration)
                 {
                     var integrationEvent = Deserialize<IIntegrationEvent>(message);
-                    await PublishIntegrationAsync(message.Id, integrationEvent, cancellationToken).ConfigureAwait(false);
+                    await PublishIntegrationAsync(message, integrationEvent, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -193,7 +198,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
                         // list is discarded on throw; only a fully-converted set is enrolled.
                         var rows = new List<OutboxMessage>(dispatch.Produced.Count);
                         foreach (var integrationEvent in dispatch.Produced)
-                            rows.Add(CreateIntegrationRow(integrationEvent));
+                            rows.Add(CreateIntegrationRow(integrationEvent, message));
                         (stagedBySource ??= [])[message] = rows;
                     }
 
@@ -244,6 +249,17 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         OutboxRelayLog.DrainCompleted(_logger, processed);
 
         return processed;
+    }
+
+    private static Activity? StartDeliveryActivity(OutboxMessage message)
+    {
+        var kind = message.Kind == OutboxMessageKind.Integration ? ActivityKind.Producer : ActivityKind.Internal;
+        var parent = IntegrationMessageContext.TryParseRemoteContext(message.TraceParent, message.TraceState, out var context)
+            ? context
+            : default;
+        var activity = s_activitySource.StartActivity("Trellis.Outbox.Relay", kind, parent);
+        activity?.SetTag("messaging.message.id", message.Id.ToString());
+        return activity;
     }
 
     // Saves the drain's bookkeeping while honoring the LockedBy concurrency token. If a slow batch
@@ -341,16 +357,23 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
     // at-least-once, so the same row can be published more than once; carrying a per-attempt id instead
     // would make each copy look like a distinct message and defeat the consumer's inbox dedup.
     private async Task PublishIntegrationAsync(
-        Guid messageId, IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+        OutboxMessage message, IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
     {
         var publishScope = _scopeFactory.CreateAsyncScope();
         await using var publishScopeLifetime = publishScope.ConfigureAwait(false);
         var publisher = publishScope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
-        await publisher.PublishAsync(new OutboundIntegrationMessage(messageId, integrationEvent), cancellationToken)
+        await publisher.PublishAsync(new OutboundIntegrationMessage(message.Id, integrationEvent)
+        {
+            MessageSource = message.MessageSource,
+            CausationId = message.CausationId,
+            CorrelationId = message.CorrelationId,
+            TraceParent = message.TraceParent,
+            TraceState = message.TraceState,
+        }, cancellationToken)
             .ConfigureAwait(false);
     }
 
-    private static OutboxMessage CreateIntegrationRow(IIntegrationEvent integrationEvent)
+    private static OutboxMessage CreateIntegrationRow(IIntegrationEvent integrationEvent, OutboxMessage source)
     {
         var type = integrationEvent.GetType();
         var eventType = type.AssemblyQualifiedName
@@ -362,7 +385,12 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             integrationEvent.OccurredAt,
             eventType,
             JsonSerializer.Serialize(integrationEvent, type, OutboxEventSerialization.Options),
-            OutboxMessageKind.Integration);
+            OutboxMessageKind.Integration,
+            source.MessageSource,
+            source.Id,
+            source.CorrelationId,
+            source.TraceParent,
+            source.TraceState);
     }
 
     private static T Deserialize<T>(OutboxMessage message)
