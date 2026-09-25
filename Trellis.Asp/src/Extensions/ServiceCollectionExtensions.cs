@@ -155,6 +155,9 @@ public static class ServiceCollectionExtensions
             // Check for Maybe<TValue> where TValue : IScalarValue<TValue, TPrimitive>
             if (ScalarValueTypeHelper.IsMaybeScalarValue(propertyType))
             {
+                if (property.CustomConverter is not null)
+                    continue;
+
                 var registeredConverter = CreateRegisteredPropertyConverter(property);
                 if (registeredConverter is not null)
                 {
@@ -176,20 +179,23 @@ public static class ServiceCollectionExtensions
             // Direct scalar value object (IScalarValue<TSelf, T>)?
             if (IsScalarValueProperty(property))
             {
-                var registeredConverter = CreateRegisteredPropertyConverter(property);
-                if (registeredConverter is not null)
+                if (property.CustomConverter is null)
                 {
-                    property.CustomConverter = registeredConverter;
-                }
-                else
-                {
-                    var innerScalarConverter = CreateValidatingConverter(propertyType);
-                    if (innerScalarConverter is null)
-                        continue;
+                    var registeredConverter = CreateRegisteredPropertyConverter(property);
+                    if (registeredConverter is not null)
+                    {
+                        property.CustomConverter = registeredConverter;
+                    }
+                    else
+                    {
+                        var innerScalarConverter = CreateValidatingConverter(propertyType);
+                        if (innerScalarConverter is null)
+                            continue;
 
-                    var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
-                    if (wrappedScalarConverter is not null)
-                        property.CustomConverter = wrappedScalarConverter;
+                        var wrappedScalarConverter = CreatePropertyNameAwareConverter(innerScalarConverter, property.Name, propertyType);
+                        if (wrappedScalarConverter is not null)
+                            property.CustomConverter = wrappedScalarConverter;
+                    }
                 }
 
                 // Track non-nullable scalar VO properties for missing-property detection

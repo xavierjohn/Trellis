@@ -36,6 +36,8 @@ public sealed class AotPathTrackingTests : IDisposable
     {
         private Email(string value) : base(value) { }
 
+        public static Email CreateForTest(string value) => new(value);
+
         public static Result<Email> TryCreate(string? value, string? fieldName = null)
         {
             var field = fieldName ?? "email";
@@ -53,6 +55,32 @@ public sealed class AotPathTrackingTests : IDisposable
     public sealed record AotEmailListCommand(IReadOnlyList<Email> Emails);
 
     public sealed record AotEmailDictionaryCommand(Dictionary<string, Email> Prices);
+
+    public sealed record AotCustomConvertedEmailCommand(
+        [property: JsonConverter(typeof(AotEmailAliasConverter))] Email Contact);
+
+    public sealed record AotCustomConvertedMaybeEmailCommand(
+        [property: JsonConverter(typeof(AotMaybeEmailAliasConverter))] Maybe<Email> Contact);
+
+    public sealed class AotEmailAliasConverter : JsonConverter<Email>
+    {
+        public override Email? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+            reader.GetString() == "primary" ? Email.CreateForTest("ada@x.com") : throw new JsonException();
+
+        public override void Write(Utf8JsonWriter writer, Email value, JsonSerializerOptions options) =>
+            writer.WriteStringValue("primary");
+    }
+
+    public sealed class AotMaybeEmailAliasConverter : JsonConverter<Maybe<Email>>
+    {
+        public override Maybe<Email> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+            reader.GetString() == "primary"
+                ? Maybe.From(Email.CreateForTest("ada@x.com"))
+                : throw new JsonException();
+
+        public override void Write(Utf8JsonWriter writer, Maybe<Email> value, JsonSerializerOptions options) =>
+            writer.WriteStringValue("primary");
+    }
 
     public sealed record AotAliasedMemberDto([property: JsonPropertyName("primary_email")] Email Contact);
 
@@ -136,6 +164,50 @@ public sealed class AotPathTrackingTests : IDisposable
             error.Should().NotBeNull();
             error!.Fields.Items.Should().ContainSingle();
             error.Fields[0].Field.Path.Should().Be("/members/0/primary_email");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Property_level_custom_converter_is_preserved(bool simulateNativeAot)
+    {
+        ScalarValuePathTracking.ClearForTests();
+        if (simulateNativeAot)
+            ScalarValuePathTracking.RegisterProperty<Email>();
+
+        using var aot = simulateNativeAot
+            ? ServiceCollectionExtensions.SuppressDynamicPathConverterConstructionForTests()
+            : null;
+        var options = BuildOptions();
+        const string json = """{"contact":"primary"}""";
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var command = JsonSerializer.Deserialize<AotCustomConvertedEmailCommand>(json, options);
+
+            ValidationErrorsContext.HasErrors.Should().BeFalse();
+            command!.Contact.Value.Should().Be("ada@x.com");
+            JsonSerializer.Serialize(command, options).Should().Be(json);
+        }
+    }
+
+    [Fact]
+    public void Registered_optional_property_preserves_property_level_custom_converter_without_runtime_generic_construction()
+    {
+        ScalarValuePathTracking.ClearForTests();
+        ScalarValuePathTracking.RegisterProperty<Maybe<Email>>();
+
+        using var aot = ServiceCollectionExtensions.SuppressDynamicPathConverterConstructionForTests();
+        var options = BuildOptions();
+        const string json = """{"contact":"primary"}""";
+
+        using (ValidationErrorsContext.BeginScope())
+        {
+            var command = JsonSerializer.Deserialize<AotCustomConvertedMaybeEmailCommand>(json, options);
+
+            ValidationErrorsContext.HasErrors.Should().BeFalse();
+            JsonSerializer.Serialize(command, options).Should().Be(json);
         }
     }
 
