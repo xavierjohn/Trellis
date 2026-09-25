@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — ASP.NET Core rate-limit rejection adapter
+
+`RateLimiterOptions.UseTrellisRejectionHandler()` now maps rejections produced before endpoint
+execution into the normal Trellis Problem Details pipeline. Rejections emit HTTP 429 with
+`code: rate-limit.exceeded` and `kind: too-many-requests`; `MetadataName.RetryAfter` lease metadata
+flows through `RetryAdvice` into the standard `Retry-After` header, while a lease without metadata
+still returns 429 and omits that header.
+
+The adapter owns `RateLimiterOptions.OnRejected` and sets `RejectionStatusCode` to 429 so a
+pre-write observer sees the final default status instead of ASP.NET Core's default 503. An
+existing handler is rejected rather than silently composed. Applications can pass an optional
+async observer for logging or metrics; it runs before Trellis writes and throws if it starts or
+mutates the response, including through a deferred `OnStarting` callback. Named endpoint policies
+with no policy-level `OnRejected` use the adapter; policy-level handlers take precedence, and
+inline `RequireRateLimiting(policy)` bypasses the options handler even with a null callback. These
+unsupported configurations must use a named policy without a handler or an application-owned
+writer. Rate-limit policies, algorithms, permit counts, queues, and partition keys remain
+application-owned.
+
+`FaultCodes.RateLimitExceeded` freezes the new `rate-limit.exceeded` wire value.
+
 ### Fixed — direct scalar container errors target the element or keyed value
 
 JSON-body validation failures for direct scalar value-object collection elements and string-keyed dictionary values now report the entry pointer itself (for example `/allergens/0` or `/prices/USD`) instead of appending a synthetic type-name segment such as `/allergens/0/allergen`. Invalid values and `null` entries now behave identically in reflection mode and Native AOT; nested object entries continue to report their effective JSON leaf property (for example `/members/0/primary_email`), including names selected by a naming policy or `[JsonPropertyName]`.

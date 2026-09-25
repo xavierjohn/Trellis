@@ -74,6 +74,7 @@ public class ValidationCodesTests
     [InlineData(nameof(FaultCodes.HttpResponseInvalidBody), FaultCodes.HttpResponseInvalidBody, "http.response-invalid-body")]
     [InlineData(nameof(FaultCodes.HttpResponseFault), FaultCodes.HttpResponseFault, "http.response-fault")]
     [InlineData(nameof(FaultCodes.ResponseLocationUnresolved), FaultCodes.ResponseLocationUnresolved, "response.location-unresolved")]
+    [InlineData(nameof(FaultCodes.RateLimitExceeded), FaultCodes.RateLimitExceeded, "rate-limit.exceeded")]
     public void Each_fault_code_keeps_its_published_wire_value(string name, string actual, string published) =>
         // The one place the frozen values are pinned on purpose. Everywhere else -- behavior tests,
         // status-mapping tables -- should use the constant, because those tests are about behavior and

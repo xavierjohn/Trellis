@@ -275,5 +275,5 @@ Before committing any changes after explicit approval:
 
 1. Confirm the **Validation before handoff** steps passed (build, test, docs in sync).
 2. Confirm the diff contains only intended changes.
-3. Run a code-review agent over the changed code with a high-capability reasoning model (currently `gpt-5.5`; substitute the strongest available if that ID is retired) and address substantive findings. Apply the **Validating sub-agent findings** rule above to each one.
+3. Run a code-review agent over the changed code with `gpt-6-sol` (substitute the strongest available model if that ID is retired) and address substantive findings. Apply the **Validating sub-agent findings** rule above to each one.
 4. Present the final summary to the user.
