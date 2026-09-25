@@ -177,15 +177,42 @@ public sealed class RateLimiterOptionsExtensionsTests
     }
 
     [Fact]
+    public async Task UseTrellisRejectionHandler_ObserverStartsResponseOnStarting_Throws()
+    {
+        using var host = CreateHost(
+            observer: (context, _) =>
+            {
+                var started = false;
+                context.HttpContext.Response.OnStarting(async () =>
+                {
+                    if (started)
+                        return;
+
+                    started = true;
+                    await context.HttpContext.Response.StartAsync(context.HttpContext.RequestAborted);
+                });
+                return ValueTask.CompletedTask;
+            });
+        using var client = host.GetTestClient();
+
+        Func<Task> act = () => client.GetAsync("/limited", TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*observer must not mutate or start the HTTP response*");
+    }
+
+    [Fact]
     public async Task UseTrellisRejectionHandler_ObserverOnStartingWithoutMutation_PreservesResponse()
     {
         var observedStatus = 0;
+        var startedWhileStarting = true;
         using var host = CreateHost(
             observer: (context, _) =>
             {
                 context.HttpContext.Response.OnStarting(() =>
                 {
                     observedStatus = context.HttpContext.Response.StatusCode;
+                    startedWhileStarting = context.HttpContext.Response.HasStarted;
                     return Task.CompletedTask;
                 });
                 return ValueTask.CompletedTask;
@@ -194,6 +221,7 @@ public sealed class RateLimiterOptionsExtensionsTests
             .GetAsync("/limited", TestContext.Current.CancellationToken);
 
         observedStatus.Should().Be(StatusCodes.Status429TooManyRequests);
+        startedWhileStarting.Should().BeFalse();
         response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }

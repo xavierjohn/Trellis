@@ -112,8 +112,9 @@ public static class RateLimiterOptionsExtensions
         // after the observer runs first, then its callbacks, then this guard.
         response.OnStarting(() =>
         {
-            if (callbackHeaders is not null
-                && ResponseChanged(response, callbackStatusCode, callbackBody, callbackHeaders))
+            if (response.HasStarted
+                || (callbackHeaders is not null
+                    && ResponseChanged(response, callbackStatusCode, callbackBody, callbackHeaders)))
             {
                 throw new InvalidOperationException(ObserverMutationMessage);
             }

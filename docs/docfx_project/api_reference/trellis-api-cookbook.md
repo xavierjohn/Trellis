@@ -118,6 +118,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Write integration tests for a `BackgroundService` worker | [Recipe 26](#recipe-26--test-a-backgroundservice-with-workerharnesstworker) |
 | Insert a row idempotently on a unique constraint (de-duplicated worker outbox, "save unless exists") | [Recipe 27](#recipe-27--idempotent-inserts-on-a-unique-constraint-with-tryinsertuniqueasync) |
 | Make POST / PATCH safe under client retries with an IETF `Idempotency-Key` header | [Recipe 29](#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency) |
+| Render ASP.NET Core rate-limit rejections as Trellis 429 Problem Details with optional `Retry-After` | [`RateLimiterOptionsExtensions` in the ASP reference](trellis-api-asp.md#ratelimiteroptionsextensions) |
 | Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
 | Make domain events survive a crash (transactional outbox) | [Recipe 35](#recipe-35--transactional-outbox-for-crash-safe-domain-events) |
 | Publish a stable external contract (integration events) translated from domain events | [Recipe 36](#recipe-36--translating-a-domain-event-into-an-integration-event) |
