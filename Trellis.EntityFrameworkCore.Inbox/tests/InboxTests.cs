@@ -323,10 +323,15 @@ public sealed class InboxTests
         await using var provider = BuildProvider(connection, "billing", probe: probe, interceptor: interceptor);
         await EnsureCreatedAsync(provider, ct);
 
+        bool? sampledRemoteParent = null;
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == "Trellis.EntityFrameworkCore.Inbox",
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            Sample = (ref ActivityCreationOptions<ActivityContext> options) =>
+            {
+                sampledRemoteParent = options.Parent.IsRemote;
+                return ActivitySamplingResult.AllDataAndRecorded;
+            },
         };
         ActivitySource.AddActivityListener(listener);
 
@@ -352,6 +357,7 @@ public sealed class InboxTests
             seen.ActivityTraceId.Should().Be(traceId);
             seen.ParentSpanId.Should().Be(spanId);
             seen.ActivityTraceState.Should().Be("vendor=key");
+            sampledRemoteParent.Should().BeTrue();
             interceptor.MessageIdAtCommit.Should().Be(messageId);
             interceptor.CorrelationIdAtCommit.Should().Be("workflow-42");
             IntegrationMessageContext.CurrentMessageId.Should().BeNull();

@@ -85,7 +85,7 @@ public static class IntegrationMessageContext
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        var validTrace = ActivityContext.TryParse(envelope.TraceParent, envelope.TraceState, out _);
+        var validTrace = ActivityContext.TryParse(envelope.TraceParent, envelope.TraceState, isRemote: true, out _);
         return Push(new Frame(
             s_current.Value,
             messageId: envelope.MessageId,

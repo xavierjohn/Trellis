@@ -24,13 +24,24 @@ public sealed class OutboxTests
 
         var recorder = new RecordingIntegrationEventPublisher();
         var relayActivities = new ConcurrentBag<Activity>();
+        var remoteParents = new ConcurrentBag<bool>();
+        ActivityTraceId? sampledTraceId = null;
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == OutboxRelay<OutboxTestDbContext>.ActivitySourceName,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            Sample = (ref ActivityCreationOptions<ActivityContext> options) =>
+            {
+                if (sampledTraceId is { } traceId && options.Parent.TraceId == traceId)
+                    remoteParents.Add(options.Parent.IsRemote);
+                return ActivitySamplingResult.AllDataAndRecorded;
+            },
             ActivityStopped = relayActivities.Add,
         };
         ActivitySource.AddActivityListener(listener);
+        using var unrelatedSource = new ActivitySource(OutboxRelay<OutboxTestDbContext>.ActivitySourceName);
+        using (var otherDrain = unrelatedSource.StartActivity("other-drain"))
+            otherDrain.Should().NotBeNull();
+
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(recorder);
@@ -58,6 +69,7 @@ public sealed class OutboxTests
             requestTraceState = request.TraceStateString;
             requestTraceId = request.TraceId;
             requestSpanId = request.SpanId;
+            sampledTraceId = requestTraceId;
 
             await using var scope = provider.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
@@ -96,6 +108,7 @@ public sealed class OutboxTests
         var integrationActivity = relayActivities.Single(a => Equals(a.GetTagItem("messaging.message.id"), integration.Id.ToString()));
         integrationActivity.TraceId.Should().Be(requestTraceId);
         integrationActivity.ParentSpanId.Should().Be(requestSpanId);
+        remoteParents.Should().HaveCount(2).And.OnlyContain(isRemote => isRemote);
         recorder.Published.Should().ContainSingle().Which.Should().BeEquivalentTo(new
         {
             MessageId = integration.Id,

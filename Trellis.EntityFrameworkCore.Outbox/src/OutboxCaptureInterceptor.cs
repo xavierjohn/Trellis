@@ -128,7 +128,7 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
         var inboundTraceParent = IntegrationMessageContext.TraceParent;
         var inboundTraceState = IntegrationMessageContext.TraceState;
         var useActivity = activity?.IdFormat == ActivityIdFormat.W3C
-            && (!ActivityContext.TryParse(inboundTraceParent, inboundTraceState, out var inboundContext)
+            && (!ActivityContext.TryParse(inboundTraceParent, inboundTraceState, isRemote: true, out var inboundContext)
                 || activity.TraceId == inboundContext.TraceId);
         var traceParent = useActivity ? activity?.Id : inboundTraceParent;
         var traceState = useActivity ? activity?.TraceStateString : inboundTraceState;

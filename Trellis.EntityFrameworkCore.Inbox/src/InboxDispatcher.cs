@@ -56,7 +56,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
 
         using var processing = IntegrationMessageContext.BeginProcessing(envelope);
         using var activity = !string.IsNullOrWhiteSpace(envelope.TraceParent)
-            && ActivityContext.TryParse(envelope.TraceParent, envelope.TraceState, out var remoteContext)
+            && ActivityContext.TryParse(envelope.TraceParent, envelope.TraceState, isRemote: true, out var remoteContext)
                 ? s_activitySource.StartActivity("integration.event.process", ActivityKind.Consumer, remoteContext)
                 : s_activitySource.StartActivity("integration.event.process", ActivityKind.Consumer);
 

@@ -254,7 +254,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
     private static Activity? StartDeliveryActivity(OutboxMessage message)
     {
         var kind = message.Kind == OutboxMessageKind.Integration ? ActivityKind.Producer : ActivityKind.Internal;
-        var parent = ActivityContext.TryParse(message.TraceParent, message.TraceState, out var context)
+        var parent = ActivityContext.TryParse(message.TraceParent, message.TraceState, isRemote: true, out var context)
             ? context
             : default;
         var activity = s_activitySource.StartActivity("Trellis.Outbox.Relay", kind, parent);
