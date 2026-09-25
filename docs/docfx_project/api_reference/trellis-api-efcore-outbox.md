@@ -50,6 +50,12 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 The outbox replaces the in-pipeline domain-event dispatch with a durable, two-phase flow:
 
 1. **Capture (inside the transaction).** `OutboxCaptureInterceptor` (a `SaveChangesInterceptor`) scans the change tracker during `SavingChanges` for `IAggregate` entries with uncommitted events. It serializes each event and adds one `OutboxMessage` row per event to the same `SaveChanges` — so the rows commit atomically with the aggregate. It does **not** clear the aggregate's events yet.
+   It also captures the current W3C `Activity` traceparent/tracestate and any explicit
+   `IntegrationMessageContext` business correlation and inbound message id. When a valid
+   inbound trace exists, the current activity is used only if it belongs to that same
+   trace; otherwise the inbound trace is preserved (including when no inbox consumer
+   activity was created). Missing values remain null; no request id, trace id, actor,
+   or baggage is promoted to business lineage.
 2. **Clear (after the commit succeeds).** In `SavedChanges` the interceptor calls each aggregate's `AcceptChanges()`. Because the events are cleared only after a successful commit, a failed save leaves the in-memory events intact for retry, and the interceptor detaches the rows it staged on `SaveChangesFailed` and `SaveChangesCanceled` so a retry on the same context does not double-capture.
 
 > **Interceptor constraint.** No other `SaveChangesInterceptor` may raise domain events on a tracked aggregate between step 1 and step 2. `AcceptChanges()` empties an aggregate's whole event list, so an event raised in that window is discarded without ever reaching the outbox. No Trellis interceptor raises domain events, so this applies only to caller-supplied interceptors — raise events from the domain model before `SaveChanges` is called instead.
@@ -64,6 +70,9 @@ The flow:
 
 1. A **translator** — an ordinary `IDomainEventHandler<TDomainEvent>` — injects `IIntegrationEventCollector` and `Add(...)`s integration events while the relay re-dispatches the domain event.
 2. The relay opens the collector's `BeginTranslation()` lease only around publishing a `Domain` row and draining the per-message collector. Every drained event is staged as a new `OutboxMessageKind.Integration` row in the same bookkeeping save as handler progress, even if a sibling handler failed and the source domain row remains pending. Events added before a translator itself throws are also drained; there is no per-handler rollback of collector additions.
+   Each new row inherits the source domain row's persisted trace context, correlation id,
+   and producer namespace; its `CausationId` is the source domain row's `Id` (not the
+   inbound integration message id).
 3. A later drain publishes each `Integration` row through `IIntegrationEventPublisher` — its sole method `PublishAsync(OutboundIntegrationMessage, CancellationToken)`, carrying that row's own `OutboxMessage.Id` (default in-process fan-out to `IIntegrationEventHandler<T>`; replace the registration with a message-broker adapter to deliver to other services).
 
 Register the consumer side with `services.AddIntegrationEventDispatch(...)` / `AddIntegrationEventHandler<TEvent, THandler>()`, or the `TrellisServiceBuilder.UseIntegrationEvents(...)` slot. The collector is optional: outboxes that capture only domain events never register it and are unaffected.
@@ -160,6 +169,11 @@ A persisted event awaiting relay — one row per captured domain event or transl
 | `OccurredAt` | `DateTimeOffset` | Copied from the event's `OccurredAt`. |
 | `EventType` | `string` | Assembly-qualified name of the concrete event type, used to rehydrate the payload. |
 | `Payload` | `string` | The JSON-serialized event. |
+| `MessageSource` | `string?` | Optional producing-service name from `IntegrationMessageContext.BeginCorrelation`. |
+| `CausationId` | `Guid?` | Inbound `MessageId` for a domain row; source domain outbox row `Id` for a translated integration row. |
+| `CorrelationId` | `string?` | Application-owned opaque business workflow id; never inferred from a trace or request id. |
+| `TraceParent` | `string?` | W3C traceparent captured with the original transaction and inherited by translations. |
+| `TraceState` | `string?` | The matching W3C tracestate, when available. |
 | `ProcessedAt` | `DateTimeOffset?` | When the message was relayed; `null` while pending. |
 | `Attempts` | `int` | Relay attempts so far. |
 | `LastError` | `string?` | Most recent relay error, if any. |
@@ -170,6 +184,13 @@ A persisted event awaiting relay — one row per captured domain event or transl
 The `OutboxMessageConfiguration` maps the table `TrellisOutboxMessages`, the `Sequence` primary key (`ValueGeneratedOnAdd`), a unique index on `Id`, the `Kind` discriminator (string, max length 32), a covering index on `{ ProcessedAt, LockedUntil, Sequence }` for the relay's claimable-rows scan, and an index on `LockedBy` for loading a drain's just-claimed batch.
 
 > **Schema migration.** Row-claiming added the nullable `LockedUntil` and `LockedBy` columns. An existing outbox table needs a migration to add them; both are nullable, so in-flight rows default to unclaimed and are picked up normally.
+
+> **Alpha schema change.** The `TrellisOutboxMessages` mapping now includes nullable
+> `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns.
+> No migration or backfill is provided; rows with null metadata publish without it,
+> never synthesizing lineage from a relay's ambient activity. The relay starts activities
+> from valid persisted W3C context under the `Trellis.EntityFrameworkCore.Outbox` source; opt in with
+> `AddSource("Trellis.EntityFrameworkCore.Outbox")` on the application's tracer provider.
 
 `OutboxMessage` is an infrastructure record, not a domain aggregate. The rows are transient and may be pruned once `ProcessedAt` is set — deleting processed rows loses no source-of-truth state. This is an outbox, **not** an event store.
 

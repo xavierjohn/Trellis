@@ -1,5 +1,7 @@
 ﻿namespace Trellis.EntityFrameworkCore.Outbox.Tests;
 
+using System.Diagnostics;
+using System.Collections.Concurrent;
 using global::Trellis.Mediator;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +15,147 @@ using Microsoft.Extensions.Time.Testing;
 
 public sealed class OutboxTests
 {
+    [Fact]
+    public async Task Relay_preserves_request_trace_and_lineage_across_translation_and_publish()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var recorder = new RecordingIntegrationEventPublisher();
+        var relayActivities = new ConcurrentBag<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == OutboxRelay<OutboxTestDbContext>.ActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = relayActivities.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(recorder);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, ThingCreatedTranslator>();
+        services.AddIntegrationEventDispatch();
+        services.AddScoped<IIntegrationEventPublisher>(sp => sp.GetRequiredService<RecordingIntegrationEventPublisher>());
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+        await using var provider = services.BuildServiceProvider();
+
+        string? requestTraceParent;
+        string? requestTraceState;
+        ActivityTraceId requestTraceId;
+        ActivitySpanId requestSpanId;
+        using (var request = new Activity("request").SetIdFormat(ActivityIdFormat.W3C))
+        using (IntegrationMessageContext.BeginCorrelation("workflow-42"))
+        {
+            request.TraceStateString = "vendor=value";
+            request.Start();
+            requestTraceParent = request.Id;
+            requestTraceState = request.TraceStateString;
+            requestTraceId = request.TraceId;
+            requestSpanId = request.SpanId;
+
+            await using var scope = provider.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "trace-me", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>().Single();
+
+        using (var unrelatedRelay = new Activity("unrelated-relay").SetIdFormat(ActivityIdFormat.W3C))
+        {
+            unrelatedRelay.Start();
+            await relay.DrainAsync(ct);
+            await relay.DrainAsync(ct);
+        }
+
+        await using var verify = provider.CreateAsyncScope();
+        var rows = await verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>()
+            .Set<OutboxMessage>().AsNoTracking().ToListAsync(ct);
+        var domain = rows.Single(r => r.Kind == OutboxMessageKind.Domain);
+        var integration = rows.Single(r => r.Kind == OutboxMessageKind.Integration);
+
+        domain.TraceParent.Should().Be(requestTraceParent);
+        domain.TraceState.Should().Be(requestTraceState);
+        domain.CorrelationId.Should().Be("workflow-42");
+        domain.CausationId.Should().BeNull();
+        integration.TraceParent.Should().Be(requestTraceParent);
+        integration.TraceState.Should().Be(requestTraceState);
+        integration.CorrelationId.Should().Be(domain.CorrelationId);
+        integration.CausationId.Should().Be(domain.Id);
+        var domainActivity = relayActivities.Single(a => Equals(a.GetTagItem("messaging.message.id"), domain.Id.ToString()));
+        domainActivity.TraceId.Should().Be(requestTraceId);
+        domainActivity.ParentSpanId.Should().Be(requestSpanId);
+        var integrationActivity = relayActivities.Single(a => Equals(a.GetTagItem("messaging.message.id"), integration.Id.ToString()));
+        integrationActivity.TraceId.Should().Be(requestTraceId);
+        integrationActivity.ParentSpanId.Should().Be(requestSpanId);
+        recorder.Published.Should().ContainSingle().Which.Should().BeEquivalentTo(new
+        {
+            MessageId = integration.Id,
+            TraceParent = integration.TraceParent,
+            TraceState = integration.TraceState,
+            CorrelationId = integration.CorrelationId,
+            CausationId = integration.CausationId,
+        });
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SaveChanges_captures_inbound_message_as_direct_cause(bool? matchingAmbientTrace)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+        var options = new DbContextOptionsBuilder<OutboxTestDbContext>()
+            .UseSqlite(connection).AddTrellisOutboxInterceptor().Options;
+        await using var context = new OutboxTestDbContext(options);
+        await context.Database.EnsureCreatedAsync(ct);
+
+        var inboundId = Guid.CreateVersion7();
+        var inboundTraceParent = "00-ec304e482c83425f9792e53730758760-a0d5aaefcdebbf13-01";
+        var envelope = new IntegrationEnvelope(inboundId,
+            new ThingCreatedIntegrationEvent(Guid.CreateVersion7(), "incoming", DateTimeOffset.UnixEpoch))
+        {
+            CorrelationId = "original-workflow",
+            TraceParent = inboundTraceParent,
+            TraceState = "vendor=another",
+        };
+
+        using (IntegrationMessageContext.BeginCorrelation("unrelated-workflow"))
+        using (IntegrationMessageContext.BeginProcessing(envelope))
+        {
+            using var ambient = matchingAmbientTrace is { } sameTrace
+                ? new Activity("ambient").SetParentId(sameTrace
+                    ? inboundTraceParent
+                    : $"00-{ActivityTraceId.CreateRandom()}-{ActivitySpanId.CreateRandom()}-01")
+                    .SetIdFormat(ActivityIdFormat.W3C)
+                : null;
+            if (ambient is not null)
+            {
+                ambient.TraceStateString = "vendor=ambient";
+                ambient.Start();
+            }
+
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "caused", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+
+            var row = await context.Set<OutboxMessage>().SingleAsync(ct);
+            row.CausationId.Should().Be(inboundId);
+            row.CorrelationId.Should().Be("original-workflow");
+            row.TraceParent.Should().Be(matchingAmbientTrace == true ? ambient!.Id : inboundTraceParent);
+            row.TraceState.Should().Be(matchingAmbientTrace == true ? "vendor=ambient" : "vendor=another");
+        }
+    }
+
     [Fact]
     public async Task Relay_hands_the_outbox_row_id_to_the_integration_publisher()
     {
@@ -103,6 +246,8 @@ public sealed class OutboxTests
         {
             var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
             await context.Database.EnsureCreatedAsync(ct);
+            using var request = new Activity("origin").SetIdFormat(ActivityIdFormat.W3C).Start();
+            using var correlation = IntegrationMessageContext.BeginCorrelation("retry-workflow", "orders");
             context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "retry-me", DateTimeOffset.UnixEpoch));
             await context.SaveChangesAsync(ct);
         }
@@ -120,6 +265,12 @@ public sealed class OutboxTests
         recorder.Published[0].MessageId.Should().Be(
             recorder.Published[1].MessageId,
             "a redelivered row must look like the same message to the consumer's inbox");
+        recorder.Published[0].TraceParent.Should().NotBeNull();
+        recorder.Published[0].CorrelationId.Should().Be("retry-workflow");
+        recorder.Published[0].MessageSource.Should().Be("orders");
+        recorder.Published[0].CausationId.Should().NotBeNull();
+        recorder.Published[1].Should().BeEquivalentTo(recorder.Published[0],
+            "retrying a persisted row must not capture a new relay activity or change lineage");
     }
 
     [Fact]

@@ -47,11 +47,15 @@ Successful translators recorded in `CompletedHandlers` are skipped on ordinary s
 | `Subject` | The event's stable wire name | From `[IntegrationEventName]`; resolved through `IntegrationEventNameMap`. |
 | `Body` | The event as UTF-8 JSON | Serialized against the event's **runtime** type. |
 | `ContentType` | `ServiceBusMessageFormat.JsonContentType` (`application/json`) | |
-| `trellis-message-source` (application property, `ServiceBusMessageFormat.MessageSourceProperty`) | `IntegrationEnvelope.MessageSource` | Optional; observability only. Omitted when unset or blank. |
+| `trellis-message-source` (application property, `ServiceBusMessageFormat.MessageSourceProperty`) | `OutboundIntegrationMessage.MessageSource`, otherwise publisher option `MessageSource` | Optional; observability only. A null outbound value uses the publisher fallback; a blank outbound value does not. The selected value is omitted when blank or null. Inbound missing, null, empty, or whitespace-only values map to `null`; other non-string values fail with `servicebus_malformed_metadata`. |
+| `CorrelationId` | `OutboundIntegrationMessage.CorrelationId` | Standard Service Bus member; opaque, application-owned business workflow id, not a trace id. Inbound null/empty/whitespace-only values map to `null`, allowing explicit application correlation context to supply the workflow id; they do **not** dead-letter. |
+| `trellis-causation-id` (application property, `ServiceBusMessageFormat.CausationIdProperty`) | `OutboundIntegrationMessage.CausationId` | Optional direct predecessor id, formatted as a GUID string. Inbound absence maps to `null`; any present value other than a non-empty GUID string fails with `servicebus_malformed_metadata`. |
+| `traceparent` (application property, `ServiceBusMessageFormat.TraceParentProperty`) | `OutboundIntegrationMessage.TraceParent` | Optional persisted W3C traceparent. Inbound strings are passed through unchanged, **including malformed W3C text** for inbox validation; missing or non-string values map to `null` without dead-lettering. |
+| `tracestate` (application property, `ServiceBusMessageFormat.TraceStateProperty`) | `OutboundIntegrationMessage.TraceState` | Optional persisted W3C tracestate. Inbound strings are passed through unchanged; missing or non-string values map to `null` without dead-lettering. |
 
 Standard Service Bus members are preferred over custom application properties wherever one exists: `MessageId` and `Subject` are indexed by the broker, surfaced in the portal and Service Bus Explorer, and usable in subscription filters, so a message stays diagnosable and routable by tools that know nothing about Trellis.
 
-`IntegrationEnvelope`'s lineage members `CausationId` and `CorrelationId` are **not** on the wire, because nothing on the publish side can populate them: `OutboundIntegrationMessage` deliberately omits them until the outbox persists them.
+The formatter restores these optional fields onto `IntegrationEnvelope` without deriving them from the consumer's ambient `Activity`. **Missing** optional fields in legacy messages remain `null`. Blank `CorrelationId` and blank/null `trellis-message-source` also map to `null`. A non-string source or invalid present causation id fails with `servicebus_malformed_metadata`; the consumer dead-letters it with a description naming the field. Malformed **W3C trace text** remains available to the inbox, which ignores invalid remote context when selecting an activity parent; non-string trace application properties instead map to `null` and do not block processing. A retry publishes the persisted values again rather than sampling a relay activity. Neither arbitrary OpenTelemetry baggage nor authenticated actor claims are forwarded.
 
 ## Lifecycle and shutdown
 
@@ -81,7 +85,7 @@ public sealed class AzureServiceBusPublisherOptions
 
 | Member | Default | Notes |
 |---|---|---|
-| `MessageSource` | `null` | The producing service or bounded context. Observability only — never affects dedup or routing. |
+| `MessageSource` | `null` | Fallback producing service or bounded context **only when the outbound message has no `MessageSource`**. Observability only — never affects dedup or routing. |
 | `TopicNameResolver` | identity | Wire name → topic name. |
 | `JsonSerializerOptions` | `JsonSerializerOptions.Web` | A wire-format decision shared with every consumer. Change it before the first message ships, or accept that in-flight messages written with the previous settings must still deserialize. |
 
@@ -157,6 +161,7 @@ Dead-letter reasons:
 | `servicebus_missing_subject` | No `Subject`, so no contract can be chosen to deserialize the body. |
 | `servicebus_unknown_contract` | The wire name is well-formed but unregistered here. Normal traffic on a shared topic, not necessarily a bug. |
 | `servicebus_malformed_body` | The contract is known but the body does not deserialize to it — either the JSON is invalid for that shape, or the contract itself cannot be materialized (an abstract or interface-typed member, or a shape with no converter). Both are permanent for these bytes, so both dead-letter rather than escaping as a fault the consumer would retry until the delivery count is exhausted. |
+| `servicebus_malformed_metadata` | Only a non-null, non-string `trellis-message-source` or a present `trellis-causation-id` that is not a non-empty GUID string. Missing/blank correlation and source, non-string trace properties, and malformed W3C trace **strings** do not produce this reason: they map to `null` or pass through to the inbox. |
 
 The dead-letter description carries the specific diagnosis (the offending wire name, the JSON error, and so on).
 

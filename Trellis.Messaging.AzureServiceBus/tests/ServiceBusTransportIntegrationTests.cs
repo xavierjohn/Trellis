@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Messaging.AzureServiceBus.Tests;
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,6 +24,7 @@ using Trellis.Mediator;
 /// Duplicate detection is deliberately <b>off</b> on the emulator topic. If the broker collapsed duplicate
 /// message ids for us, these tests would pass even if the transport minted a fresh id per publish — the
 /// assertion is that Trellis carries the id, not that Service Bus can be configured to hide the problem.
+/// The trace round trip also proves that persisted W3C context and business lineage survive the broker.
 /// </para>
 /// <para>
 /// Start the broker with
@@ -59,6 +61,45 @@ public sealed class ServiceBusTransportIntegrationTests
 
         envelope.Event.Should().BeEquivalentTo(placed);
         envelope.MessageSource.Should().Be("orders-service");
+    }
+
+    [Fact]
+    public async Task RoundTrip_PreservesPersistedW3CTraceAndLineageAcrossRelayRetries()
+    {
+        var client = await RequireEmulatorAsync();
+        const string Subscription = "roundtrip";
+        await DrainAsync(client, Subscription);
+
+        var recorder = new RecordingInboxDispatcher();
+        await using var host = BuildConsumer(client, Subscription, recorder);
+        await StartAsync(host);
+
+        var traceParent = $"00-{ActivityTraceId.CreateRandom()}-{ActivitySpanId.CreateRandom()}-01";
+        var message = new OutboundIntegrationMessage(
+            Guid.CreateVersion7(),
+            new OrderPlaced($"ORD-{Guid.NewGuid():N}", DateTimeOffset.UnixEpoch))
+        {
+            MessageSource = "orders-service",
+            CausationId = Guid.CreateVersion7(),
+            CorrelationId = "workflow-42",
+            TraceParent = traceParent,
+            TraceState = "vendor=original",
+        };
+
+        await PublishAsync(client, message, messageSource: "ignored-fallback");
+        await PublishAsync(client, message, messageSource: "ignored-fallback");
+
+        await recorder.WaitForCountAsync(message.MessageId, 2);
+        var deliveries = recorder.Received.Where(e => e.MessageId == message.MessageId).ToArray();
+        deliveries.Should().HaveCount(2);
+        foreach (var envelope in deliveries)
+        {
+            envelope.MessageSource.Should().Be(message.MessageSource);
+            envelope.CausationId.Should().Be(message.CausationId);
+            envelope.CorrelationId.Should().Be(message.CorrelationId);
+            envelope.TraceParent.Should().Be(traceParent);
+            envelope.TraceState.Should().Be(message.TraceState);
+        }
     }
 
     [Fact]

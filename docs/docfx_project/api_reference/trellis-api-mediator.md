@@ -641,9 +641,46 @@ public sealed record OutboundIntegrationMessage(Guid MessageId, IIntegrationEven
 
 The publish-side counterpart of [`IntegrationEnvelope`](trellis-api-efcore-inbox.md#integrationenvelope): the event to publish plus the stable `MessageId` (the producer's outbox row id, a UUIDv7) a transport must carry verbatim.
 
-The lineage members that `IntegrationEnvelope` carries (`MessageSource`, `CausationId`, `CorrelationId`) are deliberately absent: nothing in the current relay can populate them without new persisted outbox columns, and an always-null member on a publish contract is worse than no member at all.
+The nullable `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState`
+properties come from the **persisted** integration outbox row, not the publisher's current
+activity. A translator inherits the source domain row's trace and business correlation, while
+`CausationId` is the source domain row's `Id`. Old outbox rows without these columns populated
+publish with null metadata; transport adapters must preserve any present values across retries.
 
-Both members are validated on construction — and on `with` copies, since the invariants live on the properties. `Event` must not be `null` (`ArgumentNullException`), and `MessageId` must not be `Guid.Empty` (`ArgumentException`). An empty id is rejected rather than tolerated because it is not a missing value the transport can work around: every message stamped with it collapses to the same `(ConsumerId, MessageId)` inbox key, so the *second* message from that producer would be discarded as a duplicate of the first. Failing at construction turns that into an immediate, local error instead of silent consumer-side message loss.
+The `MessageId` and `Event` members are validated on construction — and on `with` copies,
+since the invariants live on the properties. `Event` must not be `null` (`ArgumentNullException`),
+and `MessageId` must not be `Guid.Empty` (`ArgumentException`). An empty id is rejected
+rather than tolerated because every message stamped with it collapses to the same inbox key.
+
+### IntegrationMessageContext
+
+```csharp
+public static class IntegrationMessageContext
+{
+    public static Guid? CurrentMessageId { get; }
+    public static string? CorrelationId { get; }
+    public static string? MessageSource { get; }
+    public static string? TraceParent { get; }
+    public static string? TraceState { get; }
+    public static IDisposable BeginCorrelation(string correlationId, string? messageSource = null);
+    public static IDisposable BeginProcessing(IntegrationEnvelope envelope);
+}
+```
+
+`IInboxDispatcher` enters `BeginProcessing` for each inbound envelope. An outbox capture inside
+its handlers records `CurrentMessageId` as the domain row's direct `CausationId`; a nonblank inbound
+`CorrelationId` takes precedence over the application value. Applications can use
+`using (IntegrationMessageContext.BeginCorrelation("workflow-id", "producer-service"))` around
+the producing transaction to provide an opaque business correlation id and optional producer
+namespace. A blank correlation id throws `ArgumentException`; no HTTP request id or trace
+id is substituted when neither source supplies a value. `BeginProcessing` ignores malformed
+W3C trace context; a missing trace remains null. The scope is async-flow-local, restores the
+previous context on disposal, and does not expose values inherited from a disposed
+scope to child tasks. A still-active child scope retains its own inbound message id,
+correlation, trace, and explicitly supplied producer namespace after an outer scope
+ends. The child can open fresh scopes without inheriting the disposed parent's
+values; disposing those scopes restores the child's prior scope in order.
+No actor or arbitrary OpenTelemetry baggage is copied.
 
 ### IntegrationEventNameMap
 **Declaration**

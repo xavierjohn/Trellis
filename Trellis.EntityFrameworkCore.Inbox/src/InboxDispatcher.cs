@@ -2,6 +2,7 @@
 
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,7 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
     where TContext : DbContext
 {
     private static readonly ConcurrentDictionary<Type, HandlerInvoker> s_invokerCache = new();
+    private static readonly ActivitySource s_activitySource = new("Trellis.EntityFrameworkCore.Inbox");
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly InboxOptions _options;
@@ -51,6 +53,12 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher
     public async Task<InboxDispatchOutcome> DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(envelope);
+
+        using var processing = IntegrationMessageContext.BeginProcessing(envelope);
+        using var activity = !string.IsNullOrWhiteSpace(envelope.TraceParent)
+            && ActivityContext.TryParse(envelope.TraceParent, envelope.TraceState, out var remoteContext)
+                ? s_activitySource.StartActivity("integration.event.process", ActivityKind.Consumer, remoteContext)
+                : s_activitySource.StartActivity("integration.event.process", ActivityKind.Consumer);
 
         var scope = _scopeFactory.CreateAsyncScope();
         await using var scopeLifetime = scope.ConfigureAwait(false);

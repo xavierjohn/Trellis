@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — durable integration-event lineage and W3C trace context (TFR-12)
+
+Domain outbox rows now capture the current W3C `traceparent` / `tracestate`, an explicit
+application business `CorrelationId`, and any inbound integration message id as their direct
+`CausationId`. Translated integration rows inherit the original trace and correlation while
+linking to their source domain row id. `OutboundIntegrationMessage` carries the persisted
+metadata into transports; the Azure Service Bus adapter carries it to the inbox, which starts
+consumer activities from valid remote trace context. Missing or malformed trace metadata does
+not invent a business correlation or prevent processing. Invalid optional lineage metadata
+(such as a non-GUID causation id) is dead-lettered with an explicit reason instead of being
+silently dropped.
+
+The alpha `TrellisOutboxMessages` schema gains nullable `MessageSource`, `CausationId`,
+`CorrelationId`, `TraceParent`, and `TraceState` columns. No migration or backfill is
+provided; rows with null metadata remain valid. The application may supply a business
+workflow identifier using `IntegrationMessageContext.BeginCorrelation(...)`; no actor or
+OpenTelemetry baggage is propagated automatically.
+
 ### Added — ASP.NET Core rate-limit rejection adapter
 
 `RateLimiterOptions.UseTrellisRejectionHandler()` now maps rejections produced before endpoint

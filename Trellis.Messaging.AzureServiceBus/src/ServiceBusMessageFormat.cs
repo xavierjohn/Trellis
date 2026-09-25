@@ -18,6 +18,15 @@ public static class ServiceBusMessageFormat
     /// </summary>
     public const string MessageSourceProperty = "trellis-message-source";
 
+    /// <summary>The application property carrying the direct predecessor's outbox id.</summary>
+    public const string CausationIdProperty = "trellis-causation-id";
+
+    /// <summary>The application property carrying the persisted W3C traceparent.</summary>
+    public const string TraceParentProperty = "traceparent";
+
+    /// <summary>The application property carrying the persisted W3C tracestate.</summary>
+    public const string TraceStateProperty = "tracestate";
+
     /// <summary>
     /// The content type stamped on every message body, which is UTF-8 JSON.
     /// </summary>

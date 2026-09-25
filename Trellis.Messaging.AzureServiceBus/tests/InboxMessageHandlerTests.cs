@@ -112,6 +112,22 @@ public class InboxMessageHandlerTests
         settler.DeadLetterDescription.Should().NotBeNullOrWhiteSpace("the dead-letter must carry the diagnosis");    }
 
     [Fact]
+    public async Task MalformedLineage_DeadLettersWithoutDispatch()
+    {
+        var message = ValidMessage(properties: new Dictionary<string, object>
+        {
+            [ServiceBusMessageFormat.CausationIdProperty] = "not-a-guid",
+        });
+
+        var (settler, dispatcher) = await HandleAsync(message, InboxDispatchOutcome.Processed);
+
+        settler.DeadLetterReason.Should().Be(ServiceBusConsumerErrors.MalformedMetadataCode);
+        settler.DeadLetterDescription.Should().Contain(ServiceBusMessageFormat.CausationIdProperty);
+        settler.Completed.Should().BeFalse();
+        dispatcher.Dispatched.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task TheEnvelopeHandedToTheInboxCarriesTheServiceBusMessageId()
     {
         var messageId = Guid.CreateVersion7();
@@ -147,11 +163,13 @@ public class InboxMessageHandlerTests
             NullLogger.Instance);
     }
 
-    private static ServiceBusReceivedMessage ValidMessage(Guid? messageId = null) =>
+    private static ServiceBusReceivedMessage ValidMessage(
+        Guid? messageId = null, IDictionary<string, object>? properties = null) =>
         ServiceBusModelFactory.ServiceBusReceivedMessage(
             body: BinaryData.FromString("""{"orderNumber":"ORD-1","occurredAt":"1970-01-01T00:00:00+00:00"}"""),
             messageId: (messageId ?? Guid.CreateVersion7()).ToString(),
-            subject: OrderPlaced.WireName);
+            subject: OrderPlaced.WireName,
+            properties: properties);
 
     private sealed class RecordingSettler : IMessageSettler
     {
@@ -201,6 +219,7 @@ public class InboxMessageHandlerTests
             ServiceBusConsumerErrors.MissingSubject,
             ServiceBusConsumerErrors.UnknownContract("orders.never-heard-of-it.v1"),
             ServiceBusConsumerErrors.MalformedBody(OrderPlaced.WireName, "unexpected token"),
+            ServiceBusConsumerErrors.MalformedMetadata(ServiceBusMessageFormat.MessageSourceProperty, "a nonblank string"),
         ];
 
         envelopeFailures.Should().OnlyContain(e => e.Code != ValidationCodes.Unspecified);
@@ -208,7 +227,8 @@ public class InboxMessageHandlerTests
             ServiceBusConsumerErrors.UnusableMessageIdCode,
             ServiceBusConsumerErrors.MissingSubjectCode,
             ServiceBusConsumerErrors.UnknownContractCode,
-            ServiceBusConsumerErrors.MalformedBodyCode);
+            ServiceBusConsumerErrors.MalformedBodyCode,
+            ServiceBusConsumerErrors.MalformedMetadataCode);
     }
 
     private sealed class ThrowingDispatcher : IInboxDispatcher

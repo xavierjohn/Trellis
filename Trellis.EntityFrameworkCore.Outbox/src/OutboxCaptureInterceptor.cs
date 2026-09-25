@@ -1,9 +1,11 @@
 ﻿namespace Trellis.EntityFrameworkCore;
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Trellis.Mediator;
 
 /// <summary>
 /// Captures uncommitted domain events from tracked aggregates into <see cref="OutboxMessage"/> rows
@@ -122,6 +124,15 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
         if (context is null)
             return;
 
+        var activity = Activity.Current;
+        var inboundTraceParent = IntegrationMessageContext.TraceParent;
+        var inboundTraceState = IntegrationMessageContext.TraceState;
+        var useActivity = activity?.IdFormat == ActivityIdFormat.W3C
+            && (!ActivityContext.TryParse(inboundTraceParent, inboundTraceState, out var inboundContext)
+                || activity.TraceId == inboundContext.TraceId);
+        var traceParent = useActivity ? activity?.Id : inboundTraceParent;
+        var traceState = useActivity ? activity?.TraceStateString : inboundTraceState;
+
         List<OutboxMessage>? messages = null;
 
         foreach (var entry in context.ChangeTracker.Entries())
@@ -145,7 +156,12 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
                     domainEvent.OccurredAt,
                     eventType,
                     JsonSerializer.Serialize(domainEvent, type, OutboxEventSerialization.Options),
-                    OutboxMessageKind.Domain));
+                    OutboxMessageKind.Domain,
+                    IntegrationMessageContext.MessageSource,
+                    IntegrationMessageContext.CurrentMessageId,
+                    IntegrationMessageContext.CorrelationId,
+                    traceParent,
+                    traceState));
             }
         }
 

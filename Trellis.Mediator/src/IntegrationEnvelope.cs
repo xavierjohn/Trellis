@@ -21,4 +21,10 @@ public sealed record IntegrationEnvelope(Guid MessageId, IIntegrationEvent Event
 
     /// <summary>Optional lineage: the workflow / conversation id shared across a business transaction.</summary>
     public string? CorrelationId { get; init; }
+
+    /// <summary>Optional W3C traceparent carried from the producing transaction.</summary>
+    public string? TraceParent { get; init; }
+
+    /// <summary>Optional W3C tracestate carried from the producing transaction.</summary>
+    public string? TraceState { get; init; }
 }

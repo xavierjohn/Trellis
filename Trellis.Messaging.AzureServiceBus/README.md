@@ -27,6 +27,7 @@ Register a `ServiceBusClient` separately. Consumers also require an `IInboxDispa
 ## Key Features
 
 - Carries the producer's outbox row ID verbatim as the Service Bus `MessageId`.
+- Carries persisted business correlation and causation plus W3C traceparent/tracestate unchanged across retries; optional metadata remains absent on legacy messages.
 - Uses one topic per stable integration-event wire name by default.
 - Replaces the in-process publisher to prevent duplicate local and broker delivery.
 - Settles messages from the inbox outcome: complete processed or duplicate messages, retry handler failures, and dead-letter unusable payloads.
@@ -48,8 +49,13 @@ Outbox relay delivery is at-least-once — a crash between publishing and the re
 | `Body` | The event serialized as UTF-8 JSON. |
 | `ContentType` | `application/json`. |
 | `trellis-message-source` | Optional producing service or bounded context; observability only. |
+| `CorrelationId` | Optional application-owned business workflow id. |
+| `trellis-causation-id` | Optional source domain outbox row id. |
+| `traceparent`, `tracestate` | Optional W3C trace context persisted by the producer's outbox. |
 
 Standard Service Bus members are used wherever one exists, so a message stays diagnosable in the portal and Service Bus Explorer, and routable by subscription filters, without those tools knowing anything about Trellis.
+
+Missing optional metadata is valid for legacy messages. Blank `CorrelationId` and blank/null `trellis-message-source` mean absent; non-string source or invalid `trellis-causation-id` is dead-lettered with `servicebus_malformed_metadata`. Malformed W3C trace strings remain available to the inbox; non-string trace properties mean absent and never block processing.
 
 The default layout is **one topic per contract**, named after the wire name. Subscribers declare interest by subscribing to the topics they want rather than filtering a firehose. Override `TopicNameResolver` to prefix an environment segment or to collapse contracts onto a shared topic — if you collapse them, filter subscriptions on `sys.Label`, which always carries the wire name.
 
@@ -82,7 +88,7 @@ Requires an `IInboxDispatcher` (`AddTrellisInbox<TContext>()`). Consuming withou
 | `InboxDispatchOutcome.Processed` | Complete | Side effects and the dedup row committed together. |
 | `InboxDispatchOutcome.SkippedDuplicate` | Complete | Durably accounted for already. Abandoning would loop forever, since every redelivery reaches the same conclusion. |
 | Handler throws | Abandon (by the SDK) | The dispatcher rolled back, so nothing was applied. `MaxDeliveryCount` eventually dead-letters a persistently failing message. |
-| Unusable id, missing or unknown `Subject`, malformed body | Dead-letter with a reason code | A property of the bytes, not of this consumer's state — retrying cannot change the outcome. |
+| Unusable id, missing or unknown `Subject`, malformed body, source type or causation id | Dead-letter with a reason code | A property of the bytes, not of this consumer's state — retrying cannot change the outcome. |
 
 The subscriber identity used for deduplication is `InboxOptions.ConsumerId`, not a transport setting, so a message arriving twice by two different routes is still processed once.
 

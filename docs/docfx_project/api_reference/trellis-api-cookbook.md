@@ -122,6 +122,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Define domain events | [Recipe 17](#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
 | Make domain events survive a crash (transactional outbox) | [Recipe 35](#recipe-35--transactional-outbox-for-crash-safe-domain-events) |
 | Publish a stable external contract (integration events) translated from domain events | [Recipe 36](#recipe-36--translating-a-domain-event-into-an-integration-event) |
+| Connect an inbound message, domain outbox row, translated integration event, and W3C trace | [Recipe 36](#recipe-36--translating-a-domain-event-into-an-integration-event), then [`IntegrationMessageContext`](trellis-api-mediator.md#integrationmessagecontext) and [outbox lineage](trellis-api-efcore-outbox.md#outboxmessage) |
 | Show a validation failure in the user's language, or render your own message from a 422 instead of showing the server's English | [Recipe 39](#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args) |
 | Fix analyzer warnings | [Recipe 11](#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
 | Wire the composition root | [Recipe 12](#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
@@ -3096,6 +3097,7 @@ Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.G
 - The guarantee is at-least-once **delivery**, and delivery means *every handler completed*: a handler that throws leaves the message pending and the retry re-invokes only the failed handlers, up to `OutboxOptions.MaxAttempts`, after which the message is parked. Make handlers idempotent — a crash before the relay's bookkeeping save re-delivers to all of them. (In-pipeline dispatch still swallows handler exceptions: it runs post-commit and has no retry mechanism.)
 - `Maybe<T>` event members are supported — a present value serializes as the underlying value, an absent one as JSON `null`. Members that depend on a caller-registered (non-attribute) `JsonSerializerOptions` converter still need a nullable transport, since the outbox serializer only honors `[JsonConverter]`-attributed types.
 - This is an outbox, not an event store: rows are a transient delivery buffer and may be pruned once `ProcessedAt` is set.
+- Capture persists the current W3C trace context with each domain row; the alpha outbox schema includes nullable lineage and trace columns. See the outbox reference for the column names.
 
 See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#how-the-outbox-works) for the full contract, options, and operational guidance.
 
@@ -3141,6 +3143,7 @@ services.AddTrellis(trellis => trellis
 - The default `IIntegrationEventPublisher` fans out in-process to `IIntegrationEventHandler<T>` (great for a modular monolith and tests). Replace that one registration with a message-broker adapter to deliver to other services — the aggregate, translator, and outbox are unchanged.
 - Delivery is at-least-once. Routine retries skip translators whose success was recorded, so a failed sibling does not by itself re-enroll their integration events. A translator that added an event and then failed is retried and can produce a new row with a new message id; crashes before progress is saved can also repeat translation. Delivery retries can redeliver an existing integration row. Dedupe repeated delivery by message id, and use business identity when semantic duplicates can have distinct message ids.
 - Integration events require the outbox. The collector accepts `Add` only inside an active outbox-relay translator invocation; calls from command handlers, direct translator calls, and ordinary in-process domain dispatch throw `InvalidOperationException`. Use the persistence/capture setup from Recipe 35 plus `UseOutbox<TContext>()`; the translator above is invoked by the relay, not by the command handler.
+- `CausationId` on a translated integration row is the source **domain row** id; the domain row's cause is the inbound envelope `MessageId` when present. Both rows share the persisted W3C trace and optional application-owned business `CorrelationId` (use `IntegrationMessageContext.BeginCorrelation("workflow-id")` to supply one explicitly). Do not derive business correlation from a trace or HTTP request id.
 
 See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#integration-events) for the routing contract.
 
