@@ -18,8 +18,13 @@
           Pack="true" PackagePath="buildTransitive/$(PackageId).targets" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <_TrellisOwnSourceDirectory>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory), $(MSBuildProjectName), src))</_TrellisOwnSourceDirectory>
+  </PropertyGroup>
+
   <Target Name="GenerateTrellisReferenceManifest" BeforeTargets="_GetPackageFiles"
-          Condition="'$(IsPackable)' != 'false'">
+          Condition="'$(IsPackable)' != 'false' AND '$(MSBuildProjectName.StartsWith(Trellis.))' == 'True' AND
+                     '$(_TrellisOwnSourceDirectory)' == '$([MSBuild]::NormalizePath($(MSBuildProjectDirectory)))'">
     <PropertyGroup>
       <_TrellisReferenceManifest>$(IntermediateOutputPath)reference-manifest.json</_TrellisReferenceManifest>
     </PropertyGroup>

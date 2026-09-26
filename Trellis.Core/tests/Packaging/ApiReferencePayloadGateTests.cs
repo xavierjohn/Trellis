@@ -85,6 +85,21 @@ public class ApiReferencePayloadGateTests
     }
 
     [Fact]
+    public void Every_packable_package_matches_the_first_party_manifest_target_layout()
+    {
+        var root = RepositoryRoot();
+        var misplaced = PackableProjects()
+            .Where(project => !project.Path.Equals(
+                Path.Combine(root, project.Name, "src", project.Name + ".csproj"),
+                StringComparison.OrdinalIgnoreCase))
+            .Select(project => project.Path)
+            .ToList();
+
+        misplaced.Should().BeEmpty(
+            "the pack-time manifest target is gated to <Package>/src/<Package>.csproj");
+    }
+
+    [Fact]
     public void No_shipping_package_hides_outside_the_src_convention()
     {
         // The gate above finds packages by the repo convention that every shipping package lives at

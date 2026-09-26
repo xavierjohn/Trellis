@@ -86,6 +86,30 @@ A satellite ships two things:
 2. A `guidance/reference-manifest.json` declaring package-relative document paths, exact-byte
    SHA-256 hashes, and explicit entry points under the experimental version 1 contract.
 
+For a single-reference satellite, copy `build/Trellis.ApiReference.Payload.targets` into the
+satellite's repository and import it **only in the publishing project**. Place
+`trellis/trellis-api-<name>.md` beside that project and configure:
+
+```xml
+<PropertyGroup>
+  <TrellisApiRefName>name</TrellisApiRefName>
+  <TrellisPublishSatelliteGuidance>true</TrellisPublishSatelliteGuidance>
+</PropertyGroup>
+<ItemGroup>
+  <None Include="trellis/trellis-api-name.md" Pack="true" PackagePath="trellis/" />
+</ItemGroup>
+<Import Project="../build/Trellis.ApiReference.Payload.targets" />
+```
+
+The import hashes the source bytes at pack time and packs the manifest; the project packs
+the reference itself. Do **not** pack the `.targets` file under `build/` or
+`buildTransitive/`: consumer restore/build discovers the manifest without executing
+package targets, and the Trellis CLI rejects older copy-target packages. Run
+`pwsh build/test-satellite-guidance.ps1` in this repository to test an isolated satellite
+and a satellite-only restored consumer. Its optional `-WorkDirectory` leaves the
+sample projects available for inspection. The root first-party manifest target runs
+only for packable projects under `Trellis.<Package>/src/`, not unrelated projects.
+
 The reader works from restored NuGet assets and package contents, whether or not `Trellis.Core`
 is in the dependency graph. It never relies on an imported copy target. A satellite published
 from another repository must ship and verify its own current reference and manifest; Core cannot

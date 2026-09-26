@@ -1,6 +1,7 @@
 ﻿namespace Trellis.AgentContext.Tests;
 
 using System.Reflection;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -38,6 +39,119 @@ public sealed class AgentContextTests
         fixture.Run("sync").Should().Be(0);
         fixture.Run("remove").Should().Be(0);
         File.ReadAllBytes(fixture.Path("AGENTS.md")).Should().Equal(originalBytes);
+    }
+
+    [Fact]
+    public void Init_places_block_after_minimal_LF_frontmatter_without_heading()
+    {
+        using var fixture = new Fixture();
+        fixture.Write("AGENTS.md", "---\n---\nCustomer instructions.\n");
+        fixture.Run("init", "App.csproj").Should().Be(0);
+        File.ReadAllText(fixture.Path("AGENTS.md"))
+            .Should().StartWith("---\n---\n<!-- trellis-agent-context:start -->");
+        fixture.Run("remove").Should().Be(0);
+        File.ReadAllText(fixture.Path("AGENTS.md")).Should().Be("---\n---\nCustomer instructions.\n");
+    }
+
+    [Fact]
+    public void Init_ignores_headings_inside_fenced_code_blocks()
+    {
+        using var fixture = new Fixture();
+        fixture.Write("AGENTS.md", "Intro\n```md\n# Example\n```\n# App\nCustomer instructions.\n");
+        fixture.Run("init", "App.csproj").Should().Be(0);
+        File.ReadAllText(fixture.Path("AGENTS.md"))
+            .Should().Contain("```\n# App\n<!-- trellis-agent-context:start -->");
+    }
+
+    [Fact]
+    public void Sync_and_remove_require_force_when_entire_owned_block_is_missing()
+    {
+        using var fixture = new Fixture();
+        fixture.Run("init", "App.csproj").Should().Be(0);
+        fixture.Write("AGENTS.md", "# Customer\n");
+        fixture.Run("sync").Should().NotBe(0);
+        fixture.Run("remove").Should().NotBe(0);
+        File.ReadAllText(fixture.Path("AGENTS.md")).Should().Be("# Customer\n");
+        fixture.Run("sync", "--force").Should().Be(0);
+        fixture.Run("check").Should().Be(0);
+    }
+
+    [Fact]
+    public void Init_accepts_case_variant_of_existing_graph_entry_on_Windows()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        using var fixture = new Fixture();
+        fixture.Run("init", "App.csproj").Should().Be(0);
+        fixture.Run("init", "app.csproj").Should().Be(0, fixture.LastOutput);
+    }
+
+    [Theory]
+    [InlineData("CON")]
+    [InlineData("NUL")]
+    public void Init_rejects_reserved_Windows_package_path_components_before_writing(string id)
+    {
+        using var fixture = new Fixture();
+        fixture.Write("package-two/guide.md", "# Guide\n");
+        fixture.AddPackage(id, "package-two", "guide.md");
+        fixture.Run("init", "App.csproj").Should().NotBe(0);
+        File.Exists(fixture.Path("AGENTS.md")).Should().BeFalse();
+        File.Exists(fixture.Path(".trellis", "agent-context.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Directory_safety_rejects_linked_repository_root()
+    {
+        using var fixture = new Fixture();
+        var linked = fixture.Path("linked");
+        try
+        {
+            Directory.CreateSymbolicLink(linked, fixture.Path(".git"));
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException or PlatformNotSupportedException)
+        {
+            return;
+        }
+
+        var method = typeof(AgentContextCommand).GetMethod("EnsureDirectoriesSafe",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        Action check = () => method.Invoke(null, [linked, linked]);
+        check.Should().Throw<TargetInvocationException>().WithInnerException<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Child_process_drains_stdout_and_large_stderr_concurrently()
+    {
+        var start = new ProcessStartInfo("pwsh") { UseShellExecute = false };
+        start.ArgumentList.Add("-NoProfile");
+        start.ArgumentList.Add("-Command");
+        start.ArgumentList.Add("[Console]::Error.Write('e' * 200000); [Console]::Out.Write('ok')");
+        var method = typeof(AgentContextCommand).GetMethod("RunProcess",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        var result = ((string Output, string Error, int ExitCode))method.Invoke(null, [start, 10000])!;
+        result.Output.Should().Be("ok");
+        result.Error.Should().HaveLength(200000);
+        result.ExitCode.Should().Be(0);
+    }
+
+    [Fact]
+    public void Timed_out_child_process_is_terminated()
+    {
+        using var fixture = new Fixture();
+        var pidFile = fixture.Path("child.pid");
+        var start = new ProcessStartInfo("pwsh") { UseShellExecute = false };
+        start.ArgumentList.Add("-NoProfile");
+        start.ArgumentList.Add("-Command");
+        start.ArgumentList.Add($"[IO.File]::WriteAllText('{pidFile}', $PID.ToString()); Start-Sleep -Seconds 30");
+        var method = typeof(AgentContextCommand).GetMethod("RunProcess",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        Action run = () => method.Invoke(null, [start, 10000]);
+        run.Should().Throw<TargetInvocationException>().WithInnerException<InvalidOperationException>()
+            .WithMessage("*timed out*");
+        var pid = int.Parse(File.ReadAllText(pidFile), System.Globalization.CultureInfo.InvariantCulture);
+        Action inspect = () => Process.GetProcessById(pid);
+        inspect.Should().Throw<ArgumentException>();
     }
 
     [Fact]

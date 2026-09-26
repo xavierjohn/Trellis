@@ -67,6 +67,10 @@ an explicit opt-in to updating project assets, NuGet caches, and configured lock
 default requires an already-restored graph. `--force` enables reviewed adoption or
 replacement of conflicts for mutating commands. `check` remains read-only and accepts
 neither `--force` nor `--restore`.
+If an owned marker block disappears from an existing instruction file, `sync` and
+`remove` require `--force` rather than silently reclaiming it; deleting an entire
+descendant `AGENTS.md` while removing that instruction boundary may still be pruned
+without force.
 
 The already-restored graph must match evaluated target frameworks, runtime identifier,
 package references and per-framework project references. A new or removed project

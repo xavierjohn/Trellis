@@ -128,13 +128,15 @@ public static class AgentContextCommand
 
         var version = ToolVersion();
         ValidateTool(cwd, scope, version);
+        var selectedEntries = entryPoints.Select(x => CanonicalExistingPath(root, Path.GetFullPath(x, cwd))).ToArray();
         if (verb == "init" && previous is not null && entryPoints.Count != 0 &&
-            !previous.Graph.EntryPoints.Select(x => x.Path).OrderBy(x => x).SequenceEqual(
-                entryPoints.Select(x => Rel(scope, Path.GetFullPath(x, cwd))).OrderBy(x => x)))
+            !previous.Graph.EntryPoints.Select(x => x.Path).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).SequenceEqual(
+                selectedEntries.Select(x => Rel(scope, x))
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase))
             throw new InvalidOperationException("Existing context has different graph entry points; remove it before reinitializing.");
 
         using var writerLock = verb is "check" || dryRun ? null : Lock(root);
-        var graphEntries = verb == "init" ? entryPoints.Select(p => Path.GetFullPath(p, cwd)).ToArray()
+        var graphEntries = verb == "init" ? selectedEntries
             : previous?.Graph.EntryPoints.Select(p => Full(scope, p.Path)).ToArray() ?? [];
         if (restore)
         {
@@ -503,12 +505,10 @@ public static class AgentContextCommand
             start.ArgumentList.Add(argument);
         if (framework is not null)
             start.ArgumentList.Add("-p:TargetFramework=" + framework);
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Cannot start dotnet msbuild.");
-        var output = process.StandardOutput.ReadToEnd();
-        var errors = process.StandardError.ReadToEnd();
-        if (!process.WaitForExit(120000) || process.ExitCode != 0)
-            throw new InvalidOperationException($"Cannot evaluate current restore specification: {errors}");
-        return JsonDocument.Parse(output);
+        var result = RunProcess(start, 120000);
+        if (result.ExitCode != 0)
+            throw new InvalidOperationException($"Cannot evaluate current restore specification: {result.Error}");
+        return JsonDocument.Parse(result.Output);
     }
 
     private static void Restore(string entry)
@@ -522,11 +522,30 @@ public static class AgentContextCommand
         };
         start.ArgumentList.Add("restore");
         start.ArgumentList.Add(entry);
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Cannot start dotnet restore.");
-        var output = process.StandardOutput.ReadToEnd();
-        var errors = process.StandardError.ReadToEnd();
-        if (!process.WaitForExit(120000) || process.ExitCode != 0)
-            throw new InvalidOperationException($"dotnet restore failed: {output}\n{errors}");
+        var result = RunProcess(start, 120000);
+        if (result.ExitCode != 0)
+            throw new InvalidOperationException($"dotnet restore failed: {result.Output}\n{result.Error}");
+    }
+
+    private static (string Output, string Error, int ExitCode) RunProcess(ProcessStartInfo start, int timeoutMilliseconds)
+    {
+        start.UseShellExecute = false;
+        start.RedirectStandardOutput = true;
+        start.RedirectStandardError = true;
+        using var process = Process.Start(start) ?? throw new InvalidOperationException($"Cannot start {start.FileName}.");
+        var output = process.StandardOutput.ReadToEndAsync();
+        var errors = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(timeoutMilliseconds))
+        {
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
+            process.WaitForExit();
+            Task.WhenAll(output, errors).GetAwaiter().GetResult();
+            throw new InvalidOperationException($"{start.FileName} timed out after {timeoutMilliseconds} ms.");
+        }
+
+        Task.WhenAll(output, errors).GetAwaiter().GetResult();
+        return (output.Result, errors.Result, process.ExitCode);
     }
 
     private static void ValidateRequestedPackages(string entry, string framework, JsonElement assets, JsonElement items)
@@ -693,28 +712,14 @@ public static class AgentContextCommand
         var nl = content.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
         if (first < 0)
         {
+            if (owned is not null && !force && (include || File.Exists(file)))
+                throw new InvalidOperationException($"Owned pointer block missing from {file}; review --force.");
             if (!include)
                 return content.Length == 0 ? null : content;
             var block = Start + "\n## Trellis API usage\n\n" + replacement + End + "\n\n";
-            var heading = content.IndexOf("\n# ", StringComparison.Ordinal);
-            var pos = heading >= 0 ? content.IndexOf('\n', heading + 1) + 1 : 0;
-            if (content.StartsWith("# ", StringComparison.Ordinal))
-                pos = content.IndexOf('\n') + 1;
-            if (content.StartsWith("---\n", StringComparison.Ordinal) || content.StartsWith("---\r\n", StringComparison.Ordinal))
-            {
-                var endFront = content.IndexOf("\n---", 4, StringComparison.Ordinal);
-                if (endFront >= 0)
-                {
-                    var following = content.IndexOf('\n', endFront + 1);
-                    pos = following < 0 ? content.Length : following + 1;
-                    if (content.AsSpan(pos).StartsWith("# ", StringComparison.Ordinal))
-                    {
-                        var headingEnd = content.IndexOf('\n', pos);
-                        pos = headingEnd < 0 ? content.Length : headingEnd + 1;
-                    }
-                }
-            }
-
+            var pos = InsertionPoint(content);
+            if (pos > 0 && content[pos - 1] != '\n')
+                block = "\n" + block;
             return content.Insert(pos, block.Replace("\n", nl));
         }
 
@@ -761,6 +766,54 @@ public static class AgentContextCommand
             content[last..];
     }
 
+    private static int InsertionPoint(string content)
+    {
+        var start = 0;
+        var frontmatter = content.StartsWith("---\n", StringComparison.Ordinal) ||
+            content.StartsWith("---\r\n", StringComparison.Ordinal);
+        var frontmatterEnd = 0;
+        var fence = '\0';
+        var fenceLength = 0;
+        while (start < content.Length)
+        {
+            var end = content.IndexOf('\n', start);
+            var next = end < 0 ? content.Length : end + 1;
+            var line = content.AsSpan(start, (end < 0 ? content.Length : end) - start).TrimEnd('\r');
+            if (frontmatter)
+            {
+                if (start > 0 && line.SequenceEqual("---"))
+                {
+                    frontmatter = false;
+                    frontmatterEnd = next;
+                }
+
+                start = next;
+                continue;
+            }
+
+            var trimmed = line.TrimStart(' ');
+            if (line.Length - trimmed.Length <= 3 && !trimmed.IsEmpty && trimmed[0] is '`' or '~')
+            {
+                var marker = trimmed[0];
+                var count = 0;
+                while (count < trimmed.Length && trimmed[count] == marker)
+                    count++;
+                if (fence == marker && count >= fenceLength && trimmed[count..].Trim().IsEmpty)
+                    fence = '\0';
+                else if (fence == '\0' && count >= 3)
+                {
+                    fence = marker;
+                    fenceLength = count;
+                }
+            }
+            else if (fence == '\0' && line.StartsWith("# ", StringComparison.Ordinal))
+                return next;
+            start = next;
+        }
+
+        return frontmatterEnd;
+    }
+
     private static string Entry(string scope, string file)
     {
         var key = ScopeKey(scope);
@@ -802,7 +855,15 @@ public static class AgentContextCommand
         HashText(Rel(GitRoot(scope), scope))[..16] + " -->";
     private static string Canonical(byte[] bytes) => Strict.GetString(bytes.AsSpan(bytes.AsSpan().StartsWith(UTF8Encoding.UTF8.GetPreamble()) ? 3 : 0))
         .Replace("\r\n", "\n").Replace('\r', '\n');
-    private static string SafeComponent(string part) => part.ToLowerInvariant().Replace(' ', '-');
+    private static string SafeComponent(string part)
+    {
+        var component = part.ToLowerInvariant().Replace(' ', '-');
+        if (component.Split('.')[0] is "con" or "prn" or "aux" or "nul" or
+            "com1" or "com2" or "com3" or "com4" or "com5" or "com6" or "com7" or "com8" or "com9" or
+            "lpt1" or "lpt2" or "lpt3" or "lpt4" or "lpt5" or "lpt6" or "lpt7" or "lpt8" or "lpt9")
+            throw new InvalidOperationException($"Unsafe package path component: {part}");
+        return component;
+    }
 
     private static ContextState LoadState(string path)
     {
@@ -1053,6 +1114,24 @@ public static class AgentContextCommand
         throw new InvalidOperationException("No Git working tree found.");
     }
 
+    private static string CanonicalExistingPath(string root, string path)
+    {
+        if (!OperatingSystem.IsWindows() || !Within(root, path))
+            return path;
+
+        var current = root;
+        foreach (var component in Rel(root, path).Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var matches = Directory.Exists(current)
+                ? Directory.EnumerateFileSystemEntries(current).Select(Path.GetFileName)
+                    .Where(name => string.Equals(name, component, StringComparison.OrdinalIgnoreCase)).ToArray()
+                : [];
+            current = Path.Combine(current, matches.Length == 1 ? matches[0]! : component);
+        }
+
+        return current;
+    }
+
     private static void CheckDestination(string root, string boundary, string file)
     {
         Inside(boundary, file);
@@ -1088,7 +1167,7 @@ public static class AgentContextCommand
         Inside(root, path);
         var relative = Rel(root, path);
         var current = root;
-        if (File.Exists(root) && File.GetAttributes(root).HasFlag(FileAttributes.ReparsePoint))
+        if ((File.Exists(root) || Directory.Exists(root)) && File.GetAttributes(root).HasFlag(FileAttributes.ReparsePoint))
             throw new InvalidOperationException("Linked root is unsupported.");
         foreach (var component in relative.Split('/', StringSplitOptions.RemoveEmptyEntries))
         {
