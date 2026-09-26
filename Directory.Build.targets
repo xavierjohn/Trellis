@@ -1,45 +1,11 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-
-  <!--
-    API reference delivery. Two separable concerns, deliberately kept apart:
-
-    OWNERSHIP - <TrellisApiRefName> declares which reference file a package owns
-      (e.g. <TrellisApiRefName>asp</TrellisApiRefName>). The freshness audit, the
-      completeness audit and TRLDOC004 all key off it. It no longer decides delivery.
-
-    DELIVERY - the complete first-party reference set ships from Trellis.Core alone.
-      Every package in this repository carries one version stamp from version.json, so
-      per-package delivery bought nothing and cost two real failures: a reference for a
-      PackageReference that was later dropped stayed in .github/ forever, frozen at
-      whatever version last copied it, and an agent could never learn about a module the
-      project had not already installed - backwards for a framework of optional modules.
-
-    Packages published from OTHER repositories version independently, so they must keep
-    shipping their own reference: Trellis.Core cannot know their current content, and
-    embedding a copy would recreate exactly the staleness described above. They declare
-    their payload with build/Trellis.ApiReference.Payload.targets and rely on the copy
-    logic shipped here, so the ~200-line directory walk lives in one place.
-
-    PackagePath uses forward slashes deliberately. On Windows a trailing backslash in
-    PackagePath="trellis\" is recognized as a directory marker and the doc lands at
-    trellis/<name>.md. On Linux the backslash is not a separator: it normalizes to
-    "trellis/" and NuGet then appends its own, so the doc lands at the malformed
-    "trellis//<name>.md". That still satisfies a trellis/*.md glob and still delivers,
-    which is why the defect survived a casual check and reached published packages.
-    Scenario 6 of build/test-apireference-payload.ps1 holds this line.
-  -->
+  <!-- Package inputs are collected at pack time, never during consumer restore/build. -->
   <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\*.md"
           Exclude="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\completeness-report.md"
           Pack="true" PackagePath="trellis/" />
   </ItemGroup>
 
-  <!--
-    Trellis.Analyzers is the one first-party package with no dependency on Trellis.Core,
-    so it cannot rely on Core to deliver either the docs or the copy logic. It ships both
-    for itself. The duplicated trellis-api-analyzers.md is harmless: both copies come from
-    the same lockstep version, and the Copy below skips unchanged destinations.
-  -->
   <ItemGroup Condition="'$(TrellisShipsOwnApiReference)' == 'true' AND '$(TrellisApiRefName)' != ''">
     <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-$(TrellisApiRefName).md"
           Pack="true" PackagePath="trellis/" />
@@ -52,9 +18,19 @@
           Pack="true" PackagePath="buildTransitive/$(PackageId).targets" />
   </ItemGroup>
 
+  <Target Name="GenerateTrellisReferenceManifest" BeforeTargets="_GetPackageFiles"
+          Condition="'$(IsPackable)' != 'false'">
+    <PropertyGroup>
+      <_TrellisReferenceManifest>$(IntermediateOutputPath)reference-manifest.json</_TrellisReferenceManifest>
+    </PropertyGroup>
+    <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildThisFileDirectory)build/generate-reference-manifest.ps1&quot; -RepositoryRoot &quot;$(MSBuildThisFileDirectory)build&quot; -Project &quot;$(MSBuildProjectFullPath)&quot; -Output &quot;$(MSBuildProjectDirectory)/$(_TrellisReferenceManifest)&quot; -Mode &quot;$(TrellisShipsApiReferenceSet);$(TrellisShipsOwnApiReference)&quot;" />
+    <ItemGroup>
+      <None Include="$(_TrellisReferenceManifest)" Pack="true"
+            PackagePath="guidance/reference-manifest.json" />
+    </ItemGroup>
+  </Target>
 
-  <Target Name="LintApiReference"
-          BeforeTargets="Build"
+  <Target Name="LintApiReference" BeforeTargets="Build"
           Condition="'$(TrellisEnableApiReferenceLint)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
     <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)docs/lint-api-reference.ps1&quot;" />
   </Target>

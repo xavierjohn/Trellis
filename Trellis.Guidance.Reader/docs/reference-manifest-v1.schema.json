@@ -1,0 +1,43 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xavierjohn/Trellis/blob/main/Trellis.Guidance.Reader/docs/reference-manifest-v1.schema.json",
+  "title": "Experimental NuGet package guidance manifest, version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "documents", "entryPoints"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "$ref": "#/$defs/packagePath" },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "role": { "type": "string", "minLength": 1, "pattern": "\\S" }
+        }
+      }
+    },
+    "entryPoints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/packagePath" },
+      "uniqueItems": true
+    },
+    "publisherMetadata": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)+$": {}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "packagePath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Package-relative path; additional portability, traversal, alias and link checks in the specification apply."
+    }
+  }
+}

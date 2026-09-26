@@ -4,6 +4,8 @@
   href: trellis-api-anti-patterns.md
 - name: Per-package reference
   items:
+    - name: Trellis.AgentContext
+      href: trellis-api-agent-context.md
     - name: Trellis.Core
       href: trellis-api-core.md
     - name: Trellis.Primitives

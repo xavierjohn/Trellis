@@ -9,9 +9,10 @@ audience: [llm]
 ---
 # Trellis — start here
 
-You are looking at Trellis API reference files that a Trellis NuGet package copied into this
-directory. This file is a one-screen signpost, not a reference — it exists only to send you to the
-right file. It is deliberately tiny so it costs nothing to keep loaded.
+You are looking at versioned Trellis API reference files installed under
+`.trellis/api-reference/` by the explicit agent-context command. This file is a one-screen
+signpost, not a reference — it exists only to send you to the right file. It is deliberately
+tiny so it costs nothing to keep loaded.
 
 ## Read this one file first, and keep it loaded
 
@@ -63,11 +64,11 @@ through it rather than opening files speculatively.
 
 **A file being present here does not mean the project you are editing references that package.** The
 complete first-party set ships with `Trellis.Core`, so references for packages you have not installed
-are present by design — that is how you discover a module worth adopting. A `.github/` directory
-shared across a solution also aggregates whatever every project in it references, and a reference for
-a package that was later dropped is not removed. Packages published from other repositories (for
-example `Trellis.ServiceLevelIndicators`) ship their own reference alongside themselves, so those
-appear only once installed.
+are present by design — that is how you discover a module worth adopting. The agent-context command
+selects references from the restored package graph and removes previously installed references whose
+source packages are no longer present. Packages published from other repositories (for example
+`Trellis.ServiceLevelIndicators`) ship their own reference alongside themselves, so those appear
+only once installed.
 
 So before writing code against one of these files, confirm the package is actually referenced by the
 project you are editing — check its `.csproj` or `Directory.Packages.props`. If it is not, the
