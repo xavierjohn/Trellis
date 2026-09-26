@@ -10,6 +10,26 @@ Railway-oriented error handling and domain foundations for .NET with `Result<T>`
 dotnet add package Trellis.Core
 ```
 
+## Versioned agent context
+
+Restore/build do not edit repository instructions. To install versioned API guidance explicitly,
+run these from the directory containing the selected solution or project:
+
+```bash
+dotnet new tool-manifest
+dotnet tool install Trellis.AgentContext --version <matching-Trellis.Core-version>
+dotnet restore <solution-or-project>
+dotnet tool run trellis agent init <solution-or-project>
+```
+
+If the directory already has a tool manifest, use it rather than creating another. Commit
+the tool pin, `AGENTS.md`, and `.trellis/` with the package change. After cloning, run
+`dotnet tool restore`, `dotnet restore <solution-or-project>`, then
+`dotnet tool run trellis agent sync`. CI can run `dotnet tool run trellis agent check` to
+detect drift without writes. For an independent nested scope, use its own pinned tool manifest
+with `"isRoot": true`, run all commands from that scope directory, and pass `--scope .` to
+`init`, `sync`, and `check`. Avoid external edits to context files during mutating commands.
+
 ## Quick Example
 
 ```csharp

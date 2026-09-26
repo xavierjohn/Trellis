@@ -34,7 +34,10 @@ TRLDOC004 used to assert that some package *packs* each file. It no longer can, 
 
 - **TRLDOC012**: Every doc listed under `GuardrailDocs` in `docs/api-reference-docs.psd1` must carry the opt-in banner. Guardrail docs are the one exception to "delivering a doc for an unreferenced package is harmless": describing an absent *API* produces a compile error, but describing an absent *analyzer* makes an agent write **less** defensively, trusting a rule that never runs. The banner states that standalone analyzer rules require a `PackageReference` to `Trellis.Analyzers`; source-generator diagnostics are supplied by their hosting packages and do not require that separate reference.
 
-Proving docs are *delivered* needs `build/test-apireference-payload.ps1`, which packs real packages, restores them into scratch consumers outside the repository and asserts which `.github` directory the files land in — covering the nearest-`.github` preference, the `.git` boundary that stops the walk escaping into an unrelated parent checkout, the `TrellisApiReferenceRoot` override, the `TrellisDisableApiReferenceSync` opt-out, and a satellite package contributing its own reference. On Unix, copied references are normalized to mode `0644`, including unchanged files. The probe also covers paths containing shell-special characters and permission failures, which must produce warnings without failing the consumer build. Cross-platform declaration checks guard the environment-variable handoff and warning policy even on Windows. Run it with `pwsh ./build/test-apireference-payload.ps1`; it runs in the Build workflow.
+Proving docs are *delivered* requires checking the packed `guidance/reference-manifest.json`
+against the exact package bytes and exercising the explicit agent-context command against a
+restored scratch consumer. Restore/build alone must not create `.trellis/`, `AGENTS.md`, or
+`.github/` documents. `check` detects a stale or missing installation without writing it.
 
 - **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies beneath it" in `trellis-start-here.md`, "The *n* recipe bodies below" in `trellis-api-cookbook.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. Those routing heads tell agents the Patterns Index is exhaustive and use the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count is checked: the rule originally guarded only `trellis-start-here.md`, and the cookbook's unguarded copy of the same claim duly drifted out of date while the guarded one stayed correct.
 
@@ -59,16 +62,19 @@ Two separable concerns, deliberately kept apart in `Directory.Build.targets`:
 | Concern | Mechanism | Consumers |
 |---|---|---|
 | **Ownership** — which package a reference describes | `<TrellisApiRefName>` | `audit-doc-freshness.ps1`, `audit-completeness`, TRLDOC004, TRLDOC011 |
-| **Delivery** — which package ships the file to `.github/` | `<TrellisShipsApiReferenceSet>` on `Trellis.Core` | consumers' LLMs |
+| **Delivery** — which package ships the file under `trellis/` | `<TrellisShipsApiReferenceSet>` on `Trellis.Core` | explicit agent-context command |
 
 `Trellis.Core` ships the **complete first-party set**. Every package in this repository carries one version stamp from `version.json`, so scoping delivery per package bought nothing and cost two real failures:
 
-- A reference for a `PackageReference` that was later dropped was never removed from `.github/`. The sync only ever copied, so the file stayed forever, frozen at whatever version last wrote it. That is worse than a missing doc: an absent reference makes an agent say "I don't know", while a stale one makes it write confident code against an API that no longer exists.
+- A reference for a `PackageReference` that was later dropped was never removed from `.github/`. The old sync only ever copied, so the file stayed forever, frozen at whatever version last wrote it. That is worse than a missing doc: an absent reference makes an agent say "I don't know", while a stale one makes it write confident code against an API that no longer exists.
 - An agent could never learn about a module the project had not already installed — backwards for a framework whose value is largely in its optional modules.
 
 Because Core now ships references for packages the consumer may not have, **file presence no longer implies a package reference**. `trellis-start-here.md` says so explicitly and tells agents to confirm the reference in the `.csproj`; do not reintroduce wording that invites the opposite inference.
 
-`Trellis.Analyzers` is the one first-party exception. It has no dependency on `Trellis.Core`, so it cannot rely on Core to deliver anything and ships its own reference and copy logic. The duplicated `trellis-api-analyzers.md` is harmless — both copies come from the same lockstep version, and the copy skips unchanged destinations.
+`Trellis.Analyzers` is the one first-party exception. It has no dependency on `Trellis.Core`,
+so it ships its own reference. When both packages contribute `trellis-api-analyzers.md`, the
+installer verifies both source hashes, deduplicates identical canonical content, and records
+both sources in its ownership manifest.
 
 ### Packages published from other repositories
 
@@ -77,20 +83,37 @@ Because Core now ships references for packages the consumer may not have, **file
 A satellite ships two things:
 
 1. Its reference markdown, packed to `trellis/`.
-2. `build/Trellis.ApiReference.Payload.targets` from this repository, packed at both `build/<PackageId>.targets` and `buildTransitive/<PackageId>.targets`.
+2. A `guidance/reference-manifest.json` declaring package-relative document paths, exact-byte
+   SHA-256 hashes, and explicit entry points under the experimental version 1 contract.
 
-That payload file is three lines of item declaration, and whether it is sufficient on its own depends on **dependency topology**:
+For a single-reference satellite, copy `build/Trellis.ApiReference.Payload.targets` into the
+satellite's repository and import it **only in the publishing project**. Place
+`trellis/trellis-api-<name>.md` beside that project and configure:
 
-| The package's transitive closure | Ships | Why |
-|---|---|---|
-| Contains `Trellis.Core` | Payload only | The ~200-line directory walk arrives with `Trellis.Core`. Keeping one copy means a satellite cannot drift onto stale copy logic. |
-| Does **not** contain `Trellis.Core` | Payload **and** `Trellis.ApiReference.targets` | Nothing else in the consumer's build would carry copy logic, so a project referencing only that package would receive nothing. This is the `Trellis.Analyzers` shape. |
+```xml
+<PropertyGroup>
+  <TrellisApiRefName>name</TrellisApiRefName>
+  <TrellisPublishSatelliteGuidance>true</TrellisPublishSatelliteGuidance>
+</PropertyGroup>
+<ItemGroup>
+  <None Include="trellis/trellis-api-name.md" Pack="true" PackagePath="trellis/" />
+</ItemGroup>
+<Import Project="../build/Trellis.ApiReference.Payload.targets" />
+```
 
-Do not infer the first row from the fact that a package is named `Trellis.*`. `Trellis.ServiceLevelIndicators` depends only on `Microsoft.Extensions.*` and `OpenTelemetry`; `Trellis.ResourceNaming.Abstractions` has no package dependencies at all. Both fall in the second row. The rule is decided by the resolved graph, not by the author's intent — so a satellite repository should assert it in its own pack gate rather than leave it to review.
+The import hashes the source bytes at pack time and packs the manifest; the project packs
+the reference itself. Do **not** pack the `.targets` file under `build/` or
+`buildTransitive/`: consumer restore/build discovers the manifest without executing
+package targets, and the Trellis CLI rejects older copy-target packages. Run
+`pwsh build/test-satellite-guidance.ps1` in this repository to test an isolated satellite
+and a satellite-only restored consumer. Its optional `-WorkDirectory` leaves the
+sample projects available for inspection. The root first-party manifest target runs
+only for packable projects under `Trellis.<Package>/src/`, not unrelated projects.
 
-Shipping both files when `Trellis.Core` *is* present is harmless, not an error: the copies are byte-identical, duplicate target names collapse to one definition, and the copy is guarded by `SkipUnchangedFiles`. When in doubt, ship both.
-
-If a package packs payload with no copy logic reachable, `_WarnTrellisApiReferenceCopyLogicMissing` warns in the consumer's build. That is a backstop, not the gate — it fires in the wrong repository to be fixed cheaply. Scenario 5 of `build/test-apireference-payload.ps1` covers the first row end to end, packing a satellite that ships no copy logic and asserting its reference still lands when `Trellis.Core` arrives transitively.
+The reader works from restored NuGet assets and package contents, whether or not `Trellis.Core`
+is in the dependency graph. It never relies on an imported copy target. A satellite published
+from another repository must ship and verify its own current reference and manifest; Core cannot
+know the content of independently versioned packages.
 
 
 

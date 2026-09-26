@@ -98,6 +98,7 @@ Start with `Trellis.Core`; add only the integrations your application uses. `Tre
 | [Trellis.Core](https://www.nuget.org/packages/Trellis.Core) | `Result<T>`, `Maybe<T>`, typed errors, DDD building blocks, pagination, and source-generated value-object bases |
 | [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Ready-to-use value objects such as `EmailAddress`, `Money`, and `Url` |
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | Compile-time guidance for Result, Maybe, EF Core, and value-object usage |
+| [Trellis.AgentContext](https://www.nuget.org/packages/Trellis.AgentContext) | Explicit local tool for installing versioned package guidance and checking repository agent context |
 
 ### Application and web integration
 

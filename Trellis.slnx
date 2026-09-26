@@ -68,6 +68,10 @@
     <Project Path="Trellis.Analyzers/src/Trellis.Analyzers.csproj" />
     <Project Path="Trellis.Analyzers/tests/Trellis.Analyzers.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.AgentContext/">
+    <Project Path="Trellis.AgentContext/src/Trellis.AgentContext.csproj" />
+    <Project Path="Trellis.AgentContext/tests/Trellis.AgentContext.Tests.csproj" />
+  </Folder>
   <Folder Name="/Trellis.Asp/">
     <File Path="Trellis.Asp/SAMPLES.md" />
     <Project Path="Trellis.Asp/generator/Trellis.AspSourceGenerator.csproj" />
@@ -116,6 +120,10 @@
   <Folder Name="/Trellis.FluentValidation/">
     <Project Path="Trellis.FluentValidation/src/Trellis.FluentValidation.csproj" />
     <Project Path="Trellis.FluentValidation/tests/Trellis.FluentValidation.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Trellis.Guidance.Reader/">
+    <Project Path="Trellis.Guidance.Reader/src/Trellis.Guidance.Reader.csproj" />
+    <Project Path="Trellis.Guidance.Reader/tests/Trellis.Guidance.Reader.Tests.csproj" />
   </Folder>
   <Folder Name="/Trellis.Http/">
     <Project Path="Trellis.Http/src/Trellis.Http.csproj" />
