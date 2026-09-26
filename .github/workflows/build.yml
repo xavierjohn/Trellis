@@ -147,12 +147,6 @@ jobs:
       env:
         TRELLIS_FW_ROOT: ${{ github.workspace }}
 
-    - name: Discard generated completeness report
-      # The auditor writes completeness-report.md into the directory DocFX later builds; drop it
-      # so the published docs and packed payload stay byte-identical to a local build.
-      if: always()
-      run: rm -f docs/docfx_project/api_reference/completeness-report.md
-
     - name: API reference payload probe
       # Packs the real payload and verifies its guidance manifest against package bytes.
       # Restore/build must not copy documentation into a consumer repository.
@@ -336,12 +330,6 @@ jobs:
         fi
         run_smoke "Mvc-JIT" 5100 mvc-jit.log dotnet "$MVC_DLL"
 
-    - name: Install DocFX
-      run: dotnet tool update -g docfx --version 2.80.1
-
-    - name: Build docs
-      run: docfx docs/docfx_project/docfx.json
-  
     # Runs on pull requests too, not just pushes to main. Package validation - including the
     # API-compatibility check against the last published release - executes during pack, so
     # gating this on the push would mean a breaking change first surfaced after merge, or at
