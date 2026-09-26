@@ -159,7 +159,7 @@ The [`AddTrellisBehaviors` reference](docs/docfx_project/api_reference/trellis-a
 
 ### After the playbook
 
-The rest of this file is reference material organized by change area: error-ADT realignment, the operator-rename table from v2.9 → v3.0, `Maybe<T>` notnull constraint, Trellis.Asp response-verb removal, `Required<T>` strict-flip details, and (in the appendix) a methodology for [verifying behavior after upgrade](#appendix--verifying-behavior-after-upgrade) using the auto-deposited API ref docs in `.github/`.
+The rest of this file is reference material organized by change area: error-ADT realignment, the operator-rename table from v2.9 → v3.0, `Maybe<T>` notnull constraint, Trellis.Asp response-verb removal, `Required<T>` strict-flip details, and (in the appendix) a methodology for [verifying behavior after upgrade](#appendix--verifying-behavior-after-upgrade) using version-aligned package guidance.
 
 ---
 
@@ -1088,8 +1088,8 @@ public sealed partial class CommentBody : RequiredString<CommentBody>;
 
 After upgrading a Trellis package, several authoritative sources can answer "what does this version of the API actually do?" They are not equally trustworthy at any given moment. Use the highest tier first; fall through only when a tier leaves the question unanswered.
 
-1. **Published nuspec on nuget.org** — confirms what version of what package is actually installed. The lock for "what's in the binary you just restored."
-2. **Auto-deposited API ref docs in `.github/`** — `Trellis.Core` packs the complete first-party reference set, and packages published from other repositories pack the reference they own. `Trellis.ApiReference.targets` copies them into the consuming project's `.github/` directory at build time. **This is the canonical surface that ships with the binary.** When a deposited doc and a source-tree snapshot disagree, the deposited doc is right. Note that a file being present does **not** mean you reference that package — Core delivers the whole set so you can discover modules worth adopting, so confirm the `PackageReference` before assuming an API is available to you.
+1. **Restored NuGet graph** — check `project.assets.json` for the package and version actually resolved by the project; the package declaration alone does not prove what was restored.
+2. **Version-aligned package guidance** — packages carry `guidance/reference-manifest.json` and hashed reference documents. After restoring the pinned `Trellis.AgentContext` tool and project, run `dotnet tool run trellis agent check` to verify an installed context, or `dotnet tool run trellis agent sync` after a package update. Start with `.trellis/README.md`, which routes to the available references. A leftover `.github/trellis-api-*.md` from the old build-time copy is not proof of the current package version. Core carries the complete first-party set, so also confirm the package is in the restored graph before using its API.
 3. **Behavior probe via a one-off test** — write a single test that exercises the API in the shape your code uses it. Compiles against the actually-installed package; behavior is observable directly. Faster than reading source; conclusive when the doc reads ambiguously.
 4. **Framework source** — only when (1)–(3) leave a question unanswered. Local clones can lag the published package, especially during alpha development; treat as the source of last resort.
 
@@ -1097,13 +1097,13 @@ After upgrading a Trellis package, several authoritative sources can answer "wha
 
 The methodology emerged from a real `FunctionalDdd 2.x → Trellis 3.0.0-alpha.337` migration where it caught two mistakes before they shipped:
 
-- **False-positive correctness regression**, caught at step (2). The author wrote up a "`RequiredString<T>` silently accepts empty strings — silent semantic change from v2.x" finding, drafted an upstream issue, and added `[NotDefault, Trim]` to six value objects to "preserve v2.x semantics." An audit pass against `.github/trellis-api-core.md` showed the deposited docs for the installed alpha, which described the behavior at the time. Issue retracted before filing. Without the auto-deposited docs this would have shipped as a public framework-team report carrying a false correctness claim.
+- **False-positive correctness regression**, caught at step (2). The author wrote up a "`RequiredString<T>` silently accepts empty strings — silent semantic change from v2.x" finding, drafted an upstream issue, and added `[NotDefault, Trim]` to six value objects to "preserve v2.x semantics." At the time, an audit against the installed alpha's `.github/trellis-api-core.md` showed that the package documentation described this behavior. Issue retracted before filing. Use the verified `.trellis/` reference for this check with current releases.
 - **Real correctness bug**, also caught at step (2). Porting removed `Result<T>.Value` to inline `.Match(v => v, e => throw …)` for nested DTO conversion preserved the throwing semantic locally but surfaced as HTTP 500 instead of HTTP 422 with field violations. An audit of the cookbook against the actual API behavior found `TraverseAll` — the canonical accumulating combinator for exactly this pattern.
 
 ### Why this order
 
-The published nuspec is the lock. The deposited refs are the framework's own claim about its current surface — shipped alongside the binary, versioned together, never out of sync with the installed package. A behavior probe verifies the binary directly without trusting any doc. The framework source is the last resort because it can drift from the published package during alpha development. Trellis ships `trellis-api-*.md` files with every package precisely so consumers don't need to clone the framework source to audit upgrades.
+The restored graph identifies the package version. Its hashed guidance is the framework's version-aligned claim about that package's API; `check` detects an absent or stale installed context instead of treating a leftover reference as authoritative. A behavior probe verifies the binary directly without trusting any doc. The framework source is the last resort because it can drift from the published package during alpha development. Trellis ships reference documents with its packages precisely so consumers don't need to clone the framework source to audit upgrades.
 
 ### AI tooling note
 
-When an AI assistant proposes a Trellis pattern after an upgrade, point it at the `.github/trellis-api-*.md` files first. The deposited docs are the source of truth your AI tools and your CI both verify against — keeping consumer-side AI audits grounded against the framework's shipped surface rather than a search-engine cached generic answer.
+When an AI assistant proposes a Trellis pattern after an upgrade, run `dotnet tool run trellis agent check` and point it at `.trellis/README.md` and the references it links to. Do not route it to old `.github/trellis-api-*.md` copies: those are not updated by the explicit command and may describe an earlier package version.

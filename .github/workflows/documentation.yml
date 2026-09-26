@@ -6,12 +6,24 @@ on:
     paths:
       - 'docs/**'
       - '**/*.cs'
+      - '**/*.csproj'
+      - '**/*.props'
+      - '**/*.targets'
+      - '**/*.slnx'
+      - '**/*.tt'
+      - 'global.json'
       - '.github/workflows/documentation.yml'
   push:
     branches: [main]
     paths:
       - 'docs/**'
       - '**/*.cs'
+      - '**/*.csproj'
+      - '**/*.props'
+      - '**/*.targets'
+      - '**/*.slnx'
+      - '**/*.tt'
+      - 'global.json'
       - '.github/workflows/documentation.yml'
 
 jobs:

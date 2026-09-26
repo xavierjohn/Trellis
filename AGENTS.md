@@ -26,7 +26,7 @@ Then pull in only the 1–3 area-specific references the cookbook points you at.
 
 If context is too tight to hold the routing head plus one area reference, you are too tight to write correct Trellis code — say so rather than guessing at API shapes.
 
-`trellis-start-here.md` is **not** a second entry point, and in this repository you can ignore it. It is a ~1 KB router written for *consumers*: the packages copy the reference docs into a consuming repository's `.github/`, where nothing explains what those files are, so that router tells a consumer's agent the same thing this section tells you — read the cookbook first, keep it loaded, don't delegate it. Edit it only when this guidance changes, and keep the two in agreement. There is exactly one start file, the cookbook; `trellis-start-here.md` just points at it for readers who never see this file.
+`trellis-start-here.md` is **not** a second entry point, and in this repository you can ignore it. It is a ~1 KB router written for *consumers*: the explicit agent-context command installs package references under `.trellis/api-reference/`, where nothing explains what those files are, so that router tells a consumer's agent the same thing this section tells you — read the cookbook first, keep it loaded, don't delegate it. Edit it only when this guidance changes, and keep the two in agreement. There is exactly one start file, the cookbook; `trellis-start-here.md` just points at it for readers who never see this file.
 
 ### Do not delegate reference reading to a sub-agent
 
