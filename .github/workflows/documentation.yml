@@ -9,6 +9,8 @@ on:
       - '**/*.csproj'
       - '**/*.props'
       - '**/*.targets'
+      - '**/*.slnx'
+      - '**/*.tt'
       - 'global.json'
       - '.github/workflows/documentation.yml'
   push:
@@ -19,6 +21,8 @@ on:
       - '**/*.csproj'
       - '**/*.props'
       - '**/*.targets'
+      - '**/*.slnx'
+      - '**/*.tt'
       - 'global.json'
       - '.github/workflows/documentation.yml'
 
