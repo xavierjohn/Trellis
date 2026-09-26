@@ -1,0 +1,2 @@
+# Exact-byte SHA-256 fixtures must not change line endings at checkout.
+*.md -text whitespace=cr-at-eol

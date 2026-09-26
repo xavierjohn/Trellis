@@ -66,6 +66,40 @@ public class ApiReferencePayloadGateTests
     }
 
     [Fact]
+    public void Every_packable_package_has_a_pack_time_guidance_manifest()
+    {
+        var targets = File.ReadAllText(Path.Combine(RepositoryRoot(), "Directory.Build.targets"));
+        targets.Should().Contain("guidance/reference-manifest.json");
+        targets.Should().Contain("GenerateTrellisReferenceManifest");
+        targets.Should().NotContain("_CopyTrellisApiReference");
+        targets.Should().NotContain("TrellisSyncApiReference");
+
+        var imported = File.ReadAllText(Path.Combine(RepositoryRoot(), "build", "Trellis.ApiReference.targets"));
+        imported.Should().NotContain("_CopyTrellisApiReference");
+        imported.Should().NotContain("TrellisSyncApiReference");
+        imported.Should().NotContain("TrellisApiReferenceRoot");
+        imported.Should().NotContain("TrellisDisableApiReferenceSync");
+
+        var payload = File.ReadAllText(Path.Combine(RepositoryRoot(), "build", "Trellis.ApiReference.Payload.targets"));
+        payload.Should().NotContain("_WarnTrellisApiReferenceCopyLogicMissing");
+    }
+
+    [Fact]
+    public void Every_packable_package_matches_the_first_party_manifest_target_layout()
+    {
+        var root = RepositoryRoot();
+        var misplaced = PackableProjects()
+            .Where(project => !project.Path.Equals(
+                Path.Combine(root, project.Name, "src", project.Name + ".csproj"),
+                StringComparison.OrdinalIgnoreCase))
+            .Select(project => project.Path)
+            .ToList();
+
+        misplaced.Should().BeEmpty(
+            "the pack-time manifest target is gated to <Package>/src/<Package>.csproj");
+    }
+
+    [Fact]
     public void No_shipping_package_hides_outside_the_src_convention()
     {
         // The gate above finds packages by the repo convention that every shipping package lives at

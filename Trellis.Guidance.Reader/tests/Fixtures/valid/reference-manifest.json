@@ -1,0 +1,14 @@
+﻿{
+  "schemaVersion": 1,
+  "documents": [
+    {
+      "path": "guide/intro.md",
+      "sha256": "280c3a0354d21e33d2877ed5a2234b37f951bc270ad66004e0731b961bde1c96",
+      "role": "overview"
+    }
+  ],
+  "entryPoints": ["guide/intro.md"],
+  "publisherMetadata": {
+    "org.example": { "edition": "free" }
+  }
+}

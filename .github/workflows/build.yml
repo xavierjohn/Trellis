@@ -154,12 +154,14 @@ jobs:
       run: rm -f docs/docfx_project/api_reference/completeness-report.md
 
     - name: API reference payload probe
-      # Packs a real package, restores it into scratch consumers outside this repository and
-      # asserts which .github directory the docs land in. TRLDOC004 proves a doc is PACKED; only
-      # this proves it is DELIVERED, exercising the .git-bounded directory walk that no unit test
-      # can reach.
+      # Packs the real payload and verifies its guidance manifest against package bytes.
+      # Restore/build must not copy documentation into a consumer repository.
       shell: pwsh
       run: ./build/test-apireference-payload.ps1 -Configuration Release
+
+    - name: Independent satellite guidance probe
+      shell: pwsh
+      run: ./build/test-satellite-guidance.ps1
 
     - name: Test with Coverage
       # --coverage: Native MTP coverage (requires Microsoft.Testing.Extensions.CodeCoverage)

@@ -9,6 +9,8 @@ Railway-oriented error handling for .NET with `Result<T>`, `Maybe<T>`, and typed
 dotnet add package Trellis.Core
 ```
 
+Install versioned agent guidance explicitly with [Trellis.AgentContext](../docs/docfx_project/api_reference/trellis-api-agent-context.md).
+
 ## Quick Example
 ```csharp
 using Trellis;

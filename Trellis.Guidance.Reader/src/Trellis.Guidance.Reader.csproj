@@ -1,0 +1,6 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Trellis.Guidance.Reader</RootNamespace>
+  </PropertyGroup>
+</Project>

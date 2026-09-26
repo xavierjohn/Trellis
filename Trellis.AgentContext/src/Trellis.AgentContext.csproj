@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>trellis</ToolCommandName>
+    <PackageId>Trellis.AgentContext</PackageId>
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
+    <TrellisApiRefName>agent-context</TrellisApiRefName>
+    <TrellisShipsOwnApiReference>true</TrellisShipsOwnApiReference>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Guidance.Reader\src\Trellis.Guidance.Reader.csproj" />
+  </ItemGroup>
+  <Target Name="StampTrellisToolPackageVersion" BeforeTargets="GetAssemblyAttributes" DependsOnTargets="GetBuildVersion">
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>TrellisToolPackageVersion</_Parameter1>
+        <_Parameter2>$(PackageVersion)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+</Project>

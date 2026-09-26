@@ -1,497 +1,256 @@
 ﻿<#
 .SYNOPSIS
-    Probes the API-reference doc delivery mechanism end to end: pack a real package, restore it
-    into a scratch consumer outside this repository, build, and assert what lands in .github/.
-
+    Packs first-party packages and checks the experimental guidance payload in the actual nupkg.
 .DESCRIPTION
-    build/Trellis.ApiReference.targets decides whether any Trellis documentation ever reaches a
-    consumer's LLM. It is an 11-level unrolled directory walk with a .git boundary, and unit tests
-    cannot cover it because the behaviour only exists once the package is packed, restored and
-    imported by NuGet. This probe is the only thing that exercises that path.
-
-    Scenarios:
-      1. Nearest .github wins            - a .github closer than the repo root is preferred.
-      2. Bounded by the .git root        - a .github ABOVE the repo root is never written to.
-      3. Fallback creates .github        - no .github inside the repo means one is created at root.
-      4. TrellisApiReferenceRoot         - explicit override wins over the walk.
-      5. TrellisDisableApiReferenceSync  - opts out entirely.
-      6. Packed layout                   - docs land at a clean trellis/<name>.md on every platform.
-      7. Unix permissions                - copied docs are normalized to mode 0644.
-      8. Shell-special paths             - destination paths are passed as data, not shell code.
-      9. Permission failures             - chmod errors warn without failing consumer builds.
+    Uses a repository-local scratch feed. Reports each package, manifest, document hash, cohort,
+    and legacy target check; fails on any missing, extra, or corrupted packaged asset.
 #>
 [CmdletBinding()]
 param(
-    [string] $Configuration = 'Release'
+    [string] $Configuration = 'Release',
+    [string[]] $PackageIds = @()
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+$PackageIds = @($PackageIds | ForEach-Object { $_.Split(',') })
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
-$work = Join-Path ([System.IO.Path]::GetTempPath()) "trellis-payload-probe-$([Guid]::NewGuid().ToString('N').Substring(0,8))"
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$work = Join-Path $root "artifacts\reference-payload-probe-$PID"
 $feed = Join-Path $work 'feed'
+$originalPackages = $env:NUGET_PACKAGES
+$originalCliHome = $env:DOTNET_CLI_HOME
 
-$script:failures = @()
-$script:originalNuGetPackages = $env:NUGET_PACKAGES
+function Invoke-ScratchCommand {
+    param([string] $Directory, [string] $Stage, [string[]] $CommandArguments)
 
-function Assert-Condition {
-    param([string] $Scenario, [string] $Because, [bool] $Condition)
-
-    if ($Condition) {
-        Write-Host "  PASS  $Scenario :: $Because"
-    }
-    else {
-        Write-Host "  FAIL  $Scenario :: $Because" -ForegroundColor Red
-        $script:failures += "$Scenario :: $Because"
-    }
-}
-
-# Every reference in the repository must reach a consumer that references Trellis.Core alone.
-# Derived rather than hand-listed: a hand-listed set would silently stop covering a doc added
-# later, which is the exact failure - a reference no consumer receives - this probe exists to catch.
-$docManifest = Import-PowerShellDataFile -LiteralPath (Join-Path $repoRoot 'docs/api-reference-docs.psd1')
-$expectedDocs = @(
-    Get-ChildItem -Path (Join-Path $repoRoot 'docs/docfx_project/api_reference') -Filter '*.md' -File |
-        Where-Object { $docManifest.UnshippedDocs -notcontains $_.Name } |
-        ForEach-Object { $_.Name }
-)
-
-function New-ScratchConsumer {
-    <#
-        Builds a consumer project tree. The consumer deliberately lives OUTSIDE the Trellis repo so
-        the walk cannot accidentally find this repository's own .github directory.
-    #>
-    param(
-        [string] $Path,
-        [string] $PackageVersion,
-        [hashtable] $Properties = @{},
-        [hashtable] $AdditionalPackages = @{},
-        [switch] $OmitCore
-    )
-
-    New-Item -ItemType Directory -Path $Path -Force | Out-Null
-
-    $props = ($Properties.GetEnumerator() | ForEach-Object { "    <$($_.Key)>$($_.Value)</$($_.Key)>" }) -join "`n"
-    $coreRef = if ($OmitCore) { '' } else { "    <PackageReference Include=`"Trellis.Core`" Version=`"$PackageVersion`" />" }
-    $extraRefs = ($AdditionalPackages.GetEnumerator() | ForEach-Object {
-        "    <PackageReference Include=`"$($_.Key)`" Version=`"$($_.Value)`" />"
-    }) -join "`n"
-
-    @"
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-$props
-  </PropertyGroup>
-  <ItemGroup>
-$coreRef
-$extraRefs
-  </ItemGroup>
-</Project>
-"@ | Set-Content -Path (Join-Path $Path 'Consumer.csproj') -Encoding utf8
-
-    'public static class Probe { public static int Value => 1; }' |
-        Set-Content -Path (Join-Path $Path 'Probe.cs') -Encoding utf8
-}
-
-function New-SatellitePackage {
-    <#
-        Builds a stand-in for a Trellis package published from ANOTHER repository - the shape
-        Trellis.ServiceLevelIndicators and Trellis.ResourceNaming.Azure have. It ships its own
-        reference plus build/Trellis.ApiReference.Payload.targets, and deliberately does NOT
-        ship the copy logic: proving the doc still lands is what shows a satellite can rely on
-        Trellis.Core for that logic instead of duplicating a file that would then drift.
-    #>
-    param([string] $Path, [string] $CoreVersion, [string] $DocName)
-
-    New-Item -ItemType Directory -Path (Join-Path $Path 'trellis') -Force | Out-Null
-
-    "# Satellite reference`n`nProbe payload for $DocName." |
-        Set-Content -Path (Join-Path $Path "trellis/$DocName") -Encoding utf8
-
-    Copy-Item -Path (Join-Path $repoRoot 'build/Trellis.ApiReference.Payload.targets') `
-              -Destination (Join-Path $Path 'Payload.targets')
-
-    @"
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <PackageId>Trellis.SatelliteProbe</PackageId>
-    <Version>1.0.0-probe</Version>
-    <IncludeBuildOutput>false</IncludeBuildOutput>
-    <NoWarn>`$(NoWarn);NU5128</NoWarn>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Trellis.Core" Version="$CoreVersion" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="trellis/$DocName" Pack="true" PackagePath="trellis/" />
-    <None Include="Payload.targets" Pack="true" PackagePath="build/Trellis.SatelliteProbe.targets" />
-    <None Include="Payload.targets" Pack="true" PackagePath="buildTransitive/Trellis.SatelliteProbe.targets" />
-  </ItemGroup>
-</Project>
-"@ | Set-Content -Path (Join-Path $Path 'Satellite.csproj') -Encoding utf8
-}
-
-function New-NuGetConfig {
-    param([string] $Path)
-
-    @"
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <clear />
-    <add key="probe-feed" value="$feed" />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-  </packageSources>
-</configuration>
-"@ | Set-Content -Path (Join-Path $Path 'nuget.config') -Encoding utf8
-}
-
-function Invoke-ConsumerBuild {
-    param(
-        [string] $ProjectDir,
-        [switch] $PassThru
-    )
-
-    Push-Location $ProjectDir
+    Push-Location $Directory
     try {
-        $output = dotnet build -c $Configuration --nologo 2>&1
+        $output = & dotnet @CommandArguments 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Write-Host ($output | Out-String)
-            throw "Consumer build failed in $ProjectDir"
+            $exitCode = $LASTEXITCODE
+            $details = if ($Stage -eq 'Packed CLI init') { & dotnet tool list --local 2>&1 | Out-String } else { '' }
+            throw "$Stage failed (exit $exitCode):`n$($output | Out-String)`n$details"
         }
-        if ($PassThru) { return ($output | Out-String) }
     }
     finally {
         Pop-Location
     }
 }
 
-function Assert-PermissionTaskContract {
-    [xml] $targets = Get-Content -LiteralPath (Join-Path $repoRoot 'build/Trellis.ApiReference.targets') -Raw
-    $permissionTask = $targets.SelectSingleNode(
-        "//*[local-name()='Target' and @Name='_CopyTrellisApiReference']/*[local-name()='Exec']")
+function Assert-GitHubUntouched {
+    param([string] $Consumer, [byte[]] $Original)
 
-    Assert-Condition -Scenario 'permission task' -Because 'the shell command references only a fixed environment variable' `
-        -Condition ($permissionTask.Command -ceq 'chmod 0644 "$TRELLIS_API_REFERENCE_DESTINATION"')
-    Assert-Condition -Scenario 'permission task' -Because 'the destination is supplied through the task environment' `
-        -Condition ($permissionTask.GetAttribute('EnvironmentVariables') -ceq 'TRELLIS_API_REFERENCE_DESTINATION=%(_TrellisApiReferenceDestination.FullPath)')
-    Assert-Condition -Scenario 'permission task' -Because 'permission failures warn and continue like copy failures' `
-        -Condition ($permissionTask.GetAttribute('ContinueOnError') -ceq 'WarnAndContinue')
-}
-
-function Assert-UnixPermissionEdgeCases {
-    param([string] $PackageVersion)
-
-    if ($IsWindows) {
-        Write-Host "`nScenarios 8-9 - Unix permission edge cases (not applicable on Windows)"
-        return
-    }
-
-    $specialRoot = Join-Path $work 'literal $HOME `printf expanded` "quoted" space;semicolon'
-    $projectDir = Join-Path $work 'shell-path-consumer'
-    New-ScratchConsumer -Path $projectDir -PackageVersion $PackageVersion `
-        -Properties @{ TrellisApiReferenceRoot = $specialRoot }
-    New-NuGetConfig -Path $projectDir
-    Invoke-ConsumerBuild -ProjectDir $projectDir
-    $docPath = Join-Path $specialRoot '.github/trellis-start-here.md'
-    $expectedMode =
-        [System.IO.UnixFileMode]::UserRead -bor
-        [System.IO.UnixFileMode]::UserWrite -bor
-        [System.IO.UnixFileMode]::GroupRead -bor
-        [System.IO.UnixFileMode]::OtherRead
-    Assert-Condition -Scenario 'shell-special path' -Because 'the literal destination receives mode 0644' `
-        -Condition ([System.IO.File]::GetUnixFileMode($docPath) -eq $expectedMode)
-
-    $executableMode = $expectedMode -bor [System.IO.UnixFileMode]::UserExecute
-    [System.IO.File]::SetUnixFileMode($docPath, $executableMode)
-    Invoke-ConsumerBuild -ProjectDir $projectDir
-    Assert-Condition -Scenario 'shell-special path' -Because 'unchanged copies at literal paths are normalized too' `
-        -Condition ([System.IO.File]::GetUnixFileMode($docPath) -eq $expectedMode)
-
-    $shimDirectory = Join-Path $work 'failing-chmod'
-    New-Item -ItemType Directory -Path $shimDirectory -Force | Out-Null
-    $shimPath = Join-Path $shimDirectory 'chmod'
-    [System.IO.File]::WriteAllText(
-        $shimPath,
-        "#!/bin/sh`necho 'Trellis probe: chmod denied' >&2`nexit 1`n",
-        [System.Text.UTF8Encoding]::new($false))
-    [System.IO.File]::SetUnixFileMode($shimPath, $executableMode)
-    [System.IO.File]::SetUnixFileMode($docPath, $executableMode)
-    $originalPath = $env:PATH
-    try {
-        $env:PATH = "$shimDirectory$([System.IO.Path]::PathSeparator)$originalPath"
-        $output = Invoke-ConsumerBuild -ProjectDir $projectDir -PassThru
-        Assert-Condition -Scenario 'permission failure' -Because 'a failed chmod is reported as a build warning' `
-            -Condition ($output -match 'Trellis probe: chmod denied' -and $output -match 'warning MSB3073')
-        Assert-Condition -Scenario 'permission failure' -Because 'the simulated permission failure left the mode unchanged' `
-            -Condition ([System.IO.File]::GetUnixFileMode($docPath) -eq $executableMode)
-    }
-    finally {
-        $env:PATH = $originalPath
+    $entries = @(Get-ChildItem -LiteralPath (Join-Path $Consumer '.github') -Recurse -Force)
+    if ($entries.Count -ne 1 -or $entries[0].Name -ne 'customer.md' -or
+        -not [System.Linq.Enumerable]::SequenceEqual(
+            [byte[]]$Original, [byte[]][System.IO.File]::ReadAllBytes($entries[0].FullName))) {
+        throw 'Packed CLI changed an existing .github file or added a .github entry'
     }
 }
 
-function Get-DocNames {
-    param([string] $GitHubDir)
+function Get-ManagedSnapshot {
+    param([string] $Consumer)
 
-    # The comma operator keeps an empty result an empty ARRAY; a bare `return @()` unrolls to
-    # $null on the pipeline, which then blows up on .Count under Set-StrictMode.
-    if (-not (Test-Path $GitHubDir)) { return , @() }
-    return , @(Get-ChildItem -Path $GitHubDir -Filter '*.md' -File | ForEach-Object { $_.Name })
-}
-
-function Assert-UnixPermissionsNormalized {
-    param(
-        [string] $ProjectDir,
-        [string] $DocPath
-    )
-
-    if ($IsWindows) {
-        Write-Host "`nScenario 7 - Unix permissions (not applicable on Windows)"
-        return
-    }
-
-    [System.IO.File]::SetUnixFileMode(
-        $DocPath,
-        [System.IO.UnixFileMode]::UserRead -bor
-        [System.IO.UnixFileMode]::UserWrite -bor
-        [System.IO.UnixFileMode]::UserExecute -bor
-        [System.IO.UnixFileMode]::GroupRead -bor
-        [System.IO.UnixFileMode]::GroupExecute -bor
-        [System.IO.UnixFileMode]::OtherRead -bor
-        [System.IO.UnixFileMode]::OtherExecute)
-
-    Invoke-ConsumerBuild -ProjectDir $ProjectDir
-
-    $expectedMode =
-        [System.IO.UnixFileMode]::UserRead -bor
-        [System.IO.UnixFileMode]::UserWrite -bor
-        [System.IO.UnixFileMode]::GroupRead -bor
-        [System.IO.UnixFileMode]::OtherRead
-    $actualMode = [System.IO.File]::GetUnixFileMode($DocPath)
-
-    Write-Host "`nScenario 7 - Unix permissions"
-    Assert-Condition -Scenario 'permissions' -Because 'copied docs are normalized to mode 0644' `
-        -Condition ($actualMode -eq $expectedMode)
+    $files = @((Join-Path $Consumer 'AGENTS.md')) +
+        @(Get-ChildItem -LiteralPath (Join-Path $Consumer '.trellis') -File -Recurse |
+            ForEach-Object { $_.FullName })
+    return @($files | Sort-Object | ForEach-Object {
+        "$([System.IO.Path]::GetRelativePath($Consumer, $_))=$((Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash)"
+    })
 }
 
 try {
-    Assert-PermissionTaskContract
-    Write-Host "Probe workspace: $work"
     New-Item -ItemType Directory -Path $feed -Force | Out-Null
+    $projects = @(Get-ChildItem -Path $root -Directory -Filter 'Trellis.*' |
+        ForEach-Object { Get-ChildItem -Path (Join-Path $_.FullName 'src') -Filter '*.csproj' -File -ErrorAction SilentlyContinue } |
+        Where-Object { ([xml](Get-Content -LiteralPath $_.FullName -Raw)).SelectSingleNode('//IsPackable')?.InnerText -ne 'false' } |
+        Where-Object { $PackageIds.Count -eq 0 -or $PackageIds -contains $_.BaseName })
+    if ($projects.Count -eq 0) { throw "No packable projects selected: $($PackageIds -join ', ')" }
 
-    Write-Host "`nPacking Trellis.Core into the probe feed..."
-
-    # NuGet extracts packages into the global packages folder keyed by id+version, so re-packing
-    # the SAME version leaves restore using the previously extracted copy - the probe would then
-    # silently validate a stale package and stop biting. nbgv owns the version here and overrides
-    # -p:PackageVersion, so pin an isolated cache per run instead. This also keeps throwaway probe
-    # packages out of the developer's real global cache.
-    $env:NUGET_PACKAGES = Join-Path $work 'nuget-cache'
-    New-Item -ItemType Directory -Path $env:NUGET_PACKAGES -Force | Out-Null
-
-    $packOutput = dotnet pack (Join-Path $repoRoot 'Trellis.Core/src/Trellis.Core.csproj') `
-        -c $Configuration -o $feed --nologo 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host ($packOutput | Out-String)
-        throw 'Pack failed.'
+    foreach ($project in $projects) {
+        $output = & dotnet pack $project.FullName -c $Configuration -o $feed --nologo 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Pack failed: $($project.Name)`n$($output | Out-String)" }
     }
 
-    $package = Get-ChildItem -Path $feed -Filter 'Trellis.Core.*.nupkg' | Select-Object -First 1
-    if (-not $package) { throw "No Trellis.Core package produced in $feed" }
-
-    # Trellis.Core.3.0.0-alpha.449.gabc1234.nupkg -> 3.0.0-alpha.449.gabc1234
-    $version = $package.BaseName -replace '^Trellis\.Core\.', ''
-    Write-Host "Packed version: $version"
-
-    # ---------------------------------------------------------------- Scenario 1: nearest .github
-    # Repo root has a .github, but a nearer one sits between the project and the root. The nearer
-    # one must win, otherwise a monorepo's per-service instructions would be bypassed.
-    $s1Root = Join-Path $work 's1-nearest'
-    $s1Project = Join-Path $s1Root 'src/services/orders'
-    New-Item -ItemType Directory -Path (Join-Path $s1Root '.git') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $s1Root '.github') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $s1Root 'src/services/.github') -Force | Out-Null
-    New-ScratchConsumer -Path $s1Project -PackageVersion $version
-    New-NuGetConfig -Path $s1Root
-    Invoke-ConsumerBuild -ProjectDir $s1Project
-
-    $s1Near = Get-DocNames (Join-Path $s1Root 'src/services/.github')
-    $s1Far = Get-DocNames (Join-Path $s1Root '.github')
-
-    Write-Host "`nScenario 1 - nearest .github wins"
-    foreach ($doc in $expectedDocs) {
-        Assert-Condition -Scenario 'nearest' -Because "$doc delivered to the nearest .github" -Condition ($s1Near -contains $doc)
-    }
-    Assert-Condition -Scenario 'nearest' -Because 'the repo-root .github was left untouched' -Condition ($s1Far.Count -eq 0)
-    Assert-UnixPermissionsNormalized `
-        -ProjectDir $s1Project `
-        -DocPath (Join-Path $s1Root 'src/services/.github/trellis-start-here.md')
-    Assert-UnixPermissionEdgeCases -PackageVersion $version
-
-    # ------------------------------------------------------- Scenario 2: never escape the .git root
-    # A .github exists ABOVE the consumer's repository. Writing there would leak files into an
-    # unrelated parent checkout, so the walk must stop at .git and create one at the repo root.
-    $s2Outer = Join-Path $work 's2-outer'
-    $s2Root = Join-Path $s2Outer 'inner-repo'
-    New-Item -ItemType Directory -Path (Join-Path $s2Outer '.github') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $s2Root '.git') -Force | Out-Null
-    $s2Project = Join-Path $s2Root 'src/app'
-    New-ScratchConsumer -Path $s2Project -PackageVersion $version
-    New-NuGetConfig -Path $s2Root
-    Invoke-ConsumerBuild -ProjectDir $s2Project
-
-    $s2Outside = Get-DocNames (Join-Path $s2Outer '.github')
-    $s2Inside = Get-DocNames (Join-Path $s2Root '.github')
-
-    Write-Host "`nScenario 2 - bounded by the .git root"
-    Assert-Condition -Scenario 'bounded' -Because 'no docs escaped above the .git root' -Condition ($s2Outside.Count -eq 0)
-    Assert-Condition -Scenario 'bounded' -Because 'docs landed in a .github created at the repo root' -Condition ($s2Inside -contains 'trellis-start-here.md')
-
-    # ------------------------------------------------------------- Scenario 3: explicit root override
-    $s3Root = Join-Path $work 's3-override'
-    $s3Target = Join-Path $s3Root 'custom-root'
-    New-Item -ItemType Directory -Path (Join-Path $s3Root '.git') -Force | Out-Null
-    New-Item -ItemType Directory -Path $s3Target -Force | Out-Null
-    $s3Project = Join-Path $s3Root 'src/app'
-    New-ScratchConsumer -Path $s3Project -PackageVersion $version -Properties @{ TrellisApiReferenceRoot = $s3Target }
-    New-NuGetConfig -Path $s3Root
-    Invoke-ConsumerBuild -ProjectDir $s3Project
-
-    Write-Host "`nScenario 3 - TrellisApiReferenceRoot override"
-    Assert-Condition -Scenario 'override' -Because 'docs landed under the overridden root' `
-        -Condition ((Get-DocNames (Join-Path $s3Target '.github')) -contains 'trellis-start-here.md')
-    Assert-Condition -Scenario 'override' -Because 'the repo root .github was not used' `
-        -Condition ((Get-DocNames (Join-Path $s3Root '.github')).Count -eq 0)
-
-    # ------------------------------------------------------------------ Scenario 4: opt out entirely
-    $s4Root = Join-Path $work 's4-disabled'
-    New-Item -ItemType Directory -Path (Join-Path $s4Root '.git') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $s4Root '.github') -Force | Out-Null
-    $s4Project = Join-Path $s4Root 'src/app'
-    New-ScratchConsumer -Path $s4Project -PackageVersion $version -Properties @{ TrellisDisableApiReferenceSync = 'true' }
-    New-NuGetConfig -Path $s4Root
-    Invoke-ConsumerBuild -ProjectDir $s4Project
-
-    Write-Host "`nScenario 4 - TrellisDisableApiReferenceSync"
-    Assert-Condition -Scenario 'disabled' -Because 'no docs were copied when sync is disabled' `
-        -Condition ((Get-DocNames (Join-Path $s4Root '.github')).Count -eq 0)
-
-    # ------------------------------------------------------- Scenario 5: satellite package payload
-    # A package from another repository contributes its own reference while relying on
-    # Trellis.Core for the copy logic. This is the federation contract: if it breaks, every
-    # out-of-repo Trellis package has to carry its own copy of the directory walk and drift.
-    $satelliteDoc = 'trellis-api-satelliteprobe.md'
-    $satelliteSrc = Join-Path $work 'satellite-src'
-    New-SatellitePackage -Path $satelliteSrc -CoreVersion $version -DocName $satelliteDoc
-    New-NuGetConfig -Path $satelliteSrc
-
-    $satellitePack = dotnet pack (Join-Path $satelliteSrc 'Satellite.csproj') -c $Configuration -o $feed --nologo 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host ($satellitePack | Out-String)
-        throw 'Satellite pack failed.'
+    foreach ($project in $projects) {
+        $package = Get-ChildItem -Path $feed -Filter "$($project.BaseName).*nupkg" |
+            Where-Object { $_.Name -notlike '*.symbols.nupkg' } | Select-Object -First 1
+        if (-not $package) { throw "Missing packed package: $($project.BaseName)" }
+        & (Join-Path $PSScriptRoot 'validate-reference-manifest.ps1') -Package $package.FullName -Project $project.FullName -RepositoryRoot $root
+        if ($LASTEXITCODE -ne 0) { throw "Manifest validation failed: $($package.Name)" }
     }
 
-    $s5Root = Join-Path $work 's5-satellite'
-    New-Item -ItemType Directory -Path (Join-Path $s5Root '.git') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $s5Root '.github') -Force | Out-Null
-    $s5Project = Join-Path $s5Root 'src/app'
+    $core = Get-ChildItem -Path $feed -Filter 'Trellis.Core.*.nupkg' | Select-Object -First 1
+    if ($core -and ($PackageIds.Count -eq 0 -or $PackageIds -contains 'Trellis.Core')) {
+        $corrupt = Join-Path $work 'corrupt.nupkg'
+        Copy-Item -LiteralPath $core.FullName -Destination $corrupt -Force
+        $zip = [System.IO.Compression.ZipFile]::Open($corrupt, [System.IO.Compression.ZipArchiveMode]::Update)
+        try {
+            $entry = $zip.GetEntry('trellis/trellis-api-cookbook.md')
+            if (-not $entry) { throw 'Core cookbook missing from packed payload' }
+            $entry.Delete()
+            $replacement = $zip.CreateEntry('trellis/trellis-api-cookbook.md')
+            $writer = [System.IO.StreamWriter]::new($replacement.Open())
+            try { $writer.Write('corrupted document') } finally { $writer.Dispose() }
+        }
+        finally { $zip.Dispose() }
+        $validation = & (Join-Path $PSScriptRoot 'validate-reference-manifest.ps1') -Package $corrupt `
+            -Project (Join-Path $root 'Trellis.Core\src\Trellis.Core.csproj') -RepositoryRoot $root -Quiet 2>&1
+        if ($LASTEXITCODE -eq 0 -or ($validation | Out-String) -notmatch
+            'sha256 mismatch for trellis/trellis-api-cookbook\.md') {
+            throw "Corrupt packed bytes were not rejected for the expected hash mismatch: $($validation | Out-String)"
+        }
+        Write-Host 'PASS Core tampered packed document rejected (sha256 mismatch)'
 
-    # Reference ONLY the satellite. Trellis.Core arrives transitively, which is how a real
-    # consumer of a satellite package acquires it - and it is the case that proves the copy
-    # logic flows through buildTransitive rather than needing a direct reference. Referencing
-    # Core directly here would pass even if buildTransitive were broken.
-    New-ScratchConsumer -Path $s5Project -PackageVersion $version -OmitCore `
-        -AdditionalPackages @{ 'Trellis.SatelliteProbe' = '1.0.0-probe' }
-    New-NuGetConfig -Path $s5Root
-    Invoke-ConsumerBuild -ProjectDir $s5Project
+        $consumer = Join-Path $work 'consumer'
+        New-Item -ItemType Directory -Path (Join-Path $consumer '.github') -Force | Out-Null
+        $version = $core.BaseName.Substring('Trellis.Core.'.Length)
+        $projectXml = @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup><PackageReference Include="Trellis.Core" Version="$version" /></ItemGroup>
+</Project>
+"@
+        [System.IO.File]::WriteAllText((Join-Path $consumer 'Directory.Build.props'),
+            '<Project><PropertyGroup><ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally></PropertyGroup></Project>')
+        [System.IO.File]::WriteAllText((Join-Path $consumer 'Directory.Build.targets'), '<Project/>')
+        [System.IO.File]::WriteAllText((Join-Path $consumer 'Consumer.csproj'), $projectXml)
+        [System.IO.File]::WriteAllText((Join-Path $consumer 'NuGet.Config'), @"
+<configuration><packageSources><clear/><add key="probe" value="$feed"/><add key="nuget" value="https://api.nuget.org/v3/index.json"/></packageSources></configuration>
+"@)
+        $env:NUGET_PACKAGES = Join-Path $work 'packages'
+        $build = & dotnet build (Join-Path $consumer 'Consumer.csproj') -c $Configuration --nologo 2>&1
+        $env:NUGET_PACKAGES = $originalPackages
+        if ($LASTEXITCODE -ne 0) { throw "Consumer build failed: $($build | Out-String)" }
+        if (@(Get-ChildItem -LiteralPath (Join-Path $consumer '.github') -Force).Count -ne 0 -or
+            (Test-Path (Join-Path $consumer '.trellis'))) {
+            throw 'Normal consumer build wrote repository instructions or context'
+        }
+        Write-Host 'PASS consumer restore/build leaves .github and .trellis untouched'
 
-    $s5Docs = Get-DocNames (Join-Path $s5Root '.github')
+        $readerProbe = Join-Path $work 'reader-probe'
+        New-Item -ItemType Directory -Path $readerProbe -Force | Out-Null
+        [System.IO.File]::WriteAllText((Join-Path $readerProbe 'Directory.Build.props'), '<Project/>')
+        [System.IO.File]::WriteAllText((Join-Path $readerProbe 'Directory.Build.targets'), '<Project/>')
+        $readerProject = Join-Path $root 'Trellis.Guidance.Reader\src\Trellis.Guidance.Reader.csproj'
+        [System.IO.File]::WriteAllText((Join-Path $readerProbe 'ReaderProbe.csproj'), @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup><ProjectReference Include="$readerProject" /></ItemGroup>
+</Project>
+"@)
+        [System.IO.File]::WriteAllText((Join-Path $readerProbe 'Program.cs'), @'
+using System;
+using System.Linq;
+using Trellis.Guidance.Reader;
+var result = GuidanceReader.Discover([args[0]]);
+var core = result.Packages.Single(p => p.PackageId == "Trellis.Core");
+if (!result.IsSuccessful || core.Status != GuidanceStatus.Valid ||
+    core.Contribution?.Documents.All(d => d.Identity.PackagePath != "trellis/trellis-api-cookbook.md") != false ||
+    core.Contribution.Documents.All(d => d.Identity.PackagePath != "trellis/trellis-start-here.md") ||
+    core.Contribution.EntryPoints.Count != 1 ||
+    core.Contribution.EntryPoints[0] != "trellis/trellis-start-here.md" ||
+    !core.Contribution.PublisherMetadata.ContainsKey("org.trellis"))
+    throw new Exception($"Packed Core manifest rejected: {core.Status}: {core.Diagnostic}");
+Console.WriteLine("PASS shared reader validates restored packed Core manifest");
+'@)
+        $read = & dotnet run --project (Join-Path $readerProbe 'ReaderProbe.csproj') -c $Configuration -- `
+            (Join-Path $consumer 'obj\project.assets.json') 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Shared reader probe failed: $($read | Out-String)" }
+        Write-Host ($read | Out-String)
 
-    Write-Host "`nScenario 5 - satellite package contributes its own reference"
-    Assert-Condition -Scenario 'satellite' -Because 'the satellite reference was delivered' `
-        -Condition ($s5Docs -contains $satelliteDoc)
-    Assert-Condition -Scenario 'satellite' -Because 'the first-party set arrived via a transitive Trellis.Core' `
-        -Condition ($s5Docs -contains 'trellis-api-efcore-outbox.md')
+        $packedTool = Get-ChildItem -Path $feed -Filter 'Trellis.AgentContext.*.nupkg' | Select-Object -First 1
+        if ($packedTool -and ($PackageIds.Count -eq 0 -or $PackageIds -contains 'Trellis.AgentContext')) {
+            $gitOutput = & git -C $consumer init --quiet 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "Scratch Git init failed: $($gitOutput | Out-String)" }
+            $github = Join-Path $consumer '.github\customer.md'
+            [System.IO.File]::WriteAllText($github, "# Customer-owned GitHub instructions`r`n",
+                [System.Text.UTF8Encoding]::new($true))
+            $githubBytes = [System.IO.File]::ReadAllBytes($github)
+            $agents = Join-Path $consumer 'AGENTS.md'
+            [System.IO.File]::WriteAllText($agents, "# Customer instructions`r`n",
+                [System.Text.UTF8Encoding]::new($true))
+            $agentBytes = [System.IO.File]::ReadAllBytes($agents)
 
-    # ------------------------------------------------------------- Scenario 6: packed layout
-    # A trailing backslash in PackagePath="trellis\" is a directory marker on Windows, so the doc
-    # lands at trellis/<name>.md. On Linux the backslash is not a separator: it normalizes to
-    # "trellis/" and NuGet appends its own, producing the malformed "trellis//<name>.md". That
-    # still satisfies a trellis/*.md glob and still delivers, which is why every scenario above
-    # stays green either way and the defect reached published packages unnoticed.
-    #
-    # Two assertions, because neither alone is sufficient. The packed-entry check is the real
-    # behaviour but can only go red on Linux, so on a developer's Windows machine it is blind.
-    # The declaration check is platform-independent and is what actually holds the line locally.
-    Write-Host "`nScenario 6 - packed layout is clean on every platform"
+            $env:DOTNET_CLI_HOME = Join-Path $work 'cli-home'
+            $env:NUGET_PACKAGES = Join-Path $work 'packages'
+            $toolManifestPath = Join-Path $consumer '.config\dotnet-tools.json'
+            Invoke-ScratchCommand -Directory $consumer -Stage 'Create pinned tool manifest' `
+                -CommandArguments @('new', 'tool-manifest', '--output', (Join-Path $consumer '.config'))
+            $toolVersion = $packedTool.BaseName.Substring('Trellis.AgentContext.'.Length)
+            Invoke-ScratchCommand -Directory $consumer -Stage 'Install packed local CLI' `
+                -CommandArguments @('tool', 'install', 'Trellis.AgentContext', '--version', $toolVersion,
+                    '--add-source', $feed, '--tool-manifest', $toolManifestPath)
+            $toolManifest = Get-Content -LiteralPath $toolManifestPath -Raw |
+                ConvertFrom-Json
+            if ($toolManifest.isRoot -ne $true -or
+                $toolManifest.tools.'trellis.agentcontext'.version -ne $toolVersion -or
+                $toolManifest.tools.'trellis.agentcontext'.commands -notcontains 'trellis') {
+                throw "Local tool manifest does not pin trellis $toolVersion with isRoot=true"
+            }
+            Invoke-ScratchCommand -Directory $consumer -Stage 'Restore pinned local CLI' `
+                -CommandArguments @('tool', 'restore', '--tool-manifest', $toolManifestPath, '--add-source', $feed)
 
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
-    try {
-        $packedDocs = @($archive.Entries | ForEach-Object { $_.FullName } | Where-Object { $_ -like '*trellis-api-*.md' })
-    }
-    finally {
-        $archive.Dispose()
-    }
-
-    $malformed = @($packedDocs | Where-Object { $_ -notmatch '^trellis/[^/]+\.md$' })
-    Assert-Condition -Scenario 'layout' -Because 'every packed doc sits at exactly trellis/<name>.md' `
-        -Condition ($packedDocs.Count -gt 0 -and $malformed.Count -eq 0)
-    if ($malformed.Count -gt 0) {
-        Write-Host "        malformed entries: $($malformed -join ', ')" -ForegroundColor Red
-    }
-
-    # Parse the XML rather than scanning text. A line-based regex cannot see the single-quoted
-    # attribute form (PackagePath='trellis\') or the <PackagePath>trellis\</PackagePath> metadata
-    # element, and it would flag the comments in these files that quote the malformed value on
-    # purpose. XDocument handles all three correctly and gives line numbers via IXmlLineInfo.
-    #
-    # Property indirection - PackagePath="$(SomeVar)" where SomeVar holds a backslash - is not
-    # statically visible here; the packed-entry assertion above is what covers that case.
-    $declarations = @(
-        Get-ChildItem -Path $repoRoot -Recurse -File -Include '*.csproj', '*.props', '*.targets' |
-            Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
-            ForEach-Object {
-                $file = $_
-                $document = [System.Xml.Linq.XDocument]::Load($file.FullName, [System.Xml.Linq.LoadOptions]::SetLineInfo)
-                $relative = $file.FullName.Substring($repoRoot.Path.Length + 1)
-
-                $nodes = @()
-                $nodes += @($document.Descendants() | Where-Object { $_.Name.LocalName -eq 'PackagePath' })
-                $nodes += @($document.Descendants().Attributes() | Where-Object { $_.Name.LocalName -eq 'PackagePath' })
-
-                foreach ($node in $nodes) {
-                    if ($node.Value -like '*\*') {
-                        "${relative}:$(([System.Xml.IXmlLineInfo]$node).LineNumber) -> PackagePath=$($node.Value)"
-                    }
+            Invoke-ScratchCommand -Directory $consumer -Stage 'Packed CLI init' `
+                -CommandArguments @('tool', 'run', 'trellis', 'agent', 'init', 'Consumer.csproj')
+            $context = Join-Path $consumer '.trellis'
+            $required = @('README.md', 'agent-context.json',
+                'api-reference\trellis-start-here.md', 'api-reference\trellis-api-cookbook.md',
+                'api-reference\trellis-api-core.md')
+            foreach ($relative in $required) {
+                if (-not (Test-Path -LiteralPath (Join-Path $context $relative) -PathType Leaf)) {
+                    throw "Packed CLI init omitted .trellis\$relative"
                 }
             }
-    )
-    Assert-Condition -Scenario 'layout' -Because 'no PackagePath contains a backslash' `
-        -Condition ($declarations.Count -eq 0)
-    if ($declarations.Count -gt 0) {
-        Write-Host "        backslash PackagePath at: $($declarations -join ', ')" -ForegroundColor Red
+            if ((Get-Content -LiteralPath (Join-Path $context 'README.md') -Raw) -notmatch
+                'api-reference/trellis-start-here\.md' -or
+                (Get-Content -LiteralPath $agents -Raw) -notmatch '<!-- trellis-agent-context:start -->') {
+                throw 'Packed CLI init did not route the index and AGENTS.md to the Core router'
+            }
+            $state = Get-Content -LiteralPath (Join-Path $context 'agent-context.json') -Raw | ConvertFrom-Json
+            if ($state.EntryPoints -notcontains 'api-reference/trellis-start-here.md' -or
+                @($state.References).Count -lt 3) {
+                throw 'Packed CLI manifest omitted its router entry point or reference provenance'
+            }
+            Assert-GitHubUntouched -Consumer $consumer -Original $githubBytes
+            Write-Host "PASS packed trellis $toolVersion init installs router, docs, index and owned instructions"
+
+            $snapshot = @(Get-ManagedSnapshot -Consumer $consumer)
+            Invoke-ScratchCommand -Directory $consumer -Stage 'Packed CLI check' `
+                -CommandArguments @('tool', 'run', 'trellis', 'agent', 'check')
+            if (@(Compare-Object $snapshot @(Get-ManagedSnapshot -Consumer $consumer)).Count -ne 0) {
+                throw 'Packed CLI check changed managed files or instructions'
+            }
+            Assert-GitHubUntouched -Consumer $consumer -Original $githubBytes
+            Write-Host 'PASS packed CLI check is read-only'
+
+            Invoke-ScratchCommand -Directory $consumer -Stage 'Packed CLI sync' `
+                -CommandArguments @('tool', 'run', 'trellis', 'agent', 'sync')
+            if (@(Compare-Object $snapshot @(Get-ManagedSnapshot -Consumer $consumer)).Count -ne 0) {
+                throw 'Packed CLI sync changed an unchanged context'
+            }
+            Assert-GitHubUntouched -Consumer $consumer -Original $githubBytes
+            Write-Host 'PASS packed CLI sync preserves an unchanged context'
+
+            Invoke-ScratchCommand -Directory $consumer -Stage 'Packed CLI remove' `
+                -CommandArguments @('tool', 'run', 'trellis', 'agent', 'remove')
+            if (-not [System.Linq.Enumerable]::SequenceEqual(
+                [byte[]]$agentBytes, [byte[]][System.IO.File]::ReadAllBytes($agents)) -or
+                ((Test-Path $context) -and @(Get-ChildItem -LiteralPath $context -File -Recurse).Count -gt 0)) {
+                throw 'Packed CLI remove did not restore instructions and remove owned context files'
+            }
+            Assert-GitHubUntouched -Consumer $consumer -Original $githubBytes
+            Write-Host 'PASS packed CLI remove restores original instructions; .github remained untouched'
+            $env:NUGET_PACKAGES = $originalPackages
+            $env:DOTNET_CLI_HOME = $originalCliHome
+        }
     }
+
+    Write-Host "PASS: $($projects.Count) packed reference manifests and payloads"
 }
 finally {
-    $env:NUGET_PACKAGES = $script:originalNuGetPackages
-
-    if (Test-Path $work) {
-        Remove-Item -Path $work -Recurse -Force -ErrorAction SilentlyContinue
-    }
+    $env:NUGET_PACKAGES = $originalPackages
+    $env:DOTNET_CLI_HOME = $originalCliHome
+    if (Test-Path $work) { Remove-Item -LiteralPath $work -Recurse -Force }
 }
-
-Write-Host ''
-if ($script:failures.Count -gt 0) {
-    Write-Host "API reference payload probe FAILED ($($script:failures.Count) assertion(s)):" -ForegroundColor Red
-    $script:failures | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
-    exit 1
-}
-
-Write-Host 'API reference payload probe passed: docs reach the correct .github in every scenario.' -ForegroundColor Green
-exit 0
