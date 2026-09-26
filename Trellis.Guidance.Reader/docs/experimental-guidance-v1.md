@@ -67,6 +67,8 @@ validated; strict operations must reject the **whole** discovery result. This re
 does not authorize executing document instructions or materialize any output.
 
 Conformance examples and negative fixtures are in `..\tests\Fixtures\`; the test
-project exercises them against synthetic already-restored NuGet graphs. Future schema
+project exercises them against synthetic already-restored NuGet graphs. Fixture
+Markdown is stored without Git line-ending conversion so its declared byte hashes
+remain valid on Windows and Linux. Future schema
 versions require an explicit compatibility decision rather than silently accepting
 version-1-incompatible selectors.
