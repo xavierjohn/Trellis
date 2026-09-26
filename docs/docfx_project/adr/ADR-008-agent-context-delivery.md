@@ -83,15 +83,17 @@ Resolutions:
    the same PR as the `Trellis.Core` package version bump for the scope it governs, is reviewable in the
    diff, and `check` fails when the tool version resolved for a scope disagrees with that scope's
    resolved `Trellis.Core` version. Independent scopes (see "Scope and monorepos") carry independent,
-   nested tool manifests rather than one repository-wide manifest forcing one tool version on every
-   scope. See "Explicit lifecycle command" below.
+   nested tool manifests with `"isRoot": true` and an explicit pinned `trellis` command rather than
+   one repository-wide manifest forcing one tool version on every scope. Restore and invoke the tool
+   from a directory governed by the selected scope's manifest; passing a project path from the
+   repository root does not select a nested manifest. See "Explicit lifecycle command" below.
 2. **Insertion point** — the managed block is inserted after optional frontmatter and the file's first
    top-level heading, as originally drafted. Unchanged.
 3. **CI enforcement** — first-party templates enable `trellis agent check` in CI by default, rather than
    documenting it as opt-in.
 4. **Legacy `.github/` cleanup** — out of scope. `init`, `sync`, and `remove` never read, write, or
-   delete anything under `.github/`, and there is no `migrate` command. Consumers delete legacy files
-   manually once `.trellis/` looks correct. See "Migration from `.github/`" below.
+   delete anything under `.github/`, and there is no `migrate` command. Consumers handle their own
+   legacy files and instructions.
 5. **Tool bootstrap** — a low-`Importance` MSBuild `<Message/>` (never a warning) on restore/build,
    shown when no `.trellis/` is detected. It distinguishes a first install (no tool manifest yet: create
    one and install the pinned tool) from a subsequent clone (manifest already committed: just restore
@@ -343,9 +345,11 @@ runner, to run the same tool version against the same package graph.
 A single repository-wide manifest cannot pin one tool version that is simultaneously correct for two
 independent scopes on different `Trellis.Core` versions (a real, required configuration — see "Scope and
 monorepos" and acceptance criterion 16). The tool relies on .NET's native nested tool-manifest
-resolution instead: `dotnet tool run` finds the nearest `.config/dotnet-tools.json` walking up from the
-current directory, so each independent scope (`services/orders/`, `services/billing/`) carries its own
-manifest pinning the tool version matching *that scope's* resolved `Trellis.Core` version. A
+resolution instead: `dotnet tool run` searches manifests upward from the current directory until it
+finds the requested command or an `"isRoot": true` boundary. A nearer manifest without `trellis` and
+with `"isRoot": false` does **not** prevent a parent `trellis` tool from running. Each independent
+scope (`services/orders/`, `services/billing/`) therefore carries a manifest at its scope root
+declaring the pinned `trellis` command and setting `"isRoot": true`. A
 single-version repository still needs only the one manifest at its root. `check` compares the tool
 version resolved for a given invocation against the `Trellis.Core` version resolved for that
 invocation's own scope, never against a different scope's version, and never against a fixed
@@ -353,6 +357,37 @@ repository-wide expectation. When a scope's resolved graph has no `Trellis.Core`
 analyzer-only or satellite-only graph, per "Compatible package floor" — there is no Core version to
 compare against and this check does not apply; only that scope's own contributor schema/version
 validation applies.
+
+The working directory controls the upward manifest search; an `init` project/solution argument,
+or graph entry points recorded by `sync`, does **not** change that search. Run
+`dotnet new tool-manifest` (if needed), `dotnet tool install`, `dotnet tool restore`, and every
+`dotnet tool run` for a scope **from that scope's directory** (or a descendant governed by its
+manifest). An existing scoped manifest must be updated to declare the pinned `trellis` command and
+set `"isRoot": true` before running the tool; do not assume its mere presence selects `trellis`.
+Changing `"isRoot"` can affect other local tools that previously fell back to ancestor manifests,
+so review those entries and add explicit scoped pins where required. For example, given
+`services/orders/.config/dotnet-tools.json` with `"isRoot": true` and a pinned `trellis` command:
+
+```text
+cd services/orders
+dotnet tool restore
+dotnet restore <explicit-entry-point>
+dotnet tool run trellis agent check --scope .
+```
+
+For first installation, create the manifest and install the explicitly pinned tool there, then run
+`dotnet restore <explicit-entry-point>` before
+`dotnet tool run trellis agent init --scope . <explicit-entry-point>` from that directory. The
+working directory selects the tool version; the explicit `--scope .` selects the context root for
+that invocation. Run the equivalent sequence separately from `services/billing` for its own
+version. Before any `init`, `sync`, or `remove` mutation, the CLI verifies that the selected
+scope's manifest is the current tool's lookup boundary, has `"isRoot": true`, explicitly declares
+the `trellis` command, and pins the running tool version; `check` fails read-only on a mismatch.
+A root/ancestor `trellis` tool accidentally invoked for a nested scope must fail before writing,
+naming the expected directory and manifest.
+`remove` checks the selected scope using the repository manifest, without depending on a usable
+package graph. Guarding the running tool does not replace the scoped-manifest requirement: an
+older ancestor tool might not implement this guard.
 
 The working command shape:
 
@@ -363,22 +398,36 @@ trellis agent check
 trellis agent remove
 ```
 
-There is no `migrate` command and no automated legacy-`.github/` cleanup path — see "Migration from
-`.github/`" below. The verb names above are logical; the actual invocation follows standard .NET local
-tool conventions, which have two distinct flows the documentation must not conflate:
+There is no `migrate` command or automated legacy-`.github/` cleanup path. The verb names above are
+logical; the actual invocation follows standard .NET local tool conventions, which have two distinct
+flows the documentation must not conflate:
 
 - **First install in a repository with no tool manifest yet:**
   `dotnet new tool-manifest` (only if `.config/dotnet-tools.json` does not already exist),
-  `dotnet tool install <tool-package> --version <matching-tool-version>`, then
-  `dotnet tool run trellis agent init <explicit-entry-point>`. `dotnet tool restore` has nothing to
-  restore until a manifest exists and names the tool, so it is not part of this flow.
+  `dotnet tool install <tool-package> --version <matching-tool-version>`,
+  `dotnet restore <explicit-entry-point>`, then
+  `dotnet tool run trellis agent init --scope . <explicit-entry-point>` for a nested scope, or omit
+  `--scope` for the repository-root context. `dotnet tool restore` has nothing to
+  restore until a manifest exists and names the tool, so it is not part of this flow. Before invoking
+  the command, confirm the scoped manifest has `"isRoot": true` and declares `trellis`, including
+  when the manifest predated installation.
 - **Subsequent clone, with a committed tool manifest:** `dotnet tool restore` (installs the pinned
-  version locally), then `dotnet tool run trellis agent sync` or `check`.
+  version locally), `dotnet restore <recorded-solution-or-project>` (creates current project assets),
+  then `dotnet tool run trellis agent sync --scope .` or
+  `dotnet tool run trellis agent check --scope .` for a nested scope. `sync` and `check` read the
+  graph entry points and context identity recorded by `init` at that root; `remove --scope .`
+  reads the same repository manifest without needing graph assets.
+
+Tool restore and project restore serve different purposes: `dotnet tool restore` installs the
+pinned CLI but does not produce `project.assets.json`; `dotnet restore` of the selected graph
+produces those assets. Run project restore as a visible, separate step before graph-derived
+`init`, `sync`, or `check`, including in CI. `remove` does not need either restore when the pinned
+tool is already installed.
 
 Replace the version placeholder with the scope's resolved Core version when Core is present; for a
 Core-absent graph, explicitly select a tool version supporting its contract schema. Do not omit
 `--version` or use a floating version. The setup instructions, bootstrap documentation, and templates
-must all show this same pinned-install flow.
+must all show this same pinned-install flow from the scope directory.
 
 A local tool is not placed on `PATH` as a bare `trellis` executable — invocation is
 `dotnet tool run trellis agent <verb>` (or the project's chosen command name). There is no supported
@@ -387,8 +436,8 @@ as a non-default option, because the version-drift rationale (nothing forces two
 and a CI runner, to run the same tool version) applies whether or not global use is the default choice.
 `init` also requires an explicit project or solution entry point argument in every flow above; a
 bootstrap hint or template example that omits it does not run. The final package name and exact flag
-syntax are implementation details to settle during implementation, but must stay consistent with this
-invocation shape. The required semantics are:
+syntax other than the `--scope <path>` root selector are implementation details to settle during
+implementation, but must stay consistent with this invocation shape. The required semantics are:
 
 - **`init`** — require explicit project or solution entry points, resolve contributed Trellis
   references from their restored assets graphs, write `.trellis/`, and create or merge the managed
@@ -399,6 +448,15 @@ invocation shape. The required semantics are:
   graph, when the managed pointer is absent, or when the manifest is invalid.
 - **`remove`** — use only the repository manifest to remove its owned instruction entries and files;
   it does not require a usable project, assets graph, package cache, or compatible installed package.
+
+`--scope <path>` resolves relative to the invocation directory and must designate the context
+root within the Git boundary. `init` requires it for an independent subtree; absent an explicit
+scope, the context root remains the selected solution's Git repository root, **not** the current
+directory or the tool-manifest directory. For `sync`, `check`, and `remove`, `--scope` selects the
+existing `.trellis/agent-context.json` at that root; they validate its recorded scope identity
+rather than deriving a new one from the working directory. Nested-scope invocations must specify
+`--scope` rather than silently using a repository-root manifest. The tool-manifest boundary and
+selected context root must agree before any mutation or read-only `check` success.
 
 This must be a repository- or solution-scoped operation, not a `BeforeTargets=Build` action. A
 `buildTransitive` target runs once per project and may run concurrently; it has no safe installation
@@ -655,6 +713,7 @@ The expected package-add workflow is therefore:
 
 ```text
 add/update the Trellis PackageReference
+restore the selected solution or projects to refresh project.assets.json
 run the explicit agent-context init or sync command
 review the AGENTS.md and .trellis/ diff
 commit both with the package change
@@ -680,6 +739,9 @@ explicit governing set. Managed outputs never escape the Git root; only the tool
 area described in section 6 may live in worktree metadata outside it.
 
 The default context root is the selected solution's Git repository root.
+Running from a subtree changes .NET's tool-manifest lookup, not this default. An independent
+subtree must be selected explicitly with `--scope <path>` on `init`; later operations select its
+recorded context using the same option.
 
 A repository may contain independent subtrees using different Trellis versions. One flat reference
 set cannot truthfully describe both. When the resolved inputs contain incompatible versions, the tool
@@ -864,26 +926,12 @@ The no-build-mutation guarantee applies only after this compatibility check pass
 graphs are unsupported and covered by end-to-end tests proving that the command refuses them before
 creating `.trellis/` or changing `AGENTS.md`.
 
-## Migration from `.github/`
+## Legacy `.github/` behavior
 
-There is no automated migration command. `init`, `sync`, and `remove` never read, write, or delete
-anything under `.github/` — legacy files there are simply outside every command's context root and
-instruction boundary, in the same way any unrelated repository directory is.
-
-Legacy files have no ownership manifest, so automatic deletion would be unsafe regardless: a consumer
-may have edited or repurposed one, and the tool has no way to tell a customer edit from an untouched
-copy. Rather than build a confirmation/opt-in flow to manage that risk, cleanup is manual: run `init`,
-review that `.trellis/` looks correct, then delete the old `.github/trellis-*.md` files yourself. This
-is proportionate to the current adoption footprint; an interactive or non-interactive automated
-migration path can be added later if Trellis gains enough consumers that manual cleanup becomes a real
-support burden.
-
-The rollout does not dual-write. Maintaining copies in both `.github/` and `.trellis/` creates two
-apparent sources of truth and recreates the stale-document failure this design is meant to remove, so
-documentation should tell consumers to delete the legacy files promptly rather than leave both in place
-indefinitely. The release that introduces the explicit agent-context command removes the old automatic
-copy target and its configuration surface regardless of whether any given consumer has deleted their
-legacy files yet.
+`init`, `sync`, and `remove` never read, write, or delete anything under `.github/`. Existing files
+there have no ownership manifest and may contain customer edits. The tool does not dual-write to the
+old destination. The release that introduces the explicit command removes the old automatic copy
+target and its configuration surface; cleanup of consumer repositories is outside this plan.
 
 Existing configuration maps as follows:
 
@@ -1029,9 +1077,15 @@ External standardization and adoption milestones are deliberately not part of th
   The durable recovery journal and generation-record read-consistency mechanism for `check`/dry-run are
   explicitly deferred (see "Decisions resolved in review" item 6) — do not design them in Phase 1.
 - Decide the local tool-manifest layout, including nested per-scope manifests for multi-version
-  monorepos (relying on .NET's native nearest-manifest resolution), and how the tool's own version
+  monorepos (relying on .NET's upward command lookup with an explicit `"isRoot": true` boundary),
+  and how the tool's own version
   resolved for a given invocation is validated against that invocation's scope-resolved `Trellis.Core`
-  version during `check` — with no check applying when a scope's graph has no Core at all.
+  version during `check` — with no Core-version check applying when a scope's graph has no Core at all.
+  Require each scope's manifest to declare pinned `trellis` with `"isRoot": true`; account for
+  other tools that previously fell through to a parent manifest. Require invocation from the
+  selected scope's manifest directory (or a governed descendant) and diagnose a missing command
+  or working-directory/scope mismatch before mutation. Define `--scope <path>` for independent
+  context roots separately from .NET's tool-manifest selection.
 - Add golden test fixtures for empty, existing, large, malformed, and nested `AGENTS.md` files,
   including policies below a project directory and shared blocks with independent scope entries.
 - Extend pack gates to verify package-relative paths and hashes without evaluating MSBuild items.
@@ -1039,6 +1093,9 @@ External standardization and adoption milestones are deliberately not part of th
 ### Phase 2 — Build the explicit command
 
 - Require explicit project or solution entry points on `init`.
+- Require `--scope <path>` when initializing or selecting an independent subtree. Preserve the
+  repository-root default for root-scope `init`, and use the recorded scope and entry points from
+  its manifest for scoped `sync`, `check`, and `remove`.
 - Parse existing NuGet assets graphs and fixed-path package manifests without invoking package build
   targets.
 - Implement ADR-009's shared read-only discovery/validation component and use it from the Trellis CLI,
@@ -1067,7 +1124,9 @@ External standardization and adoption milestones are deliberately not part of th
 - Package the command as a local .NET tool consumed through a checked-in tool manifest, supporting
   nested per-scope manifests for multi-version monorepos; make `check` fail when the tool version
   resolved for an invocation and the `Trellis.Core` version resolved for that invocation's scope
-  disagree, and skip the check entirely when that scope's graph has no Core.
+  disagree, and skip the Core-version check when that scope's graph has no Core. Validate the
+  invocation-directory scope and explicitly pinned command in its `"isRoot": true` manifest for
+  mutating commands, including graph-independent `remove`.
 - Emit the low-`Importance` bootstrap `<Message/>` from its own new target when `.trellis/` is absent —
   independent of `_CopyTrellisApiReference`, so it keeps working after Phase 3 removes that target.
 - Preserve all customer bytes outside the managed block.
@@ -1092,8 +1151,14 @@ External standardization and adoption milestones are deliberately not part of th
   version.
 - Update package README and NuGet README setup instructions with both flows: first install
   (`dotnet new tool-manifest` + `dotnet tool install <tool-package> --version <matching-tool-version>` +
-  `dotnet tool run trellis agent init <entry-point>`) and subsequent clone
-  (`dotnet tool restore` + `dotnet tool run trellis agent sync`).
+  `dotnet restore <entry-point>` + `dotnet tool run trellis agent init --scope . <entry-point>` for
+  nested scopes) and subsequent clone (`dotnet tool restore` +
+  `dotnet restore <recorded-solution-or-project>` +
+  `dotnet tool run trellis agent sync --scope .` for nested scopes).
+  All commands run from the selected scope's directory; templates and CI jobs working with nested
+  scopes set that directory explicitly before restore and each tool invocation, pass `--scope .`
+  to `init`, `sync`, `check`, and `remove`, and confirm the scoped manifest declares `trellis` and
+  sets `"isRoot": true`.
 - Document the `.trellis/README.md` entry point for all graphs and conflict resolution. Document the
   actual interrupted-run recovery path — re-run `init`/`sync` with current package assets, which may
   report conflicts requiring `--force`/adoption, or preserve customer changes and selectively restore
@@ -1109,9 +1174,7 @@ External standardization and adoption milestones are deliberately not part of th
 
 ### Phase 5 — Retire legacy output
 
-- Document the manual cleanup step — delete `.github/trellis-*.md` once `.trellis/` is verified — in
-  package README/NUGET_README and framework contributor docs. No automated detection or deletion
-  command ships (see "Decisions resolved in review" item 4 and "Migration from `.github/`").
+- Do not add automated detection or deletion of consumer-owned `.github/` files.
 - Remove the old destination's tests and documentation in the same release; do not add a dual-write
   compatibility period.
 
@@ -1147,11 +1210,24 @@ The design is complete only when end-to-end tests prove:
     owned entries. Only validated worktree-local transaction metadata may live outside the Git root.
 15. A committed fresh clone exposes `.trellis/README.md` before restore, with valid local discovery
     links for Core-present, analyzer-only, and satellite-only graphs. Only Core-present graphs require
-    the packaged `trellis-start-here.md` and cookbook route.
+    the packaged `trellis-start-here.md` and cookbook route. A fresh-clone setup separately restores
+    the local tool and selected project graph before invoking `sync` or read-only `check`; tool restore
+    alone does not satisfy the assets prerequisite.
 16. A multi-version monorepo fails the single-scope operation and succeeds with explicit independent
     scopes without creating a child `AGENTS.md` that shadows an existing ancestor policy. Each scope
-    resolves and validates its own nested tool manifest against its own `Trellis.Core` version; `check`
-    never compares one scope's tool version against a different scope's `Trellis.Core` version.
+    resolves and validates its own nested tool manifest, with `"isRoot": true` and a pinned `trellis`
+    entry, against its own `Trellis.Core` version; `check` never compares one scope's tool version
+    against a different scope's `Trellis.Core` version. Restore and invoke from each scope's
+    directory, passing `--scope .` to install context locally. Without `--scope`, nested `init`
+    does not infer a local context root from the working directory; it uses the repository-root
+    default and fails the scope/tool-manifest boundary check before mutation. `sync`, `check`,
+    and `remove` use the context and graph entry points recorded by the scoped `init`. An invocation
+    at the repository root naming a nested project/solution must not silently use the root tool:
+    `init`, `sync`, and `remove` fail before mutation and `check` fails read-only with the required
+    working directory identified. The
+    graph-independent `remove` guard works without assets or a package cache. An existing nested
+    manifest with `"isRoot": false` and no `trellis` entry must not silently select a parent tool;
+    after adding a pinned `trellis` entry and setting `"isRoot": true`, that scope uses its own tool.
 17. Root-only, nested-existing, ancestor-concatenating, and nearest-only instruction layouts all
     receive the correct path-qualified pointer, including `src/App/Features/AGENTS.md` below
     `src/App/App.csproj`. Adding or removing such a policy is reflected by `sync`; an unrelated
@@ -1239,8 +1315,7 @@ Only upstream adoption, integration, and governance remain external follow-up, n
 - Loading all reference files into every agent session.
 - Supporting legacy agent-specific instruction filenames.
 - Enforcing application architecture or coding style through package-supplied instructions.
-- An automated `migrate` command for legacy `.github/` files; cleanup is manual (see "Migration from
-  `.github/`").
+- Migration of existing consumer repositories; legacy `.github/` files remain consumer-owned.
 - The durable recovery journal and persistent generation-record read-consistency protocol for
   concurrent multi-scope transactions; deferred until concurrent usage is observed (see "Decisions
   resolved in review" item 6 and "Shared writers and interrupted updates").
