@@ -2,6 +2,9 @@
 
 > **Status:** Accepted. The five open questions and the transaction-scope proportionality question
 > raised in review are resolved in place below; see "Decisions resolved in review" for the summary.
+> The shared experimental contract is defined by
+> [ADR-009](ADR-009-nuget-package-guidance-contract.md) and implemented with Trellis.
+> External standardization and adoption do not block release.
 >
 > **Context:** Trellis NuGet packages ship an LLM-optimized API reference set and currently copy it
 > into a consuming repository's nearest `.github/` directory during build. After adopting root
@@ -38,6 +41,37 @@ Arbitrary Markdown under `.github/` is not a cross-agent instruction mechanism. 
 There is no package-manager-to-agent discovery standard. An agent reliably learns about dependency
 documentation only when the repository's effective instructions point to it, or when a human tells
 the agent in a prompt.
+
+## Scope and relationship to ADR-009
+
+This ADR is the executable delivery plan for **Trellis and its participating satellites**, using the
+shared experimental contract and reader in
+[ADR-009](ADR-009-nuget-package-guidance-contract.md) from the first release. Trellis is the working
+sample of that contract, not a separate implementation scheduled for later generalization.
+
+| Concern | ADR-008: Trellis publisher/installer policy | ADR-009: shared experimental contract |
+|---|---|---|
+| Package input | Trellis packages emit the shared manifest while retaining existing payload ownership | Experimental vendor-neutral manifest with explicit entry points |
+| Document identity | Optional Trellis flat-view projection with collision checks and duplicate-source attribution | Package/version/path-scoped documents with preserved relative links |
+| Routing | Tool-owned index, Core router/cookbook, and satellite references | Package-declared entry points; no knowledge of Core or cookbook filenames |
+| Version policy | Pinned tool/Core equality, cohort checks, and nested tool manifests | Reader compatibility by contract schema, independent of publisher release numbers |
+| Consumer lifecycle | `.trellis/`, Git-bounded installation, consented `AGENTS.md` edits, sync/check/remove | Read-only discovery usable without Git or repository installation |
+| Completion | Trellis acceptance criteria plus the shared reader's local conformance fixtures | External interoperability and adoption evidence collected after shipping |
+
+Trellis development and release do **not** wait for a NuGet design proposal,
+NuGet/client changes, unrelated package adopters, a second reader, or agent-vendor integration.
+The coordinated Trellis package cut and safety requirements below remain required; the split removes
+external standardization dependencies, not the conditions needed to ship this feature safely.
+
+Implement discovery/validation once as the shared read-only reader; the Trellis CLI calls that reader
+before applying publisher policy or repository mutation. Ordinary internal boundaries are sufficient:
+no new public .NET API, separate assembly, or plug-in framework is required. Implement ADR-009's
+resolved experimental version 1 decisions and publish its specification and fixtures as part of the
+same engineering work.
+
+The resulting reader is a reference implementation of the named experimental contract version, not an
+official NuGet standard or proof of independent interoperability. Future externally agreed changes
+require explicit schema-version and compatibility decisions for already-shipped packages.
 
 ## Decisions resolved in review
 
@@ -76,6 +110,10 @@ Resolutions:
    its own, and there is no automatic multi-step recovery. Revisit once
    concurrent multi-scope usage is an actual, not hypothetical, scenario. See "Shared writers and
    interrupted updates" and the acceptance criteria below for what changed.
+   Mutation requires supported atomic file operations, with no non-atomic overwrite fallback.
+   The writer lock coordinates tool invocations, not editors: callers must avoid concurrent external
+   edits to affected paths. A save after the final snapshot check can still be overwritten; that
+   residual race is explicitly accepted for this phase, not claimed to be prevented.
 
 ## Problem statement
 
@@ -172,6 +210,10 @@ repository manifest, and subject to the same modification and removal safeguards
 It sits outside `api-reference/`, so no package document can replace it. Packages remain responsible
 for reference content; the tool only supplies discovery and does not synthesize API guidance.
 
+All routing starts from explicit entry points returned by the shared reader. Core declares its router,
+and analyzer-only/satellite-only contributions declare their own guidance entry points. Core-specific
+wording is Trellis installer policy, not package-name inference inside the generic reader.
+
 ### 2. Package-side input contract
 
 The command does **not** enumerate the current global `TrellisApiReference` MSBuild item. That item is
@@ -179,20 +221,23 @@ an unconstrained local path: a project or imported package can add an arbitrary 
 no authoritative package identity, version, package-relative path, or content hash. Copying it into a
 committed context could disclose a developer-local file or assign false provenance.
 
-Every compatible package that contributes references instead ships a machine-readable manifest at a
-fixed package path, provisionally:
+Every compatible package that contributes references instead ships a machine-readable manifest at the
+fixed experimental version 1 package path:
 
 ```text
-trellis/reference-manifest.json
+guidance/reference-manifest.json
 ```
 
-The package-side manifest contains only package-relative document paths, output document filenames,
-and SHA-256 hashes. Package ID, resolved version, and package root are derived from the NuGet
-resolved-assets graph, never trusted from values asserted by the manifest itself.
+This location and `schemaVersion: 1` are decided in ADR-009; the path is not NuGet-reserved.
+The manifest uses the shared schema for package-relative document paths,
+explicit entry points, schema version, and SHA-256 hashes. Package ID, resolved version, and package
+root are derived from the NuGet resolved-assets graph, never trusted from the manifest itself.
 
-The package does not choose an arbitrary repository-relative output path. Each output is one
-normalized filename ending in `.md`, with no directory separator, rooted path, `.`/`..` segment, or
-reserved tool filename. The command always constructs the destination as:
+The package does not choose an arbitrary repository-relative output path. The shared reader retains
+package/version/path-scoped document identities and safe nested paths. The Trellis installer may
+project the known flat Trellis reference set to the layout below, deriving validated Markdown
+filenames from document paths and rejecting collisions rather than accepting publisher-chosen
+repository destinations:
 
 ```text
 .trellis/api-reference/<document-filename>
@@ -201,6 +246,19 @@ reserved tool filename. The command always constructs the destination as:
 This keeps package content out of `.trellis/README.md`, `.trellis/agent-context.json`, `AGENTS.md`, and
 every other tool-owned or customer-owned location.
 
+That flat projection is a Trellis view, not the generic document namespace. Unrelated contributions
+remain under tool-selected package/version namespaces with their relative document paths preserved.
+No unrelated `README.md` can collide with Trellis's index or another publisher's `README.md`.
+
+Use one portable path-comparison rule on every host: normalize path separators and Unicode to NFC,
+then compare ordinally ignoring case. Reject distinct spellings that alias under this rule, including
+directory-prefix aliases, before materialization; do not rename them silently. For example, `Foo.md`
+and `foo.md` in one package, or in the same Trellis flat projection, conflict even on Linux and even
+if their content matches. Exact-path identical Trellis contributions remain eligible for the explicit
+deduplication rule in section 6. Apply the same comparison to reserved/tool-owned paths and existing
+destination entries so a differently cased existing file cannot be overwritten or silently adopted.
+Package/version namespaces keep identical filenames in unrelated contributions independent.
+
 The command:
 
 1. starts from explicit project or solution entry points;
@@ -208,7 +266,7 @@ The command:
 3. resolves package roots through NuGet's declared package folders;
 4. reads only fixed-path package manifests;
 5. canonicalizes every document beneath that exact package root;
-6. validates the output-filename grammar;
+6. validates document paths and the installer's destination mapping;
 7. rejects rooted paths, traversal, links/reparse points, and hash mismatches; and
 8. materializes only manifest-listed package documents, using the text contract in section 6.
 
@@ -311,11 +369,16 @@ tool conventions, which have two distinct flows the documentation must not confl
 
 - **First install in a repository with no tool manifest yet:**
   `dotnet new tool-manifest` (only if `.config/dotnet-tools.json` does not already exist),
-  `dotnet tool install <pinned-tool-package>`, then
+  `dotnet tool install <tool-package> --version <matching-tool-version>`, then
   `dotnet tool run trellis agent init <explicit-entry-point>`. `dotnet tool restore` has nothing to
   restore until a manifest exists and names the tool, so it is not part of this flow.
 - **Subsequent clone, with a committed tool manifest:** `dotnet tool restore` (installs the pinned
   version locally), then `dotnet tool run trellis agent sync` or `check`.
+
+Replace the version placeholder with the scope's resolved Core version when Core is present; for a
+Core-absent graph, explicitly select a tool version supporting its contract schema. Do not omit
+`--version` or use a floating version. The setup instructions, bootstrap documentation, and templates
+must all show this same pinned-install flow.
 
 A local tool is not placed on `PATH` as a bare `trellis` executable — invocation is
 `dotnet tool run trellis agent <verb>` (or the project's chosen command name). There is no supported
@@ -455,12 +518,15 @@ like a user edit. No consumer `.gitattributes` edit is required. Instruction-ent
 canonical text representation too, but instruction-file edits preserve existing encoding, BOM,
 newlines, and all bytes outside the managed entries.
 
-When two packages contribute the same path with identical canonical text, the tool deduplicates the
-output and records every contributor in a deterministically sorted `sources` array. This is required, not
+When two Trellis contributions project to the same flat output path with identical canonical text,
+the tool deduplicates the output and records every contributor in a deterministically sorted `sources`
+array. This is required, not
 optional: `Trellis.Core` and `Trellis.Analyzers` intentionally both contribute
 `trellis-api-analyzers.md`. Each source still passes its own exact-byte hash check. When the canonical
 contents differ, synchronization fails and identifies both packages; last-writer-wins would make the
 resulting API reference dependent on restore order.
+The generic reader retains both logical package-scoped documents; this deduplication is an installer
+projection, not loss of identity in the shared discovery result.
 
 #### Overwrite and prune protection
 
@@ -496,8 +562,13 @@ are deferred (see "Decisions resolved in review" item 6 and "Out of scope") unti
 multi-scope usage is an observed need rather than a hypothetical one. What ships now:
 
 - After preflight, each managed file — a reference document, the index, the manifest, or one
-  instruction entry — is replaced with atomic per-file replacement where the filesystem supports it.
-  Files are written independently, not staged as one cross-file transaction.
+  instruction file — is installed with a supported atomic per-file operation. Stage complete contents
+  on the destination filesystem; never truncate and rewrite the destination or emulate replacement
+  by deleting it and copying new contents. Preflight must establish support for every affected
+  destination before changing any managed file; unknown or unsupported filesystem semantics fail
+  explicitly. An operation failure must not trigger a non-atomic fallback. Files are written
+  independently, not staged as one cross-file transaction, so earlier completed replacements may
+  remain if a later atomic operation fails.
 - Preflight reads each affected file **once** and derives both hashes from that same buffer: the
   **canonical hash**, compared against the manifest's recorded `canonicalSha256` to decide ownership and
   staleness (the same comparison "Overwrite and prune protection" already specifies — canonical hashing,
@@ -517,9 +588,16 @@ multi-scope usage is an observed need rather than a hypothetical one. What ships
 - Immediately before writing, the command recomputes the current exact bytes (or confirms continued
   absence, for a new destination) and compares against that same-run snapshot — never against the
   manifest's canonical hash, a different representation entirely. This is a narrow, same-run race check:
-  it catches an edit made in the gap between this run's preflight and its write. It is not a substitute
-  for the canonical-hash ownership check above, which is representation-correct but too coarse-grained
-  (and too early) to catch a last-second edit.
+  it detects content changes visible at the final read, not every edit up to replacement. New files
+  must use atomic no-clobber installation so a destination created after that check is not overwritten.
+  For existing files, an external save after the final check but before replacement or pruning can
+  still be lost. The worktree writer lock is not acquired by editors, and a hash check followed by
+  replacement is not compare-and-swap. Do not claim arbitrary external-writer safety from an advisory
+  lock or per-file atomicity.
+  In this phase, callers must avoid editor saves, formatters, or other external writes to affected
+  paths while `init`, `sync`, or `remove` runs. Document this residual race in CLI help and setup
+  guidance. Tool-to-tool serialization and rejection of changes observed by the final check remain
+  required; a cross-platform guarantee against uncooperative external writers is explicitly deferred.
 - If a mutating command is interrupted partway through writing several files, the repository is left
   with whichever individual per-file replacements had already completed atomically, plus whichever had
   not yet started. Per-file atomicity guarantees no single file is left torn — but it does **not**
@@ -546,7 +624,8 @@ multi-scope usage is an observed need rather than a hypothetical one. What ships
 - `check` and dry-run never write and never take the writer lock. Because there is no generation
   record in this phase, a `check` that races an in-progress `init`/`sync` is not guaranteed to observe
   a consistent before-or-after snapshot — it may see a partially updated repository. The writer lock
-  still prevents two *mutating* commands from running concurrently, so this window is `check`-only.
+  still prevents two *mutating tool commands* from running concurrently; that guarantee does not cover
+  the external-editor race described above.
   Add the generation record if and when that window becomes a real problem, rather than building it
   against a usage pattern that does not exist yet.
 
@@ -617,13 +696,19 @@ in the manifest. For each source root, discover the nearest existing ancestor or
 discovery is not limited to directories containing a project file: a policy under
 `src/App/Features/` can govern source belonging to `src/App/App.csproj`.
 
-Exclude Git metadata, `.trellis/`, `bin/`, `obj/`, and evaluated generated/intermediate/output
+Exclude Git metadata, `.github/`, `.trellis/`, `bin/`, `obj/`, and evaluated generated/intermediate/output
 directories from source discovery; do not follow links/reparse points or cross nested Git repository
 boundaries. Do not blanket-exclude Git-ignored directories that may contain selected source. Phase 1
 must define how evaluated source membership and explicit source-root selection handle these cases
 without running build targets. Linked source outside a project's directory must be covered by an
 explicit recorded source root. Source outside the selected context or Git root fails with a diagnostic
 requiring scope correction; it is not silently treated as covered or used to widen instruction writes.
+
+The installer recognizes `.github` path segments case-insensitively and prunes them before descent:
+it does not inspect `.github/AGENTS.md` or legacy payloads to decide whether to include them. Explicit
+installer entry points/source roots and manifest-recorded instruction or output paths under such a
+directory are rejected before opening those files. This is a Trellis installer exclusion, not a
+restriction on package-relative document paths in ADR-009's generic reader.
 
 Group source subtrees by their effective instruction boundary and install a correctly path-qualified
 entry in every applicable file. For example, `AGENTS.md`, `src/App/App.csproj`,
@@ -737,10 +822,14 @@ The clean cut therefore requires coordinated compatible releases:
 - `Trellis.Analyzers`, which ships independently of Core's build assets; and
 - every known satellite that contributes a reference payload.
 
-Every first-party package ships `trellis/reference-manifest.json`, even when its `documents` list is
+Every first-party package ships `guidance/reference-manifest.json`, even when its `documents` list is
 empty because Core carries its reference. The manifest identifies the package as a member of the
 first-party lockstep cohort. Core's manifest carries the authoritative cohort package-ID list, derived
 and gated from the repository's packable-project set.
+These cohort fields live in an explicitly namespaced Trellis publisher-metadata extension to the
+shared manifest. The generic reader does not enforce tool/Core equality or cohort membership; the
+Trellis CLI applies those policies after shared discovery. ADR-009 readers remain compatible by
+supported contract schema rather than by publisher release numbers.
 
 For every resolved package whose ID is in that cohort, the command requires:
 
@@ -841,6 +930,9 @@ Existing configuration maps as follows:
   interrupted updates").
 - A `check` run can race an in-progress `init`/`sync` and observe a partially updated repository, since
   the persistent generation record that would guarantee a consistent snapshot is also deferred.
+- Mutating commands require supported atomic file operations and no concurrent external edits to
+  affected paths. A customer save after the final snapshot check may still be overwritten; the
+  worktree lock serializes tool commands, not editors.
 
 ### Neutral
 
@@ -913,18 +1005,24 @@ subtree and uses a path-qualified root entry when no child file exists.
 ## Implementation plan
 
 Implementation is split so each layer can be reviewed and mutation-tested independently.
+The minimum experimental contract and reader from ADR-009 are implemented in Phases 1 and 2 below.
+External standardization and adoption milestones are deliberately not part of this release gate.
 
 ### Phase 1 — Define the context contract
 
 - Finalize the managed `AGENTS.md` block and tool-owned `.trellis/README.md` discovery index,
   including Core-present, analyzer-only, and satellite-only routing.
-- Finalize the package-side `trellis/reference-manifest.json` schema.
+- Encode and publish ADR-009's resolved version 1 contract as a specification and JSON Schema for
+  `guidance/reference-manifest.json`, including entry points and the Trellis publisher-metadata
+  extension. Keep the specification/schema with the reader and conformance fixtures with its tests.
 - Finalize the repository-side `agent-context.json` schema, graph identity, mandatory `sources`
   provenance, and ownership rules.
 - Generate and gate Core's authoritative first-party lockstep cohort from the packable-project set.
 - Define repository-root, scoped-root, encoding, newline, marker-conflict, and symlink behavior.
 - Specify exact package-byte hashes versus canonical text hashes, deterministic output encoding, and
   no-op behavior across Git checkout transformations.
+- Define portable case-insensitive path collision validation, atomic-operation support checks with
+  no unsafe fallback, and the documented boundary of external-edit detection.
 - Define source-root discovery, below-project instruction boundaries, generated-directory exclusions,
   linked-source handling, and explicit ownership of each keyed entry.
 - Define full-operation conflict preflight, reviewed force/adoption, and the worktree-wide writer lock.
@@ -943,6 +1041,11 @@ Implementation is split so each layer can be reviewed and mutation-tested indepe
 - Require explicit project or solution entry points on `init`.
 - Parse existing NuGet assets graphs and fixed-path package manifests without invoking package build
   targets.
+- Implement ADR-009's shared read-only discovery/validation component and use it from the Trellis CLI,
+  with Trellis routing and compatibility policy outside that reader. No public .NET reader API is required.
+- Run the same reader against packed Trellis guidance and unrelated-package fixtures, including
+  identical filenames, nested links, and no Git checkout. Publish the specification and fixtures with
+  the experimental implementation; no external publisher or second implementation is required.
 - Implement portable semantic graph normalization and read-only restore-spec freshness evaluation.
 - Implement `init`, `sync`, `check`, `remove`, and dry-run behavior.
 - Generate and own the discovery index separately from package documents; validate its local links.
@@ -956,6 +1059,9 @@ Implementation is split so each layer can be reviewed and mutation-tested indepe
   dedicated recovery journal in this phase (see "Decisions resolved in review" item 6): a bare re-run of
   `init`/`sync` after an interruption may report conflicts requiring `--force`/adoption rather than
   completing automatically, and that is by design, not a defect to work around.
+- Fail preflight on unknown/unsupported atomic-operation support; never fall back to in-place
+  overwrite. Use no-clobber creation for new destinations and document the residual external-save
+  race for replacement/pruning after the final check.
 - Keep `check` and dry-run read-only and lock-free. A `check` racing an in-progress `init`/`sync` may
   observe a partially updated repository — that consistency guarantee is deferred, not a Phase 2 bug.
 - Package the command as a local .NET tool consumed through a checked-in tool manifest, supporting
@@ -985,14 +1091,17 @@ Implementation is split so each layer can be reviewed and mutation-tested indepe
 - Pre-initialize Trellis templates, including a checked-in tool manifest pinned to the matching tool
   version.
 - Update package README and NuGet README setup instructions with both flows: first install
-  (`dotnet new tool-manifest` + `dotnet tool install` + `dotnet tool run trellis agent init
-  <entry-point>`) and subsequent clone (`dotnet tool restore` + `dotnet tool run trellis agent sync`).
+  (`dotnet new tool-manifest` + `dotnet tool install <tool-package> --version <matching-tool-version>` +
+  `dotnet tool run trellis agent init <entry-point>`) and subsequent clone
+  (`dotnet tool restore` + `dotnet tool run trellis agent sync`).
 - Document the `.trellis/README.md` entry point for all graphs and conflict resolution. Document the
   actual interrupted-run recovery path — re-run `init`/`sync` with current package assets, which may
   report conflicts requiring `--force`/adoption, or preserve customer changes and selectively restore
   only the affected paths from an explicitly chosen revision before re-running — rather than a single
   blanket restore command or an implied guaranteed automatic clean retry, since Phase 1/2 defers the
   recovery journal that would provide one.
+- Document that affected paths must not be edited externally during mutation and that unsupported
+  atomic filesystem operations fail explicitly rather than falling back to unsafe writes.
 - Update `trellis-start-here.md` wording from `.github/` to `.trellis/api-reference/`.
 - Update framework contributor documentation without shipping the framework's `AGENTS.md`.
 - Add `check` enforcement to first-party templates' CI by default (see "Decisions resolved in review"
@@ -1027,8 +1136,9 @@ The design is complete only when end-to-end tests prove:
 9. Identical Core/analyzer contributions produce one file with both contributors in the sorted
    `sources` array; changing or removing one contributor updates provenance deterministically.
 10. Package manifests with traversal, rooted paths, missing files, source links/reparse points, hash
-    mismatches, directory separators in output names, non-Markdown output names, or reserved-name
-    collisions fail before any repository write.
+    mismatches, invalid document paths, non-Markdown documents, or tool-owned destination collisions
+    fail before any managed repository write. Safe nested document paths remain valid; the Trellis
+    flat-view mapping cannot flatten unrelated contributions or break their relative links.
 11. Project-authored or imported `TrellisApiReference` items cannot add a document.
 12. Incomplete or duplicate managed markers fail without editing `AGENTS.md`.
 13. UTF-8 BOM, UTF-8 without BOM, CRLF, and LF instruction files retain their original format.
@@ -1048,6 +1158,8 @@ The design is complete only when end-to-end tests prove:
     subtree policy does not prevent root-file creation for uncovered source.
 18. `init`, `sync`, and `remove` never read, write, or delete anything under `.github/`; legacy files
     there are left untouched regardless of whether their content matches a known package payload.
+    A repository-root source fixture containing `.github/AGENTS.md` and legacy documents is pruned
+    before those files are opened; explicit excluded paths are rejected before access.
 19. A mixed old/new package graph fails before changing `AGENTS.md` or `.trellis/` and identifies
     every incompatible package, including new Core plus an old non-payload first-party package; an
     all-compatible graph contains no legacy build copy or warning target.
@@ -1094,15 +1206,35 @@ The design is complete only when end-to-end tests prove:
 30. Source discovery excludes tool/generated output, covers explicitly selected linked source, and
     diagnoses out-of-scope source or repository boundaries without widening writes. Git-ignored
     selected source is not silently omitted, and descendant policies need no colocated project file.
+31. Trellis packages emit ADR-009's experimental manifest and the Trellis CLI consumes it through the
+    shared reader end to end. The same reader passes ADR-009's local generic fixtures without Trellis
+    dependencies, Git, repository mutation, or reader/package version equality.
+32. Case-only document and directory-prefix aliases are rejected consistently on Windows and Linux,
+    including identical-content aliases and aliases of existing destinations or tool-owned names.
+    Unrelated package namespaces may contain the same filename without conflict.
+33. Unsupported or unknown atomic-operation support at any destination fails before managed-file
+    mutation. Injected atomic-operation failures never fall back to truncation or delete-and-copy;
+    previously completed replacements remain intact and no individual file is torn.
+34. Changes observed by the final snapshot read, including edits outside an instruction entry, block
+    replacement/pruning. New destinations created after preflight cannot be clobbered. These checks
+    do not assert protection against external edits after the final read of an existing file; CLI
+    guidance states the no-concurrent-external-edits requirement and residual loss window.
+35. First-install examples and generated setup guidance explicitly select the intended tool version;
+    a newer available tool release does not change the version installed by the documented command.
 
 ## Open questions for review
 
 None outstanding. The five questions originally listed here — command distribution, default insertion
 point, CI adoption, legacy cleanup, and tool bootstrap — are resolved in "Decisions resolved in review"
 near the top of this document, with the detail folded into the relevant sections below.
+ADR-009's version 1 decisions are resolved locally; Phase 1 implements their schema and fixtures.
+Only upstream adoption, integration, and governance remain external follow-up, not release blockers.
 
 ## Out of scope
 
+- Official NuGet standardization, a public .NET reader API, unrelated-publisher adoption, and an
+  independent second reader. ADR-009's minimal experimental contract and local conformance fixtures
+  are in scope; external adoption work is not a release prerequisite.
 - Changing the content or structure of the Trellis API references themselves.
 - Loading all reference files into every agent session.
 - Supporting legacy agent-specific instruction filenames.
@@ -1112,4 +1244,6 @@ near the top of this document, with the detail folded into the relevant sections
 - The durable recovery journal and persistent generation-record read-consistency protocol for
   concurrent multi-scope transactions; deferred until concurrent usage is observed (see "Decisions
   resolved in review" item 6 and "Shared writers and interrupted updates").
+- A cross-platform guarantee against edits by external processes after the final snapshot check;
+  supported mutation requires callers to avoid concurrent external edits to affected paths.
 - Treating the presence of an optional-package reference file as proof that the package is installed.

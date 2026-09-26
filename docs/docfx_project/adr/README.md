@@ -16,6 +16,11 @@ new files; superseded decisions stay in place with a status update.
 | 006 | [Re-home Persistence and Messaging Contracts out of the EF Core Packages](ADR-006-store-neutral-persistence-contracts.md) | Accepted |
 | 007 | [Keep Outbox, Inbox, and Broker Transports in the Framework Repository](ADR-007-messaging-repository-boundary.md) | Accepted |
 | 008 | [Deliver Versioned Trellis Agent Context Without Build-Time Repository Mutation](ADR-008-agent-context-delivery.md) | Accepted |
+| 009 | [Propose a Vendor-Neutral NuGet Package Guidance Contract](ADR-009-nuget-package-guidance-contract.md) | Accepted for experimental implementation; proposed for external standardization |
+
+ADR-008 is the Trellis delivery implementation plan; ADR-009 defines the shared experimental contract
+and reader it uses. Trellis is the first working sample. NuGet approval and external adoption do not
+block development or release.
 
 ## When to write an ADR
 
