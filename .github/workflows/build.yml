@@ -159,6 +159,10 @@ jobs:
       shell: pwsh
       run: ./build/test-apireference-payload.ps1 -Configuration Release
 
+    - name: Independent satellite guidance probe
+      shell: pwsh
+      run: ./build/test-satellite-guidance.ps1
+
     - name: Test with Coverage
       # --coverage: Native MTP coverage (requires Microsoft.Testing.Extensions.CodeCoverage)
       # --report-trx: Native MTP TRX generation (requires Microsoft.Testing.Extensions.TrxReport)

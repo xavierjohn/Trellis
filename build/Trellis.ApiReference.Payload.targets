@@ -5,7 +5,7 @@
     <Error Condition="'$(TrellisApiRefName)' == ''"
            Text="Set TrellisApiRefName to the satellite reference filename suffix." />
     <PropertyGroup>
-      <_TrellisSatelliteDocument>$(MSBuildProjectDirectory)\trellis\trellis-api-$(TrellisApiRefName).md</_TrellisSatelliteDocument>
+      <_TrellisSatelliteDocument>$(MSBuildProjectDirectory)/trellis/trellis-api-$(TrellisApiRefName).md</_TrellisSatelliteDocument>
       <_TrellisSatelliteManifest>$(IntermediateOutputPath)reference-manifest.json</_TrellisSatelliteManifest>
     </PropertyGroup>
     <Error Condition="!Exists('$(_TrellisSatelliteDocument)')"

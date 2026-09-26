@@ -121,6 +121,64 @@ public sealed class AgentContextTests
     }
 
     [Fact]
+    public void Directory_safety_rejects_dangling_directory_link()
+    {
+        using var fixture = new Fixture();
+        var linked = fixture.Path("dangling");
+        var missing = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "missing-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateSymbolicLink(linked, missing);
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException or PlatformNotSupportedException)
+        {
+            return;
+        }
+
+        var method = typeof(AgentContextCommand).GetMethod("EnsureDirectoriesSafe",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
+        Action check = () => method.Invoke(null, [fixture.Path(), fixture.Path("dangling", "AGENTS.md")]);
+        check.Should().Throw<TargetInvocationException>().WithInnerException<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Init_rejects_another_tool_advertising_the_trellis_command()
+    {
+        using var fixture = new Fixture();
+        fixture.Write(".config/dotnet-tools.json", JsonSerializer.Serialize(new
+        {
+            version = 1,
+            isRoot = true,
+            tools = new Dictionary<string, object>
+            {
+                ["other.tool"] = new { version = ToolVersion(), commands = new List<string> { "trellis" } }
+            }
+        }));
+
+        fixture.Run("init", "App.csproj").Should().NotBe(0);
+        File.Exists(fixture.Path(".trellis", "agent-context.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Init_does_not_select_nested_manifest_with_a_different_trellis_command_owner()
+    {
+        using var fixture = new Fixture();
+        fixture.Scope("service");
+        fixture.Write("service/.config/dotnet-tools.json", JsonSerializer.Serialize(new
+        {
+            version = 1,
+            isRoot = true,
+            tools = new Dictionary<string, object>
+            {
+                ["other.tool"] = new { version = ToolVersion(), commands = new List<string> { "trellis" } }
+            }
+        }));
+
+        fixture.Run("init", "--scope", ".", "App.csproj").Should().NotBe(0);
+        File.Exists(fixture.Path("service", ".trellis", "agent-context.json")).Should().BeFalse();
+    }
+
+    [Fact]
     public void Child_process_drains_stdout_and_large_stderr_concurrently()
     {
         var start = new ProcessStartInfo("pwsh") { UseShellExecute = false };

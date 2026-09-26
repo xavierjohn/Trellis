@@ -1031,7 +1031,8 @@ public static class AgentContextCommand
             var isRoot = manifestRoot.TryGetProperty("isRoot", out var r) && r.ValueKind == JsonValueKind.True;
             if (manifestRoot.TryGetProperty("tools", out var tools))
                 foreach (var tool in tools.EnumerateObject())
-                    if (tool.Value.TryGetProperty("commands", out var commands) &&
+                    if (tool.Name.Equals("trellis.agentcontext", StringComparison.OrdinalIgnoreCase) &&
+                        tool.Value.TryGetProperty("commands", out var commands) &&
                         commands.EnumerateArray().Any(c => c.GetString() == "trellis"))
                         selected = candidate;
             if (selected is not null || isRoot)
@@ -1045,7 +1046,9 @@ public static class AgentContextCommand
         if (!manifest.RootElement.TryGetProperty("isRoot", out var flag) || flag.ValueKind != JsonValueKind.True ||
             !manifest.RootElement.TryGetProperty("tools", out var declared))
             throw new InvalidOperationException($"Scoped manifest must declare isRoot true: {expected}");
-        var matches = declared.EnumerateObject().Where(t => t.Value.TryGetProperty("commands", out var commands) &&
+        var matches = declared.EnumerateObject().Where(t =>
+            t.Name.Equals("trellis.agentcontext", StringComparison.OrdinalIgnoreCase) &&
+            t.Value.TryGetProperty("commands", out var commands) &&
             commands.EnumerateArray().Any(c => c.GetString() == "trellis")).ToArray();
         if (matches.Length != 1 || !matches[0].Value.TryGetProperty("version", out var pin) || pin.GetString() != version)
             throw new InvalidOperationException($"Scoped manifest must pin running tool version {version}: {expected}");
@@ -1167,14 +1170,29 @@ public static class AgentContextCommand
         Inside(root, path);
         var relative = Rel(root, path);
         var current = root;
-        if ((File.Exists(root) || Directory.Exists(root)) && File.GetAttributes(root).HasFlag(FileAttributes.ReparsePoint))
+        if (IsLink(root))
             throw new InvalidOperationException("Linked root is unsupported.");
         foreach (var component in relative.Split('/', StringSplitOptions.RemoveEmptyEntries))
         {
             current = Path.Combine(current, component);
-            if ((File.Exists(current) || Directory.Exists(current)) &&
-                File.GetAttributes(current).HasFlag(FileAttributes.ReparsePoint))
+            if (IsLink(current))
                 throw new InvalidOperationException($"Link/reparse point at {current}.");
+        }
+    }
+
+    private static bool IsLink(string path)
+    {
+        try
+        {
+            return File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint);
+        }
+        catch (FileNotFoundException)
+        {
+            return new FileInfo(path).LinkTarget is not null || new DirectoryInfo(path).LinkTarget is not null;
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return new FileInfo(path).LinkTarget is not null || new DirectoryInfo(path).LinkTarget is not null;
         }
     }
 

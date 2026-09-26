@@ -45,7 +45,8 @@ The two restores are different: restoring the tool does not create a project's
 `remove` can work without project assets if the pinned tool is already installed.
 
 For an independent nested context, use its own `.config/dotnet-tools.json` with an
-explicit pinned `trellis` entry and `"isRoot": true`. Run all the above commands
+explicit pinned `trellis.agentcontext` tool entry advertising `trellis` and `"isRoot": true`.
+Run all the above commands
 from that scope's directory and pass `--scope .` to `init`, `sync`, `check`, and
 `remove`. The working directory selects the tool version; `--scope` selects the
 context root. Passing a nested project path from the repository root does neither.
