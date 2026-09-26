@@ -119,7 +119,7 @@ public static class AgentContextCommand
         EnsureDirectoriesSafe(root, scope);
         var relativeScope = Rel(root, scope);
         var manifestPath = Path.Combine(scope, ".trellis", "agent-context.json");
-        CheckDestination(root, scope, manifestPath);
+        CheckFileDestination(root, scope, manifestPath);
         var previous = File.Exists(manifestPath) ? LoadState(manifestPath) : null;
         if (previous is not null && previous.Scope != relativeScope)
             throw new InvalidOperationException("Recorded context scope does not match the selected scope.");
@@ -597,7 +597,7 @@ public static class AgentContextCommand
         {
             ValidateRelative(file);
             var destination = Full(Path.Combine(scope, ".trellis"), file);
-            CheckDestination(root, scope, destination);
+            CheckFileDestination(root, scope, destination);
             var before = File.Exists(destination) ? File.ReadAllBytes(destination) : null;
             var owned = previousFiles.SingleOrDefault(f => Portable.Equals(f.Path, file));
             var expected = desiredFiles.SingleOrDefault(f => Portable.Equals(f.Path, file));
@@ -623,7 +623,7 @@ public static class AgentContextCommand
                 (next?.InstructionEntries.Any(e => Portable.Equals(e.InstructionFile, file)) == true &&
                  !GovernsSource(root, scope, next.SourceRoots, path)))
                 throw new InvalidOperationException($"Instruction path does not govern recorded source: {file}");
-            CheckDestination(root, root, path);
+            CheckFileDestination(root, root, path);
             var before = File.Exists(path) ? File.ReadAllBytes(path) : null;
             var original = before is null ? "" : DecodeInstruction(before);
             var owned = old?.InstructionEntries.SingleOrDefault(e => Portable.Equals(e.InstructionFile, file));
@@ -635,6 +635,7 @@ public static class AgentContextCommand
                 (target is null ? "Remove pointer " : "Update pointer ") + ScopeKey(scope));
         }
 
+        CheckFileDestination(root, scope, manifestPath);
         var priorManifest = File.Exists(manifestPath) ? File.ReadAllBytes(manifestPath) : null;
         var newManifest = next is null ? null : Bom.GetPreamble().Concat(Encoding.UTF8.GetBytes(
             JsonSerializer.Serialize(next, Json) + "\n")).ToArray();
@@ -1069,6 +1070,17 @@ public static class AgentContextCommand
                 throw new InvalidOperationException($"Portable path alias at {Path.Combine(directory, component)}.");
             directory = Path.Combine(directory, component);
         }
+    }
+
+    private static void CheckFileDestination(string root, string boundary, string file)
+    {
+        CheckDestination(root, boundary, file);
+        if (Directory.Exists(file))
+            throw new InvalidOperationException($"Directory at file destination: {file}");
+        for (var parent = Path.GetDirectoryName(file); parent is not null && Within(root, parent);
+            parent = Path.GetDirectoryName(parent))
+            if (File.Exists(parent))
+                throw new InvalidOperationException($"File at destination parent: {parent}");
     }
 
     private static void EnsureDirectoriesSafe(string root, string path)

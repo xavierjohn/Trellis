@@ -83,6 +83,7 @@ the project you are editing: Core intentionally carries the complete first-party
 reference set.
 
 `--dry-run` previews a mutation without writes. Existing unowned destinations,
+directories at file destinations, files at destination parent paths,
 changed owned files, malformed managed markers, incompatible package cohorts,
 unsupported guidance schemas, and missing or stale restored assets stop installation
 instead of silently adopting or overwriting files. Review every conflict before any

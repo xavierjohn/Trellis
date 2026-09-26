@@ -510,6 +510,34 @@ public sealed class AgentContextTests
         File.Exists(fixture.Path("AGENTS.md")).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("api-reference/trellis-api-core.md")]
+    [InlineData("README.md")]
+    [InlineData("agent-context.json")]
+    public void Init_rejects_directory_at_managed_file_before_any_writes(string destination)
+    {
+        using var fixture = new Fixture();
+        Directory.CreateDirectory(fixture.Path([".trellis", .. destination.Split('/')]));
+
+        fixture.Run("init", "--force", "App.csproj").Should().NotBe(0);
+        File.Exists(fixture.Path("AGENTS.md")).Should().BeFalse();
+        File.Exists(fixture.Path(".trellis", "api-reference", "trellis-api-cookbook.md")).Should().BeFalse();
+        File.Exists(fixture.Path(".trellis", "agent-context.json")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Init_rejects_file_at_managed_parent_before_any_writes()
+    {
+        using var fixture = new Fixture();
+        fixture.Write(".trellis/api-reference", "# Unowned\n");
+        var original = File.ReadAllBytes(fixture.Path(".trellis", "api-reference"));
+
+        fixture.Run("init", "--force", "App.csproj").Should().NotBe(0);
+        File.ReadAllBytes(fixture.Path(".trellis", "api-reference")).Should().Equal(original);
+        File.Exists(fixture.Path("AGENTS.md")).Should().BeFalse();
+        File.Exists(fixture.Path(".trellis", "agent-context.json")).Should().BeFalse();
+    }
+
     [Fact]
     public void Init_nested_scope_requires_nested_tool_and_scope_selection()
     {
