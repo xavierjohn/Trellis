@@ -360,7 +360,8 @@ validation applies.
 
 The working directory controls the upward manifest search; an `init` project/solution argument,
 or graph entry points recorded by `sync`, does **not** change that search. Run
-`dotnet new tool-manifest` (if needed), `dotnet tool install`, `dotnet tool restore`, and every
+`dotnet new tool-manifest --output .config` (if needed),
+`dotnet tool install --tool-manifest .config/dotnet-tools.json`, `dotnet tool restore`, and every
 `dotnet tool run` for a scope **from that scope's directory** (or a descendant governed by its
 manifest). An existing scoped manifest must be updated to declare the pinned `trellis` command and
 set `"isRoot": true` before running the tool; do not assume its mere presence selects `trellis`.
@@ -403,8 +404,8 @@ logical; the actual invocation follows standard .NET local tool conventions, whi
 flows the documentation must not conflate:
 
 - **First install in a repository with no tool manifest yet:**
-  `dotnet new tool-manifest` (only if `.config/dotnet-tools.json` does not already exist),
-  `dotnet tool install <tool-package> --version <matching-tool-version>`,
+  `dotnet new tool-manifest --output .config` (only if `.config/dotnet-tools.json` does not already exist),
+  `dotnet tool install <tool-package> --version <matching-tool-version> --tool-manifest .config/dotnet-tools.json`,
   `dotnet restore <explicit-entry-point>`, then
   `dotnet tool run trellis agent init --scope . <explicit-entry-point>` for a nested scope, or omit
   `--scope` for the repository-root context. `dotnet tool restore` has nothing to
@@ -1150,7 +1151,7 @@ External standardization and adoption milestones are deliberately not part of th
 - Pre-initialize Trellis templates, including a checked-in tool manifest pinned to the matching tool
   version.
 - Update package README and NuGet README setup instructions with both flows: first install
-  (`dotnet new tool-manifest` + `dotnet tool install <tool-package> --version <matching-tool-version>` +
+  (`dotnet new tool-manifest --output .config` + `dotnet tool install <tool-package> --version <matching-tool-version> --tool-manifest .config/dotnet-tools.json` +
   `dotnet restore <entry-point>` + `dotnet tool run trellis agent init --scope . <entry-point>` for
   nested scopes) and subsequent clone (`dotnet tool restore` +
   `dotnet restore <recorded-solution-or-project>` +

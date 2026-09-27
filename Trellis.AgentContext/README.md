@@ -1,23 +1,61 @@
 ﻿# Trellis.AgentContext
 
-Repository-pinned .NET tool that installs versioned package guidance under `.trellis/` and links it from applicable `AGENTS.md` files. Package discovery uses the read-only `Trellis.Guidance.Reader`, not project-authored MSBuild items.
+Optional repository-pinned .NET tool for AI coding assistants. Trellis packages carry API
+references, but assistants may not discover them inside the NuGet cache. This tool installs
+references matched to the restored packages under `.trellis/` and adds a small pointer to
+applicable `AGENTS.md` files, helping assistants use real APIs instead of guessing.
+Trellis works without it; restore and build never edit your instructions. Package discovery
+uses the read-only `Trellis.Guidance.Reader`, not project-authored MSBuild items.
 
 ## Installation
 
-From the directory owning the scope's `.config/dotnet-tools.json`, create a local tool manifest if necessary and pin the version matching its resolved `Trellis.Core`:
+Pin the tool to the version of `Trellis.Core` resolved by the selected project or
+solution. Choose where `.trellis/` should live before running the commands.
+
+### At the Git root
+
+Run from the **Git root**. If the solution is in a subfolder, pass its path relative
+to the Git root:
 
 ```text
-dotnet new tool-manifest
-dotnet tool install Trellis.AgentContext --version <resolved-Core-version>
-dotnet restore App.slnx
-dotnet tool run trellis agent init App.slnx
+dotnet new tool-manifest --output .config
+dotnet tool install Trellis.AgentContext --version <resolved-Core-version> --tool-manifest .config/dotnet-tools.json
+dotnet restore <solution-or-project>
+dotnet tool run trellis agent init <solution-or-project>
 ```
 
-The scoped manifest must declare `trellis` and set `"isRoot": true`. When Core is absent, pin a tool that supports the contributor's guidance schema. For an independent nested scope, run every command from that directory and add `--scope .`; otherwise the context root is the Git root.
+This creates `.trellis/` at the Git root, even if the solution is in a subfolder.
+
+### In a subfolder
+
+Run from the subfolder that should own `.trellis/` (for example, `backend`), using
+solution or project paths relative to that subfolder:
+
+```text
+cd <subfolder>
+dotnet new tool-manifest --output .config
+dotnet tool install Trellis.AgentContext --version <resolved-Core-version> --tool-manifest .config/dotnet-tools.json
+dotnet restore <solution-or-project>
+dotnet tool run trellis agent init <solution-or-project> --scope .
+```
+
+This creates `<subfolder>/.trellis/`, with its own local tool manifest. Keep
+`--scope .` on later `sync`, `check`, and `remove` commands from that subfolder.
+Passing only a subfolder solution path from the Git root does **not** select a
+subfolder context.
+
+For either setup, skip `dotnet new` if `.config/dotnet-tools.json` already exists
+in the chosen directory. If plain `dotnet new tool-manifest` created a
+`dotnet-tools.json` alongside that directory instead, move it into `.config/`
+rather than creating a second manifest. The tool requires a scoped manifest
+advertising `trellis` with `"isRoot": true`. When Core is absent, pin a tool
+that supports the contributor's guidance schema.
 
 ## Quick Example
 
-After cloning a repository with an installed context and checked-in tool manifest, restore the tool **and** project graph separately:
+After cloning a repository with an installed context and checked-in tool manifest,
+run from the same directory used at installation and restore the tool **and**
+project graph separately:
 
 ```text
 dotnet tool restore
@@ -25,6 +63,8 @@ dotnet restore App.slnx
 dotnet tool run trellis agent sync
 dotnet tool run trellis agent check
 ```
+
+For a subfolder context, append `--scope .` to `sync` and `check`.
 
 Run `dotnet tool run trellis agent remove` to remove recorded ownership without a usable package graph. `--dry-run` previews changes, `--force` enables reviewed adoption or replacement of conflicts, and `init`/`sync --restore` explicitly permit restore side effects in `obj/`, NuGet's cache, and configured lock files. Use `init --source-root PATH` (repeatable) for linked source directories outside selected project directories but inside the selected context and Git working tree. Recorded roots continue to apply during `sync` and `check`.
 

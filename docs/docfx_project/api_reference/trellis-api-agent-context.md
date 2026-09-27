@@ -9,8 +9,12 @@ audience: [llm]
 # Trellis.AgentContext command reference
 
 **Package:** `Trellis.AgentContext` (local .NET tool). The tool installs versioned package
-guidance into a consumer repository only when explicitly invoked. Normal restore and build
-do not install context or edit instruction files.
+guidance into a consumer repository only when explicitly invoked. Trellis packages include
+API references, but an AI coding assistant may not discover them in the NuGet cache. The
+tool copies references for the restored packages into `.trellis/` and adds an `AGENTS.md`
+pointer so assistants can find the relevant APIs. This is optional and does not change
+application behavior; normal restore and build do not install context or edit instruction
+files.
 
 ## Public command entry points
 
@@ -21,17 +25,48 @@ the executable passes the shared read-only `GuidanceReader.Discover` adapter.
 
 ## Setup
 
-Run from the directory governed by the local tool manifest. For a first installation:
+### At the Git root
+
+Run from the **Git root**, passing a relative solution or project path if it is
+nested:
 
 ```text
-dotnet new tool-manifest
-dotnet tool install Trellis.AgentContext --version <matching-Trellis.Core-version>
+dotnet new tool-manifest --output .config
+dotnet tool install Trellis.AgentContext --version <matching-Trellis.Core-version> --tool-manifest .config/dotnet-tools.json
 dotnet restore <solution-or-project>
 dotnet tool run trellis agent init <solution-or-project>
 ```
 
-If a manifest exists already, add the pinned tool to it instead of creating another.
-After cloning a repository with a committed tool manifest and context:
+This creates `.trellis/` at the Git root, not beside a nested solution.
+
+### In a subfolder
+
+Run from the subfolder that should own `.trellis/`, using solution or project
+paths relative to it:
+
+```text
+cd <subfolder>
+dotnet new tool-manifest --output .config
+dotnet tool install Trellis.AgentContext --version <matching-Trellis.Core-version> --tool-manifest .config/dotnet-tools.json
+dotnet restore <solution-or-project>
+dotnet tool run trellis agent init <solution-or-project> --scope .
+```
+
+This creates a subfolder `.config/dotnet-tools.json` and `.trellis/`. Pass
+`--scope .` from this directory to later `sync`, `check`, and `remove` commands.
+The working directory selects the tool version; `--scope` selects the context
+root. Passing a nested project path from the Git root does neither.
+
+For either setup, skip `dotnet new` if `.config/dotnet-tools.json` already
+exists at the selected scope. Plain `dotnet new tool-manifest` can create a
+`dotnet-tools.json` alongside `.config/`; move that existing manifest into
+`.config/` rather than creating another one. The agent-context command
+requires `.config/dotnet-tools.json` with a pinned `trellis.agentcontext`
+entry advertising `trellis` and `"isRoot": true`.
+
+### After cloning
+
+Run from the directory that owns the committed tool manifest and context:
 
 ```text
 dotnet tool restore
@@ -40,16 +75,10 @@ dotnet tool run trellis agent sync
 dotnet tool run trellis agent check
 ```
 
+For a subfolder context, append `--scope .` to `sync` and `check`.
 The two restores are different: restoring the tool does not create a project's
 `project.assets.json`. Run project restore separately before `init`, `sync`, or `check`.
 `remove` can work without project assets if the pinned tool is already installed.
-
-For an independent nested context, use its own `.config/dotnet-tools.json` with an
-explicit pinned `trellis.agentcontext` tool entry advertising `trellis` and `"isRoot": true`.
-Run all the above commands
-from that scope's directory and pass `--scope .` to `init`, `sync`, `check`, and
-`remove`. The working directory selects the tool version; `--scope` selects the
-context root. Passing a nested project path from the repository root does neither.
 
 ## Commands
 
@@ -96,3 +125,9 @@ force/adoption operation. Do not run external editors or formatters against affe
 files during `init`, `sync`, or `remove`: individual writes are atomic, but an external
 save after the final snapshot check can still race a replacement. The tool never
 inspects or modifies existing `.github/` instructions or old reference files.
+
+If `init` reports an older Trellis package without a guidance manifest or a legacy
+copy target, it does not create `.trellis/`; upgrade that package to a guidance-capable
+release or select a narrower compatible project. Mixed versions of any package across
+the selected graph also block installation: align those versions or initialize
+independent scopes. `--force` does not bypass package compatibility checks.
