@@ -79,6 +79,30 @@ try {
         if (-not $package) { throw "Missing packed package: $($project.BaseName)" }
         & (Join-Path $PSScriptRoot 'validate-reference-manifest.ps1') -Package $package.FullName -Project $project.FullName -RepositoryRoot $root
         if ($LASTEXITCODE -ne 0) { throw "Manifest validation failed: $($package.Name)" }
+        if ($project.BaseName -in @('Trellis.Core', 'Trellis.AgentContext')) {
+            $version = $package.BaseName.Substring($project.BaseName.Length + 1)
+            $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
+            try {
+                $entry = $archive.GetEntry('NUGET_README.md')
+                if (-not $entry) { throw "NuGet README missing from $($package.Name)" }
+                $reader = [System.IO.StreamReader]::new($entry.Open())
+                try { $readme = $reader.ReadToEnd() }
+                finally { $reader.Dispose() }
+            }
+            finally { $archive.Dispose() }
+            $command = "dotnet tool install Trellis.AgentContext --version $version --tool-manifest .config/dotnet-tools.json"
+            $expectedCommands = if ($project.BaseName -eq 'Trellis.AgentContext') { 2 } else { 1 }
+            if ([regex]::Matches($readme, [regex]::Escape($command)).Count -ne $expectedCommands -or
+                $readme.Contains('__TRELLIS_PACKAGE_VERSION__', [StringComparison]::Ordinal)) {
+                throw "Packed NuGet README for $($package.Name) must install the exact package version in each setup."
+            }
+            if ($project.BaseName -eq 'Trellis.AgentContext' -and
+                ($readme -notmatch '(?m)^dotnet tool run trellis agent init <solution-or-project>\r?$' -or
+                 $readme -notmatch '(?m)^dotnet tool run trellis agent init <solution-or-project> --scope \.\r?$')) {
+                throw "Packed NuGet README for $($package.Name) must show root and subfolder init commands."
+            }
+            Write-Host "PASS $($package.Name) NuGet README pins Trellis.AgentContext $version"
+        }
     }
 
     $core = Get-ChildItem -Path $feed -Filter 'Trellis.Core.*.nupkg' | Select-Object -First 1

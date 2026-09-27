@@ -38,6 +38,10 @@ Proving docs are *delivered* requires checking the packed `guidance/reference-ma
 against the exact package bytes and exercising the explicit agent-context command against a
 restored scratch consumer. Restore/build alone must not create `.trellis/`, `AGENTS.md`, or
 `.github/` documents. `check` detects a stale or missing installation without writing it.
+Core and AgentContext also render their NuGet READMEs at pack time: each
+`__TRELLIS_PACKAGE_VERSION__` token becomes the actual `PackageVersion` in its
+installation commands. The packed-payload probe checks both package READMEs so a
+NuGet.org listing cannot silently publish a stale or placeholder tool version.
 
 - **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies beneath it" in `trellis-start-here.md`, "The *n* recipe bodies below" in `trellis-api-cookbook.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. Those routing heads tell agents the Patterns Index is exhaustive and use the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count is checked: the rule originally guarded only `trellis-start-here.md`, and the cookbook's unguarded copy of the same claim duly drifted out of date while the guarded one stayed correct.
 

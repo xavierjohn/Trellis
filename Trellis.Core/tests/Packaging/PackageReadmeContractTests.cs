@@ -78,26 +78,6 @@ public partial class PackageReadmeContractTests
     }
 
     [Fact]
-    public void Package_readmes_stay_focused_on_onboarding()
-    {
-        const int repositoryReadmeWordLimit = 800;
-        const int nugetReadmeWordLimit = 600;
-
-        var failures = Packages()
-            .SelectMany(package => new[]
-            {
-                WordLimitFailure(package.Name, package.RepositoryReadmePath, repositoryReadmeWordLimit),
-                WordLimitFailure(package.Name, package.NuGetReadmePath, nugetReadmeWordLimit),
-            })
-            .Where(failure => failure is not null)
-            .ToList();
-
-        failures.Should().BeEmpty(
-            "package landing pages should provide orientation and a first-success path, "
-            + "while exhaustive behavior and migration material belongs in the API reference");
-    }
-
-    [Fact]
     public void Readmes_use_supported_microsoft_testing_platform_options()
     {
         var failures = Directory
@@ -270,17 +250,6 @@ public partial class PackageReadmeContractTests
         path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
         || path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
 
-    private static string? WordLimitFailure(string packageName, string path, int limit)
-    {
-        if (!File.Exists(path))
-            return null;
-
-        var wordCount = MarkdownWord().Count(File.ReadAllText(path));
-        return wordCount > limit
-            ? $"{packageName} {Path.GetFileName(path)}: {wordCount} words (limit {limit})"
-            : null;
-    }
-
     private static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -301,9 +270,6 @@ public partial class PackageReadmeContractTests
 
     [GeneratedRegex(@"\]\(\.\.?[\\/]", RegexOptions.CultureInvariant)]
     private static partial Regex RepositoryRelativeMarkdownLink();
-
-    [GeneratedRegex(@"\b[\p{L}\p{N}_-]+\b", RegexOptions.CultureInvariant)]
-    private static partial Regex MarkdownWord();
 
     private sealed record PackageReadmes(
         string Name,

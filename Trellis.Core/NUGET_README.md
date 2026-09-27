@@ -10,26 +10,6 @@ Railway-oriented error handling and domain foundations for .NET with `Result<T>`
 dotnet add package Trellis.Core
 ```
 
-## Versioned agent context
-
-Restore/build do not edit repository instructions. To install versioned API guidance explicitly,
-run these from the directory containing the selected solution or project:
-
-```bash
-dotnet new tool-manifest
-dotnet tool install Trellis.AgentContext --version <matching-Trellis.Core-version>
-dotnet restore <solution-or-project>
-dotnet tool run trellis agent init <solution-or-project>
-```
-
-If the directory already has a tool manifest, use it rather than creating another. Commit
-the tool pin, `AGENTS.md`, and `.trellis/` with the package change. After cloning, run
-`dotnet tool restore`, `dotnet restore <solution-or-project>`, then
-`dotnet tool run trellis agent sync`. CI can run `dotnet tool run trellis agent check` to
-detect drift without writes. For an independent nested scope, use its own pinned tool manifest
-with `"isRoot": true`, run all commands from that scope directory, and pass `--scope .` to
-`init`, `sync`, and `check`. Avoid external edits to context files during mutating commands.
-
 ## Quick Example
 
 ```csharp
@@ -69,6 +49,42 @@ Generated `Required*<TSelf>` types are lenient by default: use `[NotDefault]` to
 Case-scoped factories put `code` first and optional `detail` last. Use `Error.Conflict.For<Order>("order.already-shipped", id: orderId)` for a resource conflict, or `Error.NotFound.For<Order>(id: orderId)` without inventing a reason code. `ForField(code, field, args: ..., detail: ...)` supports a property name or `InputPointer`; `ForRule(code, fields: ..., args: ..., detail: ...)` supports related fields.
 
 Required codes reject null/empty/whitespace, including constructors and `with` assignments. Custom codes remain supported. `NotFound` and `Gone` retain optional codes and the unspecified sentinel. Explicit resources use `ResourceRef`. This is a breaking argument-order change: migrate positional string IDs and validation fields by meaning, not just until the code compiles.
+
+## Optional: API guidance for coding assistants
+
+Trellis packages include API reference documents, but an AI coding assistant working in
+your repository may not find those documents inside the NuGet cache. This optional setup
+copies the references for your restored package versions into `.trellis/` and adds a small
+pointer to `AGENTS.md` so assistants know where to start instead of guessing API
+signatures. Core includes references for optional Trellis packages too; confirm a
+project references a package before using its API. **Trellis works normally without it.**
+Restore/build do not create `.trellis/` or edit your instructions; you choose whether to
+install the guidance.
+
+To install it at the Git root, run these **from the Git root** (use a relative path
+if the solution is in a subdirectory):
+
+```bash
+dotnet new tool-manifest --output .config
+dotnet tool install Trellis.AgentContext --version __TRELLIS_PACKAGE_VERSION__ --tool-manifest .config/dotnet-tools.json
+dotnet restore <solution-or-project>
+dotnet tool run trellis agent init <solution-or-project>
+```
+
+The command requires `.config/dotnet-tools.json` at the selected scope; a
+`dotnet-tools.json` created at the Git root by plain `dotnet new tool-manifest` will not
+work. Move that existing manifest into `.config/` rather than creating a second one.
+If `.config/dotnet-tools.json` already exists, skip the `dotnet new` step. Commit
+the tool pin, `AGENTS.md`, and `.trellis/` with the package change. After cloning, run
+`dotnet tool restore`, `dotnet restore <solution-or-project>`, then
+`dotnet tool run trellis agent sync`. CI can run `dotnet tool run trellis agent check` to
+detect drift without writes. The default `.trellis/` directory is created at the Git root.
+For an independent nested scope, run the setup commands from that directory to create
+its own `.config/dotnet-tools.json` with `"isRoot": true`, and pass `--scope .` to
+`init`, `sync`, and `check`; `.trellis/` then lives in that directory. The selected graph
+must have compatible restored Trellis packages: `init` stops without writing context
+if older packages lack guidance manifests or versions conflict. Avoid external edits to
+context files during mutating commands.
 
 ## Documentation
 

@@ -35,6 +35,21 @@
     </ItemGroup>
   </Target>
 
+  <Target Name="GenerateTrellisVersionedReadme" BeforeTargets="_GetPackageFiles"
+          DependsOnTargets="GetBuildVersion"
+          Condition="'$(IsPackable)' != 'false' AND
+                     ('$(MSBuildProjectName)' == 'Trellis.Core' OR '$(MSBuildProjectName)' == 'Trellis.AgentContext')">
+    <PropertyGroup>
+      <_TrellisReadmeSource>$(MSBuildProjectDirectory)/../NUGET_README.md</_TrellisReadmeSource>
+      <_TrellisReadmeOutput>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)NUGET_README.md</_TrellisReadmeOutput>
+    </PropertyGroup>
+    <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildThisFileDirectory)build/generate-package-readme.ps1&quot; -Source &quot;$(_TrellisReadmeSource)&quot; -Output &quot;$(_TrellisReadmeOutput)&quot; -Version &quot;$(PackageVersion)&quot;" />
+    <ItemGroup>
+      <None Remove="$(MSBuildProjectDirectory)\..\NUGET_README.md" />
+      <None Include="$(_TrellisReadmeOutput)" Pack="true" PackagePath="/" />
+    </ItemGroup>
+  </Target>
+
   <Target Name="LintApiReference" BeforeTargets="Build"
           Condition="'$(TrellisEnableApiReferenceLint)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
     <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)docs/lint-api-reference.ps1&quot;" />
