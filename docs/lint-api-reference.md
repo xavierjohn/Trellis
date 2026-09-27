@@ -36,7 +36,8 @@ TRLDOC004 used to assert that some package *packs* each file. It no longer can, 
 
 Proving docs are *delivered* requires checking the packed `guidance/reference-manifest.json`
 against the exact package bytes and exercising the explicit agent-context command against a
-restored scratch consumer. Restore/build alone must not create `.trellis/`, `AGENTS.md`, or
+restored scratch consumer at both the Git root and an independent subfolder scope.
+Restore/build alone must not create `.trellis/`, `AGENTS.md`, or
 `.github/` documents. `check` detects a stale or missing installation without writing it.
 Core and AgentContext also render their NuGet READMEs at pack time: each
 `__TRELLIS_PACKAGE_VERSION__` token becomes the actual `PackageVersion` in its

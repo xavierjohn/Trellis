@@ -266,6 +266,71 @@ Console.WriteLine("PASS shared reader validates restored packed Core manifest");
             }
             Assert-GitHubUntouched -Consumer $consumer -Original $githubBytes
             Write-Host 'PASS packed CLI remove restores original instructions; .github remained untouched'
+
+            $nested = Join-Path $consumer 'backend'
+            New-Item -ItemType Directory -Path $nested -Force | Out-Null
+            Copy-Item -LiteralPath (Join-Path $consumer 'Consumer.csproj') -Destination $nested
+            $nestedAgents = Join-Path $nested 'AGENTS.md'
+            [System.IO.File]::WriteAllText($nestedAgents, "# Nested customer instructions`r`n",
+                [System.Text.UTF8Encoding]::new($true))
+            $nestedAgentBytes = [System.IO.File]::ReadAllBytes($nestedAgents)
+            Invoke-ScratchCommand -Directory $nested -Stage 'Restore nested consumer project' `
+                -CommandArguments @('restore', 'Consumer.csproj')
+
+            $nestedManifestPath = Join-Path $nested '.config\dotnet-tools.json'
+            Invoke-ScratchCommand -Directory $nested -Stage 'Create nested tool manifest' `
+                -CommandArguments @('new', 'tool-manifest', '--output', (Join-Path $nested '.config'))
+            Invoke-ScratchCommand -Directory $nested -Stage 'Install packed CLI in nested scope' `
+                -CommandArguments @('tool', 'install', 'Trellis.AgentContext', '--version', $toolVersion,
+                    '--add-source', $feed, '--tool-manifest', $nestedManifestPath)
+            $nestedManifest = Get-Content -LiteralPath $nestedManifestPath -Raw | ConvertFrom-Json
+            if ($nestedManifest.isRoot -ne $true -or
+                $nestedManifest.tools.'trellis.agentcontext'.version -ne $toolVersion -or
+                $nestedManifest.tools.'trellis.agentcontext'.commands -notcontains 'trellis') {
+                throw "Nested tool manifest does not pin trellis $toolVersion with isRoot=true"
+            }
+            Invoke-ScratchCommand -Directory $nested -Stage 'Restore nested pinned CLI' `
+                -CommandArguments @('tool', 'restore', '--tool-manifest', $nestedManifestPath, '--add-source', $feed)
+
+            Invoke-ScratchCommand -Directory $nested -Stage 'Packed nested CLI init' `
+                -CommandArguments @('tool', 'run', 'trellis', 'agent', 'init', 'Consumer.csproj', '--scope', '.')
+            $nestedContext = Join-Path $nested '.trellis'
+            foreach ($relative in $required) {
+                if (-not (Test-Path -LiteralPath (Join-Path $nestedContext $relative) -PathType Leaf)) {
+                    throw "Packed nested CLI init omitted .trellis\$relative"
+                }
+            }
+            if ((Get-Content -LiteralPath $nestedAgents -Raw) -notmatch '<!-- trellis-agent-context:start -->' -or
+                -not [System.Linq.Enumerable]::SequenceEqual(
+                    [byte[]]$agentBytes, [byte[]][System.IO.File]::ReadAllBytes($agents)) -or
+                ((Test-Path $context) -and @(Get-ChildItem -LiteralPath $context -File -Recurse).Count -gt 0)) {
+                throw 'Packed nested CLI init wrote outside its scoped context or omitted nested instructions'
+            }
+            Assert-GitHubUntouched -Consumer $consumer -Original $githubBytes
+
+            $nestedSnapshot = @(Get-ManagedSnapshot -Consumer $nested)
+            Invoke-ScratchCommand -Directory $nested -Stage 'Packed nested CLI check' `
+                -CommandArguments @('tool', 'run', 'trellis', 'agent', 'check', '--scope', '.')
+            if (@(Compare-Object $nestedSnapshot @(Get-ManagedSnapshot -Consumer $nested)).Count -ne 0) {
+                throw 'Packed nested CLI check changed managed files or instructions'
+            }
+            Invoke-ScratchCommand -Directory $nested -Stage 'Packed nested CLI sync' `
+                -CommandArguments @('tool', 'run', 'trellis', 'agent', 'sync', '--scope', '.')
+            if (@(Compare-Object $nestedSnapshot @(Get-ManagedSnapshot -Consumer $nested)).Count -ne 0) {
+                throw 'Packed nested CLI sync changed an unchanged context'
+            }
+            Invoke-ScratchCommand -Directory $nested -Stage 'Packed nested CLI remove' `
+                -CommandArguments @('tool', 'run', 'trellis', 'agent', 'remove', '--scope', '.')
+            if (-not [System.Linq.Enumerable]::SequenceEqual(
+                [byte[]]$nestedAgentBytes, [byte[]][System.IO.File]::ReadAllBytes($nestedAgents)) -or
+                ((Test-Path $nestedContext) -and @(Get-ChildItem -LiteralPath $nestedContext -File -Recurse).Count -gt 0) -or
+                -not [System.Linq.Enumerable]::SequenceEqual(
+                    [byte[]]$agentBytes, [byte[]][System.IO.File]::ReadAllBytes($agents))) {
+                throw 'Packed nested CLI remove did not restore scoped instructions and remove owned context files'
+            }
+            Assert-GitHubUntouched -Consumer $consumer -Original $githubBytes
+            Write-Host 'PASS packed CLI nested init/sync/check/remove preserve Git-root instructions'
+
             $env:NUGET_PACKAGES = $originalPackages
             $env:DOTNET_CLI_HOME = $originalCliHome
         }
