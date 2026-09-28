@@ -80,8 +80,8 @@ public class ApiReferencePayloadGateTests
         imported.Should().NotContain("TrellisApiReferenceRoot");
         imported.Should().NotContain("TrellisDisableApiReferenceSync");
 
-        var payload = File.ReadAllText(Path.Combine(RepositoryRoot(), "build", "Trellis.ApiReference.Payload.targets"));
-        payload.Should().NotContain("_WarnTrellisApiReferenceCopyLogicMissing");
+        File.Exists(Path.Combine(RepositoryRoot(), "build", "Trellis.ApiReference.Payload.targets"))
+            .Should().BeFalse("independent publishers use the separately versioned packaging helper");
     }
 
     [Fact]

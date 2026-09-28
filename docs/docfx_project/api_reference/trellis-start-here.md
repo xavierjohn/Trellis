@@ -10,7 +10,8 @@ audience: [llm]
 # Trellis — start here
 
 You are looking at versioned Trellis API reference files installed under
-`.trellis/api-reference/` by the explicit agent-context command. This file is a one-screen
+`.agentdocs/packages/trellis.core/trellis/` by the optional Trellis.AgentDocs local tool (`agentdocs` command).
+This file is a one-screen
 signpost, not a reference — it exists only to send you to the right file. It is deliberately
 tiny so it costs nothing to keep loaded.
 
@@ -64,7 +65,7 @@ through it rather than opening files speculatively.
 
 **A file being present here does not mean the project you are editing references that package.** The
 complete first-party set ships with `Trellis.Core`, so references for packages you have not installed
-are present by design — that is how you discover a module worth adopting. The agent-context command
+are present by design — that is how you discover a module worth adopting. The `agentdocs` command
 selects references from the restored package graph and removes previously installed references whose
 source packages are no longer present. Packages published from other repositories (for example
 `Trellis.ServiceLevelIndicators`) ship their own reference alongside themselves, so those appear

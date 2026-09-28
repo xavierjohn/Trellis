@@ -2,6 +2,6 @@
   <!-- Inert bootstrap hint for consumers of the experimental guidance contract. -->
   <Target Name="_TrellisGuidanceBootstrap" BeforeTargets="Build"
           Condition="!Exists('$(MSBuildProjectDirectory)/.trellis')">
-    <Message Importance="Low" Text="Trellis package guidance is available through the explicit agent-context setup command; restore the pinned tool and project before initializing the selected scope." />
+    <Message Importance="Low" Text="Trellis package guidance is available through the optional, separately versioned Trellis.AgentDocs local tool (command: agentdocs); restore the pinned tool and project before initializing the selected Git repository." />
   </Target>
 </Project>

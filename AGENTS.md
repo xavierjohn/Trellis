@@ -26,7 +26,7 @@ Then pull in only the 1–3 area-specific references the cookbook points you at.
 
 If context is too tight to hold the routing head plus one area reference, you are too tight to write correct Trellis code — say so rather than guessing at API shapes.
 
-`trellis-start-here.md` is **not** a second entry point, and in this repository you can ignore it. It is a ~1 KB router written for *consumers*: the explicit agent-context command installs package references under `.trellis/api-reference/`, where nothing explains what those files are, so that router tells a consumer's agent the same thing this section tells you — read the cookbook first, keep it loaded, don't delegate it. Edit it only when this guidance changes, and keep the two in agreement. There is exactly one start file, the cookbook; `trellis-start-here.md` just points at it for readers who never see this file.
+`trellis-start-here.md` is **not** a second entry point, and in this repository you can ignore it. It is a ~1 KB router written for *consumers*: the optional, separately versioned `Trellis.AgentDocs` local tool (command `agentdocs`) installs package references under Git-root `.agentdocs/packages/trellis.core/trellis/`, where nothing explains what those files are, so that router tells a consumer's agent the same thing this section tells you — read the cookbook first, keep it loaded, don't delegate it. Edit it only when this guidance changes, and keep the two in agreement. There is exactly one start file, the cookbook; `trellis-start-here.md` just points at it for readers who never see this file.
 
 ### Do not delegate reference reading to a sub-agent
 
@@ -121,7 +121,7 @@ Delivery is opt-in per csproj, and opt-in is how a package comes to ship with no
 | Route | How | Who uses it |
 |---|---|---|
 | Ship the whole set | `<TrellisShipsApiReferenceSet>true</TrellisShipsApiReferenceSet>` | `Trellis.Core` only |
-| Ship its own reference | `<TrellisShipsOwnApiReference>true</TrellisShipsOwnApiReference>` + `<TrellisApiRefName>` | `Trellis.Analyzers`, which cannot depend on Core; and packages published from **other repositories**, which version independently and use `build/Trellis.ApiReference.Payload.targets` |
+| Ship its own reference | `<TrellisShipsOwnApiReference>true</TrellisShipsOwnApiReference>` + `<TrellisApiRefName>` | `Trellis.Analyzers`, which cannot depend on Core; packages published from **other repositories** use a private `Trellis.AgentDocs.Packaging` build dependency and set `PackageGuidanceDocument` / `PackageGuidancePath` instead |
 | Inherit it | a `ProjectReference` path to `Trellis.Core` | every other first-party package |
 
 **This is enforced, not advisory.** `Trellis.Core/tests/Packaging/ApiReferencePayloadGateTests.cs` enumerates every packable `*/src/*.csproj` and walks the first-party project graph, so a package with no route to a payload fails the build. It enumerates rather than hand-lists deliberately: a hand-listed set stops covering the next package added, which is the same miss one generation later. Two companion assertions close the ways that enumeration could go quiet — a typo'd `TrellisApiRefName` (otherwise silent, because the MSBuild `Include` matches nothing and the package packs successfully with no reference), and a packable project added **outside** the `*/src/` convention, which the enumeration would simply not see.

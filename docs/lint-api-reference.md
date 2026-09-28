@@ -34,15 +34,17 @@ TRLDOC004 used to assert that some package *packs* each file. It no longer can, 
 
 - **TRLDOC012**: Every doc listed under `GuardrailDocs` in `docs/api-reference-docs.psd1` must carry the opt-in banner. Guardrail docs are the one exception to "delivering a doc for an unreferenced package is harmless": describing an absent *API* produces a compile error, but describing an absent *analyzer* makes an agent write **less** defensively, trusting a rule that never runs. The banner states that standalone analyzer rules require a `PackageReference` to `Trellis.Analyzers`; source-generator diagnostics are supplied by their hosting packages and do not require that separate reference.
 
-Proving docs are *delivered* requires checking the packed `guidance/reference-manifest.json`
-against the exact package bytes and exercising the explicit agent-context command against a
-restored scratch consumer at both the Git root and an independent subfolder scope.
-Restore/build alone must not create `.trellis/`, `AGENTS.md`, or
-`.github/` documents. `check` detects a stale or missing installation without writing it.
-Core and AgentContext also render their NuGet READMEs at pack time: each
-`__TRELLIS_PACKAGE_VERSION__` token becomes the actual `PackageVersion` in its
-installation commands. The packed-payload probe checks both package READMEs so a
-NuGet.org listing cannot silently publish a stale or placeholder tool version.
+Proving docs are *delivered* requires checking packed `guidance/reference-manifest.json`
+against the exact package bytes, including detection of tampering, and verifying that consumer
+restore/build does not create `.agentdocs/`, `AGENTS.md`, or `.github/` documents.
+`build/test-apireference-payload.ps1` checks the first-party payload, Core's NuGet README
+and a restored consumer; `build/test-satellite-guidance.ps1` checks a satellite payload,
+its private build-only helper dependency, and an unrelated package with no guidance.
+The generic publisher and `init`/`sync`/`check`/`remove` lifecycle probes live in the
+independent `Trellis.AgentDocs.Packaging` repository alongside the internal reader and
+the separately versioned `Trellis.AgentDocs` local tool (`agentdocs` command).
+Core packs its NuGet README verbatim; its AgentDocs tool pin is independently
+versioned as `0.1.0-preview.9` rather than using Core's `PackageVersion`.
 
 - **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies beneath it" in `trellis-start-here.md`, "The *n* recipe bodies below" in `trellis-api-cookbook.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. Those routing heads tell agents the Patterns Index is exhaustive and use the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count is checked: the rule originally guarded only `trellis-start-here.md`, and the cookbook's unguarded copy of the same claim duly drifted out of date while the guarded one stayed correct.
 
@@ -67,7 +69,7 @@ Two separable concerns, deliberately kept apart in `Directory.Build.targets`:
 | Concern | Mechanism | Consumers |
 |---|---|---|
 | **Ownership** — which package a reference describes | `<TrellisApiRefName>` | `audit-doc-freshness.ps1`, `audit-completeness`, TRLDOC004, TRLDOC011 |
-| **Delivery** — which package ships the file under `trellis/` | `<TrellisShipsApiReferenceSet>` on `Trellis.Core` | explicit agent-context command |
+| **Delivery** — which package ships the file under `trellis/` | `<TrellisShipsApiReferenceSet>` on `Trellis.Core` | `Trellis.AgentDocs` local tool (`agentdocs`) |
 
 `Trellis.Core` ships the **complete first-party set**. Every package in this repository carries one version stamp from `version.json`, so scoping delivery per package bought nothing and cost two real failures:
 
@@ -91,28 +93,35 @@ A satellite ships two things:
 2. A `guidance/reference-manifest.json` declaring package-relative document paths, exact-byte
    SHA-256 hashes, and explicit entry points under the experimental version 1 contract.
 
-For a single-reference satellite, copy `build/Trellis.ApiReference.Payload.targets` into the
-satellite's repository and import it **only in the publishing project**. Place
-`trellis/trellis-api-<name>.md` beside that project and configure:
+For a single-reference satellite, add a pinned, private
+`Trellis.AgentDocs.Packaging` reference **only to the publishing project**.
+Set the same generic properties as any independent publisher:
 
 ```xml
 <PropertyGroup>
-  <TrellisApiRefName>name</TrellisApiRefName>
-  <TrellisPublishSatelliteGuidance>true</TrellisPublishSatelliteGuidance>
+  <PackageGuidanceDocument>$(MSBuildProjectDirectory)/docs/trellis-api-name.md</PackageGuidanceDocument>
+  <PackageGuidancePath>trellis/trellis-api-name.md</PackageGuidancePath>
 </PropertyGroup>
 <ItemGroup>
-  <None Include="trellis/trellis-api-name.md" Pack="true" PackagePath="trellis/" />
+  <PackageReference Include="Trellis.AgentDocs.Packaging" PrivateAssets="all" />
 </ItemGroup>
-<Import Project="../build/Trellis.ApiReference.Payload.targets" />
 ```
 
-The import hashes the source bytes at pack time and packs the manifest; the project packs
-the reference itself. Do **not** pack the `.targets` file under `build/` or
-`buildTransitive/`: consumer restore/build discovers the manifest without executing
-package targets, and the Trellis CLI rejects older copy-target packages. Run
-`pwsh build/test-satellite-guidance.ps1` in this repository to test an isolated satellite
-and a satellite-only restored consumer. Its optional `-WorkDirectory` leaves the
-sample projects available for inspection. The root first-party manifest target runs
+The helper packs the reference and generates its hash-checked manifest at pack time.
+An unrelated publisher sets `PackageGuidanceDocument` to its Markdown source
+and `PackageGuidancePath` to its own package-relative destination/entry point.
+The helper packs one document; it does not impose
+a `Trellis.*` package ID or a `trellis/` path.
+Only the helper package contains the `build/` target; do **not** pack that target or
+any legacy copy target into the satellite's package. Consumer restore/build
+discovers the manifest without executing package targets, and the AgentDocs CLI
+rejects older copy-target packages. Run
+`pwsh build/test-satellite-guidance.ps1` in this repository to test a Trellis
+satellite payload and consumer restore/build without CLI execution. By default it
+downloads the pinned `0.1.0-preview.9` helper from NuGet.org; pass
+`-HelperPackagePath` to test an explicitly supplied local nupkg instead. The
+generic publisher and full CLI probe live in the separate repository. Its optional
+`-WorkDirectory` leaves sample projects available for inspection. The root first-party manifest target runs
 only for packable projects under `Trellis.<Package>/src/`, not unrelated projects.
 
 The reader works from restored NuGet assets and package contents, whether or not `Trellis.Core`

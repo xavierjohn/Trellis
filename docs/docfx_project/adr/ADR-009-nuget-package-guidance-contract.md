@@ -55,16 +55,15 @@ These are local engineering decisions, not questions awaiting NuGet or agent-ven
 | Framework-specific guidance | No TFM/RID-conditioned entry-point selection in version 1; guidance covers the package as a whole |
 | Mixed-graph errors | No manifest means no contribution; unsupported or invalid manifests and missing required assets produce explicit diagnostics and prevent strict installation/check success |
 | Reader interface | An internal read-only component used by the Trellis CLI, with a documented discovery-result model; no stable public .NET API yet |
-| Ownership and artifact location | Trellis maintains version 1 in this repository; specification and schema live beside the reader under its project `docs/`, and conformance fixtures under its test project's `Fixtures/` |
+| Ownership and artifact location | The independent `Trellis.AgentDocs.Packaging` repository maintains version 1; the specification and schema live beside its internal reader under `Trellis.Guidance.Reader/docs/`, and conformance fixtures under its test project's `Fixtures/` |
 
 The discovery result still records the project/framework/runtime in which a package was resolved.
 That provenance is distinct from selecting different guidance for each framework: a package may
 describe framework differences in its prose, but version 1 readers do not interpret routing conditions.
 
 Phase 1 implements and publishes these decisions as a precise schema, specification, and fixtures.
-It does not wait for external answers or reopen the chosen location, version, or scope. The reader's
-project name and corresponding physical project directory are implementation naming details, not a
-reason to delay this work.
+It does not wait for external answers or reopen the chosen location, version, or scope. The reader's project name and corresponding physical project directory are implementation naming
+details, not a reason to delay this work.
 
 ## Relationship to ADR-008
 

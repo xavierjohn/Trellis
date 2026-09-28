@@ -1,5 +1,15 @@
-﻿[CmdletBinding()]
-param([string] $WorkDirectory = (Join-Path ([System.IO.Path]::GetTempPath()) "trellis-satellite-probe-$PID"))
+﻿<#
+.SYNOPSIS
+    Verifies an independently published Trellis satellite can use AgentDocs.Packaging.
+.DESCRIPTION
+    Checks the packed manifest/hash, private build-only helper, and read-only consumer
+    restore/build. Generic publisher and CLI lifecycle probes live in the sibling repository.
+#>
+[CmdletBinding()]
+param(
+    [string] $WorkDirectory = (Join-Path (Join-Path $PSScriptRoot '..\artifacts') "satellite-probe-$PID"),
+    [string] $HelperPackagePath
+)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -8,12 +18,14 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $source = Join-Path $WorkDirectory 'satellite'
 $feed = Join-Path $WorkDirectory 'feed'
 $consumer = Join-Path $WorkDirectory 'consumer'
-$probe = Join-Path $WorkDirectory 'reader'
 $unrelated = Join-Path $WorkDirectory 'unrelated'
 $rootTargets = Join-Path $root 'Directory.Build.targets'
-$satelliteTargets = Join-Path (Join-Path $root 'build') 'Trellis.ApiReference.Payload.targets'
 if (Test-Path -LiteralPath $WorkDirectory) { throw "Probe directory already exists: $WorkDirectory" }
-New-Item -ItemType Directory -Path (Join-Path $source 'trellis'), $feed, $consumer, $probe, $unrelated -Force | Out-Null
+$keepWorkDirectory = $PSBoundParameters.ContainsKey('WorkDirectory')
+try {
+New-Item -ItemType Directory -Path $source, $feed, $consumer, $unrelated -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $WorkDirectory 'Directory.Build.props'), '<Project/>')
+[System.IO.File]::WriteAllText((Join-Path $WorkDirectory 'Directory.Build.targets'), '<Project/>')
 
 [System.IO.File]::WriteAllText((Join-Path $unrelated 'guide.txt'), 'Unrelated package.')
 [System.IO.File]::WriteAllText((Join-Path $unrelated 'Unrelated.csproj'), @"
@@ -46,27 +58,54 @@ try {
 finally { $unrelatedArchive.Dispose() }
 Write-Host 'PASS unrelated package packs with imported root target and no pwsh on PATH.'
 
-$reference = Join-Path (Join-Path $source 'trellis') 'trellis-api-satelliteprobe.md'
+$reference = Join-Path $source 'guides\reference.md'
+New-Item -ItemType Directory -Path (Split-Path -Parent $reference) -Force | Out-Null
 [System.IO.File]::WriteAllText($reference, "# Independent satellite`n", [System.Text.UTF8Encoding]::new($true))
+if ($HelperPackagePath) {
+    Copy-Item -LiteralPath $HelperPackagePath -Destination $feed
+} else {
+    $helperVersion = '0.1.0-preview.9'
+    $url = "https://api.nuget.org/v3-flatcontainer/trellis.agentdocs.packaging/$helperVersion/trellis.agentdocs.packaging.$helperVersion.nupkg"
+    try {
+        Invoke-WebRequest -Uri $url -OutFile (Join-Path $feed "Trellis.AgentDocs.Packaging.$helperVersion.nupkg")
+    }
+    catch {
+        throw "Trellis.AgentDocs.Packaging $helperVersion is not available on NuGet.org. Supply -HelperPackagePath for an explicit local package: $_"
+    }
+}
+$helperPackage = Get-ChildItem -LiteralPath $feed -Filter 'Trellis.AgentDocs.Packaging.*.nupkg' |
+    Select-Object -First 1
+if (-not $helperPackage) { throw 'AgentDocs helper package is missing.' }
+$helperVersion = $helperPackage.BaseName.Substring('Trellis.AgentDocs.Packaging.'.Length)
+$helperArchive = [System.IO.Compression.ZipFile]::OpenRead($helperPackage.FullName)
+try {
+    if (-not $helperArchive.GetEntry('build/Trellis.AgentDocs.Packaging.targets') -or
+        $helperArchive.GetEntry('buildTransitive/Trellis.AgentDocs.Packaging.targets') -or
+        @($helperArchive.Entries | Where-Object { $_.FullName -like 'lib/*' }).Count -ne 0) {
+        throw 'Shared helper must ship only a publisher-side build target, not runtime code.'
+    }
+}
+finally { $helperArchive.Dispose() }
 [System.IO.File]::WriteAllText((Join-Path $source 'Satellite.csproj'), @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>Trellis.SatelliteProbe</PackageId>
     <Version>1.0.0</Version>
-    <TrellisApiRefName>satelliteprobe</TrellisApiRefName>
-    <TrellisPublishSatelliteGuidance>true</TrellisPublishSatelliteGuidance>
+    <PackageGuidanceDocument>$reference</PackageGuidanceDocument>
+    <PackageGuidancePath>trellis/trellis-api-satelliteprobe.md</PackageGuidancePath>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <NoWarn>NU5128</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="trellis/trellis-api-satelliteprobe.md" Pack="true" PackagePath="trellis/" />
+    <PackageReference Include="Trellis.AgentDocs.Packaging" Version="$helperVersion" PrivateAssets="all" />
   </ItemGroup>
-  <Import Project="$satelliteTargets" />
 </Project>
 "@)
-
-& dotnet pack (Join-Path $source 'Satellite.csproj') -o $feed --nologo -v:q
+& dotnet restore (Join-Path $source 'Satellite.csproj') --source $feed `
+    "-p:RestorePackagesPath=$(Join-Path $WorkDirectory 'packages')" --nologo -v:q
+if ($LASTEXITCODE -ne 0) { throw 'Independent satellite could not restore the shared helper.' }
+& dotnet pack (Join-Path $source 'Satellite.csproj') --no-restore -o $feed --nologo -v:q
 if ($LASTEXITCODE -ne 0) { throw 'Independent satellite pack failed.' }
 $package = Join-Path $feed 'Trellis.SatelliteProbe.1.0.0.nupkg'
 $archive = [System.IO.Compression.ZipFile]::OpenRead($package)
@@ -76,9 +115,21 @@ try {
     if ($null -eq $manifest -or $null -eq $document) {
         throw 'Independent satellite must pack both its reference and its guidance manifest.'
     }
-    $manifestStream = [System.IO.StreamReader]::new($manifest.Open())
-    try { $metadata = $manifestStream.ReadToEnd() | ConvertFrom-Json }
-    finally { $manifestStream.Dispose() }
+    if ($archive.Entries | Where-Object {
+        $_.FullName -like 'build/*' -or $_.FullName -like 'buildTransitive/*'
+    }) {
+        throw 'Satellite shipped a publisher target to consumers.'
+    }
+    $nuspecReader = [System.IO.StreamReader]::new($archive.GetEntry('Trellis.SatelliteProbe.nuspec').Open())
+    try {
+        if ($nuspecReader.ReadToEnd().Contains('Trellis.AgentDocs.Packaging', [StringComparison]::Ordinal)) {
+            throw 'Satellite leaked a dependency on the build-only helper.'
+        }
+    }
+    finally { $nuspecReader.Dispose() }
+    $manifestReader = [System.IO.StreamReader]::new($manifest.Open())
+    try { $metadata = $manifestReader.ReadToEnd() | ConvertFrom-Json }
+    finally { $manifestReader.Dispose() }
     $documentStream = [System.IO.MemoryStream]::new()
     try {
         $document.Open().CopyTo($documentStream)
@@ -86,10 +137,10 @@ try {
     }
     finally { $documentStream.Dispose() }
     if ($metadata.schemaVersion -ne 1 -or
-        $metadata.documents.Count -ne 1 -or
+        @($metadata.documents).Count -ne 1 -or
         $metadata.documents[0].path -ne 'trellis/trellis-api-satelliteprobe.md' -or
         $metadata.documents[0].sha256 -ne $digest.ToLowerInvariant() -or
-        $metadata.entryPoints.Count -ne 1 -or
+        @($metadata.entryPoints).Count -ne 1 -or
         $metadata.entryPoints[0] -ne 'trellis/trellis-api-satelliteprobe.md') {
         throw 'Packed independent satellite manifest does not match packed reference bytes and entry point.'
     }
@@ -109,58 +160,14 @@ finally { $archive.Dispose() }
 if ($LASTEXITCODE -ne 0) { throw 'Satellite-only consumer restore failed.' }
 & dotnet build (Join-Path $consumer 'Consumer.csproj') --no-restore --nologo -v:q
 if ($LASTEXITCODE -ne 0) { throw 'Satellite-only consumer build failed.' }
-if ((Test-Path (Join-Path $consumer '.github')) -or (Test-Path (Join-Path $consumer '.trellis')) -or
+if ((Test-Path (Join-Path $consumer '.github')) -or (Test-Path (Join-Path $consumer '.agentdocs')) -or
     (Test-Path (Join-Path $consumer 'AGENTS.md'))) {
     throw 'Normal consumer restore/build wrote repository guidance.'
 }
-
-$readerProject = Join-Path (Join-Path (Join-Path $root 'Trellis.Guidance.Reader') 'src') 'Trellis.Guidance.Reader.csproj'
-[System.IO.File]::WriteAllText((Join-Path $probe 'Reader.csproj'), @"
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup>
-  <ItemGroup><ProjectReference Include="$readerProject" /></ItemGroup>
-</Project>
-"@)
-[System.IO.File]::WriteAllText((Join-Path $probe 'Program.cs'), @'
-using System;
-using System.Linq;
-using Trellis.Guidance.Reader;
-var result = GuidanceReader.Discover([args[0]]);
-var package = result.Packages.Single(p => p.PackageId == "Trellis.SatelliteProbe");
-if (!result.IsSuccessful || package.Status != GuidanceStatus.Valid ||
-    package.Contribution?.Documents.Single().Identity.PackagePath != "trellis/trellis-api-satelliteprobe.md" ||
-    package.Contribution.EntryPoints.Single() != "trellis/trellis-api-satelliteprobe.md")
-    throw new Exception($"Satellite-only reader failure: {package.Status}: {package.Diagnostic}");
-Console.WriteLine("PASS satellite-only package discovered from restored assets.");
-'@)
-& dotnet run --project (Join-Path $probe 'Reader.csproj') -- (Join-Path (Join-Path $consumer 'obj') 'project.assets.json')
-if ($LASTEXITCODE -ne 0) { throw 'Satellite-only reader rejected packed reference.' }
-
-& dotnet pack (Join-Path (Join-Path (Join-Path $root 'Trellis.AgentContext') 'src') 'Trellis.AgentContext.csproj') `
-    -c Release --no-restore -o $feed --nologo -v:q
-if ($LASTEXITCODE -ne 0) { throw 'Local CLI pack failed.' }
-$tool = Get-ChildItem -LiteralPath $feed -Filter 'Trellis.AgentContext.*.nupkg' | Select-Object -First 1
-if (-not $tool) { throw 'Packed local CLI is missing.' }
-$toolVersion = $tool.BaseName.Substring('Trellis.AgentContext.'.Length)
-& git -C $consumer init --quiet
-if ($LASTEXITCODE -ne 0) { throw 'Scratch consumer Git init failed.' }
-& dotnet new tool-manifest --output (Join-Path $consumer '.config')
-if ($LASTEXITCODE -ne 0) { throw 'Local tool manifest creation failed.' }
-& dotnet tool install Trellis.AgentContext --version $toolVersion --add-source $feed `
-    --tool-manifest (Join-Path (Join-Path $consumer '.config') 'dotnet-tools.json')
-if ($LASTEXITCODE -ne 0) { throw 'Packed local CLI installation failed.' }
-Push-Location $consumer
-try {
-    & dotnet tool run trellis agent init Consumer.csproj
-    if ($LASTEXITCODE -ne 0) { throw 'Satellite-only CLI init failed.' }
-    $installedReference = Join-Path (Join-Path (Join-Path $consumer '.trellis') 'api-reference') 'trellis-api-satelliteprobe.md'
-    if (-not (Test-Path -LiteralPath $installedReference -PathType Leaf)) {
-        throw 'Satellite-only CLI did not install the reference.'
-    }
-    & dotnet tool run trellis agent check
-    if ($LASTEXITCODE -ne 0) { throw 'Satellite-only CLI check failed.' }
-    & dotnet tool run trellis agent remove
-    if ($LASTEXITCODE -ne 0) { throw 'Satellite-only CLI remove failed.' }
+Write-Host 'PASS independent Trellis satellite payload and read-only consumer'
 }
-finally { Pop-Location }
-Write-Host "PASS independent satellite layout at $WorkDirectory"
+finally {
+    if (-not $keepWorkDirectory -and (Test-Path -LiteralPath $WorkDirectory)) {
+        Remove-Item -LiteralPath $WorkDirectory -Recurse -Force
+    }
+}

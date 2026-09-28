@@ -54,36 +54,38 @@ Required codes reject null/empty/whitespace, including constructors and `with` a
 
 Trellis packages include API reference documents, but an AI coding assistant working in
 your repository may not find those documents inside the NuGet cache. This optional setup
-copies the references for your restored package versions into `.trellis/` and adds a small
-pointer to `AGENTS.md` so assistants know where to start instead of guessing API
+copies the references for your restored package versions into Git-root `.agentdocs/` and adds small
+pointers to `AGENTS.md` and `.github/copilot-instructions.md` so assistants know where to start instead of guessing API
 signatures. Core includes references for optional Trellis packages too; confirm a
 project references a package before using its API. **Trellis works normally without it.**
-Restore/build do not create `.trellis/` or edit your instructions; you choose whether to
+Restore/build do not create `.agentdocs/` or edit your instructions; you choose whether to
 install the guidance.
+`Trellis.AgentDocs` is independently versioned from Core; `0.1.0-preview.9`
+is available from NuGet.org.
 
 To install it at the Git root, run these **from the Git root** (use a relative path
 if the solution is in a subdirectory):
 
 ```bash
 dotnet new tool-manifest --output .config
-dotnet tool install Trellis.AgentContext --version __TRELLIS_PACKAGE_VERSION__ --tool-manifest .config/dotnet-tools.json
+dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.9 --tool-manifest .config/dotnet-tools.json
 dotnet restore <solution-or-project>
-dotnet tool run trellis agent init <solution-or-project>
+dotnet tool run agentdocs init <solution-or-project>
 ```
 
-The command requires `.config/dotnet-tools.json` at the selected scope; a
+The tool requires `.config/dotnet-tools.json` at the Git root; a
 `dotnet-tools.json` created at the Git root by plain `dotnet new tool-manifest` will not
 work. Move that existing manifest into `.config/` rather than creating a second one.
 If `.config/dotnet-tools.json` already exists, skip the `dotnet new` step. Commit
-the tool pin, `AGENTS.md`, and `.trellis/` with the package change. After cloning, run
-`dotnet tool restore`, `dotnet restore <solution-or-project>`, then
-`dotnet tool run trellis agent sync`. CI can run `dotnet tool run trellis agent check` to
-detect drift without writes. The default `.trellis/` directory is created at the Git root.
-For an independent nested scope, run the setup commands from that directory to create
-its own `.config/dotnet-tools.json` with `"isRoot": true`, and pass `--scope .` to
-`init`, `sync`, and `check`; `.trellis/` then lives in that directory. The selected graph
-must have compatible restored Trellis packages: `init` stops without writing context
-if older packages lack guidance manifests or versions conflict. Avoid external edits to
+the tool pin, managed instruction pointers, restore opt-in files, and `.agentdocs/` with the package change. After cloning, run
+`dotnet tool restore` and `dotnet restore <solution-or-project>`; subsequent restores
+refresh the recorded graph automatically. CI can run `dotnet tool run agentdocs check` to
+detect drift without writes. `.agentdocs/` and the pinned tool manifest live at the Git root
+even if the selected solution is nested. The installer adds a pointer to the nested
+project's `AGENTS.md`; Visual Studio Copilot uses the managed Git-root
+`.github/copilot-instructions.md` pointer when custom instructions are enabled.
+The selected graph must resolve each package to one version: `init` stops without writing context
+if versions conflict. Packages without guidance manifests do not contribute guides. Avoid external edits to
 context files during mutating commands.
 
 ## Documentation
