@@ -85,8 +85,9 @@ application-owned.
 
 Trellis packages include API references that assistants may not find in the NuGet cache.
 [Trellis.AgentDocs](https://www.nuget.org/packages/Trellis.AgentDocs) (independent local tool, command `agentdocs`)
-installs references for restored package versions under Git-root `.agentdocs/` and points `AGENTS.md`
-at them. Trellis works without this step; restore and build do not edit your instructions.
+installs the Trellis references under Git-root `.agentdocs/` and points `AGENTS.md` at them, once you approve
+`Trellis.Core` in `.agentdocs/policy.json` (it is the only Trellis package that publishes guidance). Trellis
+works without this step; restore and build do not edit your instructions.
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/error-handling.html)

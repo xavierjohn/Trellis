@@ -3,9 +3,11 @@
   <Description>Roslyn analyzers for Trellis library. Enforces proper Result and Maybe handling patterns at compile time.</Description>
   <PackageTags>trellis;roslyn;analyzers;functional;ddd;result;maybe;railway-oriented-programming</PackageTags>
   <TrellisApiRefName>analyzers</TrellisApiRefName>
-  <!-- The only first-party package that does not depend on Trellis.Core, so it cannot
-       rely on Core to deliver docs; it ships its own. See Directory.Build.targets. -->
-  <TrellisShipsOwnApiReference>true</TrellisShipsOwnApiReference>
+  <!-- The only first-party package that does not depend on Trellis.Core. It ships no guidance of
+       its own: trellis-api-analyzers.md is part of the reference set that Trellis.Core delivers
+       (and an onDemand entry in Core's manifest), so consumers approve one package with AgentDocs.
+       Every other package gets the same delivery through its dependency on Core. -->
+  <TrellisApiReferenceDeliveredByCore>true</TrellisApiReferenceDeliveredByCore>
 </PropertyGroup>
 
   <PropertyGroup>

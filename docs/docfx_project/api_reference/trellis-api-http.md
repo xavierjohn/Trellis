@@ -5,6 +5,7 @@ types: [HttpResponseExtensions]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Http &mdash; API Reference
 

@@ -5,6 +5,8 @@ types: [TrellisDiagnosticIds, EmptyReasonCodeOverride, ValidateAdditionalOverloa
 version: v3
 last_verified: 2026-06-17
 audience: [llm]
+agent_usage: onDemand
+agent_description: "Open when a TRLS diagnostic appears or when checking which analyzer rules apply: rule ids, severities and the Trellis.Analyzers opt-in."
 ---
 # Trellis.Analyzers — API Reference
 

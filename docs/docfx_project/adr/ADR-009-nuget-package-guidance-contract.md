@@ -4,6 +4,13 @@
 > [ADR-008](ADR-008-agent-context-delivery.md); proposed for external standardization.
 > NuGet approval and external adoption are not Trellis implementation or release prerequisites.
 >
+> **Update (2026-09):** The contract as implemented replaces `entryPoints` (and any `readFirst`, `role`
+> or `order` hints) with a per-document `usage` of `required`, `onDemand` or `supporting`, plus a
+> one-line `description` (at most 200 characters) for required and on-demand documents. A non-empty
+> manifest must list at least one required or on-demand document. Activation is by explicit consumer
+> approval, not by discovery alone. See the AgentDocs contract document in the
+> `Trellis.AgentDocs.Packaging` repository for the normative text.
+>
 > **Scope:** An experimental, vendor-neutral contract for discovering versioned usage guidance from
 > NuGet packages, with a reusable read-only reader. No NuGet or agent vendor has accepted this proposal.
 

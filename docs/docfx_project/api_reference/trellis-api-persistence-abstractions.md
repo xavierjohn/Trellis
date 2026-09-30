@@ -5,6 +5,7 @@ types: [IUnitOfWork, IUnitOfWorkScope, IInboxStore, IConsumerCheckpointStore, In
 version: v3
 last_verified: 2026-06-22
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Persistence.Abstractions &mdash; API Reference
 

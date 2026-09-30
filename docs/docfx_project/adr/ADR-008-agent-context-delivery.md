@@ -6,6 +6,16 @@
 > [ADR-009](ADR-009-nuget-package-guidance-contract.md) and implemented with Trellis.
 > External standardization and adoption do not block release.
 >
+> **Update (2026-09):** The shipped design departs from this ADR in three ways. Guidance packages are
+> activated by consent: the tool installs only packages listed in `.agentdocs/policy.json`
+> `approvedPackages`, and every other package is reported as pending without its manifest being read.
+> The manifest classifies each document by `usage` (`required`, `onDemand`, `supporting`) instead of
+> naming entry points. And only `Trellis.Core` publishes guidance for the whole Trellis family: the
+> consumer-side `Trellis.ApiReference.targets` bootstrap was removed, `Trellis.Analyzers` no longer ships
+> its own copy of its reference, and no other Trellis package carries a manifest. Where this text
+> describes `entryPoints`, restore hooks or a `refresh` command, read
+> [ADR-009](ADR-009-nuget-package-guidance-contract.md) and the AgentDocs contract document instead.
+>
 > **Context:** Trellis NuGet packages ship an LLM-optimized API reference set and currently copy it
 > into a consuming repository's nearest `.github/` directory during build. After adopting root
 > `AGENTS.md` as the cross-agent instruction surface, the files are still delivered but no portable

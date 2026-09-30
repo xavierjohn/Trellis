@@ -5,6 +5,7 @@ types: [Actor, ActorAttributes, ActorId, ActorProviderExtensions, IActorProvider
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Authorization — API Reference
 

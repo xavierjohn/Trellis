@@ -5,6 +5,7 @@ types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionK
 version: v3
 last_verified: 2026-06-19
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Http.Abstractions &mdash; API Reference
 

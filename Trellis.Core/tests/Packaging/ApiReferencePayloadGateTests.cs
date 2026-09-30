@@ -9,7 +9,8 @@ using FluentAssertions;
 using Xunit;
 
 /// <summary>
-/// Every packable Trellis package must deliver the API reference set to whoever installs it.
+/// Every packable Trellis package must deliver the API reference set to whoever installs it — through
+/// <c>Trellis.Core</c>, the only package that carries the set and its AgentDocs manifest.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -42,9 +43,9 @@ public class ApiReferencePayloadGateTests
             .ToList();
 
         undelivered.Should().BeEmpty(
-            "a packable package must ship the reference set, ship its own reference, or depend on "
-            + "a package that does — otherwise an agent in a consuming project has no signatures to "
-            + "work from and will invent them");
+            "a packable package must ship the reference set, declare that Trellis.Core delivers its "
+            + "reference, or depend on a package that does — otherwise an agent in a consuming project "
+            + "has no signatures to work from and will invent them");
     }
 
     [Fact]
@@ -66,22 +67,81 @@ public class ApiReferencePayloadGateTests
     }
 
     [Fact]
-    public void Every_packable_package_has_a_pack_time_guidance_manifest()
+    public void Only_core_ships_guidance_and_no_consumer_side_target_exists()
     {
-        var targets = File.ReadAllText(Path.Combine(RepositoryRoot(), "Directory.Build.targets"));
+        var root = RepositoryRoot();
+        var targets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
         targets.Should().Contain("guidance/reference-manifest.json");
         targets.Should().Contain("GenerateTrellisReferenceManifest");
         targets.Should().NotContain("_CopyTrellisApiReference");
         targets.Should().NotContain("TrellisSyncApiReference");
+        targets.Should().NotContain("TrellisShipsOwnApiReference", "no package ships a private copy of a reference");
+        targets.Should().NotContain("PackagePath=\"build/", "guidance is installed by the opt-in AgentDocs tool, never by a build target");
+        targets.Should().NotContain("PackagePath=\"buildTransitive/");
 
-        var imported = File.ReadAllText(Path.Combine(RepositoryRoot(), "build", "Trellis.ApiReference.targets"));
-        imported.Should().NotContain("_CopyTrellisApiReference");
-        imported.Should().NotContain("TrellisSyncApiReference");
-        imported.Should().NotContain("TrellisApiReferenceRoot");
-        imported.Should().NotContain("TrellisDisableApiReferenceSync");
+        // One package owns the guidance manifest, so a consumer approves Trellis.Core once and the
+        // index does not accumulate a pending entry for every satellite package.
+        var shippers = PackableProjects().Where(p => p.ShipsReferenceSet).Select(p => p.Name).ToList();
+        shippers.Should().Equal("Trellis.Core");
 
-        File.Exists(Path.Combine(RepositoryRoot(), "build", "Trellis.ApiReference.Payload.targets"))
+        File.Exists(Path.Combine(root, "build", "Trellis.ApiReference.targets"))
+            .Should().BeFalse("the consumer-side bootstrap target was removed with the AgentDocs opt-in tool");
+        File.Exists(Path.Combine(root, "build", "Trellis.ApiReference.Payload.targets"))
             .Should().BeFalse("independent publishers use the separately versioned packaging helper");
+    }
+
+    [Fact]
+    public void Every_shipped_reference_declares_agent_usage_and_only_the_router_is_required()
+    {
+        var directory = Path.Combine(RepositoryRoot(), "docs", "docfx_project", "api_reference");
+        var usages = Directory.EnumerateFiles(directory, "*.md")
+            .Where(path => Path.GetFileName(path) != "completeness-report.md")
+            .ToDictionary(path => Path.GetFileName(path), path => FrontMatterValue(path, "agent_usage"));
+
+        usages.Values.Should().OnlyContain(usage => usage == "required" || usage == "onDemand" || usage == "supporting");
+        usages.Where(pair => pair.Value == "required").Select(pair => pair.Key)
+            .Should().ContainSingle().Which.Should().Be("trellis-start-here.md", "the required set must stay one self-contained router");
+        // Core delivers the analyzers reference for Trellis.Analyzers, so it must stay discoverable
+        // rather than fall to `supporting`; the cookbook and anti-patterns are the recipe/fix bodies
+        // the router sends agents to.
+        var mustBeOnDemand = new[] { "trellis-api-cookbook.md", "trellis-api-anti-patterns.md", "trellis-api-analyzers.md" };
+        usages.Where(pair => mustBeOnDemand.Contains(pair.Key)).Select(pair => pair.Value)
+            .Should().OnlyContain(usage => usage == "onDemand");
+    }
+
+    [Fact]
+    public void Every_shipped_reference_closes_its_front_matter_before_the_body()
+    {
+        var directory = Path.Combine(RepositoryRoot(), "docs", "docfx_project", "api_reference");
+        var malformed = new List<string>();
+
+        foreach (var path in Directory.EnumerateFiles(directory, "*.md")
+                     .Where(p => Path.GetFileName(p) != "completeness-report.md"))
+        {
+            var lines = File.ReadAllLines(path);
+            var end = Array.FindIndex(lines, 1, line => line.TrimEnd() == "---");
+            var opens = lines.Length > 1 && lines[0].TrimStart('﻿').TrimEnd() == "---";
+            if (!opens || end < 0 || lines[1..end].Any(line => line.StartsWith('#')))
+                malformed.Add(Path.GetFileName(path));
+        }
+
+        malformed.Should().BeEmpty("agent_usage must sit in a front matter block that closes before the document body");
+    }
+
+    private static string? FrontMatterValue(string path, string key)
+    {
+        var lines = File.ReadAllLines(path);
+        var end = Array.FindIndex(lines, 1, line => line.TrimEnd() == "---");
+        if (lines.Length < 2 || lines[0].TrimStart('﻿').TrimEnd() != "---" || end < 0)
+            return null;
+
+        for (var i = 1; i < end; i++)
+        {
+            if (lines[i].StartsWith(key + ":", StringComparison.Ordinal))
+                return lines[i][(key.Length + 1)..].Trim().Trim('"');
+        }
+
+        return null;
     }
 
     [Fact]
@@ -170,7 +230,8 @@ public class ApiReferencePayloadGateTests
     }
 
     /// <summary>
-    /// A package delivers the set when it ships it, ships its own reference, or reaches — through
+    /// A package delivers the set when it ships it, states that Trellis.Core delivers its reference
+    /// (only <c>Trellis.Analyzers</c>, which cannot depend on Core), or reaches — through
     /// first-party project references — some package that does.
     /// </summary>
     private static bool DeliversReferenceSet(ProjectInfo project, IReadOnlyList<ProjectInfo> all)
@@ -186,7 +247,7 @@ public class ApiReferencePayloadGateTests
             if (!seen.Add(current.Path))
                 continue;
 
-            if (current.ShipsReferenceSet || (current.ShipsOwnReference && !string.IsNullOrEmpty(current.ApiRefName)))
+            if (current.ShipsReferenceSet || (current.DeliveredByCore && !string.IsNullOrEmpty(current.ApiRefName)))
                 return true;
 
             foreach (var reference in current.ProjectReferences)
@@ -221,7 +282,10 @@ public class ApiReferencePayloadGateTests
         string Property(string name) =>
             document.Descendants(name).FirstOrDefault()?.Value.Trim() ?? string.Empty;
 
+        // A private or build-only reference never becomes a NuGet dependency, so it cannot deliver guidance.
         var references = document.Descendants("ProjectReference")
+            .Where(e => !string.Equals(e.Attribute("PrivateAssets")?.Value, "all", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(e.Attribute("ReferenceOutputAssembly")?.Value, "false", StringComparison.OrdinalIgnoreCase))
             .Select(e => e.Attribute("Include")?.Value)
             .Where(v => !string.IsNullOrEmpty(v))
             .Select(v => Path.GetFullPath(Path.Combine(directory, v!.Replace('\\', Path.DirectorySeparatorChar))))
@@ -232,7 +296,7 @@ public class ApiReferencePayloadGateTests
             Path: Path.GetFullPath(path),
             IsPackable: !string.Equals(Property("IsPackable"), "false", StringComparison.OrdinalIgnoreCase),
             ShipsReferenceSet: string.Equals(Property("TrellisShipsApiReferenceSet"), "true", StringComparison.OrdinalIgnoreCase),
-            ShipsOwnReference: string.Equals(Property("TrellisShipsOwnApiReference"), "true", StringComparison.OrdinalIgnoreCase),
+            DeliveredByCore: string.Equals(Property("TrellisApiReferenceDeliveredByCore"), "true", StringComparison.OrdinalIgnoreCase),
             ApiRefName: Property("TrellisApiRefName"),
             ProjectReferences: references);
     }
@@ -252,7 +316,7 @@ public class ApiReferencePayloadGateTests
         string Path,
         bool IsPackable,
         bool ShipsReferenceSet,
-        bool ShipsOwnReference,
+        bool DeliveredByCore,
         string ApiRefName,
         List<string> ProjectReferences);
 }

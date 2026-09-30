@@ -1,21 +1,11 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- Package inputs are collected at pack time, never during consumer restore/build. -->
+  <!-- Package inputs are collected at pack time, never during consumer restore/build.
+       Trellis.Core is the only package that ships guidance: the reference set plus its manifest.
+       Every other package relies on Core, so consumers approve one package with the AgentDocs tool. -->
   <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true'">
     <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\*.md"
           Exclude="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\completeness-report.md"
           Pack="true" PackagePath="trellis/" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TrellisShipsOwnApiReference)' == 'true' AND '$(TrellisApiRefName)' != ''">
-    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\trellis-api-$(TrellisApiRefName).md"
-          Pack="true" PackagePath="trellis/" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true' OR '$(TrellisShipsOwnApiReference)' == 'true'">
-    <None Include="$(MSBuildThisFileDirectory)build\Trellis.ApiReference.targets"
-          Pack="true" PackagePath="build/$(PackageId).targets" />
-    <None Include="$(MSBuildThisFileDirectory)build\Trellis.ApiReference.targets"
-          Pack="true" PackagePath="buildTransitive/$(PackageId).targets" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -23,12 +13,13 @@
   </PropertyGroup>
 
   <Target Name="GenerateTrellisReferenceManifest" BeforeTargets="_GetPackageFiles"
-          Condition="'$(IsPackable)' != 'false' AND '$(MSBuildProjectName.StartsWith(Trellis.))' == 'True' AND
+          Condition="'$(TrellisShipsApiReferenceSet)' == 'true' AND '$(IsPackable)' != 'false' AND
                      '$(_TrellisOwnSourceDirectory)' == '$([MSBuild]::NormalizePath($(MSBuildProjectDirectory)))'">
     <PropertyGroup>
-      <_TrellisReferenceManifest>$(IntermediateOutputPath)reference-manifest.json</_TrellisReferenceManifest>
+      <_TrellisReferenceManifest>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), $(IntermediateOutputPath), reference-manifest.json))</_TrellisReferenceManifest>
+      <_TrellisRepositoryRoot>$([System.IO.Path]::TrimEndingDirectorySeparator($(MSBuildThisFileDirectory)))</_TrellisRepositoryRoot>
     </PropertyGroup>
-    <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildThisFileDirectory)build/generate-reference-manifest.ps1&quot; -RepositoryRoot &quot;$(MSBuildThisFileDirectory)build&quot; -Project &quot;$(MSBuildProjectFullPath)&quot; -Output &quot;$(MSBuildProjectDirectory)/$(_TrellisReferenceManifest)&quot; -Mode &quot;$(TrellisShipsApiReferenceSet);$(TrellisShipsOwnApiReference)&quot;" />
+    <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildThisFileDirectory)build/generate-reference-manifest.ps1&quot; -RepositoryRoot &quot;$(_TrellisRepositoryRoot)&quot; -Output &quot;$(_TrellisReferenceManifest)&quot;" />
     <ItemGroup>
       <None Include="$(_TrellisReferenceManifest)" Pack="true"
             PackagePath="guidance/reference-manifest.json" />

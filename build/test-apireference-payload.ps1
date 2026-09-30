@@ -50,13 +50,15 @@ try {
                 finally { $reader.Dispose() }
             }
             finally { $archive.Dispose() }
-            $command = 'dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.9 --tool-manifest .config/dotnet-tools.json'
+            $command = 'dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.15 --tool-manifest .config/dotnet-tools.json'
             if ([regex]::Matches($readme, [regex]::Escape($command)).Count -ne 1 -or
                 $readme -notmatch '(?m)^dotnet tool run agentdocs init <solution-or-project>\r?$' -or
+                -not $readme.Contains('approvedPackages', [StringComparison]::Ordinal) -or
+                -not $readme.Contains('dotnet tool run agentdocs sync', [StringComparison]::Ordinal) -or
                 $readme.Contains('__TRELLIS_PACKAGE_VERSION__', [StringComparison]::Ordinal)) {
-                throw 'Packed Core README must pin the independent AgentDocs tool and show its Git-root init command.'
+                throw 'Packed Core README must pin the independent AgentDocs tool and show its init, approval and sync steps.'
             }
-            Write-Host "PASS $($package.Name) NuGet README pins independent Trellis.AgentDocs 0.1.0-preview.9"
+            Write-Host "PASS $($package.Name) NuGet README pins independent Trellis.AgentDocs 0.1.0-preview.15"
         }
     }
 

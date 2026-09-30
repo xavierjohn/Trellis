@@ -64,7 +64,7 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $reference) -Force | Out-
 if ($HelperPackagePath) {
     Copy-Item -LiteralPath $HelperPackagePath -Destination $feed
 } else {
-    $helperVersion = '0.1.0-preview.9'
+    $helperVersion = '0.1.0-preview.15'
     $url = "https://api.nuget.org/v3-flatcontainer/trellis.agentdocs.packaging/$helperVersion/trellis.agentdocs.packaging.$helperVersion.nupkg"
     try {
         Invoke-WebRequest -Uri $url -OutFile (Join-Path $feed "Trellis.AgentDocs.Packaging.$helperVersion.nupkg")
@@ -94,6 +94,8 @@ finally { $helperArchive.Dispose() }
     <Version>1.0.0</Version>
     <PackageGuidanceDocument>$reference</PackageGuidanceDocument>
     <PackageGuidancePath>trellis/trellis-api-satelliteprobe.md</PackageGuidancePath>
+    <PackageGuidanceUsage>onDemand</PackageGuidanceUsage>
+    <PackageGuidanceDescription>Open when working with the satellite probe.</PackageGuidanceDescription>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <NoWarn>NU5128</NoWarn>
   </PropertyGroup>
@@ -140,9 +142,10 @@ try {
         @($metadata.documents).Count -ne 1 -or
         $metadata.documents[0].path -ne 'trellis/trellis-api-satelliteprobe.md' -or
         $metadata.documents[0].sha256 -ne $digest.ToLowerInvariant() -or
-        @($metadata.entryPoints).Count -ne 1 -or
-        $metadata.entryPoints[0] -ne 'trellis/trellis-api-satelliteprobe.md') {
-        throw 'Packed independent satellite manifest does not match packed reference bytes and entry point.'
+        $metadata.documents[0].usage -ne 'onDemand' -or
+        $metadata.documents[0].description -ne 'Open when working with the satellite probe.' -or
+        $null -ne $metadata.PSObject.Properties['entryPoints']) {
+        throw 'Packed independent satellite manifest does not match packed reference bytes, usage and description.'
     }
 }
 finally { $archive.Dispose() }

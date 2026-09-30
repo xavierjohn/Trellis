@@ -5,6 +5,7 @@ types: [OutboxMessage, OutboxMessageKind, OutboxOptions, OutboxServiceCollection
 version: v1
 last_verified: 2026-08-18
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.EntityFrameworkCore.Outbox
 

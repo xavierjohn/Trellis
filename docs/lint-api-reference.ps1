@@ -509,22 +509,26 @@ else {
 
     $cookbookLines = Get-Content -LiteralPath $cookbookPath
 
+    # The routing head (task lookup, preflight, Patterns Index) lives in the required router, not the cookbook.
+    $routingPath = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference/trellis-start-here.md'
+    $routingLines = if (Test-Path -LiteralPath $routingPath) { @(Get-Content -LiteralPath $routingPath) } else { @() }
+
     # TRLDOC007 - every live recipe must be reachable from the Patterns Index. Agents are
     # instructed to hold only the index resident and load recipe bodies on demand, so a
     # recipe the index never links to is a recipe no agent will ever find.
     $patternsIndexStart = -1
-    $patternsIndexEnd = $cookbookLines.Count
+    $patternsIndexEnd = $routingLines.Count
 
-    for ($scan = 0; $scan -lt $cookbookLines.Count; $scan++) {
+    for ($scan = 0; $scan -lt $routingLines.Count; $scan++) {
         if ($patternsIndexStart -lt 0) {
-            if ($cookbookLines[$scan] -match '^##\s+Patterns Index\s*$') {
+            if ($routingLines[$scan] -match '^##\s+Patterns Index\s*$') {
                 $patternsIndexStart = $scan
             }
 
             continue
         }
 
-        if ($cookbookLines[$scan] -match '^##\s') {
+        if ($routingLines[$scan] -match '^##\s') {
             $patternsIndexEnd = $scan
             break
         }
@@ -533,11 +537,11 @@ else {
     $indexedRecipes = [System.Collections.Generic.HashSet[int]]::new()
 
     if ($patternsIndexStart -lt 0) {
-        Write-Host "$cookbookPath(1,1): error TRLDOC007: The cookbook has no '## Patterns Index' section, so recipe reachability cannot be verified. Restore the section or update the heading in this script."
+        Write-Host "$routingPath(1,1): error TRLDOC007: The router (trellis-start-here.md) has no '## Patterns Index' section, so recipe reachability cannot be verified. Restore the section or update the heading in this script."
         $failed = $true
     }
     else {
-        $patternsIndexText = ($cookbookLines[$patternsIndexStart..($patternsIndexEnd - 1)] -join "`n")
+        $patternsIndexText = ($routingLines[$patternsIndexStart..($patternsIndexEnd - 1)] -join "`n")
 
         foreach ($anchorMatch in [regex]::Matches($patternsIndexText, '#recipe-(?<number>\d+)')) {
             [void] $indexedRecipes.Add([int] $anchorMatch.Groups['number'].Value)
@@ -575,16 +579,17 @@ else {
     }
 
     # TRLDOC010 - the recipe count quoted to agents must match reality.
-    # Both routing heads tell agents the index is exhaustive ("if a task is not listed there,
-    # the recipe does not exist") and use the count to justify a token budget, so a stale
+    # The routing head tells agents the index is exhaustive ("if a task is not listed there,
+    # the recipe does not exist") and uses the count to justify a token budget, so a stale
     # number quietly undermines both claims. Retired recipes keep their heading but have
     # no body, so they are excluded here exactly as they are above.
     #
-    # Every file that quotes the count must be listed here. Guarding only one of them is how
-    # the cookbook's copy drifted to 36 while the guarded trellis-start-here.md stayed correct.
+    # Every file that quotes the count must be listed here. The count used to be quoted in two
+    # places and the unguarded copy drifted; the routing head now lives only in the router, so
+    # a second copy anywhere else should be added to this list rather than left unguarded.
     $recipeCountClaims = @(
-        @{ File = 'trellis-start-here.md'; Pattern = 'The (?<count>\d+) recipe bodies beneath it'; Phrase = 'The <n> recipe bodies beneath it' }
-        @{ File = 'trellis-api-cookbook.md'; Pattern = 'The (?<count>\d+) recipe bodies below'; Phrase = 'The <n> recipe bodies below' }
+        @{ File = 'trellis-start-here.md'; Pattern = 'The (?<count>\d+) recipe bodies in `trellis-api-cookbook\.md`'; Phrase = 'The <n> recipe bodies in `trellis-api-cookbook.md`' }
+        @{ File = '../../../AGENTS.md'; Pattern = 'The (?<count>\d+) recipe bodies in `trellis-api-cookbook\.md`'; Phrase = 'The <n> recipe bodies in `trellis-api-cookbook.md`' }
     )
 
     foreach ($claim in $recipeCountClaims) {
@@ -633,19 +638,117 @@ else {
     }
     else {
         $highestDiagnosticId = [int] ($diagnosticIds | Measure-Object -Maximum).Maximum
-        $rangeMatch = [regex]::Match(($cookbookLines -join "`n"), 'trellis-api-analyzers\.md[^\n]*?`TRLS001`-`TRLS(?<upper>\d{3})`')
+        $actualUpper = '{0:D3}' -f $highestDiagnosticId
 
-        if (-not $rangeMatch.Success) {
-            Write-Host "$cookbookPath(1,1): error TRLDOC013: Could not find the TRLS001-TRLS<n> range on the trellis-api-analyzers.md routing line, so the diagnostic range cannot be verified. Restore the range or update the pattern in this script."
+        # The router is the document agents keep resident, so it must quote the range; the cookbook's
+        # companion list quotes it too and is checked whenever it does.
+        $rangeClaims = @(
+            @{ Path = $routingPath; Lines = $routingLines; Required = $true }
+            @{ Path = $cookbookPath; Lines = $cookbookLines; Required = $false }
+        )
+
+        foreach ($rangeClaim in $rangeClaims) {
+            $rangeMatch = [regex]::Match(($rangeClaim.Lines -join "`n"), 'trellis-api-analyzers\.md[^\n]*?`TRLS001`-`TRLS(?<upper>\d{3})`')
+
+            if (-not $rangeMatch.Success) {
+                if ($rangeClaim.Required) {
+                    Write-Host "$($rangeClaim.Path)(1,1): error TRLDOC013: Could not find the TRLS001-TRLS<n> range on the trellis-api-analyzers.md routing line, so the diagnostic range cannot be verified. Restore the range or update the pattern in this script."
+                    $failed = $true
+                }
+
+                continue
+            }
+
+            if ([int] $rangeMatch.Groups['upper'].Value -ne $highestDiagnosticId) {
+                $quotedUpper = $rangeMatch.Groups['upper'].Value
+                Write-Host "$($rangeClaim.Path)(1,1): error TRLDOC013: The routing head quotes TRLS001-TRLS$quotedUpper, but the highest shipped diagnostic is TRLS$actualUpper. Update the upper bound so agents do not dismiss real diagnostics as non-Trellis."
+                $failed = $true
+            }
+        }
+    }
+}
+
+# TRLDOC016 - every shipped reference declares how agents should use it, in its own front matter.
+# The pack-time manifest is generated from these keys, so a document without them cannot be
+# packed: agent_usage is required | onDemand | supporting, and required/onDemand documents carry
+# an agent_description of at most 200 Unicode scalar values (onDemand ones start "Open when",
+# because that line is what an agent reads to decide whether to open the file). Exactly one
+# document is required - the router, which is self-contained - so the always-read cost of the
+# Trellis reference set stays one document.
+$shippedDocs = @($markdownFiles | Where-Object { $docManifest.UnshippedDocs -notcontains $_.Name })
+$requiredDocs = @()
+
+foreach ($doc in $shippedDocs) {
+    $docLines = @(Get-Content -LiteralPath $doc.FullName)
+    $frontEnd = -1
+
+    if ($docLines.Count -gt 1 -and $docLines[0].TrimStart([char] 0xFEFF) -match '^---\s*$') {
+        for ($lineIndex = 1; $lineIndex -lt $docLines.Count; $lineIndex++) {
+            if ($docLines[$lineIndex] -match '^---\s*$') {
+                $frontEnd = $lineIndex
+                break
+            }
+        }
+    }
+
+    $bodyInFront = if ($frontEnd -gt 1) { @($docLines[1..($frontEnd - 1)] | Where-Object { $_ -match '^#' }) } else { @() }
+
+    if ($bodyInFront.Count -gt 0) {
+        Write-Host "$($doc.FullName)(1,1): error TRLDOC016: The front matter block contains document body ('$($bodyInFront[0])'), so its closing '---' is misplaced. Close the block right after the last key."
+        $failed = $true
+        continue
+    }
+
+    if ($frontEnd -lt 0) {
+        Write-Host "$($doc.FullName)(1,1): error TRLDOC016: The document has no YAML front matter, so it cannot declare agent_usage. Add a front matter block with agent_usage (and agent_description for required/onDemand documents)."
+        $failed = $true
+        continue
+    }
+
+    $frontMatter = @($docLines[1..($frontEnd - 1)])
+    $usageLine = @($frontMatter | Where-Object { $_ -match '^agent_usage:' })
+    $usage = if ($usageLine.Count -eq 1) { ($usageLine[0] -replace '^agent_usage:\s*', '').Trim() } else { '' }
+
+    if ($usage -cnotin @('required', 'onDemand', 'supporting')) {
+        Write-Host "$($doc.FullName)(1,1): error TRLDOC016: agent_usage must be declared once, as required, onDemand or supporting (found '$usage')."
+        $failed = $true
+        continue
+    }
+
+    if ($usage -ceq 'required') {
+        $requiredDocs += $doc.Name
+    }
+
+    $descriptionLine = @($frontMatter | Where-Object { $_ -match '^agent_description:' })
+    $description = if ($descriptionLine.Count -eq 1) { ($descriptionLine[0] -replace '^agent_description:\s*', '').Trim() -replace '^"(.*)"$', '$1' } else { '' }
+
+    if ($description -match "^'" -or $description -match '\\') {
+        Write-Host "$($doc.FullName)(1,1): error TRLDOC016: agent_description must be a plain or double-quoted scalar without backslash escapes or single quotes at the start."
+        $failed = $true
+    }
+
+    if ($usage -ne 'supporting' -and $description.Length -eq 0) {
+        Write-Host "$($doc.FullName)(1,1): error TRLDOC016: A $usage document needs an agent_description that says when to open it."
+        $failed = $true
+    }
+    elseif ($description.Length -gt 0) {
+        $scalarCount = @($description.EnumerateRunes()).Count
+
+        if ($scalarCount -gt 200 -or $description -match '[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]') {
+            Write-Host "$($doc.FullName)(1,1): error TRLDOC016: agent_description must be a single line of at most 200 characters without control, format or line-separator characters (found $scalarCount)."
             $failed = $true
         }
-        elseif ([int] $rangeMatch.Groups['upper'].Value -ne $highestDiagnosticId) {
-            $quotedUpper = $rangeMatch.Groups['upper'].Value
-            $actualUpper = '{0:D3}' -f $highestDiagnosticId
-            Write-Host "$cookbookPath(1,1): error TRLDOC013: The routing head quotes TRLS001-TRLS$quotedUpper, but the highest shipped diagnostic is TRLS$actualUpper. Update the upper bound so agents do not dismiss real diagnostics as non-Trellis."
+
+        if ($usage -eq 'onDemand' -and $description -notmatch '^Open when ') {
+            Write-Host "$($doc.FullName)(1,1): error TRLDOC016: An onDemand agent_description must start with 'Open when ' so the index says what task triggers the document."
             $failed = $true
         }
     }
+}
+
+if ($requiredDocs.Count -ne 1 -or $requiredDocs[0] -ne 'trellis-start-here.md') {
+    Write-Host "$apiReferenceDir(1,1): error TRLDOC016: Exactly one document, trellis-start-here.md, may be agent_usage: required (found: $($requiredDocs -join ', ')). Every required document is read before any Trellis work, so the required set must stay one self-contained router."
+    $failed = $true
 }
 
 if ($failed) {

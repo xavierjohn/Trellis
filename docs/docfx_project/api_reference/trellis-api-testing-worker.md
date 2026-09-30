@@ -5,6 +5,7 @@ types: [WorkerHarness`1, WorkerHarnessOptions, IWorkerTickSignal, WorkerHarnessT
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Testing.Worker &mdash; API Reference
 

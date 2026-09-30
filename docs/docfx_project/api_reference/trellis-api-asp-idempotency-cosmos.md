@@ -5,6 +5,7 @@ types: [CosmosIdempotencyContainer, CosmosIdempotencyServiceCollectionExtensions
 version: v3
 last_verified: 2026-08-16
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Asp.Idempotency.Cosmos API Reference
 

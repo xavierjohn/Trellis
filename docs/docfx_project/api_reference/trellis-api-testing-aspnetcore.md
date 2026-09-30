@@ -5,6 +5,7 @@ types: [WebApplicationFactoryExtensions, WebApplicationFactoryTimeExtensions, Se
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Testing.AspNetCore &mdash; API Reference
 
