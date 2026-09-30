@@ -13,7 +13,7 @@ agent_usage: supporting
 **Namespace:** `Trellis.Mediator`
 **Purpose:** Provides Trellis result-aware Mediator pipeline behaviors plus DI helpers for validation, authorization, tracing, logging, and optional resource authorization.
 
-See also: [trellis-api-cookbook.md](trellis-start-here.md#patterns-index) — recipes using this package.
+See also: [trellis-start-here.md](trellis-start-here.md#patterns-index) — recipes using this package.
 
 ## Use this file when
 

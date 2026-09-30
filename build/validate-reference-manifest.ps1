@@ -130,7 +130,8 @@ try {
         $lines = @(Get-Content -LiteralPath (Join-Path $docsRoot ([System.IO.Path]::GetFileName($path))))
         if ((Get-FrontMatterValue $lines 'agent_usage') -cne $doc.usage) { throw "usage of $path differs from its front matter" }
         $sourceDescription = Get-FrontMatterValue $lines 'agent_description'
-        if ($sourceDescription -and $sourceDescription.Normalize([System.Text.NormalizationForm]::FormC) -cne $description) {
+        $expectedDescription = if ($sourceDescription) { $sourceDescription.Normalize([System.Text.NormalizationForm]::FormC) } else { '' }
+        if ($expectedDescription -cne $description) {
             throw "description of $path differs from its front matter"
         }
         if (-not $Quiet) { Write-Host "PASS $name $path sha256=$hash" }

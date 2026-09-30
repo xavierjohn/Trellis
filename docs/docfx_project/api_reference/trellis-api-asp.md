@@ -15,7 +15,7 @@ agent_usage: supporting
 
 The single supported response verb is `result.ToHttpResponse(...)`. It returns `Microsoft.AspNetCore.Http.IResult` and works in both Minimal API and MVC hosts (.NET 7+ executes `IResult` natively in MVC). For typed `ActionResult<T>` signatures, chain `.AsActionResult<T>()`. Configure protocol semantics via the fluent `HttpResponseOptionsBuilder<T>` (`WithETag`, `WithLastModified`, `Vary`, `WithCacheControl`, `Created`/`CreatedAtRoute`/`CreatedAtAction`, `EvaluatePreconditions`, `HonorPrefer`, `WithErrorMapping`, …).
 
-See also: [trellis-api-cookbook.md](trellis-start-here.md#task---recipe-lookup) — recipes using this package.
+See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) — recipes using this package.
 
 ## Use this file when
 

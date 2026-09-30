@@ -30,6 +30,14 @@ using Xunit;
 /// </remarks>
 public class ApiReferencePayloadGateTests
 {
+    /// <summary>The only package that cannot depend on Core and so may declare that Core delivers its reference.</summary>
+    private const string CoreDeliveredPackage = "Trellis.Analyzers";
+
+    [Fact]
+    public void Only_the_analyzers_package_declares_that_core_delivers_its_reference() =>
+        PackableProjects().Where(p => p.DeliveredByCore).Select(p => p.Name)
+            .Should().Equal(CoreDeliveredPackage);
+
     [Fact]
     public void Every_packable_package_delivers_the_api_reference_set()
     {
@@ -247,7 +255,7 @@ public class ApiReferencePayloadGateTests
             if (!seen.Add(current.Path))
                 continue;
 
-            if (current.ShipsReferenceSet || (current.DeliveredByCore && !string.IsNullOrEmpty(current.ApiRefName)))
+            if (current.ShipsReferenceSet || (current.Name == CoreDeliveredPackage && current.DeliveredByCore && !string.IsNullOrEmpty(current.ApiRefName)))
                 return true;
 
             foreach (var reference in current.ProjectReferences)

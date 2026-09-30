@@ -51,14 +51,14 @@ Git-root `.config/dotnet-tools.json`, including when the selected solution is ne
 It materializes guides under Git-root `.agentdocs/`: Trellis's flat reference view is
 `.agentdocs/packages/trellis.core/trellis/`; all publisher guides live under
 `.agentdocs/packages/<package-id>/<package-relative-path>`. The tool-generated
-`.agentdocs/README.md` routes to package-declared entry points. The ownership manifest
+`.agentdocs/README.md` lists each approved package's documents by their manifest `usage` (`required`, `onDemand`, `supporting`). The ownership manifest
 records the resolved package versions and hashes; it rejects mixed versions of a
 package in the selected graph instead of adding a version directory. Independent
 subfolder contexts and tool manifests are not supported. An existing `.trellis/`
 context must first be removed using the previously pinned tool; it is not silently
 adopted or deleted.
 
-Explicit `init`, `sync`, and `remove`, plus opted-in restore-time `refresh`, write repository files. The opt-in adds managed imports to `Directory.Build.targets` and `Directory.Solution.targets`; subsequent project and solution restores refresh the recorded graph without a manual sync. They
+Explicit `init`, `sync`, and `remove` write repository files; restore and build never do, and there is no restore-time `refresh` or managed `Directory.*.targets` import. They
 maintain narrow, keyed pointers in root and relevant project-directory `AGENTS.md`
 files, plus the managed block of Git-root `.github/copilot-instructions.md` for
 Visual Studio Copilot. Customer-authored instructions outside those blocks are

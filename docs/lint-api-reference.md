@@ -46,7 +46,7 @@ the separately versioned `Trellis.AgentDocs` local tool (`agentdocs` command).
 Core packs its NuGet README verbatim; its AgentDocs tool pin is independently
 versioned as `0.1.0-preview.15` rather than using Core's `PackageVersion`.
 
-- **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies in `trellis-api-cookbook.md`" in `trellis-start-here.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. The routing head tells agents the Patterns Index is exhaustive and uses the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count belongs in the rule's claim list: the count used to be quoted in the cookbook as well, and the unguarded copy duly drifted out of date while the guarded one stayed correct. The routing head now lives only in the router (`trellis-start-here.md`), so the claim exists once.
+- **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies in `trellis-api-cookbook.md`" in `trellis-start-here.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. The routing head tells agents the Patterns Index is exhaustive and uses the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count belongs in the rule's claim list: the count used to be quoted in the cookbook as well, and the unguarded copy duly drifted out of date while the guarded one stayed correct. The routing head now lives in the router (`trellis-start-here.md`); the count is also quoted in `AGENTS.md`, and both copies are checked.
 
 - **TRLDOC013**: The analyzer diagnostic range quoted on the `trellis-api-analyzers.md` line of the router's "rest of the set" table in `trellis-start-here.md` (`TRLS001`-`TRLS<n>`, required there and also checked in the cookbook's companion list when present) must cover every shipped diagnostic. The upper bound is derived by scanning `*.cs` under any `src/` or `generator/` directory — both locations matter, because the highest id is currently emitted by a source generator (`Trellis.Asp/generator`) rather than by `Trellis.Analyzers/src`. Only the upper bound is checked, since retired ids leave intentional gaps. The routing head is the one section agents keep resident, so an upper bound that lags reality makes an agent dismiss a real diagnostic as something other than a Trellis rule. A scan that finds no ids at all is reported as a failure rather than skipped, so a future source-layout move cannot silently disarm the gate.
 
@@ -81,9 +81,11 @@ Two separable concerns, deliberately kept apart in `Directory.Build.targets`:
 Because Core now ships references for packages the consumer may not have, **file presence no longer implies a package reference**. `trellis-start-here.md` says so explicitly and tells agents to confirm the reference in the `.csproj`; do not reintroduce wording that invites the opposite inference.
 
 `Trellis.Analyzers` is the one first-party exception. It has no dependency on `Trellis.Core`,
-so it ships its own reference. When both packages contribute `trellis-api-analyzers.md`, the
-installer verifies both source hashes, deduplicates identical canonical content, and records
-both sources in its ownership manifest.
+so it cannot inherit delivery; instead it sets `<TrellisApiReferenceDeliveredByCore>` and
+`<TrellisApiRefName>`, ships no manifest or `trellis/` document of its own, and Core ships
+`trellis-api-analyzers.md` as an `onDemand` document. A project that references only
+`Trellis.Analyzers` therefore receives no guidance. `ApiReferencePayloadGateTests` accepts
+`DeliveredByCore` from no other package.
 
 ### Packages published from other repositories
 
@@ -93,7 +95,8 @@ A satellite ships two things:
 
 1. Its reference markdown, packed to `trellis/`.
 2. A `guidance/reference-manifest.json` declaring package-relative document paths, exact-byte
-   SHA-256 hashes, and explicit entry points under the experimental version 1 contract.
+   SHA-256 hashes, and a `usage` (`required`, `onDemand` or `supporting`) plus a description for
+   required and onDemand documents, under the experimental version 1 contract.
 
 For a single-reference satellite, add a pinned, private
 `Trellis.AgentDocs.Packaging` reference **only to the publishing project**.
@@ -103,6 +106,8 @@ Set the same generic properties as any independent publisher:
 <PropertyGroup>
   <PackageGuidanceDocument>$(MSBuildProjectDirectory)/docs/trellis-api-name.md</PackageGuidanceDocument>
   <PackageGuidancePath>trellis/trellis-api-name.md</PackageGuidancePath>
+  <PackageGuidanceUsage>onDemand</PackageGuidanceUsage>
+  <PackageGuidanceDescription>Open when working with the name package.</PackageGuidanceDescription>
 </PropertyGroup>
 <ItemGroup>
   <PackageReference Include="Trellis.AgentDocs.Packaging" PrivateAssets="all" />
@@ -111,7 +116,8 @@ Set the same generic properties as any independent publisher:
 
 The helper packs the reference and generates its hash-checked manifest at pack time.
 An unrelated publisher sets `PackageGuidanceDocument` to its Markdown source
-and `PackageGuidancePath` to its own package-relative destination/entry point.
+and `PackageGuidancePath` to its own package-relative destination, with `PackageGuidanceUsage`
+controlling how the document is presented and `PackageGuidanceDescription` saying when to open it.
 The helper packs one document; it does not impose
 a `Trellis.*` package ID or a `trellis/` path.
 Only the helper package contains the `build/` target; do **not** pack that target or
@@ -124,7 +130,7 @@ downloads the pinned `0.1.0-preview.15` helper from NuGet.org; pass
 `-HelperPackagePath` to test an explicitly supplied local nupkg instead. The
 generic publisher and full CLI probe live in the separate repository. Its optional
 `-WorkDirectory` leaves sample projects available for inspection. The root first-party manifest target runs
-only for packable projects under `Trellis.<Package>/src/`, not unrelated projects.
+only for `Trellis.Core` (`TrellisShipsApiReferenceSet`), never for other packages or unrelated projects.
 
 The reader works from restored NuGet assets and package contents, whether or not `Trellis.Core`
 is in the dependency graph. It never relies on an imported copy target. A satellite published
