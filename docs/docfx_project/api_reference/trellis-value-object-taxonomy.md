@@ -5,6 +5,7 @@ types: [ValueObject, "ScalarValueObject<TSelf,T>", RequiredString<TSelf>, Requir
 version: v3
 last_verified: 2026-08-18
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis Value Object Taxonomy
 

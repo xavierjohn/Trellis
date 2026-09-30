@@ -5,6 +5,7 @@ types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, 
 version: v3
 last_verified: 2026-06-17
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Testing — API Reference
 

@@ -5,6 +5,7 @@ types: [ServiceBusIntegrationEventPublisher, ServiceBusInboxConsumer, AzureServi
 version: v1
 last_verified: 2026-06-19
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Messaging.AzureServiceBus &mdash; API Reference
 

@@ -34,19 +34,23 @@ TRLDOC004 used to assert that some package *packs* each file. It no longer can, 
 
 - **TRLDOC012**: Every doc listed under `GuardrailDocs` in `docs/api-reference-docs.psd1` must carry the opt-in banner. Guardrail docs are the one exception to "delivering a doc for an unreferenced package is harmless": describing an absent *API* produces a compile error, but describing an absent *analyzer* makes an agent write **less** defensively, trusting a rule that never runs. The banner states that standalone analyzer rules require a `PackageReference` to `Trellis.Analyzers`; source-generator diagnostics are supplied by their hosting packages and do not require that separate reference.
 
-Proving docs are *delivered* requires checking the packed `guidance/reference-manifest.json`
-against the exact package bytes and exercising the explicit agent-context command against a
-restored scratch consumer at both the Git root and an independent subfolder scope.
-Restore/build alone must not create `.trellis/`, `AGENTS.md`, or
-`.github/` documents. `check` detects a stale or missing installation without writing it.
-Core and AgentContext also render their NuGet READMEs at pack time: each
-`__TRELLIS_PACKAGE_VERSION__` token becomes the actual `PackageVersion` in its
-installation commands. The packed-payload probe checks both package READMEs so a
-NuGet.org listing cannot silently publish a stale or placeholder tool version.
+Proving docs are *delivered* requires checking packed `guidance/reference-manifest.json`
+against the exact package bytes, including detection of tampering, and verifying that consumer
+restore/build does not create `.agentdocs/`, `AGENTS.md`, or `.github/` documents.
+`build/test-apireference-payload.ps1` checks the first-party payload, Core's NuGet README
+and a restored consumer; `build/test-satellite-guidance.ps1` checks a satellite payload,
+its private build-only helper dependency, and an unrelated package with no guidance.
+The generic publisher and `init`/`sync`/`check`/`remove` lifecycle probes live in the
+independent `Trellis.AgentDocs.Packaging` repository alongside the internal reader and
+the separately versioned `Trellis.AgentDocs` local tool (`agentdocs` command).
+Core packs its NuGet README verbatim; its AgentDocs tool pin is independently
+versioned as `0.1.0-preview.15` rather than using Core's `PackageVersion`.
 
-- **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies beneath it" in `trellis-start-here.md`, "The *n* recipe bodies below" in `trellis-api-cookbook.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. Those routing heads tell agents the Patterns Index is exhaustive and use the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count is checked: the rule originally guarded only `trellis-start-here.md`, and the cookbook's unguarded copy of the same claim duly drifted out of date while the guarded one stayed correct.
+- **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies in `trellis-api-cookbook.md`" in `trellis-start-here.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. The routing head tells agents the Patterns Index is exhaustive and uses the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count belongs in the rule's claim list: the count used to be quoted in the cookbook as well, and the unguarded copy duly drifted out of date while the guarded one stayed correct. The routing head now lives in the router (`trellis-start-here.md`); the count is also quoted in `AGENTS.md`, and both copies are checked.
 
-- **TRLDOC013**: The analyzer diagnostic range quoted on the `trellis-api-analyzers.md` line of the cookbook's routing head (`TRLS001`-`TRLS<n>`) must cover every shipped diagnostic. The upper bound is derived by scanning `*.cs` under any `src/` or `generator/` directory — both locations matter, because the highest id is currently emitted by a source generator (`Trellis.Asp/generator`) rather than by `Trellis.Analyzers/src`. Only the upper bound is checked, since retired ids leave intentional gaps. The routing head is the one section agents keep resident, so an upper bound that lags reality makes an agent dismiss a real diagnostic as something other than a Trellis rule. A scan that finds no ids at all is reported as a failure rather than skipped, so a future source-layout move cannot silently disarm the gate.
+- **TRLDOC013**: The analyzer diagnostic range quoted on the `trellis-api-analyzers.md` line of the router's "rest of the set" table in `trellis-start-here.md` (`TRLS001`-`TRLS<n>`, required there and also checked in the cookbook's companion list when present) must cover every shipped diagnostic. The upper bound is derived by scanning `*.cs` under any `src/` or `generator/` directory — both locations matter, because the highest id is currently emitted by a source generator (`Trellis.Asp/generator`) rather than by `Trellis.Analyzers/src`. Only the upper bound is checked, since retired ids leave intentional gaps. The routing head is the one section agents keep resident, so an upper bound that lags reality makes an agent dismiss a real diagnostic as something other than a Trellis rule. A scan that finds no ids at all is reported as a failure rather than skipped, so a future source-layout move cannot silently disarm the gate.
+
+- **TRLDOC016**: Every shipped reference (everything except `UnshippedDocs`) declares how AgentDocs should present it, in a well-formed front matter block that closes (`---`) before the document body: `agent_usage` is exactly `required`, `onDemand` or `supporting` (case-sensitive, like the manifest generator); required and onDemand documents also carry a one-line `agent_description` of at most 200 characters with no control, format or line-separator characters, and onDemand descriptions start `Open when `. Exactly one document, `trellis-start-here.md`, may be `required`, so the always-read cost of the whole Trellis set stays one self-contained router. The pack-time manifest is generated from these keys (`build/generate-reference-manifest.ps1`) and re-checked against the packed bytes by `build/validate-reference-manifest.ps1`.
 
 - **TRLDOC006**: Every `## Recipe N` heading in `trellis-api-cookbook.md` must have a matching `Examples/CookbookSnippets/Recipe<NN>_*.cs` file. Headings marked `*(retired)*` are skipped, because they exist only to keep old anchors and cross-references resolving and carry no code to pin.
 
@@ -56,9 +60,9 @@ The snippet project references `Trellis.Analyzers` as an analyzer, so those sett
 
 Snippets pin the recipe, they do not execute it: the project has no test runner, so `[Fact]` methods in snippets (Recipes 10 and 26) are compile-checked only. Where a recipe legitimately cannot compile in this project, keep the real code in a comment and say why — Recipe 26's `AddMediator(...)` is elided because it is emitted by `Mediator.SourceGenerator`, which the project deliberately does not reference (several recipes show commands with no paired handler, and the generator fails those with `MSG0005`).
 
-- **TRLDOC007**: Every `## Recipe N` heading in `trellis-api-cookbook.md` must be linked from the `## Patterns Index` section. Retired headings are skipped on the same grounds as TRLDOC006. If the `## Patterns Index` heading itself is missing, the rule fails once and suppresses the per-recipe errors, so a renamed section reports the real cause instead of 35 spurious ones.
+- **TRLDOC007**: Every `## Recipe N` heading in `trellis-api-cookbook.md` must be linked from the `## Patterns Index` section, which lives in the router `trellis-start-here.md` (the recipe bodies stay in the cookbook, so each link crosses files). Retired headings are skipped on the same grounds as TRLDOC006. If the `## Patterns Index` heading itself is missing, the rule fails once and suppresses the per-recipe errors, so a renamed section reports the real cause instead of 35 spurious ones.
 
-TRLDOC007 is what makes on-demand recipe loading safe. The cookbook is the largest file in the doc set (~61K tokens), so agents are instructed to hold only its routing head resident and pull recipe bodies as tasks demand them. That trade is sound *only* while the index is a complete map: a recipe the index never links to is one an agent will never discover, because it never reads the body that would have revealed it. Before this gate existed, two recipes (6 and 28) were already unreachable. Keep index rows phrased as the reader's **task or failure mode**, not the recipe's title — routing happens on the row text alone.
+TRLDOC007 is what makes on-demand recipe loading safe. The cookbook is the largest file in the doc set (~61K tokens), so agents are instructed to hold only the router's Patterns Index resident and pull recipe bodies as tasks demand them. That trade is sound *only* while the index is a complete map: a recipe the index never links to is one an agent will never discover, because it never reads the body that would have revealed it. Before this gate existed, two recipes (6 and 28) were already unreachable. Keep index rows phrased as the reader's **task or failure mode**, not the recipe's title — routing happens on the row text alone.
 
 ## API reference delivery
 
@@ -67,7 +71,7 @@ Two separable concerns, deliberately kept apart in `Directory.Build.targets`:
 | Concern | Mechanism | Consumers |
 |---|---|---|
 | **Ownership** — which package a reference describes | `<TrellisApiRefName>` | `audit-doc-freshness.ps1`, `audit-completeness`, TRLDOC004, TRLDOC011 |
-| **Delivery** — which package ships the file under `trellis/` | `<TrellisShipsApiReferenceSet>` on `Trellis.Core` | explicit agent-context command |
+| **Delivery** — which package ships the file under `trellis/` | `<TrellisShipsApiReferenceSet>` on `Trellis.Core` | `Trellis.AgentDocs` local tool (`agentdocs`) |
 
 `Trellis.Core` ships the **complete first-party set**. Every package in this repository carries one version stamp from `version.json`, so scoping delivery per package bought nothing and cost two real failures:
 
@@ -77,9 +81,11 @@ Two separable concerns, deliberately kept apart in `Directory.Build.targets`:
 Because Core now ships references for packages the consumer may not have, **file presence no longer implies a package reference**. `trellis-start-here.md` says so explicitly and tells agents to confirm the reference in the `.csproj`; do not reintroduce wording that invites the opposite inference.
 
 `Trellis.Analyzers` is the one first-party exception. It has no dependency on `Trellis.Core`,
-so it ships its own reference. When both packages contribute `trellis-api-analyzers.md`, the
-installer verifies both source hashes, deduplicates identical canonical content, and records
-both sources in its ownership manifest.
+so it cannot inherit delivery; instead it sets `<TrellisApiReferenceDeliveredByCore>` and
+`<TrellisApiRefName>`, ships no manifest or `trellis/` document of its own, and Core ships
+`trellis-api-analyzers.md` as an `onDemand` document. A project that references only
+`Trellis.Analyzers` therefore receives no guidance. `ApiReferencePayloadGateTests` accepts
+`DeliveredByCore` from no other package.
 
 ### Packages published from other repositories
 
@@ -89,31 +95,42 @@ A satellite ships two things:
 
 1. Its reference markdown, packed to `trellis/`.
 2. A `guidance/reference-manifest.json` declaring package-relative document paths, exact-byte
-   SHA-256 hashes, and explicit entry points under the experimental version 1 contract.
+   SHA-256 hashes, and a `usage` (`required`, `onDemand` or `supporting`) plus a description for
+   required and onDemand documents, under the experimental version 1 contract.
 
-For a single-reference satellite, copy `build/Trellis.ApiReference.Payload.targets` into the
-satellite's repository and import it **only in the publishing project**. Place
-`trellis/trellis-api-<name>.md` beside that project and configure:
+For a single-reference satellite, add a pinned, private
+`Trellis.AgentDocs.Packaging` reference **only to the publishing project**.
+Set the same generic properties as any independent publisher:
 
 ```xml
 <PropertyGroup>
-  <TrellisApiRefName>name</TrellisApiRefName>
-  <TrellisPublishSatelliteGuidance>true</TrellisPublishSatelliteGuidance>
+  <PackageGuidanceDocument>$(MSBuildProjectDirectory)/docs/trellis-api-name.md</PackageGuidanceDocument>
+  <PackageGuidancePath>trellis/trellis-api-name.md</PackageGuidancePath>
+  <PackageGuidanceUsage>onDemand</PackageGuidanceUsage>
+  <PackageGuidanceDescription>Open when working with the name package.</PackageGuidanceDescription>
 </PropertyGroup>
 <ItemGroup>
-  <None Include="trellis/trellis-api-name.md" Pack="true" PackagePath="trellis/" />
+  <PackageReference Include="Trellis.AgentDocs.Packaging" PrivateAssets="all" />
 </ItemGroup>
-<Import Project="../build/Trellis.ApiReference.Payload.targets" />
 ```
 
-The import hashes the source bytes at pack time and packs the manifest; the project packs
-the reference itself. Do **not** pack the `.targets` file under `build/` or
-`buildTransitive/`: consumer restore/build discovers the manifest without executing
-package targets, and the Trellis CLI rejects older copy-target packages. Run
-`pwsh build/test-satellite-guidance.ps1` in this repository to test an isolated satellite
-and a satellite-only restored consumer. Its optional `-WorkDirectory` leaves the
-sample projects available for inspection. The root first-party manifest target runs
-only for packable projects under `Trellis.<Package>/src/`, not unrelated projects.
+The helper packs the reference and generates its hash-checked manifest at pack time.
+An unrelated publisher sets `PackageGuidanceDocument` to its Markdown source
+and `PackageGuidancePath` to its own package-relative destination, with `PackageGuidanceUsage`
+controlling how the document is presented and `PackageGuidanceDescription` saying when to open it.
+The helper packs one document; it does not impose
+a `Trellis.*` package ID or a `trellis/` path.
+Only the helper package contains the `build/` target; do **not** pack that target or
+any legacy copy target into the satellite's package. Consumer restore/build
+discovers the manifest without executing package targets, and the AgentDocs CLI
+rejects older copy-target packages. Run
+`pwsh build/test-satellite-guidance.ps1` in this repository to test a Trellis
+satellite payload and consumer restore/build without CLI execution. By default it
+downloads the pinned `0.1.0-preview.15` helper from NuGet.org; pass
+`-HelperPackagePath` to test an explicitly supplied local nupkg instead. The
+generic publisher and full CLI probe live in the separate repository. Its optional
+`-WorkDirectory` leaves sample projects available for inspection. The root first-party manifest target runs
+only for `Trellis.Core` (`TrellisShipsApiReferenceSet`), never for other packages or unrelated projects.
 
 The reader works from restored NuGet assets and package contents, whether or not `Trellis.Core`
 is in the dependency graph. It never relies on an imported copy target. A satellite published

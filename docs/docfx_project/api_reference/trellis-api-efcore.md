@@ -5,6 +5,7 @@ types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBui
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.EntityFrameworkCore
 

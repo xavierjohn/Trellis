@@ -5,6 +5,7 @@ types: [StateMachineExtensions, "LazyStateMachine<TState, TTrigger>"]
 version: v3
 last_verified: 2026-06-21
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.StateMachine — API Reference
 

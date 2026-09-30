@@ -14,19 +14,19 @@ Before writing or changing code that uses Trellis APIs, read the relevant files 
 
 ### The one file to hold in memory
 
-**`docs/docfx_project/api_reference/trellis-api-cookbook.md` is the start file. Read its routing head first — everything from the top of the file through the end of `## Patterns Index`, which stops at the first `## Recipe` heading — and keep that resident for the whole session.**
+**`docs/docfx_project/api_reference/trellis-start-here.md` is the start file. Read all of it first and keep it resident for the whole session.**
 
-The full reference set is ~301K tokens — it does not fit in context and is not meant to. The cookbook is the router: its task-lookup table maps a task to the right recipe, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. That routing head is only ~4K tokens. The 36 recipe bodies below it are the other ~57K, and a typical task reads one to three of them (~1.25K tokens each).
+The full reference set is ~301K tokens — it does not fit in context and is not meant to. The router is self-contained: its task-lookup table maps a task to the right recipe, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. It is only ~6K tokens (~23 KB) and is the one `required` document AgentDocs delivers to consumers. The 37 recipe bodies in `trellis-api-cookbook.md` are another ~57K, and a typical task reads one to three of them (~1.25K tokens each).
 
-**So hold the routing head, and read recipe bodies on demand.** Holding all 36 bodies costs ~57K tokens permanently to keep ~54K of them that you will not open — more than a quarter of a 200K context spent on content the task never needed. Read a body the moment the index routes you to one; do not work from a recipe's title.
+**So hold the router, and read recipe bodies on demand.** Holding all 37 bodies costs ~57K tokens permanently to keep ~54K of them that you will not open — more than a quarter of a 200K context spent on content the task never needed. Read a body the moment the router sends you to one; do not work from a recipe's title.
 
-This trade is safe only because the index is a complete map, which **TRLDOC007** enforces: every live recipe is reachable from `## Patterns Index`, and rows are phrased as the reader's task or failure mode rather than the recipe's title. If you find yourself guessing whether a recipe exists, re-read the index rows — do not assume its absence.
+This trade is safe only because the index is a complete map, which **TRLDOC007** enforces: every live recipe is reachable from the router's `## Patterns Index`, and rows are phrased as the reader's task or failure mode rather than the recipe's title. If you find yourself guessing whether a recipe exists, re-read the index rows — do not assume its absence.
 
-Then pull in only the 1–3 area-specific references the cookbook points you at. Do not infer Trellis API behavior from these repository instructions.
+Then pull in only the 1–3 area-specific references the router points you at. Do not infer Trellis API behavior from these repository instructions.
 
-If context is too tight to hold the routing head plus one area reference, you are too tight to write correct Trellis code — say so rather than guessing at API shapes.
+If context is too tight to hold the router plus one area reference, you are too tight to write correct Trellis code — say so rather than guessing at API shapes.
 
-`trellis-start-here.md` is **not** a second entry point, and in this repository you can ignore it. It is a ~1 KB router written for *consumers*: the explicit agent-context command installs package references under `.trellis/api-reference/`, where nothing explains what those files are, so that router tells a consumer's agent the same thing this section tells you — read the cookbook first, keep it loaded, don't delegate it. Edit it only when this guidance changes, and keep the two in agreement. There is exactly one start file, the cookbook; `trellis-start-here.md` just points at it for readers who never see this file.
+`trellis-start-here.md` is the only start file, here and for consumers: the optional, separately versioned `Trellis.AgentDocs` local tool (command `agentdocs`) installs the reference set under Git-root `.agentdocs/packages/trellis.core/trellis/` and makes this router the one required read. The cookbook is `onDemand` and holds recipe bodies only. Keep the router self-contained, and keep the recipe count it quotes correct (TRLDOC010).
 
 ### Do not delegate reference reading to a sub-agent
 
@@ -38,19 +38,19 @@ Sub-agents are still appropriate for work whose *output* is a verdict rather tha
 
 ### Recommended context size
 
-The reference set is the 27 `*.md` files under `docs/docfx_project/api_reference/` — 25 `trellis-api-*.md` files plus `trellis-value-object-taxonomy.md` and the tiny `trellis-start-here.md` router — totalling ~1,184 KB (~303K tokens); the cookbook alone is ~239 KB (~61K tokens), of which only its ~4K-token routing head is held resident. (`completeness-report.md` sits in the same directory but is a generated audit artifact, not a reference — the lint script therefore scans 28 files.) These figures grow as the docs do — treat them as approximate. Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **1.5–2.5 MB**.
+The reference set is the 27 `*.md` files under `docs/docfx_project/api_reference/` — 25 `trellis-api-*.md` files plus `trellis-value-object-taxonomy.md` and the ~23 KB `trellis-start-here.md` router — totalling ~1,184 KB (~303K tokens); the cookbook alone is ~216 KB (~55K tokens) of recipe bodies, none of which is held resident, while the ~6K-token router is. (`completeness-report.md` sits in the same directory but is a generated audit artifact, not a reference — the lint script therefore scans 28 files.) These figures grow as the docs do — treat them as approximate. Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **1.5–2.5 MB**.
 
 | Tier | Context | When this is enough |
 |---|---|---|
-| **Minimum** | 200K | Narrow, single-file tasks. Holds the cookbook routing head, a handful of recipe bodies and one area reference; cross-cutting work is error-prone at this tier. |
-| **Recommended** | 400–500K | Most consumer projects. Lets the routing head + 5–6 area-specific references stay resident through a PR-sized session. |
+| **Minimum** | 200K | Narrow, single-file tasks. Holds the router, a handful of recipe bodies and one area reference; cross-cutting work is error-prone at this tier. |
+| **Recommended** | 400–500K | Most consumer projects. Lets the router + 5–6 area-specific references stay resident through a PR-sized session. |
 | **Comfortable** | 1M | Framework-internal work and greenfield projects with multiple integration points. Lets all 27 references stay resident from turn 1 without eviction. |
 
 ### Mandatory loads at session start
 
 For any non-trivial Trellis work, load these **yourself** (see the sub-agent rule above) **before** writing the first line of code:
 
-1. The `trellis-api-cookbook.md` routing head — always. Everything above the first `## Recipe` heading is the entry point, and it stays resident; recipe bodies are read on demand as the index routes you to them.
+1. `trellis-start-here.md` — always, in full. It stays resident; cookbook recipe bodies are read on demand as its index routes you to them.
 2. `trellis-api-servicedefaults.md` — always. Composition-root features have a matching `TrellisServiceBuilder.UseXxx()` slot for their `services.AddXxx()` extension; leaf/store/adapter-author registrations deliberately have **no** slot. See "Adding a new public registration API" below for the rule, which is enforced by `RegistrationSurfaceTests`. Designing or modifying a registration helper without reading this file either silently misses a builder slot that should exist, or wrongly adds one where none belongs.
 3. The area-specific reference for the package being modified (from the table below).
 4. The reference for **every package whose pipeline this work composes with**. Specifically: anything touching the Mediator pipeline must also load `trellis-api-efcore.md` (transactional behavior) and `trellis-api-authorization.md` (resource-authorization behavior); anything touching ASP must also load `trellis-api-mediator.md`.
@@ -116,12 +116,12 @@ If it falls in the second category, say so explicitly in the PR description and 
 
 A new package must deliver the API reference set to whoever installs it. The references are what an agent reads before writing Trellis code, so a package that ships without them leaves an agent in a consuming project with no signatures to work from — and it invents plausible ones instead, which is the failure the reference set exists to prevent.
 
-Delivery is opt-in per csproj, and opt-in is how a package comes to ship with none: `Trellis.ResourceNaming.Azure` published that way and nothing failed. There are three valid routes, and a new package must take one:
+Delivery is opt-in per csproj, and opt-in is how a package comes to ship with none: `Trellis.ResourceNaming.Azure` published that way and nothing failed. There are three valid routes, and a new package must take one. `Trellis.Core` is the only package that publishes guidance (the reference set plus its AgentDocs manifest), so consumers who depend on Core approve one package and no other first-party package adds a pending entry to their index (an analyzers-only project has no Core and gets no guidance):
 
 | Route | How | Who uses it |
 |---|---|---|
 | Ship the whole set | `<TrellisShipsApiReferenceSet>true</TrellisShipsApiReferenceSet>` | `Trellis.Core` only |
-| Ship its own reference | `<TrellisShipsOwnApiReference>true</TrellisShipsOwnApiReference>` + `<TrellisApiRefName>` | `Trellis.Analyzers`, which cannot depend on Core; and packages published from **other repositories**, which version independently and use `build/Trellis.ApiReference.Payload.targets` |
+| Declare Core delivers it | `<TrellisApiReferenceDeliveredByCore>true</TrellisApiReferenceDeliveredByCore>` + `<TrellisApiRefName>` | `Trellis.Analyzers`, which cannot depend on Core; its reference is part of Core's set. Packages published from **other repositories** use a private `Trellis.AgentDocs.Packaging` build dependency and set `PackageGuidanceDocument` / `PackageGuidancePath` / `PackageGuidanceDescription` instead |
 | Inherit it | a `ProjectReference` path to `Trellis.Core` | every other first-party package |
 
 **This is enforced, not advisory.** `Trellis.Core/tests/Packaging/ApiReferencePayloadGateTests.cs` enumerates every packable `*/src/*.csproj` and walks the first-party project graph, so a package with no route to a payload fails the build. It enumerates rather than hand-lists deliberately: a hand-listed set stops covering the next package added, which is the same miss one generation later. Two companion assertions close the ways that enumeration could go quiet — a typo'd `TrellisApiRefName` (otherwise silent, because the MSBuild `Include` matches nothing and the package packs successfully with no reference), and a packable project added **outside** the `*/src/` convention, which the enumeration would simply not see.
@@ -129,6 +129,8 @@ Delivery is opt-in per csproj, and opt-in is how a package comes to ship with no
 So: put a new package at `<Package>/src/<Package>.csproj`. A project that lives elsewhere must be marked `IsPackable=false` or it fails the gate.
 
 Also set `<TrellisApiRefName>` on any package that owns a reference file, even when it inherits delivery: TRLDOC004, the freshness audit, and the completeness audit all key off it.
+
+Every shipped reference declares its AgentDocs role in its own front matter (TRLDOC016): `agent_usage: required | onDemand | supporting`, plus `agent_description` (at most 200 characters, `Open when …` for onDemand) for required and onDemand documents. A new reference is `supporting` unless there is a strong reason otherwise; **`trellis-start-here.md` is the only `required` document** and must stay self-contained, because everything required is read before any Trellis work. `build/generate-reference-manifest.ps1` copies these declarations into Core's manifest at pack time.
 
 ### Validating sub-agent findings
 

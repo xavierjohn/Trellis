@@ -6,6 +6,8 @@ related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-08-18
 audience: [llm]
+agent_usage: onDemand
+agent_description: "Open when fixing a Trellis analyzer diagnostic (TRLSxxx): ready-to-apply WRONG and FIX shapes for each rule."
 ---
 # Trellis Anti-Pattern → Fix Gallery
 

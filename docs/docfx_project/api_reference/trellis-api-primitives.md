@@ -5,6 +5,7 @@ types: [Age, CountryCode, CurrencyCode, EmailAddress, GeoCoordinate, Hostname, I
 version: v3
 last_verified: 2026-08-18
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis API Primitives
 

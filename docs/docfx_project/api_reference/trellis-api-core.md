@@ -5,6 +5,7 @@ types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
+agent_usage: supporting
 ---
 # Trellis.Core API Reference
 

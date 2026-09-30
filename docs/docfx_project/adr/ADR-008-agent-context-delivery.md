@@ -6,6 +6,16 @@
 > [ADR-009](ADR-009-nuget-package-guidance-contract.md) and implemented with Trellis.
 > External standardization and adoption do not block release.
 >
+> **Update (2026-09):** The shipped design departs from this ADR in three ways. Guidance packages are
+> activated by consent: the tool installs only packages listed in `.agentdocs/policy.json`
+> `approvedPackages`, and every other package is reported as pending without its manifest being read.
+> The manifest classifies each document by `usage` (`required`, `onDemand`, `supporting`) instead of
+> naming entry points. And only `Trellis.Core` publishes guidance for the whole Trellis family: the
+> consumer-side `Trellis.ApiReference.targets` bootstrap was removed, `Trellis.Analyzers` no longer ships
+> its own copy of its reference, and no other Trellis package carries a manifest. Where this text
+> describes `entryPoints`, restore hooks or a `refresh` command, read
+> [ADR-009](ADR-009-nuget-package-guidance-contract.md) and the AgentDocs contract document instead.
+>
 > **Context:** Trellis NuGet packages ship an LLM-optimized API reference set and currently copy it
 > into a consuming repository's nearest `.github/` directory during build. After adopting root
 > `AGENTS.md` as the cross-agent instruction surface, the files are still delivered but no portable
@@ -13,6 +23,49 @@
 > `buildTransitive` target would solve discovery by violating repository ownership, build
 > reproducibility, and the trust boundary around agent instructions. This ADR proposes an explicit,
 > manifest-backed agent-context lifecycle instead.
+
+> **Revision (2026-09-27):** The repository-installation layout and scope rules below
+> describe the original design and are superseded by "Repository-wide guidance revision"
+> immediately below. The NuGet package manifest in ADR-009 is unchanged.
+
+> **Publisher packaging revision:** The build-only `Trellis.AgentDocs.Packaging`
+> helper lives in its own repository and versions independently of Trellis.Core.
+> It accepts `PackageGuidanceDocument` and `PackageGuidancePath` for every
+> publisher, including Trellis satellites; there is no Trellis-only preset.
+> Its NuGet payload is a publisher-side target, not a consumer build target.
+> The format remains the experimental ADR-009 contract, not a NuGet standard.
+>
+> **Tool extraction revision (2026-09-27):** The reader and installer now live in the
+> independent `Trellis.AgentDocs.Packaging` repository. The separately versioned
+> `Trellis.AgentDocs` local tool (command `agentdocs`, independently versioned)
+> implements `init`, `sync`, `check`, and `remove`; it is not a first-party
+> framework project and is not Core-version matched. The historical package name,
+> invocation syntax, scoped-layout examples, and lockstep publication plan below
+> record the superseded design, not current installation instructions. The tool
+> and build helper are published on NuGet.org.
+
+## Repository-wide guidance revision
+
+The installer now owns one context per Git repository. The pinned tool manifest is at
+Git-root `.config/dotnet-tools.json`, including when the selected solution is nested.
+It materializes guides under Git-root `.agentdocs/`: Trellis's flat reference view is
+`.agentdocs/packages/trellis.core/trellis/`; all publisher guides live under
+`.agentdocs/packages/<package-id>/<package-relative-path>`. The tool-generated
+`.agentdocs/README.md` lists each approved package's documents by their manifest `usage` (`required`, `onDemand`, `supporting`). The ownership manifest
+records the resolved package versions and hashes; it rejects mixed versions of a
+package in the selected graph instead of adding a version directory. Independent
+subfolder contexts and tool manifests are not supported. An existing `.trellis/`
+context must first be removed using the previously pinned tool; it is not silently
+adopted or deleted.
+
+Explicit `init`, `sync`, and `remove` write repository files; restore and build never do, and there is no restore-time `refresh` or managed `Directory.*.targets` import. They
+maintain narrow, keyed pointers in root and relevant project-directory `AGENTS.md`
+files, plus the managed block of Git-root `.github/copilot-instructions.md` for
+Visual Studio Copilot. Customer-authored instructions outside those blocks are
+preserved, and all other `.github/` paths remain excluded. `check` is read-only.
+Visual Studio users must enable custom instructions; opening a nested solution
+must be tested to confirm the Git-root `.github/` pointer is loaded in that IDE.
+Neither `.agentdocs/` nor the package manifest is itself an agent-discovery standard.
 
 ## Context
 
