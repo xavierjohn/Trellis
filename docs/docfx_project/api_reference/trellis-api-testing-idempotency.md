@@ -5,7 +5,8 @@ types: [IdempotencyStoreConformance]
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when implementing or reviewing an IIdempotencyStore and proving it meets the contract, or reproducing a duplicate-execution incident."
 ---
 # Trellis.Testing.Idempotency API Reference
 

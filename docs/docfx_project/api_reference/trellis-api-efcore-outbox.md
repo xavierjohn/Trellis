@@ -5,7 +5,8 @@ types: [OutboxMessage, OutboxMessageKind, OutboxOptions, OutboxServiceCollection
 version: v1
 last_verified: 2026-08-18
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when domain events must survive a crash between commit and dispatch: AddTrellisOutbox, delivery guarantees, retry and parking behavior."
 ---
 # Trellis.EntityFrameworkCore.Outbox
 

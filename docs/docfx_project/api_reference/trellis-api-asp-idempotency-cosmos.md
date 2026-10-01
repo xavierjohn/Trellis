@@ -5,7 +5,8 @@ types: [CosmosIdempotencyContainer, CosmosIdempotencyServiceCollectionExtensions
 version: v3
 last_verified: 2026-08-16
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when running Trellis idempotency on more than one replica with the Cosmos store: wiring, provisioning, or diagnosing duplicate execution and stuck reservations."
 ---
 # Trellis.Asp.Idempotency.Cosmos API Reference
 

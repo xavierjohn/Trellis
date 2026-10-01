@@ -5,7 +5,8 @@ types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionK
 version: v3
 last_verified: 2026-06-19
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when you need HTTP fault cases, ETag and Retry-After helpers, RepresentationMetadata or WriteOutcome shapes (Trellis.Http.Abstractions)."
 ---
 # Trellis.Http.Abstractions &mdash; API Reference
 

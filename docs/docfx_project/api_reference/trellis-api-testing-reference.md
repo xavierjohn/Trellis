@@ -5,7 +5,8 @@ types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, 
 version: v3
 last_verified: 2026-06-17
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when writing unit or handler tests for Result, Maybe, errors or mediator handlers: FluentAssertions extensions, unwrap helpers and fakes (Trellis.Testing)."
 ---
 # Trellis.Testing — API Reference
 

@@ -5,7 +5,8 @@ types: [FluentValidationResultExtensions, JsonPointerNormalizer, ValidationArgsP
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when converting FluentValidation results to Result or Error.InvalidInput outside the Mediator pipeline, or using Trellis.FluentValidation in domain or worker projects."
 ---
 # Trellis.FluentValidation — API Reference
 

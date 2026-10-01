@@ -5,7 +5,8 @@ types: [HttpResponseOptionsBuilderApiVersioningExtensions, HttpContextPageUrlExt
 version: v1
 last_verified: 2026-09-12
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when versioned controllers return Result or Page and need Location or next-page URLs that carry the api-version (Trellis.Asp.ApiVersioning)."
 ---
 # Trellis.Asp.ApiVersioning — API Reference
 

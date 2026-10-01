@@ -5,7 +5,8 @@ types: [StateMachineExtensions, "LazyStateMachine<TState, TTrigger>"]
 version: v3
 last_verified: 2026-06-21
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when wrapping Stateless transitions in Trellis Result values, with lazy construction for ORM-materialized aggregates (Trellis.StateMachine)."
 ---
 # Trellis.StateMachine — API Reference
 

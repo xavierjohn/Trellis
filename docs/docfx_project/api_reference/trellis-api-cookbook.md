@@ -855,7 +855,7 @@ public static class CompositionRoot
 
 **Still app-owned.** `AddTrellis(...)` does **not** call `AddDbContext`, `AddMediator`, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.
 
-> **Set `options.ServiceLifetime = ServiceLifetime.Scoped` on `AddMediator(...)`** in any host that creates a request/execution scope (ASP.NET Core, workers). Mediator's default lifetime is `Singleton`, but the Trellis pipeline behaviors depend on per-request services (`IActorProvider`, `IUnitOfWork`, `IMessageValidator<>`), so a singleton handler/behavior fails the DI root-scope validation the moment it resolves a scoped dependency — a build-clean service that throws at startup. (Same guidance: `Trellis.Mediator` README and the [Mediator integration article](../articles/integration-mediator.md).)
+> **Set `options.ServiceLifetime = ServiceLifetime.Scoped` on `AddMediator(...)`** in any host that creates a request/execution scope (ASP.NET Core, workers). Mediator's default lifetime is `Singleton`, but the Trellis pipeline behaviors depend on per-request services (`IActorProvider`, `IUnitOfWork`, `IMessageValidator<>`), so a singleton handler/behavior fails the DI root-scope validation the moment it resolves a scoped dependency — a build-clean service that throws at startup. (Same guidance: `Trellis.Mediator` README and the [Mediator integration article](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html).)
 
 ---
 

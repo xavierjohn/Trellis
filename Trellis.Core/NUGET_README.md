@@ -59,14 +59,14 @@ and adds small pointers to `AGENTS.md` and `.github/copilot-instructions.md`, so
 routing guide instead of guessing API signatures. Confirm a project references a package before using its
 API. **Trellis works normally without it.** Restore and build never create `.agentdocs/` or edit your
 instructions; you choose whether to install the guidance.
-`Trellis.AgentDocs` is independently versioned from Core; `0.1.0-preview.15` is available from NuGet.org.
+`Trellis.AgentDocs` is independently versioned from Core; `0.1.0-preview.17` is available from NuGet.org.
 
 To install it at the Git root, run these **from the Git root** (use a relative path
 if the solution is in a subdirectory):
 
 ```bash
 dotnet new tool-manifest --output .config
-dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.15 --tool-manifest .config/dotnet-tools.json
+dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.17 --tool-manifest .config/dotnet-tools.json
 dotnet restore <solution-or-project>
 dotnet tool run agentdocs init <solution-or-project>
 ```
@@ -80,8 +80,8 @@ first-party package that depends on `Trellis.Core`. A project that references on
 (for example `Trellis.ServiceLevelIndicators`) ship their own reference.
 
 The generated index makes one document required reading, `trellis-start-here.md` (about 23 KB): it routes
-each task to the reference or recipe to open. The cookbook, anti-patterns and analyzer references are on
-demand, and the remaining per-package references are supporting material the router links to.
+each task to the reference or recipe to open. Every other reference is listed in the index as on demand,
+with a one-line description of when to open it, so an agent can pick the right one without reading them all.
 After a Trellis upgrade, run `dotnet restore` and then `dotnet tool run agentdocs sync`. CI can run
 `dotnet tool run agentdocs check` to detect drift without writes. Commit the tool pin, the managed
 instruction pointers, `.agentdocs/policy.json` and `.agentdocs/` with the package change. `.agentdocs/` and

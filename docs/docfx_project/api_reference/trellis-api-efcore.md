@@ -5,7 +5,8 @@ types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBui
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when persisting aggregates with Trellis.EntityFrameworkCore: RepositoryBase, Maybe queries, conventions, unit of work, idempotent inserts and retry helpers."
 ---
 # Trellis.EntityFrameworkCore
 

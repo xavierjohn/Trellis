@@ -5,7 +5,8 @@ types: [WorkerHarness`1, WorkerHarnessOptions, IWorkerTickSignal, WorkerHarnessT
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when testing a BackgroundService that publishes domain events: FakeTimeProvider control, waiting for events or ticks, and a deterministic system actor."
 ---
 # Trellis.Testing.Worker &mdash; API Reference
 

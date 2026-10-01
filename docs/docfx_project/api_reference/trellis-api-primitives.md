@@ -5,7 +5,8 @@ types: [Age, CountryCode, CurrencyCode, EmailAddress, GeoCoordinate, Hostname, I
 version: v3
 last_verified: 2026-08-18
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when using ready-made value objects such as EmailAddress, Money, PhoneNumber, Url or Slug, or choosing between a built-in primitive and a custom one."
 ---
 # Trellis API Primitives
 

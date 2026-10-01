@@ -670,11 +670,14 @@ else {
 
 # TRLDOC016 - every shipped reference declares how agents should use it, in its own front matter.
 # The pack-time manifest is generated from these keys, so a document without them cannot be
-# packed: agent_usage is required | onDemand | supporting, and required/onDemand documents carry
-# an agent_description of at most 200 Unicode scalar values (onDemand ones start "Open when",
-# because that line is what an agent reads to decide whether to open the file). Exactly one
-# document is required - the router, which is self-contained - so the always-read cost of the
-# Trellis reference set stays one document.
+# packed: agent_usage is required or onDemand, and both carry an agent_description of at most 200
+# Unicode scalar values (onDemand ones start "Open when", because that line is what an agent reads
+# to decide whether to open the file). Exactly one document is required - the router, which is
+# self-contained - so the always-read cost of the Trellis reference set stays one document.
+# The AgentDocs contract also allows "supporting", which consumers do not list in the index, so a
+# supporting document is only found if another document links to it. Every Trellis reference is
+# listed instead: every package ships under one approval, the restored-package filter cannot tell
+# the per-package references apart, and the description is what routes an agent to the right one.
 $shippedDocs = @($markdownFiles | Where-Object { $docManifest.UnshippedDocs -notcontains $_.Name })
 $requiredDocs = @()
 
@@ -709,8 +712,8 @@ foreach ($doc in $shippedDocs) {
     $usageLine = @($frontMatter | Where-Object { $_ -match '^agent_usage:' })
     $usage = if ($usageLine.Count -eq 1) { ($usageLine[0] -replace '^agent_usage:\s*', '').Trim() } else { '' }
 
-    if ($usage -cnotin @('required', 'onDemand', 'supporting')) {
-        Write-Host "$($doc.FullName)(1,1): error TRLDOC016: agent_usage must be declared once, as required, onDemand or supporting (found '$usage')."
+    if ($usage -cnotin @('required', 'onDemand')) {
+        Write-Host "$($doc.FullName)(1,1): error TRLDOC016: agent_usage must be declared once, as required or onDemand (found '$usage'). Trellis lists every reference in the index, so 'supporting' is not used."
         $failed = $true
         continue
     }
