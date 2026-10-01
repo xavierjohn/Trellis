@@ -5,7 +5,8 @@ types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "A
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when wiring Trellis behaviors into the Mediator pipeline: command and query interfaces, validation, authorization, tracing, logging and unit-of-work behavior."
 ---
 # Trellis.Mediator — API Reference
 
@@ -959,7 +960,7 @@ public static Task DispatchAggregateEventsAsync(
 - **Cancellation:** Not cancellable. The `cancellationToken` parameter is accepted for signature compatibility but not observed, and handlers receive `CancellationToken.None` — the helper is post-commit only, so aborting mid-fan-out would strand an already-durable write with a partially published event set.
 - **Handler exceptions (publisher contract):** Handler exceptions follow the publisher's contract: the default `MediatorDomainEventPublisher` logs and swallows non-cancellation handler exceptions so the helper continues; a custom publisher that propagates handler exceptions causes the helper to rethrow without calling `AcceptChanges()`.
 - **When to call:** **Must only be called after the underlying unit of work has committed** — calling it inside a handler that relies on `TransactionalCommandBehavior` for its commit publishes events before the database transaction is durable. Durable at-least-once dispatch requires the transactional outbox and integration-event translation pattern.
-- **Cross-doc link:** See [Dispatching events from non-aggregate response shapes](../articles/integration-mediator.md#dispatching-events-from-non-aggregate-response-shapes-post-commit-safe) for the integration article.
+- **Cross-doc link:** See [Dispatching events from non-aggregate response shapes](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html#dispatching-events-from-non-aggregate-response-shapes-post-commit-safe) for the integration article.
 
 ### Trellis.Mediator.IntegrationEventDispatchServiceCollectionExtensions
 
@@ -981,7 +982,7 @@ Registers the default in-process integration-event publisher, the scoped collect
 public static IServiceCollection AddTrackedAggregateDomainEventDispatch(this IServiceCollection services)
 ```
 
-Registers the tracked-aggregate pipeline behavior + default publisher. Mutually exclusive with `AddDomainEventDispatch()`: removes any prior response-shape `DomainEventDispatchBehavior<,>` registration so calling both no longer double-dispatches. Re-orders any prior open- or closed-generic `TransactionalCommandBehavior` registration so tracked dispatch sits just outside the transaction behavior and runs after commit (events are read from the unit-of-work's snapshot, taken at commit time). Idempotent. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior) for the behavior contract and [Auto-dispatching from outcome-DTO commands](../articles/integration-mediator.md#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior) for the integration article.
+Registers the tracked-aggregate pipeline behavior + default publisher. Mutually exclusive with `AddDomainEventDispatch()`: removes any prior response-shape `DomainEventDispatchBehavior<,>` registration so calling both no longer double-dispatches. Re-orders any prior open- or closed-generic `TransactionalCommandBehavior` registration so tracked dispatch sits just outside the transaction behavior and runs after commit (events are read from the unit-of-work's snapshot, taken at commit time). Idempotent. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior) for the behavior contract and [Auto-dispatching from outcome-DTO commands](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior) for the integration article.
 
 ## Interfaces
 

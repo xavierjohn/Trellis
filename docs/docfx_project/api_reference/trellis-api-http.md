@@ -5,7 +5,8 @@ types: [HttpResponseExtensions]
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when adapting HttpClient calls into Trellis Result pipelines, including 404 as Maybe.None and HttpResponseMessage disposal (Trellis.Http)."
 ---
 # Trellis.Http &mdash; API Reference
 

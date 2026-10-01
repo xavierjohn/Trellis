@@ -64,7 +64,7 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $reference) -Force | Out-
 if ($HelperPackagePath) {
     Copy-Item -LiteralPath $HelperPackagePath -Destination $feed
 } else {
-    $helperVersion = '0.1.0-preview.15'
+    $helperVersion = '0.1.0-preview.17'
     $url = "https://api.nuget.org/v3-flatcontainer/trellis.agentdocs.packaging/$helperVersion/trellis.agentdocs.packaging.$helperVersion.nupkg"
     try {
         Invoke-WebRequest -Uri $url -OutFile (Join-Path $feed "Trellis.AgentDocs.Packaging.$helperVersion.nupkg")

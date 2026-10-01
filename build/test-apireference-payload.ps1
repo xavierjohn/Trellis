@@ -50,7 +50,7 @@ try {
                 finally { $reader.Dispose() }
             }
             finally { $archive.Dispose() }
-            $command = 'dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.15 --tool-manifest .config/dotnet-tools.json'
+            $command = 'dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.17 --tool-manifest .config/dotnet-tools.json'
             if ([regex]::Matches($readme, [regex]::Escape($command)).Count -ne 1 -or
                 $readme -notmatch '(?m)^dotnet tool run agentdocs init <solution-or-project>\r?$' -or
                 -not $readme.Contains('approvedPackages', [StringComparison]::Ordinal) -or
@@ -58,7 +58,17 @@ try {
                 $readme.Contains('__TRELLIS_PACKAGE_VERSION__', [StringComparison]::Ordinal)) {
                 throw 'Packed Core README must pin the independent AgentDocs tool and show its init, approval and sync steps.'
             }
-            Write-Host "PASS $($package.Name) NuGet README pins independent Trellis.AgentDocs 0.1.0-preview.15"
+            Write-Host "PASS $($package.Name) NuGet README pins independent Trellis.AgentDocs 0.1.0-preview.17"
+
+            # The published validator is the authoring check for the contract and for discoverability. --strict makes a
+            # warning (a link that leaves the package, a document the index does not reach, a malformed front matter
+            # block, an oversized required set) fail the build, exactly as a contract error would.
+            $toolDirectory = Join-Path $work 'agentdocs-tool'
+            $install = & dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.17 --tool-path $toolDirectory 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "Could not install Trellis.AgentDocs 0.1.0-preview.17 for validation:`n$($install | Out-String)" }
+            $validation = & (Join-Path $toolDirectory 'agentdocs') validate $package.FullName --strict 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "agentdocs validate --strict rejected $($package.Name):`n$($validation | Out-String)" }
+            Write-Host "PASS $($package.Name) agentdocs validate --strict: $($validation | Select-Object -Last 1)"
         }
     }
 

@@ -38,19 +38,21 @@ Proving docs are *delivered* requires checking packed `guidance/reference-manife
 against the exact package bytes, including detection of tampering, and verifying that consumer
 restore/build does not create `.agentdocs/`, `AGENTS.md`, or `.github/` documents.
 `build/test-apireference-payload.ps1` checks the first-party payload, Core's NuGet README
-and a restored consumer; `build/test-satellite-guidance.ps1` checks a satellite payload,
+and a restored consumer, and runs the published `agentdocs validate --strict` over the packed Core
+package (manifest contract plus discoverability: links that leave the package, documents no index entry
+reaches, malformed front matter, size budgets), so a validator warning fails the build; `build/test-satellite-guidance.ps1` checks a satellite payload,
 its private build-only helper dependency, and an unrelated package with no guidance.
 The generic publisher and `init`/`sync`/`check`/`remove` lifecycle probes live in the
 independent `Trellis.AgentDocs.Packaging` repository alongside the internal reader and
 the separately versioned `Trellis.AgentDocs` local tool (`agentdocs` command).
 Core packs its NuGet README verbatim; its AgentDocs tool pin is independently
-versioned as `0.1.0-preview.15` rather than using Core's `PackageVersion`.
+versioned as `0.1.0-preview.17` rather than using Core's `PackageVersion`.
 
 - **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies in `trellis-api-cookbook.md`" in `trellis-start-here.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. The routing head tells agents the Patterns Index is exhaustive and uses the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count belongs in the rule's claim list: the count used to be quoted in the cookbook as well, and the unguarded copy duly drifted out of date while the guarded one stayed correct. The routing head now lives in the router (`trellis-start-here.md`); the count is also quoted in `AGENTS.md`, and both copies are checked.
 
 - **TRLDOC013**: The analyzer diagnostic range quoted on the `trellis-api-analyzers.md` line of the router's "rest of the set" table in `trellis-start-here.md` (`TRLS001`-`TRLS<n>`, required there and also checked in the cookbook's companion list when present) must cover every shipped diagnostic. The upper bound is derived by scanning `*.cs` under any `src/` or `generator/` directory — both locations matter, because the highest id is currently emitted by a source generator (`Trellis.Asp/generator`) rather than by `Trellis.Analyzers/src`. Only the upper bound is checked, since retired ids leave intentional gaps. The routing head is the one section agents keep resident, so an upper bound that lags reality makes an agent dismiss a real diagnostic as something other than a Trellis rule. A scan that finds no ids at all is reported as a failure rather than skipped, so a future source-layout move cannot silently disarm the gate.
 
-- **TRLDOC016**: Every shipped reference (everything except `UnshippedDocs`) declares how AgentDocs should present it, in a well-formed front matter block that closes (`---`) before the document body: `agent_usage` is exactly `required`, `onDemand` or `supporting` (case-sensitive, like the manifest generator); required and onDemand documents also carry a one-line `agent_description` of at most 200 characters with no control, format or line-separator characters, and onDemand descriptions start `Open when `. Exactly one document, `trellis-start-here.md`, may be `required`, so the always-read cost of the whole Trellis set stays one self-contained router. The pack-time manifest is generated from these keys (`build/generate-reference-manifest.ps1`) and re-checked against the packed bytes by `build/validate-reference-manifest.ps1`.
+- **TRLDOC016**: Every shipped reference (everything except `UnshippedDocs`) declares how AgentDocs should present it, in a well-formed front matter block that closes (`---`) before the document body: `agent_usage` is exactly `required` or `onDemand` (case-sensitive, like the manifest generator); both carry a one-line `agent_description` of at most 200 characters with no control, format or line-separator characters, and onDemand descriptions start `Open when `. The AgentDocs contract also allows `supporting`, which consumers do not list in the index, so such a document is only found through a link from another one; Trellis lists every reference instead and the rule rejects `supporting`. Exactly one document, `trellis-start-here.md`, may be `required`, so the always-read cost of the whole Trellis set stays one self-contained router. The pack-time manifest is generated from these keys (`build/generate-reference-manifest.ps1`) and re-checked against the packed bytes by `build/validate-reference-manifest.ps1`.
 
 - **TRLDOC006**: Every `## Recipe N` heading in `trellis-api-cookbook.md` must have a matching `Examples/CookbookSnippets/Recipe<NN>_*.cs` file. Headings marked `*(retired)*` are skipped, because they exist only to keep old anchors and cross-references resolving and carry no code to pin.
 
@@ -126,7 +128,7 @@ discovers the manifest without executing package targets, and the AgentDocs CLI
 rejects older copy-target packages. Run
 `pwsh build/test-satellite-guidance.ps1` in this repository to test a Trellis
 satellite payload and consumer restore/build without CLI execution. By default it
-downloads the pinned `0.1.0-preview.15` helper from NuGet.org; pass
+downloads the pinned `0.1.0-preview.17` helper from NuGet.org; pass
 `-HelperPackagePath` to test an explicitly supplied local nupkg instead. The
 generic publisher and full CLI probe live in the separate repository. Its optional
 `-WorkDirectory` leaves sample projects available for inspection. The root first-party manifest target runs

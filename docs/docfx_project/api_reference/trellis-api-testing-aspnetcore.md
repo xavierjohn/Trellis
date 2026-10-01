@@ -5,7 +5,8 @@ types: [WebApplicationFactoryExtensions, WebApplicationFactoryTimeExtensions, Se
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when writing ASP.NET Core integration tests with WebApplicationFactory: replacing services, actors or time, and replaying .http files."
 ---
 # Trellis.Testing.AspNetCore &mdash; API Reference
 

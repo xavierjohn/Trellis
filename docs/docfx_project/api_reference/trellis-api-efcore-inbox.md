@@ -5,7 +5,8 @@ types: [InboxMessage, InboxOptions, IntegrationEnvelope, InboxDispatchOutcome, I
 version: v1
 last_verified: 2026-08-18
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when processing broker integration events effectively once with the Trellis inbox: AddTrellisInbox, its transaction boundary and the (ConsumerId, MessageId) key."
 ---
 # Trellis.EntityFrameworkCore.Inbox
 

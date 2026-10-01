@@ -5,7 +5,8 @@ types: [IUnitOfWork, IUnitOfWorkScope, IInboxStore, IConsumerCheckpointStore, In
 version: v3
 last_verified: 2026-06-22
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when implementing IUnitOfWork, IInboxStore or IConsumerCheckpointStore for a non-EF store (Trellis.Persistence.Abstractions)."
 ---
 # Trellis.Persistence.Abstractions &mdash; API Reference
 

@@ -5,7 +5,8 @@ types: [TrellisServiceCollectionExtensions, TrellisServiceBuilder]
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when wiring a composition root with AddTrellis(...) so Trellis modules apply in the canonical order, and what it deliberately does not register."
 ---
 # Trellis.ServiceDefaults API Reference
 

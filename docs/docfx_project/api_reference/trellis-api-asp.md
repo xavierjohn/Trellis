@@ -5,7 +5,8 @@ types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBu
 version: v3
 last_verified: 2026-06-03
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when wiring ASP.NET Core endpoints that return Trellis Result, WriteOutcome or Page: response mapping, Problem Details, ETag handling, actor providers and route binding."
 ---
 # Trellis.Asp — API Reference
 

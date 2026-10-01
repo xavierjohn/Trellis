@@ -5,7 +5,8 @@ types: [ValueObject, "ScalarValueObject<TSelf,T>", RequiredString<TSelf>, Requir
 version: v3
 last_verified: 2026-08-18
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when choosing a value-object category (scalar, symbolic, structured, optional) or deciding between Trellis.Core bases and Trellis.Primitives types."
 ---
 # Trellis Value Object Taxonomy
 

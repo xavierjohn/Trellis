@@ -5,7 +5,8 @@ types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when you need exact signatures for Result, Maybe, Error, Page, aggregates, entities, specifications or Required value-object bases, or the ROP operations Bind, Map and Ensure."
 ---
 # Trellis.Core API Reference
 

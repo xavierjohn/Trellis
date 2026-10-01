@@ -5,7 +5,8 @@ types: [FluentValidationServiceCollectionExtensions, FluentValidationMessageVali
 version: v3
 last_verified: 2026-09-12
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when running FluentValidation validators inside the Trellis Mediator validation behavior, by assembly scanning or explicit registration."
 ---
 # Trellis.Mediator.FluentValidation — API Reference
 

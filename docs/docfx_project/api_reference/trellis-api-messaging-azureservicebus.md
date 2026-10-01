@@ -5,7 +5,8 @@ types: [ServiceBusIntegrationEventPublisher, ServiceBusInboxConsumer, AzureServi
 version: v1
 last_verified: 2026-06-19
 audience: [llm]
-agent_usage: supporting
+agent_usage: onDemand
+agent_description: "Open when publishing integration events to Azure Service Bus or consuming them into a Trellis inbox, including wire format and message settlement."
 ---
 # Trellis.Messaging.AzureServiceBus &mdash; API Reference
 

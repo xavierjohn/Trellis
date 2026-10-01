@@ -106,15 +106,21 @@ public class ApiReferencePayloadGateTests
             .Where(path => Path.GetFileName(path) != "completeness-report.md")
             .ToDictionary(path => Path.GetFileName(path), path => FrontMatterValue(path, "agent_usage"));
 
-        usages.Values.Should().OnlyContain(usage => usage == "required" || usage == "onDemand" || usage == "supporting");
+        // `supporting` documents are not listed in consumers' indexes, so an agent only finds one if another document
+        // links to it. Every Trellis reference is listed instead, and its description is what routes an agent to it.
+        usages.Values.Should().OnlyContain(usage => usage == "required" || usage == "onDemand",
+            "every Trellis reference is listed in the index");
         usages.Where(pair => pair.Value == "required").Select(pair => pair.Key)
             .Should().ContainSingle().Which.Should().Be("trellis-start-here.md", "the required set must stay one self-contained router");
-        // Core delivers the analyzers reference for Trellis.Analyzers, so it must stay discoverable
-        // rather than fall to `supporting`; the cookbook and anti-patterns are the recipe/fix bodies
-        // the router sends agents to.
-        var mustBeOnDemand = new[] { "trellis-api-cookbook.md", "trellis-api-anti-patterns.md", "trellis-api-analyzers.md" };
-        usages.Where(pair => mustBeOnDemand.Contains(pair.Key)).Select(pair => pair.Value)
-            .Should().OnlyContain(usage => usage == "onDemand");
+
+        var descriptions = Directory.EnumerateFiles(directory, "*.md")
+            .Where(path => Path.GetFileName(path) != "completeness-report.md")
+            .ToDictionary(path => Path.GetFileName(path), path => FrontMatterValue(path, "agent_description"));
+        descriptions.Where(pair => string.IsNullOrWhiteSpace(pair.Value)).Select(pair => pair.Key).Should().BeEmpty(
+            "every listed reference needs a description that says when to open it");
+        descriptions.Where(pair => usages[pair.Key] == "onDemand" && !pair.Value!.StartsWith("Open when ", StringComparison.Ordinal))
+            .Select(pair => pair.Key).Should().BeEmpty("an on-demand description names the task that triggers it");
+        descriptions.Values.Should().OnlyHaveUniqueItems("two indexed documents with the same description cannot be told apart");
     }
 
     [Fact]
