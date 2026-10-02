@@ -291,7 +291,7 @@ parameter.
 
 The handler receives the validated, transport-neutral `PageRequest`. A non-HTTP adapter constructs
 the same type with `PageRequest.TryCreate(rawCursor, rawLimit)` before creating
-`ListOrdersQuery`. `SeekDefinition` owns ordering, extraction, and the matching predicate;
+the application query. `SeekDefinition` owns ordering, extraction, and the matching predicate;
 `ToPageAsync` decodes typed state, seeks, over-fetches, and delegates pure assembly to
 `PageBuilder`. The final `Map` preserves both the railway and the page metadata.
 
