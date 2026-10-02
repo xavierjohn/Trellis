@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>EF Core integration for Trellis. Convention-based value converter registration for Trellis primitives, Result-returning SaveChanges wrappers, Maybe/Result query extensions, and provider-agnostic database exception classification.</Description>
-    <PackageTags>trellis;efcore;entity-framework-core;value-converters;railway-oriented;result;maybe;ddd;domain-driven-design</PackageTags>
+    <Description>EF Core integration for Trellis. Convention-based value converter registration, Result-returning persistence, Maybe/Result query extensions, typed seek pagination, and translated spherical nearby-query expressions.</Description>
+    <PackageTags>trellis;efcore;entity-framework-core;value-converters;railway-oriented;result;maybe;pagination;geospatial;ddd;domain-driven-design</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>efcore</TrellisApiRefName>
     <!--

@@ -1,9 +1,9 @@
 ﻿---
 title: Primitive Value Objects
 package: Trellis.Primitives
-topics: [primitive-obsession, value-object, validation, json, ef-core, type-converter]
-related_api_reference: [trellis-api-primitives.md, trellis-api-core.md]
-last_verified: 2026-05-03
+topics: [primitive-obsession, value-object, validation, json, ef-core, type-converter, geospatial]
+related_api_reference: [trellis-api-primitives.md, trellis-api-core.md, trellis-api-efcore.md]
+last_verified: 2026-10-02
 audience: [developer]
 ---
 # Primitive Value Objects
@@ -15,7 +15,7 @@ audience: [developer]
 | Goal | Use | See |
 |---|---|---|
 | Use a ready-made validated email / URL / phone / ISO code | Built-in concrete VOs in `Trellis.Primitives` (`EmailAddress`, `Url`, `PhoneNumber`, `CountryCode`, ...) | [Built-in primitives](#built-in-primitives) |
-| Validate coordinates or calculate approximate geographic distance | `GeoCoordinate.TryCreate(...)` / `DistanceMetersTo(...)` | [Geographic coordinates](#geographic-coordinates) |
+| Validate coordinates, calculate approximate geographic distance, or build conservative radius bounds | `GeoCoordinate.TryCreate(...)` / `DistanceMetersTo(...)` / `GeoBounds.TryCreate(...)` | [Geographic coordinates](#geographic-coordinates) |
 | Model weekly availability or check an instant in a local time zone | `WeeklyPeriod` / `WeeklySchedule` | [Weekly availability](#weekly-availability) |
 | Wrap an ID, name, count, flag, or timestamp from your own domain | `partial class X : Required*<X>` from `Trellis.Core` | [Defining custom primitives](#defining-custom-primitives) |
 | Constrain a custom string length or numeric range | `[Trellis.StringLength(...)]` / `[Trellis.Range(...)]` on the partial class | [Validation](#validation) |
@@ -36,12 +36,12 @@ audience: [developer]
 
 ## Surface at a glance
 
-`Trellis.Primitives` ships 16 ready-made concrete value objects plus the composite JSON converter and OpenTelemetry registration extension that backs them. The `Required*<TSelf>` base classes, validation attributes, source generator, scalar JSON converter, and primitive trace source that you use to define **your own** primitives all live in `Trellis.Core` and are pulled in transitively.
+`Trellis.Primitives` ships 18 ready-made concrete value objects plus the composite JSON converter and OpenTelemetry registration extension that backs them. The `Required*<TSelf>` base classes, validation attributes, source generator, scalar JSON converter, and primitive trace source that you use to define **your own** primitives all live in `Trellis.Core` and are pulled in transitively.
 
 | Area | Key APIs | Lives in |
 |---|---|---|
 | Built-in scalar VOs | `Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Percentage`, `PhoneNumber`, `Slug`, `Url` | `Trellis.Primitives` |
-| Built-in structured VOs | `Money`, `GeoCoordinate`, `WeeklyPeriod`, `WeeklySchedule` | `Trellis.Primitives` |
+| Built-in structured VOs | `Money`, `GeoCoordinate`, `GeoBoundingBox`, `GeoBounds`, `WeeklyPeriod`, `WeeklySchedule` | `Trellis.Primitives` |
 | Custom-primitive bases | `RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `RequiredInt<TSelf>`, `RequiredLong<TSelf>`, `RequiredDecimal<TSelf>`, `RequiredBool<TSelf>`, `RequiredDateTime<TSelf>`, `RequiredDateTimeOffset<TSelf>`, `RequiredEnum<TSelf>` | `Trellis.Core` |
 | Validation and behavior attributes | `[Trellis.StringLength]`, `[Trellis.Range]`, `[Trellis.EnumValue]`, `[Trellis.NotDefault]`, `[Trellis.Trim]` | `Trellis.Core` |
 | Pattern / cross-field hook | `static partial void ValidateAdditional(value, fieldName, ref string? errorMessage)` | generator-emitted |
@@ -315,7 +315,7 @@ The converter discovers properties in declaration order, populates a matching `s
 
 ## Built-in primitives
 
-`Trellis.Primitives` ships 16 concrete value objects so you do not re-derive `Email`, `Money`, `GeoCoordinate`, or `Slug` in every project.
+`Trellis.Primitives` ships 18 concrete value objects so you do not re-derive `Email`, `Money`, `GeoCoordinate`, geographic bounds, or `Slug` in every project.
 
 | Type | Category | Wire shape | Notes |
 |---|---|---|---|
@@ -323,6 +323,8 @@ The converter discovers properties in declaration order, populates a matching `s
 | `CountryCode` | scalar `string` | JSON string | Uppercase **ASCII** ISO 3166-1 alpha-2 (exactly two ASCII letters). Non-ASCII letters are rejected. |
 | `CurrencyCode` | scalar `string` | JSON string | Uppercase **ASCII** ISO 4217 (exactly three ASCII letters). |
 | `EmailAddress` | scalar `string` | JSON string | Trimmed, regex-validated. |
+| `GeoBoundingBox` | structured `ValueObject` | Application query value | One immutable, inclusive, non-wrapping latitude/longitude rectangle. |
+| `GeoBounds` | structured `ValueObject` | Application query value | Validated spherical origin/radius with one or two conservative rectangles. |
 | `GeoCoordinate` | structured `ValueObject` | JSON object `{ "latitude": number, "longitude": number }` | Finite decimal degrees; accumulated validation and approximate in-memory great-circle distance. |
 | `Hostname` | scalar `string` | JSON string | RFC 1123 hostname. |
 | `IpAddress` | scalar `string` | JSON string | IPv4/IPv6 via `IPAddress.TryParse`; `ToIPAddress()` returns the cached parse. |
@@ -339,11 +341,15 @@ The converter discovers properties in declaration order, populates a matching `s
 ### Geographic coordinates
 
 ```csharp
+using Trellis;
 using Trellis.Primitives;
 
 var seattle = GeoCoordinate.Create(47.6062, -122.3321);
 var portland = GeoCoordinate.Create(45.5152, -122.6784);
 double meters = seattle.DistanceMetersTo(portland);
+
+Result<GeoBounds> nearby = GeoBounds.TryCreate(
+    seattle, radiusMeters: 10_000, fieldName: "radius");
 ```
 
 For user input, use `GeoCoordinate.TryCreate(latitude, longitude, "location")`. It validates
@@ -355,9 +361,24 @@ Coordinates are stored without rounding or normalization. Inherited value-object
 compares the two components, so `-180` and `180` longitudes can describe the same location
 while remaining unequal coordinate values. Distance handles that equivalence and the poles.
 
-`DistanceMetersTo` uses haversine with a fixed spherical Earth radius of **6,371,008.8 m**.
-It is not an ellipsoidal or altitude-aware calculation, and is not translated into SQL.
-EF spatial queries and nearby-query helpers are outside this primitive's scope.
+`DistanceMetersTo` and `GeoBounds` use haversine/spherical geometry with the public
+`GeoCoordinate.MeanEarthRadiusMeters` constant (**6,371,008.8 m**). They are not
+ellipsoidal or altitude-aware calculations.
+
+`GeoBounds.TryCreate` requires a finite, non-negative radius. `Boxes` has one ordinary
+rectangle, two non-wrapping rectangles when the search crosses the antimeridian, or one
+full-longitude rectangle when it reaches a pole. A radius at least half the Earth's
+circumference produces `GeoBoundingBox.World`. The rectangles are conservative: they can
+contain points outside the circle, but do not exclude exact spherical matches. Use them
+only as a broad prefilter, followed by exact distance. Their endpoints include a small
+outward numerical safety margin for floating-point roundoff that scales near antipodal
+distances, where inverse haversine is ill-conditioned.
+
+For EF Core numeric latitude/longitude columns,
+[`GeoCoordinateExpressions`](../api_reference/trellis-api-efcore.md#geocoordinateexpressions)
+builds translated bounds, exact-radius, and distance expressions without imposing a
+storage layout. Provider-native spatial operations remain appropriate when you need a
+spatial index or ellipsoidal semantics.
 
 ### Weekly availability
 

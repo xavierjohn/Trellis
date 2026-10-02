@@ -1,18 +1,18 @@
 ﻿---
 package: Trellis.EntityFrameworkCore
 namespaces: [Trellis.EntityFrameworkCore]
-types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, IUnitOfWork, MaybeColumnMapping, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeStorageKind, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, PaginationQueryableExtensions, SeekDefinition, "SeekDefinition<T,TState>", "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
+types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, GeoCoordinateExpressions, IUnitOfWork, MaybeColumnMapping, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeStorageKind, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, PaginationQueryableExtensions, SeekDefinition, "SeekDefinition<T,TState>", "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
 version: v3
-last_verified: 2026-09-12
+last_verified: 2026-10-02
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when persisting aggregates with Trellis.EntityFrameworkCore: RepositoryBase, Maybe queries, conventions, unit of work, idempotent inserts and retry helpers."
+agent_description: "Open when using Trellis.EntityFrameworkCore for persistence, Maybe queries, conventions, unit of work, seek pagination, or translated spherical nearby queries."
 ---
 # Trellis.EntityFrameworkCore
 
 **Package:** `Trellis.EntityFrameworkCore` (bundles the `Trellis.EntityFrameworkCore.Generator.dll` source generator at `analyzers/dotnet/cs/` — installing `Trellis.EntityFrameworkCore` attaches the `Maybe<T>` / `[OwnedEntity]` generator automatically; there is no separate `Trellis.EntityFrameworkCore.Generator` NuGet package).
 **Namespace:** `Trellis.EntityFrameworkCore`  
-**Purpose:** EF Core conventions, interceptors, converters, and query/update helpers for Trellis aggregates, value objects, and `Maybe<T>`.
+**Purpose:** EF Core conventions, interceptors, converters, and query/update helpers for Trellis aggregates, value objects, `Maybe<T>`, and spherical nearby searches.
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-package-cookbook) — recipes using this package.
 
@@ -22,6 +22,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - You are querying `Maybe<T>` properties with `MaybeQueryableExtensions` or raw expressions that require `MaybeQueryInterceptor`.
 - You are applying EF Core conventions with `ApplyTrellisConventions` or registering transactional command behavior with `AddTrellisUnitOfWork<TContext>`.
 - You need idempotent inserts via `DbContextIdempotencyExtensions` or retry-on-collision helpers via `DbContextRetryExtensions`.
+- You need provider-translatable spherical bounds, exact distance, or radius expressions over latitude/longitude columns.
 
 ## Patterns Index
 
@@ -47,12 +48,15 @@ Use this table to find the canonical Trellis API for the most common EF Core tas
 | Wrap an aggregate-store repository with `Result<T>` returns | Inherit `RepositoryBase<TAggregate, TId>` | [`RepositoryBase<TAggregate, TId>`](#repositorybasetaggregate-tid) |
 | Stage commands in a unit of work and flush once per request | `IUnitOfWork` + `EfUnitOfWork<TContext>` + `TransactionalCommandBehavior<,>` (registered via `AddTrellisUnitOfWork<TContext>()`) | [`IUnitOfWork`](#iunitofwork), [`EfUnitOfWork<TContext>`](#efunitofworktcontext), [`TransactionalCommandBehavior<TMessage, TResponse>`](#transactionalcommandbehaviortmessage-tresponse) |
 | Paginate an `IQueryable<T>` with a typed, single/composite, ascending/descending seek | `PageRequest.TryCreate(...)` then `source.ToPageAsync(request, seek, ...)`; define ordering with `SeekDefinition.Ascending` / `Descending` and `ThenAscending` / `ThenDescending` | [`SeekDefinition`](#seekdefinition), [`PaginationQueryableExtensions`](#paginationqueryableextensions) |
+| Filter by a spherical radius and order/page by computed distance | Validate `GeoBounds`, compose `GeoCoordinateExpressions.WithinRadius(...)` and `DistanceMetersTo(...)`, then use the distance expression in `SeekDefinition.Ascending(...)` | [`GeoCoordinateExpressions`](#geocoordinateexpressions), [`PaginationQueryableExtensions`](#paginationqueryableextensions) |
 
 ## Common traps
 
 - Do not hide overdue/date predicates inside repositories when the domain needs a reusable concept. Put the predicate in a `Specification<T>` and let repositories consume it.
 - For EF `IQueryable` predicates over `Maybe<T>`, prefer `MaybeQueryableExtensions.WhereXxx` helpers over sentinel `GetValueOrDefault(...)` expressions when there is a matching helper.
 - Under `AddTrellisUnitOfWork<TContext>()`, repositories stage changes only; the mediator transaction behavior commits.
+- `WithinBounds` is only a conservative rectangular prefilter. Use `WithinRadius` when exact spherical membership matters; it combines that prefilter with an exact distance predicate.
+- A distance cursor is valid only for the same origin, radius, filters, sort directions, and distance-algorithm version. Replace the seek definition's codec with a query-bound codec via `WithCodec`; do not accept a default `(distance, id)` cursor across changed query context.
 - **Composite value objects need a parameterless constructor for EF Core materialization.** `[OwnedEntity]` (on a `partial` class with `{ get; private set; }` properties) generates a private one. `[OwnedEntity]` is **optional**: composite value objects are registered as owned types by convention (from `ValueObject` inheritance), not by the attribute — the attribute exists *only* to generate the parameterless constructor. So you have two equivalent options: annotate with `[OwnedEntity]`, **or** declare a private parameterless constructor yourself (as `Money` does). A mapped composite value object with neither fails fast at model-build with an actionable `TrellisPersistenceMappingException` naming the type — replacing EF Core's cryptic "No suitable constructor was found".
   - **`[OwnedEntity]` is convenient but not EF-free; the hand-written constructor is.** The attribute is a type in `Trellis.EntityFrameworkCore`, so a class that *applies* `[OwnedEntity]` makes its assembly reference `Trellis.EntityFrameworkCore` — and EF Core comes along as a transitive dependency. `ReferenceOutputAssembly="false"` does not strip a reference to a type you actually use, so it does not change this. Referencing the package **analyzer-only** (`OutputItemType="Analyzer" ReferenceOutputAssembly="false"`) is still the right way to pull *just the bundled generators* — the `[OwnedEntity]` constructor generator and the `partial Maybe<T>` generator — into a domain layer, and is required if that layer uses `partial Maybe<T>` properties; but a layer that *applies* `[OwnedEntity]` is not EF-free regardless. For a domain value object that must stay genuinely free of any EF Core dependency, declare the `private` parameterless constructor by hand (as `Money` does) — that uses no type from `Trellis.EntityFrameworkCore` and needs no reference to it at all.
 - **`Maybe<T>` natural-form equality (`c.Phone == Maybe.From(value)`, `c.Phone == Maybe<T>.None`).** Translates correctly when `AddTrellisInterceptors()` is registered. The companion `MaybeEvaluatableExpressionFilterPlugin` keeps the three literal operand shapes — `Maybe<T>.None`, `default(Maybe<T>)`, and `Maybe.From(value)` — un-funcletized so `MaybeExpressionRewriter` translates `== Maybe.From(value)` to `_field = @p` and `== Maybe<T>.None` to `_field IS NULL`. **Do not** compare against a captured `Maybe<T>` local (e.g., `var m = Maybe.From(value); .Where(c => c.Phone == m)`); funcletization extracts the local to a `QueryParameterExpression` and the rewriter throws `InvalidOperationException` (a strict improvement over the historic silent `IS NULL` miss-query). Inline `Maybe.From(value)` at the comparison site, or use `MaybeQueryableExtensions.WhereEquals(c => c.Phone, value)`.
@@ -181,6 +185,77 @@ public static class QueryableExtensions
 | `public static Task<Result<T>> FirstOrDefaultResultAsync<T>(this IQueryable<T> query, Expression<Func<T, bool>> predicate, Error notFoundError, CancellationToken cancellationToken = default) where T : class` | `Task<Result<T>>` | Returns the first predicate match or **the exact `notFoundError` supplied by the caller**. |
 | `public static IQueryable<T> Where<T>(this IQueryable<T> query, Specification<T> specification) where T : class` | `IQueryable<T>` | Applies a Trellis specification expression to the query. |
 
+### `GeoCoordinateExpressions`
+
+```csharp
+public static class GeoCoordinateExpressions
+```
+
+Builds storage-layout-neutral expression trees for spherical nearby queries. Callers supply
+separate latitude and longitude selectors, so the entity can use scalar columns, an owned
+coordinate, or another translatable projection. Selector bodies are inlined into one entity
+parameter; the generated tree contains no `Expression.Invoke`.
+All three methods constrain `TEntity : class`.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Expression<Func<TEntity, double>> DistanceMetersTo<TEntity>(Expression<Func<TEntity, double>> latitudeSelector, Expression<Func<TEntity, double>> longitudeSelector, GeoCoordinate origin)` | `Expression<Func<TEntity, double>>` | Great-circle distance in meters using the same haversine calculation and `GeoCoordinate.MeanEarthRadiusMeters` constant as the in-memory primitive. Handles antimeridian endpoint equivalence and same-pole coordinates. |
+| `public static Expression<Func<TEntity, bool>> WithinBounds<TEntity>(Expression<Func<TEntity, double>> latitudeSelector, Expression<Func<TEntity, double>> longitudeSelector, GeoBounds bounds)` | `Expression<Func<TEntity, bool>>` | Inclusive conservative prefilter over the one or two non-wrapping boxes in `bounds`. It can return false positives and never performs the exact radius check. |
+| `public static Expression<Func<TEntity, bool>> WithinRadius<TEntity>(Expression<Func<TEntity, double>> latitudeSelector, Expression<Func<TEntity, double>> longitudeSelector, GeoBounds bounds)` | `Expression<Func<TEntity, bool>>` | Combines `WithinBounds` with provider-evaluated `DistanceMetersTo <= bounds.RadiusMeters`, preserving the cheap broad filter and spherical membership in one translatable predicate. |
+
+All selectors, `origin`, and `bounds` are required; null is a programming error and throws
+`ArgumentNullException`. Coordinate/radius input should be validated with
+`GeoCoordinate.TryCreate` and `GeoBounds.TryCreate` before building an expression.
+Search-specific origins, radii, and box endpoints are emitted as captured member accesses
+so EF Core parameterizes them instead of creating one query/SQL shape per search value.
+The structural shape still differs between ordinary/pole bounds (one box) and an
+antimeridian crossing (two boxes).
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+using Trellis.Primitives;
+
+GeoBounds bounds = GeoBounds.Create(origin, radiusMeters);
+
+var withinRadius = GeoCoordinateExpressions.WithinRadius<Venue>(
+    venue => venue.Latitude,
+    venue => venue.Longitude,
+    bounds);
+var distance = GeoCoordinateExpressions.DistanceMetersTo<Venue>(
+    venue => venue.Latitude,
+    venue => venue.Longitude,
+    bounds.Center);
+
+var seek = SeekDefinition.Ascending(distance)
+    .ThenAscending(venue => venue.Id);
+
+Result<Page<Venue>> page = await db.Venues
+    .AsNoTracking()
+    .Where(withinRadius)
+    .ToPageAsync(request, seek, cancellationToken: ct);
+```
+
+**Translation contract.** `WithinBounds` uses ordinary comparisons. The exact helpers also
+use provider mappings for `Math.Sin`, `Math.Cos`, `Math.Sqrt`, `Math.Asin`, and conditional
+expressions. SQLite and SQL Server execution is covered by this package's integration tests;
+verify the complete filter, ordering, boundary projection, and seek query for any other
+provider. Translation failures propagate — Trellis does not switch to client evaluation.
+These helpers use spherical arithmetic over ordinary numeric columns; they do not use or
+create spatial indexes. For ellipsoidal or provider-native spatial semantics, use the
+provider's spatial APIs. Provider transcendental functions can round differently from the
+in-memory `SinPi`/`CosPi` calculation at an exactly represented radius boundary. When the
+application requires a physical inclusion tolerance, add that tolerance to the radius
+before creating `GeoBounds`; do not assume provider and client results are bit-identical.
+
+**Cursor context is caller-owned.** The default codec above serializes only
+`(distance, id)`. Before exposing such a cursor, replace it with `seek.WithCodec(...)` and
+bind canonical identity for the origin, radius, all other filters, sort directions, and an
+algorithm/version marker. A cursor from a different nearby query must fail decoding rather
+than resume against changed semantics. See
+[Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state).
+
 ### `PaginationQueryableExtensions`
 
 ```csharp
@@ -267,7 +342,12 @@ For descending time / ascending ID, the continuation predicate is `CreatedAt < b
 
 **Provider contract.** Numeric/date-like keys use relational expressions where supported; other comparable keys (including GUID/string) use `CompareTo`. Verify translation of ordering, seeking, and boundary projection, and that `ORDER BY`, equality, and seek comparisons have matching semantics for your provider/collation/key type. Trellis does not fall back to client-side filtering or boundary recomputation. A value converter alone does not guarantee that a provider can translate an arbitrary comparison method.
 
-For computed ordering that cannot be translated, use a caller-owned, bounded algorithm and Core's typed codec/page assembly; see [Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state). Do not materialize an unbounded table just to bypass translation.
+For translated spherical distance, compose
+[`GeoCoordinateExpressions`](#geocoordinateexpressions) directly with the seek definition.
+For computed ordering that cannot be translated, use a caller-owned, bounded algorithm and
+Core's typed codec/page assembly; see
+[Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state).
+Do not materialize an unbounded table just to bypass translation.
 
 ### `RepositoryBase<TAggregate, TId>`
 

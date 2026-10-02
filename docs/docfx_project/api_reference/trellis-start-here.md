@@ -4,7 +4,7 @@ namespaces: [Trellis]
 types: [orientation, routing]
 related_docs: [trellis-api-cookbook.md, trellis-api-core.md, trellis-api-anti-patterns.md, trellis-api-analyzers.md]
 version: v3
-last_verified: 2026-09-29
+last_verified: 2026-10-02
 audience: [llm]
 agent_usage: required
 agent_description: "Routing head for every Trellis task: which reference to open, the recipe lookup and how to read the set. Read before writing or changing code that uses Trellis."
@@ -104,8 +104,8 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Concurrency control on mutating endpoints — when to require `If-Match` | [Recipe 23](trellis-api-cookbook.md#recipe-23--concurrency-control-on-aggregate-mutating-endpoints-when-to-require-if-match) |
 | Save bandwidth on reads — return `304 Not Modified` when the client's `If-None-Match` still matches | [Recipe 6](trellis-api-cookbook.md#recipe-6--conditional-get-with-entitytagvalue) |
 | Add a paginated list query | [Recipe 3](trellis-api-cookbook.md#recipe-3--query-handler-returning-paget-paginated-list-with-cursor) |
-| Paginate a computed score or distance with validated continuation state bound to query context | [Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) |
-| Validate geographic coordinates or calculate an approximate in-memory distance | [`GeoCoordinate` in the Primitives reference](trellis-api-primitives.md#geocoordinate); use Recipe 40 separately for computed-distance pagination |
+| Paginate a translated spherical distance or an application-computed score with validated continuation state bound to query context | [Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) |
+| Validate geographic coordinates, calculate in-memory distance, build conservative bounds, or compose an EF Core radius query | [`GeoCoordinate`](trellis-api-primitives.md#geocoordinate) and [`GeoBounds`](trellis-api-primitives.md#geobounds), then [`GeoCoordinateExpressions` in the EF Core reference](trellis-api-efcore.md#geocoordinateexpressions) for database queries; use Recipe 40 for distance pagination |
 | Model weekly availability, overnight periods, or time-zone-aware membership | [`WeeklySchedule` and `WeeklyPeriod` in the Primitives reference](trellis-api-primitives.md#weeklyschedule); use Recipe 13's DTO boundary guidance for JSON/persistence |
 | Add Minimal API or MVC endpoints | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](trellis-api-cookbook.md#recipe-5--mvc-controller-using-asactionresult) |
 | Generate versioned Location links to a named route or MVC action, including cross-route segment pins | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) |
