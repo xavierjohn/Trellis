@@ -27,6 +27,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 ## Key Features
 
 - Converts `Result<T>`, `Result<Unit>`, `Result<Page<T>>`, and `Result<WriteOutcome<T>>` into consistent ASP.NET Core responses.
+- Parses raw cursor/limit query input into `PageRequest` consistently across MVC and Minimal APIs without collapsing an empty cursor into absence.
 - Emits RFC 9457 Problem Details for typed Trellis failures.
 - Supports `Created`, named-route and action locations, ETags, conditional requests, `Prefer`, cache controls, and pagination links.
 - Validates scalar value objects during MVC and Minimal API binding and JSON deserialization.

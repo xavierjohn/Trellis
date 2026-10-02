@@ -239,11 +239,13 @@ public static class OrdersDi
 
 ```csharp
 using Mediator;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Trellis;
+using Trellis.Asp;
 using Trellis.EntityFrameworkCore;
 
-public sealed record ListOrdersQuery(string? Cursor, int? Limit) : IQuery<Result<Page<OrderListItem>>>;
+public sealed record ListOrdersQuery(PageRequest Pagination) : IQuery<Result<Page<OrderListItem>>>;
 
 public sealed record OrderListItem(Guid Id, decimal Amount, string Currency);
 
@@ -253,10 +255,9 @@ public sealed class ListOrdersHandler(AppDbContext db)
     public async ValueTask<Result<Page<OrderListItem>>> Handle(ListOrdersQuery q, CancellationToken ct)
     {
         var seek = SeekDefinition.Ascending<Order, Guid>(o => o.Id.Value);
-        var page = await PageRequest.TryCreate(q.Cursor, q.Limit)
-            .BindAsync(request => db.Orders.AsNoTracking()
-                .ToPageAsync(request, seek, cursorFieldName: "cursor",
-                    cancellationToken: ct));
+        var page = await db.Orders.AsNoTracking()
+            .ToPageAsync(q.Pagination, seek, cursorFieldName: "cursor",
+                cancellationToken: ct);
 
         return page.Map(p => p.Map(o =>
             new OrderListItem(o.Id.Value, o.Total.Amount, o.Total.Currency.Value)));
@@ -264,9 +265,40 @@ public sealed class ListOrdersHandler(AppDbContext db)
 }
 ```
 
-**What it shows.** `PageRequest.TryCreate` is the untrusted-input boundary: only a missing cursor means first page; empty/whitespace cursors fail. A missing limit uses `PageSize.Default`; zero/negative limits fail; above-cap limits clamp while retaining `Requested` (or fail with `policy: PageSizeLimitPolicy.Reject`). `BindAsync` executes no query on validation failure. `SeekDefinition` owns ordering, extraction, and the matching predicate; `ToPageAsync` decodes typed state, seeks, over-fetches, and delegates pure assembly to `PageBuilder`. The two `Map` calls preserve both the railway and the page metadata.
+At an ASP.NET Core boundary, construct the validated request from raw query values before
+dispatching the application query:
 
-Preserve raw cursor presence at the endpoint: MVC binding can normalize empty strings to null. Read the raw query value when necessary so a present `?cursor=` reaches `PageRequest.TryCreate` as empty, not as absence.
+```csharp
+app.MapGet("/orders", (HttpRequest request, ISender sender, CancellationToken ct) =>
+    request.TryCreatePageRequest()
+        .BindAsync(pagination => sender.Send(new ListOrdersQuery(pagination), ct))
+        .ToHttpResponseAsync(
+            nextUrlBuilder: (cursor, applied) =>
+                $"/orders?cursor={Uri.EscapeDataString(cursor.Token)}&limit={applied}",
+            body: item => item))
+    .WithInputOrigin(InputLocation.Query);
+```
+
+**What it shows.** `HttpRequest.TryCreatePageRequest` is the ASP untrusted-input boundary: only
+a missing cursor means first page; present empty/whitespace and repeated cursors fail with
+`cursor.malformed`. A missing limit uses `PageSize.Default`; empty, malformed, overflowing, or
+repeated values fail with `format.integer`; zero/negative limits fail; above-cap limits clamp
+while retaining `Requested` (or fail with `policy: PageSizeLimitPolicy.Reject`). Every parser
+failure is located at the actual query parameter and maps to HTTP 422. `BindAsync` does not
+dispatch the query on parse failure, so no database query runs. The endpoint's query input-origin
+metadata also promotes a later, transport-neutral `/cursor` decode failure to the `cursor` query
+parameter.
+
+The handler receives the validated, transport-neutral `PageRequest`. A non-HTTP adapter constructs
+the same type with `PageRequest.TryCreate(rawCursor, rawLimit)` before creating
+the application query. `SeekDefinition` owns ordering, extraction, and the matching predicate;
+`ToPageAsync` decodes typed state, seeks, over-fetches, and delegates pure assembly to
+`PageBuilder`. The final `Map` preserves both the railway and the page metadata.
+
+Do not replace the raw parser with bound `string? cursor` / `int? limit` endpoint parameters:
+MVC can normalize `?cursor=` to null, and host parsing can return 400 before Trellis produces its
+coded 422. `TryCreatePageRequest` deliberately adds no ApiExplorer/OpenAPI parameters; declare
+the two query parameters separately in endpoint metadata when documentation is required.
 
 For non-unique primary sorts, change the definition rather than hand-writing a second predicate:
 

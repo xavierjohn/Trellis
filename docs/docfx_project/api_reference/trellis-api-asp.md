@@ -1,18 +1,18 @@
 ﻿---
 package: Trellis.Asp
 namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.Idempotency, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
-types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, RateLimiterOptionsExtensions, UseTrellisRejectionHandler, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
+types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpRequestPaginationExtensions, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, RateLimiterOptionsExtensions, UseTrellisRejectionHandler, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-10-02
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when wiring ASP.NET Core endpoints that return Trellis Result, WriteOutcome or Page: response mapping, Problem Details, ETag handling, actor providers and route binding."
+agent_description: "Open when wiring ASP.NET Core endpoints that parse pagination input or return Trellis Result, WriteOutcome or Page: response mapping, Problem Details, ETags, actors and route binding."
 ---
 # Trellis.Asp — API Reference
 
 **Package:** `Trellis.Asp` (bundles the AOT-friendly `Trellis.AspSourceGenerator.dll` at `analyzers/dotnet/cs/` — installing `Trellis.Asp` attaches the generator automatically — and contains the ASP.NET actor providers formerly published as `Trellis.Asp.Authorization`).
 **Namespaces:** `Trellis.Asp`, `Trellis.Asp.Authorization`, `Trellis.Asp.Idempotency`, `Trellis.Asp.ModelBinding`, `Trellis.Asp.Routing`, `Trellis.Asp.Validation`
-**Purpose:** ASP.NET Core integration for mapping Trellis `Result`/`Result<T>`/`WriteOutcome<T>`/`Page<T>` values and rate-limit middleware rejections to HTTP responses, evaluating HTTP preconditions and `Prefer` preferences, hydrating actors from JWT claims, validating scalar value objects in MVC and Minimal APIs, and emitting AOT-friendly `JsonConverter`s for Trellis scalar values.
+**Purpose:** ASP.NET Core integration for parsing pagination query input; mapping Trellis `Result`/`Result<T>`/`WriteOutcome<T>`/`Page<T>` values and rate-limit middleware rejections to HTTP responses; evaluating HTTP preconditions and `Prefer` preferences; hydrating actors from JWT claims; validating scalar value objects in MVC and Minimal APIs; and emitting AOT-friendly `JsonConverter`s for Trellis scalar values.
 
 The single supported response verb is `result.ToHttpResponse(...)`. It returns `Microsoft.AspNetCore.Http.IResult` and works in both Minimal API and MVC hosts (.NET 7+ executes `IResult` natively in MVC). For typed `ActionResult<T>` signatures, chain `.AsActionResult<T>()`. Configure protocol semantics via the fluent `HttpResponseOptionsBuilder<T>` (`WithETag`, `WithLastModified`, `Vary`, `WithCacheControl`, `Created`/`CreatedAtRoute`/`CreatedAtAction`, `EvaluatePreconditions`, `HonorPrefer`, `WithErrorMapping`, …).
 
@@ -21,6 +21,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) �
 ## Use this file when
 
 - You are wiring ASP.NET Core endpoints/controllers that return Trellis `Result`, `Result<T>`, `WriteOutcome<T>`, or `Page<T>`.
+- You need to parse raw cursor/limit query parameters without losing the distinction between a missing cursor and a present empty cursor.
 - You need the exact response-mapping verb, status-code behavior, Problem Details mapping, ETag / preference handling, actor-provider setup, scalar value-object binding, or route constraints.
 - You are implementing API surface polish: failure response metadata, versioned `Location` headers, or tests proving `Error.InvalidInput` maps to 422.
 
@@ -39,6 +40,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) �
 | Add ETag / conditional GET | `.WithETag(...)`, `.WithLastModified(...)`, `.EvaluatePreconditions()` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain), [`ETagHelper`](#etaghelper) |
 | Add `Cache-Control` directive (per endpoint) | `.WithCacheControl(CacheControl.NoStore())` / `.WithCacheControl(CacheControl.Public(TimeSpan.FromMinutes(5)))` / `.WithCacheControl(t => …)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain), [`CacheControl`](#cachecontrol) |
 | Honor `Prefer: return=minimal` | `.HonorPrefer()` on write responses | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
+| Parse pagination query input in MVC or Minimal APIs | `Request.TryCreatePageRequest()`; bind its `Result<PageRequest>` before dispatching the query | [`HttpRequestPaginationExtensions`](#httprequestpaginationextensions) |
 | Return paginated list responses | `Result<Page<T>>.ToHttpResponse(urlBuilder, bodySelector, ...)` with `(cursor, PageDirection, appliedLimit)`; the two-argument `nextUrlBuilder` convenience remains available | [`PagedResponse<TResponse>`](#pagedresponsetresponse), [`PageDirection`](#pagedirection) |
 | Resolve actors from requests | `AddClaimsActorProvider`, `AddNestedJsonPathClaimsActorProvider`, `AddEntraActorProvider`, or `AddDevelopmentActorProvider`. For microservices consuming gateway-minted internal JWTs, see [`Trellis.Microservices.AspNetCore`](https://github.com/xavierjohn/Trellis.Microservices) (the `TrellisInternalJwtActorProvider` types moved out of this repo in v3 cleanup). | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Compose a system actor for background workers | `AddTrellisWorkerActor` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
@@ -51,6 +53,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) �
 
 - Composition root calls `AddTrellisAsp()` or `UseAsp()`.
 - Every endpoint that returns a Trellis `Result` ultimately calls `ToHttpResponse` / `AsActionResult`.
+- Pagination endpoints parse raw query values with `Request.TryCreatePageRequest()` when missing-vs-empty cursor semantics matter, and declare `cursor` / `limit` explicitly in OpenAPI because the parser adds no endpoint metadata.
 - OpenAPI metadata includes the success code and every failure code listed by the product spec.
 - `201 Created` endpoints include a usable `Location` header. Prefer `.WithVersionedRoute()` from `Trellis.Asp.ApiVersioning` on `CreatedAtRoute` / `CreatedAtAction` to resolve the destination's mapped query/segment version. If using manual query values, include `["api-version"]` only for a versioned target and ensure it accepts that version. Test dereferencing the link, not just the response status.
 - `[Consumes("application/json")]` is **not** safe at the controller level when the controller has trigger-style POSTs without bodies (e.g., `POST /orders/{id}/submission`). ASP.NET Core returns `415 Unsupported Media Type` for any request without a `Content-Type` header. Apply `[Consumes]` per-action on body-bearing endpoints only, or scope it to a route convention.
@@ -106,6 +109,59 @@ public static ValueTask<IResult> ToHttpResponseAsync<T, TBody>(
     Func<T, TBody> body,
     Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null);
 ```
+
+### `HttpRequestPaginationExtensions`
+
+**Declaration**
+
+```csharp
+public static class HttpRequestPaginationExtensions
+```
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<PageRequest> TryCreatePageRequest(this HttpRequest request, string cursorParameter = "cursor", string limitParameter = "limit", int max = PageSize.Max, int defaultSize = PageSize.Default, PageSizeLimitPolicy policy = PageSizeLimitPolicy.Clamp)` | `Result<PageRequest>` | Reads one raw cursor and limit value from `HttpRequest.Query`, parses the limit invariantly, and delegates page-size/cursor validation to `PageRequest.TryCreate`. Failures identify the configured query parameter with `InputPointer.ForQuery`. |
+
+`TryCreatePageRequest` is the shared MVC/Minimal API boundary for cursor pagination. It uses
+`IQueryCollection.TryGetValue` and indexes the single raw value; it never calls
+`StringValues.ToString()`, which would join repeated values with commas and erase cardinality.
+
+| Raw query input | Result |
+| --- | --- |
+| Cursor parameter absent | `PageRequest.Cursor` is null (first page). |
+| Cursor present but empty/whitespace | `cursor.malformed`, located at the cursor query parameter. |
+| Cursor repeated, even with identical values | `cursor.malformed`; each parameter may occur at most once. |
+| Limit absent | `defaultSize` is used. |
+| Limit empty/whitespace, malformed, outside `Int32`, or repeated | `format.integer`, located at the limit query parameter. |
+| Limit parsed but non-positive, or above `max` under `Reject` | `page-size.out-of-range`, relocated from Core to the limit query parameter. |
+| Limit above `max` under `Clamp` | Success; `PageSize.Requested` preserves the supplied value and `Applied` is capped. |
+
+Limit cardinality, parsing, and page-size validation run before cursor validation, preserving
+`PageRequest.TryCreate`'s size-first failure precedence. Parsing uses
+`NumberStyles.Integer` with `CultureInfo.InvariantCulture`. Custom parameter names are
+case-insensitively distinct and are treated as literal query-name tokens, so `/` and `~` are
+escaped correctly in the underlying RFC 6901 path.
+
+Invalid `max`, `defaultSize`, or `policy` values remain programmer/configuration errors and throw
+the same `ArgumentOutOfRangeException` as Core. Client failures remain `Result` values; passing
+them through `ToHttpResponse()` produces the standard 422 Problem Details in both hosting models.
+For custom limit names, the query pointer and Core-generated range detail both use the configured
+name.
+
+`PageRequest` remains transport-neutral after parsing. A nonblank opaque cursor can therefore
+pass this parser and fail later when `Decode` / `ToPageAsync` validates its encoding. On an
+endpoint whose remaining inputs all come from the query string, chain
+`.WithInputOrigin(InputLocation.Query)` on a Minimal API endpoint or apply
+`[InputOrigin(InputLocation.Query)]` to an MVC action. That promotes an otherwise-unlocated
+downstream `/cursor` failure to the same query location while preserving parser failures that are
+already explicitly located.
+
+> [!WARNING]
+> `TryCreatePageRequest` is a parser, not a model binder or endpoint-metadata provider. It does
+> not add `cursor` or `limit` to ApiExplorer/OpenAPI. Declare those parameters in the endpoint's
+> OpenAPI metadata separately when they are part of the public contract; do not add bound
+> `string? cursor` / `int? limit` handler parameters merely for documentation, because host
+> binding can answer malformed input before Trellis or normalize `?cursor=` to null.
 
 ### `HttpResponseOptionsBuilder<TDomain>`
 
@@ -1661,19 +1717,25 @@ app.MapPost("/widgets", async (CreateWidget cmd, IWidgetWriter writer, Cancellat
 > [!WARNING]
 > Do **not** reach for `CreatedAtRoute(...)` / `CreatedAtAction(...)` on a `Result<WriteOutcome<T>>`. `HttpResponseOptionsBuilder<TDomain>` is shared by both response paths, so the call compiles — but only `TrellisHttpResult<TDomain, TBody>` (the `Result<T>` path) consumes it. `TrellisWriteOutcomeResult<TDomain, TBody>` calls `Results.Created(created.Location, …)`, taking the `Location` header **exclusively** from `WriteOutcome<T>.Created.Location`. On a `WriteOutcome` the builder call is silently inert: no error, no warning, and the `Location` you configured is simply absent. Set the location on the `WriteOutcome.Created` your domain returns instead.
 
-### Paginated `Result<Page<T>>`
+### Parse pagination input and return `Result<Page<T>>`
 
 ```csharp
-app.MapGet("/widgets", async (string? cursor, int? limit, IWidgetReader reader, HttpContext ctx) =>
+app.MapGet("/widgets", async (IWidgetReader reader, HttpContext ctx) =>
 {
-    Result<Page<Widget>> page = await reader.ListAsync(cursor, limit ?? 50, ctx.RequestAborted);
+    Result<Page<Widget>> page = await ctx.Request.TryCreatePageRequest()
+        .BindAsync(request => reader.ListAsync(request, ctx.RequestAborted));
 
     return page.ToHttpResponse(
         nextUrlBuilder: (c, applied) =>
-            $"{ctx.Request.Scheme}://{ctx.Request.Host}/widgets?cursor={c.Token}&limit={applied}",
+            $"{ctx.Request.Scheme}://{ctx.Request.Host}/widgets?cursor={Uri.EscapeDataString(c.Token)}&limit={applied}",
         body: w => new WidgetResponse(w.Id, w.Name));
-});
+}).WithInputOrigin(InputLocation.Query);
 ```
+
+The parser keeps `?cursor=` distinct from a missing cursor, rejects repeated query values, and
+returns query-located failures through the same 422 response mapper. Because `BindAsync` runs the
+reader only on success, malformed pagination input does not dispatch the query. The declared query
+origin keeps a later opaque-cursor decode failure query-located too.
 
 When an endpoint supports distinct forward and backward query parameters, select the
 direction-aware overload instead. The endpoint must actually implement both directions;
