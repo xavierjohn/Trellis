@@ -21,7 +21,7 @@ using Trellis.Primitives;
 /// Money is registered as an owned type during model initialization
 /// (<see cref="IModelInitializedConvention"/>), which instructs EF Core to treat all
 /// Money properties as ownership navigations from the start.
-/// Column naming and precision are applied during model finalization
+/// Column naming and facets are applied during model finalization
 /// (<see cref="IModelFinalizingConvention"/>).
 /// </para>
 /// <para>
@@ -84,8 +84,10 @@ internal sealed class MoneyConvention : IModelInitializedConvention, IModelFinal
         if (amount is not null)
         {
             amount.Builder.HasAnnotation(RelationalAnnotationNames.ColumnName, navigationName);
-            amount.Builder.HasPrecision(18);
-            amount.Builder.HasScale(3);
+            // SQL Server warns for convention-strength decimal facets. DataAnnotation marks this
+            // framework default as deliberate while explicit application configuration still wins.
+            amount.Builder.HasPrecision(18, fromDataAnnotation: true);
+            amount.Builder.HasScale(3, fromDataAnnotation: true);
             if (isOptional)
                 amount.Builder.IsRequired(false);
         }

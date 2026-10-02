@@ -3,6 +3,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.Logging;
 using Trellis.Primitives;
 
 /// <summary>
@@ -11,7 +12,7 @@ using Trellis.Primitives;
 /// with standardized column naming when
 /// <see cref="ModelConfigurationBuilderExtensions.ApplyTrellisConventions"/> is called.
 /// </summary>
-public class MoneyConventionTests : IDisposable
+public partial class MoneyConventionTests : IDisposable
 {
     private MoneyTestDbContext? _context;
     private SqliteConnection? _connection;
@@ -77,6 +78,25 @@ public class MoneyConventionTests : IDisposable
         var currency = ownedType.FindProperty(nameof(Money.Currency))!;
 
         currency.GetMaxLength().Should().Be(3);
+    }
+
+    [Fact]
+    public void ApplyTrellisConventions_MoneyMaybeMoneyAndUnconfiguredDecimal_OnlyWarnsForUnconfiguredDecimal()
+    {
+        var warnings = new List<string>();
+        var options = new DbContextOptionsBuilder<MoneyWarningDbContext>()
+            .UseSqlServer("Server=(localdb)\\MSSQLLocalDB;Database=TrellisMoneyWarningTests;Trusted_Connection=True;TrustServerCertificate=True")
+            .LogTo(warnings.Add, LogLevel.Warning)
+            .IgnoreManyServiceProvidersCreatedWarning()
+            .Options;
+
+        using var context = new MoneyWarningDbContext(options);
+        _ = context.Model;
+
+        warnings.Should().Contain(message =>
+            message.Contains($"'{nameof(MoneyWarningEntity.UnconfiguredDecimal)}'", StringComparison.Ordinal));
+        warnings.Should().NotContain(message =>
+            message.Contains($"decimal property '{nameof(Money.Amount)}'", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -240,6 +260,8 @@ public class MoneyConventionTests : IDisposable
             .Should().Be("Price");
         GetColumnName(ownedType.FindProperty(nameof(Money.Currency))!)
             .Should().Be("PriceCurr");
+        ownedType.FindProperty(nameof(Money.Amount))!.GetPrecision().Should().Be(12);
+        ownedType.FindProperty(nameof(Money.Amount))!.GetScale().Should().Be(2);
     }
 
     #endregion
@@ -320,9 +342,25 @@ public class MoneyConventionTests : IDisposable
         protected override void OnModelCreating(ModelBuilder modelBuilder) =>
             modelBuilder.Entity<MoneyProduct>(b => b.OwnsOne(p => p.UnitPrice, m =>
             {
-                m.Property(x => x.Amount).HasColumnName("Price");
+                m.Property(x => x.Amount).HasColumnName("Price").HasPrecision(12, 2);
                 m.Property(x => x.Currency).HasColumnName("PriceCurr");
             }));
+    }
+
+    private partial class MoneyWarningEntity
+    {
+        public int Id { get; set; }
+        public Money Price { get; set; } = null!;
+        public partial Maybe<Money> OptionalPrice { get; set; }
+        public decimal UnconfiguredDecimal { get; set; }
+    }
+
+    private class MoneyWarningDbContext(DbContextOptions<MoneyWarningDbContext> options) : DbContext(options)
+    {
+        public DbSet<MoneyWarningEntity> Items => Set<MoneyWarningEntity>();
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions();
     }
 
     #endregion
