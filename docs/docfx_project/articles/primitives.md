@@ -127,14 +127,14 @@ A custom primitive is a `partial class` that inherits the appropriate `Required*
 
 | Base class | Underlying type | Built-in validation | Notable extras |
 |---|---|---|---|
-| `RequiredString<TSelf>` | `string` | `null`, `""`, and whitespace-only rejected; value trimmed; `[StringLength]` enforced | `Length`, `StartsWith(string)`, `Contains(string)`, `EndsWith(string)` |
-| `RequiredGuid<TSelf>` | `Guid` | `null` and `Guid.Empty` rejected | `NewUniqueV4()`, `NewUniqueV7()` |
-| `RequiredInt<TSelf>` | `int` | `null` and `0` rejected; `[Range(int, int)]` enforced | invariant + culture-aware string parsing |
-| `RequiredLong<TSelf>` | `long` | `null` and `0L` rejected; `[Range(long, long)]` enforced | invariant + culture-aware string parsing |
-| `RequiredDecimal<TSelf>` | `decimal` | `null` and `0m` rejected; `[Range(int, int)]` or `[Range(double, double)]` enforced | invariant + culture-aware string parsing |
+| `RequiredString<TSelf>` | `string` | `null` rejected; empty and whitespace-only values accepted without trimming | `[Trim]`, `[NotDefault]`, `[StringLength]`; `Length`, `StartsWith(string)`, `Contains(string)`, `EndsWith(string)` |
+| `RequiredGuid<TSelf>` | `Guid` | `null` rejected; `Guid.Empty` accepted | `[NotDefault]`; `NewUniqueV4()`, `NewUniqueV7()` |
+| `RequiredInt<TSelf>` | `int` | `null` rejected for nullable inputs; `0` accepted | `[NotDefault]`, `[Range(int, int)]`, sign constraints; invariant + culture-aware string parsing |
+| `RequiredLong<TSelf>` | `long` | `null` rejected for nullable inputs; `0L` accepted | `[NotDefault]`, `[Range(long, long)]`, sign constraints; invariant + culture-aware string parsing |
+| `RequiredDecimal<TSelf>` | `decimal` | `null` rejected for nullable inputs; `0m` accepted | `[NotDefault]`, `[Range(int, int)]`, `[Range(double, double)]`, sign constraints; invariant + culture-aware string parsing |
 | `RequiredBool<TSelf>` | `bool` | `null` rejected for nullable inputs; `false` is valid | string parsing of `"true"`/`"false"` |
-| `RequiredDateTime<TSelf>` | `DateTime` | `null` and `DateTime.MinValue` rejected | invariant round-trip `"O"` formatting |
-| `RequiredDateTimeOffset<TSelf>` | `DateTimeOffset` | `null` and `DateTimeOffset.MinValue` rejected | invariant round-trip `"O"` formatting |
+| `RequiredDateTime<TSelf>` | `DateTime` | `null` rejected for nullable inputs; `DateTime.MinValue` accepted | `[NotDefault]`; invariant round-trip `"O"` formatting |
+| `RequiredDateTimeOffset<TSelf>` | `DateTimeOffset` | `null` rejected for nullable inputs; `DateTimeOffset.MinValue` accepted | `[NotDefault]`; invariant round-trip `"O"` formatting |
 | `RequiredEnum<TSelf>` | `string` | `TryCreate` lookup against `public static readonly TSelf` fields; undeclared names rejected | `[EnumValue("...")]` on each field overrides the wire name |
 
 > [!NOTE]
@@ -158,7 +158,7 @@ public partial class PublishedAt : RequiredDateTime<PublishedAt> { }
 public partial class ExternalSequence : RequiredLong<ExternalSequence> { }
 ```
 
-Defaults are lenient — `Required*<TSelf>` rejects only `null`. Use `[NotDefault]` to also reject the type's sentinel value (`""` for strings, `Guid.Empty`, `0`, `MinValue`), and `[Trim]` to enable automatic string trimming before validation.
+Scalar `Required*<TSelf>` defaults are lenient and reject only `null`; `RequiredEnum<TSelf>` additionally limits input to its declared members. Use `[NotDefault]` to also reject a scalar type's sentinel value (`""` for strings, `Guid.Empty`, `0`, `MinValue`), and `[Trim]` to enable automatic string trimming before validation.
 
 ### Factory methods
 
