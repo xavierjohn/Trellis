@@ -3,12 +3,15 @@ title: ASP.NET Core Integration
 package: Trellis.Asp
 topics: [asp, minimal-api, controllers, http-result, problem-details, etag, prefer, pagination, idempotency]
 related_api_reference: [trellis-api-asp.md, trellis-api-core.md, trellis-api-asp-idempotency-cosmos.md]
-last_verified: 2026-05-01
+last_verified: 2026-10-02
 audience: [developer]
 ---
 # ASP.NET Core Integration
 
-`Trellis.Asp` maps `Result`, `Result<T>`, `Result<WriteOutcome<T>>`, and `Result<Page<T>>` to ASP.NET Core HTTP responses (status codes, Problem Details, ETags, `Prefer`, paginated envelopes) using the single verb `ToHttpResponse(...)`.
+`Trellis.Asp` parses raw pagination query input and maps `Result`, `Result<T>`,
+`Result<WriteOutcome<T>>`, and `Result<Page<T>>` to ASP.NET Core HTTP responses (status codes,
+Problem Details, ETags, `Prefer`, paginated envelopes) using the single verb
+`ToHttpResponse(...)`.
 
 ## Patterns Index
 
@@ -23,6 +26,7 @@ audience: [developer]
 | Conditional `GET`/`HEAD` (`If-None-Match`, `If-Modified-Since`) | `opts.WithETag(...).EvaluatePreconditions()` | [Conditional requests](#conditional-requests) |
 | Honor `Prefer: return=minimal` / `return=representation` | `opts.HonorPrefer()` on a `WriteOutcome` response | [Prefer header](#prefer-header) |
 | Emit `201 Created` with a `Location` header | `opts.CreatedAtRoute(name, values)` (AOT-safe) / `Created(...)` / `CreatedAtAction(...)` | [Created responses](#created-responses) |
+| Parse cursor/limit query input consistently in MVC and Minimal APIs | `Request.TryCreatePageRequest()` | [Pagination](#pagination) |
 | Return paginated JSON + RFC 8288 `Link` header | `Result<Page<T>>.ToHttpResponse(nextUrlBuilder, body)` | [Pagination](#pagination) |
 | Make `POST` / `PATCH` retry-safe with the IETF `Idempotency-Key` header | `AddTrellisIdempotency` + `AddInMemoryIdempotencyStore` + `UseTrellisIdempotency`; mark endpoints `[Idempotent]` | [Idempotency-Key middleware](#idempotency-key-middleware) |
 | Make idempotency survive restarts and span replicas | `AddCosmosIdempotencyStore(...)` (`Trellis.Asp.Idempotency.Cosmos`) | [Choosing a store](#idempotency-key-middleware) |
@@ -480,25 +484,30 @@ The `Result<Page<T>>` overload always emits a `PagedResponse<TBody>` JSON envelo
 
 ```csharp
 app.MapGet("/products", async (
-        string? cursor,
-        int? limit,
         IProductReader reader,
         HttpContext ctx,
         CancellationToken ct) =>
-    (await reader.ListAsync(cursor, limit ?? 50, ct)).ToHttpResponse(
+    (await ctx.Request.TryCreatePageRequest()
+        .BindAsync(request => reader.ListAsync(request, ct))).ToHttpResponse(
         nextUrlBuilder: (next, applied) =>
-            $"{ctx.Request.Scheme}://{ctx.Request.Host}/products?cursor={next.Token}&limit={applied}",
-        body: product => new ProductResponse(product.Id, product.Name)));
+            $"{ctx.Request.Scheme}://{ctx.Request.Host}/products?cursor={Uri.EscapeDataString(next.Token)}&limit={applied}",
+        body: product => new ProductResponse(product.Id, product.Name)))
+    .WithInputOrigin(InputLocation.Query);
 
 public sealed record ProductResponse(string Id, string Name);
 
 public interface IProductReader
 {
-    Task<Result<Page<Product>>> ListAsync(string? cursor, int limit, CancellationToken ct);
+    Task<Result<Page<Product>>> ListAsync(PageRequest request, CancellationToken ct);
 }
 ```
 
-Failure on the page result short-circuits through the standard error pipeline (Problem Details, default mapping).
+`TryCreatePageRequest()` preserves missing versus present-empty cursor input, rejects repeated
+values, parses the limit invariantly, and locates failures at the query parameter. Failure on
+either the request or page result short-circuits through the standard error pipeline (Problem
+Details, default mapping). The query input-origin metadata keeps downstream opaque-cursor decode
+failures query-located. The parser does not add ApiExplorer/OpenAPI parameter metadata; document
+`cursor` and `limit` separately.
 
 ## Idempotency-Key middleware
 

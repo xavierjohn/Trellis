@@ -10,7 +10,8 @@ audience: [developer]
 
 Trellis separates pagination into three responsibilities:
 
-1. **Validate request controls** with `PageRequest.TryCreate`.
+1. **Validate request controls** with `PageRequest.TryCreate`, or
+   `HttpRequest.TryCreatePageRequest` at an ASP.NET Core boundary.
 2. **Continue the query** using typed state: an EF `SeekDefinition`, an application-owned algorithm, or a provider's own continuation token.
 3. **Assemble and project the result** with `PageBuilder`, `Page<T>`, and `Page<T>.Map`.
 
@@ -37,7 +38,8 @@ Trellis does not create a snapshot.
 | --- | --- | --- |
 | `Cursor` | Core | Opaque token; clients echo `Token` unchanged. |
 | `PageSize` | Core | Validated `Requested`, `Applied`, and `WasCapped`. |
-| `PageRequest` | Core | Validates raw cursor/limit; `Decode(codec)` produces `Result<Maybe<TState>>`. |
+| `PageRequest` | Core | Validates nullable cursor text and an already-parsed limit; `Decode(codec)` produces `Result<Maybe<TState>>`. |
+| `HttpRequestPaginationExtensions` | ASP | Reads raw cursor/limit query values, preserves missing versus empty, rejects repeats, parses the limit invariantly, and produces a query-located `Result<PageRequest>`. |
 | `ICursorCodec<TState>` / `CursorCodec` | Core | Typed encoding, parsing, and validation of continuation state. |
 | `PageBuilder` | Core | Pure assembly from an already ordered, sought, over-fetched batch. |
 | `Page<T>` | Core | Immutable item sequence, adjacent cursors, and observable limit metadata; `Map` preserves that metadata. |
@@ -59,6 +61,15 @@ Result<PageRequest> request = PageRequest.TryCreate(
     cursorFieldName: "cursor", limitFieldName: "limit");
 ```
 
+At an ASP.NET Core boundary, parse the raw query collection rather than binding cursor and limit
+handler parameters:
+
+```csharp
+Result<PageRequest> request = httpRequest.TryCreatePageRequest(
+    max: 100, defaultSize: 50,
+    policy: PageSizeLimitPolicy.Clamp);
+```
+
 | Input | Outcome |
 | --- | --- |
 | Missing cursor (`null`) | First page: no continuation boundary. |
@@ -72,11 +83,18 @@ Result<PageRequest> request = PageRequest.TryCreate(
 field name must also be passed to `Decode` / `ToPageAsync`; it is not stored in
 the request.
 
-Preserve the distinction at the transport boundary too. MVC string binding can
-convert a present-but-empty query value to null before the factory sees it.
-When binding cursor input, preserve the raw query value (for example through
-`Request.Query`) and pass null only when the parameter is actually absent.
-Otherwise `?cursor=` can accidentally become a first-page request.
+`TryCreatePageRequest` preserves the transport distinction too. MVC string binding can convert a
+present-but-empty query value to null, and host integer binding can return 400 before a Trellis
+failure is created. The extension reads `Request.Query` directly: `?cursor=` remains present,
+each parameter may occur only once, malformed/overflowing limits report `format.integer`, and
+every field failure is located at the configured query parameter. It deliberately adds no
+ApiExplorer/OpenAPI parameter metadata, so document `cursor` and `limit` separately.
+
+A nonblank opaque cursor can pass request parsing and fail later during `Decode` / `ToPageAsync`.
+Core cannot attach an HTTP location to that failure. For a query-only pagination endpoint, use
+`.WithInputOrigin(InputLocation.Query)` in a Minimal API or
+`[InputOrigin(InputLocation.Query)]` in MVC so the downstream `/cursor` violation still projects
+as the `cursor` query parameter.
 
 `PageSize.TryCreate(limit, ...)` offers the same policy when only a size is
 needed (its default field name is `"pageSize"`). `PageSize.FromRequested`
@@ -290,7 +308,7 @@ supports that operation.
 
 | Failure | Behavior |
 | --- | --- |
-| Missing/empty distinction, invalid raw limit | `PageRequest.TryCreate` returns a field-specific `Error.InvalidInput`. |
+| Missing/empty distinction, repeated query values, invalid raw limit | `HttpRequest.TryCreatePageRequest` returns a query-located `Error.InvalidInput`; non-HTTP adapters use their own parser and then `PageRequest.TryCreate`. |
 | Bad token version/base64/UTF-8/framing, oversized or invalid state | Built-in codecs return `Error.InvalidInput` with reason `cursor.malformed`. |
 | Invalid server size configuration, null required arguments | Throws: a configuration/programming error, not invalid client input. |
 | Encoding invalid or non-round-tripping server state | Throws `ArgumentException`. |
@@ -304,7 +322,8 @@ for response-envelope and link-builder overloads. Do not serialize a raw
 
 ## Upgrading existing pagination code
 
-- Replace manual string-to-cursor parsing and lenient limit handling with
+- At ASP.NET Core boundaries, replace bound cursor/limit parameters and manual raw-query handling
+  with `Request.TryCreatePageRequest()`. At other boundaries, parse transport text and then call
   `PageRequest.TryCreate`; do not treat empty cursors or non-positive limits as absence.
 - Replace raw-key / timestamp-selector `PageBuilder` lambdas with
   `last => codec.Encode(state)`; there is no key-selector overload.

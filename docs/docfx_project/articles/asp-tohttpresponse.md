@@ -3,7 +3,7 @@ title: ToHttpResponse — Unified Response Verb
 package: Trellis.Asp
 topics: [asp, http-response, builder, etag, prefer, problem-details, write-outcome]
 related_api_reference: [trellis-api-asp.md, trellis-api-core.md]
-last_verified: 2026-05-01
+last_verified: 2026-10-02
 audience: [developer]
 ---
 # ToHttpResponse — Unified Response Verb
@@ -22,6 +22,7 @@ audience: [developer]
 | Add ETag / `Last-Modified` and honor conditional `GET`/`HEAD` | `opts.WithETag(...).WithLastModified(...).EvaluatePreconditions()` | [ETag and conditional requests](#etag-and-conditional-requests) |
 | Set per-endpoint `Cache-Control` | `opts.WithCacheControl(CacheControl.NoStore())` / `opts.WithCacheControl(CacheControl.Public(TimeSpan.FromMinutes(5)))` / `opts.WithCacheControl(t => …)` | [Cache-Control](#cache-control) |
 | Honor `Prefer: return=minimal` / `return=representation` | `opts.HonorPrefer()` | [Prefer header](#prefer-header) |
+| Parse pagination query input without collapsing `?cursor=` into absence | `Request.TryCreatePageRequest()` | [Pagination](#pagination) |
 | Return paginated JSON with RFC 8288 `Link` header | `result.ToHttpResponse(nextUrlBuilder, body)` on `Result<Page<T>>` | [Pagination](#pagination) |
 | Override error → status mapping for one endpoint | `opts.WithErrorMapping<TError>(status)` / `opts.WithErrorMapping(err => ...)` | [Per-call error mapping](#per-call-error-mapping) |
 | Render a standalone `Error` (no `Result` pipeline) | `error.ToHttpResponse(...)` | [Standalone error](#standalone-error) |
@@ -253,11 +254,22 @@ When the receiver is `Result<WriteOutcome<T>>`, the outcome variant drives statu
 | `body` | `Func<T, TBody>` | Per-**item** projector (not per-page). Each `Page<T>` item is mapped to `TBody` for the envelope. |
 
 ```csharp
-app.MapGet("/todos", async (string? cursor, int? limit, ITodoService svc, HttpRequest req, CancellationToken ct) =>
-    await svc.ListAsync(cursor, limit, ct).ToHttpResponseAsync(
-        nextUrlBuilder: (c, n) => $"{req.Scheme}://{req.Host}{req.Path}?cursor={c}&limit={n}",
-        body: t => new TodoDto(t.Id, t.Title)));
+app.MapGet("/todos", async (ITodoService svc, HttpRequest req, CancellationToken ct) =>
+{
+    Result<Page<Todo>> page = await req.TryCreatePageRequest()
+        .BindAsync(request => svc.ListAsync(request, ct));
+
+    return page.ToHttpResponse(
+        nextUrlBuilder: (c, n) =>
+            $"{req.Scheme}://{req.Host}{req.Path}?cursor={Uri.EscapeDataString(c.Token)}&limit={n}",
+        body: t => new TodoDto(t.Id, t.Title));
+}).WithInputOrigin(InputLocation.Query);
 ```
+
+`TryCreatePageRequest()` reads raw query values so a missing cursor remains distinct from
+`?cursor=`, rejects repeated values, and returns query-located coded failures. It does not add
+ApiExplorer/OpenAPI parameter metadata; document `cursor` and `limit` separately. The declared
+query origin keeps a later opaque-cursor decode failure query-located.
 
 ## Per-call error mapping
 
