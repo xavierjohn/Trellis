@@ -1,18 +1,18 @@
 ﻿---
 package: Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
-types: [Age, CountryCode, CurrencyCode, EmailAddress, GeoCoordinate, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, WeeklyPeriod, WeeklySchedule, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
+types: [Age, CountryCode, CurrencyCode, EmailAddress, GeoBoundingBox, GeoBounds, GeoCoordinate, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, WeeklyPeriod, WeeklySchedule, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
 version: v3
-last_verified: 2026-08-18
+last_verified: 2026-10-02
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when using ready-made value objects such as EmailAddress, Money, PhoneNumber, Url or Slug, or choosing between a built-in primitive and a custom one."
+agent_description: "Open when using ready-made value objects such as EmailAddress, Money or GeoCoordinate, building geographic bounds, or choosing a built-in primitive versus a custom one."
 ---
 # Trellis API Primitives
 
 **Package:** `Trellis.Primitives`  
 **Namespaces:** `Trellis`, `Trellis.Primitives`  
-**Purpose:** the 16 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `GeoCoordinate`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`, `WeeklyPeriod`, `WeeklySchedule`) plus Primitives-owned VO-runtime infrastructure (`CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
+**Purpose:** the 18 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `GeoBoundingBox`, `GeoBounds`, `GeoCoordinate`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`, `WeeklyPeriod`, `WeeklySchedule`) plus Primitives-owned VO-runtime infrastructure (`CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) — recipes using this package.
 
@@ -28,7 +28,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggre
 
 ## Use this file when
 
-- You need one of the ready-made concrete value objects such as `EmailAddress`, `PhoneNumber`, `Money`, `CurrencyCode`, `Url`, or `Slug`.
+- You need one of the ready-made concrete value objects such as `EmailAddress`, `PhoneNumber`, `Money`, `CurrencyCode`, `Url`, `Slug`, `GeoCoordinate`, or `GeoBounds`.
 - You need the composite value-object JSON converter or OpenTelemetry registration extension for primitives shipped by `Trellis.Primitives`.
 - You are deciding whether to use a built-in primitive or define a custom `Required*<TSelf>` value object from `Trellis.Core`.
 
@@ -39,7 +39,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggre
 | Validate an email string | `EmailAddress.TryCreate(...)` | [`EmailAddress`](#emailaddress) |
 | Validate optional phone input | `PhoneNumber.TryCreate(...)` and wrap absence with `Maybe<PhoneNumber>` at the domain seam | [`PhoneNumber`](#phonenumber), [Core `Maybe<T>`](trellis-api-core.md#public-readonly-struct-maybet-where-t--notnull) |
 | Represent money | `Money` / `MonetaryAmount` / `CurrencyCode` | [`Money`](#money), [`MonetaryAmount`](#monetaryamount), [`CurrencyCode`](#currencycode) |
-| Validate geographic coordinates or measure approximate in-memory distance | `GeoCoordinate.TryCreate(...)`, `DistanceMetersTo(...)` | [`GeoCoordinate`](#geocoordinate) |
+| Validate geographic coordinates, measure approximate in-memory distance, or build conservative spherical search bounds | `GeoCoordinate.TryCreate(...)`, `DistanceMetersTo(...)`, `GeoBounds.TryCreate(...)` | [`GeoCoordinate`](#geocoordinate), [`GeoBounds`](#geobounds) |
 | Represent recurring weekly availability, overnight windows, or local-clock DST membership | `WeeklyPeriod.TryCreate(...)`, `WeeklySchedule.TryCreate(...)`, `IsActiveAt(...)` | [`WeeklyPeriod`](#weeklyperiod), [`WeeklySchedule`](#weeklyschedule) |
 | Bind/serialize built-in scalar primitives | Use generated converters from the primitive/base contracts; ASP validation is in `Trellis.Asp` | [`ParsableJsonConverter<T>`](trellis-api-core.md#parsablejsonconvertert), [ASP validation](trellis-api-asp.md#namespace-trellisaspvalidation) |
 | Define a custom SKU/order-id primitive | Use `partial class Sku : RequiredString<Sku>` or `partial class OrderId : RequiredGuid<OrderId>` from `Trellis.Core` | [Core primitive base classes](trellis-api-core.md#primitive-value-object-base-classes) |
@@ -276,6 +276,7 @@ construction goes through the factories. No spatial database package is required
 
 | Name | Type | Description |
 | --- | --- | --- |
+| `MeanEarthRadiusMeters` | `const double` | Mean spherical Earth radius used by Trellis distance and bounds calculations: `6_371_008.8`. |
 | `Latitude` | `double` | Finite decimal degrees, `-90..90` inclusive. Stored without rounding. |
 | `Longitude` | `double` | Finite decimal degrees, `-180..180` inclusive. Stored without wrapping or normalization. |
 
@@ -304,9 +305,11 @@ Use a nullable `GeoCoordinate?` transport for an optional coordinate rather than
 `Maybe<GeoCoordinate>` request DTO property (Cookbook Recipe 14).
 
 **Distance scope.** This is an in-memory spherical approximation, not an ellipsoidal
-geodesic, surveying calculation, or altitude-aware distance. It has no EF SQL translation,
-bounding-box query helper, or new pagination overload. Use provider-specific spatial
-operations when query translation or ellipsoidal accuracy is required.
+geodesic, surveying calculation, or altitude-aware distance. Use [`GeoBounds`](#geobounds)
+for a storage-neutral conservative prefilter and
+[`GeoCoordinateExpressions`](trellis-api-efcore.md#geocoordinateexpressions) for
+provider-translatable EF Core expressions. Use provider-specific spatial operations when
+ellipsoidal accuracy or a spatial index is required.
 
 ```csharp
 using Trellis.Primitives;
@@ -315,6 +318,70 @@ var seattle = GeoCoordinate.Create(47.6062, -122.3321);
 var portland = GeoCoordinate.Create(45.5152, -122.6784);
 double meters = seattle.DistanceMetersTo(portland);
 ```
+
+### `GeoBoundingBox`
+
+```csharp
+public sealed class GeoBoundingBox : ValueObject
+```
+
+An immutable, non-wrapping latitude/longitude rectangle used by `GeoBounds`. Each box has
+`MinimumLongitude <= MaximumLongitude`; an antimeridian-crossing search is represented by
+two boxes rather than ambiguous wrapped endpoints. Construction is intentionally owned by
+`GeoBounds`.
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `World` | `GeoBoundingBox` | The full `-90..90` latitude and `-180..180` longitude rectangle. |
+| `MinimumLatitude` | `double` | Inclusive southern latitude in decimal degrees. |
+| `MaximumLatitude` | `double` | Inclusive northern latitude in decimal degrees. |
+| `MinimumLongitude` | `double` | Inclusive western longitude in decimal degrees. Never greater than `MaximumLongitude`. |
+| `MaximumLongitude` | `double` | Inclusive eastern longitude in decimal degrees. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public bool Contains(GeoCoordinate coordinate)` | `bool` | Inclusive rectangular membership over the coordinate's stored components. This is a broad candidate test, not exact spherical-radius membership. Throws `ArgumentNullException` for null. |
+| `protected override void GetEqualityComponents(ref EqualityComponents components)` | `void` | Adds the four endpoints; equality, hashing, and ordering are inherited from `ValueObject`. |
+
+### `GeoBounds`
+
+```csharp
+public sealed class GeoBounds : ValueObject
+```
+
+Validated storage-neutral bounds for a spherical radius search. The boxes are conservative:
+an exact spherical match is not excluded, but a box can contain points outside the radius.
+Always apply an exact distance predicate after the box prefilter. Endpoints include a small
+outward numerical safety margin covering the multi-step spherical and degree calculations;
+the margin scales near antipodal distances where inverse haversine is ill-conditioned.
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `Center` | `GeoCoordinate` | Search origin. |
+| `RadiusMeters` | `double` | Finite non-negative spherical radius. |
+| `Boxes` | `IReadOnlyList<GeoBoundingBox>` | One ordinary box, two non-wrapping boxes at the antimeridian, or one full-longitude box when a pole is reached. A radius at least `Math.PI * GeoCoordinate.MeanEarthRadiusMeters` yields `GeoBoundingBox.World`. |
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<GeoBounds> TryCreate(GeoCoordinate center, double radiusMeters, string? fieldName = null)` | `Result<GeoBounds>` | Validates the center and requires a finite, non-negative radius. The default failure pointer is `/radiusMeters`; `fieldName` follows the standard Trellis literal-property/JSON-Pointer rules. |
+| `public static GeoBounds Create(GeoCoordinate center, double radiusMeters)` | `GeoBounds` | Throwing factory for trusted values. Throws `InvalidOperationException` for an invalid radius and `ArgumentNullException` for a null center. |
+| `public bool Contains(GeoCoordinate coordinate)` | `bool` | Returns whether any broad box contains the coordinate's stored components. It does not evaluate exact distance. Throws `ArgumentNullException` for null. |
+| `protected override void GetEqualityComponents(ref EqualityComponents components)` | `void` | Adds `Center`, `RadiusMeters`, and each derived box. |
+
+Zero-radius bounds preserve geographic endpoint equivalence: an origin at longitude
+`-180` or `180` produces candidates for both representations. At either pole, all
+longitudes are candidates because they represent the same physical point.
+
+```csharp
+using Trellis;
+using Trellis.Primitives;
+
+var origin = GeoCoordinate.Create(47.6062, -122.3321);
+Result<GeoBounds> bounds = GeoBounds.TryCreate(origin, radiusMeters: 10_000);
+```
+
+For an EF Core broad prefilter plus exact translated distance, see
+[`GeoCoordinateExpressions`](trellis-api-efcore.md#geocoordinateexpressions).
 
 ### `Hostname`
 
@@ -645,7 +712,7 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 - Built-in scalars:
   - `Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Percentage`, `PhoneNumber`, `Slug`, `Url` -> `ScalarValueObject<TSelf, T>` -> `ValueObject`
 - Structured built-ins:
-  - `Money`, `GeoCoordinate`, `WeeklyPeriod`, `WeeklySchedule` -> `ValueObject`
+  - `Money`, `GeoCoordinate`, `GeoBoundingBox`, `GeoBounds`, `WeeklyPeriod`, `WeeklySchedule` -> `ValueObject`
 
 ## Built-in primitives table
 
@@ -655,6 +722,8 @@ The base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`, `RequiredString<
 | `CountryCode` | `Trellis.Primitives` | Scalar | JSON string | Uppercase ASCII ISO 3166-1 alpha-2 (exactly two ASCII letters). |
 | `CurrencyCode` | `Trellis.Primitives` | Scalar | JSON string | Uppercase ASCII ISO 4217 (exactly three ASCII letters). |
 | `EmailAddress` | `Trellis.Primitives` | Scalar | JSON string | Trimmed validated email. |
+| `GeoBoundingBox` | `Trellis.Primitives` | Structured | Application query value | One immutable non-wrapping inclusive geographic rectangle. |
+| `GeoBounds` | `Trellis.Primitives` | Structured | Application query value | Validated spherical search origin/radius with one or two conservative boxes. |
 | `GeoCoordinate` | `Trellis.Primitives` | Structured | JSON object `{ "latitude": number, "longitude": number }` | Finite latitude/longitude; approximate in-memory great-circle distance in meters. |
 | `Hostname` | `Trellis.Primitives` | Scalar | JSON string | RFC 1123 hostname. |
 | `IpAddress` | `Trellis.Primitives` | Scalar | JSON string | IPv4 or IPv6 text. |
@@ -699,6 +768,8 @@ Every built-in primitive's `TryCreate` failure carries a `FieldViolation.ReasonC
 | `GeoCoordinate` | NaN or infinity in either component | `number.finite` | — |
 | `GeoCoordinate` | below latitude/longitude minimum | `value.greater-than-or-equal` | `comparisonValue: -90` / `-180` |
 | `GeoCoordinate` | above latitude/longitude maximum | `value.less-than-or-equal` | `comparisonValue: 90` / `180` |
+| `GeoBounds` | radius is NaN or infinity | `number.finite` | — |
+| `GeoBounds` | radius is negative | `value.greater-than-or-equal` | `comparisonValue: 0` |
 | `WeeklyPeriod` | undefined day | `enum.undefined` | `allowed`: day names |
 | `WeeklyPeriod` | equal normal endpoints | `value.must-not-equal` | `comparisonProperty: "start"` |
 | `WeeklySchedule` | null/blank zone ID | `value.not-null` / `value.not-empty` | — |
@@ -722,6 +793,7 @@ Every `TryCreate` overload takes an optional `fieldName`. When it is omitted, th
 | `CountryCode` | `countryCode` | `TryCreate` |
 | `CurrencyCode` | `currencyCode` | `TryCreate` |
 | `EmailAddress` | **`email`** — not `emailAddress` | `TryCreate` |
+| `GeoBounds` | `radiusMeters` | `TryCreate` |
 | `GeoCoordinate` | `latitude` / `longitude`, nested under the optional owner | `TryCreate` |
 | `Hostname` | `hostname` | `TryCreate` |
 | `IpAddress` | `ipAddress` | `TryCreate` |

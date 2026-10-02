@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>
-      Infrastructure and ready-to-use implementations for primitive value objects in Domain-Driven Design. Includes base classes (RequiredString, RequiredGuid) with source generation, plus EmailAddress with RFC 5322 validation. Eliminates primitive obsession with strongly-typed domain primitives.
+      Infrastructure and ready-to-use implementations for primitive value objects in Domain-Driven Design. Includes base classes (RequiredString, RequiredGuid) with source generation, validated primitives, geographic coordinates, and conservative spherical search bounds. Eliminates primitive obsession with strongly-typed domain primitives.
     </Description>
-    <PackageTags>trellis;value-objects;source-generation;required-string;required-guid;email;ddd;strongly-typed;domain-primitives;primitive-obsession</PackageTags>
+    <PackageTags>trellis;value-objects;source-generation;required-string;required-guid;email;geographic;geospatial;ddd;strongly-typed;domain-primitives;primitive-obsession</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>primitives</TrellisApiRefName>

@@ -13,7 +13,8 @@ using System.Text.Json.Serialization;
 [JsonConverter(typeof(CompositeValueObjectJsonConverter<GeoCoordinate>))]
 public sealed class GeoCoordinate : ValueObject
 {
-    private const double MeanEarthRadiusMeters = 6_371_008.8;
+    /// <summary>Mean Earth radius used by the spherical distance and bounds calculations.</summary>
+    public const double MeanEarthRadiusMeters = 6_371_008.8;
 
     /// <summary>
     /// Gets the latitude in decimal degrees, from -90 through 90 inclusive.

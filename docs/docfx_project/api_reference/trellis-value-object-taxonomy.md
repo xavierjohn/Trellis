@@ -3,7 +3,7 @@ package: Trellis.Core, Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
 types: [ValueObject, "ScalarValueObject<TSelf,T>", RequiredString<TSelf>, RequiredGuid<TSelf>, RequiredInt<TSelf>, RequiredLong<TSelf>, RequiredDecimal<TSelf>, RequiredBool<TSelf>, RequiredDateTime<TSelf>, RequiredDateTimeOffset<TSelf>, RequiredEnum<TSelf>, Maybe<T>]
 version: v3
-last_verified: 2026-08-18
+last_verified: 2026-10-02
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when choosing a value-object category (scalar, symbolic, structured, optional) or deciding between Trellis.Core bases and Trellis.Primitives types."
@@ -115,6 +115,13 @@ Concrete **structured** value object (`Latitude` + `Longitude`) for finite geogr
 coordinates. Component equality is exact; `DistanceMetersTo` is an approximate spherical
 great-circle calculation in memory, not a SQL spatial operation.
 
+### `GeoBoundingBox` and `GeoBounds`
+
+Concrete **structured query values** for spherical nearby-search composition.
+`GeoBoundingBox` is one non-wrapping inclusive rectangle; `GeoBounds` combines a validated
+`Center` + `RadiusMeters` identity with one or two derived boxes. They are not scalar wire
+primitives and do not replace exact distance filtering.
+
 ### `WeeklyPeriod` and `WeeklySchedule`
 
 Concrete **structured** values for weekly local-clock availability. `WeeklyPeriod` holds a
@@ -151,7 +158,7 @@ Use DTOs for JSON and persistence, not the scalar or composite JSON converters.
 - **Symbolic value objects**
   - `RequiredEnum<TSelf>` is separate from `ScalarValueObject<TSelf, T>` but still uses `Value` as its canonical public identity and implicitly unwraps to it.
 - **Structured value objects**
-  - `Money`, `GeoCoordinate`, `WeeklyPeriod`, `WeeklySchedule` -> `ValueObject`
+  - `Money`, `GeoCoordinate`, `GeoBoundingBox`, `GeoBounds`, `WeeklyPeriod`, `WeeklySchedule` -> `ValueObject`
 - **Optionality wrappers**
   - `Maybe<T>` belongs to `Trellis.Core`; it wraps presence/absence and is not a value object category peer to scalar/symbolic/structured types.
 
@@ -178,6 +185,8 @@ For a `partial` `Required*<TSelf>` type the primitive generator emits the `IScal
 | `RequiredEnum<TSelf>` derivatives | Symbolic | `Value : string` | JSON string | Finite symbolic set with behavior. |
 | `Money` | Structured | `Amount` + `Currency` | JSON object | Use for multi-currency scenarios. |
 | `GeoCoordinate` | Structured | `Latitude` + `Longitude` | JSON object | Validated decimal degrees; approximate distance in meters. |
+| `GeoBoundingBox` | Structured | Four inclusive endpoints | Application query value | One immutable, non-wrapping conservative rectangle. |
+| `GeoBounds` | Structured | `Center` + `RadiusMeters` | Application query value | Validated spherical search identity with one or two derived boxes. |
 | `WeeklyPeriod` | Structured | `Day` + `Start` + `End` + `IsAllDay` | Application DTO | Half-open local-clock interval; explicit all-day factory. |
 | `WeeklySchedule` | Structured | `TimeZoneId` + sorted `Periods` | Application DTO | IANA-zone weekly membership, including overnight and DST cases. |
 

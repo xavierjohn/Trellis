@@ -1,9 +1,9 @@
 ﻿---
 title: Pagination
 package: Trellis.Core
-topics: [pagination, cursors, efcore, asp, results]
-related_api_reference: [trellis-api-core.md, trellis-api-efcore.md, trellis-api-asp.md]
-last_verified: 2026-09-12
+topics: [pagination, cursors, efcore, asp, results, geospatial]
+related_api_reference: [trellis-api-core.md, trellis-api-efcore.md, trellis-api-primitives.md, trellis-api-asp.md]
+last_verified: 2026-10-02
 audience: [developer]
 ---
 # Pagination
@@ -200,8 +200,37 @@ Authorization must still filter every request.
 
 ## Computed distance or score
 
-For a computed order that cannot be translated, the application owns the
-algorithm and its candidate bounds. Use:
+Spherical distance over numeric latitude/longitude columns has a translated EF Core path.
+Validate the search with `GeoBounds`, use `WithinRadius` for the conservative box prefilter
+plus exact distance, and reuse the same distance expression as the first seek key:
+
+```csharp
+var bounds = GeoBounds.Create(origin, radiusMeters);
+var withinRadius = GeoCoordinateExpressions.WithinRadius<Store>(
+    store => store.Latitude, store => store.Longitude, bounds);
+var distance = GeoCoordinateExpressions.DistanceMetersTo<Store>(
+    store => store.Latitude, store => store.Longitude, bounds.Center);
+var seek = SeekDefinition.Ascending(distance)
+    .ThenAscending(store => store.Id)
+    .WithCodec(queryBoundCodec);
+
+Result<Page<Store>> page = await db.Stores
+    .Where(withinRadius)
+    .ToPageAsync(request, seek, cancellationToken: cancellationToken);
+```
+
+The database applies the prefilter, exact predicate, ordering, boundary projection, and
+seek. The default `(distance, id)` codec is not sufficient across requests:
+`queryBoundCodec` must bind canonical identity for the origin, radius, every other filter,
+sort directions, and an algorithm version. Translation failures propagate; Trellis does
+not switch to client evaluation. The helpers use spherical arithmetic over ordinary
+numeric columns, not a spatial index. Origins, radii, and box endpoints are parameterized,
+so values within the same one-box or two-box structural case reuse one query shape.
+Provider trigonometric functions can round differently from the in-memory calculation at
+an exact boundary; include an application tolerance in the radius when that distinction matters.
+
+For a computation that cannot be translated, the application still owns the algorithm and
+its candidate bounds. Use:
 
 1. An authorized, appropriately bounded candidate source.
 2. `PageRequest.Decode(codec)` to validate optional typed continuation state.
@@ -210,10 +239,10 @@ algorithm and its candidate bounds. Use:
 5. `PageBuilder.FromOverFetch` with a callback that encodes the last retained boundary.
 
 The [computed pagination recipe](../api_reference/trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state)
-shows finite, nonnegative distance state mapped from nested composite codecs,
-canonical query-context binding, and an in-memory GUID tie-breaker using
-`CompareTo`. It deliberately uses a complete bounded snapshot; it is not
-geospatial support or a reason to materialize an unbounded database table.
+shows both paths, including finite nonnegative state, canonical query-context binding,
+translated spherical filtering, and a bounded in-memory fallback with a GUID tie-breaker.
+The fallback deliberately uses a complete bounded snapshot; it is not a reason to
+materialize an unbounded database table.
 
 ## Pure page assembly and provider tokens
 

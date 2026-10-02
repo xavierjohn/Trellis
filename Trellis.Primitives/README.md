@@ -37,21 +37,30 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 - `Trellis.Core` base classes like `RequiredString<CustomerEmail>` and `RequiredGuid<OrderId>` for custom domain types.
 - Lenient-by-default generated validation (rejects `null` only); opt into sentinel rejection with `[NotDefault]` and string trimming with `[Trim]` when domain strictness is required.
 - Validation and parsing rules that stay with the type instead of leaking into handlers and controllers.
-- `GeoCoordinate` validates finite latitude/longitude and calculates approximate in-memory great-circle distances in meters.
+- `GeoCoordinate` validates finite latitude/longitude and calculates approximate in-memory great-circle distances; `GeoBounds` builds conservative one- or two-box spherical radius prefilters.
 - `WeeklyPeriod` and `WeeklySchedule` model recurring local-clock availability in an IANA time zone.
 
 ## Geographic coordinates
 
 ```csharp
+using Trellis;
+using Trellis.Primitives;
+
 var seattle = GeoCoordinate.Create(47.6062, -122.3321);
 var portland = GeoCoordinate.Create(45.5152, -122.6784);
 double meters = seattle.DistanceMetersTo(portland);
+
+Result<GeoBounds> nearby = GeoBounds.TryCreate(seattle, radiusMeters: 10_000);
 ```
 
 Use `TryCreate(latitude, longitude, fieldName)` for untrusted input. It accumulates both
 component errors; latitude is `-90..90` and longitude is `-180..180`, inclusive. JSON is
 `{ "latitude": number, "longitude": number }`. Values are not rounded or normalized.
-Distance uses a sphere of radius 6,371,008.8 meters, not an ellipsoidal model or SQL spatial query.
+Distance and bounds use a sphere of radius 6,371,008.8 meters, not an ellipsoidal model.
+`GeoBounds.Boxes` contains one ordinary rectangle, two non-wrapping rectangles at the
+antimeridian, or a full-longitude rectangle at a pole. Bounds are conservative: apply an
+exact distance check after using them as a broad prefilter. `Trellis.EntityFrameworkCore`
+provides selector-based translated bounds, distance, and radius expressions over numeric columns.
 
 ## Weekly availability
 

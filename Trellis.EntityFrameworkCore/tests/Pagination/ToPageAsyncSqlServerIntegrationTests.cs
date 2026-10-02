@@ -121,6 +121,49 @@ public class ToPageAsyncSqlServerIntegrationTests : IAsyncLifetime
         collected.Should().Equal(expected);
     }
 
+    [Fact]
+    public async Task GeoDistance_FilterAndComputedSeek_ExecutesOnSqlServer()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var origin = GeoCoordinate.Create(0, 179.5);
+        var bounds = GeoBounds.Create(origin, 250_000);
+        var rows = new[]
+        {
+            new GeoRow { Id = 1, Latitude = 0, Longitude = 179.75 },
+            new GeoRow { Id = 2, Latitude = 0, Longitude = -179.75 },
+            new GeoRow { Id = 3, Latitude = 0, Longitude = 178 },
+            new GeoRow { Id = 4, Latitude = 0, Longitude = -175 },
+        };
+        _context.GeoRows.AddRange(rows);
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+        var distance = GeoCoordinateExpressions.DistanceMetersTo<GeoRow>(
+            row => row.Latitude, row => row.Longitude, origin);
+        var withinRadius = GeoCoordinateExpressions.WithinRadius<GeoRow>(
+            row => row.Latitude, row => row.Longitude, bounds);
+        var seek = SeekDefinition.Ascending(distance).ThenAscending(row => row.Id);
+        var expected = rows
+            .Where(row => origin.DistanceMetersTo(GeoCoordinate.Create(row.Latitude, row.Longitude)) <= bounds.RadiusMeters)
+            .OrderBy(row => origin.DistanceMetersTo(GeoCoordinate.Create(row.Latitude, row.Longitude)))
+            .ThenBy(row => row.Id)
+            .Select(row => row.Id);
+        var collected = new List<int>();
+        Cursor? cursor = null;
+
+        for (var pageNumber = 0; pageNumber < 10; pageNumber++)
+        {
+            var page = (await _context.GeoRows.Where(withinRadius)
+                .ToPageAsync(new PageSize(2, 2), cursor, seek, cancellationToken: ct)).Unwrap();
+            collected.AddRange(page.Items.Select(row => row.Id));
+            cursor = page.Next;
+            if (cursor is null)
+                break;
+        }
+
+        collected.Should().Equal(expected);
+        cursor.Should().BeNull();
+    }
+
     /// <summary>
     /// Mirrors <c>SqlServerMaybeIntegrationTests.SqlServerTestDbContext</c> — wires
     /// <c>AddTrellisInterceptors()</c> so VO <c>.Value</c> projections translate to SQL.
@@ -129,6 +172,7 @@ public class ToPageAsyncSqlServerIntegrationTests : IAsyncLifetime
     {
         public DbSet<TestCustomer> Customers => Set<TestCustomer>();
         public DbSet<TestOrder> Orders => Set<TestOrder>();
+        public DbSet<GeoRow> GeoRows => Set<GeoRow>();
 
         public SqlServerTestDbContext(string connectionString)
             : base(new DbContextOptionsBuilder<SqlServerTestDbContext>()
@@ -159,6 +203,19 @@ public class ToPageAsyncSqlServerIntegrationTests : IAsyncLifetime
                 b.Property(o => o.Amount).IsRequired();
                 b.Property(o => o.Status).IsRequired();
             });
+
+            modelBuilder.Entity<GeoRow>(builder =>
+            {
+                builder.HasKey(row => row.Id);
+                builder.Property(row => row.Id).ValueGeneratedNever();
+            });
         }
+    }
+
+    private sealed class GeoRow
+    {
+        public int Id { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
     }
 }
