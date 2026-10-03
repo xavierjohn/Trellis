@@ -721,7 +721,7 @@ When you genuinely need a custom payload shape (non-Problem-Details body, endpoi
 - `Result`, `Result<T>`, `Error`, `Page<T>`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
 - `WriteOutcome<T>`, `EntityTagValue`, `OptionalETag` / `RequireETag`: [`trellis-api-http-abstractions.md`](../api_reference/trellis-api-http-abstractions.md)
 - `Actor`, `IActorProvider`, `IAuthorize`: [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md)
-- `IScalarValue<TSelf, TPrimitive>`, `Maybe<T>`, ready-to-use value objects: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)
+- [`IScalarValue<TSelf, TPrimitive>`](xref:Trellis.IScalarValue`2), [`Maybe<T>`](xref:Trellis.Maybe`1), and [ready-to-use value objects](built-in-primitives.md)
 - Integration-test helpers (`CreateClientWithActor` for `X-Test-Actor`): [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md)
 - Composite value object end-to-end pattern (Recipe 13): [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership)
 - HTTP client side (consuming results): [`integration-http.md`](integration-http.md)

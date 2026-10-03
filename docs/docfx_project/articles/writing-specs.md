@@ -41,7 +41,7 @@ A complete spec has these sections. Missing sections are where an AI silently fi
 
 The single biggest driver of predictable generated code is naming validated concepts as types.
 
-- Every validated input is a **value object**, not a `string`/`int`/`Guid`. Say "`EmailAddress`", not "a string that must be a valid email". See [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md) and the [value-object taxonomy](../api_reference/trellis-value-object-taxonomy.md).
+- Every validated input is a **value object**, not a `string`/`int`/`Guid`. Say "`EmailAddress`", not "a string that must be a valid email". Start with the [value-object guide](primitives.md) and [built-in catalog](built-in-primitives.md).
 - **Identities are typed.** `OrderId`, `CustomerId` — each a `RequiredGuid<TSelf>`. Never a bare `Guid` parameter that could be transposed with another.
 - **Enumerations are `RequiredEnum<TSelf>`**, not a CLR `enum` and not a `string`. This gives you validation, ordering, and a stable wire value. See [RequiredEnum](required-enum.md).
 - **Owners and actors are `ActorId`, never `Guid`.** The current principal's identity is an `ActorId` (a validated string); comparing ownership means comparing `ActorId` values. Specifying an owner as `Guid` forces a lossy conversion and breaks the binding contract.
