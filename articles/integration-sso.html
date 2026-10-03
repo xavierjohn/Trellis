@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Single Sign-On Integration | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Single Sign-On Integration | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-sso.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="single-sign-on-integration">Single Sign-On Integration</h1>
+
+<p><code>Trellis.Asp.Authorization</code> (shipped inside the <code>Trellis.Asp</code> package) turns an authenticated <code>JwtBearer</code> principal from <strong>any OIDC issuer</strong> — Google, Microsoft Entra ID, Facebook, Auth0, Okta, Keycloak, or your own OpenID Connect server — into a frozen <code>Actor</code> so handlers and endpoints stop parsing JWTs.</p>
+<p>This article is the <strong>entry point</strong> for wiring authentication into a Trellis service. For framework-side authorization mechanics (mediator behaviors, resource authorization, the decision tree, cache partitioning) see <a href="integration-asp-authorization.html">ASP.NET Core Authorization</a>.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Validate any standards-compliant OIDC token (Google, Auth0, Okta, Keycloak, custom)</td>
+<td><code>AddJwtBearer</code> + <code>AddClaimsActorProvider(options?)</code></td>
+<td><a href="#generic-oidc">Generic OIDC</a></td>
+</tr>
+<tr>
+<td>Validate Microsoft Entra ID v2.0 tokens with <code>oid</code> / <code>roles</code> / <code>tid</code> / <code>amr</code> defaults</td>
+<td><code>AddJwtBearer</code> + <code>AddEntraActorProvider(options?)</code></td>
+<td><a href="#microsoft-entra-id">Microsoft (Entra ID)</a></td>
+</tr>
+<tr>
+<td>Validate Google ID tokens</td>
+<td>Authority <code>https://accounts.google.com</code> + <code>ValidIssuers</code> accepting both forms</td>
+<td><a href="#google-sign-in">Google sign-in</a></td>
+</tr>
+<tr>
+<td>Validate Sign in with Apple ID tokens from an iOS/macOS app</td>
+<td>Authority <code>https://appleid.apple.com</code> + bundle id as <code>Audience</code></td>
+<td><a href="#sign-in-with-apple-ios--macos-app">Sign in with Apple (iOS / macOS app)</a></td>
+</tr>
+<tr>
+<td>Validate Google / Microsoft / OIDC tokens from an Android app</td>
+<td>Same as the IdP recipe; client-side flow uses Credential Manager / MSAL / AppAuth</td>
+<td><a href="#android-app">Android app</a></td>
+</tr>
+<tr>
+<td>Validate Facebook tokens via an OIDC bridge</td>
+<td>Authority for your bridge (Auth0/Cognito/etc.) + <code>AddClaimsActorProvider</code></td>
+<td><a href="#facebook-via-oidc-bridge">Facebook (via OIDC bridge)</a></td>
+</tr>
+<tr>
+<td>Accept tokens from multiple IdPs in one API (e.g. Microsoft + Google + Apple)</td>
+<td>Multiple <code>AddJwtBearer(&quot;&lt;scheme&gt;&quot;, ...)</code> + a default policy listing every scheme</td>
+<td><a href="#multiple-idps-in-one-api">Multiple IdPs in one API</a></td>
+</tr>
+<tr>
+<td>Project nested JSON claims (Keycloak <code>realm_access.roles</code>)</td>
+<td>Subclass <code>ClaimsActorProvider</code> + <code>AddCachingActorProvider&lt;T&gt;()</code></td>
+<td><a href="#keycloak--nested-claims">Keycloak / nested claims</a></td>
+</tr>
+<tr>
+<td>Flatten roles, scopes, or <code>scp</code> into application permissions</td>
+<td>Override <code>EntraActorOptions.MapPermissions</code> or use a custom <code>IActorProvider</code></td>
+<td><a href="#scope-and-permission-extraction">Scope and permission extraction</a></td>
+</tr>
+<tr>
+<td>Accept multi-tenant Entra tokens and pin allowed tenants</td>
+<td><code>JwtBearerOptions.TokenValidationParameters</code> + <code>ActorAttributes.TenantId</code></td>
+<td><a href="#multi-tenant-entra">Multi-tenant Entra</a></td>
+</tr>
+<tr>
+<td>Use a fake actor in Development without a real IdP</td>
+<td><code>AddDevelopmentActorProvider(options?)</code> + <code>X-Test-Actor</code> header</td>
+<td><a href="#development-defaults">Development defaults</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="use-this-guide-when">Use this guide when</h2>
+<ul>
+<li>You front a Trellis service with <code>JwtBearer</code> and need a single, predictable <code>Actor</code> shape regardless of which OIDC provider issued the token.</li>
+<li>You need one configuration story for Google, Sign in with Apple, Microsoft (Entra), Facebook (via an OIDC bridge), Auth0, Okta, and Keycloak.</li>
+<li>You need to wire an Android, iOS, or macOS app against the Trellis backend.</li>
+<li>You need a <strong>single API</strong> to accept tokens from multiple IdPs at once — for example, a web frontend with Sign in with Microsoft <em>and</em> Sign in with Google buttons, plus phone apps signing in with Apple or Google.</li>
+<li>You need a Development-only seam (<code>X-Test-Actor</code>) that fail-closes outside <code>IsDevelopment()</code>.</li>
+<li>You need to host a multi-tenant Entra app and pin which tenants may call your API.</li>
+</ul>
+<h2 id="surface-at-a-glance">Surface at a glance</h2>
+<p><code>Trellis.Asp.Authorization</code> (namespace inside the <code>Trellis.Asp</code> package) exposes one set of DI extensions and four <code>IActorProvider</code> implementations.</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Kind</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddClaimsActorProvider(this IServiceCollection, Action&lt;ClaimsActorOptions&gt;?)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>ClaimsActorProvider</code>. The general-purpose provider for any flat-claim OIDC token.</td>
+</tr>
+<tr>
+<td><code>AddEntraActorProvider(this IServiceCollection, Action&lt;EntraActorOptions&gt;?)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>EntraActorProvider</code> (Microsoft Entra ID v2.0 claim shape with <code>oid</code> / <code>roles</code> / <code>tid</code> / <code>amr</code> defaults).</td>
+</tr>
+<tr>
+<td><code>AddDevelopmentActorProvider(this IServiceCollection, Action&lt;DevelopmentActorOptions&gt;?)</code></td>
+<td>DI extension</td>
+<td>Scoped <code>IActorProvider</code> → <code>DevelopmentActorProvider</code>; reads <code>X-Test-Actor</code> JSON header; throws outside <code>IsDevelopment()</code>.</td>
+</tr>
+<tr>
+<td><code>AddCachingActorProvider&lt;T&gt;(this IServiceCollection)</code> where <code>T : class, IActorProvider</code></td>
+<td>DI extension</td>
+<td>Wraps <code>T</code> in <code>CachingActorProvider</code> so a single resolution task is shared per request.</td>
+</tr>
+<tr>
+<td><code>ClaimsActorOptions</code></td>
+<td>Options</td>
+<td><code>ActorIdClaim</code> (default <code>&quot;sub&quot;</code>), <code>PermissionsClaim</code> (default <code>&quot;permissions&quot;</code>). <code>Claim.Type</code> literal match, plus a bidirectional fallback through the provider's curated short↔long mapping table.</td>
+</tr>
+<tr>
+<td><code>EntraActorOptions</code></td>
+<td>Options</td>
+<td><code>IdClaimType</code>, <code>MapPermissions</code>, <code>MapForbiddenPermissions</code>, <code>MapAttributes</code>.</td>
+</tr>
+<tr>
+<td><code>DevelopmentActorOptions</code></td>
+<td>Options</td>
+<td><code>DefaultActorId</code>, <code>DefaultPermissions</code>, <code>ThrowOnMalformedHeader</code>.</td>
+</tr>
+<tr>
+<td><code>ActorAttributes</code> (in <code>Trellis.Authorization</code>)</td>
+<td>Constants</td>
+<td>Well-known attribute keys: <code>TenantId</code>, <code>PreferredUsername</code>, <code>AuthorizedParty</code>, <code>AuthorizedPartyAcr</code>, <code>AuthContextClassReference</code>, <code>IpAddress</code>, <code>MfaAuthenticated</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Full signatures: <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a>.</p>
+<h2 id="installation">Installation</h2>
+<pre><code class="lang-bash">dotnet add package Trellis.Asp
+</code></pre>
+<p>The actor providers ship in <code>Trellis.Asp</code> under namespace <code>Trellis.Asp.Authorization</code>. Domain primitives (<code>Actor</code>, <code>IActorProvider</code>, <code>ActorAttributes</code>) come from <code>Trellis.Authorization</code>.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>Validate any OIDC token (Auth0, Google, Okta, custom) with the standard ASP.NET Core <code>JwtBearer</code> middleware, register <code>ClaimsActorProvider</code>, and read the resolved <code>Actor</code> from a protected endpoint. The example below uses Auth0; substitute your own <code>Authority</code> and <code>Audience</code>.</p>
+<pre><code class="lang-csharp">using System.Linq;
+using System.Threading;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+var builder = WebApplication.CreateBuilder(args);
+var auth = builder.Configuration.GetSection(&quot;Authentication&quot;);
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];   // e.g. https://your-tenant.auth0.com/
+        options.Audience  = auth[&quot;Audience&quot;];    // your API audience
+        // Recommended: keep claim names round-tripping with RFC 7519 / OIDC short forms.
+        // ASP.NET Core's default of `true` silently remaps short claim names onto WS-* URNs
+        // before they reach the actor provider — set false unless you know you need it.
+        options.MapInboundClaims = false;
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim     = &quot;sub&quot;;
+    options.PermissionsClaim = &quot;permissions&quot;;
+});
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapGet(&quot;/me&quot;, [Authorize] async (IActorProvider actorProvider, CancellationToken ct) =&gt;
+{
+    var maybeActor = await actorProvider.GetCurrentActorAsync(ct);
+    if (!maybeActor.TryGetValue(out var actor))
+        return Results.Unauthorized();
+
+    return Results.Ok(new
+    {
+        actor.Id,
+        Permissions = actor.Permissions.OrderBy(p =&gt; p).ToArray(),
+    });
+});
+
+app.Run();
+</code></pre>
+<p>Matching <code>appsettings.json</code>:</p>
+<pre><code class="lang-json">{
+  &quot;Authentication&quot;: {
+    &quot;Authority&quot;: &quot;https://your-tenant.auth0.com/&quot;,
+    &quot;Audience&quot;:  &quot;https://api.example.com&quot;
+  }
+}
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The actor provider extracts an <code>Actor</code> from <code>HttpContext.User</code>. It does not validate tokens — keep <code>AddJwtBearer</code> (or any other authentication scheme) in front of it. For the framework's failure-mode contract (when <code>Maybe&lt;Actor&gt;.None</code> becomes 401 vs when a configuration bug becomes 500), see <a href="integration-asp-authorization.html#mental-model">ASP.NET Core Authorization → Mental model</a>.</p>
+</div>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Microsoft Entra ID consumers can substitute <code>AddEntraActorProvider()</code> for <code>AddClaimsActorProvider(...)</code> to opt in to Entra-specific defaults (App Roles, ABAC attributes from <code>tid</code>/<code>oid</code>/<code>amr</code>, multi-tenant). See <a href="#microsoft-entra-id">Microsoft (Entra ID)</a> below.</p>
+</div>
+<h2 id="provider-recipes">Provider recipes</h2>
+<p>Pick one provider per environment. The choice is driven by token shape, not by sign-in protocol.</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClaimsActorProvider</code></td>
+<td>Token has a flat actor-id claim and a flat permissions claim (most OIDC issuers — Auth0, Okta, Google, custom).</td>
+</tr>
+<tr>
+<td><code>EntraActorProvider</code></td>
+<td>Issuer is Microsoft Entra ID v2.0 and you want <code>oid</code> / <code>roles</code> / <code>tid</code> / <code>amr</code> mapped out of the box.</td>
+</tr>
+<tr>
+<td>Subclass of <code>ClaimsActorProvider</code></td>
+<td>Token has nested or computed claims (Keycloak <code>realm_access.roles</code>, claims merged from a database).</td>
+</tr>
+<tr>
+<td><code>DevelopmentActorProvider</code></td>
+<td>Local development or integration tests — <code>IsDevelopment()</code> only.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="generic-oidc">Generic OIDC</h3>
+<p>For any standards-compliant OIDC issuer — Auth0, Okta, Google, or a custom IdP — register <code>ClaimsActorProvider</code> and name the two claim types. The Quick start above shows the canonical shape.</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Typical <code>ActorIdClaim</code></th>
+<th>Typical <code>PermissionsClaim</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auth0 (RBAC)</td>
+<td><code>sub</code></td>
+<td><code>permissions</code></td>
+</tr>
+<tr>
+<td>Okta (custom claim)</td>
+<td><code>sub</code></td>
+<td><code>permissions</code> (or <code>scp</code> — see <a href="#scope-and-permission-extraction">Scope and permission extraction</a>)</td>
+</tr>
+<tr>
+<td>Google sign-in</td>
+<td><code>sub</code></td>
+<td>none — token only proves identity; load app permissions from your own store</td>
+</tr>
+<tr>
+<td>Custom OIDC</td>
+<td><code>sub</code></td>
+<td>whatever your IdP emits</td>
+</tr>
+</tbody>
+</table>
+<p>If the token only proves identity (Google is the canonical case), <code>Actor.Permissions</code> will be empty. That is a valid starting point: gate endpoints with <code>[Authorize]</code> for &quot;signed in&quot; and load fine-grained permissions from your database via a custom <code>IActorProvider</code> — see <a href="integration-db-permissions.html">Database-backed permissions</a> for the wrapping pattern.</p>
+<h3 id="microsoft-entra-id">Microsoft (Entra ID)</h3>
+<p>Microsoft Entra ID is supported as a first-class specialization with extra defaults that cover the standard Entra claim set out of the box. <strong>Use it instead of generic OIDC when</strong> your tokens come from Entra and you want any of:</p>
+<ul>
+<li><strong>App Roles</strong> — Entra's <code>roles</code> claim (one claim per role) flattened automatically into <code>Actor.Permissions</code>.</li>
+<li><strong>ABAC attributes</strong> — <code>tid</code> (tenant id), <code>oid</code> (Entra object id), <code>preferred_username</code>, <code>azp</code>, <code>azpacr</code>, <code>acrs</code>, <code>mfa</code> from <code>amr</code>, and request <code>ip_address</code> populated automatically into <code>Actor.Attributes</code>.</li>
+<li><strong>Long-form <code>oid</code> fallback</strong> — when <code>IdClaimType</code> is the default <code>http://schemas.microsoft.com/identity/claims/objectidentifier</code>, the provider falls back to the short <code>&quot;oid&quot;</code> claim.</li>
+<li><strong>Multi-tenant pinning</strong> — Entra-specific issuer-validator pattern (see <a href="#multi-tenant-entra">Multi-tenant Entra</a>).</li>
+</ul>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+var auth = configuration.GetSection(&quot;Authentication&quot;);
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];   // https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0
+        options.Audience  = auth[&quot;Audience&quot;];    // api client id (no api:// prefix for v2.0 audiences)
+        options.MapInboundClaims = false;        // recommended; see Quick start
+    });
+
+services.AddEntraActorProvider();
+</code></pre>
+<p><code>EntraActorProvider</code> derives from <code>ClaimsActorProvider</code> and overrides <code>GetCurrentActorAsync</code> to apply the Entra-specific delegates. See <code>EntraActorOptions</code> defaults in <a href="../api_reference/trellis-api-asp.html#entraactoroptions"><code>trellis-api-asp.md</code></a> and <a href="integration-asp-authorization.html#customizing-claim-mapping">ASP.NET Core Authorization → Customizing claim mapping</a> for the override delegates (<code>MapPermissions</code>, <code>MapForbiddenPermissions</code>, <code>MapAttributes</code>).</p>
+<h3 id="google-sign-in">Google sign-in</h3>
+<p>Google issues OIDC ID tokens that prove identity but carry no application permissions. Validate them with <code>ClaimsActorProvider</code> and supply permissions from your own store. Google's <code>iss</code> claim has two valid forms (<code>https://accounts.google.com</code> and <code>accounts.google.com</code>); accept both.</p>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = &quot;https://accounts.google.com&quot;;
+        options.Audience  = configuration[&quot;Authentication:Audience&quot;]; // your OAuth client id
+        options.TokenValidationParameters.ValidIssuers =
+        [
+            &quot;https://accounts.google.com&quot;,
+            &quot;accounts.google.com&quot;,
+        ];
+        options.MapInboundClaims = false;
+    });
+
+services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim = &quot;sub&quot;;
+    // Google does not emit application permissions in the ID token. Use a database-backed
+    // permission store (see Database-Backed Permissions article) or synthesize via OnTokenValidated.
+});
+</code></pre>
+<h3 id="sign-in-with-apple-ios--macos-app">Sign in with Apple (iOS / macOS app)</h3>
+<p>Apple issues OIDC ID tokens through the &quot;Sign in with Apple&quot; flow. A native iOS or macOS app obtains the ID token via <code>ASAuthorizationAppleIDProvider</code> and sends it to your Trellis backend as a bearer token; the backend validates it like any other OIDC token. Apple's tokens only prove identity — they carry no application permissions, so load those from your own store (same pattern as Google).</p>
+<p><strong>Apple-specific token facts</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Issuer (<code>iss</code>)</td>
+<td><code>https://appleid.apple.com</code></td>
+</tr>
+<tr>
+<td>Audience (<code>aud</code>)</td>
+<td>The app's <strong>bundle identifier</strong> for a native iOS/macOS app (e.g. <code>com.example.MyApp</code>); the <strong>Services ID</strong> for web sign-in.</td>
+</tr>
+<tr>
+<td>Subject (<code>sub</code>)</td>
+<td>A stable, team-scoped opaque user identifier. The same Apple account yields different <code>sub</code> values across different Apple developer teams.</td>
+</tr>
+<tr>
+<td><code>email</code></td>
+<td>May be present once at first sign-in. May be a <strong>private relay address</strong> (<code>*@privaterelay.appleid.com</code>) — treat as opaque, do not use as a primary key.</td>
+</tr>
+<tr>
+<td>Name</td>
+<td><strong>Not in the token.</strong> Apple returns the user's full name to the app in the authorization response <strong>only on the first sign-in</strong>; the app must forward it to the backend and the backend must persist it.</td>
+</tr>
+<tr>
+<td>Token lifetime</td>
+<td>~10 minutes. Apps refresh via Apple's <code>/auth/token</code> endpoint (refresh tokens are long-lived).</td>
+</tr>
+</tbody>
+</table>
+<h4 id="backend-wiring">Backend wiring</h4>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = &quot;https://appleid.apple.com&quot;;
+        // For a native iOS/macOS app, this is the app's bundle id.
+        // For web (Sign in with Apple JS), this is the Services ID configured in
+        // Apple Developer → Certificates, Identifiers &amp; Profiles.
+        options.Audience  = configuration[&quot;Authentication:Audience&quot;]; // e.g. com.example.MyApp
+        options.TokenValidationParameters.ValidIssuer = &quot;https://appleid.apple.com&quot;;
+        options.MapInboundClaims = false;
+    });
+
+services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim = &quot;sub&quot;;
+    // Apple does not emit application permissions. Load them from your own store
+    // via a database-backed IActorProvider (see the Database-Backed Permissions article)
+    // or synthesize via JwtBearerEvents.OnTokenValidated.
+});
+</code></pre>
+<p>If you support <strong>both</strong> an iOS app (bundle id audience) and a web sign-in (Services ID audience) on the same backend, set <code>TokenValidationParameters.ValidAudiences</code> instead of <code>JwtBearerOptions.Audience</code>:</p>
+<pre><code class="lang-csharp">options.TokenValidationParameters.ValidAudiences =
+[
+    &quot;com.example.MyApp&quot;,            // iOS bundle id
+    &quot;com.example.MyApp.SignInWithApple&quot;, // Services ID for web
+];
+</code></pre>
+<h4 id="ios-client-flow">iOS client flow</h4>
+<p>The iOS app obtains an ID token from Apple, then calls your API with it as a bearer token:</p>
+<pre><code class="lang-swift">import AuthenticationServices
+
+final class SignInDelegate: NSObject, ASAuthorizationControllerDelegate {
+    func authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithAuthorization authorization: ASAuthorization
+    ) {
+        guard
+            let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+            let tokenData  = credential.identityToken,
+            let idToken    = String(data: tokenData, encoding: .utf8)
+        else { return }
+
+        // First sign-in only: credential.fullName / credential.email are populated.
+        // Forward them to your backend so it can persist them; subsequent sign-ins
+        // will return nil for both.
+        Task { try await callTrellisApi(idToken: idToken,
+                                        fullName: credential.fullName,
+                                        email: credential.email) }
+    }
+}
+
+func callTrellisApi(idToken: String, fullName: PersonNameComponents?, email: String?) async throws {
+    var request = URLRequest(url: URL(string: &quot;https://api.example.com/me&quot;)!)
+    request.setValue(&quot;Bearer \(idToken)&quot;, forHTTPHeaderField: &quot;Authorization&quot;)
+    _ = try await URLSession.shared.data(for: request)
+}
+</code></pre>
+<h4 id="operational-notes">Operational notes</h4>
+<ul>
+<li><strong>Capture user details on the first sign-in.</strong> Apple only returns the user's full name and (real) email address in the <em>authorization response</em>, not in the ID token, and only on the first sign-in. If the app doesn't forward them to the backend that first time, they're gone — Apple will not resurface them. Persist them server-side keyed by <code>sub</code>.</li>
+<li><strong>Private relay emails.</strong> When the user chooses &quot;Hide My Email&quot;, <code>email</code> is a routable <code>*@privaterelay.appleid.com</code> address. It is stable for that user/app pair. Don't treat it as a verified contact for spam-sensitive purposes without re-confirming.</li>
+<li><strong><code>sub</code> is team-scoped.</strong> If you publish multiple apps under different Apple teams, the same human will have different <code>sub</code> values. Don't use <code>sub</code> as a cross-app primary key unless all apps share a team.</li>
+<li><strong>Server-to-server validation only.</strong> Don't trust the client's claim of &quot;I signed in as X&quot; — the backend must always validate the ID token signature against Apple's JWKS (<code>AddJwtBearer</code> does this automatically via OIDC discovery at <code>https://appleid.apple.com/.well-known/openid-configuration</code>).</li>
+<li><strong>No app roles or scopes.</strong> Treat Sign in with Apple as identity-only and layer your own permissions on top, e.g. via a custom <code>IActorProvider</code> that decorates <code>ClaimsActorProvider</code> and merges permissions from your database.</li>
+</ul>
+<h3 id="android-app">Android app</h3>
+<p>An Android app authenticates the user against an OIDC provider on the device, obtains a bearer token (an OIDC ID token from Google's Credential Manager / Apple, or an OAuth 2.0 access token from MSAL; AppAuth can return either), and sends it to the Trellis backend as <code>Authorization: Bearer &lt;token&gt;</code>. The <strong>backend wiring is identical to the IdP-specific recipe above</strong> — the choice of <code>Authority</code> and <code>Audience</code> is dictated by which IdP the app signed in with (Google, Microsoft Entra, Auth0, your own OIDC server) and by which token type that flow produces. What changes on Android is the client-side library and a few audience-naming quirks.</p>
+<table>
+<thead>
+<tr>
+<th>IdP from the Android app</th>
+<th>Recommended client library</th>
+<th>Backend recipe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Google sign-in</td>
+<td><a href="https://developer.android.com/identity/sign-in/credential-manager-siwg">Credential Manager</a> (<code>androidx.credentials</code>) with <code>GetGoogleIdOption</code></td>
+<td><a href="#google-sign-in">Google sign-in</a></td>
+</tr>
+<tr>
+<td>Microsoft Entra ID (work / school / personal MS accounts)</td>
+<td><a href="https://learn.microsoft.com/entra/identity-platform/msal-android">MSAL for Android</a> (<code>com.microsoft.identity.client:msal</code>)</td>
+<td><a href="#microsoft-entra-id">Microsoft (Entra ID)</a></td>
+</tr>
+<tr>
+<td>Auth0</td>
+<td><a href="https://auth0.com/docs/quickstart/native/android">Auth0 Android SDK</a></td>
+<td><a href="#generic-oidc">Generic OIDC</a> (Auth0 row)</td>
+</tr>
+<tr>
+<td>Okta</td>
+<td><a href="https://github.com/okta/okta-oidc-android">Okta OIDC Android</a> (or AppAuth)</td>
+<td><a href="#generic-oidc">Generic OIDC</a> (Okta row)</td>
+</tr>
+<tr>
+<td>Custom / any standards-compliant OIDC</td>
+<td><a href="https://github.com/openid/AppAuth-Android">AppAuth for Android</a></td>
+<td><a href="#generic-oidc">Generic OIDC</a></td>
+</tr>
+</tbody>
+</table>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The legacy &quot;Google Sign-In for Android&quot; SDK (<code>com.google.android.gms:play-services-auth</code>) is deprecated. New apps use Credential Manager. Existing apps on the old SDK still produce a valid OIDC ID token that the backend validates the same way.</p>
+</div>
+<h4 id="google-sign-in-from-android-credential-manager">Google sign-in from Android (Credential Manager)</h4>
+<p>Google sign-in from Android has one quirk the backend recipe doesn't mention: the audience claim. When the Android app calls Credential Manager with <code>setServerClientId(...)</code>, it passes the <strong>Web OAuth client ID</strong> configured in Google Cloud Console — not the Android OAuth client ID. The ID token Google issues then carries that Web client ID as its <code>aud</code> claim. The Trellis backend must validate against the same value.</p>
+<p>Google Cloud Console setup:</p>
+<ol>
+<li>Create an <strong>Android</strong> OAuth client (package name + SHA-1 of your signing key). This client has no client secret. It's what tells Google which app is calling.</li>
+<li>Create a <strong>Web application</strong> OAuth client. Its client id is what you pass as <code>serverClientId</code> and what the backend validates as <code>Audience</code>. The &quot;Web&quot; name is misleading — for native-app server-side validation flows, Google still requires a Web-type client.</li>
+</ol>
+<p>Android client (Kotlin):</p>
+<pre><code class="lang-kotlin">import android.content.Context
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import okhttp3.OkHttpClient
+import okhttp3.Request
+
+suspend fun signInAndCallApi(context: Context) {
+    val googleIdOption = GetGoogleIdOption.Builder()
+        // The WEB OAuth client id from Google Cloud Console. NOT the Android client id.
+        // The ID token's `aud` claim will equal this value.
+        .setServerClientId(&quot;YOUR_WEB_CLIENT_ID.apps.googleusercontent.com&quot;)
+        .setFilterByAuthorizedAccounts(false)
+        .build()
+
+    val request = GetCredentialRequest.Builder()
+        .addCredentialOption(googleIdOption)
+        .build()
+
+    val response = CredentialManager.create(context).getCredential(context, request)
+    val credential = GoogleIdTokenCredential.createFrom(response.credential.data)
+    val idToken = credential.idToken
+
+    val http = OkHttpClient()
+    val apiRequest = Request.Builder()
+        .url(&quot;https://api.example.com/me&quot;)
+        .header(&quot;Authorization&quot;, &quot;Bearer $idToken&quot;)
+        .build()
+    http.newCall(apiRequest).execute().use { /* read response */ }
+}
+</code></pre>
+<p>Backend (<code>Program.cs</code>) — same as <a href="#google-sign-in">Google sign-in</a>; make sure <code>Audience</code> matches the <strong>Web</strong> client id:</p>
+<pre><code class="lang-csharp">services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = &quot;https://accounts.google.com&quot;;
+        options.Audience  = &quot;YOUR_WEB_CLIENT_ID.apps.googleusercontent.com&quot;;
+        options.TokenValidationParameters.ValidIssuers =
+        [
+            &quot;https://accounts.google.com&quot;,
+            &quot;accounts.google.com&quot;,
+        ];
+        options.MapInboundClaims = false;
+    });
+
+services.AddClaimsActorProvider(options =&gt; options.ActorIdClaim = &quot;sub&quot;);
+</code></pre>
+<h4 id="microsoft-entra-id-from-android-msal">Microsoft Entra ID from Android (MSAL)</h4>
+<p>MSAL Android acquires an access token for your API's resource scope. The <code>aud</code> claim on the resulting JWT is your API client id (the same value the backend validates as <code>Audience</code>).</p>
+<p>Android client (Kotlin):</p>
+<pre><code class="lang-kotlin">import com.microsoft.identity.client.IPublicClientApplication
+import com.microsoft.identity.client.PublicClientApplication
+import com.microsoft.identity.client.SilentAuthenticationCallback
+
+val scopes = arrayOf(&quot;api://YOUR_API_CLIENT_ID/.default&quot;)
+
+PublicClientApplication.createMultipleAccountPublicClientApplication(
+    context,
+    R.raw.msal_config, // JSON config with client_id, redirect_uri, authorities
+    object : IPublicClientApplication.IMultipleAccountApplicationCreatedListener {
+        override fun onCreated(app: com.microsoft.identity.client.IMultipleAccountPublicClientApplication) {
+            // ... acquireToken(activity, scopes, callback) — see MSAL docs for the full flow.
+            // The resulting authResult.accessToken is what you send as Authorization: Bearer.
+        }
+        override fun onError(exception: com.microsoft.identity.client.exception.MsalException) { /* log */ }
+    },
+)
+</code></pre>
+<p>Backend wiring is identical to <a href="#microsoft-entra-id">Microsoft (Entra ID)</a>. The <code>msal_config</code> JSON resource must specify your Entra app's <code>client_id</code>, <code>redirect_uri</code> (<code>msauth://&lt;package&gt;/&lt;base64-sha1&gt;</code>), and the authority (<code>https://login.microsoftonline.com/&lt;tenant-id&gt;</code>).</p>
+<h4 id="generic-oidc-from-android-appauth">Generic OIDC from Android (AppAuth)</h4>
+<p><a href="https://github.com/openid/AppAuth-Android">AppAuth for Android</a> handles the OIDC authorization-code-with-PKCE flow against any standards-compliant issuer (Auth0, Okta, Keycloak, your own IdP). The resulting <code>AuthState.accessToken</code> (or <code>idToken</code>, depending on which claim your backend validates against) is what gets sent as <code>Authorization: Bearer …</code>. Backend wiring matches the corresponding <a href="#generic-oidc">Generic OIDC</a> row.</p>
+<h4 id="operational-notes-1">Operational notes</h4>
+<ul>
+<li><strong>Token type.</strong> Google Credential Manager gives an <strong>ID token</strong> (audience = Web OAuth client id). MSAL gives an <strong>access token</strong> (audience = your API resource). Both arrive at the backend as <code>Authorization: Bearer …</code>; the JWT handler validates whichever the <code>Audience</code> configuration matches. Don't mix them: an access token sent where the backend expects an ID token (or vice-versa) fails audience validation with HTTP 401.</li>
+<li><strong>App identity vs user identity.</strong> The Android OAuth client (Google) or Entra Android client (MSAL) authenticates the <em>app</em> to the IdP; the user signs in to the IdP through that app. The token your backend receives identifies the <em>user</em>. There's no Trellis-side concept of &quot;this token came from Android&quot; — the backend can't (and shouldn't) distinguish device platforms from a validated token.</li>
+<li><strong>HTTPS + certificate pinning.</strong> All API calls from the app must be HTTPS. Android 7+ ignores user-installed CAs for app traffic by default; this is correct for production. If you need certificate pinning, configure it in <code>network_security_config.xml</code>.</li>
+<li><strong>Refresh tokens stay on the device.</strong> The backend never sees a refresh token. The app refreshes the access/ID token via the IdP (Credential Manager / MSAL / AppAuth handle this) and sends the fresh bearer token on each call.</li>
+<li><strong>No <code>X-Test-Actor</code> from device builds.</strong> <a href="#development-defaults">Development defaults</a> is for local backend dev only. Don't ship a debug build that sends <code>X-Test-Actor</code> — the provider fails closed outside <code>IsDevelopment()</code> on the backend, but the convention is to not depend on it from a real device at all.</li>
+<li><strong>Permissions still come from your store.</strong> Google / Apple / generic OIDC tokens carry identity only. Layer Trellis permissions on top via a database-backed <code>IActorProvider</code> regardless of which Android sign-in flow the app uses. Entra tokens with <code>roles</code> are the exception (App Roles flatten into <code>Actor.Permissions</code> via the default Entra mapping).</li>
+</ul>
+<h3 id="facebook-via-oidc-bridge">Facebook (via OIDC bridge)</h3>
+<p>Facebook's Login API is OAuth 2.0 (not OIDC). Use an OIDC bridge — Auth0, Microsoft Entra External Identities, Amazon Cognito, or your own IdentityServer — to issue OIDC tokens after Facebook authentication. The bridge's tokens look like any other OIDC token to Trellis:</p>
+<pre><code class="lang-csharp">services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = configuration[&quot;Authentication:BridgeAuthority&quot;]; // your OIDC bridge
+        options.Audience  = configuration[&quot;Authentication:Audience&quot;];
+        options.MapInboundClaims = false;
+    });
+
+services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim     = &quot;sub&quot;;
+    options.PermissionsClaim = &quot;permissions&quot;; // however your bridge surfaces app permissions
+});
+</code></pre>
+<p>Bridge-specific configuration (Facebook app id / secret, redirect URIs, identity-provider linking) lives in the bridge's admin console, not in Trellis.</p>
+<h3 id="keycloak--nested-claims">Keycloak / nested claims</h3>
+<p><code>ClaimsActorOptions</code> matches <code>Claim.Type</code> literally first, then falls back through the provider's curated short↔long mapping table (e.g. <code>&quot;sub&quot;</code> ↔ <code>ClaimTypes.NameIdentifier</code>, <code>&quot;role&quot;</code>/<code>&quot;roles&quot;</code> ↔ <code>ClaimTypes.Role</code>) — no JSON-path traversal. When a token contains a nested object (e.g. Keycloak's <code>{ &quot;realm_access&quot;: { &quot;roles&quot;: [...] } }</code>), the JWT handler stores the value as a raw JSON string under claim type <code>&quot;realm_access&quot;</code>, which is not in the mapping table. Subclass <code>ClaimsActorProvider</code> to project it.</p>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Frozen;
+using System.Linq;
+using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Trellis;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+internal sealed record RealmAccess([property: JsonPropertyName(&quot;roles&quot;)] string[] Roles);
+
+[JsonSerializable(typeof(RealmAccess))]
+internal partial class KeycloakJsonContext : JsonSerializerContext { }
+
+public sealed class KeycloakActorProvider(
+    IHttpContextAccessor accessor,
+    IOptions&lt;ClaimsActorOptions&gt; options) : ClaimsActorProvider(accessor, options)
+{
+    public override Task&lt;Maybe&lt;Actor&gt;&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // No HttpContext is a configuration bug → throw → HTTP 500.
+        var httpContext = HttpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException(&quot;No HttpContext available.&quot;);
+
+        // No authenticated identity / missing id claim → no usable actor → Maybe.None,
+        // which the mediator pipeline maps to Error.AuthenticationRequired (HTTP 401).
+        var identity = httpContext.User.Identities
+            .FirstOrDefault(i =&gt; i.IsAuthenticated) as ClaimsIdentity;
+        if (identity is null)
+            return Task.FromResult(Maybe&lt;Actor&gt;.None);
+
+        var sub = identity.FindFirst(Options.ActorIdClaim)?.Value;
+        if (sub is null)
+            return Task.FromResult(Maybe&lt;Actor&gt;.None);
+
+        var raw = identity.FindFirst(&quot;realm_access&quot;)?.Value;
+        var roles = raw is null
+            ? FrozenSet&lt;string&gt;.Empty
+            : (JsonSerializer.Deserialize(raw, KeycloakJsonContext.Default.RealmAccess)?.Roles
+                ?? Array.Empty&lt;string&gt;()).ToFrozenSet();
+
+        return Task.FromResult(Maybe.From(Actor.Create(sub, roles)));
+    }
+}
+
+// Register IOptions&lt;ClaimsActorOptions&gt; first (the subclass shares the base
+// options type), then wrap with the caching helper.
+services.AddClaimsActorProvider(opts =&gt; opts.ActorIdClaim = &quot;sub&quot;);
+services.AddCachingActorProvider&lt;KeycloakActorProvider&gt;();
+</code></pre>
+<p><code>AddClaimsActorProvider(...)</code> configures <code>IOptions&lt;ClaimsActorOptions&gt;</code> (which <code>KeycloakActorProvider</code> consumes through its base constructor). <code>AddCachingActorProvider&lt;T&gt;</code> then registers <code>T</code> as scoped via <code>TryAddScoped</code> and wraps it with <code>CachingActorProvider</code>, so the JSON parse runs once per request even if multiple handlers ask for the actor. Because every <code>AddXxxActorProvider</code> Replaces the <code>IActorProvider</code> slot, the order matters: register the inner-provider's options helper first, then wrap.</p>
+<h2 id="multiple-idps-in-one-api">Multiple IdPs in one API</h2>
+<p>A single Trellis service can validate tokens from multiple IdPs at once — a typical &quot;web frontend with Microsoft <em>and</em> Google sign-in buttons, plus iOS / Android apps signing in with Apple or Google&quot; deployment. This is plain ASP.NET Core multi-scheme authentication: register one <code>AddJwtBearer(&quot;&lt;scheme&gt;&quot;, ...)</code> per issuer and list every scheme in the authorization policy so each is invoked per request.</p>
+<h3 id="register-one-scheme-per-idp">Register one scheme per IdP</h3>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+builder.Services
+    // No default scheme — the policy below names every accepted scheme explicitly.
+    .AddAuthentication()
+    .AddJwtBearer(&quot;Microsoft&quot;, o =&gt;
+    {
+        o.Authority = &quot;https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0&quot;;
+        o.Audience  = &quot;&lt;entra-api-client-id&gt;&quot;;
+        o.MapInboundClaims = false;
+    })
+    .AddJwtBearer(&quot;Google&quot;, o =&gt;
+    {
+        o.Authority = &quot;https://accounts.google.com&quot;;
+        // The Web OAuth client id from Google Cloud Console — also what Android
+        // Credential Manager passes as setServerClientId.
+        o.Audience  = &quot;&lt;google-web-oauth-client-id&gt;&quot;;
+        o.TokenValidationParameters.ValidIssuers =
+        [
+            &quot;https://accounts.google.com&quot;,
+            &quot;accounts.google.com&quot;,
+        ];
+        o.MapInboundClaims = false;
+    })
+    .AddJwtBearer(&quot;Apple&quot;, o =&gt;
+    {
+        o.Authority = &quot;https://appleid.apple.com&quot;;
+        // Bundle id for the iOS / macOS app; Services ID for web sign-in.
+        // Use ValidAudiences if you accept both.
+        o.Audience  = &quot;&lt;ios-bundle-id&gt;&quot;;
+        o.MapInboundClaims = false;
+    });
+
+builder.Services.AddAuthorization(options =&gt;
+{
+    options.DefaultPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .AddAuthenticationSchemes(&quot;Microsoft&quot;, &quot;Google&quot;, &quot;Apple&quot;)
+        .Build();
+});
+</code></pre>
+<p>For each request, ASP.NET Core's <code>PolicyEvaluator</code> invokes every scheme listed in the policy and merges the successful principals into <code>HttpContext.User</code>. With a single bearer token, the non-matching <code>JwtBearerHandler</code>s return <code>AuthenticateResult.Fail(...)</code> (token signature / issuer / audience validation failed against that scheme's configuration); <code>PolicyEvaluator</code> ignores those failures and the policy succeeds as long as one scheme produced a principal. The downstream actor provider sees one validated principal regardless of which scheme matched.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>If your authorization policy does <strong>not</strong> list every scheme, only the default scheme runs and tokens from the other IdPs come back 401. The pattern above sidesteps that by enumerating all schemes in the policy. As an alternative, a <a href="https://learn.microsoft.com/aspnet/core/security/authentication/policyschemes">forwarding scheme</a> (<code>AddPolicyScheme(...)</code> with a <code>ForwardDefaultSelector</code> that picks per-request based on token <code>iss</code>) lets you keep a single default scheme.</p>
+</div>
+<h3 id="pick-an-actor-provider-strategy">Pick an actor provider strategy</h3>
+<p>Different IdPs put the user id in different claims:</p>
+<table>
+<thead>
+<tr>
+<th>IdP</th>
+<th>Default user-id claim</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Microsoft Entra ID v2.0</td>
+<td><code>oid</code> (with <code>sub</code> also present, but <code>sub</code> is per-(user, audience) — not stable across audiences)</td>
+</tr>
+<tr>
+<td>Google</td>
+<td><code>sub</code></td>
+</tr>
+<tr>
+<td>Apple</td>
+<td><code>sub</code> (team-scoped)</td>
+</tr>
+<tr>
+<td>Auth0 / Okta / custom OIDC</td>
+<td><code>sub</code></td>
+</tr>
+</tbody>
+</table>
+<p>Two viable strategies for a multi-IdP API:</p>
+<p><strong>Strategy 1 — One provider, normalize on <code>sub</code>.</strong> Register <code>AddClaimsActorProvider(o =&gt; o.ActorIdClaim = &quot;sub&quot;)</code> only. Entra v2.0 tokens carry <code>sub</code> alongside <code>oid</code>, so the same provider works for every IdP listed above. The trade-off: Entra <code>sub</code> is <strong>per-audience</strong>, so two Entra-fronted APIs see different <code>sub</code> values for the same human; that is fine if you have one API or if you key users by <code>(iss, sub)</code>, and wrong if you need a single canonical user id across multiple Entra audiences.</p>
+<p><strong>Strategy 2 — Route by issuer.</strong> Wrap a thin router that inspects <code>HttpContext.User.FindFirstValue(&quot;iss&quot;)</code> and delegates to <code>EntraActorProvider</code> for Microsoft tokens (so you keep App Roles, ABAC attributes from <code>tid</code> / <code>oid</code> / <code>amr</code>, and the <code>oid</code> ↔ long-form fallback) and to <code>ClaimsActorProvider</code> for everything else.</p>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Trellis;
+using Trellis.Asp.Authorization;
+using Trellis.Authorization;
+
+public sealed class IssuerRoutingActorProvider(
+    IHttpContextAccessor accessor,
+    EntraActorProvider entra,
+    ClaimsActorProvider generic) : IActorProvider, IProvideActorVaryHeaders
+{
+    public Task&lt;Maybe&lt;Actor&gt;&gt; GetCurrentActorAsync(CancellationToken cancellationToken = default)
+    {
+        var http = accessor.HttpContext
+            ?? throw new InvalidOperationException(&quot;No HttpContext available.&quot;);
+        var iss = http.User.FindFirstValue(&quot;iss&quot;);
+        return iss?.StartsWith(&quot;https://login.microsoftonline.com/&quot;, StringComparison.Ordinal) == true
+            ? entra.GetCurrentActorAsync(cancellationToken)
+            : generic.GetCurrentActorAsync(cancellationToken);
+    }
+
+    // CachingActorProvider only delegates IProvideActorVaryHeaders to its directly wrapped
+    // inner. Without this, VaryForActor() output-cache partitioning fails closed because
+    // the wrapped router exposes no vary headers. Every Trellis-supported bearer-token IdP
+    // partitions on the same header.
+    public IReadOnlyCollection&lt;string&gt; VaryByHeaders { get; } = [&quot;Authorization&quot;];
+}
+
+// Register both inner providers as concrete types, then expose the router as IActorProvider.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddOptions&lt;EntraActorOptions&gt;();
+builder.Services.AddOptions&lt;ClaimsActorOptions&gt;().Configure(o =&gt; o.ActorIdClaim = &quot;sub&quot;);
+builder.Services.TryAddScoped&lt;EntraActorProvider&gt;();
+builder.Services.TryAddScoped&lt;ClaimsActorProvider&gt;();
+builder.Services.AddCachingActorProvider&lt;IssuerRoutingActorProvider&gt;();
+</code></pre>
+<p><code>AddCachingActorProvider&lt;T&gt;</code> wraps the router so the issuer lookup + downstream provider call runs once per request even if multiple handlers ask for the <code>Actor</code>.</p>
+<h3 id="permissions-across-idps">Permissions across IdPs</h3>
+<p>Application permissions are an <strong>API-side concept</strong>, not a token-side one. Each IdP carries them differently:</p>
+<table>
+<thead>
+<tr>
+<th>IdP</th>
+<th>Where permissions come from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Microsoft Entra ID</td>
+<td>Entra App Roles → <code>roles</code> claim → flattened by <code>EntraActorOptions.MapPermissions</code></td>
+</tr>
+<tr>
+<td>Google / Apple</td>
+<td>Not in the token; load from your own permission store via a custom <code>IActorProvider</code></td>
+</tr>
+<tr>
+<td>Auth0 / Okta</td>
+<td>Either <code>permissions</code> (RBAC) or <code>scp</code> (delegated scopes); see <a href="#scope-and-permission-extraction">Scope and permission extraction</a></td>
+</tr>
+</tbody>
+</table>
+<p>For a multi-IdP API the simplest pattern is to derive a stable user key from <code>(iss, sub)</code> (or <code>(iss, oid)</code> for Entra), look up the user's permissions in your database, and merge them into <code>Actor.Permissions</code> — see <a href="#synthesizing-app-permissions-during-token-validation">SSO → Synthesizing app permissions during token validation</a> for the <code>OnTokenValidated</code> hook that runs once per request, and <a href="integration-db-permissions.html">Database-Backed Permissions</a> for the IActorProvider-wrapping pattern.</p>
+<h3 id="operational-notes-2">Operational notes</h3>
+<ul>
+<li><strong>One audience per scheme.</strong> Each <code>AddJwtBearer(&quot;&lt;scheme&gt;&quot;, ...)</code> validates exactly one (or via <code>ValidAudiences</code>, a set of) audience values. A token whose <code>aud</code> matches no scheme returns HTTP 401.</li>
+<li><strong>Same scope, different schemes.</strong> All registered schemes share <code>HttpContext.User</code> — once a token validates, the downstream actor provider, mediator pipeline, and handlers don't know (and don't need to know) which IdP issued it.</li>
+<li><strong>WWW-Authenticate.</strong> Trellis's <a href="integration-asp-authorization.html#anatomy-of-a-401"><code>ResponseFailureWriter</code></a> synthesizes a single <code>WWW-Authenticate</code> header from the configured <em>default</em> challenge / authenticate scheme — it does not enumerate every registered scheme. With the parameterless <code>AddAuthentication()</code> shown above there is no default, so the synthesizer emits nothing. If you need clients to discover a specific Bearer challenge, either (a) set a default scheme on <code>AddAuthentication(&quot;&lt;scheme&gt;&quot;)</code> so synthesis fires, accepting that only that scheme's name is advertised, or (b) return <code>new Error.AuthenticationRequired(&quot;Bearer realm=\&quot;api\&quot;&quot;)</code> from the handler / failure mapper so <code>ResponseFailureWriter</code> emits it verbatim. If you need to advertise multiple challenges, write <code>WWW-Authenticate</code> yourself before Trellis renders the failure.</li>
+<li><strong>Diagnostics.</strong> Log <code>iss</code> and the winning scheme on first request from each IdP — silent &quot;wrong scheme picked&quot; is almost always an audience mismatch.</li>
+</ul>
+<h2 id="jwt-validation-options">JWT validation options</h2>
+<p>Trellis does not own JWT validation — that lives in <code>Microsoft.AspNetCore.Authentication.JwtBearer</code>. The fields <code>JwtBearerHandler</code> validates flow into Trellis as follows:</p>
+<table>
+<thead>
+<tr>
+<th><code>JwtBearerOptions</code> setting</th>
+<th>Effect on Trellis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Authority</code></td>
+<td>Determines OIDC discovery / signing keys. If validation fails, <code>HttpContext.User</code> is unauthenticated and the actor provider returns <code>Maybe&lt;Actor&gt;.None</code>, which the mediator pipeline maps to <code>Error.AuthenticationRequired</code> (HTTP 401).</td>
+</tr>
+<tr>
+<td><code>Audience</code> (or <code>TokenValidationParameters.ValidAudiences</code>)</td>
+<td>Must match the token <code>aud</code>. Mismatched audiences never reach the actor provider — the request is rejected with <code>401</code>.</td>
+</tr>
+<tr>
+<td><code>TokenValidationParameters.ValidIssuers</code></td>
+<td>Required when <code>Authority</code> does not match the literal <code>iss</code> claim (Google emits both <code>https://accounts.google.com</code> and <code>accounts.google.com</code>).</td>
+</tr>
+<tr>
+<td><code>TokenValidationParameters.ValidateIssuer = false</code></td>
+<td>Multi-tenant Entra requires this; tenant pinning then lives in <code>MapAttributes</code> or a custom validator. See <a href="#multi-tenant-entra">Multi-tenant Entra</a>.</td>
+</tr>
+<tr>
+<td><code>Events.OnTokenValidated</code></td>
+<td>The hook for synthesizing extra <code>Claim</code> instances before Trellis sees them — useful when your IdP issues identity but your app issues permissions.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="lang-csharp">using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = &quot;https://accounts.google.com&quot;;
+        options.Audience  = configuration[&quot;Authentication:Audience&quot;];
+        options.TokenValidationParameters.ValidIssuers =
+        [
+            &quot;https://accounts.google.com&quot;,
+            &quot;accounts.google.com&quot;,
+        ];
+    });
+</code></pre>
+<h2 id="claim-mapping">Claim mapping</h2>
+<p>Each provider exposes a small surface of mapping options. The full default tables (claim names, attribute keys, fall-back rules) live in <a href="../api_reference/trellis-api-asp.html#entraactoroptions"><code>trellis-api-asp.md</code></a>; this section covers the everyday overrides.</p>
+<h3 id="synthesizing-app-permissions-during-token-validation">Synthesizing app permissions during token validation</h3>
+<p>When the IdP only issues identity, add permission claims in <code>OnTokenValidated</code>. <code>ClaimsActorProvider</code> aggregates every <code>Claim</code> whose <code>Type</code> matches <code>PermissionsClaim</code> (or its counterpart in the provider's curated short↔long mapping table) via <code>FindAll</code>, so multiple <code>Claim</code> instances of the same type — and matches across both forms — are flattened into a deduplicated set automatically.</p>
+<pre><code class="lang-csharp">using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = auth[&quot;Authority&quot;];
+        options.Audience  = auth[&quot;Audience&quot;];
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =&gt;
+            {
+                if (context.Principal?.Identity is not ClaimsIdentity identity)
+                    return Task.CompletedTask;
+
+                identity.AddClaim(new Claim(&quot;permissions&quot;, &quot;todos:read&quot;));
+
+                var email = identity.FindFirst(&quot;email&quot;)?.Value;
+                if (!string.IsNullOrWhiteSpace(email)
+                    &amp;&amp; email.EndsWith(&quot;@yourcompany.com&quot;, StringComparison.OrdinalIgnoreCase))
+                {
+                    identity.AddClaim(new Claim(&quot;permissions&quot;, &quot;todos:create&quot;));
+                }
+
+                return Task.CompletedTask;
+            },
+        };
+    });
+
+services.AddClaimsActorProvider(options =&gt;
+{
+    options.ActorIdClaim     = &quot;sub&quot;;
+    options.PermissionsClaim = &quot;permissions&quot;;
+});
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p><code>ClaimsActorProvider</code> only reads two claim types and never writes to <code>Actor.Attributes</code> or <code>Actor.ForbiddenPermissions</code>. Anything richer — ABAC attributes, deny lists, or computed permissions — belongs on <code>EntraActorProvider</code> (via <code>MapAttributes</code> / <code>MapForbiddenPermissions</code>) or a subclass. The full ABAC story is in <a href="integration-asp-authorization.html#customizing-claim-mapping">ASP.NET Core Authorization → Customizing claim mapping</a>.</p>
+</div>
+<h3 id="customizing-the-entra-mapping">Customizing the Entra mapping</h3>
+<p><code>EntraActorOptions</code> has three independent delegates and one identifier knob.</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Default</th>
+<th>Override to...</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IdClaimType</code></td>
+<td>long <code>objectidentifier</code> URI (falls back to short <code>&quot;oid&quot;</code>)</td>
+<td>Use <code>sub</code>, an employee ID, or a custom claim.</td>
+</tr>
+<tr>
+<td><code>MapPermissions</code></td>
+<td>union of <code>roles</code> and <code>ClaimTypes.Role</code></td>
+<td>Flatten Entra app roles into fine-grained permissions; merge DB-sourced grants.</td>
+</tr>
+<tr>
+<td><code>MapForbiddenPermissions</code></td>
+<td>empty <code>HashSet&lt;string&gt;</code></td>
+<td>Project a deny-list claim.</td>
+</tr>
+<tr>
+<td><code>MapAttributes</code></td>
+<td><code>tid</code>, <code>preferred_username</code>, <code>azp</code>, <code>azpacr</code>, <code>acrs</code> from claims; <code>ip_address</code> from connection; <code>mfa</code> from any <code>amr == &quot;mfa&quot;</code></td>
+<td>Add tenant-scoped or request-scoped attributes.</td>
+</tr>
+</tbody>
+</table>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Any exception thrown from <code>MapPermissions</code>, <code>MapForbiddenPermissions</code>, or <code>MapAttributes</code> is rewrapped by <code>EntraActorProvider</code> as <code>InvalidOperationException(&quot;EntraActorOptions.&lt;delegate&gt; threw an exception while mapping the authenticated user's claims.&quot;)</code>. The provider never silently defaults.</p>
+</div>
+<h2 id="scope-and-permission-extraction">Scope and permission extraction</h2>
+<p>Two common shapes for &quot;what is this token allowed to do&quot;:</p>
+<p><strong>App roles (Entra application permissions).</strong> Each role is a separate claim of type <code>roles</code>. The default <code>MapPermissions</code> already collects them.</p>
+<pre><code class="lang-csharp">using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using Trellis.Asp.Authorization;
+
+services.AddEntraActorProvider(options =&gt;
+{
+    var rolePermissionMap = new Dictionary&lt;string, string[]&gt;(StringComparer.Ordinal)
+    {
+        [&quot;Catalog.Admin&quot;]  = [&quot;products:read&quot;, &quot;products:write&quot;, &quot;products:delete&quot;],
+        [&quot;Catalog.Reader&quot;] = [&quot;products:read&quot;],
+    };
+
+    options.MapPermissions = claims =&gt; claims
+        .Where(c =&gt; string.Equals(c.Type, &quot;roles&quot;, StringComparison.OrdinalIgnoreCase))
+        .SelectMany(c =&gt; rolePermissionMap.TryGetValue(c.Value, out var perms) ? perms : Array.Empty&lt;string&gt;())
+        .ToHashSet(StringComparer.Ordinal);
+});
+</code></pre>
+<p><strong>Delegated scopes.</strong> Entra (and many other OAuth servers) emit a single <code>scp</code> claim whose value is a space-separated string. Split it before flattening into permissions.</p>
+<pre><code class="lang-csharp">services.AddEntraActorProvider(options =&gt;
+{
+    options.MapPermissions = claims =&gt; claims
+        .Where(c =&gt; string.Equals(c.Type, &quot;scp&quot;, StringComparison.OrdinalIgnoreCase))
+        .SelectMany(c =&gt; c.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        .ToHashSet(StringComparer.Ordinal);
+});
+</code></pre>
+<p>Trellis does not enforce a permission naming convention — pick one (<code>products:read</code> or <code>Products.Read</code>) and stay consistent. Scoped permissions use <code>Actor.PermissionScopeSeparator</code> (<code>':'</code>); <code>actor.HasPermission(&quot;products:read&quot;, tenantId)</code> checks for the joined string <code>products:read:&lt;tenantId&gt;</code>. See <a href="../api_reference/trellis-api-authorization.html#actor"><code>trellis-api-authorization.md → Actor</code></a>.</p>
+<h2 id="multi-tenant-entra">Multi-tenant Entra</h2>
+<p>A multi-tenant Entra app accepts tokens from any tenant the app is consented in. <code>Authority</code> becomes <code>https://login.microsoftonline.com/common/v2.0</code> (or <code>/organizations/v2.0</code>), the token's <code>iss</code> is per-tenant, and your API decides which tenants are allowed.</p>
+<pre><code class="lang-csharp">using System;
+using System.Linq;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using Trellis.Asp.Authorization;
+
+var allowedTenants = configuration.GetSection(&quot;Authentication:AllowedTenants&quot;).Get&lt;string[]&gt;()
+    ?? Array.Empty&lt;string&gt;();
+
+services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =&gt;
+    {
+        options.Authority = &quot;https://login.microsoftonline.com/common/v2.0&quot;;
+        options.Audience  = configuration[&quot;Authentication:Audience&quot;];
+
+        options.TokenValidationParameters.ValidateIssuer = false;
+        options.TokenValidationParameters.IssuerValidator = (issuer, _, _) =&gt;
+            issuer.StartsWith(&quot;https://login.microsoftonline.com/&quot;, StringComparison.Ordinal)
+                ? issuer
+                : throw new SecurityTokenInvalidIssuerException($&quot;Untrusted issuer '{issuer}'.&quot;);
+    });
+
+services.AddEntraActorProvider();
+</code></pre>
+<p>Then enforce the tenant allow-list inside handlers using the <code>tid</code> attribute the default <code>MapAttributes</code> already populates:</p>
+<pre><code class="lang-csharp">using System.Linq;
+using Trellis;
+using Trellis.Authorization;
+
+var tenantId = actor.GetAttribute(ActorAttributes.TenantId);
+
+if (tenantId is null || !allowedTenants.Contains(tenantId, StringComparer.Ordinal))
+    return Result.Fail(new Error.Forbidden(&quot;tenant.not-allowed&quot;) { Detail = $&quot;Tenant '{tenantId}' is not provisioned.&quot; });
+</code></pre>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Tenant-scoped permissions ride on the same <code>Actor.HasPermission(name, scope)</code> helper: <code>actor.HasPermission(&quot;documents:read&quot;, tenantId)</code> checks <code>documents:read:&lt;tenantId&gt;</code>.</p>
+</div>
+<h2 id="development-defaults">Development defaults</h2>
+<p><code>AddDevelopmentActorProvider</code> reads an <code>X-Test-Actor</code> JSON header (case-insensitive property names) and falls back to a configurable default actor when the header is missing. It throws <code>InvalidOperationException</code> whenever <code>IHostEnvironment.IsDevelopment()</code> is <code>false</code> — including in Production with no header — which is the fail-closed safety net.</p>
+<pre><code class="lang-csharp">using System.Collections.Generic;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Trellis.Asp.Authorization;
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDevelopmentActorProvider(options =&gt;
+    {
+        options.DefaultActorId         = &quot;developer@local&quot;;
+        options.DefaultPermissions     = new HashSet&lt;string&gt; { &quot;todos:read&quot;, &quot;todos:create&quot; };
+    });
+}
+else
+{
+    builder.Services.AddEntraActorProvider();
+}
+</code></pre>
+<p>Send a header from any HTTP client to impersonate a specific actor:</p>
+<pre><code class="lang-powershell">$actor = '{&quot;Id&quot;:&quot;local-user&quot;,&quot;Permissions&quot;:[&quot;todos:read&quot;,&quot;todos:create&quot;],&quot;ForbiddenPermissions&quot;:[],&quot;Attributes&quot;:{&quot;tid&quot;:&quot;local-tenant&quot;,&quot;mfa&quot;:&quot;false&quot;}}'
+Invoke-RestMethod https://localhost:5001/me -Headers @{ &quot;X-Test-Actor&quot; = $actor }
+</code></pre>
+<p>For test clients, <code>WebApplicationFactoryExtensions.CreateClientWithActor(...)</code> writes the same header (see <a href="../api_reference/trellis-api-testing-aspnetcore.html"><code>trellis-api-testing-aspnetcore.md</code></a>).</p>
+<div class="WARNING">
+<h5>Warning</h5>
+<p>Use the <strong>same SSO provider</strong> in staging and production — only <code>Authority</code> and <code>Audience</code> should differ between environments. A staging path that swaps <code>EntraActorProvider</code> for <code>ClaimsActorProvider</code> (or vice versa) will hide token-format and claim-mapping bugs until they hit real users.</p>
+</div>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ul>
+<li><strong>Never authorize on <code>preferred_username</code>.</strong> It is a display claim and can change. Use <code>oid</code> (Entra) or <code>sub</code> (everyone else).</li>
+<li><strong>Use <code>ActorAttributes</code> constants.</strong> <code>actor.GetAttribute(ActorAttributes.TenantId)</code> survives renames; <code>actor.GetAttribute(&quot;tid&quot;)</code> does not.</li>
+<li><strong>Keep one mapping site.</strong> Flatten roles to permissions inside <code>MapPermissions</code> once, not in every handler.</li>
+<li><strong>Pick one naming convention for permissions.</strong> <code>todos:read</code> and <code>Todos.Read</code> are different strings — <code>Actor.Permissions</code> is a <code>FrozenSet&lt;string&gt;</code> with ordinal comparison.</li>
+<li><strong>Wrap expensive providers</strong> with <code>AddCachingActorProvider&lt;T&gt;()</code> so DB-backed permission lookups run once per request.</li>
+<li><strong>Keep <code>AddDevelopmentActorProvider</code> behind <code>IsDevelopment()</code>.</strong> The provider also fails closed at runtime, but the registration discipline avoids accidental dependency on <code>X-Test-Actor</code> from staging integration tests.</li>
+<li><strong>Match the audience exactly.</strong> The number-one cause of &quot;token validates somewhere else but not here&quot; is <code>Audience</code> not matching the token's <code>aud</code> claim.</li>
+<li><strong>Let mapper exceptions bubble.</strong> A buggy <code>MapPermissions</code> becomes <code>InvalidOperationException(&quot;EntraActorOptions.MapPermissions threw ...&quot;)</code>; surfacing it during development reveals bad role tables faster than a silent fallback.</li>
+</ul>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li>ASP DI surface (actor providers, options, response mapping): <a href="../api_reference/trellis-api-asp.html"><code>trellis-api-asp.md</code></a></li>
+<li>Domain primitives (<code>Actor</code>, <code>IActorProvider</code>, <code>IAuthorize</code>, <code>IAuthorizeResource&lt;T&gt;</code>, <code>ActorAttributes</code>): <a href="../api_reference/trellis-api-authorization.html"><code>trellis-api-authorization.md</code></a></li>
+<li><code>Result</code>, <code>Error.Forbidden</code>: <a href="../api_reference/trellis-api-core.html"><code>trellis-api-core.md</code></a></li>
+<li>Deeper authorization patterns (claim mapping, ABAC, mediator integration, resource loaders): <a href="integration-asp-authorization.html">ASP.NET Core Authorization</a></li>
+<li>End-to-end token-validation tests against real Entra: <a href="integration-entra-testing.html">Testing with Entra ID Tokens</a></li>
+<li>Test-client <code>X-Test-Actor</code> helper: <a href="../api_reference/trellis-api-testing-aspnetcore.html"><code>trellis-api-testing-aspnetcore.md</code></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-sso.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis — start here | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis — start here | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-start-here.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellis--start-here">Trellis — start here</h1>
+
+<p>You are looking at versioned Trellis API reference files, installed from the <code>Trellis.Core</code> package by the optional
+Trellis.AgentDocs local tool (<code>agentdocs</code>; approve <code>Trellis.Core</code> in <code>.agentdocs/policy.json</code>). This file is the <strong>routing head</strong>
+for the whole set: it tells you which reference to open for a task and which recipe to read. It is self-contained on
+purpose, so it is the only file you must read before writing Trellis code. The other files sit beside it, so every link
+below is relative.</p>
+<h2 id="read-the-references-yourself--do-not-delegate-them-to-a-sub-agent">Read the references yourself — do not delegate them to a sub-agent</h2>
+<p>A sub-agent hands back a summary, so the exact signatures never reach your context and you end up
+writing code against a paraphrase. That is how invented APIs and wrong overloads get produced, and
+it is the specific failure these references exist to prevent.</p>
+<p>Sub-agents are fine for work whose output is a <em>verdict</em> rather than knowledge you must write code
+against: running builds and tests, searching for a file, auditing something for accuracy. The rule
+is narrow — if the answer determines the code you are about to write, read it yourself.</p>
+<h2 id="do-not-guess">Do not guess</h2>
+<p>Every Trellis API you write should be traceable to a line in one of these files. If you cannot find
+the method, overload, or attribute you are about to use, stop and read the reference that owns it
+rather than reconstructing the signature from memory. Trellis makes heavy use of source generators,
+so a base type such as <code>RequiredGuid&lt;TSelf&gt;</code> or <code>Aggregate&lt;TId&gt;</code> already supplies members that are a
+compile error to redeclare — the cookbook's Recipe 1 lists that inherited surface explicitly.</p>
+<h2 id="how-to-read-these-recipes">How to read these recipes</h2>
+<p><strong>Hold this file resident; read recipe bodies on demand.</strong> This file is the routing head for the whole set (~6K tokens)
+and routes every task. The 37 recipe bodies in <code>trellis-api-cookbook.md</code> are another ~57K, and a typical task needs
+one to three of them — so open a body when the <a href="#task---recipe-lookup">task lookup table</a> sends you to one, rather than
+loading all of them up front. Every live recipe is reachable from that table (enforced by the repository's TRLDOC007 lint
+gate), so if a task is not listed there, no recipe covers it. Never write code from a recipe's title alone.</p>
+<p>Every recipe follows the same shape:</p>
+<ol>
+<li><strong>Problem statement</strong> — what the consumer is trying to accomplish.</li>
+<li><strong>Solution code</strong> — copy-pasteable C# that compiles against the documented public surface only. No invented APIs.</li>
+<li><strong>What it shows</strong> — the cross-cutting concept being demonstrated.</li>
+<li><strong>Anti-pattern → fix</strong> <em>(when applicable)</em> — the wrong way and which Trellis analyzer catches it.</li>
+</ol>
+<p>Conventions used throughout:</p>
+<ul>
+<li>All Trellis types live in the <code>Trellis</code> namespace except where called out (<code>Trellis.Asp</code>, <code>Trellis.Asp.Authorization</code>, <code>Trellis.EntityFrameworkCore</code>, <code>Trellis.Analyzers</code>).</li>
+<li>Snippets use C# 12+ features (file-scoped namespaces, primary constructors, collection expressions) — Trellis targets <code>net10.0</code>.</li>
+<li><code>Result.Ok</code> / <code>Result.Fail</code> are <em>the</em> construction APIs. <code>default(Result&lt;T&gt;)</code> is a typed failure; do not rely on it as success.</li>
+<li>Every async pipeline uses <code>*Async</code> extensions; mixing sync chain methods with <code>Task&lt;Result&lt;T&gt;&gt;</code> triggers <code>TRLS009</code>.</li>
+<li>Examples reference an <code>OrderId : RequiredGuid&lt;OrderId&gt;</code> value object and an <code>Order</code> aggregate. Substitute your own types without changing the structure.</li>
+<li>A command without a payload returns <code>Result&lt;Trellis.Unit&gt;</code> — qualified because a file that imports both <code>Trellis</code> and <code>Mediator</code> has two <code>Unit</code> types in scope (<code>Trellis.Unit</code> and <code>Mediator.Unit</code>). Add <code>global using TrellisUnit = Trellis.Unit;</code> (or <code>global using Unit = Trellis.Unit;</code>, since Trellis code never references <code>Mediator.Unit</code>) to your <code>GlobalUsings.cs</code> to drop the qualification.</li>
+</ul>
+<h2 id="llm-preflight-load-the-smallest-correct-reference-set">LLM preflight: load the smallest correct reference set</h2>
+<p>Before writing Trellis code, choose the task in the lookup table below, then load only the package references needed for that task. The cookbook gives the end-to-end recipe; the package references are the source of truth for exact signatures, overloads, ordering, and edge-case behavior.</p>
+<table>
+<thead>
+<tr>
+<th>If you are changing...</th>
+<th>Load these references before coding</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Result, Maybe, errors, value-object bases, aggregates, specifications, pagination</td>
+<td><code>trellis-api-cookbook.md</code>, <code>trellis-api-core.md</code></td>
+<td>Core owns the ROP primitives and DDD base types used by every package.</td>
+</tr>
+<tr>
+<td>ASP.NET endpoints, controllers, response mapping, ETags, Prefer, ranges, actor providers</td>
+<td><code>trellis-api-cookbook.md</code>, <code>trellis-api-asp.md</code>, <code>trellis-api-core.md</code>; add <code>trellis-api-mediator.md</code> when endpoints send messages</td>
+<td><code>ToHttpResponse</code> and scalar validation are ASP-owned, while handlers and result shapes come from Core/Mediator.</td>
+</tr>
+<tr>
+<td>Mediator handlers, pipeline behaviors, validation, authorization, domain events</td>
+<td><code>trellis-api-cookbook.md</code>, <code>trellis-api-mediator.md</code>, <code>trellis-api-core.md</code>; add <code>trellis-api-efcore.md</code> for unit-of-work and <code>trellis-api-authorization.md</code> for resource guards</td>
+<td>Pipeline ordering and opt-in behaviors are cross-package; missing one reference usually creates a registration-order bug.</td>
+</tr>
+<tr>
+<td>EF Core persistence, repositories, unit of work, <code>Maybe&lt;T&gt;</code> queries, <code>[OwnedEntity]</code></td>
+<td><code>trellis-api-cookbook.md</code>, <code>trellis-api-efcore.md</code>, <code>trellis-api-core.md</code>; add <code>trellis-api-mediator.md</code> when commits happen through handlers</td>
+<td>EF owns mapping/interceptors; Mediator owns when command commits run.</td>
+</tr>
+<tr>
+<td>FluentValidation integration</td>
+<td><code>trellis-api-cookbook.md</code>, <code>trellis-api-fluentvalidation.md</code>, <code>trellis-api-mediator.md</code></td>
+<td>FluentValidation plugs into <code>ValidationBehavior</code> through <code>IMessageValidator&lt;TMessage&gt;</code>; it is not a separate pipeline behavior.</td>
+</tr>
+<tr>
+<td>Composition-root helpers (<code>AddTrellis</code>, <code>UseXxx</code>)</td>
+<td><code>trellis-api-cookbook.md</code>, <code>trellis-api-servicedefaults.md</code>, plus every package reference for selected modules</td>
+<td><code>TrellisServiceBuilder</code> preserves canonical order but does not register app-owned services like <code>DbContext</code> or Mediator handlers.</td>
+</tr>
+<tr>
+<td>HTTP client adapters</td>
+<td><code>trellis-api-cookbook.md</code>, <code>trellis-api-http.md</code>, <code>trellis-api-core.md</code></td>
+<td>The HTTP package maps upstream responses into Core <code>Result&lt;T&gt;</code> / <code>Maybe&lt;T&gt;</code> shapes.</td>
+</tr>
+<tr>
+<td>Tests</td>
+<td><code>trellis-api-testing-reference.md</code>; add <code>trellis-api-testing-aspnetcore.md</code> for <code>WebApplicationFactory</code> or <code>.http</code> replay</td>
+<td>Unit/helper assertions and ASP integration helpers live in separate test packages.</td>
+</tr>
+<tr>
+<td>Analyzer diagnostics</td>
+<td><code>trellis-api-anti-patterns.md</code> first for the canonical WRONG/FIX shape to adapt, then <code>trellis-api-analyzers.md</code>, then the package reference named by the diagnostic category</td>
+<td>Anti-pattern file shows the canonical control-flow shape; analyzer docs explain the warning; the package reference gives the canonical API to use instead.</td>
+</tr>
+</tbody>
+</table>
+<p>Measurable completion check for generated code: every Trellis method call should be traceable to a loaded package reference, every selected integration module should be wired in the documented order, and every public API or behavior change should update the matching package reference plus the matching recipe in <code>trellis-api-cookbook.md</code> (and this router's lookup row) when it affects a cross-package recipe.</p>
+<p>Known non-APIs and corrected assumptions:</p>
+<table>
+<thead>
+<tr>
+<th>Do not write</th>
+<th>Correct source-backed statement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WithDocumentPerVersion()</code></td>
+<td>No Trellis API with this name exists.</td>
+</tr>
+<tr>
+<td><code>MapScalarApiReference()</code></td>
+<td>Sample-app helper only; not a Trellis framework API.</td>
+</tr>
+<tr>
+<td>Place <code>UseScalarValueValidation()</code> anywhere</td>
+<td>Add it before routing/endpoints that deserialize request bodies.</td>
+</tr>
+<tr>
+<td>Mutate <code>IAuthorize.RequiredPermissions</code></td>
+<td><code>RequiredPermissions</code> is an <code>IReadOnlyList&lt;string&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>IValidate.Validate()</code> returns <code>Result</code></td>
+<td>The declared return type is <code>IResult</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="patterns-index">Patterns Index</h2>
+<h3 id="task---recipe-lookup">Task -&gt; recipe lookup</h3>
+<p>Use this table before writing code. If a task matches a row, read that recipe first.</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Start here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create or load an aggregate with value objects</td>
+<td><a href="trellis-api-cookbook.html#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract">Recipe 1</a></td>
+</tr>
+<tr>
+<td>Write a command handler that validates and persists</td>
+<td><a href="trellis-api-cookbook.html#recipe-2--command--handler--fluentvalidation--ef-persistence">Recipe 2</a>, then <a href="trellis-api-cookbook.html#recipe-16--unit-of-work-in-handlers-add-staging-vs-immediate-saveasync">Recipe 16</a></td>
+</tr>
+<tr>
+<td>Load multiple independent resources in one handler (HTTP + DB, two upstream services, factory-created <code>DbContext</code>s)</td>
+<td><a href="trellis-api-cookbook.html#recipe-21--parallel-independent-loads-in-handlers-resultparallelasync--whenallasync">Recipe 21</a></td>
+</tr>
+<tr>
+<td>Multi-aggregate orchestration: side effect per element of a related-aggregate set</td>
+<td><a href="trellis-api-cookbook.html#recipe-22--multi-aggregate-orchestration-fail-loud-on-missing-related-aggregates">Recipe 22</a></td>
+</tr>
+<tr>
+<td>Apply an operation to every element of a related-aggregate set where per-element validation can fail (reserve stock per line item, etc.) — avoid partial mutation</td>
+<td><a href="trellis-api-cookbook.html#recipe-25--two-pass-validate-then-mutate-over-a-collection-of-related-aggregates">Recipe 25</a></td>
+</tr>
+<tr>
+<td>Concurrency control on mutating endpoints — when to require <code>If-Match</code></td>
+<td><a href="trellis-api-cookbook.html#recipe-23--concurrency-control-on-aggregate-mutating-endpoints-when-to-require-if-match">Recipe 23</a></td>
+</tr>
+<tr>
+<td>Save bandwidth on reads — return <code>304 Not Modified</code> when the client's <code>If-None-Match</code> still matches</td>
+<td><a href="trellis-api-cookbook.html#recipe-6--conditional-get-with-entitytagvalue">Recipe 6</a></td>
+</tr>
+<tr>
+<td>Add a paginated list query</td>
+<td><a href="trellis-api-cookbook.html#recipe-3--query-handler-returning-paget-paginated-list-with-cursor">Recipe 3</a></td>
+</tr>
+<tr>
+<td>Parse cursor/limit query input in MVC or Minimal APIs without treating <code>?cursor=</code> as missing</td>
+<td><a href="trellis-api-asp.html#httprequestpaginationextensions"><code>HttpRequestPaginationExtensions</code></a>, then <a href="trellis-api-cookbook.html#recipe-3--query-handler-returning-paget-paginated-list-with-cursor">Recipe 3</a></td>
+</tr>
+<tr>
+<td>Paginate a translated spherical distance or an application-computed score with validated continuation state bound to query context</td>
+<td><a href="trellis-api-cookbook.html#recipe-40--computed-pagination-with-validated-query-bound-continuation-state">Recipe 40</a></td>
+</tr>
+<tr>
+<td>Validate geographic coordinates, calculate in-memory distance, build conservative bounds, or compose an EF Core radius query</td>
+<td><a href="trellis-api-primitives.html#geocoordinate"><code>GeoCoordinate</code></a> and <a href="trellis-api-primitives.html#geobounds"><code>GeoBounds</code></a>, then <a href="trellis-api-efcore.html#geocoordinateexpressions"><code>GeoCoordinateExpressions</code> in the EF Core reference</a> for database queries; use Recipe 40 for distance pagination</td>
+</tr>
+<tr>
+<td>Model weekly availability, overnight periods, or time-zone-aware membership</td>
+<td><a href="trellis-api-primitives.html#weeklyschedule"><code>WeeklySchedule</code> and <code>WeeklyPeriod</code> in the Primitives reference</a>; use Recipe 13's DTO boundary guidance for JSON/persistence</td>
+</tr>
+<tr>
+<td>Add Minimal API or MVC endpoints</td>
+<td><a href="trellis-api-cookbook.html#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse">Recipe 4</a>, <a href="trellis-api-cookbook.html#recipe-5--mvc-controller-using-asactionresult">Recipe 5</a></td>
+</tr>
+<tr>
+<td>Generate versioned Location links to a named route or MVC action, including cross-route segment pins</td>
+<td><a href="trellis-api-cookbook.html#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse">Recipe 4</a>, then <a href="trellis-api-asp-apiversioning.html#behavioral-notes">target-aware API versioning</a></td>
+</tr>
+<tr>
+<td>Map primitive DTO fields to value objects</td>
+<td><a href="trellis-api-cookbook.html#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap">Recipe 18</a></td>
+</tr>
+<tr>
+<td>Add resource authorization</td>
+<td><a href="trellis-api-cookbook.html#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth">Recipe 7</a></td>
+</tr>
+<tr>
+<td>Authorize against a related resource one or more navigation hops away (cricket-style fan-out, owner chains)</td>
+<td><a href="trellis-api-cookbook.html#recipe-24--indirect-multi-hop-resource-authorization">Recipe 24</a></td>
+</tr>
+<tr>
+<td>Enforce tenant isolation on a command (per-command scope check, no base type)</td>
+<td><a href="trellis-api-cookbook.html#recipe-38--tenant-scoped-resource-authorization-with-a-typed-actor-attribute">Recipe 38</a></td>
+</tr>
+<tr>
+<td>Map <code>Maybe&lt;T&gt;</code> or composite value objects with EF Core</td>
+<td><a href="trellis-api-cookbook.html#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects">Recipe 8</a>, <a href="trellis-api-cookbook.html#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership">Recipe 13</a></td>
+</tr>
+<tr>
+<td>Add optional request/response fields</td>
+<td><a href="trellis-api-cookbook.html#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport">Recipe 14</a></td>
+</tr>
+<tr>
+<td>Read optional HTTP resources where 404 means absent</td>
+<td><a href="trellis-api-cookbook.html#recipe-19--http-client-result-safety-and-optional-reads">Recipe 19</a></td>
+</tr>
+<tr>
+<td>Choose between fail-fast and accumulating-error collection ops, including indexed validation</td>
+<td><a href="trellis-api-cookbook.html#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall">Recipe 20</a></td>
+</tr>
+<tr>
+<td>Return synchronous <code>Result</code> chains from <code>Task</code>/<code>ValueTask</code> APIs</td>
+<td><a href="trellis-api-cookbook.html#recipe-2--command--handler--fluentvalidation--ef-persistence">Recipe 2</a>, then <code>AsTask()</code> / <code>AsValueTask()</code> in <a href="trellis-api-core.html#task-adapter-family--resulttaskadapterextensions">trellis-api-core.md</a></td>
+</tr>
+<tr>
+<td>Create HTTP-oriented resource errors</td>
+<td>Use <code>ResourceRef.For&lt;TResource&gt;(id)</code> from <a href="trellis-api-core.html#supporting-types">trellis-api-core.md</a></td>
+</tr>
+<tr>
+<td>Point <code>ProblemDetails.Instance</code> at the resource that failed, instead of leaving it null or hand-formatting a URI</td>
+<td><a href="trellis-api-cookbook.html#recipe-28--synthesise-problemdetailsinstance-from-a-resourceref">Recipe 28</a></td>
+</tr>
+<tr>
+<td>Add a state transition</td>
+<td><a href="trellis-api-cookbook.html#recipe-9--state-machine-canfire--fire-pattern-with-fireresult">Recipe 9</a></td>
+</tr>
+<tr>
+<td>Write handler/domain tests</td>
+<td><a href="trellis-api-cookbook.html#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror">Recipe 10</a></td>
+</tr>
+<tr>
+<td>Write integration tests for a <code>BackgroundService</code> worker</td>
+<td><a href="trellis-api-cookbook.html#recipe-26--test-a-backgroundservice-with-workerharnesstworker">Recipe 26</a></td>
+</tr>
+<tr>
+<td>Insert a row idempotently on a unique constraint (de-duplicated worker outbox, &quot;save unless exists&quot;)</td>
+<td><a href="trellis-api-cookbook.html#recipe-27--idempotent-inserts-on-a-unique-constraint-with-tryinsertuniqueasync">Recipe 27</a></td>
+</tr>
+<tr>
+<td>Make POST / PATCH safe under client retries with an IETF <code>Idempotency-Key</code> header</td>
+<td><a href="trellis-api-cookbook.html#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency">Recipe 29</a></td>
+</tr>
+<tr>
+<td>Render ASP.NET Core rate-limit rejections as Trellis 429 Problem Details with optional <code>Retry-After</code></td>
+<td><a href="trellis-api-asp.html#ratelimiteroptionsextensions"><code>RateLimiterOptionsExtensions</code> in the ASP reference</a></td>
+</tr>
+<tr>
+<td>Define domain events</td>
+<td><a href="trellis-api-cookbook.html#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp">Recipe 17</a></td>
+</tr>
+<tr>
+<td>Make domain events survive a crash (transactional outbox)</td>
+<td><a href="trellis-api-cookbook.html#recipe-35--transactional-outbox-for-crash-safe-domain-events">Recipe 35</a></td>
+</tr>
+<tr>
+<td>Publish a stable external contract (integration events) translated from domain events</td>
+<td><a href="trellis-api-cookbook.html#recipe-36--translating-a-domain-event-into-an-integration-event">Recipe 36</a></td>
+</tr>
+<tr>
+<td>Connect an inbound message, domain outbox row, translated integration event, and W3C trace</td>
+<td><a href="trellis-api-cookbook.html#recipe-36--translating-a-domain-event-into-an-integration-event">Recipe 36</a>, then <a href="trellis-api-mediator.html#integrationmessagecontext"><code>IntegrationMessageContext</code></a> and <a href="trellis-api-efcore-outbox.html#outboxmessage">outbox lineage</a></td>
+</tr>
+<tr>
+<td>Show a validation failure in the user's language, or render your own message from a 422 instead of showing the server's English</td>
+<td><a href="trellis-api-cookbook.html#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args">Recipe 39</a></td>
+</tr>
+<tr>
+<td>Fix analyzer warnings</td>
+<td><a href="trellis-api-cookbook.html#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action">Recipe 11</a></td>
+</tr>
+<tr>
+<td>Wire the composition root</td>
+<td><a href="trellis-api-cookbook.html#recipe-12--di-wiring-playbook-addtrellis-composition-builder">Recipe 12</a></td>
+</tr>
+<tr>
+<td>Rehydrate an entity from a database row (fail-loud vs Result-track)</td>
+<td><a href="trellis-api-cookbook.html#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track">Recipe 30</a></td>
+</tr>
+<tr>
+<td>Reconstitute an aggregate in a non-EF repository without re-running its factory (no re-validation, no events)</td>
+<td><a href="trellis-api-cookbook.html#recipe-37--reconstituting-an-aggregate-without-its-factory-non-ef-repositories">Recipe 37</a></td>
+</tr>
+<tr>
+<td>Avoid the pipeline-then-handler duplicate load when a command both authorizes and mutates the same resource</td>
+<td><a href="trellis-api-cookbook.html#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource">Recipe 31</a></td>
+</tr>
+<tr>
+<td>Hide existence of sensitive resources from unauthorized callers — translate <code>Forbidden</code>/<code>AuthenticationRequired</code> to <code>NotFound</code></td>
+<td><a href="trellis-api-cookbook.html#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound">Recipe 32</a></td>
+</tr>
+<tr>
+<td>Configure the strict <code>AddJwtBearer</code> validation profile + key-rotation runbook for a gateway-minted internal JWT</td>
+<td><a href="trellis-api-cookbook.html#recipes-33-34--moved-to-xavierjohntrellismicroservices">Moved: xavierjohn/Trellis.Microservices</a> (Recipe 1 in the microservices cookbook)</td>
+</tr>
+<tr>
+<td>Stand up the gateway side of the Path B microservices pattern (YARP transform that mints the internal JWT)</td>
+<td><a href="trellis-api-cookbook.html#recipes-33-34--moved-to-xavierjohntrellismicroservices">Moved: xavierjohn/Trellis.Microservices</a> (Recipe 2 in the microservices cookbook)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mistake-regression-routing">Mistake-regression routing</h3>
+<p>These rows route recurring LLM lab mistakes to the most relevant reference before code is written.</p>
+<table>
+<thead>
+<tr>
+<th>If the task involves...</th>
+<th>Read first</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Loading independent resources before creating a command result</td>
+<td><a href="trellis-api-cookbook.html#recipe-21--parallel-independent-loads-in-handlers-resultparallelasync--whenallasync">Recipe 21</a></td>
+<td>Sequential awaits over genuinely independent loads (HTTP + DB, two upstream services) serialise latency. <code>Result.ParallelAsync(...).WhenAllAsync()</code> is the framework idiom. <strong>Do NOT use against repositories sharing a scoped <code>DbContext</code></strong> — that races EF Core and throws; sequential is correct there.</td>
+</tr>
+<tr>
+<td>Overdue/date-filter queries over <code>Maybe&lt;DateTime&gt;</code></td>
+<td><a href="trellis-api-cookbook.html#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects">Recipe 8</a>, then <a href="trellis-api-efcore.html#patterns-index">trellis-api-efcore.md</a></td>
+<td>Keep a typed specification and use <code>MaybeQueryableExtensions</code> in EF queries.</td>
+</tr>
+<tr>
+<td>State transitions on an aggregate</td>
+<td><a href="trellis-api-cookbook.html#recipe-9--state-machine-canfire--fire-pattern-with-fireresult">Recipe 9</a>, then <a href="trellis-api-statemachine.html#patterns-index">trellis-api-statemachine.md</a></td>
+<td>Keep transition methods consistent and put domain mutation after <code>FireResult</code> succeeds.</td>
+</tr>
+<tr>
+<td>Cross-aggregate mutation such as cancel/return releasing stock</td>
+<td><a href="trellis-api-cookbook.html#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract">Recipe 1</a>, <a href="trellis-api-cookbook.html#recipe-2--command--handler--fluentvalidation--ef-persistence">Recipe 2</a>, and <a href="trellis-api-core.html#domain-driven-design">trellis-api-core.md</a></td>
+<td>The application handler orchestrates multiple aggregates; an aggregate mutates only itself.</td>
+</tr>
+<tr>
+<td>Single-loop mutate-as-you-validate over a collection of related aggregates (reserve stock per line item, etc.)</td>
+<td><a href="trellis-api-cookbook.html#recipe-25--two-pass-validate-then-mutate-over-a-collection-of-related-aggregates">Recipe 25</a></td>
+<td>A later element's validation failure leaves earlier elements partially mutated in memory. Validate every fallible domain check across every participating aggregate before the first state-changing call.</td>
+</tr>
+<tr>
+<td>Result-returning ASP endpoints</td>
+<td><a href="trellis-api-cookbook.html#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse">Recipe 4</a>, <a href="trellis-api-cookbook.html#recipe-5--mvc-controller-using-asactionresult">Recipe 5</a>, then <a href="trellis-api-asp.html#patterns-index">trellis-api-asp.md</a></td>
+<td><code>AddTrellisAsp()</code> is required for Result-to-HTTP mapping; exception middleware is not the mapper.</td>
+</tr>
+<tr>
+<td>Pagination endpoints with bound <code>string? cursor</code> / <code>int? limit</code> parameters</td>
+<td><a href="trellis-api-asp.html#httprequestpaginationextensions"><code>HttpRequestPaginationExtensions</code></a>, then <a href="trellis-api-cookbook.html#recipe-3--query-handler-returning-paget-paginated-list-with-cursor">Recipe 3</a></td>
+<td>MVC can normalize a present empty cursor to null, and host integer binding can return 400 before Trellis emits a coded 422. Parse <code>Request.Query</code> through <code>TryCreatePageRequest()</code>, declare query input origin for downstream cursor decoding, and declare OpenAPI parameters separately.</td>
+</tr>
+<tr>
+<td>Failure-code OpenAPI metadata or <code>.http</code> examples</td>
+<td><a href="trellis-api-asp.html#endpoint-checklist-for-generated-apis">trellis-api-asp.md</a>, <a href="trellis-api-testing-aspnetcore.html#api-failure-path-test-checklist">trellis-api-testing-aspnetcore.md</a></td>
+<td>Generated APIs need failure paths, not happy-path-only docs/tests.</td>
+</tr>
+<tr>
+<td>Reading operands out of a failure's <code>detail</code> text — splitting <code>&quot;Valid values: &quot;</code>, parsing bounds out of a sentence</td>
+<td><a href="trellis-api-cookbook.html#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args">Recipe 39</a></td>
+<td>Prose belongs to whichever producer noticed the failure, and one failure can have several producers wording it differently. <code>Code</code> is stable and <code>Args</code> carries the operands as typed values.</td>
+</tr>
+<tr>
+<td>Sorting by non-unique/computed values, reusing a cursor with different filters, or seeking after <code>Take</code></td>
+<td><a href="trellis-api-cookbook.html#recipe-3--query-handler-returning-paget-paginated-list-with-cursor">Recipe 3</a>, <a href="trellis-api-cookbook.html#recipe-40--computed-pagination-with-validated-query-bound-continuation-state">Recipe 40</a></td>
+<td>Ordering and seek must share a unique tie-breaker; validate query context and apply the boundary before limiting the candidates.</td>
+</tr>
+<tr>
+<td>Resource authorization guards</td>
+<td><a href="trellis-api-cookbook.html#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth">Recipe 7</a>, then <a href="trellis-api-authorization.html#patterns-index">trellis-api-authorization.md</a></td>
+<td>Use <code>Result.Ensure</code> for owner/admin boolean guards.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-rest-of-the-set">The rest of the set</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="trellis-api-cookbook.html#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract"><code>trellis-api-cookbook.md</code></a></td>
+<td>End-to-end recipes spanning packages. Open a recipe body when the lookup above sends you to one.</td>
+</tr>
+<tr>
+<td><a href="trellis-api-core.html#use-this-file-when"><code>trellis-api-core.md</code></a></td>
+<td><code>Result&lt;T&gt;</code>, <code>Maybe&lt;T&gt;</code>, <code>Error</code>, aggregates, entities, specifications, pagination.</td>
+</tr>
+<tr>
+<td><a href="trellis-api-analyzers.html#use-this-file-when"><code>trellis-api-analyzers.md</code></a></td>
+<td>The analyzer and generator diagnostics, <code>TRLS001</code>-<code>TRLS065</code>, and <code>TrellisDiagnosticIds</code>.</td>
+</tr>
+<tr>
+<td><a href="trellis-api-anti-patterns.html#trls001--result-return-value-not-handled"><code>trellis-api-anti-patterns.md</code></a></td>
+<td>Ready-to-apply WRONG/FIX shapes for the analyzer diagnostics (<code>TRLSxxx</code>).</td>
+</tr>
+<tr>
+<td><a href="trellis-value-object-taxonomy.html#patterns-index"><code>trellis-value-object-taxonomy.md</code></a></td>
+<td>Choosing a value-object category: scalar, symbolic, structured, optional.</td>
+</tr>
+</tbody>
+</table>
+<p>The remaining <code>trellis-api-*.md</code> files cover the optional packages — <code>trellis-api-efcore.md</code> for
+<code>Trellis.EntityFrameworkCore</code>, and so on. The lookup tables above name the right one per task, so route
+through them rather than opening files speculatively.</p>
+<p><strong>A file being present here does not mean the project you are editing references that package.</strong> The
+complete first-party set ships with <code>Trellis.Core</code>, so references for packages you have not installed
+are present by design — that is how you discover a module worth adopting. The <code>agentdocs</code> command
+installs the references of the packages you approved in <code>.agentdocs/policy.json</code> and removes them when the package
+is no longer approved or no longer publishes guidance. Packages published from other repositories (for example
+<code>Trellis.ServiceLevelIndicators</code>) ship their own reference alongside themselves, so those appear
+only once installed.</p>
+<p>So before writing code against one of these files, confirm the package is actually referenced by the
+project you are editing — check its <code>.csproj</code> or <code>Directory.Packages.props</code>. If it is not, the
+reference still tells you what adopting the package would buy; say that, rather than emitting code
+that cannot compile.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-start-here.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

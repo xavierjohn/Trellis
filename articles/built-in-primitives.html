@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Built-in Value Objects | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Built-in Value Objects | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/built-in-primitives.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="use-the-built-in-value-objects">Use the built-in value objects</h1>
+
+<p>Before creating another email, URL, currency, or phone type, check <code>Trellis.Primitives</code>. Its input-facing built-ins share the same <code>TryCreate</code> and <code>Result&lt;T&gt;</code> workflow as custom scalar value objects, while keeping common normalization and validation rules in one place. Supporting query values such as <code>GeoBoundingBox</code> are obtained from <code>GeoBounds</code> or static members such as <code>GeoBoundingBox.World</code> instead of being constructed directly.</p>
+<pre><code class="lang-bash">dotnet add package Trellis.Primitives
+</code></pre>
+<h2 id="find-the-type-by-problem">Find the type by problem</h2>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Types</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Contact and network input</td>
+<td><a class="xref" href="../api/Trellis.Primitives.EmailAddress.html">EmailAddress</a>, <a class="xref" href="../api/Trellis.Primitives.PhoneNumber.html">PhoneNumber</a>, <a class="xref" href="../api/Trellis.Primitives.Url.html">Url</a>, <a class="xref" href="../api/Trellis.Primitives.Hostname.html">Hostname</a>, <a class="xref" href="../api/Trellis.Primitives.IpAddress.html">IpAddress</a>, <a class="xref" href="../api/Trellis.Primitives.Slug.html">Slug</a></td>
+</tr>
+<tr>
+<td>Standardized codes</td>
+<td><a class="xref" href="../api/Trellis.Primitives.CountryCode.html">CountryCode</a>, <a class="xref" href="../api/Trellis.Primitives.CurrencyCode.html">CurrencyCode</a>, <a class="xref" href="../api/Trellis.Primitives.LanguageCode.html">LanguageCode</a></td>
+</tr>
+<tr>
+<td>Bounded numbers</td>
+<td><a class="xref" href="../api/Trellis.Primitives.Age.html">Age</a>, <a class="xref" href="../api/Trellis.Primitives.MonetaryAmount.html">MonetaryAmount</a>, <a class="xref" href="../api/Trellis.Primitives.Percentage.html">Percentage</a></td>
+</tr>
+<tr>
+<td>Currency-aware values</td>
+<td><a class="xref" href="../api/Trellis.Primitives.Money.html">Money</a></td>
+</tr>
+<tr>
+<td>Geographic values</td>
+<td><a class="xref" href="../api/Trellis.Primitives.GeoCoordinate.html">GeoCoordinate</a>, <a class="xref" href="../api/Trellis.Primitives.GeoBoundingBox.html">GeoBoundingBox</a>, <a class="xref" href="../api/Trellis.Primitives.GeoBounds.html">GeoBounds</a></td>
+</tr>
+<tr>
+<td>Weekly local-time availability</td>
+<td><a class="xref" href="../api/Trellis.Primitives.WeeklyPeriod.html">WeeklyPeriod</a>, <a class="xref" href="../api/Trellis.Primitives.WeeklySchedule.html">WeeklySchedule</a></td>
+</tr>
+</tbody>
+</table>
+<p>The generated .NET API pages linked above are the full member reference. This guide focuses on how the types fit into an application.</p>
+<h2 id="validate-several-built-ins-together">Validate several built-ins together</h2>
+<p>The following <code>Program.cs</code> is runnable in a console project that references <code>Trellis.Primitives</code>:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+var result = ContactCard.TryCreate(
+    email: &quot;ada@example.com&quot;,
+    phone: &quot;+1 (415) 555-1234&quot;,
+    website: &quot;https://example.com&quot;);
+
+if (!result.TryGetValue(out var card, out var error))
+{
+    Console.Error.WriteLine(error);
+    return;
+}
+
+Console.WriteLine($&quot;{card.Email.Value} | {card.Phone.Value} | {card.Website.Host}&quot;);
+
+public sealed record ContactCard(EmailAddress Email, PhoneNumber Phone, Url Website)
+{
+    public static Result&lt;ContactCard&gt; TryCreate(string? email, string? phone, string? website) =&gt;
+        EmailAddress.TryCreate(email, nameof(email))
+            .Combine(PhoneNumber.TryCreate(phone, nameof(phone)))
+            .Combine(Url.TryCreate(website, nameof(website)))
+            .Map((validEmail, validPhone, validWebsite) =&gt;
+                new ContactCard(validEmail, validPhone, validWebsite));
+}
+</code></pre>
+<p>Each factory reports against the matching input field. <code>Combine</code> preserves all independent validation failures, and the record is created only on the success track.</p>
+<h2 id="know-what-validation-promises">Know what validation promises</h2>
+<p>Built-ins validate their documented shape; they do not replace application policy:</p>
+<ul>
+<li><code>CurrencyCode</code> accepts a three-letter ISO-shaped code. If a payment provider supports only selected currencies, enforce that allow-list at the application boundary.</li>
+<li><code>PhoneNumber</code> validates normalized E.164 shape. <code>GetCountryCode()</code> may still return <code>Maybe.None</code> for an unassigned prefix.</li>
+<li><code>GeoBounds</code> produces a conservative candidate box, not an exact distance result.</li>
+<li><code>WeeklySchedule</code> models recurring local-clock availability, not holidays, capacity, or job scheduling.</li>
+</ul>
+<p>When a built-in's meaning or rules do not match your domain, create a <a href="custom-primitives.html">custom scalar value object</a> instead of hiding extra rules around every call site.</p>
+<h2 id="continue-with-structured-values">Continue with structured values</h2>
+<ul>
+<li><a href="money.html">Money, amounts, and percentages</a></li>
+<li><a href="geographic-values.html">Geographic coordinates and radius bounds</a></li>
+<li><a href="weekly-schedules.html">Weekly schedules and overnight periods</a></li>
+</ul>
+<p>Browse all types in the generated <a class="xref" href="../api/Trellis.Primitives.html">Trellis.Primitives API namespace</a>.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/built-in-primitives.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

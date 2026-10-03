@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ActorId | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ActorId | Trellis ">
+      
+      <meta name="description" content="Strongly-typed identifier for an authenticated principal (the value behind ).">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Authorization.ActorId">
+
+
+
+  <h1 id="Trellis_Authorization_ActorId" data-uid="Trellis.Authorization.ActorId" class="text-break">
+Class ActorId  
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Authorization.html">Authorization</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Authorization.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Strongly-typed identifier for an authenticated principal (the value behind
+<a class="xref" href="Trellis.Authorization.Actor.html#Trellis_Authorization_Actor_Id">Id</a>).</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[JsonConverter(typeof(ParsableJsonConverter&lt;ActorId&gt;))]
+public sealed class ActorId : RequiredString&lt;ActorId&gt;, IComparable&lt;ValueObject&gt;, IComparable, IEquatable&lt;ValueObject&gt;, IConvertible, IFormattable, IScalarValue&lt;ActorId, string&gt;, IParsable&lt;ActorId&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="Trellis.ValueObject.html">ValueObject</a></div>
+      <div><a class="xref" href="Trellis.ScalarValueObject-2.html">ScalarValueObject</a>&lt;<a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</div>
+      <div><a class="xref" href="Trellis.RequiredString-1.html">RequiredString</a>&lt;<a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a>&gt;</div>
+      <div><span class="xref">ActorId</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable-1">IComparable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable">IComparable</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.ValueObject.html">ValueObject</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iconvertible">IConvertible</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformattable">IFormattable</a></div>
+      <div><a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue</a>&lt;<a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iparsable-1">IParsable</a>&lt;<a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a>&gt;</div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="Trellis.RequiredString-1.html#Trellis_RequiredString_1_Length">RequiredString&lt;ActorId&gt;.Length</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.RequiredString-1.html#Trellis_RequiredString_1_StartsWith_System_String_">RequiredString&lt;ActorId&gt;.StartsWith(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.RequiredString-1.html#Trellis_RequiredString_1_Contains_System_String_">RequiredString&lt;ActorId&gt;.Contains(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.RequiredString-1.html#Trellis_RequiredString_1_EndsWith_System_String_">RequiredString&lt;ActorId&gt;.EndsWith(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.RequiredString-1.html#Trellis_RequiredString_1_StartsWith_System_String_System_StringComparison_">RequiredString&lt;ActorId&gt;.StartsWith(string, StringComparison)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.RequiredString-1.html#Trellis_RequiredString_1_Contains_System_String_System_StringComparison_">RequiredString&lt;ActorId&gt;.Contains(string, StringComparison)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.RequiredString-1.html#Trellis_RequiredString_1_Contains_System_Char_System_StringComparison_">RequiredString&lt;ActorId&gt;.Contains(char, StringComparison)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.RequiredString-1.html#Trellis_RequiredString_1_EndsWith_System_String_System_StringComparison_">RequiredString&lt;ActorId&gt;.EndsWith(string, StringComparison)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_Value">ScalarValueObject&lt;ActorId, string&gt;.Value</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToString">ScalarValueObject&lt;ActorId, string&gt;.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_Create__1_">ScalarValueObject&lt;ActorId, string&gt;.Create(string)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_GetTypeCode">ScalarValueObject&lt;ActorId, string&gt;.GetTypeCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToBoolean_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToBoolean(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToByte_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToByte(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToChar_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToChar(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToDateTime_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToDateTime(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToDecimal_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToDecimal(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToDouble_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToDouble(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToInt16_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToInt16(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToInt32_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToInt32(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToInt64_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToInt64(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToSByte_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToSByte(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToSingle_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToSingle(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToString_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToString(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToString_System_String_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToString(string, IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToType_System_Type_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToType(Type, IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToUInt16_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToUInt16(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToUInt32_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToUInt32(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ScalarValueObject-2.html#Trellis_ScalarValueObject_2_ToUInt64_System_IFormatProvider_">ScalarValueObject&lt;ActorId, string&gt;.ToUInt64(IFormatProvider)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_Equals_System_Object_">ValueObject.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_Equals_Trellis_ValueObject_">ValueObject.Equals(ValueObject)</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_GetHashCode">ValueObject.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="Trellis.ValueObject.html#Trellis_ValueObject_CompareTo_Trellis_ValueObject_">ValueObject.CompareTo(ValueObject)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Authorization_ActorId_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+<a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a> wraps the raw claim string (typically the JWT <code>sub</code> or AAD
+<code>oid</code>) so that authorization-layer APIs can accept and return a domain type instead
+of an untyped <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>. Consumers that store the actor's identity at
+aggregate boundaries (e.g. <code>Order.CreatedByActorId</code>) should reuse this type to
+keep the principal-identity concept consistent across the framework, audit fields, and
+any cross-aggregate comparison that asks "did the same actor do both of these things?".
+</p>
+<p>
+Domain identifiers (a customer ID, a tenant member ID, a domain user aggregate's primary
+key) are <i>not</i> the same concept as a principal ID. Those remain whatever VO the
+domain models. Use <a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a> for authentication-layer principal identity
+only — what the auth pipeline produced — and resolve to domain identity at the
+application service boundary if the two differ.
+</p>
+<p>
+Uses <code>[Trim, NotDefault]</code> on top of <a class="xref" href="Trellis.RequiredString-1.html">RequiredString&lt;TSelf&gt;</a> so the value
+is trimmed on construction and an empty or whitespace-only id is rejected. This matches
+the original <a class="xref" href="Trellis.Authorization.Actor.html">Actor</a> constructor's <code>ArgumentException.ThrowIfNullOrWhiteSpace</code>
+guard; the trim is a deliberate, documented normalization step on top of that.
+</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Authorization_ActorId_Create_" data-uid="Trellis.Authorization.ActorId.Create*"></a>
+
+  <h3 id="Trellis_Authorization_ActorId_Create_System_String_System_String_" data-uid="Trellis.Authorization.ActorId.Create(System.String,System.String)">
+  Create(string?, string?)
+  
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a validated instance from a string. Throws if validation fails.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ActorId Create(string? value, string? fieldName = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The string value to validate.</p>
+</dd>
+    <dt><code>fieldName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Optional field name for validation error messages.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a></dt>
+    <dd><p>The validated value object.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown when validation fails.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Authorization_ActorId_Parse_" data-uid="Trellis.Authorization.ActorId.Parse*"></a>
+
+  <h3 id="Trellis_Authorization_ActorId_Parse_System_String_System_IFormatProvider_" data-uid="Trellis.Authorization.ActorId.Parse(System.String,System.IFormatProvider)">
+  Parse(string, IFormatProvider?)
+  
+  </h3>
+
+  <div class="markdown level1 summary"><p>Parses the input into a <a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a> or throws
+<a class="xref" href="Trellis.TrellisValidationFormatException.html">TrellisValidationFormatException</a> when the input fails validation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ActorId Parse(string s, IFormatProvider? provider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The value to parse.</p>
+</dd>
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>Format provider (currently unused for non-IFormattable bases).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_ActorId_TryCreate_" data-uid="Trellis.Authorization.ActorId.TryCreate*"></a>
+
+  <h3 id="Trellis_Authorization_ActorId_TryCreate_System_String_System_String_" data-uid="Trellis.Authorization.ActorId.TryCreate(System.String,System.String)">
+  TryCreate(string?, string?)
+  
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a validated instance from a string.
+Required by IScalarValue interface for model binding and JSON deserialization.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static Result&lt;ActorId&gt; TryCreate(string? value, string? fieldName = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The string value to validate.</p>
+</dd>
+    <dt><code>fieldName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Optional field name for validation error messages.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Result-1.html">Result</a>&lt;<a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a>&gt;</dt>
+    <dd><p>Success with the value object, or Failure with validation errors.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Authorization_ActorId_TryParse_" data-uid="Trellis.Authorization.ActorId.TryParse*"></a>
+
+  <h3 id="Trellis_Authorization_ActorId_TryParse_System_String_System_IFormatProvider_Trellis_Authorization_ActorId__" data-uid="Trellis.Authorization.ActorId.TryParse(System.String,System.IFormatProvider,Trellis.Authorization.ActorId@)">
+  TryParse(string?, IFormatProvider?, out ActorId)
+  
+  </h3>
+
+  <div class="markdown level1 summary"><p>Attempts to parse the input into a <a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a>.
+Returns <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a> when the input fails validation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool TryParse(string? s, IFormatProvider? provider, out ActorId result)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The value to parse.</p>
+</dd>
+    <dt><code>provider</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a></dt>
+    <dd><p>Format provider (currently unused for non-IFormattable bases).</p>
+</dd>
+    <dt><code>result</code> <a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a></dt>
+    <dd><p>The parsed value on success; otherwise <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/default">default</a>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="operators">Operators
+</h2>
+
+
+  <a id="Trellis_Authorization_ActorId_op_Explicit_" data-uid="Trellis.Authorization.ActorId.op_Explicit*"></a>
+
+  <h3 id="Trellis_Authorization_ActorId_op_Explicit_System_String__Trellis_Authorization_ActorId" data-uid="Trellis.Authorization.ActorId.op_Explicit(System.String)~Trellis.Authorization.ActorId">
+  explicit operator ActorId(string)
+  
+  </h3>
+
+  <div class="markdown level1 summary"><p>Explicitly wraps a raw <code class="paramref">actorId</code> value into a
+validated <a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a>. Equivalent to calling <code>Create</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static explicit operator ActorId(string actorId)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>actorId</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Authorization.ActorId.html">ActorId</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

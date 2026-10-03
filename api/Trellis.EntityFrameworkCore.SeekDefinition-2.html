@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class SeekDefinition&lt;T, TState&gt; | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class SeekDefinition&lt;T, TState&gt; | Trellis ">
+      
+      <meta name="description" content="Defines ordering, boundary extraction and lexicographic seeking together. Keys must be non-null and stable, and the final ordering must be unique. Provider translation and comparison semantics must be verified for the selected keys.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_EntityFrameworkCore_SeekDefinition_2.md&amp;value=---%0Auid%3A%20Trellis.EntityFrameworkCore.SeekDefinition%602%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2">
+
+
+
+  <h1 id="Trellis_EntityFrameworkCore_SeekDefinition_2" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2" class="text-break">
+Class SeekDefinition&lt;T, TState&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/Pagination/SeekDefinition.cs/#L11"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.EntityFrameworkCore.html">EntityFrameworkCore</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.EntityFrameworkCore.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Defines ordering, boundary extraction and lexicographic seeking together.
+Keys must be non-null and stable, and the final ordering must be unique.
+Provider translation and comparison semantics must be verified for the selected keys.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class SeekDefinition&lt;T, TState&gt; where T : class where TState : notnull</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+    <dt><code>TState</code></dt>
+    <dd></dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">SeekDefinition&lt;T, TState&gt;</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_EntityFrameworkCore_SeekDefinition_2_Codec_" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.Codec*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_SeekDefinition_2_Codec" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.Codec">
+  Codec
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/Pagination/SeekDefinition.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The codec for this definition's complete boundary state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ICursorCodec&lt;TState&gt; Codec { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ICursorCodec-1.html">ICursorCodec</a>&lt;TState&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_EntityFrameworkCore_SeekDefinition_2_ThenAscending_" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.ThenAscending*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_SeekDefinition_2_ThenAscending__1_System_Linq_Expressions_Expression_System_Func__0___0___" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.ThenAscending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+  ThenAscending&lt;TKey&gt;(Expression&lt;Func&lt;T, TKey&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/Pagination/SeekDefinition.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds an ascending key using its built-in scalar codec.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SeekDefinition&lt;T, (TState Primary, TKey Secondary)&gt; ThenAscending&lt;TKey&gt;(Expression&lt;Func&lt;T, TKey&gt;&gt; key) where TKey : notnull, IComparable&lt;TKey&gt;, IParsable&lt;TKey&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression-1">Expression</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, TKey&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.EntityFrameworkCore.SeekDefinition-2.html">SeekDefinition</a>&lt;T, (TState <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple--1,--0-.primary">Primary</a>, TKey <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple--1,--0-.secondary">Secondary</a>)&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TKey</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_SeekDefinition_2_ThenAscending_" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.ThenAscending*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_SeekDefinition_2_ThenAscending__1_System_Linq_Expressions_Expression_System_Func__0___0___Trellis_ICursorCodec___0__" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.ThenAscending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},Trellis.ICursorCodec{``0})">
+  ThenAscending&lt;TKey&gt;(Expression&lt;Func&lt;T, TKey&gt;&gt;, ICursorCodec&lt;TKey&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/Pagination/SeekDefinition.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds an ascending key using an explicit codec.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SeekDefinition&lt;T, (TState Primary, TKey Secondary)&gt; ThenAscending&lt;TKey&gt;(Expression&lt;Func&lt;T, TKey&gt;&gt; key, ICursorCodec&lt;TKey&gt; codec) where TKey : notnull, IComparable&lt;TKey&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression-1">Expression</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, TKey&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>codec</code> <a class="xref" href="Trellis.ICursorCodec-1.html">ICursorCodec</a>&lt;TKey&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.EntityFrameworkCore.SeekDefinition-2.html">SeekDefinition</a>&lt;T, (TState <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple--1,--0-.primary">Primary</a>, TKey <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple--1,--0-.secondary">Secondary</a>)&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TKey</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_SeekDefinition_2_ThenDescending_" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.ThenDescending*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_SeekDefinition_2_ThenDescending__1_System_Linq_Expressions_Expression_System_Func__0___0___" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.ThenDescending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}})">
+  ThenDescending&lt;TKey&gt;(Expression&lt;Func&lt;T, TKey&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/Pagination/SeekDefinition.cs/#L53"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds a descending key using its built-in scalar codec.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SeekDefinition&lt;T, (TState Primary, TKey Secondary)&gt; ThenDescending&lt;TKey&gt;(Expression&lt;Func&lt;T, TKey&gt;&gt; key) where TKey : notnull, IComparable&lt;TKey&gt;, IParsable&lt;TKey&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression-1">Expression</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, TKey&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.EntityFrameworkCore.SeekDefinition-2.html">SeekDefinition</a>&lt;T, (TState <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple--1,--0-.primary">Primary</a>, TKey <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple--1,--0-.secondary">Secondary</a>)&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TKey</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_SeekDefinition_2_ThenDescending_" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.ThenDescending*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_SeekDefinition_2_ThenDescending__1_System_Linq_Expressions_Expression_System_Func__0___0___Trellis_ICursorCodec___0__" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.ThenDescending``1(System.Linq.Expressions.Expression{System.Func{`0,``0}},Trellis.ICursorCodec{``0})">
+  ThenDescending&lt;TKey&gt;(Expression&lt;Func&lt;T, TKey&gt;&gt;, ICursorCodec&lt;TKey&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/Pagination/SeekDefinition.cs/#L58"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds a descending key using an explicit codec.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SeekDefinition&lt;T, (TState Primary, TKey Secondary)&gt; ThenDescending&lt;TKey&gt;(Expression&lt;Func&lt;T, TKey&gt;&gt; key, ICursorCodec&lt;TKey&gt; codec) where TKey : notnull, IComparable&lt;TKey&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression-1">Expression</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;T, TKey&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>codec</code> <a class="xref" href="Trellis.ICursorCodec-1.html">ICursorCodec</a>&lt;TKey&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.EntityFrameworkCore.SeekDefinition-2.html">SeekDefinition</a>&lt;T, (TState <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple--1,--0-.primary">Primary</a>, TKey <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple--1,--0-.secondary">Secondary</a>)&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TKey</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_SeekDefinition_2_WithCodec_" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.WithCodec*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_SeekDefinition_2_WithCodec_Trellis_ICursorCodec__1__" data-uid="Trellis.EntityFrameworkCore.SeekDefinition`2.WithCodec(Trellis.ICursorCodec{`1})">
+  WithCodec(ICursorCodec&lt;TState&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/Pagination/SeekDefinition.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Replaces serialization without changing ordering, for example to bind query context or protect tokens.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SeekDefinition&lt;T, TState&gt; WithCodec(ICursorCodec&lt;TState&gt; codec)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>codec</code> <a class="xref" href="Trellis.ICursorCodec-1.html">ICursorCodec</a>&lt;TState&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.EntityFrameworkCore.SeekDefinition-2.html">SeekDefinition</a>&lt;T, TState&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore/src/Pagination/SeekDefinition.cs/#L11" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

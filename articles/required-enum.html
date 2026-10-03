@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Symbolic Value Objects with RequiredEnum | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Symbolic Value Objects with RequiredEnum | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/required-enum.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="model-symbolic-values-with-requiredenum">Model symbolic values with RequiredEnum</h1>
+
+<p>A C# <code>enum</code> is compact, but any underlying integer can be cast into it and it cannot carry domain behavior. <a class="xref" href="../api/Trellis.RequiredEnum-1.html">RequiredEnum<tself></tself></a> models a finite set as named singleton objects with stable string values, validation, and optional behavior.</p>
+<p>Use it for values such as order status, priority, or fulfillment method when the set is closed and each member may answer domain questions.</p>
+<pre><code class="lang-bash">dotnet add package Trellis.Core
+</code></pre>
+<h2 id="define-members-and-behavior-together">Define members and behavior together</h2>
+<p>Replace <code>Program.cs</code> in a console project with this runnable example:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+var result = OrderStatus.TryCreate(&quot;awaiting-payment&quot;, &quot;status&quot;);
+
+if (!result.TryGetValue(out var status, out var error))
+{
+    Console.Error.WriteLine(error);
+    return;
+}
+
+Console.WriteLine($&quot;{status.Value}: canShip={status.CanShip}&quot;);
+Console.WriteLine(string.Join(&quot;, &quot;, OrderStatus.GetAll().Select(value =&gt; value.Value)));
+
+public sealed partial class OrderStatus : RequiredEnum&lt;OrderStatus&gt;
+{
+    public static readonly OrderStatus Draft = new(canShip: false);
+
+    [EnumValue(&quot;awaiting-payment&quot;)]
+    public static readonly OrderStatus AwaitingPayment = new(canShip: false);
+
+    public static readonly OrderStatus Paid = new(canShip: true);
+    public static readonly OrderStatus Shipped = new(canShip: false);
+
+    private OrderStatus(bool canShip)
+    {
+        CanShip = canShip;
+    }
+
+    public bool CanShip { get; }
+}
+</code></pre>
+<p>Each <code>public static readonly</code> field is one valid member. By default, its external <code>Value</code> is the field name. <a class="xref" href="../api/Trellis.EnumValueAttribute.html">EnumValueAttribute</a> lets the code name and wire name differ without changing either accidentally.</p>
+<p>The class must be <code>partial</code>. The source generator adds <code>Create</code>, parsing, and JSON conversion; the base supplies lookup, membership, equality, <code>Value</code>, <code>Ordinal</code>, and <code>GetAll()</code>.</p>
+<h2 id="parse-at-the-boundary">Parse at the boundary</h2>
+<p>Use <code>TryCreate(value, fieldName)</code> for request, file, or message input:</p>
+<pre><code class="lang-csharp">Result&lt;OrderStatus&gt; status = OrderStatus.TryCreate(input, &quot;status&quot;);
+</code></pre>
+<p>Lookup is case-insensitive and rejects names that are not declared members. Passing the field name keeps validation output aligned with the transport shape.</p>
+<p>Use <code>Create(value)</code> only for trusted constants and tests. It throws when the value is invalid.</p>
+<h2 id="keep-identity-stable">Keep identity stable</h2>
+<p><code>Value</code> is the serialized and persisted identity. <code>Ordinal</code> reflects declaration order and is useful for ordering, but it is not a stable wire or storage contract.</p>
+<p>Prefer leaving the field name and <code>Value</code> identical. Use <code>[EnumValue(&quot;...&quot;)]</code> when an established external contract requires a different spelling, such as a kebab-case JSON value.</p>
+<p>Equality is based on <code>Value</code> and is case-insensitive. Use <code>Is(...)</code> and <code>IsNot(...)</code> when a rule accepts several members:</p>
+<pre><code class="lang-csharp">bool canStillChange = status.Is(
+    OrderStatus.Draft,
+    OrderStatus.AwaitingPayment);
+</code></pre>
+<h2 id="json-and-persistence">JSON and persistence</h2>
+<p>The generator applies <a class="xref" href="../api/Trellis.RequiredEnumJsonConverter-1.html">RequiredEnumJsonConverter<t></t></a>, so JSON is a string such as <code>&quot;awaiting-payment&quot;</code>, not an object containing <code>Value</code> and <code>Ordinal</code>. Deserialization routes through <code>TryCreate</code> and rejects undeclared values.</p>
+<p>For ASP.NET Core request validation, continue with the <a href="integration-aspnet.html">ASP.NET Core integration guide</a>. For string-backed EF Core storage and conventions, continue with the <a href="integration-ef.html">Entity Framework Core guide</a>.</p>
+<h2 id="choose-another-shape-when-needed">Choose another shape when needed</h2>
+<ul>
+<li>Use a <a href="custom-primitives.html">custom scalar value object</a> when valid strings are open-ended rather than a finite set.</li>
+<li>Use <a class="xref" href="../api/Trellis.ValueObject.html">ValueObject</a> when identity is composed from several fields.</li>
+<li>Use a built-in from <a href="built-in-primitives.html">Trellis.Primitives</a> when the domain meaning already exists.</li>
+</ul>
+<p>Generated .NET API:</p>
+<ul>
+<li><a class="xref" href="../api/Trellis.RequiredEnum-1.html">RequiredEnum<tself></tself></a></li>
+<li><a class="xref" href="../api/Trellis.EnumValueAttribute.html">EnumValueAttribute</a></li>
+<li><a class="xref" href="../api/Trellis.RequiredEnumJsonConverter-1.html">RequiredEnumJsonConverter<t></t></a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/required-enum.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

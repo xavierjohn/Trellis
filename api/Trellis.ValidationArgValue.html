@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ValidationArgValue | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ValidationArgValue | Trellis ">
+      
+      <meta name="description" content="The value of a single entry in the Args carried by a  or .">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_ValidationArgValue.md&amp;value=---%0Auid%3A%20Trellis.ValidationArgValue%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.ValidationArgValue">
+
+
+
+  <h1 id="Trellis_ValidationArgValue" data-uid="Trellis.ValidationArgValue" class="text-break">
+Class ValidationArgValue  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/ValidationArgValue.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>The value of a single entry in the <code>Args</code> carried by a <a class="xref" href="Trellis.FieldViolation.html">FieldViolation</a> or
+<a class="xref" href="Trellis.RuleViolation.html">RuleViolation</a>.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[JsonConverter(typeof(ValidationArgValueJsonConverter))]
+public abstract record ValidationArgValue : IEquatable&lt;ValidationArgValue&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ValidationArgValue</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iequatable-1">IEquatable</a>&lt;<a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a>&gt;</div>
+    </dd>
+  </dl>
+
+  <dl class="typelist derived">
+    <dt>Derived</dt>
+    <dd>
+      <div><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a>.<a class="xref" href="Trellis.ValidationArgValue.Bool.html">Bool</a></div>
+      <div><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a>.<a class="xref" href="Trellis.ValidationArgValue.List.html">List</a></div>
+      <div><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a>.<a class="xref" href="Trellis.ValidationArgValue.Number.html">Number</a></div>
+      <div><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a>.<a class="xref" href="Trellis.ValidationArgValue.Text.html">Text</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_ValidationArgValue_examples">Examples</h2>
+  <pre><code class="lang-csharp">ValidationArgs.Of("maxLength", 50)                     // {"maxLength": 50}
+ValidationArgs.Of("min", 0, "max", 255)                // {"min": 0, "max": 255}
+ValidationArgs.Of("allowed", ValidationArgValue.ListOf("red", "green"))</code></pre>
+
+
+  <h2 id="Trellis_ValidationArgValue_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This is a closed union — <a class="xref" href="Trellis.ValidationArgValue.Text.html">ValidationArgValue.Text</a>, <a class="xref" href="Trellis.ValidationArgValue.Number.html">ValidationArgValue.Number</a>, <a class="xref" href="Trellis.ValidationArgValue.Bool.html">ValidationArgValue.Bool</a>, or
+<a class="xref" href="Trellis.ValidationArgValue.List.html">ValidationArgValue.List</a> — and the constructor is private so it stays closed. A client can therefore
+switch over it exhaustively, and the JSON shape of an arg is knowable from the type alone rather
+than from whatever a producer happened to pass.
+</p>
+<p>
+The cases are JSON's self-describing values: its three scalars, plus a list of them. JSON's
+other two constructs are deliberately absent. <code>null</code> would give a dictionary two spellings
+of the same thing, since an arg with no value is an arg that is simply not there. An object
+would mean a client needs a schema per reason code to know what it is looking at, which gives up
+the property that makes this union worth having — that the shape follows from the type — and
+turns args into an open-ended payload, which is a poor thing to echo back to a caller.
+</p>
+<p>
+The predecessor of this type was <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, which forced every operand onto the wire
+quoted: a length bound arrived as <code>"maxLength": "50"</code>, and a client that wanted to compare
+it against a length had to parse it back out, guessing at the format. Modelling the number as a
+number removes the guess — <code>"maxLength": 50</code> — while keeping the property that made
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a> attractive in the first place, which is that no producer-side culture can
+leak into the payload. <a class="xref" href="Trellis.ValidationArgValue.Number.html">ValidationArgValue.Number</a> holds a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a> and is written by
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system">System.Text.Json</a> invariantly, so a German server and an American one emit the same
+bytes.
+</p>
+<p>
+Args are still operands, not an echo of the caller's input. Never put the rejected value itself
+in here — a rejected password or token would then be reflected back in an error response and
+into whatever logs that response.
+</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_ValidationArgValue_ListFrom_" data-uid="Trellis.ValidationArgValue.ListFrom*"></a>
+
+  <h3 id="Trellis_ValidationArgValue_ListFrom_System_Collections_Generic_IEnumerable_Trellis_ValidationArgValue__" data-uid="Trellis.ValidationArgValue.ListFrom(System.Collections.Generic.IEnumerable{Trellis.ValidationArgValue})">
+  ListFrom(IEnumerable&lt;ValidationArgValue&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/ValidationArgValue.cs/#L106"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Builds a <a class="xref" href="Trellis.ValidationArgValue.List.html">ValidationArgValue.List</a> from a sequence.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValidationArgValue ListFrom(IEnumerable&lt;ValidationArgValue&gt; items)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>items</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a>&gt;</dt>
+    <dd><p>The list members, in order.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValidationArgValue_ListOf_" data-uid="Trellis.ValidationArgValue.ListOf*"></a>
+
+  <h3 id="Trellis_ValidationArgValue_ListOf_Trellis_ValidationArgValue___" data-uid="Trellis.ValidationArgValue.ListOf(Trellis.ValidationArgValue[])">
+  ListOf(params ValidationArgValue[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/ValidationArgValue.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Builds a <a class="xref" href="Trellis.ValidationArgValue.List.html">ValidationArgValue.List</a> from the supplied items.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ValidationArgValue ListOf(params ValidationArgValue[] items)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>items</code> <a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a>[]</dt>
+    <dd><p>The list members, in order. May be empty.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="operators">Operators
+</h2>
+
+
+  <a id="Trellis_ValidationArgValue_op_Implicit_" data-uid="Trellis.ValidationArgValue.op_Implicit*"></a>
+
+  <h3 id="Trellis_ValidationArgValue_op_Implicit_System_Boolean__Trellis_ValidationArgValue" data-uid="Trellis.ValidationArgValue.op_Implicit(System.Boolean)~Trellis.ValidationArgValue">
+  implicit operator ValidationArgValue(bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/ValidationArgValue.cs/#L127"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Wraps a boolean as <a class="xref" href="Trellis.ValidationArgValue.Bool.html">ValidationArgValue.Bool</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator ValidationArgValue(bool value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>The flag.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValidationArgValue_op_Implicit_" data-uid="Trellis.ValidationArgValue.op_Implicit*"></a>
+
+  <h3 id="Trellis_ValidationArgValue_op_Implicit_System_Decimal__Trellis_ValidationArgValue" data-uid="Trellis.ValidationArgValue.op_Implicit(System.Decimal)~Trellis.ValidationArgValue">
+  implicit operator ValidationArgValue(decimal)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/ValidationArgValue.cs/#L123"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Wraps a decimal as <a class="xref" href="Trellis.ValidationArgValue.Number.html">ValidationArgValue.Number</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator ValidationArgValue(decimal value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></dt>
+    <dd><p>The number.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValidationArgValue_op_Implicit_" data-uid="Trellis.ValidationArgValue.op_Implicit*"></a>
+
+  <h3 id="Trellis_ValidationArgValue_op_Implicit_System_Int32__Trellis_ValidationArgValue" data-uid="Trellis.ValidationArgValue.op_Implicit(System.Int32)~Trellis.ValidationArgValue">
+  implicit operator ValidationArgValue(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/ValidationArgValue.cs/#L115"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Wraps an integer as <a class="xref" href="Trellis.ValidationArgValue.Number.html">ValidationArgValue.Number</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator ValidationArgValue(int value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValidationArgValue_op_Implicit_" data-uid="Trellis.ValidationArgValue.op_Implicit*"></a>
+
+  <h3 id="Trellis_ValidationArgValue_op_Implicit_System_Int64__Trellis_ValidationArgValue" data-uid="Trellis.ValidationArgValue.op_Implicit(System.Int64)~Trellis.ValidationArgValue">
+  implicit operator ValidationArgValue(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/ValidationArgValue.cs/#L119"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Wraps a long as <a class="xref" href="Trellis.ValidationArgValue.Number.html">ValidationArgValue.Number</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator ValidationArgValue(long value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The number.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ValidationArgValue_op_Implicit_" data-uid="Trellis.ValidationArgValue.op_Implicit*"></a>
+
+  <h3 id="Trellis_ValidationArgValue_op_Implicit_System_String__Trellis_ValidationArgValue" data-uid="Trellis.ValidationArgValue.op_Implicit(System.String)~Trellis.ValidationArgValue">
+  implicit operator ValidationArgValue(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/ValidationArgValue.cs/#L111"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Wraps a string as <a class="xref" href="Trellis.ValidationArgValue.Text.html">ValidationArgValue.Text</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static implicit operator ValidationArgValue(string value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The text.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Core/src/Errors/ValidationArgValue.cs/#L52" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

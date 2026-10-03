@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Service Defaults (Composition Root) | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Service Defaults (Composition Root) | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-servicedefaults.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="service-defaults-composition-root">Service Defaults (Composition Root)</h1>
+
+<p><code>Trellis.ServiceDefaults</code> provides one fluent builder — <code>services.AddTrellis(o =&gt; ...)</code> — that wires the Trellis integration modules in the canonical order so the mediator pipeline ends up with the right behaviors at the right positions.</p>
+<p>It is <strong>not</strong> a mandatory dependency. If you only need one integration package, calling that package's direct registration helper (<code>AddTrellisAsp</code>, <code>AddTrellisBehaviors</code>, <code>AddTrellisFluentValidation</code> from <code>Trellis.Mediator.FluentValidation</code>, etc.) remains a valid choice. The builder exists to make composition-root code easier to read when several integrations are combined.</p>
+<h2 id="quick-start">Quick start</h2>
+<pre><code class="lang-csharp">builder.Services.AddTrellis(options =&gt; options
+    .UseAsp()
+    .UseScalarValueValidation()
+    .UseMediator()
+    .UseFluentValidation(typeof(Program).Assembly)
+    .UseClaimsActorProvider()
+    .UseResourceAuthorization(typeof(Program).Assembly)
+    .UseEntityFrameworkUnitOfWork&lt;AppDbContext&gt;());
+
+builder.Services.AddDbContext&lt;AppDbContext&gt;(o =&gt; o.UseSqlServer(connectionString));
+</code></pre>
+<p><code>AddTrellis</code> does NOT register your <code>DbContext</code>, your mediator handlers, or your route constraints — those are always application-owned. Validators, resource loaders, and domain event handlers are registered only when you opt into assembly scanning via the params-<code>Assembly[]</code> overloads (<code>UseFluentValidation(asm)</code>, <code>UseResourceAuthorization(asm)</code>, <code>UseDomainEvents(asm)</code>); the parameterless overloads register only the adapter / pipeline behavior and leave per-type registrations to you.</p>
+<p><code>UseScalarValueValidation()</code> is separate from <code>UseAsp()</code> because scalar-value validation mutates global <code>MvcOptions</code> / <code>JsonOptions</code> (model binders, JSON converters, <code>SuppressModelStateInvalidFilter</code> flip). Hosts that only need error-to-status mapping (e.g. an MVC site that does not bind value-object DTOs) can call <code>UseAsp()</code> alone without paying for the binder / converter mutation.</p>
+<h2 id="canonical-order">Canonical order</h2>
+<p>Event dispatch retains nested aggregate responses until the owning successful unit-of-work commit; an outer DTO/Unit response still releases the nested batch. <code>UseOutbox&lt;TContext&gt;()</code> validates the reporting publisher during host startup and validates an integration publisher only when integration services are enabled. The collector is relay-translator-only: <code>Add</code> outside its active translation lease throws.</p>
+<p><code>AddTrellis(o =&gt; ...)</code> records the requested modules during the configure callback, then applies them in this order:</p>
+<ol>
+<li><strong>ASP integration</strong> (<code>UseAsp</code>) — <code>AddTrellisAsp(...)</code>.</li>
+<li><strong>Scalar-value validation</strong> (<code>UseScalarValueValidation</code>) — <code>AddScalarValueValidation()</code>.</li>
+<li><strong>Actor provider</strong> (<code>UseClaimsActorProvider</code> / <code>UseEntraActorProvider</code> / <code>UseDevelopmentActorProvider</code>), the optional <strong>caching wrap</strong> (<code>UseCachingActorProvider&lt;T&gt;</code>), and the optional <strong>worker wrap</strong> (<code>UseWorkerActor(systemActor)</code>) — the worker wrap is applied after caching so HTTP requests still flow through the inner provider (and its cache) and background-worker scopes short-circuit to the supplied system actor.</li>
+<li><strong>Mediator behaviors</strong> (<code>UseMediator</code>) — <code>AddTrellisBehaviors(...)</code>. Always present when any other Use that implies it is selected (FluentValidation, ResourceAuthorization, DomainEvents, EntityFrameworkUnitOfWork).</li>
+<li><strong>Resource authorization</strong> scanning (<code>UseResourceAuthorization(asm)</code>) when assemblies are supplied.</li>
+<li><strong>FluentValidation</strong> adapter and (optionally) scanning (<code>UseFluentValidation</code>).</li>
+<li><strong>Domain event dispatch</strong> (<code>UseDomainEvents</code>) — <code>DomainEventDispatchBehavior&lt;,&gt;</code> + default <code>IDomainEventPublisher</code> + scanned handlers.</li>
+<li><strong>EF Core Unit of Work</strong> (<code>UseEntityFrameworkUnitOfWork&lt;TContext&gt;</code>) — applied last so <code>TransactionalCommandBehavior&lt;,&gt;</code> is the innermost behavior.</li>
+</ol>
+<p>This sequence preserves the central pipeline invariant: the transactional behavior is closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors. Domain events fire after the transaction commits because dispatch is registered before the unit of work.</p>
+<h2 id="mutually-exclusive-slots">Mutually-exclusive slots</h2>
+<table>
+<thead>
+<tr>
+<th>Slot</th>
+<th>Single-selection rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Actor provider</td>
+<td>At most one of <code>UseClaimsActorProvider</code>, <code>UseEntraActorProvider</code>, <code>UseDevelopmentActorProvider</code>. Throws <code>InvalidOperationException</code> on duplicate (same kind or different).</td>
+</tr>
+<tr>
+<td>Caching actor wrap</td>
+<td>At most one <code>UseCachingActorProvider&lt;T&gt;()</code>. Throws <code>InvalidOperationException</code> on duplicate.</td>
+</tr>
+<tr>
+<td>Worker actor wrap</td>
+<td>At most one <code>UseWorkerActor(systemActor)</code>. Throws <code>InvalidOperationException</code> on duplicate. The underlying <code>AddTrellisWorkerActor(...)</code> also rejects singleton <code>IActorProvider</code> registered via type or factory (silent lifetime conversion) and transient <code>IActorProvider</code> (silent upgrade to scoped); singleton via <code>ImplementationInstance</code> is supported.</td>
+</tr>
+<tr>
+<td>Unit of work</td>
+<td>At most one <code>UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</code> per composition. Throws <code>InvalidOperationException</code> on duplicate (same <code>TContext</code> or different). Read/write context splits should run as separate composition roots or use a multi-tenant <code>DbContext</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="per-request-actor-caching">Per-request actor caching</h2>
+<p><code>UseCachingActorProvider&lt;T&gt;()</code> wraps the inner <code>IActorProvider</code> with a per-request caching decorator. Chain it AFTER the matching <code>UseXxxActorProvider(...)</code> so the inner provider's <code>IOptions&lt;TOptions&gt;</code> is configured before the wrap replaces the <code>IActorProvider</code> slot.</p>
+<pre><code class="lang-csharp">builder.Services.AddTrellis(options =&gt; options
+    .UseClaimsActorProvider(o =&gt; o.ActorIdClaim = &quot;sub&quot;)
+    .UseCachingActorProvider&lt;ClaimsActorProvider&gt;());
+</code></pre>
+<h2 id="order-independence-for-explicit-resource-authorization-registrations">Order-independence for explicit resource-authorization registrations</h2>
+<p>The no-assembly form <code>UseResourceAuthorization()</code> is for AOT consumers who register each <code>ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</code> explicitly via <code>services.AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</code>. Those explicit calls can be made <strong>before</strong> <code>AddTrellis(...)</code>; <code>AddTrellisBehaviors()</code> (called by <code>UseMediator()</code>) detects pre-existing closed-generic resource-auth behaviors and re-positions them to sit immediately before <code>ValidationBehavior&lt;,&gt;</code> in the canonical pipeline envelope. This mirrors the same symmetry between <code>AddTrellisUnitOfWork&lt;TContext&gt;</code> and <code>AddDomainEventDispatch</code>: pipeline-position-aware registrations are order-independent regardless of which one runs first.</p>
+<pre><code class="lang-csharp">// Either order works; resource-auth ends up in the canonical position.
+builder.Services.AddResourceAuthorization&lt;UpdateOrderCommand, Order, Result&lt;string&gt;&gt;();
+builder.Services.AddScoped&lt;IResourceLoader&lt;UpdateOrderCommand, Order&gt;, OrderLoader&gt;();
+builder.Services.AddTrellis(options =&gt; options.UseResourceAuthorization());
+</code></pre>
+<h2 id="aot-compatibility">AOT compatibility</h2>
+<p><code>Trellis.ServiceDefaults</code> itself is <strong>AOT- and trim-compatible</strong> (<code>&lt;IsAotCompatible&gt;true&lt;/IsAotCompatible&gt;</code>, <code>&lt;IsTrimmable&gt;true&lt;/IsTrimmable&gt;</code>, <code>&lt;EnableAotAnalyzer&gt;true&lt;/EnableAotAnalyzer&gt;</code>, <code>&lt;EnableTrimAnalyzer&gt;true&lt;/EnableTrimAnalyzer&gt;</code>). The compatibility surface is split between explicit AOT-safe overloads and annotated convenience overloads:</p>
+<table>
+<thead>
+<tr>
+<th>Slot</th>
+<th>AOT-safe builder shape</th>
+<th>Scanning overload (<code>[RequiresUnreferencedCode]</code> + <code>[RequiresDynamicCode]</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FluentValidation</td>
+<td><code>o.UseFluentValidation()</code> plus <code>o.UseFluentValidation&lt;TValidator, TMessage&gt;()</code> per validator</td>
+<td><code>o.UseFluentValidation(asm)</code></td>
+</tr>
+<tr>
+<td>Resource authorization</td>
+<td><code>o.UseResourceAuthorization()</code> plus <code>o.UseResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</code> per command</td>
+<td><code>o.UseResourceAuthorization(asm)</code></td>
+</tr>
+<tr>
+<td>Resource authorization with shared loader</td>
+<td><code>o.UseSharedResourceAuthorization&lt;TMessage,TResource,TId,TResponse&gt;()</code> per message, plus a separately registered shared-loader implementation</td>
+<td><code>o.UseResourceAuthorization(asm)</code></td>
+</tr>
+<tr>
+<td>Domain events (response-shape)</td>
+<td><code>o.UseDomainEvents()</code> plus <code>o.UseDomainEvents&lt;TEvent, THandler&gt;()</code> per handler</td>
+<td><code>o.UseDomainEvents(asm)</code></td>
+</tr>
+<tr>
+<td>Domain events (tracked-aggregate)</td>
+<td><code>o.UseTrackedAggregateDomainEvents()</code> plus <code>o.UseTrackedAggregateDomainEvents&lt;TEvent, THandler&gt;()</code> per handler</td>
+<td><code>o.UseTrackedAggregateDomainEvents(asm)</code></td>
+</tr>
+</tbody>
+</table>
+<p>The AOT-safe overloads use open-generic DI registrations and explicit closed-type method calls — no reflection over assemblies. The scanning overloads remain available for non-AOT consumers and surface IL2026 / IL3050 at the consumer's call site; trimmed/AOT applications must either switch to explicit registrations or make that choice visible on their own composition code, for example with <code>[RequiresUnreferencedCode]</code> / <code>[RequiresDynamicCode]</code> or an intentional suppression.</p>
+<p><code>UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</code> is also annotated <code>[RequiresUnreferencedCode]</code> / <code>[RequiresDynamicCode]</code> because the EF Core integration depends on runtime reflection and is excluded from the Trellis AOT publish gate. AOT consumers can still use the ASP, Mediator, FluentValidation, authorization, and domain-event slots through this builder, but should compose data access separately.</p>
+<h2 id="layered-configuration-via-repeated-calls">Layered configuration via repeated calls</h2>
+<p><code>UseAsp(configure)</code> and <code>UseMediator(configureTelemetry)</code> allow repeated calls; the configure delegates compose in call order rather than overwriting. This supports library-then-host configuration patterns:</p>
+<pre><code class="lang-csharp">// Library defaults applied first…
+builder.Services.AddTrellis(o =&gt; o
+    .UseAsp(opts =&gt; opts.MapError&lt;MyDomainError&gt;(StatusCodes.Status409Conflict))
+    .UseAsp(opts =&gt; opts.HonorPrefer())); // host adds prefer handling on top
+</code></pre>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><a href="../api_reference/trellis-api-servicedefaults.html">API reference</a> — type tables and method signatures.</li>
+<li><a href="../api_reference/trellis-api-cookbook.html#recipe-12--di-wiring-playbook-addtrellis-composition-builder">Cookbook Recipe 12: DI wiring playbook</a>.</li>
+<li>Per-package articles: <a href="integration-aspnet.html"><code>integration-aspnet.md</code></a>, <a href="integration-mediator.html"><code>integration-mediator.md</code></a>, <a href="integration-fluentvalidation.html"><code>integration-fluentvalidation.md</code></a>, <a href="integration-ef.html"><code>integration-ef.md</code></a>, <a href="integration-asp-authorization.html"><code>integration-asp-authorization.md</code></a>.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/integration-servicedefaults.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

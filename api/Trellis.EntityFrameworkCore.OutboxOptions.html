@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class OutboxOptions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class OutboxOptions | Trellis ">
+      
+      <meta name="description" content="Tuning for the transactional outbox relay (OutboxRelay{TContext}).">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_EntityFrameworkCore_OutboxOptions.md&amp;value=---%0Auid%3A%20Trellis.EntityFrameworkCore.OutboxOptions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.EntityFrameworkCore.OutboxOptions">
+
+
+
+  <h1 id="Trellis_EntityFrameworkCore_OutboxOptions" data-uid="Trellis.EntityFrameworkCore.OutboxOptions" class="text-break">
+Class OutboxOptions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore.Outbox/src/OutboxOptions.cs/#L6"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.EntityFrameworkCore.html">EntityFrameworkCore</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.EntityFrameworkCore.Outbox.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Tuning for the transactional outbox relay (<code>OutboxRelay{TContext}</code>).</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class OutboxOptions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">OutboxOptions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_EntityFrameworkCore_OutboxOptions_BatchSize_" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.BatchSize*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_OutboxOptions_BatchSize" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.BatchSize">
+  BatchSize
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore.Outbox/src/OutboxOptions.cs/#L12"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maximum messages drained per poll. Default: 100. Must be greater than zero.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int BatchSize { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_OutboxOptions_LeaseDuration_" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.LeaseDuration*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_OutboxOptions_LeaseDuration" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.LeaseDuration">
+  LeaseDuration
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore.Outbox/src/OutboxOptions.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>How long a relay drain holds an exclusive claim (lease) on the rows it drains before another
+instance may reclaim them. Set it comfortably above the time to publish one batch so a slow batch
+is not reclaimed mid-flight; a crashed instance's rows become reclaimable once the lease expires.
+Default: 5 minutes. Must be greater than zero.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TimeSpan LeaseDuration { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_OutboxOptions_MaxAttempts_" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.MaxAttempts*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_OutboxOptions_MaxAttempts" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.MaxAttempts">
+  MaxAttempts
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore.Outbox/src/OutboxOptions.cs/#L18"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Maximum relay attempts before a failing message is parked (left unprocessed but skipped by the
+scan so it does not block later messages). Default: 10. Must be greater than zero.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int MaxAttempts { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_OutboxOptions_MaxRetryBackoff_" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.MaxRetryBackoff*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_OutboxOptions_MaxRetryBackoff" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.MaxRetryBackoff">
+  MaxRetryBackoff
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore.Outbox/src/OutboxOptions.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The ceiling on the exponential retry backoff: the per-retry wait grows from
+<a class="xref" href="Trellis.EntityFrameworkCore.OutboxOptions.html#Trellis_EntityFrameworkCore_OutboxOptions_RetryBackoff">RetryBackoff</a> but never exceeds this, so a persistently failing message keeps being
+retried at a steady, bounded cadence (rather than spacing out into many hours) until it reaches
+<a class="xref" href="Trellis.EntityFrameworkCore.OutboxOptions.html#Trellis_EntityFrameworkCore_OutboxOptions_MaxAttempts">MaxAttempts</a>. Default: 1 hour. Must be greater than or equal to
+<a class="xref" href="Trellis.EntityFrameworkCore.OutboxOptions.html#Trellis_EntityFrameworkCore_OutboxOptions_RetryBackoff">RetryBackoff</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TimeSpan MaxRetryBackoff { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_OutboxOptions_PollInterval_" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.PollInterval*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_OutboxOptions_PollInterval" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.PollInterval">
+  PollInterval
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore.Outbox/src/OutboxOptions.cs/#L9"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>How long the relay waits before polling again when the outbox is empty. Default: 5 seconds. Must be greater than zero.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TimeSpan PollInterval { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_OutboxOptions_RetryBackoff_" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.RetryBackoff*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_OutboxOptions_RetryBackoff" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.RetryBackoff">
+  RetryBackoff
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore.Outbox/src/OutboxOptions.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The base delay before a failed message is retried. The relay backs off exponentially from this
+base — the wait after the <code>n</code>th failed attempt is <code>RetryBackoff × 2^(n-1)</code>, capped at
+<a class="xref" href="Trellis.EntityFrameworkCore.OutboxOptions.html#Trellis_EntityFrameworkCore_OutboxOptions_MaxRetryBackoff">MaxRetryBackoff</a> — so a transient failure is retried with growing spacing instead of
+in a tight loop that would hammer the database. Default: 30 seconds. Must be greater than zero.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TimeSpan RetryBackoff { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_EntityFrameworkCore_OutboxOptions_RetryBackoffJitter_" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.RetryBackoffJitter*"></a>
+
+  <h3 id="Trellis_EntityFrameworkCore_OutboxOptions_RetryBackoffJitter" data-uid="Trellis.EntityFrameworkCore.OutboxOptions.RetryBackoffJitter">
+  RetryBackoffJitter
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore.Outbox/src/OutboxOptions.cs/#L53"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>How much of the computed exponential backoff is spread by a deterministic, per-message jitter, as
+a fraction in <code>[0, 1]</code>. The jitter only ever <i>subtracts</i> from the delay — the actual wait
+is <code>computed × (1 - RetryBackoffJitter × f(Id))</code> for a stable <code>f(Id) ∈ [0, 1)</code> — so it
+never exceeds <a class="xref" href="Trellis.EntityFrameworkCore.OutboxOptions.html#Trellis_EntityFrameworkCore_OutboxOptions_MaxRetryBackoff">MaxRetryBackoff</a> while de-correlating messages that failed together, so
+they do not all retry the instant a failed dependency recovers. <code>0</code> disables jitter (every
+message uses the exact computed delay). Default: 0.5. Must be between 0 and 1 inclusive.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public double RetryBackoffJitter { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.EntityFrameworkCore.Outbox/src/OutboxOptions.cs/#L6" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

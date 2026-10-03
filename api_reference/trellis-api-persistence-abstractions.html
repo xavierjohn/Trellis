@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Persistence.Abstractions — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Persistence.Abstractions — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-persistence-abstractions.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellispersistenceabstractions--api-reference">Trellis.Persistence.Abstractions — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Persistence.Abstractions</code>
+<strong>Namespace:</strong> <code>Trellis</code>
+<strong>Purpose:</strong> Store-agnostic persistence contracts — the commit boundary and the idempotent-consumer inbox store SPIs — so an adapter can persist Trellis state over EF Core (the shipped default), Dapper, ADO, Cosmos DB, or any other store without taking a dependency on a specific persistence technology.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are implementing the commit boundary (<code>IUnitOfWork</code>) for a non-EF store.</li>
+<li>You are implementing the inbox dedup record store (<code>IInboxStore</code>) or the pull-consumer resume cursor (<code>IConsumerCheckpointStore</code>) for a non-EF store.</li>
+<li>You want to install the standard transactional command pipeline over your own <code>IUnitOfWork</code> — see <code>AddTransactionalCommandBehavior()</code> in <code>Trellis.Mediator</code>.</li>
+<li>All types in this package live in the <code>Trellis</code> namespace. After adding the <code>Trellis.Persistence.Abstractions</code> package reference, the existing <code>using Trellis;</code> (or implicit usings) brings them into scope; no new <code>using</code> directive is required.</li>
+</ul>
+<h2 id="package-role">Package role</h2>
+<ul>
+<li>The package depends only on <code>Trellis.Core</code>. It names no EF, Dapper, or vendor type, so any adapter can implement the contracts without inheriting a persistence dependency.</li>
+<li><code>Trellis.EntityFrameworkCore</code> is the shipped adapter: <code>EfUnitOfWork&lt;TContext&gt;</code> realizes <code>IUnitOfWork</code>, and <code>Trellis.EntityFrameworkCore.Inbox</code> realizes <code>IInboxStore</code> / <code>IConsumerCheckpointStore</code>.</li>
+<li>The commit pipeline (<code>TransactionalCommandBehavior</code>) and the consume-side dispatch contracts (<code>IInboxDispatcher</code>, <code>IntegrationEnvelope</code>, <code>InboxDispatchOutcome</code>) live in <code>Trellis.Mediator</code>, since the inbox dispatcher invokes integration-event handlers through the mediator.</li>
+</ul>
+<h2 id="iunitofwork"><code>IUnitOfWork</code></h2>
+<p>The commit boundary for staged changes. Repositories stage changes; <code>CommitAsync</code> persists them.</p>
+<pre><code class="lang-csharp">public interface IUnitOfWork
+{
+    Task&lt;Result&lt;Unit&gt;&gt; CommitAsync(CancellationToken cancellationToken = default);
+    IUnitOfWorkScope BeginScope();
+}
+</code></pre>
+<ul>
+<li><code>CommitAsync</code> returns <code>Result&lt;Unit&gt;</code> so concurrency, duplicate-key, and foreign-key failures surface as a typed <code>Error</code> instead of an exception.</li>
+<li><code>BeginScope</code> makes nested commits depth-aware: a <code>CommitAsync</code> call inside a nested scope (depth &gt; 1) must defer (return success without writing); only the outermost scope's <code>CommitAsync</code> persists. This lets the standard <code>TransactionalCommandBehavior</code> wrap every command without a successful inner command committing a partially-completed outer command's staged changes.</li>
+</ul>
+<h2 id="iunitofworkscope"><code>IUnitOfWorkScope</code></h2>
+<pre><code class="lang-csharp">public interface IUnitOfWorkScope : IDisposable
+{
+    bool IsOwner { get; }
+}
+</code></pre>
+<p><code>IsOwner</code> is fixed when the scope opens: true for the outermost scope and false for nested scopes. Disposal ends the scope without committing. Custom adapters must return this scope contract (a breaking change from <code>IDisposable</code>) and preserve nested commit deferral. The mediator uses ownership to retain nested aggregate dispatch until an actual owning commit succeeds, including when the outer response is a DTO or Unit.</p>
+<p>Automatic event dispatch inside a manually opened outer scope is rejected: use manual <code>DispatchAggregateEventsAsync</code> after the manual owning commit instead. Scope depth is per unit-of-work instance; concurrent commands sharing it are unsupported. An ignored inner failure does not roll back its staged changes.</p>
+<h2 id="iinboxstore-and-inboxrecord"><code>IInboxStore</code> and <code>InboxRecord</code></h2>
+<p>The dedup record store SPI for idempotent integration-event consumption. The dispatcher records a processed <code>(ConsumerId, MessageId)</code> pair inside the consumer's unit of work, so the dedup record and the handler side effects commit together — or not at all.</p>
+<pre><code class="lang-csharp">public sealed record InboxRecord(
+    Guid MessageId,
+    string EventType,
+    DateTimeOffset OccurredAt,
+    string? MessageSource = null,
+    Guid? CausationId = null,
+    string? CorrelationId = null);
+
+public interface IInboxStore
+{
+    Task&lt;bool&gt; TryRecordAsync(string consumerId, InboxRecord record, CancellationToken cancellationToken);
+
+    Task&lt;IReadOnlyList&lt;Guid&gt;&gt; FilterUnprocessedAsync(
+        string consumerId, IReadOnlyCollection&lt;Guid&gt; messageIds, CancellationToken cancellationToken);
+}
+</code></pre>
+<ul>
+<li><code>InboxRecord</code> is persistence-native: it carries the dedup identity (<code>MessageId</code>) plus optional lineage / observability metadata, and names no messaging type, so the store contract depends only on <code>Trellis.Core</code>. A dispatcher maps its transport envelope to an <code>InboxRecord</code>.</li>
+<li><code>TryRecordAsync</code> returns <code>true</code> if the message was newly recorded, or <code>false</code> if the <code>(ConsumerId, MessageId)</code> pair was already processed — a duplicate the caller should skip. An implementation preserves all-or-nothing atomicity only by enrolling the dedup record in the same unit of work the dispatcher commits.</li>
+<li><code>FilterUnprocessedAsync</code> powers the gap-free anti-join pull model: it returns the subset of candidate ids with no dedup row yet, preserving input order. It is a pure read and stages nothing.</li>
+</ul>
+<h2 id="iconsumercheckpointstore"><code>IConsumerCheckpointStore</code></h2>
+<p>A pull consumer's durable resume cursor — the per-<code>ConsumerId</code> position in a source feed, so a consumer resumes where it left off instead of rescanning the whole log on every poll or restart.</p>
+<pre><code class="lang-csharp">public interface IConsumerCheckpointStore
+{
+    Task&lt;Maybe&lt;string&gt;&gt; GetAsync(string consumerId, CancellationToken cancellationToken);
+    Task SetAsync(string consumerId, string position, CancellationToken cancellationToken);
+}
+</code></pre>
+<ul>
+<li><strong>Performance, not correctness.</strong> The checkpoint narrows the scan window; it is not the deduplication boundary. Correctness stays with the inbox anti-join (<code>IInboxStore.FilterUnprocessedAsync</code>) plus the dedup row. Scan a window that overlaps the checkpoint and let the anti-join skip whatever is already processed.</li>
+<li><strong>Opaque position.</strong> Trellis does not interpret <code>position</code> — it is whatever cursor the source feed uses (a sequence number, a UUIDv7 high-water mark, a timestamp), serialized to a string. The store persists and returns it verbatim.</li>
+<li><strong>Last-writer-wins.</strong> The cursor is single-valued per <code>ConsumerId</code>; <code>SetAsync</code> is an upsert. A shared cursor is not a coordination primitive — the typical shape is one logical advancer per consumer.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-persistence-abstractions.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

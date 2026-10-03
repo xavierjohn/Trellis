@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ADR-005 — Re-introduce Trellis.Unit and Collapse Non-Generic Result to a Static Factory | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ADR-005 — Re-introduce Trellis.Unit and Collapse Non-Generic Result to a Static Factory | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-005-reintroduce-unit.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="adr-005--re-introduce-trellisunit-and-collapse-non-generic-result-to-a-static-factory">ADR-005 — Re-introduce <code>Trellis.Unit</code> and Collapse Non-Generic <code>Result</code> to a Static Factory</h1>
+
+<blockquote>
+<p><strong>Status:</strong> Accepted (counter-ADR to ADR-002 §3 &quot;Unit removal&quot;).</p>
+<p><strong>Date:</strong> 2026-04-30</p>
+<p><strong>Supersedes (if accepted):</strong> ADR-002 §3 lines 502–570 (the &quot;Unit is removed from the public API; non-generic <code>Result</code> represents success-or-failure-without-payload&quot; decision).</p>
+</blockquote>
+<hr>
+<h2 id="context">Context</h2>
+<p>ADR-002 §3 removed <code>Unit</code> from the public API and introduced a non-generic <code>Result</code> type as a peer to <code>Result&lt;T&gt;</code>, justified by:</p>
+<ol>
+<li>Eliminating the <code>Trellis.Unit</code> vs <code>Mediator.Unit</code> (martinothamar/Mediator) namespace collision.</li>
+<li>Call-site ergonomics: <code>Tap(() =&gt; log(&quot;done&quot;))</code> reads cleaner than <code>Tap(_ =&gt; log(&quot;done&quot;))</code>.</li>
+<li>The claim that the receiver type would filter IntelliSense to ~12 overloads per verb regardless of the absolute overload count, so AI/IntelliSense never has to choose between unit and value shapes (&quot;the call-site count goes <em>down</em>, not up&quot; — ADR-002:559).</li>
+</ol>
+<p>The honest cost the original ADR admitted (ADR-002:546–559):</p>
+<ul>
+<li>Verb shapes: 7 → 16 (Map, Bind, Tap, Tap, Ensure, Match, Recover all need unit + cross-shape variants).</li>
+<li>× 6 async forms = <strong>96 overloads vs ~42</strong> with <code>Result&lt;Unit&gt;</code>.</li>
+<li>Plus <code>BindZip</code> (T4 1..9 arity) and the LINQ surface get the same treatment, adding roughly another 30 overloads.</li>
+</ul>
+<p>This ADR records the empirical evidence accumulated between 2026-04-27 and 2026-04-30 and proposes reverting the Unit-removal decision while preserving the namespace-collision fix.</p>
+<hr>
+<h2 id="evidence">Evidence</h2>
+<p>Four head-to-head LLM lab runs against the Trellis framework + Order Management spec (recorded in <code>Trellis-lab-runs/LAB_HISTORY.md</code>):</p>
+<ul>
+<li>2026-04-27: GPT-5.5 single-model baseline.</li>
+<li>2026-04-29: 2-model (GPT-5.5 + Opus 4.7), the first run on the v2 surface after the rename.</li>
+<li>2026-04-30: 3-model (GPT-5.5 + Opus 4.7 + Sonnet 4.6), the first run after the 14-file <code>trellis-api-*.md</code> rewrite.</li>
+</ul>
+<p>These runs collectively executed Step 4 (initial implementation of an Order Management service) and Step 7 (<code>TRELLIS_FEEDBACK.md</code> self-feedback) on three independent models.</p>
+<h3 id="friction-mode-1--map--bind-arity-confusion-was-the-most-cited-fluent-api-friction">Friction Mode 1 — <code>Map</code> / <code>Bind</code> arity confusion was the most-cited fluent-API friction</h3>
+<p>All three models in the 2026-04-30 run cited Map/Bind arity confusion as a friction point in their <code>TRELLIS_FEEDBACK.md</code>:</p>
+<blockquote>
+<p>&quot;I had to remember whether the source was <code>Result</code> (non-generic) or <code>Result&lt;T&gt;</code> to know whether <code>Map</code>'s lambda took zero parameters or one. Several compile failures came from <code>Map(_ =&gt; ...)</code> on a non-generic source — the only available overload is <code>Map&lt;TOut&gt;(Func&lt;TOut&gt;)</code> (<code>Result.NonGeneric.Extensions.cs:38</code>), so the compiler rejects the discard-parameter form by ordinary overload resolution.&quot; — paraphrased from one feedback doc; equivalent statements appear in all three.</p>
+</blockquote>
+<p>This contradicts the ADR-002:559 claim that the <em>call-site</em> surface is smaller. The call site sees:</p>
+<ul>
+<li><code>Result.Ok().Map(() =&gt; 1)</code> — works</li>
+<li><code>Result.Ok().Map(_ =&gt; 1)</code> — CS1593 (no overload accepts <code>Func&lt;T,U&gt;</code> here)</li>
+<li><code>Result.Ok(0).Map(_ =&gt; 1)</code> — works</li>
+<li><code>Result.Ok(0).Map(() =&gt; 1)</code> — CS1593 (no overload accepts <code>Func&lt;U&gt;</code> here)</li>
+</ul>
+<p>The receiver type does narrow the overload list, but the overload list now contains <em>only one shape that compiles</em>, and the rule for which is which depends on remembering whether the receiver is generic or non-generic. With <code>Result&lt;Unit&gt;</code>, the lambda always takes one parameter; the discard is uniform; the compiler accepts both forms via the single generic overload (<code>Map.cs:26-35</code>).</p>
+<h3 id="friction-mode-2--sequenceselector-vs-traverseselector-was-a-real-shipping-bug">Friction Mode 2 — <code>Sequence(selector)</code> vs <code>Traverse(selector)</code> was a real shipping bug</h3>
+<p>Sonnet 4.6's 2026-04-30 feedback (<code>F2</code>) identified that <code>template/.github/copilot-instructions.md:302</code> writes:</p>
+<pre><code class="lang-csharp">products.Sequence(p =&gt; p.ReleaseStock(...))
+</code></pre>
+<p>…but <code>Sequence&lt;T&gt;</code> has no selector overload (<code>Trellis.Core/src/Result/Extensions/Traverse.cs:270</code>). The selector form is <code>Traverse&lt;TIn,TOut&gt;</code> (line 40). This was a real bug in template-shipped guidance that no other model caught.</p>
+<p>Root cause: when <code>Result</code> and <code>Result&lt;T&gt;</code> are peer types, the framework needs <em>two</em> operators to express &quot;apply a fallible function across a collection&quot; — one that returns <code>Result</code> (the non-generic, when the function is unit-returning) and one that returns <code>Result&lt;TOut&gt;</code> (the generic). The natural names — <code>Sequence</code> and <code>Traverse</code> — diverge in selector arity in a way that mirrors the Map/Bind asymmetry above. Under <code>Result&lt;Unit&gt;</code>, both collapse to a single <code>Traverse&lt;TIn,TOut&gt;</code> where <code>TOut = Unit</code> is just one of many call sites and no special operator is required.</p>
+<h3 id="friction-mode-3--cross-shape-bind-matrix-is-incomplete-by-design">Friction Mode 3 — Cross-shape <code>Bind</code> matrix is incomplete by design</h3>
+<p>The non-generic <code>Result</code> introduced cross-shape <code>Bind</code> overloads to bridge unit↔value (centralized in <code>Result.NonGeneric.Extensions.cs:124-169</code>):</p>
+<ul>
+<li><code>Result.Bind(Func&lt;Result&gt; next)</code> — unit→unit ✓ exists</li>
+<li><code>Result.Bind&lt;U&gt;(Func&lt;Result&lt;U&gt;&gt; next)</code> — unit→value ✓ exists</li>
+<li><code>Result&lt;T&gt;.Bind(Func&lt;T, Result&gt; next)</code> — value→unit ✓ exists</li>
+<li><code>Result&lt;T&gt;.Bind(Func&lt;Result&lt;U&gt;&gt; next)</code> — value→value (ignoring T) — <strong>does not exist</strong> (consistent with ADR-002 &quot;no Bind that ignores its source&quot;)</li>
+</ul>
+<p>This is internally coherent but produces a footgun: AI models reach for the missing shape (write <code>someValueResult.Bind(() =&gt; DoNext())</code> expecting it to compile), get a CS1593 overload-resolution error, and then have to either add a <code>_ =&gt;</code> discard or restructure into a <code>.Tap(_ =&gt; ...).Map(_ =&gt; ...)</code> chain. The 2026-04-29 baseline run logged 4 instances of this across both models (Opus and GPT). The 2026-04-30 run logged 3 more.</p>
+<p>Under <code>Result&lt;Unit&gt;</code>:</p>
+<ul>
+<li><code>Result&lt;T&gt;.Bind(Func&lt;T, Result&lt;U&gt;&gt;)</code> — exists (the only shape).</li>
+<li>&quot;Value-returning step that ignores prior value&quot; is written <code>r.Bind(_ =&gt; DoNext())</code> — uniform across all chains.</li>
+</ul>
+<p>There is no missing shape because there are no shape variants.</p>
+<h3 id="friction-mode-4--result-cannot-be-the-linq-identity-for-resultt">Friction Mode 4 — <code>Result</code> cannot be the LINQ identity for <code>Result&lt;T&gt;</code></h3>
+<p>Trellis exposes a LINQ surface (<code>Trellis.Core/src/Result/Extensions/Linq.cs</code>) that lets <code>from x in result1 from y in result2 select x + y</code> desugar to monadic <code>Bind</code>. The LINQ pattern requires:</p>
+<ul>
+<li><code>SelectMany&lt;TIn,TBind,TOut&gt;(this Result&lt;TIn&gt;, Func&lt;TIn,Result&lt;TBind&gt;&gt;, Func&lt;TIn,TBind,TOut&gt;) → Result&lt;TOut&gt;</code></li>
+</ul>
+<p>When the right-hand side is unit (<code>Result</code>), the synthesized <code>TBind</code> cannot be inferred — the LINQ compiler has no way to match <code>Func&lt;TIn, Result&gt;</code> against the expected <code>Func&lt;TIn, Result&lt;TBind&gt;&gt;</code>. The current implementation handles this by <em>omitting</em> unit-returning steps from the LINQ surface entirely — they must be expressed as <code>.Tap(...)</code> or <code>.Bind(...)</code> at the chain boundary, breaking out of LINQ.</p>
+<p>Under <code>Result&lt;Unit&gt;</code>, every step has a synthesizable <code>TBind</code> (it's <code>Unit</code>). The LINQ compiler is happy. No &quot;break out of LINQ for unit steps&quot; rule.</p>
+<p>This is the only friction mode that is <em>strictly</em> impossible to fix while keeping non-generic <code>Result</code> as a peer type.</p>
+<h3 id="friction-mode-5--mediator-handler-signatures-are-noisier-not-cleaner">Friction Mode 5 — Mediator handler signatures are noisier, not cleaner</h3>
+<p>ADR-002 claimed <code>Task&lt;Result&gt;</code> is an improvement over <code>Task&lt;Result&lt;Unit&gt;&gt;</code>. In practice in the lab runs, handler bodies look like:</p>
+<pre><code class="lang-csharp">// Current (non-generic Result peer type)
+public async ValueTask&lt;Result&gt; Handle(SubmitOrderCommand cmd, CancellationToken ct)
+{
+    var order = await _repo.GetByIdAsync(cmd.OrderId, ct);
+    return order
+        .ToResult(new Error.NotFound(...))
+        .Bind(o =&gt; o.Submit())     // Result&lt;Order&gt;
+        .AsUnit();                 // &lt;-- existing operator that drops the value
+}
+</code></pre>
+<p><code>AsUnit()</code> already exists (<code>Trellis.Core/src/Result/Result{TValue}.cs:304</code>) and bridges <code>Result&lt;T&gt;</code> → non-generic <code>Result</code>. The friction is not the bridging operator itself — it is that the chain has to <em>cross a type boundary</em> at the end. Under <code>Result&lt;Unit&gt;</code> the same expression is:</p>
+<pre><code class="lang-csharp">public async ValueTask&lt;Result&lt;Unit&gt;&gt; Handle(SubmitOrderCommand cmd, CancellationToken ct)
+{
+    var order = await _repo.GetByIdAsync(cmd.OrderId, ct);
+    return order
+        .ToResult(new Error.NotFound(...))
+        .Bind(o =&gt; o.Submit())   // Result&lt;Order&gt;
+        .AsUnit();               // &lt;-- now returns Result&lt;Unit&gt;; same shape, no boundary crossing
+}
+</code></pre>
+<p><code>AsUnit()</code> is repurposed in v3 to return <code>Result&lt;Unit&gt;</code> (see §What changes #4 below). The chain stays uniform — every step returns <code>Result&lt;TSomething&gt;</code>, no shape switch happens. Note: today <code>Discard()</code> (<code>Trellis.Core/src/Result/Extensions/Discard.cs:19</code>) returns <code>void</code> and is <em>not</em> a chain-preserving operator — it is an end-of-chain &quot;I am intentionally ignoring the outcome&quot; marker, semantically distinct from <code>AsUnit()</code>. ADR-005 does not change <code>Discard()</code>.</p>
+<hr>
+<h2 id="decision">Decision</h2>
+<p>Re-introduce <code>Trellis.Unit</code> as public API and collapse non-generic <code>Result</code> to <strong>Option B: a static factory holder</strong>, in a single v3 breaking transition.</p>
+<h3 id="what-changes">What changes</h3>
+<ol>
+<li><p><strong><code>Trellis.Unit</code> becomes public.</strong> <code>internal record struct Unit { }</code> → <code>public readonly record struct Unit { public static readonly Unit Default; }</code>. Single canonical instance, value type, default-constructible.</p>
+</li>
+<li><p><strong>Non-generic <code>Result</code> (instance type) is replaced by <code>Result</code> (static class).</strong> <code>Trellis.Core/src/Result/Result.cs</code> (354 lines, instance type with <code>IsSuccess</code>/<code>IsFailure</code>/<code>Error</code>/<code>TryGetError</code>/<code>Deconstruct</code> plus all factories) is replaced by a static factory class with no instance shape:</p>
+<pre><code class="lang-csharp">public static class Result
+{
+    public static Result&lt;TValue&gt; Ok&lt;TValue&gt;(TValue value);
+    public static Result&lt;TValue&gt; Fail&lt;TValue&gt;(Error error);
+
+    // Unit-returning factories — return Result&lt;Unit&gt;
+    public static Result&lt;Unit&gt; Ok();              // Result&lt;Unit&gt; success
+    public static Result&lt;Unit&gt; Fail(Error error); // Result&lt;Unit&gt; failure
+
+    public static Result&lt;TValue&gt; Try&lt;TValue&gt;(Func&lt;TValue&gt; work, Func&lt;Exception, Error&gt;? map = null);
+    public static Result&lt;Unit&gt; Try(Action work, Func&lt;Exception, Error&gt;? map = null);
+    // ... TryAsync overloads ...
+    public static Result&lt;Unit&gt; Ensure(bool condition, Error error);
+    public static Result&lt;Unit&gt; Ensure(Func&lt;bool&gt; predicate, Error error);
+}
+</code></pre>
+<p>Call sites that today read <code>Result.Ok()</code> / <code>Result.Fail(err)</code> / <code>Result.Ensure(cond, err)</code> continue to compile; the <em>returned type</em> is now <code>Result&lt;Unit&gt;</code> instead of the instance <code>Result</code>. Call sites that today read <code>Result.Ok(value)</code> are unchanged.</p>
+<p>The non-generic <code>Result</code> is also a <code>partial readonly struct</code> across <code>Result.cs</code>, <code>Result.Combine.cs</code>, and the T4-generated outputs of <code>CombineTs.g.tt</code> and <code>ParallelAsyncs.g.tt</code>. All four files are migrated together; the T4 templates are updated to emit only <code>Result&lt;TValue&gt;</code> shapes.</p>
+</li>
+<li><p><strong><code>Result.NonGeneric.Extensions.cs</code> (828 lines, all non-generic and cross-shape verb overloads) is deleted.</strong> Verbs apply uniformly to <code>Result&lt;T&gt;</code> where <code>T</code> may be <code>Unit</code>. Cross-shape <code>Bind</code>/<code>Map</code>/<code>Tap</code>/<code>Ensure</code>/<code>Match</code>/<code>Recover</code> overloads in this file collapse to ordinary single-shape generic verbs.</p>
+</li>
+<li><p><strong><code>Result&lt;T&gt;.AsUnit()</code> is repurposed in v3.</strong> Today it returns non-generic <code>Result</code> (<code>Result{TValue}.cs:304</code>). In v3 it returns <code>Result&lt;Unit&gt;</code>. The semantic — &quot;discard the value, preserve the error if any&quot; — is unchanged; only the return type shape changes. Documented in v3 release notes as a breaking signature change.</p>
+</li>
+<li><p><strong><code>Trellis.Asp</code> HTTP mapping restores <code>Result&lt;Unit&gt; → 204 No Content</code>.</strong> This is <strong>not</strong> new design work — it is a restoration of the PR #209 (<code>6759e7d</code>, &quot;Return HTTP 204 No Content for successful Result<unit> operations&quot;) mechanism that was deleted by PR #394 (<code>dc6e028</code>, &quot;Replace Result<unit> with non-generic Result (Phase 1a PR5)&quot;) as part of the original ADR-002 §3 implementation. The original mechanism was a one-line type test inside the generic <code>Result&lt;TValue&gt;</code> HTTP mapper:</unit></unit></p>
+<pre><code class="lang-csharp">if (typeof(TValue) == typeof(Unit))
+    return Results.NoContent();
+</code></pre>
+<p>The same check is reintroduced at the head of the current <code>TrellisHttpResult&lt;TDomain,TBody&gt;</code> projector (and its <code>Task</code> / <code>ValueTask</code> extension entry points). The OpenAPI generator analogously suppresses the response schema and emits <code>Status204NoContent</code> metadata for <code>Result&lt;Unit&gt;</code> returns instead of <code>Status200OK + typeof(Body)</code>. PR #209's tests were comprehensive (covered both Mvc and minimal-API paths, both <code>Task&lt;Result&lt;Unit&gt;&gt;</code> and <code>ValueTask&lt;Result&lt;Unit&gt;&gt;</code> overloads); their successors port back as part of the v3 cut. The existing <code>TrellisEmptyResult</code> type that handles non-generic <code>Result</code> (<code>Trellis.Asp/src/Response/HttpResponseExtensions.cs:300</code>) is deleted along with the non-generic mapping path in §What changes #2.</p>
+</li>
+<li><p><strong><code>IFailureFactory&lt;TSelf&gt;</code> keeps its current shape but is implemented only by <code>Result&lt;TValue&gt;</code> (including <code>Result&lt;Unit&gt;</code>).</strong> The non-generic <code>Result.IFailureFactory&lt;Result&gt;</code> implementation is removed; mediator pipeline behaviors that today close over <code>TResponse = Result</code> close over <code>TResponse = Result&lt;Unit&gt;</code> instead.</p>
+</li>
+</ol>
+<h3 id="wider-migration-blast-radius-kept-call-shape-breaking-signature">Wider migration blast radius (kept call-shape, breaking signature)</h3>
+<p>The following public-API surfaces currently typed <code>Task&lt;Result&gt;</code> / <code>ValueTask&lt;Result&gt;</code> migrate to <code>Task&lt;Result&lt;Unit&gt;&gt;</code> / <code>ValueTask&lt;Result&lt;Unit&gt;&gt;</code>:</p>
+<ul>
+<li><code>Trellis.EntityFrameworkCore.IUnitOfWork.CommitAsync()</code> (<code>IUnitOfWork.cs:13-22</code>)</li>
+<li><code>Trellis.EntityFrameworkCore.DbContextExtensions.SaveChangesResultUnitAsync(...)</code> (<code>DbContextExtensions.cs:94-120</code>) — name retained; signature changes</li>
+<li><code>Trellis.Asp.HttpResponseExtensions.ToHttpResponse(this Task&lt;Result&gt;)</code> and <code>(this ValueTask&lt;Result&gt;)</code> (<code>HttpResponseExtensions.cs:48-58</code>)</li>
+<li>All mediator handler signatures across <code>Trellis.Mediator</code> and consumer code (<code>Task&lt;Result&gt;</code> → <code>Task&lt;Result&lt;Unit&gt;&gt;</code>)</li>
+<li>All <code>IRepositoryBase&lt;TAggregate, TId&gt;</code> write methods returning <code>Task&lt;Result&gt;</code> (unit-of-work pattern)</li>
+</ul>
+<p>Migration is mechanical — a sed/codemod replaces <code>Task&lt;Result&gt;</code> with <code>Task&lt;Result&lt;Unit&gt;&gt;</code> everywhere, and the generic verb chain re-types automatically.</p>
+<h3 id="what-stays">What stays</h3>
+<ol>
+<li><p><strong><code>IResult</code> and <code>IResult&lt;TValue&gt;</code> stay.</strong> The polymorphic abstraction is necessary for pipeline behaviors (per ADR-002 §3 retention rationale), and removing it would force every handler-discovery code path to switch on closed types.</p>
+</li>
+<li><p><strong><code>Result&lt;T&gt;</code> instance type stays unchanged</strong> — same surface (<code>IsSuccess</code>, <code>IsFailure</code>, <code>Error</code>, <code>TryGetValue</code>, <code>TryGetError</code>, <code>Deconstruct</code>), same verbs, same async matrix. Only the v3 <code>AsUnit()</code> return type changes (§What changes #4).</p>
+</li>
+<li><p><strong>All other ROP primitives stay</strong> — <code>Error</code> (and its closed-ADT cases), <code>Maybe&lt;T&gt;</code>, <code>Combine</code>, <code>Traverse</code>, <code>Recover</code>, <code>BindZip</code>, <code>WhenAll</code>, <code>ParallelAsync</code>, the LINQ surface, the <code>Match</code> terminal.</p>
+</li>
+<li><p><strong>Renames stay</strong> — <code>Result.Ok</code> and <code>Result.Fail</code> (vs <code>Success</code>/<code>Failure</code>) are not reverted. The shorter names match cross-language priors and were a separate, uncontested decision.</p>
+</li>
+<li><p><strong><code>Trellis.Unit</code> vs <code>Mediator.Unit</code> collision is solved by namespace, not by deletion.</strong> <code>Trellis.Mediator</code> pipeline behaviors today are already abstract over <code>TResponse : IResult</code> / <code>IFailureFactory&lt;TResponse&gt;</code> (<code>ValidationBehavior.cs</code>, <code>AuthorizationBehavior.cs</code>, <code>ResourceAuthorizationBehavior.cs</code>, <code>ExceptionBehavior.cs</code>, <code>LoggingBehavior.cs</code>, <code>TracingBehavior.cs</code>) and do <em>not</em> reference <code>Mediator.Unit</code>. The collision is consumer-visible only when a consumer file imports both <code>Trellis</code> and <code>Mediator</code> namespaces — the standard <code>using MediatorUnit = Mediator.Unit;</code> (or the reverse) resolves it. No framework-internal translation layer is needed because none currently exists or is required.</p>
+</li>
+</ol>
+<h3 id="migration-path">Migration path</h3>
+<p><strong>Single v3 breaking transition.</strong> No additive v2.x deprecation phase is offered, because C# does not permit overloading by return type — adding a new <code>Result.Ok()</code> returning <code>Result&lt;Unit&gt;</code> while the existing <code>Result.Ok()</code> returns non-generic <code>Result</code> is impossible without renaming one of them, and a transient name (e.g., <code>Result.OkUnit()</code>) imposes a worse migration cost on consumers than a single mechanical cutover.</p>
+<p>Justified by:</p>
+<ul>
+<li>Trellis is pre-1.0 alpha; there is no large external-consumer base requiring a deprecation window.</li>
+<li>The migration is mechanical (<code>Task&lt;Result&gt;</code> → <code>Task&lt;Result&lt;Unit&gt;&gt;</code>, callers of <code>Result.Ok()</code>/<code>Result.Fail(err)</code> unchanged at the source level, mediator pipeline behaviors unchanged at the source level, ASP behavior preserved by the §What changes #5 specialization).</li>
+<li>ADR-002 itself ships in a single v2 breaking cut (no deprecation period was offered for Unit-removal); ADR-005 reverses it in the same shape.</li>
+</ul>
+<p>The v3 cut bundles:</p>
+<ol>
+<li>The <code>Unit</code> public reintroduction.</li>
+<li>The <code>Result</code> static-class replacement.</li>
+<li>The non-generic-extensions deletion.</li>
+<li>The <code>AsUnit()</code> return-type change.</li>
+<li>The Trellis.Asp <code>Result&lt;Unit&gt;</code> 204 No Content specialization.</li>
+<li>Mechanical updates to template, examples, samples, <code>trellis-api-*.md</code>, cookbook, and the audit gate.</li>
+</ol>
+<h3 id="code-reduction-measurement">Code-reduction measurement</h3>
+<p>Net source-line reduction under Option B (v3 complete):</p>
+<table>
+<thead>
+<tr>
+<th>Removed</th>
+<th>File / surface</th>
+<th style="text-align: right;">Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Result.cs</code> (instance type, all factories)</td>
+<td><code>Trellis.Core/src/Result/Result.cs</code></td>
+<td style="text-align: right;">354</td>
+</tr>
+<tr>
+<td><code>Result.Combine.cs</code> (partial struct contribution)</td>
+<td><code>Trellis.Core/src/Result/Result.Combine.cs</code></td>
+<td style="text-align: right;">39</td>
+</tr>
+<tr>
+<td>Non-generic verb extensions (54 overloads)</td>
+<td><code>Trellis.Core/src/Result/Extensions/Result.NonGeneric.Extensions.cs</code></td>
+<td style="text-align: right;">828</td>
+</tr>
+<tr>
+<td>Non-generic-targeted tests</td>
+<td><code>Trellis.Core/tests/Results/ResultTests.cs</code> (73) + <code>Results/Extensions/NonGenericResultTests.cs</code> (297) + <code>Results/Extensions/NonGenericResultTapOnFailureTests.cs</code> (166)</td>
+<td style="text-align: right;">536</td>
+</tr>
+<tr>
+<td><strong>Subtotal removed</strong></td>
+<td></td>
+<td style="text-align: right;"><strong>~1,757</strong></td>
+</tr>
+<tr>
+<td>Added</td>
+<td></td>
+<td style="text-align: right;"></td>
+</tr>
+<tr>
+<td><code>Unit.cs</code> (public surface + tests)</td>
+<td><code>Trellis.Core/src/Result/Unit.cs</code> (~30) + <code>Trellis.Core/tests/Results/UnitTests.cs</code> (~80)</td>
+<td style="text-align: right;">~110</td>
+</tr>
+<tr>
+<td><code>Result.cs</code> (static factory class)</td>
+<td><code>Trellis.Core/src/Result/Result.cs</code></td>
+<td style="text-align: right;">~80</td>
+</tr>
+<tr>
+<td>Trellis.Asp <code>Result&lt;Unit&gt;</code> 204 specialization</td>
+<td><code>Trellis.Asp/src/HttpResponseExtensions.cs</code> (delta) + <code>Trellis.Asp/src/TrellisHttpResult.cs</code> (delta) + tests</td>
+<td style="text-align: right;">~200</td>
+</tr>
+<tr>
+<td><code>Result.Ok()</code> / <code>Result.Fail(Error)</code> factory tests</td>
+<td><code>Trellis.Core/tests/Results/ResultFactoryTests.cs</code></td>
+<td style="text-align: right;">~80</td>
+</tr>
+<tr>
+<td><strong>Subtotal added</strong></td>
+<td></td>
+<td style="text-align: right;"><strong>~470</strong></td>
+</tr>
+<tr>
+<td><strong>Net reduction (source code)</strong></td>
+<td></td>
+<td style="text-align: right;"><strong>~1,287 lines</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Plus the <code>audit-stale-docs.ps1</code> ban list (16 patterns covering <code>Unit.Value</code>, <code>Unit.Default</code>, <code>new Unit(</code>, <code>Result&lt;Unit&gt;</code>, <code>Result&amp;lt;Unit&amp;gt;</code>, <code>Result{Unit}</code>, <code>record struct Unit</code>, <code>Unit-shaped</code>, <code>Unit result</code>, <code>Result of Unit</code>, <code>Unit Results</code>, <code>Unit support</code>, <code>void/Unit</code>, <code>non-generic non-generic</code>, <code>Unit.cs</code>-allowlist) is removed (~30 lines). Per-verb files (<code>Bind.cs</code>, <code>Map.cs</code>, <code>Tap.cs</code>, <code>Ensure.cs</code>, etc.) are <em>not</em> part of the reduction — spot-checks confirm they currently contain only <code>Result&lt;T&gt;</code> overloads with no non-generic or cross-shape variants (those are centralized in <code>Result.NonGeneric.Extensions.cs</code>).</p>
+<p>Documentation/wording cost (recipes, <code>trellis-api-*.md</code>, cookbook callouts, XML doc references) is harder to quantify but is roughly proportional to the source reduction — every recipe that today distinguishes &quot;use <code>Result.Bind(...)</code> here vs <code>Result&lt;T&gt;.Bind(...)</code> there&quot; collapses to a single rule.</p>
+<hr>
+<h2 id="variations-explored-and-rejected">Variations explored and rejected</h2>
+<h3 id="option-a--re-introduce-unit-delete-non-generic-result-instance-type-no-static-class-shim">Option A — Re-introduce <code>Unit</code>, delete non-generic <code>Result</code> instance type, no static-class shim</h3>
+<p><code>Result.Ok()</code> would not compile; consumers would write <code>Result&lt;Unit&gt;.Ok()</code> or <code>Result.Ok(Unit.Default)</code>. <strong>Rejected:</strong> loses the cross-language ergonomic match (Rust <code>Ok(())</code>, F# <code>Ok ()</code>, FluentResults <code>Result.Ok()</code>) and forces every consumer call site to learn that &quot;the no-payload success has a parameter.&quot;</p>
+<h3 id="option-c--keep-both-as-instance-types-with-implicit-conversion">Option C — Keep both as instance types with implicit conversion</h3>
+<p><code>public static implicit operator Result(Result&lt;Unit&gt;)</code>. <strong>Rejected:</strong> ADR-001 §3.1 forbids implicit operators on <code>Result</code> for AI-correctness reasons (they look magical and AI gets the direction wrong). Adding one for <code>Unit</code> interop reintroduces exactly the footgun that section was written to prevent.</p>
+<h3 id="option-d--type-alias-using-result--resultunit">Option D — Type alias <code>using Result = Result&lt;Unit&gt;;</code></h3>
+<p>C# 12 <code>using</code> aliases on generic types exist but cannot be made global from a library — every consumer file would need <code>global using Result = Trellis.Result&lt;Trellis.Unit&gt;;</code> in their <code>GlobalUsings.cs</code>. <strong>Rejected:</strong> unfriendly to template-generated consumer projects, and the alias resolution at hover/IntelliSense is inconsistent across IDE versions.</p>
+<h3 id="option-e--defer-to-a-hypothetical-v4">Option E — Defer to a hypothetical v4</h3>
+<p>Wait until cross-shape friction accumulates further, then revert in v4. <strong>Rejected:</strong> the lab evidence is already sufficient (4 runs, 3 models, convergent friction modes). Deferring extends the cost-paid-daily window for a benefit-paid-once decision.</p>
+<hr>
+<h2 id="open-question-for-sign-off">Open question for sign-off</h2>
+<ol>
+<li><p><strong><code>AsUnit()</code> v3 semantic change — accept or rename?</strong> Today <code>Result&lt;T&gt;.AsUnit()</code> returns non-generic <code>Result</code>. In v3 it returns <code>Result&lt;Unit&gt;</code>. The expression value is preserved (success-or-failure-without-payload), but any code that explicitly typed the return as <code>Result</code> will break. Recommend <strong>accept the breaking signature change</strong> — <code>AsUnit()</code> is the right name for the operation in both versions, and the v3 type annotation is more accurate.</p>
+</li>
+<li><p><strong>Audit gate behavior during transition.</strong> Once ADR-005 is accepted, the audit-stale-docs.ps1 patterns banning <code>Result&lt;Unit&gt;</code> etc. become inverted (we now <em>want</em> this surface visible in current docs). Should the gate be flipped <em>before</em> implementation lands (so docs/ADRs can use the new surface during preparation), or as part of the v3 cut? Recommend flipping with the v3 cut to avoid documentation drift.</p>
+</li>
+</ol>
+<hr>
+<h2 id="what-this-adr-does-not-change">What this ADR does not change</h2>
+<ul>
+<li><code>Error</code> ADT, <code>Maybe&lt;T&gt;</code>, <code>Combine</code>, <code>Traverse</code>, <code>BindZip</code>, <code>WhenAll</code>, <code>ParallelAsync</code>, the LINQ surface, the <code>Match</code> terminal — all unchanged.</li>
+<li><code>Result.Ok</code> / <code>Result.Fail</code> factory names (the rename in ADR-002:561 stays).</li>
+<li><code>IResult</code> / <code>IResult&lt;TValue&gt;</code> interfaces (kept per the original §What stays argument).</li>
+<li><code>IFailureFactory&lt;TSelf&gt;</code> (kept per ADR-002:504 retention rationale).</li>
+<li>The <code>default(Result&lt;Unit&gt;)</code> invariant inherits from <code>default(Result&lt;T&gt;)</code> per ADR-002 §3.5.1 — same guarantees.</li>
+<li>The <code>WriteOutcome&lt;T&gt;</code> repository return shape (ADR-002:572+) is independent and unchanged.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-005-reintroduce-unit.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

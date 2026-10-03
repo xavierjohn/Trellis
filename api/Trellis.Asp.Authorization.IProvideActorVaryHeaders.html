@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Interface IProvideActorVaryHeaders | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Interface IProvideActorVaryHeaders | Trellis ">
+      
+      <meta name="description" content="Optional capability that an  implementation can expose so callers of  can emit the correct Vary headers for cache partitioning by actor.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Asp_Authorization_IProvideActorVaryHeaders.md&amp;value=---%0Auid%3A%20Trellis.Asp.Authorization.IProvideActorVaryHeaders%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.Authorization.IProvideActorVaryHeaders">
+
+
+
+  <h1 id="Trellis_Asp_Authorization_IProvideActorVaryHeaders" data-uid="Trellis.Asp.Authorization.IProvideActorVaryHeaders" class="text-break">
+Interface IProvideActorVaryHeaders  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/IProvideActorVaryHeaders.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Asp.html">Asp</a>.<a class="xref" href="Trellis.Asp.Authorization.html">Authorization</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Asp.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Optional capability that an <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> implementation can expose so
+callers of <a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html#Trellis_Asp_HttpResponseOptionsBuilder_1_VaryForActor">VaryForActor()</a> can emit the
+correct <code>Vary</code> headers for cache partitioning by actor.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public interface IProvideActorVaryHeaders</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_Asp_Authorization_IProvideActorVaryHeaders_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+<b>Why this exists.</b> An intermediate HTTP cache can only safely return a response to
+a request from actor B if it knows the response would have been the same for B as it was
+for A. The wire signal for that is the <code>Vary</code> response header naming the request
+headers the response varies on. Trellis owns the actor abstraction and therefore knows
+which request headers contribute to actor identity for the registered provider —
+<code>Authorization</code> for the JWT-bearer-backed <code>ClaimsActorProvider</code> /
+<code>EntraActorProvider</code>, the configured test header (<code>X-Test-Actor</code> by default)
+for <code>DevelopmentActorProvider</code>, and the wrapped provider's headers for
+<code>CachingActorProvider</code>. <a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html#Trellis_Asp_HttpResponseOptionsBuilder_1_VaryForActor">VaryForActor()</a>
+emits those headers automatically when this interface is implemented; without the
+interface the builder method throws, fail-closed, rather than silently emit an
+incorrect or incomplete <code>Vary</code> header.
+</p>
+<p>
+<b>Implementation contract.</b> The returned collection should name the HTTP request
+headers (case-insensitive, matching wire-shape conventions like
+<code>Authorization</code> / <code>Cookie</code> / <code>X-Test-Actor</code>) that contribute to actor
+resolution. Return an empty collection if and only if the provider's actor identity
+is derived from request data that cannot be cleanly named by a single HTTP header
+(e.g. mTLS) — in which case consumers should not be calling <code>VaryForActor</code> for
+those endpoints, and the right answer is usually <code>Cache-Control: private, no-store</code>.
+</p>
+<p>
+<b>Custom providers.</b> A custom <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> implementation that
+derives actor identity from non-bearer signals (cookies, mTLS, forwarded headers) must
+implement this interface explicitly to be usable with <code>VaryForActor</code>. The framework
+does not assume a default — guessing wrong here causes cache poisoning across actors.
+</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Asp_Authorization_IProvideActorVaryHeaders_VaryByHeaders_" data-uid="Trellis.Asp.Authorization.IProvideActorVaryHeaders.VaryByHeaders*"></a>
+
+  <h3 id="Trellis_Asp_Authorization_IProvideActorVaryHeaders_VaryByHeaders" data-uid="Trellis.Asp.Authorization.IProvideActorVaryHeaders.VaryByHeaders">
+  VaryByHeaders
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/IProvideActorVaryHeaders.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The HTTP request headers that contribute to actor identity for this provider.
+Emitted as <code>Vary</code> response-header entries by
+<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html#Trellis_Asp_HttpResponseOptionsBuilder_1_VaryForActor">VaryForActor()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">IReadOnlyCollection&lt;string&gt; VaryByHeaders { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlycollection-1">IReadOnlyCollection</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/IProvideActorVaryHeaders.cs/#L42" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

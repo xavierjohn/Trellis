@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Value Objects | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Value Objects | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/primitives.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="model-domain-values-with-value-objects">Model domain values with value objects</h1>
+
+<p>A <code>string</code> can be an email address, a product name, or a currency code. A <code>Guid</code> can identify any record in the system. Value objects replace those ambiguous primitives with types that carry one meaning and validate it once.</p>
+<p>Trellis gives you two starting points:</p>
+<ul>
+<li><code>Trellis.Core</code> generates domain-specific scalar types such as <code>CustomerName</code>, <code>OrderId</code>, and <code>Quantity</code>.</li>
+<li><code>Trellis.Primitives</code> provides common types such as <a class="xref" href="../api/Trellis.Primitives.EmailAddress.html">EmailAddress</a>, <a class="xref" href="../api/Trellis.Primitives.Money.html">Money</a>, and <a class="xref" href="../api/Trellis.Primitives.GeoCoordinate.html">GeoCoordinate</a>.</li>
+</ul>
+<h2 id="choose-the-shape-first">Choose the shape first</h2>
+<table>
+<thead>
+<tr>
+<th>Your value</th>
+<th>Start with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A common email, URL, phone number, country code, amount, or percentage</td>
+<td><a href="built-in-primitives.html">Built-in value objects</a></td>
+</tr>
+<tr>
+<td>One CLR value with a domain-specific name or rule</td>
+<td><a href="custom-primitives.html">Create a custom scalar value</a></td>
+</tr>
+<tr>
+<td>A finite set of named values with behavior</td>
+<td><a href="required-enum.html">Model symbolic values with <code>RequiredEnum</code></a></td>
+</tr>
+<tr>
+<td>Several fields that form one value</td>
+<td><a class="xref" href="../api/Trellis.ValueObject.html">ValueObject</a>, or a structured built-in such as <a href="money.html">Money</a></td>
+</tr>
+<tr>
+<td>A value that may be absent</td>
+<td><a href="maybe-type.html"><code>Maybe&lt;T&gt;</code></a>, wrapped around the value object</td>
+</tr>
+</tbody>
+</table>
+<p>This choice is about meaning, not storage. An <code>OrderId</code> may still occupy one <code>uniqueidentifier</code> column, but the compiler no longer lets you pass a <code>CustomerId</code> by mistake.</p>
+<h2 id="run-your-first-value-object-pipeline">Run your first value-object pipeline</h2>
+<p>Create a console application and install <code>Trellis.Primitives</code>. The package brings in <code>Trellis.Core</code> and its source generator transitively.</p>
+<pre><code class="lang-bash">dotnet new console -n ValueObjectDemo
+cd ValueObjectDemo
+dotnet add package Trellis.Primitives
+</code></pre>
+<p>Replace <code>Program.cs</code> with:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+var registration = Registration.TryCreate(
+    email: &quot;ada@example.com&quot;,
+    name: &quot;  Ada Lovelace  &quot;);
+
+if (!registration.TryGetValue(out var customer, out var error))
+{
+    Console.Error.WriteLine(error);
+    return;
+}
+
+Console.WriteLine($&quot;{customer.Name.Value} &lt;{customer.Email.Value}&gt;&quot;);
+
+[Trim, NotDefault, StringLength(100, MinimumLength = 2)]
+public sealed partial class CustomerName : RequiredString&lt;CustomerName&gt;;
+
+public sealed record Registration(EmailAddress Email, CustomerName Name)
+{
+    public static Result&lt;Registration&gt; TryCreate(string? email, string? name) =&gt;
+        Result.Combine(
+                EmailAddress.TryCreate(email, nameof(email)),
+                CustomerName.TryCreate(name, nameof(name)))
+            .Map((validEmail, validName) =&gt; new Registration(validEmail, validName));
+}
+</code></pre>
+<p>Run it:</p>
+<pre><code class="lang-bash">dotnet run
+</code></pre>
+<p>The important work happens before <code>Registration</code> exists:</p>
+<ol>
+<li><a class="xref" href="../api/Trellis.Primitives.EmailAddress.html#Trellis_Primitives_EmailAddress_TryCreate_System_String_System_String_">EmailAddress.TryCreate</a> validates the built-in value.</li>
+<li>The generated <code>CustomerName.TryCreate</code> trims and validates the custom value.</li>
+<li><a class="xref" href="../api/Trellis.CombineExtensions.html">Result.Combine</a> keeps both field failures instead of stopping at the first one.</li>
+<li><code>Map</code> constructs the record only after both values are valid.</li>
+</ol>
+<p>The <code>partial</code> keyword is required. The source generator supplies <code>Value</code>, <code>TryCreate</code>, <code>Create</code>, parsing, equality, and JSON conversion for <a class="xref" href="../api/Trellis.RequiredString-1.html">RequiredString<tself></tself></a>; your declaration supplies only the domain name and rules.</p>
+<h2 id="put-validation-at-the-boundary">Put validation at the boundary</h2>
+<p>Use <code>TryCreate</code> for HTTP input, messages, files, and other untrusted data. It returns <a class="xref" href="../api/Trellis.Result-1.html">Result<t></t></a>, so validation remains on the normal control-flow path.</p>
+<p>Use <code>Create</code> only for trusted constants and test setup, where an invalid value is a programming error. For generated identifiers, <a class="xref" href="../api/Trellis.RequiredGuid-1.html">RequiredGuid<tself></tself></a> also supplies <code>NewUniqueV7()</code>.</p>
+<p>After the boundary, pass value-object-shaped commands and domain methods inward. That removes repeated string checks from handlers and makes invalid combinations harder to represent.</p>
+<h2 id="continue-by-task">Continue by task</h2>
+<ul>
+<li><a href="custom-primitives.html">Create custom scalar value objects</a> for IDs, names, quantities, flags, and timestamps.</li>
+<li><a href="built-in-primitives.html">Browse the built-in value objects</a> before creating another email, URL, phone, or code type.</li>
+<li><a href="money.html">Work with money and percentages</a> when calculations must preserve validation failures.</li>
+<li><a href="geographic-values.html">Measure distance and build geographic bounds</a>.</li>
+<li><a href="weekly-schedules.html">Model weekly local-time availability</a>.</li>
+<li><a href="integration-aspnet.html">Connect value objects to ASP.NET Core</a> or <a href="integration-ef.html">Entity Framework Core</a>.</li>
+</ul>
+<p>For complete signatures, follow the generated .NET API links in each guide or browse the <a href="../api/index.html">Trellis API catalog</a>.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/primitives.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

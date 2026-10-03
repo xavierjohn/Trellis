@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class IdempotencyStoreConformance | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class IdempotencyStoreConformance | Trellis ">
+      
+      <meta name="description" content="Executable specification of the  contract. Inherit this class, implement , and the suite runs against your store.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Testing_Idempotency_IdempotencyStoreConformance.md&amp;value=---%0Auid%3A%20Trellis.Testing.Idempotency.IdempotencyStoreConformance%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance">
+
+
+
+  <h1 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance" class="text-break">
+Class IdempotencyStoreConformance  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Testing.html">Testing</a>.<a class="xref" href="Trellis.Testing.Idempotency.html">Idempotency</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Testing.Idempotency.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Executable specification of the <a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html">IIdempotencyStore</a> contract. Inherit this class,
+implement <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_CreateStoreAsync_Trellis_Asp_Idempotency_IdempotencyOptions_">CreateStoreAsync(IdempotencyOptions)</a>, and the suite runs against your store.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class IdempotencyStoreConformance</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">IdempotencyStoreConformance</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+  <h2 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_examples">Examples</h2>
+  <pre><code class="lang-csharp">public sealed class RedisIdempotencyStoreConformanceTests : IdempotencyStoreConformance
+{
+    // A remote server owns expiry, so use short real timeouts and a real delay.
+    protected override TimeSpan ReservationTimeout =&gt; TimeSpan.FromSeconds(2);
+    protected override TimeSpan Ttl =&gt; TimeSpan.FromSeconds(4);
+
+    protected override ValueTask&lt;IIdempotencyStore&gt; CreateStoreAsync(IdempotencyOptions options) =&gt;
+        new(new RedisIdempotencyStore(ConnectionMultiplexer, options));
+}</code></pre>
+
+
+  <h2 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+<b>Why this exists.</b> <code>IdempotencyMiddleware</code> ships with only
+<code>InMemoryIdempotencyStore</code>, which is explicitly not safe across instances or process
+restarts. The separate <code>Trellis.Asp.Idempotency.Cosmos</code> package supplies a distributed
+production store; applications using Redis, a relational database, or another backend can
+implement their own. The rules those implementations must satisfy are
+subtle, and getting one wrong fails silently — a replayed request executes twice and the
+caller is charged twice, with no exception anywhere. This suite turns each rule into a test.
+</p>
+<p>
+<b>Clocks.</b> Two tests need time to pass: reservation takeover and TTL expiry. A store built
+on <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timeprovider">TimeProvider</a> should override <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_AdvanceAsync_System_TimeSpan_">AdvanceAsync(TimeSpan)</a> to advance its fake
+clock, leaving <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_ReservationTimeout">ReservationTimeout</a> and <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_Ttl">Ttl</a> at their defaults. A
+store whose expiry is enforced by a remote server (Redis <code>PX</code>, Cosmos DB <code>ttl</code>)
+cannot have its clock faked, so it should instead override <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_ReservationTimeout">ReservationTimeout</a>
+and <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_Ttl">Ttl</a> to values of a few seconds and let <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_AdvanceAsync_System_TimeSpan_">AdvanceAsync(TimeSpan)</a> keep its
+default real delay.
+</p>
+<p>
+<b>Server-side expiry is not sufficient on its own.</b> Cosmos DB deletes expired items on a
+best-effort background sweep, so an item can outlive its <code>ttl</code> and still be returned by a
+read. Redis is prompt but may be configured with an eviction policy that removes a live entry
+early. A conforming store therefore records its own expiry timestamp and re-checks it on read
+rather than trusting the server to have deleted the row. <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent">Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent()</a>
+catches an implementation that trusts the sweep.
+</p>
+<p>
+<b>Isolation.</b> Every test instance gets a fresh <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_Scope">Scope</a> containing a GUID, so a
+suite may safely run against a shared Redis or Cosmos DB instance, in parallel, without one
+test observing another's keys.
+</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_ConcurrentReservationAttempts_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.ConcurrentReservationAttempts*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_ConcurrentReservationAttempts" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.ConcurrentReservationAttempts">
+  ConcurrentReservationAttempts
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L92"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Number of callers used by <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_Concurrent_reservations_of_one_key_grant_exactly_one_winner">Concurrent_reservations_of_one_key_grant_exactly_one_winner()</a>.
+Lower it if the store under test is a remote service with limited throughput.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual int ConcurrentReservationAttempts { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_ReservationTimeout_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.ReservationTimeout*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_ReservationTimeout" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.ReservationTimeout">
+  ReservationTimeout
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L79"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>How long a reservation is held before another request may take it over. Override with a
+value of a few seconds when expiry is enforced by a remote server and
+<a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_AdvanceAsync_System_TimeSpan_">AdvanceAsync(TimeSpan)</a> therefore has to delay for real.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual TimeSpan ReservationTimeout { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Scope_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Scope*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Scope" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Scope">
+  Scope
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L108"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Scope used by every test on this instance. xUnit constructs one instance per test, so each
+test gets its own scope and cannot collide with another running against the same backing
+store.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected string Scope { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Ttl_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Ttl*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Ttl" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Ttl">
+  Ttl
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L86"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>How long a completed snapshot remains replayable. Override with a value of a few seconds
+when expiry is enforced by a remote server and <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_AdvanceAsync_System_TimeSpan_">AdvanceAsync(TimeSpan)</a> therefore has to
+delay for real.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual TimeSpan Ttl { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Abandon_after_Complete_must_not_delete_the_persisted_snapshot_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Abandon_after_Complete_must_not_delete_the_persisted_snapshot*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Abandon_after_Complete_must_not_delete_the_persisted_snapshot" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Abandon_after_Complete_must_not_delete_the_persisted_snapshot">
+  Abandon_after_Complete_must_not_delete_the_persisted_snapshot()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L423"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The middleware calls <a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html#Trellis_Asp_Idempotency_IIdempotencyStore_AbandonAsync_System_String_System_String_System_String_System_Threading_CancellationToken_">AbandonAsync(string, string, string, CancellationToken)</a> from the failure paths
+around <a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html#Trellis_Asp_Idempotency_IIdempotencyStore_CompleteAsync_System_String_System_String_System_String_Trellis_Asp_Idempotency_IdempotencyResponseSnapshot_System_Threading_CancellationToken_">CompleteAsync(string, string, string, IdempotencyResponseSnapshot, CancellationToken)</a>. A store that persisted the snapshot
+and then threw on a secondary step would, if abandon deleted unconditionally, destroy a
+response it had already durably recorded — and the retry would execute the handler again.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 423)]
+public Task Abandon_after_Complete_must_not_delete_the_persisted_snapshot()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Abandon_on_a_key_that_was_never_reserved_is_ignored_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Abandon_on_a_key_that_was_never_reserved_is_ignored*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Abandon_on_a_key_that_was_never_reserved_is_ignored" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Abandon_on_a_key_that_was_never_reserved_is_ignored">
+  Abandon_on_a_key_that_was_never_reserved_is_ignored()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L456"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Both calls are best-effort cleanup that the middleware may make after the entry has already
+expired, so an unknown key is a no-op rather than an error.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 456)]
+public Task Abandon_on_a_key_that_was_never_reserved_is_ignored()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Abandon_releases_the_slot_for_an_immediate_retry_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Abandon_releases_the_slot_for_an_immediate_retry*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Abandon_releases_the_slot_for_an_immediate_retry" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Abandon_releases_the_slot_for_an_immediate_retry">
+  Abandon_releases_the_slot_for_an_immediate_retry()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L387"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>A handler that fails must release the key immediately so the client can retry, rather than
+making it wait out the reservation timeout.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 387)]
+public Task Abandon_releases_the_slot_for_an_immediate_retry()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Abandon_with_a_reservation_id_that_lost_the_slot_is_ignored_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Abandon_with_a_reservation_id_that_lost_the_slot_is_ignored*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Abandon_with_a_reservation_id_that_lost_the_slot_is_ignored" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Abandon_with_a_reservation_id_that_lost_the_slot_is_ignored">
+  Abandon_with_a_reservation_id_that_lost_the_slot_is_ignored()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L402"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The mirror of the stale-completion rule: a displaced request failing must not release the
+slot out from under the request that took it over, which is still running.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 402)]
+public Task Abandon_with_a_reservation_id_that_lost_the_slot_is_ignored()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_AdvanceAsync_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.AdvanceAsync*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_AdvanceAsync_System_TimeSpan_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.AdvanceAsync(System.TimeSpan)">
+  AdvanceAsync(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Makes <code class="paramref">duration</code> elapse from the store's point of view. Defaults to a real
+delay, which is correct for a store whose expiry a remote server enforces. Override it to
+advance a <code>FakeTimeProvider</code> when the store reads the clock in-process, so the suite
+runs instantly.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual Task AdvanceAsync(TimeSpan duration)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>duration</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd><p>How much time must appear to pass.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_An_in_flight_reservation_survives_traffic_on_other_keys_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.An_in_flight_reservation_survives_traffic_on_other_keys*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_An_in_flight_reservation_survives_traffic_on_other_keys" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.An_in_flight_reservation_survives_traffic_on_other_keys">
+  An_in_flight_reservation_survives_traffic_on_other_keys()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L507"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Reservations belong to their key. Traffic on unrelated keys must not clear one — a store
+that sweeps expired entries too eagerly would orphan a slow handler and let its response be
+lost.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 507)]
+public Task An_in_flight_reservation_survives_traffic_on_other_keys()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Complete_on_a_key_that_was_never_reserved_is_ignored_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Complete_on_a_key_that_was_never_reserved_is_ignored*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Complete_on_a_key_that_was_never_reserved_is_ignored" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Complete_on_a_key_that_was_never_reserved_is_ignored">
+  Complete_on_a_key_that_was_never_reserved_is_ignored()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L442"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Both calls are best-effort cleanup that the middleware may make after the entry has already
+expired, so an unknown key is a no-op rather than an error.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 442)]
+public Task Complete_on_a_key_that_was_never_reserved_is_ignored()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Complete_with_a_reservation_id_that_lost_the_slot_is_ignored_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Complete_with_a_reservation_id_that_lost_the_slot_is_ignored*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Complete_with_a_reservation_id_that_lost_the_slot_is_ignored" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Complete_with_a_reservation_id_that_lost_the_slot_is_ignored">
+  Complete_with_a_reservation_id_that_lost_the_slot_is_ignored()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L362"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The displaced request must not be able to publish its response after losing the slot.
+Otherwise the client replays the output of an execution that the takeover already
+superseded.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 362)]
+public Task Complete_with_a_reservation_id_that_lost_the_slot_is_ignored()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Concurrent_reservations_of_one_key_grant_exactly_one_winner_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Concurrent_reservations_of_one_key_grant_exactly_one_winner*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Concurrent_reservations_of_one_key_grant_exactly_one_winner" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Concurrent_reservations_of_one_key_grant_exactly_one_winner">
+  Concurrent_reservations_of_one_key_grant_exactly_one_winner()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L475"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The load-bearing guarantee. If reservation is not atomic, two racing callers both believe
+they own the key and the handler runs twice — precisely the double execution the middleware
+exists to prevent. A store must reserve with a single atomic operation such as Redis
+<code>SET NX</code>, a Cosmos DB insert that conflicts on duplicate id, or a unique-index insert.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 475)]
+public Task Concurrent_reservations_of_one_key_grant_exactly_one_winner()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_CreateStoreAsync_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.CreateStoreAsync*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_CreateStoreAsync_Trellis_Asp_Idempotency_IdempotencyOptions_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.CreateStoreAsync(Trellis.Asp.Idempotency.IdempotencyOptions)">
+  CreateStoreAsync(IdempotencyOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L72"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates the store under test, configured with <code class="paramref">options</code>. Called once per
+test. The <a class="xref" href="Trellis.Asp.Idempotency.IdempotencyOptions.html#Trellis_Asp_Idempotency_IdempotencyOptions_ReservationTimeout">ReservationTimeout</a> and
+<a class="xref" href="Trellis.Asp.Idempotency.IdempotencyOptions.html#Trellis_Asp_Idempotency_IdempotencyOptions_Ttl">Ttl</a> on <code class="paramref">options</code> are taken from
+<a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_ReservationTimeout">ReservationTimeout</a> and <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_Ttl">Ttl</a> and must be honoured, or the
+expiry tests will not mean anything.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract ValueTask&lt;IIdempotencyStore&gt; CreateStoreAsync(IdempotencyOptions options)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>options</code> <a class="xref" href="Trellis.Asp.Idempotency.IdempotencyOptions.html">IdempotencyOptions</a></dt>
+    <dd><p>Options the store must be configured with.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html">IIdempotencyStore</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_Complete_replays_the_snapshot_for_a_matching_fingerprint_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_Complete_replays_the_snapshot_for_a_matching_fingerprint*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_Complete_replays_the_snapshot_for_a_matching_fingerprint" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_Complete_replays_the_snapshot_for_a_matching_fingerprint">
+  Reserve_after_Complete_replays_the_snapshot_for_a_matching_fingerprint()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L248"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The point of the whole mechanism: once a response is recorded, a retry replays it instead
+of running the handler again.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 248)]
+public Task Reserve_after_Complete_replays_the_snapshot_for_a_matching_fingerprint()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_Complete_with_a_different_fingerprint_returns_BodyHashMismatch_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_Complete_with_a_different_fingerprint_returns_BodyHashMismatch*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_Complete_with_a_different_fingerprint_returns_BodyHashMismatch" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_Complete_with_a_different_fingerprint_returns_BodyHashMismatch">
+  Reserve_after_Complete_with_a_different_fingerprint_returns_BodyHashMismatch()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L265"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Reusing a key with a different body is a client bug. Replaying the old response would hide
+it and silently drop the new request, so the store must report the mismatch instead.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 265)]
+public Task Reserve_after_Complete_with_a_different_fingerprint_returns_BodyHashMismatch()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_the_reservation_timeout_takes_over_with_a_new_reservation_id_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_the_reservation_timeout_takes_over_with_a_new_reservation_id*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_the_reservation_timeout_takes_over_with_a_new_reservation_id" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_the_reservation_timeout_takes_over_with_a_new_reservation_id">
+  Reserve_after_the_reservation_timeout_takes_over_with_a_new_reservation_id()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L301"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>A crashed or hung handler must not hold a key forever. Once the timeout passes, a retry of
+the same request takes the slot over and receives a new reservation id — the old id is what
+lets the store reject the original request if it ever finishes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 301)]
+public Task Reserve_after_the_reservation_timeout_takes_over_with_a_new_reservation_id()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_the_reservation_timeout_with_a_different_fingerprint_returns_BodyHashMismatch_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_the_reservation_timeout_with_a_different_fingerprint_returns_BodyHashMismatch*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_the_reservation_timeout_with_a_different_fingerprint_returns_BodyHashMismatch" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_the_reservation_timeout_with_a_different_fingerprint_returns_BodyHashMismatch">
+  Reserve_after_the_reservation_timeout_with_a_different_fingerprint_returns_BodyHashMismatch()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L319"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Takeover is for retries of the same request. An expired reservation must still refuse a
+different body rather than letting it claim the key.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 319)]
+public Task Reserve_after_the_reservation_timeout_with_a_different_fingerprint_returns_BodyHashMismatch()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent">
+  Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L341"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Snapshots are retained for <a class="xref" href="Trellis.Testing.Idempotency.IdempotencyStoreConformance.html#Trellis_Testing_Idempotency_IdempotencyStoreConformance_Ttl">Ttl</a> and no longer. Afterwards the key behaves as
+if it had never been used.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 341)]
+public Task Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>A store that leaves expiry entirely to a server-side sweep fails here, because Cosmos DB
+deletes expired items on a best-effort background pass and can still return one. Record an
+expiry timestamp and re-check it on read.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_on_a_free_key_returns_Reserved_with_a_non_empty_reservation_id_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_on_a_free_key_returns_Reserved_with_a_non_empty_reservation_id*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_on_a_free_key_returns_Reserved_with_a_non_empty_reservation_id" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_on_a_free_key_returns_Reserved_with_a_non_empty_reservation_id">
+  Reserve_on_a_free_key_returns_Reserved_with_a_non_empty_reservation_id()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L198"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>A free key must be granted, and the reservation id must be usable as a token, so the store
+can later tell this request apart from one that took the slot over.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 198)]
+public Task Reserve_on_a_free_key_returns_Reserved_with_a_non_empty_reservation_id()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_under_a_different_scope_does_not_collide_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_under_a_different_scope_does_not_collide*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_under_a_different_scope_does_not_collide" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_under_a_different_scope_does_not_collide">
+  Reserve_under_a_different_scope_does_not_collide()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L232"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Scope keeps tenants and actors apart. Without this, one client could replay another's
+response — or block it — simply by guessing a key.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 232)]
+public Task Reserve_under_a_different_scope_does_not_collide()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_while_another_request_holds_the_key_returns_AlreadyInFlight_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_while_another_request_holds_the_key_returns_AlreadyInFlight*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_while_another_request_holds_the_key_returns_AlreadyInFlight" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_while_another_request_holds_the_key_returns_AlreadyInFlight">
+  Reserve_while_another_request_holds_the_key_returns_AlreadyInFlight()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L214"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>While one request holds the slot, a second with the same fingerprint must be told to retry
+rather than being allowed to execute concurrently. The suggested wait must be positive and
+no longer than the configured timeout, since the slot cannot outlive it.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 214)]
+public Task Reserve_while_another_request_holds_the_key_returns_AlreadyInFlight()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_while_in_flight_with_a_different_fingerprint_returns_BodyHashMismatch_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_while_in_flight_with_a_different_fingerprint_returns_BodyHashMismatch*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_Reserve_while_in_flight_with_a_different_fingerprint_returns_BodyHashMismatch" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.Reserve_while_in_flight_with_a_different_fingerprint_returns_BodyHashMismatch">
+  Reserve_while_in_flight_with_a_different_fingerprint_returns_BodyHashMismatch()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L283"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The same protection applies before the first request finishes: a different body must not be
+able to queue behind, or take over, an in-flight reservation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Fact(&quot;/home/runner/work/Trellis/Trellis/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs&quot;, 283)]
+public Task Reserve_while_in_flight_with_a_different_fingerprint_returns_BodyHashMismatch()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_ShouldMatch_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.ShouldMatch*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_ShouldMatch_Trellis_Asp_Idempotency_IdempotencyResponseSnapshot_Trellis_Asp_Idempotency_IdempotencyResponseSnapshot_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.ShouldMatch(Trellis.Asp.Idempotency.IdempotencyResponseSnapshot,Trellis.Asp.Idempotency.IdempotencyResponseSnapshot)">
+  ShouldMatch(IdempotencyResponseSnapshot, IdempotencyResponseSnapshot)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L138"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asserts that <code class="paramref">actual</code> carries the same data as <code class="paramref">expected</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected static void ShouldMatch(IdempotencyResponseSnapshot actual, IdempotencyResponseSnapshot expected)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>actual</code> <a class="xref" href="Trellis.Asp.Idempotency.IdempotencyResponseSnapshot.html">IdempotencyResponseSnapshot</a></dt>
+    <dd><p>Snapshot returned by the store.</p>
+</dd>
+    <dt><code>expected</code> <a class="xref" href="Trellis.Asp.Idempotency.IdempotencyResponseSnapshot.html">IdempotencyResponseSnapshot</a></dt>
+    <dd><p>Snapshot originally handed to <a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html#Trellis_Asp_Idempotency_IIdempotencyStore_CompleteAsync_System_String_System_String_System_String_Trellis_Asp_Idempotency_IdempotencyResponseSnapshot_System_Threading_CancellationToken_">CompleteAsync(string, string, string, IdempotencyResponseSnapshot, CancellationToken)</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_ShouldMatch_Trellis_Asp_Idempotency_IdempotencyResponseSnapshot_Trellis_Asp_Idempotency_IdempotencyResponseSnapshot__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Compared field by field rather than with record equality on purpose.
+<a class="xref" href="Trellis.Asp.Idempotency.IdempotencyResponseSnapshot.html">IdempotencyResponseSnapshot</a> is a record whose <code>Headers</code> and <code>Body</code>
+members compare by <em>reference</em>, so an equality assertion would pass only for a store
+that hands back the very instance it was given. Any store that serialises — which is every
+durable store — returns an equal-but-distinct instance and would fail for no good reason.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_SnapshotFor_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.SnapshotFor*"></a>
+
+  <h3 id="Trellis_Testing_Idempotency_IdempotencyStoreConformance_SnapshotFor_System_String_System_Byte_" data-uid="Trellis.Testing.Idempotency.IdempotencyStoreConformance.SnapshotFor(System.String,System.Byte)">
+  SnapshotFor(string, byte)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L116"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Builds a snapshot with the given fingerprint and a one-byte body, for tests that only need
+to tell two snapshots apart.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected static IdempotencyResponseSnapshot SnapshotFor(string fingerprint, byte bodyMarker = 123)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>fingerprint</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Fingerprint to record on the snapshot.</p>
+</dd>
+    <dt><code>bodyMarker</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a></dt>
+    <dd><p>Single body byte, used to identify which snapshot was stored.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyResponseSnapshot.html">IdempotencyResponseSnapshot</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Testing.Idempotency/src/IdempotencyStoreConformance.cs/#L62" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

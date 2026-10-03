@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Namespace Trellis.Asp.Idempotency | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Namespace Trellis.Asp.Idempotency | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.Idempotency">
+
+  <h1 id="Trellis_Asp_Idempotency" data-uid="Trellis.Asp.Idempotency" class="text-break">Namespace Trellis.Asp.Idempotency</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+
+    <h3 id="classes">
+Classes
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.ActorIdempotencyScopeResolver.html">ActorIdempotencyScopeResolver</a></dt>
+      <dd><p><a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyScopeResolver.html">IIdempotencyScopeResolver</a> that derives the scope from the current actor's id as
+reported by <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a>. Returns
+<a class="xref" href="Trellis.Asp.Idempotency.AnonymousIdempotencyScopeResolver.html#Trellis_Asp_Idempotency_AnonymousIdempotencyScopeResolver_AnonymousScope">AnonymousScope</a> when no actor is available.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.AnonymousIdempotencyScopeResolver.html">AnonymousIdempotencyScopeResolver</a></dt>
+      <dd><p>Default <a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyScopeResolver.html">IIdempotencyScopeResolver</a> that returns the constant sentinel
+<code>&quot;anonymous&quot;</code> for every request. Safe only when the idempotency-key space is already
+isolated per client by some other mechanism (for example an API-gateway that issues a
+per-tenant API key); otherwise two authenticated users sending the same key value can
+replay each other's responses.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.CapturingResponseBodyFeature.html">CapturingResponseBodyFeature</a></dt>
+      <dd><p>Decorator over an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.features.ihttpresponsebodyfeature">IHttpResponseBodyFeature</a> that tees writes into a
+bounded in-memory capture buffer while still forwarding every byte to the original
+response stream. The capture is used by the idempotency middleware to record a replayable
+response snapshot.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.DefaultIdempotencyScopeResolver.html">DefaultIdempotencyScopeResolver</a></dt>
+      <dd><p>Default <a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyScopeResolver.html">IIdempotencyScopeResolver</a> registered by
+<a class="xref" href="Trellis.Asp.Idempotency.IdempotencyServiceCollectionExtensions.html#Trellis_Asp_Idempotency_IdempotencyServiceCollectionExtensions_AddTrellisIdempotency_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Idempotency_IdempotencyOptions__">AddTrellisIdempotency(IServiceCollection, Action&lt;IdempotencyOptions&gt;?)</a>. Resolves
+<a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> from the request services at request time and uses the
+current actor's id as the scope, falling back to
+<a class="xref" href="Trellis.Asp.Idempotency.AnonymousIdempotencyScopeResolver.html#Trellis_Asp_Idempotency_AnonymousIdempotencyScopeResolver_AnonymousScope">AnonymousScope</a> when no provider is
+registered or the actor cannot be determined.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyApplicationBuilderExtensions.html">IdempotencyApplicationBuilderExtensions</a></dt>
+      <dd><p><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.builder.iapplicationbuilder">IApplicationBuilder</a> extensions that mount the Trellis Idempotency-Key
+middleware in the request pipeline.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyFingerprint.html">IdempotencyFingerprint</a></dt>
+      <dd><p>Computes a deterministic SHA-256 fingerprint over the request components that matter for
+safe idempotent replay: method, path, canonicalized query, body bytes, <code>Content-Type</code>,
+<code>Content-Encoding</code>, and any headers listed in
+<a class="xref" href="Trellis.Asp.Idempotency.IdempotencyOptions.html#Trellis_Asp_Idempotency_IdempotencyOptions_AdditionalFingerprintHeaders">AdditionalFingerprintHeaders</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyKeyParser.html">IdempotencyKeyParser</a></dt>
+      <dd><p>Parses an <code>Idempotency-Key</code> header value using the subset of RFC 8941 structured-fields
+&quot;sf-string&quot; required by the idempotency middleware. Accepts either a bare token
+(RFC 7230 <code>tchar</code>) or a quoted string with the escape set <code>\</code> and <code>&quot;</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyMiddleware.html">IdempotencyMiddleware</a></dt>
+      <dd><p>Middleware that implements the IETF Idempotency-Key header semantics. When an endpoint is
+marked with <code>IdempotentAttribute</code> and the configured method matches, the middleware
+buffers the request body, computes a deterministic fingerprint, and consults an
+<code>IIdempotencyStore</code> to either reserve, replay, conflict, or reject the request.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyOptions.html">IdempotencyOptions</a></dt>
+      <dd><p>Configuration for <code>IdempotencyMiddleware</code>: header name, TTL, size limits, opted-in
+HTTP methods, and the set of request headers that contribute to the request fingerprint in
+addition to the body.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.html">IdempotencyReservationOutcome</a></dt>
+      <dd><p>Closed hierarchy of outcomes from <a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html#Trellis_Asp_Idempotency_IIdempotencyStore_TryReserveAsync_System_String_System_String_System_String_System_Threading_CancellationToken_">TryReserveAsync(string, string, string, CancellationToken)</a>. Exactly
+one of <a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.Reserved.html">IdempotencyReservationOutcome.Reserved</a>, <a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.AlreadyInFlight.html">IdempotencyReservationOutcome.AlreadyInFlight</a>, <a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.Replay.html">IdempotencyReservationOutcome.Replay</a>, or
+<a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.BodyHashMismatch.html">IdempotencyReservationOutcome.BodyHashMismatch</a> is returned for every call.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.AlreadyInFlight.html">IdempotencyReservationOutcome.AlreadyInFlight</a></dt>
+      <dd><p>Another request with the same key, scope, and fingerprint has an active reservation and
+the caller's reservation request was rejected. The middleware translates this into a
+<code>409 Conflict</code> with a <code>Retry-After</code> header derived from
+<a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.AlreadyInFlight.html#Trellis_Asp_Idempotency_IdempotencyReservationOutcome_AlreadyInFlight_RetryAfter">RetryAfter</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.BodyHashMismatch.html">IdempotencyReservationOutcome.BodyHashMismatch</a></dt>
+      <dd><p>An unexpired snapshot or outstanding reservation exists for this key+scope but the request's
+fingerprint does not match the stored one. The middleware translates this into the
+configured <a class="xref" href="Trellis.Asp.Idempotency.IdempotencyOptions.html#Trellis_Asp_Idempotency_IdempotencyOptions_MismatchStatusCode">MismatchStatusCode</a> (default 422). Returned
+both for completed snapshots (replay would not match) and for an in-flight reservation
+whose fingerprint differs from the new request — the latter prevents the second caller
+from taking over the slot with a different request fingerprint, even after the
+reservation timeout. Despite the outcome's name, mismatches include method, path,
+query, fingerprinted headers, and body bytes.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.Replay.html">IdempotencyReservationOutcome.Replay</a></dt>
+      <dd><p>An unexpired completed snapshot exists for this key+scope and its fingerprint matches
+the request. The caller replays
+<code class="paramref">Snapshot</code> verbatim to the client and skips handler execution.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.Reserved.html">IdempotencyReservationOutcome.Reserved</a></dt>
+      <dd><p>The key was free and has now been reserved for the calling request. The caller must
+proceed to execute the handler and then call either
+<a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html#Trellis_Asp_Idempotency_IIdempotencyStore_CompleteAsync_System_String_System_String_System_String_Trellis_Asp_Idempotency_IdempotencyResponseSnapshot_System_Threading_CancellationToken_">CompleteAsync(string, string, string, IdempotencyResponseSnapshot, CancellationToken)</a> with the captured snapshot or
+<a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html#Trellis_Asp_Idempotency_IIdempotencyStore_AbandonAsync_System_String_System_String_System_String_System_Threading_CancellationToken_">AbandonAsync(string, string, string, CancellationToken)</a> on failure, passing the
+<a class="xref" href="Trellis.Asp.Idempotency.IdempotencyReservationOutcome.Reserved.html#Trellis_Asp_Idempotency_IdempotencyReservationOutcome_Reserved_ReservationId">ReservationId</a> so the store can reject a stale completion from a request
+whose reservation has since been taken over.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyResponseSnapshot.html">IdempotencyResponseSnapshot</a></dt>
+      <dd><p>Captured representation of a previously emitted response, replayed verbatim when a retry
+matches the original request fingerprint.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotencyServiceCollectionExtensions.html">IdempotencyServiceCollectionExtensions</a></dt>
+      <dd><p>Service-registration extensions for the Trellis Idempotency-Key middleware.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IdempotentAttribute.html">IdempotentAttribute</a></dt>
+      <dd><p>Opts an endpoint or controller in to <code>IdempotencyMiddleware</code> processing of the
+<code>Idempotency-Key</code> request header (IETF draft <code>draft-ietf-httpapi-idempotency-key-header</code>).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.InMemoryIdempotencyStore.html">InMemoryIdempotencyStore</a></dt>
+      <dd><p>In-memory <a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html">IIdempotencyStore</a> implementation backed by a
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.concurrent.concurrentdictionary-2">ConcurrentDictionary&lt;TKey, TValue&gt;</a>. Intended for unit / integration tests and
+for single-instance development hosts; not safe across multiple instances or process
+restarts. Production hosts that need cross-instance persistence should supply their own
+<a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html">IIdempotencyStore</a> implementation backed by shared storage.</p>
+</dd>
+    </dl>
+    <h3 id="interfaces">
+Interfaces
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyScopeResolver.html">IIdempotencyScopeResolver</a></dt>
+      <dd><p>Resolves the scope under which an idempotency key is stored, so two clients cannot replay
+each other's responses by colliding on a key value.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Asp.Idempotency.IIdempotencyStore.html">IIdempotencyStore</a></dt>
+      <dd><p>Backing store for <code>IdempotencyMiddleware</code>. Implementations are responsible for
+atomically reserving keys, persisting completed snapshots, and honouring TTL and
+reservation-timeout expiry.</p>
+</dd>
+    </dl>
+
+
+</article>
+
+        <div class="contribution d-print-none">
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

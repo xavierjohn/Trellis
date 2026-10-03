@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Namespace Trellis | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Namespace Trellis | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis">
+
+  <h1 id="Trellis" data-uid="Trellis" class="text-break">Namespace Trellis</h1>
+  <div class="markdown level0 summary"></div>
+  <div class="markdown level0 conceptual"></div>
+  <div class="markdown level0 remarks"></div>
+
+    <h3 id="classes">
+Classes
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.AggregateETagExtensions.html">AggregateETagExtensions</a></dt>
+      <dd><p>Extension methods for ETag-based optimistic concurrency validation on aggregate results.
+Two modes are available — the service owner chooses which to use:</p>
+<ul><li><a class="xref" href="Trellis.AggregateETagExtensions.html#Trellis_AggregateETagExtensions_OptionalETag__1_Trellis_Result___0__Trellis_EntityTagValue___">OptionalETag&lt;T&gt;(Result&lt;T&gt;, EntityTagValue[]?)</a> — <code>If-Match</code> is optional (skips if absent)</li><li><a class="xref" href="Trellis.AggregateETagExtensions.html#Trellis_AggregateETagExtensions_RequireETag__1_Trellis_Result___0__Trellis_EntityTagValue___">RequireETag&lt;T&gt;(Result&lt;T&gt;, EntityTagValue[]?)</a> — <code>If-Match</code> is required (428 if absent)</li></ul>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Aggregate-1.html">Aggregate&lt;TId&gt;</a></dt>
+      <dd><p>Base class for aggregate roots in Domain-Driven Design.
+An aggregate is a cluster of domain objects (entities and value objects) that form a consistency boundary.
+The aggregate root is the only entry point for modifications and ensures all invariants within the boundary are maintained.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.AsUnitExtensions.html">AsUnitExtensions</a></dt>
+      <dd><p>Asynchronous bridges that discard a result's success value and project to a no-payload <code>Result&lt;Unit&gt;</code>.
+Pairs with <a class="xref" href="Trellis.Result-1.html#Trellis_Result_1_AsUnit">AsUnit()</a> for sync receivers.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.AuthChallenge.html">AuthChallenge</a></dt>
+      <dd><p>Represents a single HTTP authentication challenge (RFC 9110 §11.6.1).
+Multiple challenges may be combined to round-trip the full
+<code>WWW-Authenticate</code> header.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.BindExtensions.html">BindExtensions</a></dt>
+      <dd><p>Provides extension methods for binding (chaining) operations over Result values.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.BindExtensionsAsync.html">BindExtensionsAsync</a></dt>
+      <dd><p>Provides asynchronous extension methods for binding (chaining) operations over Result values.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.BindZipExtensions.html">BindZipExtensions</a></dt>
+      <dd><p>Extension methods that bind a function to a Result and zip the original value with the new value into a tuple.
+Enables sequential accumulation of values through a pipeline.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.BindZipExtensionsAsync.html">BindZipExtensionsAsync</a></dt>
+      <dd><p>Async BindZip extensions where both input and function are async (Task).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.CheckExtensions.html">CheckExtensions</a></dt>
+      <dd><p>Provides extension methods for running validation functions on Result values while preserving
+the original value on success. If the check fails, its failure is returned.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.CheckExtensionsAsync.html">CheckExtensionsAsync</a></dt>
+      <dd><p>Async Check extensions where BOTH input and check function are async (Task).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.CheckIfExtensions.html">CheckIfExtensions</a></dt>
+      <dd><p>Provides conditional check extension methods for Result values.
+The check function is only invoked when the condition or predicate is true;
+otherwise the original result passes through unchanged.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.CheckIfExtensionsAsync.html">CheckIfExtensionsAsync</a></dt>
+      <dd><p>Async CheckIf extensions where BOTH input and check function are async (Task).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.CombineErrorExtensions.html">CombineErrorExtensions</a></dt>
+      <dd><p>Combines two <a class="xref" href="Trellis.Error.html">Error</a> values into one.
+Two <a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a> values merge their field/rule violations.
+Otherwise the two errors are flattened into an <a class="xref" href="Trellis.Error.Aggregate.html">Error.Aggregate</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.CombineExtensions.html">CombineExtensions</a></dt>
+      <dd><p>Combines two or more <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> into one tuple containing all the Results.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.CombineExtensionsAsync.html">CombineExtensionsAsync</a></dt>
+      <dd><p>Combines two or more <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> into one tuple containing all the Results.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Cursor.html">Cursor</a></dt>
+      <dd><p>Opaque pagination cursor exchanged between server and client. Servers MUST treat the
+<a class="xref" href="Trellis.Cursor.html#Trellis_Cursor_Token">Token</a> contents as their own private encoding; clients MUST treat it as a
+black box and only echo it back on the next request.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.CursorCodec.html">CursorCodec</a></dt>
+      <dd><p>AOT-friendly, versioned continuation codecs. Tokens are opaque, not signed.
+Existing unversioned tokens are deliberately rejected. Authorization must still filter every query.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.DiscardExtensions.html">DiscardExtensions</a></dt>
+      <dd><p>Provides extension methods for explicitly discarding a Result value.
+Use when the outcome is intentionally ignored (e.g., best-effort operations).
+This is the idiomatic alternative to <code>_ = result;</code> and suppresses TRLS001
+without requiring pragma directives.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.DiscardTaskExtensions.html">DiscardTaskExtensions</a></dt>
+      <dd><p>Provides async extension methods for explicitly discarding a Task-wrapped Result value.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.DiscardValueTaskExtensions.html">DiscardValueTaskExtensions</a></dt>
+      <dd><p>Provides async extension methods for explicitly discarding a ValueTask-wrapped Result value.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EnsureAllExtensions.html">EnsureAllExtensions</a></dt>
+      <dd><p>Provides extension methods for ensuring multiple conditions on Result values simultaneously.
+Unlike <a class="xref" href="Trellis.EnsureExtensions.html#Trellis_EnsureExtensions_Ensure__1_Trellis_Result___0__System_Func___0_System_Boolean__Trellis_Error_">Ensure&lt;TValue&gt;(Result&lt;TValue&gt;, Func&lt;TValue, bool&gt;, Error)</a> which short-circuits on the first failure,
+EnsureAll runs ALL checks and accumulates errors into a single combined error.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EnsureAllExtensionsAsync.html">EnsureAllExtensionsAsync</a></dt>
+      <dd><p>Provides asynchronous extension methods for EnsureAll validation accumulation on Result values.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EnsureExtensions.html">EnsureExtensions</a></dt>
+      <dd><p>Provides extension methods for ensuring conditions on Result values.
+If conditions fail, the result is converted to a failure with the specified error.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EnsureExtensionsAsync.html">EnsureExtensionsAsync</a></dt>
+      <dd><p>Async Ensure extensions where BOTH input and predicates are async (Task).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EntityTagValue.html">EntityTagValue</a></dt>
+      <dd><p>Represents an RFC 9110 §8.8.1 entity tag (ETag) value with explicit weak/strong semantics.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Entity-1.html">Entity&lt;TId&gt;</a></dt>
+      <dd><p>Base class for entities in Domain-Driven Design.
+An entity is a domain object defined by its identity rather than its attributes.
+Two entities with different attributes but the same ID are considered equal.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EnumValueAttribute.html">EnumValueAttribute</a></dt>
+      <dd><p>Specifies the canonical symbolic value for a <a class="xref" href="Trellis.RequiredEnum-1.html">RequiredEnum&lt;TSelf&gt;</a> member.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EquatableArray.html">EquatableArray</a></dt>
+      <dd><p>Non-generic factory helpers for <a class="xref" href="Trellis.EquatableArray-1.html">EquatableArray&lt;T&gt;</a> that allow type inference.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.html">Error</a></dt>
+      <dd><p>Closed discriminated union of Trellis error values. Domain-facing cases stay transport-neutral,
+while boundary-layer protocols can attach typed lower-level payloads through
+<a class="xref" href="Trellis.Error.TransportFault.html">Error.TransportFault</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.Aggregate.html">Error.Aggregate</a></dt>
+      <dd><p>Composition of multiple independent errors. Used when several failures occur
+together (e.g. parallel operations, batch validation). Nested <a class="xref" href="Trellis.Error.Aggregate.html">Error.Aggregate</a>
+values are flattened at construction. The constructor accepts at least one error.
+Boundary layers decide how to render the collection on their own wire.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.AuthenticationRequired.html">Error.AuthenticationRequired</a></dt>
+      <dd><p>The operation requires authentication that was not supplied or could not be validated.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a></dt>
+      <dd><p>The request conflicts with the current state of the resource.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.Forbidden.html">Error.Forbidden</a></dt>
+      <dd><p>Authorization policy refused the request.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.Gone.html">Error.Gone</a></dt>
+      <dd><p>The resource was previously known but has been permanently removed (tombstone).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a></dt>
+      <dd><p>Inbound request payload failed semantic validation: one or more fields or rules
+rejected the input.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.InvariantViolation.html">Error.InvariantViolation</a></dt>
+      <dd><p>Global or multi-field business invariant was violated (e.g. cross-field rule,
+computed constraint) outside the inbound-validation pipeline.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.NotFound.html">Error.NotFound</a></dt>
+      <dd><p>The requested resource does not exist.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.RateLimited.html">Error.RateLimited</a></dt>
+      <dd><p>The caller has exceeded a usage quota; retry per <code class="paramref">Retry</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.TransportFault.html">Error.TransportFault</a></dt>
+      <dd><p>Opaque envelope for transport-specific lower-layer failure payloads produced outside
+<code>Trellis.Core</code>. Domain code does not inspect the payload; the boundary layer that
+understands the transport is responsible for translation. The wrapped payload must
+implement <a class="xref" href="Trellis.ITransportFault.html">ITransportFault</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.Unavailable.html">Error.Unavailable</a></dt>
+      <dd><p>The system is temporarily unable to complete the operation; the caller should retry
+per <code class="paramref">Retry</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Error.Unexpected.html">Error.Unexpected</a></dt>
+      <dd><p>An unhandled internal failure occurred. <code class="paramref">Code</code> identifies the
+kind of failure; <code class="paramref">FaultId</code> optionally correlates to deeper diagnostics.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ErrorRetryExtensions.html">ErrorRetryExtensions</a></dt>
+      <dd><p>Transport-neutral retry-classification helpers over the closed <a class="xref" href="Trellis.Error.html">Error</a>
+catalog. Lets workers, message consumers, and outbound-gateway callers ask &quot;should I
+retry this, give up on this item, or halt the batch?&quot; without hand-rolling parallel
+<code>switch</code> blocks against framework error types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.FaultCodes.html">FaultCodes</a></dt>
+      <dd><p>The reason codes Trellis emits for outcomes that are not a validation failure of the caller's input —
+internal faults, and the conflicts and gaps a request can run into.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.FieldViolation.html">FieldViolation</a></dt>
+      <dd><p>Describes a validation failure attached to a specific field of an input document.
+Used inside <a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.GetValueOrDefaultExtensions.html">GetValueOrDefaultExtensions</a></dt>
+      <dd><p>Terminal extraction methods for Result values.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.GetValueOrThrowExtensions.html">GetValueOrThrowExtensions</a></dt>
+      <dd><p>Production-safe throwing terminal extraction for <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>, intended for the
+narrow case where a failure represents a broken invariant the caller cannot act on —
+typically the persistence DTO → entity rehydration seam, where write-path validation
+guarantees the row is valid and any <code>TryCreate</code> failure on read indicates database
+corruption or migration drift.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.HttpError.html">HttpError</a></dt>
+      <dd><p>Closed discriminated union of HTTP-transport failures. Each case mirrors a status from
+the IANA HTTP Status Code Registry (RFC 9110, RFC 6585) and carries header data needed
+to emit an RFC-compliant response. Flows through <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> via the
+envelope <a class="xref" href="Trellis.Error.TransportFault.html">Error.TransportFault</a>: <code>new Error.TransportFault(new HttpError.NotAcceptable(...))</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.HttpError.ContentTooLarge.html">HttpError.ContentTooLarge</a></dt>
+      <dd><p>HTTP 413 — the request payload exceeds size limits.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.HttpError.MethodNotAllowed.html">HttpError.MethodNotAllowed</a></dt>
+      <dd><p>HTTP 405 — the HTTP method is not supported by the target resource.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.HttpError.NotAcceptable.html">HttpError.NotAcceptable</a></dt>
+      <dd><p>HTTP 406 — none of the available representations are acceptable to the client.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.HttpError.PreconditionFailed.html">HttpError.PreconditionFailed</a></dt>
+      <dd><p>HTTP 412 — a request precondition (for example <code>If-Match</code>) failed.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.HttpError.PreconditionRequired.html">HttpError.PreconditionRequired</a></dt>
+      <dd><p>HTTP 428 — the resource requires a precondition that the request did not include.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.HttpError.RangeNotSatisfiable.html">HttpError.RangeNotSatisfiable</a></dt>
+      <dd><p>HTTP 416 — the requested byte range cannot be satisfied.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.HttpError.UnsupportedMediaType.html">HttpError.UnsupportedMediaType</a></dt>
+      <dd><p>HTTP 415 — the request's media type is not supported.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IntegrationEventNameAttribute.html">IntegrationEventNameAttribute</a></dt>
+      <dd><p>Declares the stable, on-the-wire name of an <a class="xref" href="Trellis.IIntegrationEvent.html">IIntegrationEvent</a> so producers and consumers
+in <i>different</i> services can agree on the type a message carries.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MapExtensions.html">MapExtensions</a></dt>
+      <dd><p>Provides extension methods for mapping (transforming) values inside Result objects.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MapExtensionsAsync.html">MapExtensionsAsync</a></dt>
+      <dd><p>Provides asynchronous extension methods for mapping (transforming) values inside Result objects.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MapIfExtensions.html">MapIfExtensions</a></dt>
+      <dd><p>Conditionally transforms the value inside a Result when a condition or predicate is met.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MapOnFailureExtensions.html">MapOnFailureExtensions</a></dt>
+      <dd><p>Provides extension methods for transforming errors in failed Results while leaving successful Results unchanged.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MatchExtensions.html">MatchExtensions</a></dt>
+      <dd><p>Pattern matching helpers (Match / Switch) for Result.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MatchExtensionsAsync.html">MatchExtensionsAsync</a></dt>
+      <dd><p>Asynchronous pattern matching helpers for Result.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MatchTupleExtensions.html">MatchTupleExtensions</a></dt>
+      <dd><p>Provides pattern matching extension methods for Result types containing tuples (2-5 elements) with automatic destructuring.
+Match enables handling both success and failure cases inline with clean, readable code.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MatchTupleExtensionsAsync.html">MatchTupleExtensionsAsync</a></dt>
+      <dd><p>Provides asynchronous pattern matching extension methods for Result types containing tuples (2-5 elements).
+Supports both Task and ValueTask for async pattern matching.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Maybe.html">Maybe</a></dt>
+      <dd><p>Contains static methods to create a <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> object.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeChooseExtensions.html">MaybeChooseExtensions</a></dt>
+      <dd><p>Extension methods for filtering and unwrapping <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> collections.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeCollectionExtensions.html">MaybeCollectionExtensions</a></dt>
+      <dd><p>Extension methods for safely querying collections, returning <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> instead of throwing.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeExtensions.html">MaybeExtensions</a></dt>
+      <dd><p>Provides extension methods for converting <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> instances to <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>
+objects and for wrapping values in a <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeExtensionsAsync.html">MaybeExtensionsAsync</a></dt>
+      <dd><p>Asynchronous <code>MatchAsync</code> extension methods for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> and
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeInvariant.html">MaybeInvariant</a></dt>
+      <dd><p>Provides static methods for validating invariants across multiple <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> values.
+These methods express relationships between correlated optional values — such as &quot;all or none&quot;,
+&quot;if A then B&quot;, or &quot;exactly one&quot; — and return <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> with field-level
+<a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a> details when the invariant is violated.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeLinqExtensions.html">MaybeLinqExtensions</a></dt>
+      <dd><p>Provides LINQ query expression support for Maybe types, enabling C# query syntax for optional value composition.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeLinqExtensionsTaskAsync.html">MaybeLinqExtensionsTaskAsync</a></dt>
+      <dd><p>Provides LINQ query expression support for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>,
+enabling C# query syntax over fully asynchronous Maybe-returning operations.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeLinqExtensionsTaskLeftAsync.html">MaybeLinqExtensionsTaskLeftAsync</a></dt>
+      <dd><p>Async LINQ <code>SelectMany</code> overload where the source is a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>
+and the collection selector is synchronous.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeLinqExtensionsTaskRightAsync.html">MaybeLinqExtensionsTaskRightAsync</a></dt>
+      <dd><p>Async LINQ <code>SelectMany</code> overload where the source is a synchronous <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>
+and the collection selector returns a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeLinqExtensionsValueTaskAsync.html">MaybeLinqExtensionsValueTaskAsync</a></dt>
+      <dd><p>Provides LINQ query expression support for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>,
+enabling C# query syntax over fully asynchronous Maybe-returning operations that may complete synchronously.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeLinqExtensionsValueTaskLeftAsync.html">MaybeLinqExtensionsValueTaskLeftAsync</a></dt>
+      <dd><p>Async LINQ <code>SelectMany</code> overload where the source is a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>
+and the collection selector is synchronous.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeLinqExtensionsValueTaskRightAsync.html">MaybeLinqExtensionsValueTaskRightAsync</a></dt>
+      <dd><p>Async LINQ <code>SelectMany</code> overload where the source is a synchronous <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>
+and the collection selector returns a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.MaybeTaskAdapterExtensions.html">MaybeTaskAdapterExtensions</a></dt>
+      <dd><p>Provides adapters that wrap already-computed <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> values in completed task-like carriers.
+Useful for disambiguating <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> versus <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> overloads at call sites
+(including LINQ query expressions over async Maybe carriers).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.NegativeAttribute.html">NegativeAttribute</a></dt>
+      <dd><p>Marks a partial <a class="xref" href="Trellis.RequiredInt-1.html">RequiredInt&lt;TSelf&gt;</a>, <a class="xref" href="Trellis.RequiredLong-1.html">RequiredLong&lt;TSelf&gt;</a>, or
+<a class="xref" href="Trellis.RequiredDecimal-1.html">RequiredDecimal&lt;TSelf&gt;</a>-derived class so the source generator rejects any value
+that is not strictly less than zero. Equivalent to <code>[Range(MinValue, -1)]</code> for integer
+types and a strictly-negative <code>[Range]</code> for decimal types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.NonNegativeAttribute.html">NonNegativeAttribute</a></dt>
+      <dd><p>Marks a partial <a class="xref" href="Trellis.RequiredInt-1.html">RequiredInt&lt;TSelf&gt;</a>, <a class="xref" href="Trellis.RequiredLong-1.html">RequiredLong&lt;TSelf&gt;</a>, or
+<a class="xref" href="Trellis.RequiredDecimal-1.html">RequiredDecimal&lt;TSelf&gt;</a>-derived class so the source generator rejects any value
+strictly less than zero. Zero is accepted. Equivalent to <code>[Range(0, MaxValue)]</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.NonPositiveAttribute.html">NonPositiveAttribute</a></dt>
+      <dd><p>Marks a partial <a class="xref" href="Trellis.RequiredInt-1.html">RequiredInt&lt;TSelf&gt;</a>, <a class="xref" href="Trellis.RequiredLong-1.html">RequiredLong&lt;TSelf&gt;</a>, or
+<a class="xref" href="Trellis.RequiredDecimal-1.html">RequiredDecimal&lt;TSelf&gt;</a>-derived class so the source generator rejects any value
+strictly greater than zero. Zero is accepted. Equivalent to <code>[Range(MinValue, 0)]</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a></dt>
+      <dd><p>Opts a <code>Required*</code>-derived value object into per-type sentinel rejection.
+Without this attribute the bare base accepts every concrete value and rejects only
+<code>null</code>; with it the generator emits a sentinel-rejection check appropriate to the
+underlying primitive.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.NullableExtensions.html">NullableExtensions</a></dt>
+      <dd><p>Extension methods for converting nullable values to Result types.
+Provides a convenient way to handle null checking with Railway Oriented Programming.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.NullableExtensionsAsync.html">NullableExtensionsAsync</a></dt>
+      <dd><p>Asynchronous extension methods for converting nullable values to Result types.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Page.html">Page</a></dt>
+      <dd><p>Non-generic factory companion for <a class="xref" href="Trellis.Page-1.html">Page&lt;T&gt;</a>. Mirrors the <code>Result</code> /
+<code>Result&lt;T&gt;</code> split: factory methods live on the non-generic type to keep
+generic-type surface minimal (CA1000) and to allow type inference at the call site.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.PageBuilder.html">PageBuilder</a></dt>
+      <dd><p>Storage-neutral assembly of forward pages from an ordered, sought, over-fetched batch.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.PageRequest.html">PageRequest</a></dt>
+      <dd><p>Validated transport-neutral pagination inputs, before decoding query-specific state.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.PageSize.html">PageSize</a></dt>
+      <dd><p>Validated requested/applied limits. Missing input uses the default; non-positive input fails;
+above-cap input is clamped unless rejection is explicitly selected.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Page-1.html">Page&lt;T&gt;</a></dt>
+      <dd><p>A single page of items from a paginated collection together with the cursors needed to
+fetch adjacent pages. The canonical Trellis primitive for server-driven pagination.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ParsableJsonConverter-1.html">ParsableJsonConverter&lt;T&gt;</a></dt>
+      <dd><p>Converts value objects that implement <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iparsable-1">IParsable&lt;TSelf&gt;</a> to and from JSON.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.PositiveAttribute.html">PositiveAttribute</a></dt>
+      <dd><p>Marks a partial <a class="xref" href="Trellis.RequiredInt-1.html">RequiredInt&lt;TSelf&gt;</a>, <a class="xref" href="Trellis.RequiredLong-1.html">RequiredLong&lt;TSelf&gt;</a>, or
+<a class="xref" href="Trellis.RequiredDecimal-1.html">RequiredDecimal&lt;TSelf&gt;</a>-derived class so the source generator rejects any value
+that is not strictly greater than zero. Equivalent to applying
+<code>[Range(1, MaxValue)]</code> for integer types and a positive-fractional <code>[Range]</code> for
+decimal types, but reads as domain intent at the declaration site.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.PrimitiveValueObjectTrace.html">PrimitiveValueObjectTrace</a></dt>
+      <dd><p>Provides OpenTelemetry activity tracing for Trellis primitive value object operations.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions.html">PrimitiveValueObjectTraceProviderBuilderExtensions</a></dt>
+      <dd><p>Provides extension methods for configuring OpenTelemetry tracing for Trellis primitive value objects.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RailwayTrackAttribute.html">RailwayTrackAttribute</a></dt>
+      <dd><p>Indicates which railway track an operation executes on.
+This metadata can be used by IDE extensions, analyzers, and documentation generators.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RangeAttribute.html">RangeAttribute</a></dt>
+      <dd><p>Specifies the minimum and maximum allowed values for numeric value objects
+(<a class="xref" href="Trellis.RequiredInt-1.html">RequiredInt&lt;TSelf&gt;</a>, <a class="xref" href="Trellis.RequiredDecimal-1.html">RequiredDecimal&lt;TSelf&gt;</a>, <a class="xref" href="Trellis.RequiredLong-1.html">RequiredLong&lt;TSelf&gt;</a>).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RecoverExtensions.html">RecoverExtensions</a></dt>
+      <dd><p>Provides extension methods for recovering from failures with a fallback value.
+Unlike <a class="xref" href="Trellis.RecoverOnFailureExtensions.html">RecoverOnFailureExtensions</a> which requires a function returning a Result,
+Recover takes a simple fallback value and always produces a success.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RecoverExtensionsAsync.html">RecoverExtensionsAsync</a></dt>
+      <dd><p>Provides asynchronous extension methods for recovering from failures with a fallback value.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RecoverOnFailureExtensions.html">RecoverOnFailureExtensions</a></dt>
+      <dd><p>Provides extension methods for recovering from failed results by executing fallback operations.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RecoverOnFailureExtensionsAsync.html">RecoverOnFailureExtensionsAsync</a></dt>
+      <dd><p>Provides asynchronous extension methods for recovering from failed results.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RepresentationMetadata.html">RepresentationMetadata</a></dt>
+      <dd><p>Carries HTTP representation metadata (RFC 9110 §8) through Trellis response mappers.
+Used to emit <code>ETag</code>, <code>Last-Modified</code>, <code>Vary</code>, <code>Content-Language</code>,
+and <code>Content-Location</code> response headers consistently
+across MVC and Minimal API responses (200, 201, 204, 304).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RepresentationMetadata.Builder.html">RepresentationMetadata.Builder</a></dt>
+      <dd><p>Fluent builder for constructing <a class="xref" href="Trellis.RepresentationMetadata.html">RepresentationMetadata</a> instances.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredBool-1.html">RequiredBool&lt;TSelf&gt;</a></dt>
+      <dd><p>Base class for creating strongly-typed boolean value objects that distinguish between
+<code>false</code> (an explicit value) and <code>null</code>/missing (no value provided).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredDateTimeOffset-1.html">RequiredDateTimeOffset&lt;TSelf&gt;</a></dt>
+      <dd><p>Base class for creating strongly-typed <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset">DateTimeOffset</a> value objects that
+prevent primitive obsession for instants on the wall clock with an offset from UTC. Rejects
+only <code>null</code> by default; <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetimeoffset.minvalue">MinValue</a> rejection is opt-in
+via the <a class="xref" href="Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a> attribute. Recommended for any DateTimeOffset type
+used as an EF-mapped property to preserve the database invariant guarantee enforced by
+<code>TrellisScalarConverter</code> on rehydration.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredDateTime-1.html">RequiredDateTime&lt;TSelf&gt;</a></dt>
+      <dd><p>Base class for creating strongly-typed DateTime value objects that prevent primitive
+obsession for dates. Rejects only <code>null</code> by default; <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime.minvalue">MinValue</a>
+rejection is opt-in via the <a class="xref" href="Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a> attribute. Recommended for
+any DateTime type used as an EF-mapped property to preserve the database invariant
+guarantee enforced by <code>TrellisScalarConverter</code> on rehydration.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredDecimal-1.html">RequiredDecimal&lt;TSelf&gt;</a></dt>
+      <dd><p>Base class for creating strongly-typed decimal value objects that must be explicitly provided.
+Provides a foundation for monetary amounts, percentages, and other domain concepts represented by decimals.
+Rejects only <code>null</code> by default; rejection of <code>0</code> is opt-in via the
+<a class="xref" href="Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a> attribute.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredEnumJsonConverter-1.html">RequiredEnumJsonConverter&lt;TRequiredEnum&gt;</a></dt>
+      <dd><p>JSON converter for <a class="xref" href="Trellis.RequiredEnum-1.html">RequiredEnum&lt;TSelf&gt;</a> types.
+Serializes to the string value and deserializes from string value.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredEnum-1.html">RequiredEnum&lt;TSelf&gt;</a></dt>
+      <dd><p>Base class for creating strongly-typed, behavior-rich enumeration value objects.
+Enum value objects are a DDD pattern that replaces C# enums with full-featured classes.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredGuid-1.html">RequiredGuid&lt;TSelf&gt;</a></dt>
+      <dd><p>Base class for creating strongly-typed GUID value objects. Rejects only <code>null</code> by
+default; <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.guid.empty">Empty</a> rejection is opt-in via the
+<a class="xref" href="Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a> attribute. Recommended for any GUID type used as an
+<code>Aggregate&lt;TId&gt;</code> / <code>Entity&lt;TId&gt;</code> ID or as an EF-mapped property to
+preserve the database invariant guarantee enforced by <code>TrellisScalarConverter</code> on
+rehydration.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredInt-1.html">RequiredInt&lt;TSelf&gt;</a></dt>
+      <dd><p>Base class for creating strongly-typed integer value objects that must be explicitly provided.
+Provides a foundation for entity identifiers, counts, and other domain concepts represented by integers.
+Rejects only <code>null</code> by default; rejection of <code>0</code> is opt-in via the
+<a class="xref" href="Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a> attribute.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredLong-1.html">RequiredLong&lt;TSelf&gt;</a></dt>
+      <dd><p>Base class for creating strongly-typed long integer value objects.
+Provides a foundation for large identifiers, sequence numbers, and other domain concepts represented by long integers.
+Rejects only <code>null</code> by default; rejection of <code>0</code> is opt-in via the
+<a class="xref" href="Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a> attribute.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RequiredString-1.html">RequiredString&lt;TSelf&gt;</a></dt>
+      <dd><p>Base class for creating strongly-typed string value objects. Rejects only <code>null</code> by
+default; per-type sentinel rejection (&quot;cannot be empty&quot;) and trimming are opt-in via the
+<a class="xref" href="Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a> and <a class="xref" href="Trellis.TrimAttribute.html">TrimAttribute</a> attributes.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResourceCollectionNameAttribute.html">ResourceCollectionNameAttribute</a></dt>
+      <dd><p>Overrides the naive plural form used when the framework synthesises a canonical resource URI
+for <code>ProblemDetails.Instance</code> from a <a class="xref" href="Trellis.ResourceRef.html">ResourceRef</a>. The default form is
+<code>ResourceRef.Type.ToLowerInvariant() + &quot;s&quot;</code>; this attribute lets the consumer supply
+an irregular plural (<code>Person</code> → <code>people</code>) or a domain-specific collection segment
+(<code>UserAccount</code> → <code>accounts</code>).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Result.html">Result</a></dt>
+      <dd><p>Static Combine methods for combining multiple independent Result values without chaining (3-9 tuples).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultDebugExtensions.html">ResultDebugExtensions</a></dt>
+      <dd><p>Debug extension methods for inspecting Result values during development.
+These methods execute only in DEBUG builds and become no-ops in RELEASE builds (with zero overhead).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultDebugExtensionsAsync.html">ResultDebugExtensionsAsync</a></dt>
+      <dd><p>Debug-only async extension methods for inspecting Result values during development.
+These methods are only available in DEBUG builds and are automatically excluded from RELEASE builds.
+Debug information is written to dedicated Activity spans for OpenTelemetry compatibility.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultDebugSettings.html">ResultDebugSettings</a></dt>
+      <dd><p>Controls runtime behavior of <a class="xref" href="Trellis.ResultDebugExtensions.html">ResultDebugExtensions</a> methods
+(<code>Debug</code>, <code>DebugDetailed</code>, <code>DebugWithStack</code>, <code>DebugOnSuccess</code>, <code>DebugOnFailure</code>).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultLinqExtensions.html">ResultLinqExtensions</a></dt>
+      <dd><p>Provides LINQ query expression support for Result types, enabling C# query syntax for functional operations.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultLinqExtensionsTaskAsync.html">ResultLinqExtensionsTaskAsync</a></dt>
+      <dd><p>Provides LINQ query expression support for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>,
+enabling C# query syntax over fully asynchronous Result-returning operations.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultLinqExtensionsTaskLeftAsync.html">ResultLinqExtensionsTaskLeftAsync</a></dt>
+      <dd><p>Async LINQ <code>SelectMany</code> overload where the source is a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>
+and the collection selector is synchronous.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultLinqExtensionsTaskRightAsync.html">ResultLinqExtensionsTaskRightAsync</a></dt>
+      <dd><p>Async LINQ <code>SelectMany</code> overload where the source is a synchronous <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>
+and the collection selector returns a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultLinqExtensionsValueTaskAsync.html">ResultLinqExtensionsValueTaskAsync</a></dt>
+      <dd><p>Provides LINQ query expression support for <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>,
+enabling C# query syntax over fully asynchronous Result-returning operations that may complete synchronously.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultLinqExtensionsValueTaskLeftAsync.html">ResultLinqExtensionsValueTaskLeftAsync</a></dt>
+      <dd><p>Async LINQ <code>SelectMany</code> overload where the source is a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>
+and the collection selector is synchronous.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultLinqExtensionsValueTaskRightAsync.html">ResultLinqExtensionsValueTaskRightAsync</a></dt>
+      <dd><p>Async LINQ <code>SelectMany</code> overload where the source is a synchronous <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>
+and the collection selector returns a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask&lt;TResult&gt;</a> of <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultRequiresExplicitHttpMappingConverter.html">ResultRequiresExplicitHttpMappingConverter</a></dt>
+      <dd><p>Default <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.text.json.serialization.jsonconverterfactory">JsonConverterFactory</a> attached to <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a>,
+<a class="xref" href="Trellis.IResult.html">IResult</a>, and <a class="xref" href="Trellis.IResult-1.html">IResult&lt;TValue&gt;</a> that fails fast when a result is
+JSON-serialized without going through Trellis's HTTP-mapping path
+(<code>Result&lt;T&gt;.ToHttpResponse()</code> in <code>Trellis.Asp</code>) or an explicit consumer
+converter. Without this converter, direct serialization could only emit public status/error
+metadata such as <code>{&quot;IsSuccess&quot;: bool, &quot;IsFailure&quot;: bool, &quot;Error&quot;: …}</code> — a struct dump
+with no success value, not a stable wire shape, and not the HTTP problem-details / status-code
+mapping consumers expect from Trellis.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultTaskAdapterExtensions.html">ResultTaskAdapterExtensions</a></dt>
+      <dd><p>Provides adapters that wrap already-computed <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> values in completed task-like carriers.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResultsTraceProviderBuilderExtensions.html">ResultsTraceProviderBuilderExtensions</a></dt>
+      <dd><p>Extension methods for configuring OpenTelemetry tracing for Railway Oriented Programming operations.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RetryAfterValue.html">RetryAfterValue</a></dt>
+      <dd><p>Represents an RFC 9110 §10.2.3 <code>Retry-After</code> value, which can be either
+a delay in seconds or an absolute HTTP-date indicating when the client may retry.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RuleViolation.html">RuleViolation</a></dt>
+      <dd><p>Describes a global or multi-field business-rule failure attached to a
+<a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a>. Use this for invariant violations that are
+not bound to a single field (e.g. <code>&quot;order.must-have-items&quot;</code>,
+<code>&quot;password.mismatch&quot;</code>, <code>&quot;order.cancel-after-ship&quot;</code>).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ScalarValueObject-2.html">ScalarValueObject&lt;TSelf, T&gt;</a></dt>
+      <dd><p>Base class for value objects that wrap a single scalar value.
+Provides a strongly-typed wrapper around primitive types with domain semantics.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.SequenceAllExtensions.html">SequenceAllExtensions</a></dt>
+      <dd><p>Accumulating-error counterpart to <a class="xref" href="Trellis.TraverseExtensions.html#Trellis_TraverseExtensions_Sequence__1_System_Collections_Generic_IEnumerable_Trellis_Result___0___">Sequence&lt;T&gt;(IEnumerable&lt;Result&lt;T&gt;&gt;)</a>.
+Runs through every item; folds failures via the existing <a class="xref" href="Trellis.CombineErrorExtensions.html#Trellis_CombineErrorExtensions_Combine_Trellis_Error_Trellis_Error_">Combine(Error?, Error)</a>
+extension so two <a class="xref" href="Trellis.Error.InvalidInput.html">Error.InvalidInput</a> failures merge their fields/rules and
+heterogeneous failures flatten into <a class="xref" href="Trellis.Error.Aggregate.html">Error.Aggregate</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Specification-1.html">Specification&lt;T&gt;</a></dt>
+      <dd><p>Base class for the Specification pattern. Encapsulates a business rule
+as a composable, storage-agnostic expression tree.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.StringExtensions.html">StringExtensions</a></dt>
+      <dd><p>String manipulation helpers for value object field name normalization.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.StringLengthAttribute.html">StringLengthAttribute</a></dt>
+      <dd><p>Specifies the minimum and maximum length of characters that are allowed in a
+<a class="xref" href="Trellis.RequiredString-1.html">RequiredString&lt;TSelf&gt;</a>-derived value object.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TapExtensions.html">TapExtensions</a></dt>
+      <dd><p>Provides extension methods for executing side effects on successful Results without changing the Result.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TapExtensionsAsync.html">TapExtensionsAsync</a></dt>
+      <dd><p>Provides asynchronous extension methods for executing side effects on successful Results without changing the Result.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TapOnFailureExtensions.html">TapOnFailureExtensions</a></dt>
+      <dd><p>Provides extension methods for executing side effects on failed Results without changing the Result.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TapOnFailureExtensionsAsync.html">TapOnFailureExtensionsAsync</a></dt>
+      <dd><p>Provides asynchronous extension methods for executing side effects on failed Results without changing the Result.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ToMaybeExtensions.html">ToMaybeExtensions</a></dt>
+      <dd><p>Provides extension methods for converting Result{T} to Maybe{T}.
+Success results become Some(value), failure results become None.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ToMaybeExtensionsAsync.html">ToMaybeExtensionsAsync</a></dt>
+      <dd><p>Provides asynchronous extension methods for converting Result{T} to Maybe{T}.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TraverseAllExtensions.html">TraverseAllExtensions</a></dt>
+      <dd><p>Accumulating-error counterpart to <a class="xref" href="Trellis.TraverseExtensions.html#Trellis_TraverseExtensions_Traverse__2_System_Collections_Generic_IEnumerable___0__System_Func___0_Trellis_Result___1___">Traverse&lt;TIn, TOut&gt;(IEnumerable&lt;TIn&gt;, Func&lt;TIn, Result&lt;TOut&gt;&gt;)</a>.
+Runs the selector over every item (no short-circuit) and folds failures via the existing
+<a class="xref" href="Trellis.CombineErrorExtensions.html#Trellis_CombineErrorExtensions_Combine_Trellis_Error_Trellis_Error_">Combine(Error?, Error)</a> extension. Useful for form-style validation where
+every error matters, not just the first one encountered.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TraverseExtensions.html">TraverseExtensions</a></dt>
+      <dd><p>Transforms a collection of items into a Result containing a collection,
+short-circuiting on the first failure.
+Useful for processing collections where each item can fail independently.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TrellisJsonValidationException.html">TrellisJsonValidationException</a></dt>
+      <dd><p>Thrown by Trellis JSON converters when a structured value object's invariants
+are violated during deserialization (e.g., <code>Money</code>'s amount/currency rules).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TrellisValidationFormatException.html">TrellisValidationFormatException</a></dt>
+      <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.formatexception">FormatException</a> that also carries the structured validation failure that
+caused it.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TrimAttribute.html">TrimAttribute</a></dt>
+      <dd><p>Opts a <a class="xref" href="Trellis.RequiredString-1.html">RequiredString&lt;TSelf&gt;</a>-derived value object into trim-before-validate.
+Without this attribute the input string is stored verbatim; with it the generator trims
+the input before any other check, so combined with <a class="xref" href="Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a> a
+whitespace-only input trims to <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string.empty">Empty</a> and is rejected.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a></dt>
+      <dd><p>The value of a single entry in the <code>Args</code> carried by a <a class="xref" href="Trellis.FieldViolation.html">FieldViolation</a> or
+<a class="xref" href="Trellis.RuleViolation.html">RuleViolation</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationArgValue.Bool.html">ValidationArgValue.Bool</a></dt>
+      <dd><p>A boolean operand, written to JSON as <code>true</code> or <code>false</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationArgValue.List.html">ValidationArgValue.List</a></dt>
+      <dd><p>An ordered list of operands, written to JSON as an array.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationArgValue.Number.html">ValidationArgValue.Number</a></dt>
+      <dd><p>A numeric operand, written to JSON as a number.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationArgValue.Text.html">ValidationArgValue.Text</a></dt>
+      <dd><p>A textual operand, written to JSON as a string.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationArgValueJsonConverter.html">ValidationArgValueJsonConverter</a></dt>
+      <dd><p>Writes a <a class="xref" href="Trellis.ValidationArgValue.html">ValidationArgValue</a> as its underlying JSON primitive, and reads one back.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationArgs.html">ValidationArgs</a></dt>
+      <dd><p>Builds the <code>Args</code> dictionary carried by a <a class="xref" href="Trellis.FieldViolation.html">FieldViolation</a> or
+<a class="xref" href="Trellis.RuleViolation.html">RuleViolation</a>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationCodes.html">ValidationCodes</a></dt>
+      <dd><p>The closed set of machine-readable reason codes Trellis itself emits.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationMeterProviderBuilderExtensions.html">ValidationMeterProviderBuilderExtensions</a></dt>
+      <dd><p>Extension methods for collecting Trellis validation metrics with OpenTelemetry.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValidationMetrics.html">ValidationMetrics</a></dt>
+      <dd><p>The <span class="xref">Trellis.ValidationMetrics.Meter</span> and instruments Trellis publishes for validation failures.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ValueObject.html">ValueObject</a></dt>
+      <dd><p>Base class for value objects in Domain-Driven Design.
+A value object represents a descriptive aspect of the domain with no conceptual identity.
+Value objects are immutable, defined by their attributes, and support structural equality.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WhenAllExtensionsAsync.html">WhenAllExtensionsAsync</a></dt>
+      <dd><p>Provides Await extension methods for waiting on multiple Task-wrapped Result instances and combining them.
+These methods enable efficient parallel execution of independent async operations with Result aggregation.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WhenExtensions.html">WhenExtensions</a></dt>
+      <dd><p>Conditionally executes an operation based on a predicate, maintaining the railway.
+Useful for executing operations only when certain conditions are met without breaking the Result chain.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WhenExtensionsAsync.html">WhenExtensionsAsync</a></dt>
+      <dd><p>Asynchronous conditional execution operations for Result.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WriteOutcome.html">WriteOutcome</a></dt>
+      <dd><p>Factory helpers that build a <a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome&lt;T&gt;</a> case but return the
+<em>base</em> type, so call sites flow through generic pipelines (for example
+<code>Result.Map</code> / <code>ToHttpResponse</code>) without an explicit <code>(WriteOutcome&lt;T&gt;)</code>
+cast to widen the nested case. Mirrors the non-generic <code>Result</code> / generic
+<code>Result&lt;T&gt;</code> pairing.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WriteOutcome-1.html">WriteOutcome&lt;T&gt;</a></dt>
+      <dd><p>Represents the outcome of a write operation (create / replace / accept-for-async) returned
+by Application-layer repositories. The case selected describes <em>what happened</em>; HTTP-aware
+boundary adapters (for example <code>Trellis.Asp</code>) translate each case to status codes and headers.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WriteOutcome-1.Accepted.html">WriteOutcome&lt;T&gt;.Accepted</a></dt>
+      <dd><p>The write was accepted for asynchronous processing and a status body is returned. Transports as HTTP <code>202 Accepted</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WriteOutcome-1.AcceptedNoContent.html">WriteOutcome&lt;T&gt;.AcceptedNoContent</a></dt>
+      <dd><p>The write was accepted for asynchronous processing with no status body. Transports as HTTP <code>202 Accepted</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WriteOutcome-1.Created.html">WriteOutcome&lt;T&gt;.Created</a></dt>
+      <dd><p>A new resource was created. Transports as HTTP <code>201 Created</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WriteOutcome-1.Updated.html">WriteOutcome&lt;T&gt;.Updated</a></dt>
+      <dd><p>An existing resource was replaced/updated and the new representation is returned. Transports as HTTP <code>200 OK</code>.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.WriteOutcome-1.UpdatedNoContent.html">WriteOutcome&lt;T&gt;.UpdatedNoContent</a></dt>
+      <dd><p>An existing resource was replaced/updated and no body is returned. Transports as HTTP <code>204 No Content</code>.</p>
+</dd>
+    </dl>
+    <h3 id="structs">
+Structs
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EqualityComponents.html">EqualityComponents</a></dt>
+      <dd><p>Collects the components that define a <a class="xref" href="Trellis.ValueObject.html">ValueObject</a>'s structural equality.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.EquatableArray-1.html">EquatableArray&lt;T&gt;</a></dt>
+      <dd><p>Wraps an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.immutable.immutablearray-1">ImmutableArray&lt;T&gt;</a> to provide structural (sequence) equality.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.InputPointer.html">InputPointer</a></dt>
+      <dd><p>A pointer into a structured input document, expressed as an RFC 6901 JSON Pointer.
+Used by validation errors to identify the location of an offending value.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a></dt>
+      <dd><p>Represents domain-level optionality — a value that was either provided or intentionally omitted.
+Unlike <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.nullable-1">Nullable&lt;T&gt;</a> (value types only) or <code>T?</code> (annotation only for reference types),
+<a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a> is a real generic type that works uniformly with both value and reference types
+and composes with <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> pipelines.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ResourceRef.html">ResourceRef</a></dt>
+      <dd><p>Identifies a resource by its type and optional identifier. Used as the typed payload
+for resource-oriented errors such as <a class="xref" href="Trellis.Error.NotFound.html">Error.NotFound</a>, <a class="xref" href="Trellis.Error.Conflict.html">Error.Conflict</a>,
+<a class="xref" href="Trellis.Error.Gone.html">Error.Gone</a>, and transport faults that still identify a resource.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a></dt>
+      <dd><p>Represents either a successful computation (with a value) or a failure (with an <a class="xref" href="Trellis.Result-1.html#Trellis_Result_1_Error">Error</a>).</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RetryAdvice.html">RetryAdvice</a></dt>
+      <dd><p>Transport-neutral retry hint attached to <a class="xref" href="Trellis.Error.RateLimited.html">Error.RateLimited</a> and
+<a class="xref" href="Trellis.Error.Unavailable.html">Error.Unavailable</a>. Boundary layers translate to their own wire format
+(e.g. a header on a synchronous response, an envelope field on a queued message,
+or a structured field on a CLI exit envelope). Producers in the domain layer
+describe <em>when</em> the caller may retry; how that is conveyed is the boundary's
+concern.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.Unit.html">Unit</a></dt>
+      <dd><p>Sentinel type representing the absence of a meaningful value. Used as the type parameter for
+no-payload results: <code>Result&lt;Unit&gt;</code> represents an operation that either succeeds without
+producing a value or fails with an <a class="xref" href="Trellis.Error.html">Error</a>.</p>
+</dd>
+    </dl>
+    <h3 id="interfaces">
+Interfaces
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IAggregate.html">IAggregate</a></dt>
+      <dd><p>Defines the contract for an aggregate root in Domain-Driven Design.
+An aggregate is a cluster of domain objects that can be treated as a single unit for data changes.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ICodedTransportFault.html">ICodedTransportFault</a></dt>
+      <dd><p>A transport fault that carries its own machine-readable code and kind, so a boundary can publish
+them without knowing which transport produced the failure.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ICursorCodec-1.html">ICursorCodec&lt;TState&gt;</a></dt>
+      <dd><p>A typed continuation codec. Parsing client input returns failures; encoding invalid server state throws.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IDomainEvent.html">IDomainEvent</a></dt>
+      <dd><p>Represents a domain event - a record of something significant that happened in the business domain.
+Domain events capture state changes and business occurrences that domain experts care about.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IETagStampable.html">IETagStampable</a></dt>
+      <dd><p>Infrastructure seam that lets a persistence adapter stamp an aggregate's optimistic-concurrency
+token (<a class="xref" href="Trellis.IAggregate.html#Trellis_IAggregate_ETag">ETag</a>) without reflection.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IEntity.html">IEntity</a></dt>
+      <dd><p>Non-generic interface for all entities in Domain-Driven Design.
+Provides automatic timestamp tracking — <a class="xref" href="Trellis.IEntity.html#Trellis_IEntity_CreatedAt">CreatedAt</a> records when the entity
+was first persisted, and <a class="xref" href="Trellis.IEntity.html#Trellis_IEntity_LastModified">LastModified</a> tracks the most recent change.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IFailureFactory-1.html">IFailureFactory&lt;TSelf&gt;</a></dt>
+      <dd><p>Enables construction of a failure result of the implementing type from an <a class="xref" href="Trellis.Error.html">Error</a>.
+Implemented by <a class="xref" href="Trellis.Result-1.html">Result&lt;TValue&gt;</a> to support generic pipeline behaviors
+that need to construct failure results without knowing the inner type parameter.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IFormattableScalarValue-2.html">IFormattableScalarValue&lt;TSelf, TPrimitive&gt;</a></dt>
+      <dd><p>Extended interface for scalar value objects that support culture-sensitive string parsing.
+Use for numeric and date types where <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iformatprovider">IFormatProvider</a> matters for parsing.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IIntegrationEvent.html">IIntegrationEvent</a></dt>
+      <dd><p>Represents an integration event - the stable, published contract a bounded context emits to the
+outside world (other services or bounded contexts), as distinct from an <a class="xref" href="Trellis.IDomainEvent.html">IDomainEvent</a>
+which stays inside the context and is raised by aggregates.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IPersistOnFailure.html">IPersistOnFailure</a></dt>
+      <dd><p>Opt-in interface implemented by result types whose <em>failure</em> outcome should still
+trigger any post-handler persistence step (e.g. <code>TransactionalCommandBehavior</code>'s
+commit) so the failure state is durably recorded alongside the rest of the staged work.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IReconstitutionStampable.html">IReconstitutionStampable</a></dt>
+      <dd><p>Infrastructure seam that lets a non-EF persistence adapter restore a reconstituted aggregate's
+persistence-managed metadata — audit timestamps and the optimistic-concurrency token — and clear its
+uncommitted domain events in one infra-only call.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IResult.html">IResult</a></dt>
+      <dd><p>Non-generic base interface for result types, exposing success/failure state and error information.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IResult-1.html">IResult&lt;TValue&gt;</a></dt>
+      <dd><p>Generic interface for result types, providing typed access to the success value.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue&lt;TSelf, TPrimitive&gt;</a></dt>
+      <dd><p>Interface for scalar value objects that can be created with validation.
+Enables automatic ASP.NET Core model binding and JSON serialization.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ITrackedAggregateSource.html">ITrackedAggregateSource</a></dt>
+      <dd><p>Exposes the set of aggregates a unit of work tracked at the most recent successful commit.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.ITransportFault.html">ITransportFault</a></dt>
+      <dd><p>Marker interface for transport-layer failure payloads carried by <a class="xref" href="Trellis.Error.TransportFault.html">Error.TransportFault</a>.
+Implemented by transport-specific error unions (e.g., HTTP, gRPC, message bus) defined in
+non-Core packages. Domain code does not inspect implementations; it treats <a class="xref" href="Trellis.Error.TransportFault.html">Error.TransportFault</a>
+as opaque lower-layer failure.</p>
+</dd>
+    </dl>
+    <h3 id="enums">
+Enums
+</h3>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.InputLocation.html">InputLocation</a></dt>
+      <dd><p>Identifies which part of an input an offending value came from.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.PageSizeLimitPolicy.html">PageSizeLimitPolicy</a></dt>
+      <dd><p>Policy for a requested limit above the server maximum.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.PreconditionKind.html">PreconditionKind</a></dt>
+      <dd><p>Identifies which conditional precondition was the subject of a
+<a class="xref" href="Trellis.HttpError.PreconditionFailed.html">HttpError.PreconditionFailed</a> or <a class="xref" href="Trellis.HttpError.PreconditionRequired.html">HttpError.PreconditionRequired</a> fault.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.RetryClassification.html">RetryClassification</a></dt>
+      <dd><p>Transport-neutral classification of <a class="xref" href="Trellis.Error.html">Error</a> values for outer retry loops
+(background workers, message-broker consumers, outbound-gateway callers). Answers the
+question &quot;given this failure, what should the surrounding job do next?&quot; without
+committing to any specific transport or retry policy.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="Trellis.TrackBehavior.html">TrackBehavior</a></dt>
+      <dd><p>Defines which railway track an operation runs on in Railway-Oriented Programming.</p>
+</dd>
+    </dl>
+
+
+</article>
+
+        <div class="contribution d-print-none">
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

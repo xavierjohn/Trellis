@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class TrellisServiceBuilder | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class TrellisServiceBuilder | Trellis ">
+      
+      <meta name="description" content="Collects requested Trellis integration modules and applies them in canonical order.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_ServiceDefaults_TrellisServiceBuilder.md&amp;value=---%0Auid%3A%20Trellis.ServiceDefaults.TrellisServiceBuilder%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder">
+
+
+
+  <h1 id="Trellis_ServiceDefaults_TrellisServiceBuilder" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder" class="text-break">
+Class TrellisServiceBuilder  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.ServiceDefaults.html">ServiceDefaults</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.ServiceDefaults.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Collects requested Trellis integration modules and applies them in canonical order.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public sealed class TrellisServiceBuilder</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">TrellisServiceBuilder</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+  <dl class="typelist extensionMethods">
+    <dt>Extension Methods</dt>
+    <dd>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_AsMaybe__1___0_">MaybeExtensions.AsMaybe&lt;T&gt;(T)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.MaybeExtensions.html#Trellis_MaybeExtensions_ToResult__1___0_">MaybeExtensions.ToResult&lt;TValue&gt;(TValue)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_System_Func_Trellis_Error__">NullableExtensions.ToResult&lt;T&gt;(T?, Func&lt;Error&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.NullableExtensions.html#Trellis_NullableExtensions_ToResult__1___0_Trellis_Error_">NullableExtensions.ToResult&lt;T&gt;(T?, Error)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_ClearMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1____">AggregateTestMutator.ClearMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;)</a>
+  </div>
+  <div>
+      <a class="xref" href="Trellis.Testing.AggregateTestMutator.html#Trellis_Testing_AggregateTestMutator_SetMaybeField__2___0_System_Linq_Expressions_Expression_System_Func___0_Trellis_Maybe___1______1_">AggregateTestMutator.SetMaybeField&lt;TEntity, TValue&gt;(TEntity, Expression&lt;Func&lt;TEntity, Maybe&lt;TValue&gt;&gt;&gt;, TValue?)</a>
+  </div>
+  </dd></dl>
+
+
+
+  <h2 id="Trellis_ServiceDefaults_TrellisServiceBuilder_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>Callers do not invoke this builder directly. Use
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceCollectionExtensions.html#Trellis_ServiceDefaults_TrellisServiceCollectionExtensions_AddTrellis_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_ServiceDefaults_TrellisServiceBuilder__">AddTrellis(IServiceCollection, Action&lt;TrellisServiceBuilder&gt;)</a>;
+it constructs a <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a>, hands it to the configure callback, and
+invokes <code>Apply()</code> after the callback returns to register the selected modules in the
+canonical pipeline order.</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseAsp_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseAsp*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseAsp_System_Action_Trellis_Asp_TrellisAspOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseAsp(System.Action{Trellis.Asp.TrellisAspOptions})">
+  UseAsp(Action&lt;TrellisAspOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L87"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers Trellis ASP.NET Core integration (error-to-status-code mapping and the
+<a class="xref" href="Trellis.Asp.ResourceCollectionNameRegistry.html">ResourceCollectionNameRegistry</a>).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseAsp(Action&lt;TrellisAspOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.TrellisAspOptions.html">TrellisAspOptions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseAsp_System_Action_Trellis_Asp_TrellisAspOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Calling this method more than once is allowed; the configure delegates are composed in
+call order rather than overwriting. Each delegate runs against the same
+<a class="xref" href="Trellis.Asp.TrellisAspOptions.html">TrellisAspOptions</a> instance, so layered configuration (e.g. a library
+applies defaults; the host overrides specific properties) is supported.
+</p>
+<p>
+<b>Does NOT register scalar-value validation.</b> Scalar-value validation mutates
+global <code>MvcOptions</code> / <code>JsonOptions</code> (model binders, JSON converters). If
+your endpoints bind request bodies / route / query containing Trellis value objects
+(<a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue&lt;TSelf, TPrimitive&gt;</a>, <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>), additionally
+call <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseScalarValueValidation">UseScalarValueValidation()</a>. The two slots are independent so the
+global-options mutation is opt-in instead of silent.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseCachingActorProvider_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseCachingActorProvider*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseCachingActorProvider__1" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseCachingActorProvider``1">
+  UseCachingActorProvider&lt;T&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L918"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a caching decorator around the inner <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a>
+(typically registered by a previous <code>UseXxxActorProvider</code> call).
+Per-request caching ensures multiple actor lookups within one request return the same instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseCachingActorProvider&lt;T&gt;() where T : class, IActorProvider</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The concrete <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> implementation to wrap.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseCachingActorProvider__1_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>For built-in providers (<a class="xref" href="Trellis.Asp.Authorization.EntraActorProvider.html">EntraActorProvider</a>, <a class="xref" href="Trellis.Asp.Authorization.ClaimsActorProvider.html">ClaimsActorProvider</a>),
+chain after the matching <code>UseXxxActorProvider(...)</code> call so its
+<code>IOptions&lt;TOptions&gt;</code> is configured before the caching wrap replaces the
+<a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> slot. Custom providers without Trellis-managed options can
+be cached without a prior <code>UseXxxActorProvider</code>.</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseClaimsActorProvider_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseClaimsActorProvider*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseClaimsActorProvider_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseClaimsActorProvider(System.Action{Trellis.Asp.Authorization.ClaimsActorOptions})">
+  UseClaimsActorProvider(Action&lt;ClaimsActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L480"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.ClaimsActorProvider.html">ClaimsActorProvider</a> as the scoped actor provider.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseClaimsActorProvider(Action&lt;ClaimsActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html">ClaimsActorOptions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseDevelopmentActorProvider_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseDevelopmentActorProvider*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseDevelopmentActorProvider_System_Action_Trellis_Asp_Authorization_DevelopmentActorOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseDevelopmentActorProvider(System.Action{Trellis.Asp.Authorization.DevelopmentActorOptions})">
+  UseDevelopmentActorProvider(Action&lt;DevelopmentActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L498"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.DevelopmentActorProvider.html">DevelopmentActorProvider</a> as the scoped actor provider.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseDevelopmentActorProvider(Action&lt;DevelopmentActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.DevelopmentActorOptions.html">DevelopmentActorOptions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseDomainEvents*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseDomainEvents">
+  UseDomainEvents()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L720"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the domain-event dispatch behavior without assembly scanning. AOT- and
+trim-safe. Pair with <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents__2">UseDomainEvents&lt;TEvent, THandler&gt;()</a> per handler, or
+with explicit <code>services.AddDomainEventHandler&lt;TEvent, THandler&gt;()</code> calls
+outside the builder. Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>. Mutually exclusive with
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents">UseTrackedAggregateDomainEvents()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseDomainEvents()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseDomainEvents*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents_System_Reflection_Assembly___" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseDomainEvents(System.Reflection.Assembly[])">
+  UseDomainEvents(params Assembly[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L694"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the domain-event dispatch behavior and (optionally) scans assemblies for
+<a class="xref" href="Trellis.Mediator.IDomainEventHandler-1.html">IDomainEventHandler&lt;TEvent&gt;</a> implementations. Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Scans assemblies for IDomainEventHandler&lt;TEvent&gt; implementations. Use UseDomainEvents() with UseDomainEvents&lt;TEvent, THandler&gt;() for AOT/trim scenarios.&quot;)]
+[RequiresDynamicCode(&quot;Constructs closed generic IDomainEventHandler&lt;TEvent&gt; service types at runtime. Use UseDomainEvents() with UseDomainEvents&lt;TEvent, THandler&gt;() for AOT scenarios.&quot;)]
+public TrellisServiceBuilder UseDomainEvents(params Assembly[] assemblies)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>assemblies</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.reflection.assembly">Assembly</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents_System_Reflection_Assembly____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Passing no assemblies registers the behavior + default <a class="xref" href="Trellis.Mediator.IDomainEventPublisher.html">IDomainEventPublisher</a>
+without scanning; pair with explicit
+<code>services.AddDomainEventHandler&lt;TEvent, THandler&gt;()</code> calls or the typed builder
+overload <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents__2">UseDomainEvents&lt;TEvent, THandler&gt;()</a> (AOT-friendly). The dispatch
+behavior runs after <code>ValidationBehavior</code> and before <code>TransactionalCommandBehavior</code>
+in the pipeline, so events fire after the transaction commits.
+</p>
+<p>
+Calling with one or more assemblies scans them at startup; the scan uses reflection and
+is not AOT- or trim-safe.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseDomainEvents*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents__2" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseDomainEvents``2">
+  UseDomainEvents&lt;TEvent, THandler&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L741"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>AOT-safe per-handler domain-event registration. Registers <code class="typeparamref">THandler</code>
+as an <a class="xref" href="Trellis.Mediator.IDomainEventHandler-1.html">IDomainEventHandler&lt;TEvent&gt;</a> for <code class="typeparamref">TEvent</code> and
+ensures the dispatch behavior is wired. Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>. Mutually
+exclusive with <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents">UseTrackedAggregateDomainEvents()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseDomainEvents&lt;TEvent, THandler&gt;() where TEvent : IDomainEvent where THandler : class, IDomainEventHandler&lt;TEvent&gt;</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TEvent</code></dt>
+    <dd><p>The domain event type.</p>
+</dd>
+    <dt><code>THandler</code></dt>
+    <dd><p>The handler implementation type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseEasyAuthActorProvider_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseEasyAuthActorProvider*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseEasyAuthActorProvider_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseEasyAuthActorProvider(System.Action{Trellis.Asp.Authorization.ClaimsActorOptions})">
+  UseEasyAuthActorProvider(Action&lt;ClaimsActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L541"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.EasyAuthClaimsActorProvider.html">EasyAuthClaimsActorProvider</a> as the scoped
+<a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> for requests authenticated by Azure App Service /
+Container Apps built-in authentication (&quot;Easy Auth&quot;).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseEasyAuthActorProvider(Action&lt;ClaimsActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html">ClaimsActorOptions</a>&gt;</dt>
+    <dd><p>Optional delegate to customize <a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html">ClaimsActorOptions</a>. Set
+<code>ActorIdClaim</code> / <code>PermissionsClaim</code> to the claim types the upstream identity
+provider emits inside the Easy Auth principal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseEasyAuthActorProvider_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Registers the actor mapping only; pair with
+<code>AddAuthentication(...).AddEasyAuth()</code> and <code>UseAuthentication()</code> so the
+principal header is decoded onto <code>HttpContext.User</code> first. Mutually exclusive with
+the other actor-provider selectors.</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseEntityFrameworkUnitOfWork_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseEntityFrameworkUnitOfWork*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseEntityFrameworkUnitOfWork__1" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseEntityFrameworkUnitOfWork``1">
+  UseEntityFrameworkUnitOfWork&lt;TContext&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L567"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers EF Core Unit of Work and the transactional command behavior.
+Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a> and is always applied after all other behavior registrations.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Trellis.EntityFrameworkCore is not AOT- or trim-compatible because EF Core requires reflection over entity types and query expression trees. AOT consumers should compose their data access layer outside of this builder.&quot;)]
+[RequiresDynamicCode(&quot;Trellis.EntityFrameworkCore is not AOT-compatible because EF Core requires runtime code generation for query compilation. AOT consumers should compose their data access layer outside of this builder.&quot;)]
+public TrellisServiceBuilder UseEntityFrameworkUnitOfWork&lt;TContext&gt;() where TContext : DbContext</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TContext</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseEntityFrameworkUnitOfWork__1_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Calling this method more than once — with the same <code class="typeparamref">TContext</code> or
+a different one — throws <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a>. The Trellis pipeline
+supports exactly one transactional <span class="xref">Trellis.IUnitOfWork</span> per composition; chaining
+two calls (e.g. for a read/write context split) is always misconfiguration.
+</p>
+<p>
+This method is annotated <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.codeanalysis.requiresunreferencedcodeattribute">RequiresUnreferencedCodeAttribute</a> /
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.codeanalysis.requiresdynamiccodeattribute">RequiresDynamicCodeAttribute</a> because the underlying
+<code>Trellis.EntityFrameworkCore</code> package is intentionally opted out of AOT and trim
+(EF Core's own runtime requires reflection over entity types and query expression trees).
+AOT consumers can still register Trellis ASP / Mediator / FluentValidation through this
+builder; the unit-of-work slot is the seam where the AOT contract ends.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseEntraActorProvider_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseEntraActorProvider*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseEntraActorProvider_System_Action_Trellis_Asp_Authorization_EntraActorOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseEntraActorProvider(System.Action{Trellis.Asp.Authorization.EntraActorOptions})">
+  UseEntraActorProvider(Action&lt;EntraActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L489"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.EntraActorProvider.html">EntraActorProvider</a> as the scoped actor provider.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseEntraActorProvider(Action&lt;EntraActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.EntraActorOptions.html">EntraActorOptions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseFluentValidation_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseFluentValidation*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseFluentValidation" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseFluentValidation">
+  UseFluentValidation()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L230"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers only the FluentValidation adapter (no assembly scanning). AOT- and trim-safe.
+Pair with <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseFluentValidation__2">UseFluentValidation&lt;TValidator, TMessage&gt;()</a> per validator, or with
+explicit <code>services.AddScoped&lt;IValidator&lt;TMessage&gt;, TValidator&gt;()</code> calls
+outside the builder. Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseFluentValidation()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseFluentValidation_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseFluentValidation*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseFluentValidation_System_Reflection_Assembly___" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseFluentValidation(System.Reflection.Assembly[])">
+  UseFluentValidation(params Assembly[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L211"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the FluentValidation adapter and optionally scans validator assemblies.
+Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Scans assemblies for IValidator&lt;T&gt; implementations. Use UseFluentValidation() with UseFluentValidation&lt;TValidator, TMessage&gt;() for AOT/trim scenarios.&quot;)]
+[RequiresDynamicCode(&quot;Constructs closed generic IValidator&lt;T&gt; service types at runtime. Use UseFluentValidation() with UseFluentValidation&lt;TValidator, TMessage&gt;() for AOT scenarios.&quot;)]
+public TrellisServiceBuilder UseFluentValidation(params Assembly[] assemblies)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>assemblies</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.reflection.assembly">Assembly</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseFluentValidation_System_Reflection_Assembly____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Calling without arguments registers only the adapter (AOT-friendly); pair with
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseFluentValidation__2">UseFluentValidation&lt;TValidator, TMessage&gt;()</a> or per-validator
+<code>services.AddScoped&lt;IValidator&lt;TMessage&gt;, TValidator&gt;()</code> calls.
+</p>
+<p>
+Calling with one or more assemblies scans them for concrete <span class="xref">FluentValidation.IValidator&lt;T&gt;</span>
+implementations at startup; the scan uses reflection and is therefore not AOT- or
+trim-safe. The <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.codeanalysis.requiresunreferencedcodeattribute">RequiresUnreferencedCodeAttribute</a> and
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.codeanalysis.requiresdynamiccodeattribute">RequiresDynamicCodeAttribute</a> annotations on this overload surface the
+limitation at the consumer's call site when the AOT analyzer is enabled.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseFluentValidation_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseFluentValidation*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseFluentValidation__2" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseFluentValidation``2">
+  UseFluentValidation&lt;TValidator, TMessage&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L244"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>AOT-safe per-validator registration. Registers <code class="typeparamref">TValidator</code> as the
+<span class="xref">FluentValidation.IValidator&lt;T&gt;</span> for <code class="typeparamref">TMessage</code> and ensures the
+FluentValidation adapter and Mediator behaviors are wired. Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseFluentValidation&lt;TValidator, TMessage&gt;() where TValidator : class, IValidator&lt;TMessage&gt;</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TValidator</code></dt>
+    <dd><p>The concrete validator type implementing <span class="xref">FluentValidation.IValidator&lt;T&gt;</span>.</p>
+</dd>
+    <dt><code>TMessage</code></dt>
+    <dd><p>The message type the validator validates.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIdempotency_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseIdempotency*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIdempotency_System_Action_Trellis_Asp_Idempotency_IdempotencyOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseIdempotency(System.Action{Trellis.Asp.Idempotency.IdempotencyOptions})">
+  UseIdempotency(Action&lt;IdempotencyOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L168"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the Trellis Idempotency-Key middleware and its supporting services.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseIdempotency(Action&lt;IdempotencyOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Idempotency.IdempotencyOptions.html">IdempotencyOptions</a>&gt;</dt>
+    <dd><p>Optional callback to mutate <code>IdempotencyOptions</code>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIdempotency_System_Action_Trellis_Asp_Idempotency_IdempotencyOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Endpoints opt in to idempotency by carrying <code>IdempotentAttribute</code> metadata; the
+middleware is a no-op on endpoints that do not opt in. Application code is still
+responsible for mounting the middleware in the request pipeline via
+<code>app.UseTrellisIdempotency()</code> and for registering a store (for example
+<code>services.AddInMemoryIdempotencyStore()</code>).
+</p>
+<p>
+Calling this method more than once is allowed; the configure delegates are composed in
+call order rather than overwriting, so a library that applies defaults and a host that
+tweaks individual properties can both call <code>UseIdempotency(...)</code> without either
+erasing the other's configuration.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseInbox_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseInbox*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseInbox__1_System_Action_Trellis_EntityFrameworkCore_InboxOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseInbox``1(System.Action{Trellis.EntityFrameworkCore.InboxOptions})">
+  UseInbox&lt;TContext&gt;(Action&lt;InboxOptions&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L663"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the transactional inbox for <code class="typeparamref">TContext</code> so an application-owned
+transport adapter can hand each received integration message to the inbox for
+exactly-once-per-consumer local processing.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Trellis.EntityFrameworkCore is not AOT- or trim-compatible because EF Core requires reflection over entity types and query expression trees. AOT consumers should compose their data access layer outside of this builder.&quot;)]
+[RequiresDynamicCode(&quot;Trellis.EntityFrameworkCore is not AOT-compatible because EF Core requires runtime code generation for query compilation. AOT consumers should compose their data access layer outside of this builder.&quot;)]
+public TrellisServiceBuilder UseInbox&lt;TContext&gt;(Action&lt;InboxOptions&gt; configure) where TContext : DbContext</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.EntityFrameworkCore.InboxOptions.html">InboxOptions</a>&gt;</dt>
+    <dd><p>Inbox configuration; <a class="xref" href="Trellis.EntityFrameworkCore.InboxOptions.html#Trellis_EntityFrameworkCore_InboxOptions_ConsumerId">ConsumerId</a> is required.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd><p>The same builder for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TContext</code></dt>
+    <dd><p>The consumer's <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a> that owns the inbox table.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseInbox__1_System_Action_Trellis_EntityFrameworkCore_InboxOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This slot owns only the service-collection half of the inbox: the <code>IInboxDispatcher</code>, the EF
+<code>IInboxStore</code>, and its <a class="xref" href="Trellis.EntityFrameworkCore.InboxOptions.html">InboxOptions</a>. The <code>InboxMessage</code> table mapping lives
+on the <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a> and must be wired where the context is configured — call
+<code>modelBuilder.AddTrellisInbox()</code> in <code>OnModelCreating</code>. This mirrors how
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseOutbox__1_System_Action_Trellis_EntityFrameworkCore_OutboxOptions__">UseOutbox&lt;TContext&gt;(Action&lt;OutboxOptions&gt;?)</a> owns the service registration while the table mapping is applied
+on the context.
+</p>
+<p>
+The dispatcher records each message under <code>(ConsumerId, MessageId)</code> and fans it out to the
+registered integration-event handlers inside a single database transaction, so a duplicate delivery
+is skipped and a handler failure rolls back and lets the transport redeliver. Register the handlers
+(for example via <code>AddIntegrationEventHandler&lt;TEvent, THandler&gt;()</code> or
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents">UseIntegrationEvents()</a>) so the dispatcher has consumers to invoke.
+<a class="xref" href="Trellis.EntityFrameworkCore.InboxOptions.html#Trellis_EntityFrameworkCore_InboxOptions_ConsumerId">ConsumerId</a> is required, so a <code class="paramref">configure</code> callback that
+sets it must be supplied.
+</p>
+<p>
+The registration is order-independent: it adds no Mediator behavior, so calling it before or after
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseEntityFrameworkUnitOfWork__1">UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</a> yields the same canonical pipeline order.
+Calling this method more than once throws <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a>; one inbox per
+composition is supported. The method is annotated <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.codeanalysis.requiresunreferencedcodeattribute">RequiresUnreferencedCodeAttribute</a> /
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.codeanalysis.requiresdynamiccodeattribute">RequiresDynamicCodeAttribute</a> because the inbox builds on
+<code>Trellis.EntityFrameworkCore</code>, which is intentionally opted out of AOT and trim.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseIntegrationEvents*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseIntegrationEvents">
+  UseIntegrationEvents()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L801"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the default in-process <a class="xref" href="Trellis.Mediator.IIntegrationEventPublisher.html">IIntegrationEventPublisher</a> and the scoped
+<a class="xref" href="Trellis.Mediator.IIntegrationEventCollector.html">IIntegrationEventCollector</a> without assembly scanning. AOT- and trim-safe. Pair with
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents__2">UseIntegrationEvents&lt;TEvent, THandler&gt;()</a> per consumer.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseIntegrationEvents()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd><p>The same builder for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseIntegrationEvents*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents_System_Reflection_Assembly___" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseIntegrationEvents(System.Reflection.Assembly[])">
+  UseIntegrationEvents(params Assembly[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L782"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the default in-process <a class="xref" href="Trellis.Mediator.IIntegrationEventPublisher.html">IIntegrationEventPublisher</a> and the scoped
+<a class="xref" href="Trellis.Mediator.IIntegrationEventCollector.html">IIntegrationEventCollector</a>, plus any <a class="xref" href="Trellis.Mediator.IIntegrationEventHandler-1.html">IIntegrationEventHandler&lt;TEvent&gt;</a>
+implementations found by scanning <code class="paramref">assemblies</code>. AOT-safe when called with no
+assemblies.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Scans assemblies for IIntegrationEventHandler&lt;TEvent&gt; implementations. Use UseIntegrationEvents() with UseIntegrationEvents&lt;TEvent, THandler&gt;() for AOT/trim scenarios.&quot;)]
+[RequiresDynamicCode(&quot;Constructs closed generic IIntegrationEventHandler&lt;TEvent&gt; service types at runtime. Use UseIntegrationEvents() with UseIntegrationEvents&lt;TEvent, THandler&gt;() for AOT scenarios.&quot;)]
+public TrellisServiceBuilder UseIntegrationEvents(params Assembly[] assemblies)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>assemblies</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.reflection.assembly">Assembly</a>[]</dt>
+    <dd><p>Assemblies to scan for integration-event handler implementations.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd><p>The same builder for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents_System_Reflection_Assembly____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Integration events are the published external contract; they are produced by translating domain
+events (a domain-event handler adds to <a class="xref" href="Trellis.Mediator.IIntegrationEventCollector.html">IIntegrationEventCollector</a>) and delivered by
+the transactional outbox relay - so pair this with <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents">UseDomainEvents()</a> and
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseOutbox__1_System_Action_Trellis_EntityFrameworkCore_OutboxOptions__">UseOutbox&lt;TContext&gt;(Action&lt;OutboxOptions&gt;?)</a>. To deliver to other services instead of in-process consumers,
+replace the <a class="xref" href="Trellis.Mediator.IIntegrationEventPublisher.html">IIntegrationEventPublisher</a> registration with a message-broker adapter.
+</p>
+<p>
+Passing one or more assemblies scans them at startup using reflection and is not AOT- or
+trim-safe; use the parameterless overload with
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents__2">UseIntegrationEvents&lt;TEvent, THandler&gt;()</a> for AOT scenarios.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseIntegrationEvents*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseIntegrationEvents__2" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseIntegrationEvents``2">
+  UseIntegrationEvents&lt;TEvent, THandler&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L815"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>AOT-safe per-consumer integration-event registration. Registers <code class="typeparamref">THandler</code>
+as an <a class="xref" href="Trellis.Mediator.IIntegrationEventHandler-1.html">IIntegrationEventHandler&lt;TEvent&gt;</a> for <code class="typeparamref">TEvent</code> and wires
+the default publisher and collector.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseIntegrationEvents&lt;TEvent, THandler&gt;() where TEvent : IIntegrationEvent where THandler : class, IIntegrationEventHandler&lt;TEvent&gt;</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd><p>The same builder for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TEvent</code></dt>
+    <dd><p>The integration event type.</p>
+</dd>
+    <dt><code>THandler</code></dt>
+    <dd><p>The handler implementation type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseMediator*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseMediator(System.Action{Trellis.Mediator.TrellisMediatorTelemetryOptions})">
+  UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L184"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the Trellis Mediator pipeline behaviors.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;? configureTelemetry = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configureTelemetry</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Mediator.TrellisMediatorTelemetryOptions.html">TrellisMediatorTelemetryOptions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Calling this method more than once is allowed; the configure delegates are composed in
+call order rather than overwriting.</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseNestedJsonPathClaimsActorProvider_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseNestedJsonPathClaimsActorProvider*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseNestedJsonPathClaimsActorProvider_System_Action_Trellis_Asp_Authorization_NestedJsonPathClaimsActorOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseNestedJsonPathClaimsActorProvider(System.Action{Trellis.Asp.Authorization.NestedJsonPathClaimsActorOptions})">
+  UseNestedJsonPathClaimsActorProvider(Action&lt;NestedJsonPathClaimsActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L519"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.NestedJsonPathClaimsActorProvider.html">NestedJsonPathClaimsActorProvider</a> as the scoped
+<a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> with nested-JSON claim shape support (Auth0
+<code>app_metadata.roles</code>, Azure B2C <code>extension_*</code>, Okta nested claims).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseNestedJsonPathClaimsActorProvider(Action&lt;NestedJsonPathClaimsActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.NestedJsonPathClaimsActorOptions.html">NestedJsonPathClaimsActorOptions</a>&gt;</dt>
+    <dd><p>Optional delegate to customize <a class="xref" href="Trellis.Asp.Authorization.NestedJsonPathClaimsActorOptions.html">NestedJsonPathClaimsActorOptions</a>.
+Set <code>ContainerClaim</code> to the top-level claim that carries the JSON document,
+<code>ActorIdPath</code> / <code>PermissionsPath</code> to the dotted JSON paths inside it,
+and the inherited flat <code>ActorIdClaim</code> / <code>PermissionsClaim</code> for the fallback
+when the container claim is absent or malformed.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseNestedJsonPathClaimsActorProvider_System_Action_Trellis_Asp_Authorization_NestedJsonPathClaimsActorOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Mutually exclusive with the other actor-provider selectors.</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseOutbox_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseOutbox*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseOutbox__1_System_Action_Trellis_EntityFrameworkCore_OutboxOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseOutbox``1(System.Action{Trellis.EntityFrameworkCore.OutboxOptions})">
+  UseOutbox&lt;TContext&gt;(Action&lt;OutboxOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L615"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the transactional-outbox relay for <code class="typeparamref">TContext</code> so domain events
+captured into the outbox table are durably re-dispatched after the transaction commits.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Trellis.EntityFrameworkCore is not AOT- or trim-compatible because EF Core requires reflection over entity types and query expression trees. AOT consumers should compose their data access layer outside of this builder.&quot;)]
+[RequiresDynamicCode(&quot;Trellis.EntityFrameworkCore is not AOT-compatible because EF Core requires runtime code generation for query compilation. AOT consumers should compose their data access layer outside of this builder.&quot;)]
+public TrellisServiceBuilder UseOutbox&lt;TContext&gt;(Action&lt;OutboxOptions&gt;? configure = null) where TContext : DbContext</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.EntityFrameworkCore.OutboxOptions.html">OutboxOptions</a>&gt;</dt>
+    <dd><p>Optional relay tuning (poll interval, batch size, max attempts).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd><p>The same builder for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TContext</code></dt>
+    <dd><p>The application's <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a> that owns the outbox table.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseOutbox__1_System_Action_Trellis_EntityFrameworkCore_OutboxOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This slot owns only the service-collection half of the outbox: the relay hosted service and its
+<a class="xref" href="Trellis.EntityFrameworkCore.OutboxOptions.html">OutboxOptions</a>. The capture interceptor and the <a class="xref" href="Trellis.EntityFrameworkCore.OutboxMessage.html">OutboxMessage</a> table
+mapping live on the <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.entityframeworkcore.dbcontext">DbContext</a> and must be wired where the context is configured —
+call <code>optionsBuilder.AddTrellisOutboxInterceptor()</code> on the options builder and
+<code>modelBuilder.AddTrellisOutbox()</code> in <code>OnModelCreating</code>. This mirrors how
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseEntityFrameworkUnitOfWork__1">UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</a> owns the service registration while
+<code>AddTrellisInterceptors</code> is applied on the context.
+</p>
+<p>
+When the outbox is enabled the capture interceptor clears each aggregate's events inside the
+commit, so the in-pipeline <code>DomainEventDispatchBehavior</code> observes none and the relay becomes
+the single, durable dispatch path. Pair this with <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents">UseDomainEvents()</a> (or an explicit
+<code>AddDomainEventDispatch</code>) so the relay has handlers and an <a class="xref" href="Trellis.Mediator.IDomainEventPublisher.html">IDomainEventPublisher</a>
+to fan out to. The relay registration is order-independent: it adds a hosted service and does not
+participate in the Mediator behavior pipeline, so calling it before or after
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseEntityFrameworkUnitOfWork__1">UseEntityFrameworkUnitOfWork&lt;TContext&gt;()</a> yields the same canonical pipeline order.
+</p>
+<p>
+Calling this method more than once throws <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a>; one outbox
+relay per composition is supported. The method is annotated
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.codeanalysis.requiresunreferencedcodeattribute">RequiresUnreferencedCodeAttribute</a> / <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.diagnostics.codeanalysis.requiresdynamiccodeattribute">RequiresDynamicCodeAttribute</a>
+because the outbox builds on <code>Trellis.EntityFrameworkCore</code>, which is intentionally opted out
+of AOT and trim.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseProblemDetails_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseProblemDetails*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseProblemDetails" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseProblemDetails">
+  UseProblemDetails()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L143"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers Trellis ProblemDetails customization (traceId on every error, 405 Allow
+header projected as <code>extensions.allow</code>, 500 detail rewrite).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseProblemDetails()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseProblemDetails_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Independent of <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseAsp_System_Action_Trellis_Asp_TrellisAspOptions__">UseAsp(Action&lt;TrellisAspOptions&gt;?)</a>: ProblemDetails
+customization layers on top of ASP.NET Core's <code>IProblemDetailsService</code> and does
+not pull in Trellis MVC/result-mapping infrastructure.
+</p>
+<p>
+Idempotent across direct + builder composition: calling
+<code>services.AddTrellisProblemDetails()</code> directly and also opting in via
+<code>options.UseProblemDetails()</code> registers exactly one Trellis post-configure
+layer, so <code>traceId</code> / <code>allow</code> extensions are not duplicated.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseRelatedResourceAuthorization_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseRelatedResourceAuthorization*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseRelatedResourceAuthorization__4_Trellis_Mediator_ResolvedAuthorizationPath_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseRelatedResourceAuthorization``4(Trellis.Mediator.ResolvedAuthorizationPath)">
+  UseRelatedResourceAuthorization&lt;TMessage, TLeaf, TOwner, TResponse&gt;(ResolvedAuthorizationPath)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L459"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>AOT-safe per-command registration for indirect resource authorization using a fully-built
+<a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a>. Use this when the single-hop overload is
+insufficient — multi-hop chains, plural-terminal fan-out, or composite shapes built by hand.
+Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseRelatedResourceAuthorization&lt;TMessage, TLeaf, TOwner, TResponse&gt;(ResolvedAuthorizationPath path) where TMessage : IAuthorizeResourceVia&lt;TOwner&gt;, IMessage where TLeaf : class where TResponse : IResult, IFailureFactory&lt;TResponse&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>path</code> <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html">ResolvedAuthorizationPath</a></dt>
+    <dd><p>The resolved path. Its <a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html#Trellis_Mediator_ResolvedAuthorizationPath_MessageType">MessageType</a>,
+<a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html#Trellis_Mediator_ResolvedAuthorizationPath_LeafType">LeafType</a>, and
+<a class="xref" href="Trellis.Mediator.ResolvedAuthorizationPath.html#Trellis_Mediator_ResolvedAuthorizationPath_OwnerType">OwnerType</a> must agree with the generic arguments.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd><p>The builder for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TMessage</code></dt>
+    <dd><p>The command type implementing <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html">IAuthorizeResourceVia&lt;TOwner&gt;</a>.</p>
+</dd>
+    <dt><code>TLeaf</code></dt>
+    <dd><p>The leaf resource type.</p>
+</dd>
+    <dt><code>TOwner</code></dt>
+    <dd><p>The owner resource type.</p>
+</dd>
+    <dt><code>TResponse</code></dt>
+    <dd><p>The command's response type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">path</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseRelatedResourceAuthorization_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseRelatedResourceAuthorization*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseRelatedResourceAuthorization__6_System_Func___1___4__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseRelatedResourceAuthorization``6(System.Func{``1,``4})">
+  UseRelatedResourceAuthorization&lt;TMessage, TLeaf, TLeafId, TOwner, TOwnerId, TResponse&gt;(Func&lt;TLeaf, TOwnerId?&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L420"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>AOT-safe per-command registration for <b>indirect</b> resource authorization: commands that
+implement <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html">IAuthorizeResourceVia&lt;TOwner&gt;</a> and authorize against an owner reached
+by a single hop from the leaf resource the command identifies. This is the via-command
+counterpart to <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization__3">UseResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</a>,
+which only covers direct <a class="xref" href="Trellis.Authorization.IAuthorizeResource-1.html">IAuthorizeResource&lt;TResource&gt;</a> commands. Implies
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseRelatedResourceAuthorization&lt;TMessage, TLeaf, TLeafId, TOwner, TOwnerId, TResponse&gt;(Func&lt;TLeaf, TOwnerId?&gt; extractOwnerId) where TMessage : IAuthorizeResourceVia&lt;TOwner&gt;, IIdentifyResource&lt;TLeaf, TLeafId&gt;, IMessage where TLeaf : class where TOwner : class where TOwnerId : notnull where TResponse : IResult, IFailureFactory&lt;TResponse&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>extractOwnerId</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-2">Func</a>&lt;TLeaf, TOwnerId&gt;</dt>
+    <dd><p>Delegate that, given a loaded <code class="typeparamref">TLeaf</code>, returns the
+<code class="typeparamref">TOwnerId</code> identifying the owner to authorize against. Returning
+<a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> short-circuits authorization to <a class="xref" href="Trellis.Error.Forbidden.html">Error.Forbidden</a>.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd><p>The builder for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TMessage</code></dt>
+    <dd><p>The command type implementing <a class="xref" href="Trellis.Authorization.IAuthorizeResourceVia-1.html">IAuthorizeResourceVia&lt;TOwner&gt;</a>.</p>
+</dd>
+    <dt><code>TLeaf</code></dt>
+    <dd><p>The leaf resource type the command identifies.</p>
+</dd>
+    <dt><code>TLeafId</code></dt>
+    <dd><p>The leaf resource identifier type.</p>
+</dd>
+    <dt><code>TOwner</code></dt>
+    <dd><p>The owner resource type authorization is evaluated against.</p>
+</dd>
+    <dt><code>TOwnerId</code></dt>
+    <dd><p>The owner resource identifier type.</p>
+</dd>
+    <dt><code>TResponse</code></dt>
+    <dd><p>The command's response type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseRelatedResourceAuthorization__6_System_Func___1___4___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+The consumer owns the loaders: register <code>SharedResourceLoaderById&lt;TLeaf, TLeafId&gt;</code>,
+<code>SharedResourceLoaderById&lt;TOwner, TOwnerId&gt;</code>, and an
+<a class="xref" href="Trellis.Authorization.IResourceLoader-2.html">IResourceLoader&lt;TMessage, TResource&gt;</a> for the leaf. The behavior fails fast at
+request time when any is missing rather than masking the gap as a 403.
+</p>
+<p>
+Multi-hop chains, plural-terminal fan-out, and hand-built shapes use the
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseRelatedResourceAuthorization__4_Trellis_Mediator_ResolvedAuthorizationPath_">UseRelatedResourceAuthorization&lt;TMessage, TLeaf, TOwner, TResponse&gt;(ResolvedAuthorizationPath)</a>
+overload instead.
+</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">extractOwnerId</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseResourceAuthorization*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseResourceAuthorization">
+  UseResourceAuthorization()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L295"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Enables resource authorization without assembly scanning. AOT- and trim-safe. Pair with
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization__3">UseResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</a> per command, or
+with explicit <code>services.AddResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</code>
+calls outside the builder. Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseResourceAuthorization()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseResourceAuthorization*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization_System_Action_Trellis_Mediator_ResourceAuthorizationOptions__" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseResourceAuthorization(System.Action{Trellis.Mediator.ResourceAuthorizationOptions})">
+  UseResourceAuthorization(Action&lt;ResourceAuthorizationOptions&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L314"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Configures the per-resource failure-exposure policy for the resource-authorization
+pipeline (see <a class="xref" href="Trellis.Mediator.ResourceAuthorizationOptions.html">ResourceAuthorizationOptions</a> for the
+configuration surface, including
+<a class="xref" href="Trellis.Mediator.ResourceAuthorizationOptions.html#Trellis_Mediator_ResourceAuthorizationOptions_HideExistence__1">HideExistence&lt;TResource&gt;()</a>
+and the projection-loader overload). Repeated calls compose configure delegates rather
+than overwriting. Enables the resource-authorization pipeline (<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization">UseResourceAuthorization()</a>)
+and implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseResourceAuthorization(Action&lt;ResourceAuthorizationOptions&gt; configure)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Mediator.ResourceAuthorizationOptions.html">ResourceAuthorizationOptions</a>&gt;</dt>
+    <dd><p>A delegate that configures the per-resource exposure policy.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd><p>The builder for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">configure</code> is null.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseResourceAuthorization*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization_System_Reflection_Assembly___" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseResourceAuthorization(System.Reflection.Assembly[])">
+  UseResourceAuthorization(params Assembly[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L276"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers resource authorization behaviors and resource loaders discovered in assemblies.
+Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Scans assemblies for IAuthorizeResource&lt;TResource&gt; command types. Use UseResourceAuthorization() with UseResourceAuthorization&lt;TMessage, TResource, TResponse&gt;() for AOT/trim scenarios.&quot;)]
+[RequiresDynamicCode(&quot;Constructs closed generic ResourceAuthorizationBehavior&lt;,,&gt; service types at runtime. Use UseResourceAuthorization() with UseResourceAuthorization&lt;TMessage, TResource, TResponse&gt;() for AOT scenarios.&quot;)]
+public TrellisServiceBuilder UseResourceAuthorization(params Assembly[] assemblies)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>assemblies</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.reflection.assembly">Assembly</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization_System_Reflection_Assembly____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Passing no assemblies keeps the resource-authorization pipeline available for explicit
+registrations without performing assembly scanning. Use this overload + the
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization__3">UseResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()</a> per-command
+typed overload for AOT/trim scenarios.
+</p>
+<p>
+Calling with one or more assemblies scans them at startup; the scan uses reflection and
+is not AOT- or trim-safe. The annotation surfaces the limitation at the call site.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseResourceAuthorization*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization__3" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseResourceAuthorization``3">
+  UseResourceAuthorization&lt;TMessage, TResource, TResponse&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L336"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>AOT-safe per-command resource-authorization registration. Registers the closed-generic
+<code>ResourceAuthorizationBehavior&lt;TMessage, TResource, TResponse&gt;</code> for the named
+command and ensures the resource-authorization pipeline is enabled. Implies
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseResourceAuthorization&lt;TMessage, TResource, TResponse&gt;() where TMessage : IAuthorizeResource&lt;TResource&gt;, IMessage where TResource : class where TResponse : IResult, IFailureFactory&lt;TResponse&gt;</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TMessage</code></dt>
+    <dd><p>The command type implementing <a class="xref" href="Trellis.Authorization.IAuthorizeResource-1.html">IAuthorizeResource&lt;TResource&gt;</a>.</p>
+</dd>
+    <dt><code>TResource</code></dt>
+    <dd><p>The resource type the command authorizes against.</p>
+</dd>
+    <dt><code>TResponse</code></dt>
+    <dd><p>The command's response type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseResourceAuthorization__3_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Does not register a resource loader. For a shared-loader adapter, use
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseSharedResourceAuthorization__4">UseSharedResourceAuthorization&lt;TMessage, TResource, TId, TResponse&gt;()</a> instead.</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseScalarValueValidation_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseScalarValueValidation*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseScalarValueValidation" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseScalarValueValidation">
+  UseScalarValueValidation()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L120"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers Trellis scalar-value validation: configures both MVC and Minimal API JSON
+pipelines (model binders, JSON converters, <code>SuppressModelStateInvalidFilter</code>
+toggle) so <a class="xref" href="Trellis.IScalarValue-2.html">IScalarValue&lt;TSelf, TPrimitive&gt;</a> / <a class="xref" href="Trellis.Maybe-1.html">Maybe&lt;T&gt;</a>
+validation surfaces as RFC 9457 ProblemDetails.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseScalarValueValidation()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseScalarValueValidation_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Mutates global <code>MvcOptions</code> and <code>JsonOptions</code>. Independent of
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseAsp_System_Action_Trellis_Asp_TrellisAspOptions__">UseAsp(Action&lt;TrellisAspOptions&gt;?)</a>: hosts that only need
+error-to-status-code mapping (e.g. an MVC site that does not bind value-object DTOs)
+can call <code>UseAsp()</code> without paying for the binder / converter mutation.
+</p>
+<p>
+<strong>Minimal API endpoint filter and middleware are NOT registered by this slot.</strong>
+Minimal API hosts must additionally call <code>app.UseScalarValueValidation()</code>
+(middleware) and chain <code>.WithScalarValueValidation()</code> on each endpoint that
+should surface validation as RFC 9457 ProblemDetails.
+</p>
+<p>
+Idempotent: multiple calls register the underlying services exactly once. Equivalent
+to calling <code>services.AddScalarValueValidation()</code> directly.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseSharedResourceAuthorization_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseSharedResourceAuthorization*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseSharedResourceAuthorization__4" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseSharedResourceAuthorization``4">
+  UseSharedResourceAuthorization&lt;TMessage, TResource, TId, TResponse&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L370"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers resource authorization, its shared-loader adapter, and the authorized-resource
+accessor for a message without assembly scanning. Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseSharedResourceAuthorization&lt;TMessage, TResource, TId, TResponse&gt;() where TMessage : IAuthorizeResource&lt;TResource&gt;, IIdentifyResource&lt;TResource, TId&gt;, IMessage where TResource : class where TResponse : IResult, IFailureFactory&lt;TResponse&gt;</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd><p>The builder for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TMessage</code></dt>
+    <dd><p>The message that authorizes and identifies the resource.</p>
+</dd>
+    <dt><code>TResource</code></dt>
+    <dd><p>The resource type loaded for authorization.</p>
+</dd>
+    <dt><code>TId</code></dt>
+    <dd><p>The resource identifier type.</p>
+</dd>
+    <dt><code>TResponse</code></dt>
+    <dd><p>The message's result response type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseSharedResourceAuthorization__4_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Register the <a class="xref" href="Trellis.Authorization.SharedResourceLoaderById-2.html">SharedResourceLoaderById&lt;TResource, TId&gt;</a> implementation separately.
+Existing per-message loaders are preserved. Repeated direct or builder registrations
+are idempotent; the behavior runs before validation and the unit-of-work behavior.</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseTrackedAggregateDomainEvents*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseTrackedAggregateDomainEvents">
+  UseTrackedAggregateDomainEvents()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L865"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the tracked-aggregate domain-event dispatch behavior without assembly
+scanning. AOT- and trim-safe. Pair with <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents__2">UseTrackedAggregateDomainEvents&lt;TEvent, THandler&gt;()</a>
+per handler, or with explicit <code>services.AddDomainEventHandler&lt;TEvent, THandler&gt;()</code>
+calls outside the builder. Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>. Mutually exclusive with
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents">UseDomainEvents()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseTrackedAggregateDomainEvents()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseTrackedAggregateDomainEvents*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents_System_Reflection_Assembly___" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseTrackedAggregateDomainEvents(System.Reflection.Assembly[])">
+  UseTrackedAggregateDomainEvents(params Assembly[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L839"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers the tracked-aggregate domain-event dispatch behavior and (optionally) scans
+assemblies for <a class="xref" href="Trellis.Mediator.IDomainEventHandler-1.html">IDomainEventHandler&lt;TEvent&gt;</a> implementations. Implies
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>. Mutually exclusive with <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents_System_Reflection_Assembly___">UseDomainEvents(params Assembly[])</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[RequiresUnreferencedCode(&quot;Scans assemblies for IDomainEventHandler&lt;TEvent&gt; implementations. Use UseTrackedAggregateDomainEvents() with UseTrackedAggregateDomainEvents&lt;TEvent, THandler&gt;() for AOT/trim scenarios.&quot;)]
+[RequiresDynamicCode(&quot;Constructs closed generic IDomainEventHandler&lt;TEvent&gt; service types at runtime. Use UseTrackedAggregateDomainEvents() with UseTrackedAggregateDomainEvents&lt;TEvent, THandler&gt;() for AOT scenarios.&quot;)]
+public TrellisServiceBuilder UseTrackedAggregateDomainEvents(params Assembly[] assemblies)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>assemblies</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.reflection.assembly">Assembly</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents_System_Reflection_Assembly____remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+See <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents">UseTrackedAggregateDomainEvents()</a> for the AOT-friendly parameterless
+overload. Calling with one or more assemblies scans them at startup; the scan uses
+reflection and is not AOT- or trim-safe.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseTrackedAggregateDomainEvents*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseTrackedAggregateDomainEvents__2" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseTrackedAggregateDomainEvents``2">
+  UseTrackedAggregateDomainEvents&lt;TEvent, THandler&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L886"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>AOT-safe per-handler tracked-aggregate domain-event registration. Registers
+<code class="typeparamref">THandler</code> as an <a class="xref" href="Trellis.Mediator.IDomainEventHandler-1.html">IDomainEventHandler&lt;TEvent&gt;</a> for
+<code class="typeparamref">TEvent</code> and ensures the tracked dispatch behavior is wired.
+Implies <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseMediator_System_Action_Trellis_Mediator_TrellisMediatorTelemetryOptions__">UseMediator(Action&lt;TrellisMediatorTelemetryOptions&gt;?)</a>. Mutually exclusive with <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseDomainEvents">UseDomainEvents()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseTrackedAggregateDomainEvents&lt;TEvent, THandler&gt;() where TEvent : IDomainEvent where THandler : class, IDomainEventHandler&lt;TEvent&gt;</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TEvent</code></dt>
+    <dd><p>The domain event type.</p>
+</dd>
+    <dt><code>THandler</code></dt>
+    <dd><p>The handler implementation type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseWorkerActor_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseWorkerActor*"></a>
+
+  <h3 id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseWorkerActor_Trellis_Authorization_Actor_" data-uid="Trellis.ServiceDefaults.TrellisServiceBuilder.UseWorkerActor(Trellis.Authorization.Actor)">
+  UseWorkerActor(Actor)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L961"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Composes the HTTP-side <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> with a system-actor identity used by
+non-HTTP execution contexts (typically a <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.backgroundservice">BackgroundService</a>
+tick that runs outside any ambient request).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TrellisServiceBuilder UseWorkerActor(Actor systemActor)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>systemActor</code> <a class="xref" href="Trellis.Authorization.Actor.html">Actor</a></dt>
+    <dd><p>The actor returned when <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.http.ihttpcontextaccessor.httpcontext">HttpContext</a>
+is <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a>. Permissions on this actor become the authorization envelope for
+every mediator command the worker dispatches; scope them as narrowly as the worker requires.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html">TrellisServiceBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_ServiceDefaults_TrellisServiceBuilder_UseWorkerActor_Trellis_Authorization_Actor__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+Applied last, AFTER both the HTTP-side actor provider (<code>UseClaimsActorProvider</code>,
+<code>UseEntraActorProvider</code>, or <code>UseDevelopmentActorProvider</code>) and any
+<a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseCachingActorProvider__1">UseCachingActorProvider&lt;T&gt;()</a> wrap. The worker wrapper sits on the OUTSIDE
+so worker-tick lookups never traverse the caching layer (which has no scope to cache
+against), while HTTP-side lookups flow through caching → inner provider unchanged.
+</p>
+<p>
+Calling this method requires that an actor provider slot is selected somewhere in the
+composition — typically via <code>UseClaimsActorProvider</code>, <code>UseEntraActorProvider</code>,
+<code>UseDevelopmentActorProvider</code>, or <a class="xref" href="Trellis.ServiceDefaults.TrellisServiceBuilder.html#Trellis_ServiceDefaults_TrellisServiceBuilder_UseCachingActorProvider__1">UseCachingActorProvider&lt;T&gt;()</a> with a
+custom provider. Because <code>Apply()</code> records selections and runs them in canonical
+order, the chain position of <code>UseWorkerActor(...)</code> relative to those selectors does
+not matter; only that one of them is present. Calling <code>UseWorkerActor</code> twice throws.
+A hosted-service validator runs at host start and fails fast if any subsequent
+<code>services.AddScoped&lt;IActorProvider, ...&gt;()</code> registration overwrites the
+wrapper — background-worker ticks would otherwise stop resolving the configured system
+actor and would surface the first dispatched command as
+<a class="xref" href="Trellis.Error.AuthenticationRequired.html">Error.AuthenticationRequired</a>.
+</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.ServiceDefaults/src/TrellisServiceBuilder.cs/#L31" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

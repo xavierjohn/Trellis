@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Http.Abstractions — API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Http.Abstractions — API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-http-abstractions.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellishttpabstractions--api-reference">Trellis.Http.Abstractions — API Reference</h1>
+
+<p><strong>Package:</strong> <code>Trellis.Http.Abstractions</code>
+<strong>Namespace:</strong> <code>Trellis</code>
+<strong>Purpose:</strong> Shared HTTP transport abstractions used by <code>Trellis.Http</code> and <code>Trellis.Asp</code> without pulling HTTP-specific payload types into <code>Trellis.Core</code>.</p>
+<p>See also: <a href="trellis-api-core.html#moved-http-transport-types">trellis-api-core.md</a>, <a href="trellis-api-http.html#use-this-file-when">trellis-api-http.md</a>, <a href="trellis-api-asp.html#domain--http-boundary-mapping">trellis-api-asp.md</a>.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You need the HTTP-specific fault cases wrapped by <code>Error.TransportFault</code>.</li>
+<li>You need typed header / validator helpers such as <code>EntityTagValue</code>, <code>RetryAfterValue</code>, or <code>PreconditionKind</code>.</li>
+<li>You need response metadata or write-outcome shapes (<code>RepresentationMetadata</code>, <code>WriteOutcome&lt;T&gt;</code>).</li>
+<li>You are applying aggregate ETag preconditions from application code.</li>
+<li>All types in this package live in the <code>Trellis</code> namespace. After adding the <code>Trellis.Http.Abstractions</code> package reference, the existing <code>using Trellis;</code> (or implicit usings) brings them into scope; no new <code>using</code> directive is required.</li>
+</ul>
+<h2 id="package-role">Package role</h2>
+<ul>
+<li><code>Trellis.Core</code> keeps the transport-neutral envelope: <code>ITransportFault</code>, <code>RetryAdvice</code>, and <code>Error.TransportFault</code>.</li>
+<li><code>Trellis.Http.Abstractions</code> supplies the built-in HTTP payload union (<code>HttpError</code>) plus the HTTP value objects and response-shape helpers that would otherwise drag HTTP-specific concerns into Core.</li>
+<li>The CLR namespace stays <code>Trellis</code>, so most consumer code changes are package-reference updates rather than <code>using</code> changes.</li>
+</ul>
+<h2 id="httperror"><code>HttpError</code></h2>
+<p><code>HttpError</code> is a closed HTTP-fault union that implements <code>ITransportFault</code>.
+Construct it only in HTTP-aware boundaries and wrap it in <code>new Error.TransportFault(...)</code> when you need to move it through a <code>Result</code> pipeline.</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Constructor</th>
+<th>Typical status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HttpError.MethodNotAllowed</code></td>
+<td><code>(EquatableArray&lt;string&gt; Allow)</code></td>
+<td>405</td>
+<td>Preserves the <code>Allow</code> header payload.</td>
+</tr>
+<tr>
+<td><code>HttpError.NotAcceptable</code></td>
+<td><code>(EquatableArray&lt;string&gt; Available)</code></td>
+<td>406</td>
+<td>Available representations/media types.</td>
+</tr>
+<tr>
+<td><code>HttpError.UnsupportedMediaType</code></td>
+<td><code>(EquatableArray&lt;string&gt; Supported)</code></td>
+<td>415</td>
+<td>Supported request media types.</td>
+</tr>
+<tr>
+<td><code>HttpError.RangeNotSatisfiable</code></td>
+<td><code>(long CompleteLength, string Unit = &quot;bytes&quot;)</code></td>
+<td>416</td>
+<td>Preserves the unsatisfied-range payload (complete length and unit) for HTTP-aware boundaries.</td>
+</tr>
+<tr>
+<td><code>HttpError.ContentTooLarge</code></td>
+<td><code>(long? MaxBytes = null)</code></td>
+<td>413</td>
+<td>Optional request-size limit payload.</td>
+</tr>
+<tr>
+<td><code>HttpError.PreconditionFailed</code></td>
+<td><code>(ResourceRef Resource, PreconditionKind Condition)</code></td>
+<td>412</td>
+<td>Typed conditional-request failure.</td>
+</tr>
+<tr>
+<td><code>HttpError.PreconditionRequired</code></td>
+<td><code>(PreconditionKind Condition)</code></td>
+<td>428</td>
+<td>Missing required precondition.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="base-members">Base members</h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Kind</code></td>
+<td><code>string</code></td>
+<td>Stable HTTP-aligned discriminator (for example <code>&quot;method-not-allowed&quot;</code>).</td>
+</tr>
+<tr>
+<td><code>Code</code></td>
+<td><code>string</code></td>
+<td>Defaults to <code>Kind</code>; precondition cases override it with the specific <code>PreconditionKind</code>.</td>
+</tr>
+<tr>
+<td><code>Detail</code></td>
+<td><code>string?</code></td>
+<td>Optional human-readable detail.</td>
+</tr>
+<tr>
+<td><code>Cause</code></td>
+<td><code>HttpError?</code></td>
+<td>Optional structured cause chain; cycles throw <code>InvalidOperationException</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="header-and-conditional-request-value-types">Header and conditional-request value types</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Shape</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AuthChallenge</code></td>
+<td><code>sealed record (string Scheme, ImmutableDictionary&lt;string,string&gt;? Params = null)</code></td>
+<td>Standalone <code>WWW-Authenticate</code> challenge model. It is not stored on <code>Error.AuthenticationRequired</code>; HTTP-aware callers can still use it to construct headers directly.</td>
+</tr>
+<tr>
+<td><code>EntityTagValue</code></td>
+<td><code>sealed record</code></td>
+<td>Strong / weak / wildcard ETag value with <code>Strong</code>, <code>Weak</code>, <code>Wildcard</code>, <code>TryParse</code>, <code>StrongEquals</code>, <code>WeakEquals</code>, and <code>ToHeaderValue()</code>.</td>
+</tr>
+<tr>
+<td><code>RetryAfterValue</code></td>
+<td><code>sealed class</code></td>
+<td><code>Retry-After</code> as either delay seconds or an absolute date via <code>FromSeconds</code>, <code>FromDate</code>, and <code>ToHeaderValue()</code>.</td>
+</tr>
+<tr>
+<td><code>PreconditionKind</code></td>
+<td><code>enum { IfMatch, IfNoneMatch, IfModifiedSince, IfUnmodifiedSince }</code></td>
+<td>Typed vocabulary for conditional headers.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="entitytagvalue-members"><code>EntityTagValue</code> members</h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OpaqueTag</code></td>
+<td><code>string</code></td>
+<td>The raw tag with no quotes and no <code>W/</code> prefix. Compare against <code>IAggregate.ETag</code> with <code>StringComparison.Ordinal</code>.</td>
+</tr>
+<tr>
+<td><code>IsWeak</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> for <code>W/&quot;...&quot;</code>. Weak tags do <strong>not</strong> satisfy <code>If-Match</code>, which requires strong comparison (RFC 9110 §13.1.1).</td>
+</tr>
+<tr>
+<td><code>IsWildcard</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> only for the RFC 9110 <code>*</code> token, as opposed to a literal ETag whose opaque tag happens to be <code>*</code>. A wildcard satisfies <code>If-Match</code> unconditionally.</td>
+</tr>
+<tr>
+<td><code>Strong(string)</code> / <code>Weak(string)</code> / <code>Wildcard</code></td>
+<td>factories</td>
+<td>Construction. <code>Strong</code>/<code>Weak</code> validate the opaque-tag character set and throw on invalid input.</td>
+</tr>
+<tr>
+<td><code>TryParse(string)</code></td>
+<td>parser</td>
+<td>Parses a header value, including the <code>W/</code> prefix.</td>
+</tr>
+<tr>
+<td><code>StrongEquals</code> / <code>WeakEquals</code></td>
+<td>comparison</td>
+<td>RFC 9110 §8.8.3.2 comparison functions.</td>
+</tr>
+<tr>
+<td><code>ToHeaderValue()</code></td>
+<td><code>string</code></td>
+<td>Formats for the wire, re-adding quotes and any <code>W/</code> prefix.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="retryaftervalue-members"><code>RetryAfterValue</code> members</h3>
+<p><code>Retry-After</code> is a union of two shapes, so <strong>test the discriminant before reading the payload</strong> — the accessors throw <code>InvalidOperationException</code> for the wrong case.</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IsDelaySeconds</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when the value is a delay.</td>
+</tr>
+<tr>
+<td><code>IsDate</code></td>
+<td><code>bool</code></td>
+<td><code>true</code> when the value is an absolute HTTP-date.</td>
+</tr>
+<tr>
+<td><code>DelaySeconds</code></td>
+<td><code>int</code></td>
+<td>Throws <code>InvalidOperationException</code> when <code>IsDate</code>.</td>
+</tr>
+<tr>
+<td><code>Date</code></td>
+<td><code>DateTimeOffset</code></td>
+<td>Throws <code>InvalidOperationException</code> when <code>IsDelaySeconds</code>.</td>
+</tr>
+<tr>
+<td><code>FromSeconds(int)</code></td>
+<td>factory</td>
+<td>Throws <code>ArgumentOutOfRangeException</code> when negative.</td>
+</tr>
+<tr>
+<td><code>FromDate(DateTimeOffset)</code></td>
+<td>factory</td>
+<td>Absolute-date form.</td>
+</tr>
+<tr>
+<td><code>ToHeaderValue()</code></td>
+<td><code>string</code></td>
+<td>Decimal seconds, or an IMF-fixdate (<code>&quot;R&quot;</code>) for the date form.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="representation-metadata-and-write-outcomes">Representation metadata and write outcomes</h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RepresentationMetadata</code></td>
+<td>Response metadata bag for <code>ETag</code>, <code>Last-Modified</code>, <code>Vary</code>, <code>Content-Language</code>, and <code>Content-Location</code>. Build with <code>RepresentationMetadata.Create()</code> or the convenience helpers <code>WithETag(...)</code> / <code>WithStrongETag(...)</code>.</td>
+</tr>
+<tr>
+<td><code>WriteOutcome&lt;T&gt;</code></td>
+<td>Closed union for HTTP-shaped write results: <code>Created</code>, <code>Updated</code>, <code>UpdatedNoContent</code>, <code>Accepted</code>, and <code>AcceptedNoContent</code>. The <code>Accepted*</code> cases can still carry <code>RetryAfterValue</code>. Construct via the nested records (<code>new WriteOutcome&lt;T&gt;.Updated(...)</code>) or — to recover the base type without a cast — the static <code>WriteOutcome</code> factory helpers below.</td>
+</tr>
+<tr>
+<td><code>WriteOutcome</code> (static)</td>
+<td>Factory helpers — <code>Created&lt;T&gt;</code>, <code>Updated&lt;T&gt;</code>, <code>UpdatedNoContent&lt;T&gt;</code>, <code>Accepted&lt;T&gt;</code>, <code>AcceptedNoContent&lt;T&gt;</code> — that build each case but <strong>return the base <code>WriteOutcome&lt;T&gt;</code></strong>. This lets results flow through generic pipelines such as <code>Result.Map(...)</code> / <code>ToHttpResponse(...)</code> (which bind on <code>Result&lt;WriteOutcome&lt;T&gt;&gt;</code>) <strong>without an explicit <code>(WriteOutcome&lt;T&gt;)</code> cast</strong>: <code>new WriteOutcome&lt;T&gt;.Updated(...)</code> has the nested case type, and <code>Result&lt;T&gt;</code> invariance then blocks the implicit upcast. Mirrors the non-generic <code>Result</code> / generic <code>Result&lt;T&gt;</code> pairing. <code>T</code> is inferred from the value for <code>Created</code>/<code>Updated</code>/<code>Accepted</code>; specify it explicitly for the no-content cases.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="representationmetadata-members"><code>RepresentationMetadata</code> members</h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ETag</code></td>
+<td><code>EntityTagValue?</code></td>
+<td>Validator for the selected representation. Passing a wildcard throws <code>ArgumentException</code> — a wildcard is a request-side token and is never a valid response validator.</td>
+</tr>
+<tr>
+<td><code>LastModified</code></td>
+<td><code>DateTimeOffset?</code></td>
+<td>Emitted as <code>Last-Modified</code>.</td>
+</tr>
+<tr>
+<td><code>Vary</code></td>
+<td><code>IReadOnlyList&lt;string&gt;?</code></td>
+<td>Request fields that influenced representation selection.</td>
+</tr>
+<tr>
+<td><code>ContentLanguage</code></td>
+<td><code>IReadOnlyList&lt;string&gt;?</code></td>
+<td>Emitted as <code>Content-Language</code>.</td>
+</tr>
+<tr>
+<td><code>ContentLocation</code></td>
+<td><code>string?</code></td>
+<td>Emitted as <code>Content-Location</code>.</td>
+</tr>
+<tr>
+<td><code>Create()</code></td>
+<td><code>RepresentationMetadata.Builder</code></td>
+<td>Starts the fluent builder.</td>
+</tr>
+<tr>
+<td><code>WithETag(EntityTagValue)</code> / <code>WithStrongETag(string)</code></td>
+<td>factories</td>
+<td>Shortcuts when the ETag is the only metadata.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="representationmetadatabuilder"><code>RepresentationMetadata.Builder</code></h3>
+<p>Fluent builder returned by <code>RepresentationMetadata.Create()</code>; every setter returns the builder, and <code>Build()</code> produces the immutable instance.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SetETag(EntityTagValue)</code></td>
+<td>Sets the validator directly.</td>
+</tr>
+<tr>
+<td><code>SetStrongETag(string)</code> / <code>SetWeakETag(string)</code></td>
+<td>Sets the validator from an opaque tag.</td>
+</tr>
+<tr>
+<td><code>SetLastModified(DateTimeOffset)</code></td>
+<td>Sets <code>Last-Modified</code>.</td>
+</tr>
+<tr>
+<td><code>AddVary(params string[])</code></td>
+<td>Appends <code>Vary</code> field names, deduplicating case-insensitively.</td>
+</tr>
+<tr>
+<td><code>AddContentLanguage(params string[])</code></td>
+<td>Appends language tags, deduplicating case-insensitively.</td>
+</tr>
+<tr>
+<td><code>SetContentLocation(string)</code></td>
+<td>Sets <code>Content-Location</code>.</td>
+</tr>
+<tr>
+<td><code>Build()</code></td>
+<td>Produces the <code>RepresentationMetadata</code>. Empty <code>Vary</code> / <code>ContentLanguage</code> collections are normalised to <code>null</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="writeoutcomet-case-payloads"><code>WriteOutcome&lt;T&gt;</code> case payloads</h3>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Parameters</th>
+<th>Transports as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Created</code></td>
+<td><code>T Value</code>, <code>string Location</code>, <code>RepresentationMetadata? Metadata = null</code></td>
+<td><code>201 Created</code></td>
+</tr>
+<tr>
+<td><code>Updated</code></td>
+<td><code>T Value</code>, <code>RepresentationMetadata? Metadata = null</code></td>
+<td><code>200 OK</code></td>
+</tr>
+<tr>
+<td><code>UpdatedNoContent</code></td>
+<td><code>RepresentationMetadata? Metadata = null</code></td>
+<td><code>204 No Content</code></td>
+</tr>
+<tr>
+<td><code>Accepted</code></td>
+<td><code>T StatusBody</code>, <code>string? MonitorUri = null</code>, <code>RetryAfterValue? RetryAfter = null</code></td>
+<td><code>202 Accepted</code></td>
+</tr>
+<tr>
+<td><code>AcceptedNoContent</code></td>
+<td><code>string? MonitorUri = null</code>, <code>RetryAfterValue? RetryAfter = null</code></td>
+<td><code>202 Accepted</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>StatusBody</code> describes the in-flight operation; <code>MonitorUri</code> is the address a client polls for progress; <code>RetryAfter</code> hints when to poll next.</p>
+<h2 id="aggregateetagextensions"><code>AggregateETagExtensions</code></h2>
+<p><code>AggregateETagExtensions</code> now lives in this package alongside the ETag types it depends on.
+Failures flow as transport faults:</p>
+<ul>
+<li>missing <code>If-Match</code> on <code>RequireETag*</code> → <code>Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch))</code></li>
+<li>empty / weak-only / non-matching ETag sets → <code>Error.TransportFault(new HttpError.PreconditionFailed(ResourceRef.For&lt;T&gt;(), PreconditionKind.IfMatch))</code></li>
+</ul>
+<p>All overloads are constrained to <code>T : IAggregate</code> and take <code>EntityTagValue[]?</code> — normally the parsed <code>If-Match</code> header.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Receiver</th>
+<th>Behaviour when the header is absent (<code>null</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OptionalETag&lt;T&gt;</code></td>
+<td><code>Result&lt;T&gt;</code></td>
+<td>Proceeds unconditionally.</td>
+</tr>
+<tr>
+<td><code>OptionalETagAsync&lt;T&gt;</code></td>
+<td><code>Task&lt;Result&lt;T&gt;&gt;</code>, <code>ValueTask&lt;Result&lt;T&gt;&gt;</code></td>
+<td>As above; async overloads of <code>OptionalETag</code>.</td>
+</tr>
+<tr>
+<td><code>RequireETag&lt;T&gt;</code></td>
+<td><code>Result&lt;T&gt;</code></td>
+<td>Fails with <code>HttpError.PreconditionRequired</code> (HTTP 428).</td>
+</tr>
+<tr>
+<td><code>RequireETagAsync&lt;T&gt;</code></td>
+<td><code>Task&lt;Result&lt;T&gt;&gt;</code>, <code>ValueTask&lt;Result&lt;T&gt;&gt;</code></td>
+<td>As above; async overloads of <code>RequireETag</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Choosing between them is a service-owner decision: use <code>RequireETag*</code> on endpoints where a lost update is unacceptable, <code>OptionalETag*</code> where conditional requests are a client optimisation. Matching is strong comparison, so a wildcard <code>*</code> always passes and weak tags never do.</p>
+<h2 id="domain--transport-boundary">Domain ↔ transport boundary</h2>
+<p><code>Error.AuthenticationRequired</code>, <code>Error.RateLimited</code>, and <code>Error.Unavailable</code> live in <code>Trellis.Core</code> as transport-neutral cases. They carry transport-neutral payloads (<code>Scheme</code>, <code>RetryAdvice</code>) that the ASP boundary translates to HTTP headers (<code>WWW-Authenticate</code>, <code>Retry-After</code>). This package supplies the 405/406/412/413/415/416/428 payloads via <code>HttpError</code>.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-http-abstractions.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
