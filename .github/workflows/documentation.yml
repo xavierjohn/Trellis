@@ -2,6 +2,12 @@
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the documentation site to GitHub Pages
+        required: true
+        default: false
+        type: boolean
   pull_request:
     paths:
       - 'docs/**'
@@ -141,7 +147,7 @@ jobs:
 
     - name: Upload documentation site
       # Production docs follow explicitly published NuGet releases, not every merge to main.
-      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish == true
       uses: actions/upload-artifact@v7
       with:
         name: documentation-site
@@ -152,7 +158,7 @@ jobs:
 
   deploy-docs:
     needs: publish-docs
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
