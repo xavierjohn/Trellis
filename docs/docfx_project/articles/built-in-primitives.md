@@ -7,7 +7,7 @@ audience: [developer]
 ---
 # Use the built-in value objects
 
-Before creating another email, URL, currency, or phone type, check `Trellis.Primitives`. Its built-ins share the same `TryCreate` and `Result<T>` workflow as custom scalar value objects, while keeping common normalization and validation rules in one place.
+Before creating another email, URL, currency, or phone type, check `Trellis.Primitives`. Its input-facing built-ins share the same `TryCreate` and `Result<T>` workflow as custom scalar value objects, while keeping common normalization and validation rules in one place. Supporting query values such as `GeoBoundingBox` are obtained from `GeoBounds` or static members such as `GeoBoundingBox.World` instead of being constructed directly.
 
 ```bash
 dotnet add package Trellis.Primitives

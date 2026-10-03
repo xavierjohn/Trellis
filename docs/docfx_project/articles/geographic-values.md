@@ -67,7 +67,7 @@ bool isMatch =
 
 `DistanceMetersTo` uses a spherical haversine approximation. It is appropriate for common nearby-search behavior, not surveying, altitude-aware calculations, or ellipsoidal geodesics.
 
-For database queries over numeric latitude and longitude columns, use [GeoCoordinateExpressions](xref:Trellis.EntityFrameworkCore.GeoCoordinateExpressions) and follow the [computed-distance query walkthrough](pagination.md#computed-distance-or-score). Use a provider-native spatial type instead when you need a spatial index.
+[GeoCoordinateExpressions](xref:Trellis.EntityFrameworkCore.GeoCoordinateExpressions) requires the separate `Trellis.EntityFrameworkCore` package. [Install it](integration-ef.md#installation), then follow the [computed-distance query walkthrough](pagination.md#computed-distance-or-score) for numeric latitude and longitude columns. The expressions need no DI or interceptor registration. Use a provider-native spatial type instead when you need a spatial index.
 
 ## Serialization and equality
 
