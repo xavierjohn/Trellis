@@ -87,6 +87,40 @@ var result = Result.Ok("ada@example.com")
 dotnet new trellis-asp -n MyService
 ```
 
+## Set Up API References for Coding Agents
+
+`Trellis.Core` ships version-aligned API references for the entire Trellis family. The optional
+[`Trellis.AgentDocs`](https://www.nuget.org/packages/Trellis.AgentDocs) local tool installs them under
+Git-root `.agentdocs/` and adds lightweight pointers to `AGENTS.md` and
+`.github/copilot-instructions.md`, so coding agents use exact signatures and recipes instead of
+guessing from training data. Trellis works normally without this setup.
+
+Run the following commands from the Git root, replacing `<solution-or-project>` with the path to your
+solution or project:
+
+```bash
+dotnet new tool-manifest --output .config
+dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.19 --tool-manifest .config/dotnet-tools.json
+dotnet restore <solution-or-project>
+dotnet tool run agentdocs init <solution-or-project>
+```
+
+If `.config/dotnet-tools.json` already exists, skip `dotnet new tool-manifest`. The `init` command
+creates `.agentdocs/policy.json` and reports pending packages. Add `Trellis.Core` to its
+`approvedPackages`, then install and verify the references:
+
+```bash
+dotnet tool run agentdocs sync
+dotnet tool run agentdocs check
+```
+
+Start agents at `.agentdocs/README.md`; it points to the required `trellis-start-here.md` router and
+the task-specific references to open on demand. One `Trellis.Core` approval covers every first-party
+package that depends on Core; an analyzer-only project receives no guidance, and packages published
+from other repositories may require separate approval. After upgrading Trellis, run `dotnet restore`
+followed by `dotnet tool run agentdocs sync`, and commit the tool manifest, managed instruction
+pointers, `.agentdocs/policy.json`, and `.agentdocs/` with the package update.
+
 ## Packages
 
 Start with `Trellis.Core`; add only the integrations your application uses. `Trellis.ServiceDefaults` is the opinionated composition root for web services.
