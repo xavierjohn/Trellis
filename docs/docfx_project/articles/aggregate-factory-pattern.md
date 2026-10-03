@@ -261,6 +261,6 @@ public interface IProductRepository
 
 - API surface: [`trellis-api-core.md` → Domain-Driven Design](../api_reference/trellis-api-core.md#domain-driven-design)
 - Primitive value-object bases (`Required*<TSelf>`): [`trellis-api-core.md` → Primitive value object base classes](../api_reference/trellis-api-core.md#primitive-value-object-base-classes)
-- Built-in primitives (`EmailAddress`, `Money`, ...): [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)
+- Built-in primitives (`EmailAddress`, `Money`, ...): [Built-in value objects](built-in-primitives.md)
 - ETag-based optimistic concurrency on aggregates: [`trellis-api-http-abstractions.md` → AggregateETagExtensions](../api_reference/trellis-api-http-abstractions.md#aggregateetagextensions)
 - EF Core conventions for aggregates and entities: [`trellis-api-efcore.md`](../api_reference/trellis-api-efcore.md)

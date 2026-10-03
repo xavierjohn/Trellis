@@ -325,6 +325,6 @@ tracing.AddSource("Acme.Billing");
 - Composition-root API: [`trellis-api-servicedefaults.md`](../api_reference/trellis-api-servicedefaults.md)
 - Mediator behaviors, redaction options, pipeline order: [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md)
 - ROP `ActivitySource` and `AddTrellisResultsInstrumentation`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
-- Primitive value-object instrumentation: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)
+- Primitive value-object instrumentation: [`PrimitiveValueObjectTraceProviderBuilderExtensions`](xref:Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions)
 - Mediator integration article: [`integration-mediator.md`](integration-mediator.md)
 - HTTP-client integration article: [`integration-http.md`](integration-http.md)

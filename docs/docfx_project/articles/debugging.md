@@ -312,4 +312,4 @@ When you do that, most pipeline bugs become straightforward to locate.
 ## Cross-references
 
 - `Result<T>` accessors (`TryGetValue`, `TryGetError`, `Match`), `Tap` / `TapOnFailure`, `ResultDebugSettings`, `AddTrellisResultsInstrumentation`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
-- `AddTrellisPrimitivesInstrumentation`: [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)
+- [`AddTrellisPrimitivesInstrumentation`](xref:Trellis.PrimitiveValueObjectTraceProviderBuilderExtensions.AddTrellisPrimitivesInstrumentation(OpenTelemetry.Trace.TracerProviderBuilder))

@@ -10,9 +10,19 @@
   items:
   - name: Value Objects
     items:
-    - name: Primitive Value Objects
+    - name: Overview
       href: primitives.md
-    - name: RequiredEnum
+    - name: Create Custom Scalar Values
+      href: custom-primitives.md
+    - name: Use Built-in Values
+      href: built-in-primitives.md
+    - name: Money and Percentages
+      href: money.md
+    - name: Geographic Values
+      href: geographic-values.md
+    - name: Weekly Schedules
+      href: weekly-schedules.md
+    - name: Symbolic Values with RequiredEnum
       href: required-enum.md
   - name: Maybe Type
     href: maybe-type.md

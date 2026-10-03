@@ -414,8 +414,7 @@ You do **not** need one pattern for the whole system. A codebase can keep simple
 ## See also
 
 - [Aggregate Factory Pattern](aggregate-factory-pattern.md)
-- [Primitive Value Objects](primitives.md)
+- [Value objects](primitives.md), [`RequiredString<TSelf>`](xref:Trellis.RequiredString`1), and [`EmailAddress`](xref:Trellis.Primitives.EmailAddress)
 - [Specifications](specifications.md)
 - [RequiredEnum](required-enum.md)
 - API surface for `Result<T>`, `Aggregate<TId>`, `IDomainEvent`, `Error.InvalidInput`, `Error.Conflict`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
-- Value-object base classes (`RequiredString<TSelf>`, `RequiredGuid<TSelf>`, `EmailAddress`): [`trellis-api-primitives.md`](../api_reference/trellis-api-primitives.md)

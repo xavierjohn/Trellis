@@ -76,16 +76,16 @@ Base classes in the `Trellis` namespace; ready-to-use primitives in `Trellis.Pri
 
 | Base class | Wraps | Example |
 |------------|-------|---------|
-| [`RequiredString<TSelf>`](xref:Trellis.RequiredString`1) | Non-empty `string` | `FirstName`, `ProductCode` |
-| [`RequiredGuid<TSelf>`](xref:Trellis.RequiredGuid`1) | Non-empty `Guid` | `OrderId`, `UserId` |
+| [`RequiredString<TSelf>`](xref:Trellis.RequiredString`1) | `string` with opt-in trimming, sentinel, and length rules | `FirstName`, `ProductCode` |
+| [`RequiredGuid<TSelf>`](xref:Trellis.RequiredGuid`1) | Typed `Guid` with optional empty-value rejection | `OrderId`, `UserId` |
 | [`RequiredInt<TSelf>`](xref:Trellis.RequiredInt`1) | Validated `int` | `Quantity`, `LineNumber` |
 | [`RequiredDecimal<TSelf>`](xref:Trellis.RequiredDecimal`1) | Validated `decimal` | `Price`, `Weight` |
-| [`RequiredEnum<TSelf>`](xref:Trellis.RequiredEnum`1) | Validated `enum` | `OrderStatus`, `Priority` |
+| [`RequiredEnum<TSelf>`](xref:Trellis.RequiredEnum`1) | String-backed symbolic value set | `OrderStatus`, `Priority` |
 | [`ScalarValueObject<TSelf, T>`](xref:Trellis.ScalarValueObject`2) | Any single primitive | Custom scalar values |
 
 **Ready-to-use:** [`EmailAddress`](xref:Trellis.Primitives.EmailAddress), [`Money`](xref:Trellis.Primitives.Money), [`PhoneNumber`](xref:Trellis.Primitives.PhoneNumber), [`Url`](xref:Trellis.Primitives.Url), [`Slug`](xref:Trellis.Primitives.Slug), [`CountryCode`](xref:Trellis.Primitives.CountryCode), [`CurrencyCode`](xref:Trellis.Primitives.CurrencyCode), [`Percentage`](xref:Trellis.Primitives.Percentage), and [more](xref:Trellis.Primitives).
 
-> Learn more: [Primitive Value Objects](~/articles/primitives.md)
+> Learn more: [Value objects](~/articles/primitives.md) · [Custom scalar values](~/articles/custom-primitives.md) · [Built-in values](~/articles/built-in-primitives.md)
 
 ---
 
@@ -137,4 +137,3 @@ Built-in OpenTelemetry tracing via [`ResultsTraceProviderBuilderExtensions`](xre
 | Browse working code | [Examples](~/articles/examples.md) |
 | Set up integrations | [Integration Overview](~/articles/integration.md) |
 | Run the benchmarks | [Performance](~/articles/performance.md) |
-
