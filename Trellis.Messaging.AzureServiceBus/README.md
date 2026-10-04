@@ -31,6 +31,7 @@ Register a `ServiceBusClient` separately. Consumers also require an `IInboxDispa
 - Uses one topic per stable integration-event wire name by default.
 - Replaces the in-process publisher to prevent duplicate local and broker delivery.
 - Settles messages from the inbox outcome: complete processed or duplicate messages, retry handler failures, and dead-letter unusable payloads.
+- Coordinates processor startup and shutdown; concurrent or repeated host stops share one cleanup, allowing in-flight handlers to settle before background-service cancellation. Caches first-caller cancellation without masking processor faults, and preserves both stop and disposal failures.
 
 ## What it is for
 

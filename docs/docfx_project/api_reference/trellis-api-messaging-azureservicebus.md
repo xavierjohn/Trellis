@@ -3,7 +3,7 @@ package: Trellis.Messaging.AzureServiceBus
 namespaces: [Trellis.Messaging.AzureServiceBus]
 types: [ServiceBusIntegrationEventPublisher, ServiceBusInboxConsumer, AzureServiceBusPublisherOptions, AzureServiceBusConsumerOptions, ServiceBusSubscription, ServiceBusMessageFormat, AzureServiceBusServiceCollectionExtensions]
 version: v1
-last_verified: 2026-06-19
+last_verified: 2026-10-04
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when publishing integration events to Azure Service Bus or consuming them into a Trellis inbox, including wire format and message settlement."
@@ -64,9 +64,13 @@ The formatter restores these optional fields onto `IntegrationEnvelope` without 
 | Member | Type | Behaviour |
 |---|---|---|
 | `ServiceBusIntegrationEventPublisher.DisposeAsync()` | `ValueTask` | Closes every cached `ServiceBusSender`. The publisher caches one sender per topic and is the sole owner of every sender it creates, which is what makes a complete close possible. A sender added after the final emptiness check is left to the container disposing the `ServiceBusClient`, which closes everything it created. |
-| `ServiceBusInboxConsumer.StopAsync(CancellationToken)` | `Task` | Stops and disposes each `ServiceBusProcessor` before delegating to `BackgroundService.StopAsync`, so in-flight message handlers are allowed to settle rather than being torn down mid-dispatch. |
+| `ServiceBusInboxConsumer.StopAsync(CancellationToken)` | `Task` | Waits for processor startup to finish, then stops and disposes each processor before delegating to `BackgroundService.StopAsync`, allowing in-flight handlers to settle. Concurrent and repeated calls share one shutdown operation, so processors are disposed exactly once. Each caller's cancellation token bounds its wait; the first caller's token also controls processor shutdown. Processor shutdown faults propagate, with disposal of every processor and background-service cancellation still attempted. |
 
 Both are invoked by the host during graceful shutdown; you do not normally call them yourself.
+
+Consumer shutdown cancellation or failure remains cached: a later `StopAsync` call observes that result rather than retrying disposal. The first caller's cancellation is preserved even when no processor was created or cancellation occurs after processor cleanup, but does not replace a processor fault. A stop fault is rethrown unchanged when disposal succeeds; if disposal also throws, an `AggregateException` preserves the stop fault and the disposal exception. With a non-cancellable token, shutdown can wait indefinitely for slow processor startup; normal host shutdown supplies its configured timeout token.
+
+Cancellation before the background worker starts does not block shutdown: terminated execution also releases the startup wait, even when no processor was created.
 
 ## Topology
 

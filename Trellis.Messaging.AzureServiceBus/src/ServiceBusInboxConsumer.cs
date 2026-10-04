@@ -49,6 +49,9 @@ public sealed class ServiceBusInboxConsumer : BackgroundService
     private readonly ILogger<ServiceBusInboxConsumer> _logger;
     private readonly InboxMessageHandler _handler;
     private readonly List<ServiceBusProcessor> _processors = [];
+    private readonly object _stopLock = new();
+    private readonly TaskCompletionSource _startupCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private Task? _stopTask;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ServiceBusInboxConsumer"/> class.
@@ -87,26 +90,34 @@ public sealed class ServiceBusInboxConsumer : BackgroundService
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        foreach (var subscription in _options.Subscriptions)
+        try
         {
-            var processor = _client.CreateProcessor(
-                subscription.TopicName,
-                subscription.SubscriptionName,
-                new ServiceBusProcessorOptions
-                {
-                    // Settlement is decided by the inbox outcome, so the processor must not settle for us.
-                    AutoCompleteMessages = false,
-                    MaxConcurrentCalls = _options.MaxConcurrentCalls,
-                    PrefetchCount = _options.PrefetchCount,
-                });
+            foreach (var subscription in _options.Subscriptions)
+            {
+                stoppingToken.ThrowIfCancellationRequested();
+                var processor = _client.CreateProcessor(
+                    subscription.TopicName,
+                    subscription.SubscriptionName,
+                    new ServiceBusProcessorOptions
+                    {
+                        // Settlement is decided by the inbox outcome, so the processor must not settle for us.
+                        AutoCompleteMessages = false,
+                        MaxConcurrentCalls = _options.MaxConcurrentCalls,
+                        PrefetchCount = _options.PrefetchCount,
+                    });
 
-            processor.ProcessMessageAsync += ProcessMessageAsync;
-            processor.ProcessErrorAsync += ProcessErrorAsync;
-            _processors.Add(processor);
+                processor.ProcessMessageAsync += ProcessMessageAsync;
+                processor.ProcessErrorAsync += ProcessErrorAsync;
+                _processors.Add(processor);
 
-            await processor.StartProcessingAsync(stoppingToken).ConfigureAwait(false);
+                await processor.StartProcessingAsync(stoppingToken).ConfigureAwait(false);
 
-            ServiceBusTransportLog.Consuming(_logger, subscription.SubscriptionName, subscription.TopicName);
+                ServiceBusTransportLog.Consuming(_logger, subscription.SubscriptionName, subscription.TopicName);
+            }
+        }
+        finally
+        {
+            _startupCompleted.TrySetResult();
         }
 
         // The processors own their own receive loops; this task just parks until shutdown.
@@ -114,17 +125,68 @@ public sealed class ServiceBusInboxConsumer : BackgroundService
     }
 
     /// <inheritdoc />
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    public override Task StopAsync(CancellationToken cancellationToken)
     {
-        foreach (var processor in _processors)
+        // The first caller owns the shutdown deadline; later callers only cancel their wait, and the result stays cached.
+        lock (_stopLock)
+            return (_stopTask ??= StopCoreAsync(cancellationToken)).WaitAsync(cancellationToken);
+    }
+
+    private async Task StopCoreAsync(CancellationToken cancellationToken)
+    {
+        try
         {
-            await processor.StopProcessingAsync(cancellationToken).ConfigureAwait(false);
-            await processor.DisposeAsync().ConfigureAwait(false);
+            if (ExecuteTask is { } execution)
+            {
+                try
+                {
+                    // Pre-execution cancellation can complete the worker without signalling startup.
+                    await Task.WhenAny(_startupCompleted.Task, execution).WaitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    // Finish cancelling startup before its processor list can be safely drained.
+                    await base.StopAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+
+            try
+            {
+                await Task.WhenAll(_processors.Select(processor => StopProcessorAsync(processor, cancellationToken)))
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                _processors.Clear();
+            }
+        }
+        finally
+        {
+            await base.StopAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        _processors.Clear();
+        cancellationToken.ThrowIfCancellationRequested();
+    }
 
-        await base.StopAsync(cancellationToken).ConfigureAwait(false);
+    private static async Task StopProcessorAsync(ServiceBusProcessor processor, CancellationToken cancellationToken)
+    {
+        var stop = StopProcessingAsync();
+        // Defer propagation until disposal has also been attempted.
+        await stop.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        try
+        {
+            await processor.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception disposalFailure) when (stop.Exception is { } stopFailure)
+        {
+            throw new AggregateException(stopFailure.InnerExceptions.Append(disposalFailure));
+        }
+
+        await stop.ConfigureAwait(false);
+
+        // Capture synchronous SDK faults too, so disposal cannot replace them.
+        async Task StopProcessingAsync() =>
+            await processor.StopProcessingAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task ProcessMessageAsync(ProcessMessageEventArgs args) =>
