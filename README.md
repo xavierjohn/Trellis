@@ -100,7 +100,7 @@ solution or project:
 
 ```bash
 dotnet new tool-manifest --output .config
-dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.19 --tool-manifest .config/dotnet-tools.json
+dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.20 --tool-manifest .config/dotnet-tools.json
 dotnet restore <solution-or-project>
 dotnet tool run agentdocs init <solution-or-project>
 ```
@@ -132,7 +132,7 @@ Start with `Trellis.Core`; add only the integrations your application uses. `Tre
 | [Trellis.Core](https://www.nuget.org/packages/Trellis.Core) | `Result<T>`, `Maybe<T>`, typed errors, DDD building blocks, pagination, and source-generated value-object bases |
 | [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Ready-to-use value objects such as `EmailAddress`, `Money`, and `Url` |
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | Compile-time guidance for Result, Maybe, EF Core, and value-object usage |
-| [Trellis.AgentDocs](https://www.nuget.org/packages/Trellis.AgentDocs) | Independently versioned optional local tool (`agentdocs`) for installing and checking package guidance; published preview `0.1.0-preview.19` |
+| [Trellis.AgentDocs](https://www.nuget.org/packages/Trellis.AgentDocs) | Independently versioned optional local tool (`agentdocs`) for installing and checking package guidance; published preview `0.1.0-preview.20` |
 
 ### Application and web integration
 
