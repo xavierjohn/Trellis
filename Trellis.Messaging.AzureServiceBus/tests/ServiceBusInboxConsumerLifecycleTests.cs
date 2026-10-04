@@ -70,6 +70,26 @@ public sealed class ServiceBusInboxConsumerLifecycleTests
     }
 
     [Fact]
+    public async Task StopAsync_CancelledFirstCallerBeforeStart_CachesCancellationWithoutCreatingProcessors()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var client = new ControlledClient();
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        using var consumer = CreateConsumer(client, provider, "orders");
+        using var shutdownCancellation = new CancellationTokenSource();
+        await shutdownCancellation.CancelAsync();
+        var firstStop = async () => await consumer.StopAsync(shutdownCancellation.Token)
+            .WaitAsync(Patience, cancellationToken);
+        var laterStop = async () => await consumer.StopAsync(CancellationToken.None)
+            .WaitAsync(Patience, cancellationToken);
+
+        await firstStop.Should().ThrowAsync<OperationCanceledException>();
+        var failure = await laterStop.Should().ThrowAsync<OperationCanceledException>();
+        failure.Which.CancellationToken.Should().Be(shutdownCancellation.Token);
+        client.CreatedProcessors.Should().Be(0);
+    }
+
+    [Fact]
     public async Task StopAsync_StartupCancelledBeforeExecution_CompletesWithoutCreatingProcessors()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -126,6 +146,117 @@ public sealed class ServiceBusInboxConsumerLifecycleTests
         second.StopCalls.Should().Be(1);
         second.CloseCalls.Should().Be(1);
         consumer.ExecuteTask!.IsCompleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StopAsync_DisposalFailure_DisposesAllProcessorsAndCachesTheFailure()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var closeFailure = new InvalidOperationException("disposal failed");
+        var first = new ControlledProcessor { CloseFailure = closeFailure };
+        var second = new ControlledProcessor();
+        var client = new ControlledClient(first, second);
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        using var consumer = CreateConsumer(client, provider, "orders", "invoices");
+        await consumer.StartAsync(cancellationToken);
+        await second.Started.Task.WaitAsync(Patience, cancellationToken);
+        var stop = async () => await consumer.StopAsync(cancellationToken).WaitAsync(Patience, cancellationToken);
+
+        var failure = await stop.Should().ThrowAsync<InvalidOperationException>();
+        failure.Which.Should().BeSameAs(closeFailure);
+        var cachedFailure = await stop.Should().ThrowAsync<InvalidOperationException>();
+        cachedFailure.Which.Should().BeSameAs(closeFailure);
+        first.StopCalls.Should().Be(1);
+        first.CloseCalls.Should().Be(1);
+        second.StopCalls.Should().Be(1);
+        second.CloseCalls.Should().Be(1);
+        consumer.ExecuteTask!.IsCompleted.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StopAsync_StopAndDisposalFailures_DisposesAllProcessorsAndCachesBothFailures(
+        bool synchronousStopFailure)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var stopFailure = new InvalidOperationException("shutdown failed");
+        var closeFailure = new InvalidOperationException("disposal failed");
+        var first = new ControlledProcessor
+        {
+            StopFailure = stopFailure,
+            ThrowStopFailureSynchronously = synchronousStopFailure,
+            CloseFailure = closeFailure,
+        };
+        var second = new ControlledProcessor();
+        var client = new ControlledClient(first, second);
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        using var consumer = CreateConsumer(client, provider, "orders", "invoices");
+        await consumer.StartAsync(cancellationToken);
+        await second.Started.Task.WaitAsync(Patience, cancellationToken);
+        var stop = async () => await consumer.StopAsync(cancellationToken).WaitAsync(Patience, cancellationToken);
+
+        var failure = await stop.Should().ThrowAsync<AggregateException>();
+        failure.Which.InnerExceptions.Should().Equal(stopFailure, closeFailure);
+        var cachedFailure = await stop.Should().ThrowAsync<AggregateException>();
+        cachedFailure.Which.Should().BeSameAs(failure.Which);
+        first.StopCalls.Should().Be(1);
+        first.CloseCalls.Should().Be(1);
+        second.StopCalls.Should().Be(1);
+        second.CloseCalls.Should().Be(1);
+        consumer.ExecuteTask!.IsCompleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StopAsync_CancellationAfterProcessorStop_CachesCancellation()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var shutdownCancellation = new CancellationTokenSource();
+        var processor = new ControlledProcessor { OnClose = shutdownCancellation.Cancel };
+        var client = new ControlledClient(processor);
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        using var consumer = CreateConsumer(client, provider, "orders");
+        await consumer.StartAsync(cancellationToken);
+        await processor.Started.Task.WaitAsync(Patience, cancellationToken);
+        var firstStop = async () => await consumer.StopAsync(shutdownCancellation.Token)
+            .WaitAsync(Patience, cancellationToken);
+        var laterStop = async () => await consumer.StopAsync(CancellationToken.None)
+            .WaitAsync(Patience, cancellationToken);
+
+        await firstStop.Should().ThrowAsync<OperationCanceledException>();
+        var failure = await laterStop.Should().ThrowAsync<OperationCanceledException>();
+        failure.Which.CancellationToken.Should().Be(shutdownCancellation.Token);
+        processor.StopCalls.Should().Be(1);
+        processor.CloseCalls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StopAsync_ProcessorFailureAndLateCancellation_PreservesTheProcessorFailure()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var shutdownCancellation = new CancellationTokenSource();
+        var stopFailure = new InvalidOperationException("shutdown failed");
+        var processor = new ControlledProcessor
+        {
+            StopFailure = stopFailure,
+            OnClose = shutdownCancellation.Cancel,
+        };
+        var client = new ControlledClient(processor);
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        using var consumer = CreateConsumer(client, provider, "orders");
+        await consumer.StartAsync(cancellationToken);
+        await processor.Started.Task.WaitAsync(Patience, cancellationToken);
+        var firstStop = async () => await consumer.StopAsync(shutdownCancellation.Token)
+            .WaitAsync(Patience, cancellationToken);
+        var laterStop = async () => await consumer.StopAsync(CancellationToken.None)
+            .WaitAsync(Patience, cancellationToken);
+
+        await firstStop.Should().ThrowAsync<Exception>()
+            .Where(exception => exception is OperationCanceledException || ReferenceEquals(exception, stopFailure));
+        var cachedFailure = await laterStop.Should().ThrowAsync<InvalidOperationException>();
+        cachedFailure.Which.Should().BeSameAs(stopFailure);
+        processor.StopCalls.Should().Be(1);
+        processor.CloseCalls.Should().Be(1);
     }
 
     [Fact]
@@ -253,6 +384,9 @@ public sealed class ServiceBusInboxConsumerLifecycleTests
         public int CloseCalls => Volatile.Read(ref _closeCalls);
         public InvalidOperationException? StartFailure { get; init; }
         public InvalidOperationException? StopFailure { get; init; }
+        public bool ThrowStopFailureSynchronously { get; init; }
+        public InvalidOperationException? CloseFailure { get; init; }
+        public Action? OnClose { get; init; }
 
         public void ReleaseStart() => _start.TrySetResult();
         public void ReleaseStop() => _stop.TrySetResult();
@@ -270,7 +404,12 @@ public sealed class ServiceBusInboxConsumerLifecycleTests
             Interlocked.Increment(ref _stopCalls);
             Stopping.TrySetResult();
             if (StopFailure is not null)
+            {
+                if (ThrowStopFailureSynchronously)
+                    throw StopFailure;
                 return Task.FromException(StopFailure);
+            }
+
             return _stop.Task.WaitAsync(cancellationToken);
         }
 
@@ -278,6 +417,9 @@ public sealed class ServiceBusInboxConsumerLifecycleTests
         {
             Interlocked.Increment(ref _closeCalls);
             Closed.TrySetResult();
+            OnClose?.Invoke();
+            if (CloseFailure is not null)
+                return Task.FromException(CloseFailure);
             return Task.CompletedTask;
         }
     }

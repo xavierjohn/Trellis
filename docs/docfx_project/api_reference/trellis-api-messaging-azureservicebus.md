@@ -68,7 +68,7 @@ The formatter restores these optional fields onto `IntegrationEnvelope` without 
 
 Both are invoked by the host during graceful shutdown; you do not normally call them yourself.
 
-Consumer shutdown cancellation or failure remains cached: a later `StopAsync` call observes that result rather than retrying disposal. With a non-cancellable token, shutdown can wait indefinitely for slow processor startup; normal host shutdown supplies its configured timeout token.
+Consumer shutdown cancellation or failure remains cached: a later `StopAsync` call observes that result rather than retrying disposal. The first caller's cancellation is preserved even when no processor was created or cancellation occurs after processor cleanup, but does not replace a processor fault. A stop fault is rethrown unchanged when disposal succeeds; if disposal also throws, an `AggregateException` preserves the stop fault and the disposal exception. With a non-cancellable token, shutdown can wait indefinitely for slow processor startup; normal host shutdown supplies its configured timeout token.
 
 Cancellation before the background worker starts does not block shutdown: terminated execution also releases the startup wait, even when no processor was created.
 

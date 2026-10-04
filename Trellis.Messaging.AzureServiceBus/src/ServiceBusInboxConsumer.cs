@@ -164,18 +164,29 @@ public sealed class ServiceBusInboxConsumer : BackgroundService
         {
             await base.StopAsync(cancellationToken).ConfigureAwait(false);
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     private static async Task StopProcessorAsync(ServiceBusProcessor processor, CancellationToken cancellationToken)
     {
+        var stop = StopProcessingAsync();
+        // Defer propagation until disposal has also been attempted.
+        await stop.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         try
-        {
-            await processor.StopProcessingAsync(cancellationToken).ConfigureAwait(false);
-        }
-        finally
         {
             await processor.DisposeAsync().ConfigureAwait(false);
         }
+        catch (Exception disposalFailure) when (stop.Exception is { } stopFailure)
+        {
+            throw new AggregateException(stopFailure.InnerExceptions.Append(disposalFailure));
+        }
+
+        await stop.ConfigureAwait(false);
+
+        // Capture synchronous SDK faults too, so disposal cannot replace them.
+        async Task StopProcessingAsync() =>
+            await processor.StopProcessingAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task ProcessMessageAsync(ProcessMessageEventArgs args) =>

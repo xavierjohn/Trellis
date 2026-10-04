@@ -31,7 +31,7 @@ Register a `ServiceBusClient` separately. Consumers also require an `IInboxDispa
 - Uses one topic per stable integration-event wire name by default.
 - Replaces the in-process publisher to prevent duplicate local and broker delivery.
 - Completes processed or duplicate messages, retries handler failures, and dead-letters unusable payloads or malformed causation/source values with a reason code. Blank correlation and malformed W3C trace metadata remain processable.
-- Coordinates startup and shutdown so concurrent or repeated host stops dispose each processor once while allowing in-flight handlers to settle.
+- Coordinates startup and shutdown so concurrent or repeated host stops dispose each processor once while allowing in-flight handlers to settle. Caches first-caller cancellation without masking processor faults, and preserves both stop and disposal failures.
 
 ## Documentation
 
