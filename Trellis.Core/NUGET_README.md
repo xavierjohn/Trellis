@@ -60,6 +60,8 @@ routing guide instead of guessing API signatures. Confirm a project references a
 API. **Trellis works normally without it.** Restore and build never create `.agentdocs/` or edit your
 instructions; you choose whether to install the guidance.
 `Trellis.AgentDocs` is independently versioned from Core; `0.1.0-preview.20` is available from NuGet.org.
+Core's private `Trellis.AgentDocs.Packaging` build dependency publishes the complete reference
+set; it is not a dependency of your application, and feature packages do not duplicate the guides.
 
 To install it at the Git root, run these **from the Git root** (use a relative path
 if the solution is in a subdirectory):

@@ -23,6 +23,64 @@ $originalPackages = $env:NUGET_PACKAGES
 
 try {
     New-Item -ItemType Directory -Path $feed -Force | Out-Null
+    $metadataProbe = Join-Path $work 'metadata'
+    New-Item -ItemType Directory -Path $metadataProbe -Force | Out-Null
+    $adapter = [System.Security.SecurityElement]::Escape((Join-Path $root 'build\Trellis.Guidance.Metadata.targets'))
+    $utf8Bom = [System.Text.UTF8Encoding]::new($true)
+    $cases = @(
+        @{ Name = 'quoted'; Text = "---`nagent_usage: required`nagent_description: `"Read before using Trellis.`"`n---`n# Guide"; Expected = 'trellis/guide.md|required|Read before using Trellis.' },
+        @{ Name = 'plain'; Text = "---`nagent_usage: onDemand`nagent_description: Open when configuring Trellis.`n---`n# Guide"; Expected = 'trellis/guide.md|onDemand|Open when configuring Trellis.' },
+        @{ Name = 'missing-front-matter'; Text = '# Guide'; Error = 'missing guidance front matter' },
+        @{ Name = 'unclosed'; Text = "---`nagent_usage: required`nagent_description: Read before using Trellis."; Error = 'front matter must close' },
+        @{ Name = 'body'; Text = "---`n# Body`nagent_usage: required`nagent_description: Read before using Trellis.`n---"; Error = 'front matter must close' },
+        @{ Name = 'missing-usage'; Text = "---`nagent_description: Read before using Trellis.`n---"; Error = 'agent_usage must be' },
+        @{ Name = 'invalid-usage'; Text = "---`nagent_usage: Required`nagent_description: Read before using Trellis.`n---"; Error = 'agent_usage must be' },
+        @{ Name = 'missing-description'; Text = "---`nagent_usage: required`n---"; Error = 'agent_description is required' },
+        @{ Name = 'blank-description'; Text = "---`nagent_usage: required`nagent_description: `"   `"`n---"; Error = 'agent_description is required' },
+        @{ Name = 'single-quoted'; Text = "---`nagent_usage: required`nagent_description: 'Read before using Trellis.'`n---"; Error = 'double-quoted or plain scalar' },
+        @{ Name = 'unclosed-quote'; Text = "---`nagent_usage: required`nagent_description: `"Read before using Trellis.`n---"; Error = 'double-quoted or plain scalar' },
+        @{ Name = 'escaped'; Text = "---`nagent_usage: required`nagent_description: `"Read \n before using Trellis.`"`n---"; Error = 'unsupported backslash escape' }
+    )
+    foreach ($case in $cases) {
+        $document = Join-Path $metadataProbe 'guide.md'
+        $result = Join-Path $metadataProbe 'result.txt'
+        $probe = Join-Path $metadataProbe 'Probe.proj'
+        [System.IO.File]::WriteAllText($document, $case.Text, $utf8Bom)
+        [System.IO.File]::WriteAllText($probe, @"
+<Project>
+  <Import Project="$adapter" />
+  <ItemGroup><PackageGuidanceItem Include="guide.md" PackagePath="trellis/guide.md" /></ItemGroup>
+  <Target Name="GeneratePackageGuidanceManifestFromItems" />
+  <Target Name="Probe" DependsOnTargets="ReadTrellisGuidanceMetadata">
+    <WriteLinesToFile File="result.txt" Lines="@(PackageGuidanceItem -> '%(PackagePath)|%(Usage)|%(Description)')" Overwrite="true" />
+  </Target>
+</Project>
+"@, $utf8Bom)
+        $output = & dotnet msbuild $probe -t:Probe -nologo -verbosity:quiet 2>&1
+        $exitCode = $LASTEXITCODE
+        if ($case.ContainsKey('Expected')) {
+            if ($exitCode -ne 0 -or [System.IO.File]::ReadAllText($result).TrimEnd() -cne $case.Expected) {
+                throw "Front-matter mapping failed for $($case.Name): $($output | Out-String)"
+            }
+        } elseif ($exitCode -eq 0 -or ($output | Out-String) -notmatch [regex]::Escape($case.Error)) {
+            throw "Invalid front matter was not rejected for $($case.Name): $($output | Out-String)"
+        }
+    }
+    [System.IO.File]::WriteAllText($document, $cases[0].Text, $utf8Bom)
+    foreach ($name in @('z.md', 'a.md')) {
+        [System.IO.File]::WriteAllText((Join-Path $metadataProbe $name), $cases[1].Text, $utf8Bom)
+    }
+    $projectText = [System.IO.File]::ReadAllText($probe).Replace(
+        '<ItemGroup><PackageGuidanceItem Include="guide.md" PackagePath="trellis/guide.md" /></ItemGroup>',
+        '<ItemGroup><PackageGuidanceItem Include="z.md" PackagePath="trellis/z.md" /><PackageGuidanceItem Include="guide.md" PackagePath="trellis/guide.md" /><PackageGuidanceItem Include="a.md" PackagePath="trellis/a.md" /></ItemGroup>')
+    [System.IO.File]::WriteAllText($probe, $projectText, $utf8Bom)
+    $output = & dotnet msbuild $probe -t:Probe -nologo -verbosity:quiet 2>&1
+    if ($LASTEXITCODE -ne 0 -or ([System.IO.File]::ReadAllLines($result) -join "`n") -cne
+        ($cases[0].Expected, 'trellis/a.md|onDemand|Open when configuring Trellis.',
+            'trellis/z.md|onDemand|Open when configuring Trellis.' -join "`n")) {
+        throw "Required-first and ordinal document ordering failed: $($output | Out-String)"
+    }
+    Write-Host 'PASS front-matter mapping, fail-closed metadata validation and document ordering'
     $projects = @(Get-ChildItem -Path $root -Directory -Filter 'Trellis.*' |
         ForEach-Object { Get-ChildItem -Path (Join-Path $_.FullName 'src') -Filter '*.csproj' -File -ErrorAction SilentlyContinue } |
         Where-Object { ([xml](Get-Content -LiteralPath $_.FullName -Raw)).SelectSingleNode('//IsPackable')?.InnerText -ne 'false' } |
@@ -38,6 +96,28 @@ try {
         $package = Get-ChildItem -Path $feed -Filter "$($project.BaseName).*nupkg" |
             Where-Object { $_.Name -notlike '*.symbols.nupkg' } | Select-Object -First 1
         if (-not $package) { throw "Missing packed package: $($project.BaseName)" }
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
+        try {
+            $reader = [System.IO.StreamReader]::new($archive.GetEntry("$($project.BaseName).nuspec").Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() }
+            finally { $reader.Dispose() }
+            if ($nuspec.SelectSingleNode('//*[local-name()="dependency" and @id="Trellis.AgentDocs.Packaging"]')) {
+                throw "$($package.Name) leaks the publisher-only packaging helper dependency"
+            }
+            if ($project.BaseName -eq 'Trellis.Core') {
+                $reader = [System.IO.StreamReader]::new($archive.GetEntry('guidance/reference-manifest.json').Open())
+                try { $manifest = $reader.ReadToEnd() | ConvertFrom-Json -AsHashtable }
+                finally { $reader.Dispose() }
+                if ($manifest.Count -ne 2 -or -not $manifest.ContainsKey('schemaVersion') -or
+                    -not $manifest.ContainsKey('documents')) {
+                    throw 'Core must publish the standard guidance manifest without unused cohort metadata'
+                }
+                if ($manifest.documents[0].path -cne 'trellis/trellis-start-here.md') {
+                    throw 'Core must retain required-first document ordering'
+                }
+            }
+        }
+        finally { $archive.Dispose() }
         & (Join-Path $PSScriptRoot 'validate-reference-manifest.ps1') -Package $package.FullName -Project $project.FullName -RepositoryRoot $root
         if ($LASTEXITCODE -ne 0) { throw "Manifest validation failed: $($package.Name)" }
         if ($project.BaseName -eq 'Trellis.Core') {

@@ -89,6 +89,10 @@ installs the Trellis references under Git-root `.agentdocs/` and points `AGENTS.
 `Trellis.Core` in `.agentdocs/policy.json` (it is the only Trellis package that publishes guidance). Trellis
 works without this step; restore and build do not edit your instructions.
 
+Core publishes the complete reference set using a private `Trellis.AgentDocs.Packaging`
+build dependency. The helper does not become a dependency of consuming applications,
+and feature packages do not publish duplicate guides.
+
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/error-handling.html)
 - [Package API reference](../docs/docfx_project/api_reference/trellis-api-core.md)

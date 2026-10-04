@@ -79,8 +79,9 @@ public class ApiReferencePayloadGateTests
     {
         var root = RepositoryRoot();
         var targets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
-        targets.Should().Contain("guidance/reference-manifest.json");
-        targets.Should().Contain("GenerateTrellisReferenceManifest");
+        targets.Should().Contain("PackageGuidanceItem");
+        targets.Should().Contain("Trellis.Guidance.Metadata.targets");
+        targets.Should().NotContain("GenerateTrellisReferenceManifest");
         targets.Should().NotContain("_CopyTrellisApiReference");
         targets.Should().NotContain("TrellisSyncApiReference");
         targets.Should().NotContain("TrellisShipsOwnApiReference", "no package ships a private copy of a reference");
@@ -96,6 +97,28 @@ public class ApiReferencePayloadGateTests
             .Should().BeFalse("the consumer-side bootstrap target was removed with the AgentDocs opt-in tool");
         File.Exists(Path.Combine(root, "build", "Trellis.ApiReference.Payload.targets"))
             .Should().BeFalse("independent publishers use the separately versioned packaging helper");
+    }
+
+    [Fact]
+    public void Core_publishing_UsesPrivateSharedHelper_AndRemovesCustomManifestGenerator()
+    {
+        var root = RepositoryRoot();
+        var publishers = PackableProjects()
+            .Select(project => (project.Name, References: XDocument.Load(project.Path).Descendants()
+                .Where(element => element.Name.LocalName == "PackageReference" &&
+                    (string?)element.Attribute("Include") == "Trellis.AgentDocs.Packaging").ToArray()))
+            .Where(project => project.References.Length > 0)
+            .ToArray();
+
+        publishers.Select(project => project.Name).Should().Equal("Trellis.Core");
+        ((string?)publishers[0].References.Should().ContainSingle().Which.Attribute("PrivateAssets"))
+            .Should().Be("all");
+        var version = XDocument.Load(Path.Combine(root, "Directory.Packages.props")).Descendants()
+            .Single(element => element.Name.LocalName == "PackageVersion" &&
+                (string?)element.Attribute("Include") == "Trellis.AgentDocs.Packaging");
+        ((string?)version.Attribute("Version")).Should().Be("0.1.0-preview.20");
+        File.Exists(Path.Combine(root, "build", "generate-reference-manifest.ps1")).Should().BeFalse(
+            "the shared helper, not a second manifest generator, owns hashing and serialization");
     }
 
     [Fact]

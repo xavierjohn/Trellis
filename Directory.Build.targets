@@ -2,29 +2,20 @@
   <!-- Package inputs are collected at pack time, never during consumer restore/build.
        Trellis.Core is the only package that ships guidance: the reference set plus its manifest.
        Every other package relies on Core, so consumers approve one package with the AgentDocs tool. -->
-  <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true'">
-    <None Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\*.md"
-          Exclude="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\completeness-report.md"
-          Pack="true" PackagePath="trellis/" />
-  </ItemGroup>
-
   <PropertyGroup>
     <_TrellisOwnSourceDirectory>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory), $(MSBuildProjectName), src))</_TrellisOwnSourceDirectory>
   </PropertyGroup>
 
-  <Target Name="GenerateTrellisReferenceManifest" BeforeTargets="_GetPackageFiles"
+  <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true' AND '$(IsPackable)' != 'false' AND
+                        '$(_TrellisOwnSourceDirectory)' == '$([MSBuild]::NormalizePath($(MSBuildProjectDirectory)))'">
+    <PackageGuidanceItem Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\*.md"
+                         Exclude="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\completeness-report.md"
+                         PackagePath="trellis/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)build\Trellis.Guidance.Metadata.targets"
           Condition="'$(TrellisShipsApiReferenceSet)' == 'true' AND '$(IsPackable)' != 'false' AND
-                     '$(_TrellisOwnSourceDirectory)' == '$([MSBuild]::NormalizePath($(MSBuildProjectDirectory)))'">
-    <PropertyGroup>
-      <_TrellisReferenceManifest>$([MSBuild]::NormalizePath($(MSBuildProjectDirectory), $(IntermediateOutputPath), reference-manifest.json))</_TrellisReferenceManifest>
-      <_TrellisRepositoryRoot>$([System.IO.Path]::TrimEndingDirectorySeparator($(MSBuildThisFileDirectory)))</_TrellisRepositoryRoot>
-    </PropertyGroup>
-    <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildThisFileDirectory)build/generate-reference-manifest.ps1&quot; -RepositoryRoot &quot;$(_TrellisRepositoryRoot)&quot; -Output &quot;$(_TrellisReferenceManifest)&quot;" />
-    <ItemGroup>
-      <None Include="$(_TrellisReferenceManifest)" Pack="true"
-            PackagePath="guidance/reference-manifest.json" />
-    </ItemGroup>
-  </Target>
+                     '$(_TrellisOwnSourceDirectory)' == '$([MSBuild]::NormalizePath($(MSBuildProjectDirectory)))'" />
 
   <Target Name="LintApiReference" BeforeTargets="Build"
           Condition="'$(TrellisEnableApiReferenceLint)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">

@@ -30,10 +30,19 @@
 
 > **Publisher packaging revision:** The build-only `Trellis.AgentDocs.Packaging`
 > helper lives in its own repository and versions independently of Trellis.Core.
-> It accepts `PackageGuidanceDocument` and `PackageGuidancePath` for every
-> publisher, including Trellis satellites; there is no Trellis-only preset.
+> Core now uses this helper privately for the complete first-party documentation set.
+> A thin pack-time adapter maps Markdown front matter to `PackageGuidanceItem`
+> metadata; the helper owns hashes, manifest generation and payload packing.
+> Single-document publishers can use `PackageGuidanceDocument` and
+> `PackageGuidancePath`; there is no Trellis-only preset.
 > Its NuGet payload is a publisher-side target, not a consumer build target.
 > The format remains the experimental ADR-009 contract, not a NuGet standard.
+> The historical `org.trellis.lockstepCohort` proposal below is superseded:
+> AgentDocs never enforced it, and Core no longer emits that unused metadata.
+> First-party packages still share one repository version; neither the helper
+> nor the independently versioned tool needs to match Core's version.
+> Keeping all first-party guides in Core lets agents discover optional features,
+> but does not imply those feature packages are installed.
 >
 > **Tool extraction revision (2026-09-27):** The reader and installer now live in the
 > independent `Trellis.AgentDocs.Packaging` repository. The separately versioned

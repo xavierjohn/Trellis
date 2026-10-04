@@ -1,0 +1,99 @@
+﻿<Project>
+  <UsingTask TaskName="ReadTrellisGuidanceFrontMatter" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Documents ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <GuidanceItems ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Using Namespace="Microsoft.Build.Utilities" />
+      <Code Type="Method" Language="cs"><![CDATA[
+        public override bool Execute()
+        {
+            var items = new List<Microsoft.Build.Framework.ITaskItem>();
+            foreach (var document in Documents)
+            {
+                var path = document.GetMetadata("FullPath");
+                var lines = File.ReadAllLines(path);
+                if (lines.Length < 2 || !Regex.IsMatch(lines[0].TrimStart('\uFEFF'), @"^---\s*$"))
+                {
+                    Log.LogError("{0}: missing guidance front matter.", path);
+                    continue;
+                }
+
+                var end = Array.FindIndex(lines, 1, line => Regex.IsMatch(line, @"^---\s*$"));
+                if (end < 0 || lines.Take(end).Skip(1).Any(line => line.StartsWith("#", StringComparison.Ordinal)))
+                {
+                    Log.LogError("{0}: front matter must close before the document body.", path);
+                    continue;
+                }
+
+                var usage = ReadScalar(lines, end, "agent_usage", path);
+                var description = ReadScalar(lines, end, "agent_description", path);
+                if (usage != "required" && usage != "onDemand")
+                {
+                    Log.LogError("{0}: agent_usage must be required or onDemand.", path);
+                    continue;
+                }
+                if (string.IsNullOrWhiteSpace(description))
+                {
+                    Log.LogError("{0}: agent_description is required.", path);
+                    continue;
+                }
+
+                var item = new TaskItem(document);
+                item.SetMetadata("Usage", usage);
+                item.SetMetadata("Description", description.Normalize());
+                items.Add(item);
+            }
+
+            GuidanceItems = items.OrderBy(item => item.GetMetadata("Usage") == "required" ? 0 : 1)
+                .ThenBy(item => item.GetMetadata("PackagePath"), StringComparer.Ordinal).ToArray();
+            return !Log.HasLoggedErrors;
+        }
+
+        private string ReadScalar(string[] lines, int end, string key, string path)
+        {
+            for (var index = 1; index < end; index++)
+            {
+                var match = Regex.Match(lines[index], "^" + key + @":\s*(.*)$", RegexOptions.IgnoreCase);
+                if (!match.Success)
+                    continue;
+
+                var value = match.Groups[1].Value.Trim();
+                if (value.Length >= 2 && value[0] == '"' && value[value.Length - 1] == '"')
+                {
+                    value = value.Substring(1, value.Length - 2);
+                    if (!value.Contains("\\"))
+                        return value;
+
+                    Log.LogError("{0}: {1} uses an unsupported backslash escape.", path, key);
+                    return null;
+                }
+                if (!value.StartsWith("'") && !value.StartsWith("\""))
+                    return value;
+
+                Log.LogError("{0}: {1} must be a double-quoted or plain scalar.", path, key);
+                return null;
+            }
+            return null;
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="ReadTrellisGuidanceMetadata" BeforeTargets="GeneratePackageGuidanceManifestFromItems">
+    <ReadTrellisGuidanceFrontMatter Documents="@(PackageGuidanceItem)">
+      <Output TaskParameter="GuidanceItems" ItemName="_TrellisGuidanceItems" />
+    </ReadTrellisGuidanceFrontMatter>
+    <ItemGroup>
+      <PackageGuidanceItem Remove="@(PackageGuidanceItem)" />
+      <PackageGuidanceItem Include="@(_TrellisGuidanceItems)" />
+    </ItemGroup>
+  </Target>
+</Project>

@@ -56,6 +56,7 @@
     <PackageVersion Include="Scalar.AspNetCore" Version="2.17.3" />
     <PackageVersion Include="Scalar.AspNetCore.Microsoft" Version="2.17.3" />
     <PackageVersion Include="T4.Build" Version="0.2.5" />
+    <PackageVersion Include="Trellis.AgentDocs.Packaging" Version="0.1.0-preview.20" />
   </ItemGroup>
   <!-- Test -->
   <ItemGroup>

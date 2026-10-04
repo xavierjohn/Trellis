@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Validates a packed Trellis nupkg's guidance against the AgentDocs contract and the source documents.
 .DESCRIPTION
@@ -7,7 +7,7 @@
     declares exactly one required document (the self-contained router). Every other package must ship
     no manifest, no trellis/ documents and no consumer-side build targets.
 .OUTPUTS
-    PASS <package> manifest schemaVersion=1 documents=<n> required=<n> onDemand=<n> cohort=<n>
+    PASS <package> manifest schemaVersion=1 documents=<n> required=<n> onDemand=<n>
     PASS <package> <path> sha256=<hash>
     PASS <package> ships no guidance
     FAIL <package> <reason> (and a nonzero exit status)
@@ -83,15 +83,10 @@ try {
     if ($manifest.schemaVersion -cne 1) { throw "unsupported schemaVersion $($manifest.schemaVersion)" }
     if ($null -eq $manifest.documents) { throw 'documents is required' }
     foreach ($field in $manifest.Keys) {
-        if ($field -cnotin @('schemaVersion', 'documents', 'publisherMetadata')) {
+        if ($field -cnotin @('schemaVersion', 'documents')) {
             throw "unexpected manifest field: $field"
         }
     }
-    if ($manifest.publisherMetadata -isnot [System.Collections.IDictionary] -or
-        $manifest.publisherMetadata.'org.trellis' -isnot [System.Collections.IDictionary]) {
-        throw 'missing namespaced org.trellis publisherMetadata'
-    }
-
     $docsRoot = Join-Path (Join-Path (Join-Path $RepositoryRoot 'docs') 'docfx_project') 'api_reference'
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $required = @()
@@ -147,20 +142,8 @@ try {
         throw 'manifest document set differs from the source reference set'
     }
 
-    $cohort = @(Get-ChildItem -LiteralPath $RepositoryRoot -Directory -Filter 'Trellis.*' |
-        ForEach-Object { Get-ChildItem -Path (Join-Path $_.FullName 'src') -Filter '*.csproj' -File -ErrorAction SilentlyContinue } |
-        Where-Object {
-            [xml]$candidate = Get-Content -LiteralPath $_.FullName -Raw
-            $candidate.SelectSingleNode('//IsPackable')?.InnerText -ne 'false' -and
-            $candidate.SelectSingleNode('//PackAsTool')?.InnerText -ne 'true'
-        } |
-        ForEach-Object { $_.BaseName } | Sort-Object -Unique)
-    $declared = @($manifest.publisherMetadata.'org.trellis'.lockstepCohort)
-    if ($declared.Count -ne $cohort.Count -or @($cohort | Where-Object { $declared -cnotcontains $_ }).Count -gt 0) {
-        throw 'Core authoritative lockstep cohort differs from packable-project set'
-    }
     if (-not $Quiet) {
-        Write-Host "PASS $name manifest schemaVersion=1 documents=$($seen.Count) required=$($required.Count) onDemand=$onDemand cohort=$($cohort.Count)"
+        Write-Host "PASS $name manifest schemaVersion=1 documents=$($seen.Count) required=$($required.Count) onDemand=$onDemand"
     }
 }
 catch {
