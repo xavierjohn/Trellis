@@ -52,7 +52,7 @@ versioned as `0.1.0-preview.20` rather than using Core's `PackageVersion`.
 
 - **TRLDOC013**: The analyzer diagnostic range quoted on the `trellis-api-analyzers.md` line of the router's "rest of the set" table in `trellis-start-here.md` (`TRLS001`-`TRLS<n>`, required there and also checked in the cookbook's companion list when present) must cover every shipped diagnostic. The upper bound is derived by scanning `*.cs` under any `src/` or `generator/` directory — both locations matter, because the highest id is currently emitted by a source generator (`Trellis.Asp/generator`) rather than by `Trellis.Analyzers/src`. Only the upper bound is checked, since retired ids leave intentional gaps. The routing head is the one section agents keep resident, so an upper bound that lags reality makes an agent dismiss a real diagnostic as something other than a Trellis rule. A scan that finds no ids at all is reported as a failure rather than skipped, so a future source-layout move cannot silently disarm the gate.
 
-- **TRLDOC016**: Every shipped reference (everything except `UnshippedDocs`) declares how AgentDocs should present it, in a well-formed front matter block that closes (`---`) before the document body: `agent_usage` is exactly `required` or `onDemand` (case-sensitive, like the manifest generator); both carry a one-line `agent_description` of at most 200 characters with no control, format or line-separator characters, and onDemand descriptions start `Open when `. The AgentDocs contract also allows `supporting`, which consumers do not list in the index, so such a document is only found through a link from another one; Trellis lists every reference instead and the rule rejects `supporting`. Exactly one document, `trellis-start-here.md`, may be `required`, so the always-read cost of the whole Trellis set stays one self-contained router. The pack-time manifest is generated from these keys (`build/generate-reference-manifest.ps1`) and re-checked against the packed bytes by `build/validate-reference-manifest.ps1`.
+- **TRLDOC016**: Every shipped reference (everything except `UnshippedDocs`) declares how AgentDocs should present it, in a well-formed front matter block that closes (`---`) before the document body: `agent_usage` is exactly `required` or `onDemand` (case-sensitive, like the front-matter adapter); both carry a one-line `agent_description` of at most 200 characters with no control, format or line-separator characters, and onDemand descriptions start `Open when `. The AgentDocs contract also allows `supporting`, which consumers do not list in the index, so such a document is only found through a link from another one; Trellis lists every reference instead and the rule rejects `supporting`. Exactly one document, `trellis-start-here.md`, may be `required`, so the always-read cost of the whole Trellis set stays one self-contained router. `build/Trellis.Guidance.Metadata.targets` maps these keys to `PackageGuidanceItem` metadata before the shared packaging helper generates the manifest. `build/validate-reference-manifest.ps1` re-checks it against the packed bytes.
 
 - **TRLDOC006**: Every `## Recipe N` heading in `trellis-api-cookbook.md` must have a matching `Examples/CookbookSnippets/Recipe<NN>_*.cs` file. Headings marked `*(retired)*` are skipped, because they exist only to keep old anchors and cross-references resolving and carry no code to pin.
 
@@ -81,6 +81,20 @@ Two separable concerns, deliberately kept apart in `Directory.Build.targets`:
 - An agent could never learn about a module the project had not already installed — backwards for a framework whose value is largely in its optional modules.
 
 Because Core now ships references for packages the consumer may not have, **file presence no longer implies a package reference**. `trellis-start-here.md` says so explicitly and tells agents to confirm the reference in the `.csproj`; do not reintroduce wording that invites the opposite inference.
+
+Core uses a private `Trellis.AgentDocs.Packaging` `0.1.0-preview.20` build dependency,
+the same generic publisher helper used by satellites. `Directory.Build.targets`
+declares all shipped Markdown files as `PackageGuidanceItem` entries under `trellis/`.
+The thin `build/Trellis.Guidance.Metadata.targets` adapter reads roles and descriptions
+from front matter at pack time and keeps the required router first. The helper owns
+manifest serialization, exact-byte hashes and NuGet packing; no custom manifest
+generator remains. Its dependency and build targets do not reach Core consumers.
+
+The schema-v1 manifest contains `schemaVersion` and `documents`. The former
+`org.trellis.lockstepCohort` publisher metadata was not enforced by AgentDocs and
+is no longer emitted. This is not a change to a consumer version fence: first-party
+packages still share the repository version, and agents must check installed packages.
+The complete documentation set remains in Core, not in each feature package.
 
 `Trellis.Analyzers` is the one first-party exception. It has no dependency on `Trellis.Core`,
 so it cannot inherit delivery; instead it sets `<TrellisApiReferenceDeliveredByCore>` and
@@ -120,7 +134,7 @@ The helper packs the reference and generates its hash-checked manifest at pack t
 An unrelated publisher sets `PackageGuidanceDocument` to its Markdown source
 and `PackageGuidancePath` to its own package-relative destination, with `PackageGuidanceUsage`
 controlling how the document is presented and `PackageGuidanceDescription` saying when to open it.
-The helper packs one document; it does not impose
+With these properties, the helper packs one document; it does not impose
 a `Trellis.*` package ID or a `trellis/` path.
 Only the helper package contains the `build/` target; do **not** pack that target or
 any legacy copy target into the satellite's package. Consumer restore/build
