@@ -1932,26 +1932,30 @@ foreach (var item in releasePlan)
 
 **Problem.** RFC 9110 §13.1.1 lets clients send `If-Match: "etag"` on unsafe methods to detect stale-read race conditions: if the resource's current ETag doesn't match, the server returns `412 Precondition Failed` instead of overwriting concurrent changes. For mutating handlers, the framework provides `ETagHelper.ParseIfMatch(request)` to extract the typed `EntityTagValue[]` from the incoming `If-Match` header, plus the `Result<T>.OptionalETag(...)` / `RequireETag(...)` extensions (and their `*Async` overloads) that evaluate the precondition at the read-modify-write boundary inside the handler chain. (`opts.WithETag(...).EvaluatePreconditions()` on the response builder is a different feature — it only runs on `GET` / `HEAD` for `If-None-Match` → `304` and `If-Match` → `412` on safe-method reads; it is **not** the mutation hook.) The decision question: which mutating endpoints actually need this?
 
-A blanket "wire `RequireETag` on every mutation" rule is wrong — it adds ceremony to endpoints where there is no lost-update window to begin with. Use the decision table:
+A blanket "require `If-Match` on every mutation" rule is wrong. **Not requiring a header is different from ignoring a supplied header.** RFC 9110 §§13.1.1 and 13.2.1 require eligible supplied preconditions to be evaluated before the action; a false `If-Match` must not perform the mutation. Domain transition guards do not replace this HTTP check. Use `OptionalETag` when unconditional callers are allowed and `RequireETag` when the endpoint requires a precondition:
 
-| Endpoint shape | Lost-update window? | Use `If-Match`? |
+| Endpoint shape | Lost-update window? | Precondition policy |
 |---|---|---|
-| **Body-less state-transition POST** (`POST /orders/{id}/submit`, `.../approve`, `.../cancel`, `.../return`) | **No.** The state machine + transition guards check the current state. A stale client calling `.../approve` on an order that has already shipped gets `422 Unprocessable Content` from the transition guard; there is nothing to overwrite. | **No.** The state machine substitutes for the precondition. Ceremony without benefit. |
+| **Body-less state-transition POST** (`POST /orders/{id}/submit`, `.../approve`, `.../cancel`, `.../return`) | Domain guards reject invalid transitions, but cannot determine whether the client saw the current version. | **Optional — `OptionalETag`.** Missing header proceeds to the domain guard; a supplied mismatch returns `412` before mutation. Require the header only when the endpoint contract demands it. |
 | **Body-carrying full-update PUT** (`PUT /orders/{id}` with a full replacement body) | **Yes.** The body silently overwrites whatever the concurrent edit wrote. | **Yes — `RequireETag`.** RFC 6585 says `428 Precondition Required` when missing, RFC 9110 says `412 Precondition Failed` when stale. |
 | **Body-carrying partial-update PATCH** with a JSON Patch / JSON Merge Patch document | **Yes.** Same overwrite risk as full update. | **Yes — `RequireETag`.** |
-| **Destructive `DELETE /resources/{id}`** | **Yes.** A stale client can delete a version it has not seen after another writer changed it. | **Yes — `RequireETag`** as the default. EF Core's row-version concurrency tokens are **not** an equivalent substitute: they catch concurrent *writes* racing after the row was loaded by the handler, not stale-client reads from before the request. Drop the precondition only if the endpoint is explicitly modeled as a guarded state-machine transition where a stale caller's intent is already invalid by construction. |
-| **Additive set operation** (`POST /orders/{id}/line-items`, `POST /products/{id}/stock-additions +5`) | **Maybe.** Depends on commutativity. Two concurrent `+5` calls produce `+10` correctly; "remove the last line item" against a stale read of "list has 2 items" can drop the wrong item. | **Case-by-case.** Commutative additive ops can stay precondition-free; remove-by-position or "remove the last X" operations should `RequireETag` (or `OptionalETag` only when the endpoint deliberately admits unconditional callers). |
-| **Resource creation** (`POST /customers`, `POST /products`) | **N/A.** No prior version to match against. | **No.** |
+| **Destructive `DELETE /resources/{id}`** | **Yes.** A stale client can delete a version it has not seen after another writer changed it. | **Required — `RequireETag`** by default. EF Core concurrency tokens catch writes racing after the handler's read, not stale-client reads before the request. A deliberately unconditional guarded-transition contract can use `OptionalETag`, but must still honor a supplied header. |
+| **Additive set operation** (`POST /orders/{id}/line-items`, `POST /products/{id}/stock-additions +5`) | **Maybe.** Depends on commutativity. Two concurrent `+5` calls produce `+10` correctly; "remove the last line item" against a stale read can drop the wrong item. | **Case-by-case.** Commutative operations may admit unconditional callers via `OptionalETag`; non-commutative operations should use `RequireETag`. Both enforce supplied headers. |
+| **Resource creation** (`POST /customers`, `POST /products`) | **N/A.** No prior version of the new aggregate to match against. | **Not normally required.** Any supplied precondition concerns the request's target resource, not the newly created aggregate's ETag. |
 
 ```csharp
-using Mediator;
 using Trellis;
 using Trellis.Asp;
 using Trellis.EntityFrameworkCore;
 
-// State-transition POST — no If-Match. The state machine guards the transition.
-app.MapPost("/orders/{id:guid}/approve", (OrderId id, ISender sender, CancellationToken ct) =>
-    sender.Send(new ApproveOrderCommand(id), ct)
+// State-transition POST — no required header, but a supplied If-Match is enforced.
+// Missing proceeds; mismatching, weak-only, empty, or malformed returns 412 before Approve.
+app.MapPost("/orders/{id:guid}/approve", (OrderId id, OrderDbContext db, HttpContext httpContext, CancellationToken ct) =>
+    db.Orders
+        .FirstOrDefaultResultAsync(o => o.Id == id, new Error.NotFound(ResourceRef.For<Order>(id)), ct)
+        .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
+        .BindAsync(o => o.Approve())
+        .CheckAsync(_ => db.SaveChangesResultUnitAsync(ct))
         .ToHttpResponseAsync(OrderResponse.From));
 
 // Full-update PUT — RequireETag at the read-modify-write boundary.
@@ -1965,9 +1969,9 @@ app.MapPut("/orders/{id:guid}", (OrderId id, ReplaceOrderRequest request, OrderD
         .ToHttpResponseAsync(OrderResponse.From, opts => opts.HonorPrefer()));
 ```
 
-> **Direct `DbContext` in the Minimal API lambda vs command handler via Mediator.** Both shapes are canonical Trellis. This recipe shows the direct-`DbContext` shape because the precondition (`RequireETag`) belongs at the *read-modify-write* boundary — the same atomic unit where the read happens. If you prefer to dispatch through a command handler, move the same chain (`db.Orders.FirstOrDefaultResultAsync(...).RequireETagAsync(...).BindAsync(...).CheckAsync(_ => db.SaveChangesResultUnitAsync(ct))`) into the handler body; `TransactionalCommandBehavior` then owns the commit, and `db.SaveChangesResultUnitAsync(...)` becomes redundant (drop the `.CheckAsync` step). The precondition placement does not change — it still wraps the freshly-loaded aggregate and runs before any mutation.
+> **Direct `DbContext` in the Minimal API lambda vs command handler via Mediator.** Both shapes are canonical Trellis. This recipe shows the direct-`DbContext` shape because the precondition belongs at the *read-modify-write* boundary. With Mediator, parse `If-Match` at the HTTP boundary, carry `EntityTagValue[]? IfMatchETags` on the command, and move the same chain into the handler. Keep `OptionalETagAsync(command.IfMatchETags)` or `RequireETagAsync(command.IfMatchETags)` after the not-found projection and before mutation. `TransactionalCommandBehavior` owns the commit, so drop the explicit save step. Preserve permission/resource authorization before the precondition check, and retain persistence-level concurrency protection for writes racing after the read.
 
-**Rationale.** The framework helper is fine; the decision is whether the endpoint's semantics admit a lost-update window. State machines, additive set operations, and resource creation each carry their own concurrency control inside the domain or in the absence of prior state. Only payload-carrying overwrites need explicit precondition checking.
+**Rationale.** Header requirement is an endpoint policy; honoring a supplied precondition is not optional. State machines validate domain transitions, ETag checks enforce the caller's observed version, and persistence concurrency protection handles writes racing after the read. These mechanisms are complementary. A failed supplied precondition must leave state and representation metadata unchanged; no header still permits a guarded transition without a `428`.
 
 ---
 

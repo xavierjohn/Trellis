@@ -19,6 +19,19 @@ public class ETagHelperTests
         ETagHelper.ParseIfMatch(request).Should().BeNull();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t")]
+    public void ParseIfMatch_PresentEmptyHeader_ReturnsEmptyArray(string header)
+    {
+        var request = new DefaultHttpContext().Request;
+        request.Headers.IfMatch = header;
+
+        ETagHelper.ParseIfMatch(request).Should().BeEmpty(
+            "a present empty precondition must not become an unconditional request");
+    }
+
     [Fact]
     public void ParseIfMatch_StrongETag_ReturnsEntityTagValue()
     {

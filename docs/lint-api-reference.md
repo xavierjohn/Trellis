@@ -10,6 +10,20 @@ pwsh docs/lint-api-reference.ps1
 
 The solution build runs the same script through `docs\Trellis.DocsLint.csproj`, so failures are emitted as MSBuild errors.
 
+### PowerShell prerequisite
+
+The lint gate requires **PowerShell 7** (`pwsh`) on `PATH`; Windows PowerShell (`powershell.exe`) is not a substitute.
+If the build cannot start `pwsh`, it reports this prerequisite instead of only shell exit code 9009 (Windows) or 127 (Unix).
+Restart Visual Studio after installing PowerShell or changing `PATH`, so it inherits the updated environment.
+
+For an installation outside `PATH`, set `TrellisPowerShellExecutable` to the executable's full path, without embedded quotes:
+
+```powershell
+dotnet build Trellis.slnx -c Release '-p:TrellisPowerShellExecutable=C:\Program Files\PowerShell\7\pwsh.exe'
+```
+
+The target quotes the executable and script paths, still fails the build for lint errors, and skips design-time and Live Unit Testing builds.
+
 ## DocFX site build
 
 Both CI workflows pin DocFX to 2.80.1, whose Roslyn host runs the Trellis source generators directly. Use the same version locally:

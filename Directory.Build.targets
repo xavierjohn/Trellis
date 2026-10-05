@@ -4,6 +4,7 @@
        Every other package relies on Core, so consumers approve one package with the AgentDocs tool. -->
   <PropertyGroup>
     <_TrellisOwnSourceDirectory>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory), $(MSBuildProjectName), src))</_TrellisOwnSourceDirectory>
+    <TrellisPowerShellExecutable Condition="'$(TrellisPowerShellExecutable)' == ''">pwsh</TrellisPowerShellExecutable>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TrellisShipsApiReferenceSet)' == 'true' AND '$(IsPackable)' != 'false' AND
@@ -19,6 +20,13 @@
 
   <Target Name="LintApiReference" BeforeTargets="Build"
           Condition="'$(TrellisEnableApiReferenceLint)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(BuildingForLiveUnitTesting)' != 'true'">
-    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)docs/lint-api-reference.ps1&quot;" />
+    <Exec Command="&quot;$(TrellisPowerShellExecutable)&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)docs/lint-api-reference.ps1&quot;"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="_TrellisApiReferenceLintExitCode" />
+    </Exec>
+    <Error Condition="'$(_TrellisApiReferenceLintExitCode)' == '9009' OR '$(_TrellisApiReferenceLintExitCode)' == '127'"
+           Text="PowerShell 7 could not be started for API reference lint. Install PowerShell 7 and ensure pwsh is on PATH, or set TrellisPowerShellExecutable to its full path. Restart Visual Studio after changing PATH." />
+    <Error Condition="'$(_TrellisApiReferenceLintExitCode)' != '0' AND '$(_TrellisApiReferenceLintExitCode)' != '9009' AND '$(_TrellisApiReferenceLintExitCode)' != '127'"
+           Text="API reference lint failed with exit code $(_TrellisApiReferenceLintExitCode). See the lint output above." />
   </Target>
 </Project>

@@ -1,12 +1,11 @@
 ﻿// Cookbook Recipe 23 — Concurrency control on aggregate-mutating endpoints: when to require If-Match.
 //
-// State-transition POST: no If-Match — the state machine guards the transition.
+// State-transition POST: If-Match is optional, but a supplied header is enforced before mutation.
 // Full-update PUT: RequireETag at the read-modify-write boundary.
 namespace CookbookSnippets.Recipe23;
 
 using System;
 using System.Threading;
-using global::Mediator;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -22,6 +21,12 @@ public sealed class Order : Aggregate<OrderId>
     public Order(OrderId id) : base(id) { }
 
     public string CustomerReference { get; private set; } = string.Empty;
+    public bool IsApproved { get; private set; }
+
+    public Result<Order> Approve() =>
+        Result.Ok(this)
+            .Ensure(o => !o.IsApproved, Error.InvalidInput.ForRule("order.already_approved", detail: "Order is already approved."))
+            .Tap(o => o.IsApproved = true);
 
     public Result<Order> Replace(ReplaceOrderRequest request) =>
         Result.Ensure(
@@ -38,8 +43,6 @@ public sealed record OrderResponse(Guid Id, string CustomerReference)
     public static OrderResponse From(Order order) =>
         new(order.Id.Value, order.CustomerReference);
 }
-
-public sealed record ApproveOrderCommand(OrderId Id) : ICommand<Result<Order>>;
 
 public sealed class OrderDbContext(DbContextOptions<OrderDbContext> options) : DbContext(options)
 {
@@ -58,9 +61,17 @@ public static class ConcurrencyEndpoints
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        // State-transition POST — no If-Match. The state machine guards the transition.
-        app.MapPost("/orders/{id:guid}/approve", (OrderId id, ISender sender, CancellationToken ct) =>
-            sender.Send(new ApproveOrderCommand(id), ct)
+        // Missing If-Match proceeds; a supplied mismatch returns 412 before Approve.
+        app.MapPost("/orders/{id:guid}/approve", (
+            OrderId id,
+            OrderDbContext db,
+            HttpContext httpContext,
+            CancellationToken ct) =>
+            db.Orders
+                .FirstOrDefaultResultAsync(o => o.Id == id, new Error.NotFound(ResourceRef.For<Order>(id)), ct)
+                .OptionalETagAsync(ETagHelper.ParseIfMatch(httpContext.Request))
+                .BindAsync(o => o.Approve())
+                .CheckAsync(_ => db.SaveChangesResultUnitAsync(ct))
                 .ToHttpResponseAsync(OrderResponse.From));
 
         // Full-update PUT — RequireETag at the read-modify-write boundary.
