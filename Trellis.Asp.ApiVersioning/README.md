@@ -46,7 +46,7 @@ return pageResult.ToHttpResponse(
 
 ## Behavior to Know
 
-- Missing or ambiguous destinations fail explicitly; give link targets unique route names.
+- Missing or ambiguous destinations fail explicitly. Location targets must be uniquely addressable; `PageUrl` allows versioned variants to share a route name when their templates/defaults match. Implicit self-pagination uses the active endpoint; cross-route links and pins select a uniquely mapped version.
 - An explicit pin must map to the destination. Automatic resolution prefers a mapped requested version, then one mapped declared version, then a mapped default version.
 - Neutral and unversioned destinations skip injection. `WithVersionedRoute` also removes a supplied `api-version` value in those cases.
 - Location helpers support URL-segment pins. Explicit `PageUrl` pins intentionally do not.

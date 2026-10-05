@@ -33,7 +33,7 @@ For paginated responses, use `HttpContext.PageUrl(...)` as the `nextUrlBuilder` 
 - Skips version injection for neutral and unversioned destinations.
 - Requires no additional service registration beyond normal `Asp.Versioning` setup.
 
-Use unique route names: missing or ambiguous destinations fail explicitly. Location helpers support URL-segment pins; explicit `PageUrl` pins intentionally do not.
+Location targets must be uniquely addressable. `PageUrl` supports shared names across versioned controllers with matching route templates/defaults: self-pagination uses the active endpoint; cross-route links and pins select a uniquely mapped version. Missing or genuinely ambiguous destinations fail explicitly. Location helpers support URL-segment pins; explicit `PageUrl` pins intentionally do not.
 
 ## Documentation
 
