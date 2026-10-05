@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Analyzers.Tests;
 
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
@@ -162,6 +163,73 @@ public class UseToResultForNullableAnalyzerTests
 
         var test = FixTest(source, source);
         test.ExpectedDiagnostics.Add(Expect(0));
+        await test.RunAsync();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task EnsureWithDirectiveSelectedCondition_ReportsOnlyPureNullCheckWithoutOfferingAFix(bool useDebug)
+    {
+        var source = Wrap("""
+            public Result<int> Check(string? title, string? tag) =>
+                {|#0:Result.Ensure(title
+            #if DEBUG
+                    is not null
+            #else
+                    is { Length: > 0 }
+            #endif
+                    , Missing("title"))|}
+                    .Combine(tag.ToResult(Missing("tag")))
+                    .Map((_, _) => 1);
+            """);
+
+        var test = FixTest(source, source);
+        string[] symbols = useDebug ? ["DEBUG"] : [];
+        test.SolutionTransforms.Add((solution, projectId) => solution.WithProjectParseOptions(
+            projectId, CSharpParseOptions.Default.WithPreprocessorSymbols(symbols)));
+        if (useDebug)
+            test.ExpectedDiagnostics.Add(Expect(0));
+
+        await test.RunAsync();
+    }
+
+    [Fact]
+    public async Task FixAll_SkipsDirectiveBearingInvocation_AndFixesSafeOperand()
+    {
+        var source = Wrap("""
+            public Result<int> Check(string? title, string? tag) =>
+                {|#0:Result.Ensure(title
+            #if DEBUG
+                    is not null
+            #else
+                    is { Length: > 0 }
+            #endif
+                    , Missing("title"))|}
+                    .Combine({|#1:Result.Ensure(tag is not null, Missing("tag"))|})
+                    .Map((_, _) => 1);
+            """);
+        var fixedSource = Wrap("""
+            public Result<int> Check(string? title, string? tag) =>
+                {|#0:Result.Ensure(title
+            #if DEBUG
+                    is not null
+            #else
+                    is { Length: > 0 }
+            #endif
+                    , Missing("title"))|}
+                    .Combine(tag.ToResult(Missing("tag")))
+                    .Map((_, _) => 1);
+            """);
+
+        var test = FixTest(source, fixedSource);
+        test.SolutionTransforms.Add((solution, projectId) => solution.WithProjectParseOptions(
+            projectId, CSharpParseOptions.Default.WithPreprocessorSymbols("DEBUG")));
+        test.ExpectedDiagnostics.Add(Expect(0));
+        test.ExpectedDiagnostics.Add(Expect(1));
+        test.FixedState.ExpectedDiagnostics.Add(Expect(0));
+        test.NumberOfIncrementalIterations = 1;
+        test.NumberOfFixAllIterations = 1;
         await test.RunAsync();
     }
 

@@ -22,9 +22,9 @@ using Microsoft.CodeAnalysis.Operations;
 /// <c>Map</c> or <c>Bind</c> with a lambda that ignores that tuple slot (a discard, or an unread <c>_</c>).
 /// <para>
 /// It is withheld when the rewritten call would not bind (for example when <c>Trellis</c> is not imported), when
-/// arguments are named, and in every other position. The enclosing pipeline must keep the same method definitions
-/// and consumer return type. Fix All rechecks this after each replacement rather than merging independently
-/// validated edits.
+/// arguments are named or the invocation contains preprocessor directives, and in every other position.
+/// The enclosing pipeline must keep the same method definitions and consumer return type. Fix All rechecks this
+/// after each replacement rather than merging independently validated edits.
 /// </para>
 /// </remarks>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(UseToResultForNullableCodeFixProvider))]
@@ -99,7 +99,8 @@ public sealed class UseToResultForNullableCodeFixProvider : CodeFixProvider
     private static InvocationExpressionSyntax? BuildReplacement(
         InvocationExpressionSyntax ensure, SemanticModel model, CancellationToken cancellationToken)
     {
-        if (ensure.ArgumentList.Arguments.Any(static a => a.NameColon is not null)
+        if (ensure.ContainsDirectives
+            || ensure.ArgumentList.Arguments.Any(static a => a.NameColon is not null)
             || ensure.ArgumentList.Arguments.Count != 2)
             return null;
 
