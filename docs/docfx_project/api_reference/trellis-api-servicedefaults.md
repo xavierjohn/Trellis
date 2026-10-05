@@ -148,6 +148,13 @@ Domain-event dispatch uses `IUnitOfWorkScope.IsOwner` to distinguish a real oute
 
 That order preserves the important pipeline invariant: `TransactionalCommandBehavior<,>` is the innermost behavior, closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors. The lower-level registration helpers are also order-independent: if a transaction behavior is present before `AddTrellisBehaviors()` or domain-event dispatch runs, it is rehomed to the innermost slot.
 
+### Repeated configuration callbacks
+
+Repeated calls to `UseAsp`, `UseIdempotency`, and `UseMediator` invoke every configure callback in
+registration order on the same options instance. Contravariant callbacks such as `Action<object>`
+can be mixed with options-specific callbacks in either order. Calls with no callback leave the
+existing callbacks intact.
+
 ### Order-independence for explicit resource-authorization registrations
 
 Explicit `services.AddResourceAuthorization<TMessage, TResource, TResponse>()` calls made BEFORE `AddTrellis(...)` are now order-independent. `AddTrellisBehaviors()` (called by `UseMediator()`) detects any pre-existing closed-generic `ResourceAuthorizationBehavior<TMessage, TResource, TResponse>` descriptors and re-positions them to sit immediately before `ValidationBehavior<,>`, so they end up in the canonical pipeline envelope regardless of registration order. This mirrors the symmetry between `AddTrellisUnitOfWork<TContext>` and `AddDomainEventDispatch`.

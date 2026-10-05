@@ -460,14 +460,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services, params Assembly[] assemblies)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(assemblies);
-        if (assemblies.Length == 0)
-            throw new ArgumentException("At least one assembly must be provided.", nameof(assemblies));
-        for (var i = 0; i < assemblies.Length; i++)
-        {
-            if (assemblies[i] is null)
-                throw new ArgumentException($"Assembly at index [{i}] is null.", nameof(assemblies));
-        }
+        AssemblyScanner.ValidateAssemblies(assemblies);
 
         // Deduplicate the assemblies parameter so a consumer passing the same assembly
         // twice (e.g. via `typeof(X).Assembly, typeof(Y).Assembly` where X and Y live in the
@@ -515,7 +508,7 @@ public static class ServiceCollectionExtensions
         var allCandidateEntities = new List<Type>();
 
         foreach (var assembly in distinctAssemblies)
-            foreach (var type in GetLoadableTypes(assembly))
+            foreach (var type in AssemblyScanner.GetLoadableTypes(assembly))
             {
                 if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
                     continue;
@@ -998,7 +991,7 @@ public static class ServiceCollectionExtensions
 
         var loaderInterface = typeof(IResourceLoader<,>);
 
-        foreach (var type in GetLoadableTypes(assembly))
+        foreach (var type in AssemblyScanner.GetLoadableTypes(assembly))
         {
             if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
                 continue;
@@ -1069,23 +1062,6 @@ public static class ServiceCollectionExtensions
         }
 
         services.TryAdd(descriptor);
-    }
-
-    /// <summary>
-    /// Returns all types from the assembly that can be loaded, gracefully handling
-    /// <see cref="ReflectionTypeLoadException"/> when some types have missing dependencies.
-    /// </summary>
-    [RequiresUnreferencedCode("Calls Assembly.GetTypes().")]
-    private static Type[] GetLoadableTypes(Assembly assembly)
-    {
-        try
-        {
-            return assembly.GetTypes();
-        }
-        catch (ReflectionTypeLoadException ex)
-        {
-            return ex.Types.OfType<Type>().ToArray();
-        }
     }
 
     private static int FindValidationBehaviorIndex(IServiceCollection services)

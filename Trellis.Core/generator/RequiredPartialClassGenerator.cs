@@ -418,9 +418,8 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             {
                 "RequiredGuid" => GenerateGuidMethods(g, context, reportedCollisions),
                 "RequiredString" => GenerateStringMethods(g, context, reportedCollisions),
-                "RequiredInt" => GenerateIntMethods(g, context, reportedCollisions),
+                "RequiredInt" or "RequiredLong" => GenerateIntegerMethods(g, context),
                 "RequiredDecimal" => GenerateDecimalMethods(g, context, reportedCollisions),
-                "RequiredLong" => GenerateLongMethods(g, context, reportedCollisions),
                 "RequiredBool" => GenerateBoolMethods(g, context, reportedCollisions),
                 "RequiredDateTime" => GenerateDateTimeMethods(g, context, reportedCollisions),
                 "RequiredDateTimeOffset" => GenerateDateTimeOffsetMethods(g, context, reportedCollisions),
@@ -1127,31 +1126,39 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         }}";
     }
 
-    private static string? GenerateIntMethods(RequiredPartialClassInfo g, SourceProductionContext context, HashSet<string> reportedCollisions)
+    private static string? GenerateIntegerMethods(RequiredPartialClassInfo g, SourceProductionContext context)
     {
+        var isLong = g.ClassBase == "RequiredLong";
+        var primitiveType = isLong ? "long" : "int";
+        var description = isLong ? "long" : "integer";
+        var article = isLong ? "a" : "an";
+        var literalSuffix = isLong ? "L" : "";
+        var parsedName = isLong ? "parsedLong" : "parsedInt";
+        var minimum = isLong ? g.RangeLongMin : (long?)g.RangeMin;
+        var maximum = isLong ? g.RangeLongMax : (long?)g.RangeMax;
         var (vaParam, vaArg, vaInit, vaCode) = ValidateAdditionalShape(g);
         var notDefaultCode = CodeOrDefault(g.NotDefaultCode, "ValidationCodes.ValueNotDefault");
         var rangeMinCode = CodeOrDefault(g.RangeCode, "ValidationCodes.ValueGreaterThanOrEqual");
         var rangeMaxCode = CodeOrDefault(g.RangeCode, "ValidationCodes.ValueLessThanOrEqual");
         var result = "";
-        var hasRange = g.RangeMin.HasValue && g.RangeMax.HasValue;
-        var rangeMin = g.RangeMin.GetValueOrDefault();
-        var rangeMax = g.RangeMax.GetValueOrDefault();
+        var hasRange = minimum.HasValue && maximum.HasValue;
+        var rangeMin = minimum.GetValueOrDefault();
+        var rangeMax = maximum.GetValueOrDefault();
 
         var notDefaultDetail = $@"""{g.ClassName.SplitPascalCase()} cannot be zero.""";
         var notDefaultIfCheck = !g.HasNotDefault
             ? ""
             : $@"
-            if (value == 0)
+            if (value == 0{literalSuffix})
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {notDefaultCode}) {{ Detail = {notDefaultDetail} }})));";
         var notDefaultNullableEnsure = !g.HasNotDefault
             ? ""
             : $@"
-                .Ensure(x => x != 0, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {notDefaultCode}) {{ Detail = {notDefaultDetail} }})))";
+                .Ensure(x => x != 0{literalSuffix}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {notDefaultCode}) {{ Detail = {notDefaultDetail} }})))";
         var notDefaultParsedEnsure = !g.HasNotDefault
             ? ""
             : $@"
-                .Ensure(_ => parsedInt != 0, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {notDefaultCode}) {{ Detail = {notDefaultDetail} }})))";
+                .Ensure(_ => {parsedName} != 0{literalSuffix}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {notDefaultCode}) {{ Detail = {notDefaultDetail} }})))";
 
         // Validate [Range] constraints are consistent
         if (hasRange && rangeMin > rangeMax)
@@ -1180,26 +1187,26 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         /// Optional validation hook. Implement this partial method to add custom validation.
         /// Called after built-in validations (null, range) pass.
         /// </summary>
-        /// <param name=""value"">The validated integer value.</param>
+        /// <param name=""value"">The validated {description} value.</param>
         /// <param name=""fieldName"">The normalized field name for error messages.</param>
         /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
-        static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage{vaParam});
+        static partial void ValidateAdditional({primitiveType} value, string fieldName, ref string? errorMessage{vaParam});
 
         /// <summary>
-        /// Creates a validated instance from an integer.
+        /// Creates a validated instance from {article} {description}.
         /// Required by IScalarValue interface for model binding and JSON deserialization.
         /// </summary>
-        /// <param name=""value"">The integer value to validate.</param>
+        /// <param name=""value"">The {description} value to validate.</param>
         /// <param name=""fieldName"">Optional field name for validation error messages.</param>
         /// <returns>Success with the value object, or Failure with validation errors.</returns>
-        public static Result<{g.ClassName}> TryCreate(int value, string? fieldName = null)
+        public static Result<{g.ClassName}> TryCreate({primitiveType} value, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");{notDefaultIfCheck}
-            if (value < {rangeMin})
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeMin})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."" }})));
-            if (value > {rangeMax})
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeMax})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."" }})));
+            if (value < {rangeMin}{literalSuffix})
+                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeMin}{literalSuffix})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."" }})));
+            if (value > {rangeMax}{literalSuffix})
+                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeMax}{literalSuffix})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."" }})));
             string? additionalError = null;{vaInit}
             ValidateAdditional(value, field, ref additionalError{vaArg});
             if (additionalError is not null)
@@ -1207,14 +1214,14 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             return Result.Ok(new {g.ClassName}(value));
         }}
 
-        public static Result<{g.ClassName}> TryCreate(int? valueOrNothing, string? fieldName = null)
+        public static Result<{g.ClassName}> TryCreate({primitiveType}? valueOrNothing, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             var validated = valueOrNothing
                 .ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){notDefaultNullableEnsure}
-                .Ensure(x => x >= {rangeMin}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeMin})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."" }})))
-                .Ensure(x => x <= {rangeMax}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeMax})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."" }})));
+                .Ensure(x => x >= {rangeMin}{literalSuffix}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeMin}{literalSuffix})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."" }})))
+                .Ensure(x => x <= {rangeMax}{literalSuffix}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeMax}{literalSuffix})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."" }})));
             if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;{vaInit}
@@ -1229,45 +1236,45 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            int parsedInt = 0;
+            {primitiveType} {parsedName} = 0;
             var validated = stringOrNull
                 .ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
-                .Ensure(x => int.TryParse(x, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out parsedInt), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid integer."" }}))){notDefaultParsedEnsure}
-                .Ensure(_ => parsedInt >= {rangeMin}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeMin})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."" }})))
-                .Ensure(_ => parsedInt <= {rangeMax}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeMax})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."" }})));
+                .Ensure(x => {primitiveType}.TryParse(x, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out {parsedName}), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid {description}."" }}))){notDefaultParsedEnsure}
+                .Ensure(_ => {parsedName} >= {rangeMin}{literalSuffix}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeMin}{literalSuffix})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."" }})))
+                .Ensure(_ => {parsedName} <= {rangeMax}{literalSuffix}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeMax}{literalSuffix})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."" }})));
             if (validated.IsSuccess)
             {{
                 string? additionalError = null;{vaInit}
-                ValidateAdditional(parsedInt, field, ref additionalError{vaArg});
+                ValidateAdditional({parsedName}, field, ref additionalError{vaArg});
                 if (additionalError is not null)
                     return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {vaCode}) {{ Detail = additionalError }})));
             }}
-            return validated.Map(_ => new {g.ClassName}(parsedInt));
+            return validated.Map(_ => new {g.ClassName}({parsedName}));
         }}";
         }
         else
         {
-            // Default TryCreate overloads (no [Range] — accepts any int including zero)
+            // Default TryCreate overloads (no [Range]).
             result += $@"
 
         /// <summary>
         /// Optional validation hook. Implement this partial method to add custom validation.
         /// Called after built-in validations (null-check) pass.
         /// </summary>
-        /// <param name=""value"">The validated integer value.</param>
+        /// <param name=""value"">The validated {description} value.</param>
         /// <param name=""fieldName"">The normalized field name for error messages.</param>
         /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
-        static partial void ValidateAdditional(int value, string fieldName, ref string? errorMessage{vaParam});
+        static partial void ValidateAdditional({primitiveType} value, string fieldName, ref string? errorMessage{vaParam});
 
         /// <summary>
-        /// Creates a validated instance from an integer.
+        /// Creates a validated instance from {article} {description}.
         /// Required by IScalarValue interface for model binding and JSON deserialization.
         /// </summary>
-        /// <param name=""value"">The integer value to validate.</param>
+        /// <param name=""value"">The {description} value to validate.</param>
         /// <param name=""fieldName"">Optional field name for validation error messages.</param>
         /// <returns>Success with the value object, or Failure with validation errors.</returns>
-        public static Result<{g.ClassName}> TryCreate(int value, string? fieldName = null)
+        public static Result<{g.ClassName}> TryCreate({primitiveType} value, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");{notDefaultIfCheck}
@@ -1278,7 +1285,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             return Result.Ok(new {g.ClassName}(value));
         }}
 
-        public static Result<{g.ClassName}> TryCreate(int? valueOrNothing, string? fieldName = null)
+        public static Result<{g.ClassName}> TryCreate({primitiveType}? valueOrNothing, string? fieldName = null)
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
@@ -1298,19 +1305,19 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            int parsedInt = 0;
+            {primitiveType} {parsedName} = 0;
             var validated = stringOrNull
                 .ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
-                .Ensure(x => int.TryParse(x, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out parsedInt), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid integer."" }}))){notDefaultParsedEnsure};
+                .Ensure(x => {primitiveType}.TryParse(x, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out {parsedName}), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid {description}."" }}))){notDefaultParsedEnsure};
             if (validated.IsSuccess)
             {{
                 string? additionalError = null;{vaInit}
-                ValidateAdditional(parsedInt, field, ref additionalError{vaArg});
+                ValidateAdditional({parsedName}, field, ref additionalError{vaArg});
                 if (additionalError is not null)
                     return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {vaCode}) {{ Detail = additionalError }})));
             }}
-            return validated.Map(_ => new {g.ClassName}(parsedInt));
+            return validated.Map(_ => new {g.ClassName}({parsedName}));
         }}";
         }
 
@@ -1319,7 +1326,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 
         /// <summary>
         /// Attempts to create a validated instance from a string using the specified format provider.
-        /// Use for culture-sensitive parsing of integer values.
+        /// Use for culture-sensitive parsing of {description} values.
         /// </summary>
         /// <param name=""value"">The string value to parse.</param>
         /// <param name=""provider"">The format provider for culture-sensitive parsing. Defaults to InvariantCulture when null.</param>
@@ -1333,8 +1340,8 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})));
             if (string.IsNullOrWhiteSpace(value))
                 return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})));
-            if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid integer."" }})));
+            if (!{primitiveType}.TryParse(value, System.Globalization.NumberStyles.Integer, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid {description}."" }})));
             return TryCreate(parsed, fieldName);
         }}";
 
@@ -1342,13 +1349,13 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         result += $@"
 
         /// <summary>
-        /// Creates a validated instance from an integer. Throws if validation fails.
+        /// Creates a validated instance from {article} {description}. Throws if validation fails.
         /// Use this for known-valid values in tests or with constants.
         /// </summary>
-        /// <param name=""value"">The integer value to validate.</param>
+        /// <param name=""value"">The {description} value to validate.</param>
         /// <returns>The validated value object.</returns>
         /// <exception cref=""InvalidOperationException"">Thrown when validation fails.</exception>
-        public static new {g.ClassName} Create(int value)
+        public static new {g.ClassName} Create({primitiveType} value)
         {{
             var result = TryCreate(value, null);
             return result.Match(
@@ -1357,8 +1364,8 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         }}
 
         /// <summary>
-        /// Creates a validated instance from a string by parsing it as an integer. Throws if validation or parsing fails.
-        /// Use this for known-valid integer strings in tests or with constants.
+        /// Creates a validated instance from a string by parsing it as {article} {description}. Throws if validation or parsing fails.
+        /// Use this for known-valid {description} strings in tests or with constants.
         /// </summary>
         /// <param name=""stringValue"">The string value to parse and validate.</param>
         /// <returns>The validated value object.</returns>
@@ -1686,253 +1693,6 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
                 .Ensure(_ => !(parsedDecimal {compareOp}), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {code}, {args}) {{ Detail = {detail} }})))";
 
         return (ifCheck, nullableEnsure, parsedEnsure);
-    }
-
-    private static string? GenerateLongMethods(RequiredPartialClassInfo g, SourceProductionContext context, HashSet<string> reportedCollisions)
-    {
-        var (vaParam, vaArg, vaInit, vaCode) = ValidateAdditionalShape(g);
-        var notDefaultCode = CodeOrDefault(g.NotDefaultCode, "ValidationCodes.ValueNotDefault");
-        var rangeMinCode = CodeOrDefault(g.RangeCode, "ValidationCodes.ValueGreaterThanOrEqual");
-        var rangeMaxCode = CodeOrDefault(g.RangeCode, "ValidationCodes.ValueLessThanOrEqual");
-        var result = "";
-        var hasRange = g.RangeLongMin.HasValue && g.RangeLongMax.HasValue;
-        var rangeLongMin = g.RangeLongMin.GetValueOrDefault();
-        var rangeLongMax = g.RangeLongMax.GetValueOrDefault();
-
-        var notDefaultDetail = $@"""{g.ClassName.SplitPascalCase()} cannot be zero.""";
-        var notDefaultIfCheck = !g.HasNotDefault
-            ? ""
-            : $@"
-            if (value == 0L)
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {notDefaultCode}) {{ Detail = {notDefaultDetail} }})));";
-        var notDefaultNullableEnsure = !g.HasNotDefault
-            ? ""
-            : $@"
-                .Ensure(x => x != 0L, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {notDefaultCode}) {{ Detail = {notDefaultDetail} }})))";
-        var notDefaultParsedEnsure = !g.HasNotDefault
-            ? ""
-            : $@"
-                .Ensure(_ => parsedLong != 0L, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {notDefaultCode}) {{ Detail = {notDefaultDetail} }})))";
-
-        // Validate [Range] constraints are consistent
-        if (hasRange && rangeLongMin > rangeLongMax)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(
-                new DiagnosticDescriptor(
-                    id: Ids.InvalidRangeMinExceedsMax,
-                    title: "Range Minimum exceeds Maximum",
-                    messageFormat: "Class '{0}' has [Range({1}, {2})] where Minimum exceeds Maximum. No value can satisfy both constraints.",
-                    category: "Trellis",
-                    DiagnosticSeverity.Error,
-                    isEnabledByDefault: true),
-                location: null,
-                g.ClassName,
-                rangeLongMin,
-                rangeLongMax));
-            return null;
-        }
-
-        if (hasRange)
-        {
-            // Range-validated TryCreate overloads
-            result += $@"
-
-        /// <summary>
-        /// Optional validation hook. Implement this partial method to add custom validation.
-        /// Called after built-in validations (null, range) pass.
-        /// </summary>
-        /// <param name=""value"">The validated long value.</param>
-        /// <param name=""fieldName"">The normalized field name for error messages.</param>
-        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
-        static partial void ValidateAdditional(long value, string fieldName, ref string? errorMessage{vaParam});
-
-        /// <summary>
-        /// Creates a validated instance from a long.
-        /// Required by IScalarValue interface for model binding and JSON deserialization.
-        /// </summary>
-        /// <param name=""value"">The long value to validate.</param>
-        /// <param name=""fieldName"">Optional field name for validation error messages.</param>
-        /// <returns>Success with the value object, or Failure with validation errors.</returns>
-        public static Result<{g.ClassName}> TryCreate(long value, string? fieldName = null)
-        {{
-            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");{notDefaultIfCheck}
-            if (value < {rangeLongMin}L)
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeLongMin}L)) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeLongMin}."" }})));
-            if (value > {rangeLongMax}L)
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeLongMax}L)) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeLongMax}."" }})));
-            string? additionalError = null;{vaInit}
-            ValidateAdditional(value, field, ref additionalError{vaArg});
-            if (additionalError is not null)
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {vaCode}) {{ Detail = additionalError }})));
-            return Result.Ok(new {g.ClassName}(value));
-        }}
-
-        public static Result<{g.ClassName}> TryCreate(long? valueOrNothing, string? fieldName = null)
-        {{
-            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = valueOrNothing
-                .ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){notDefaultNullableEnsure}
-                .Ensure(x => x >= {rangeLongMin}L, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeLongMin}L)) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeLongMin}."" }})))
-                .Ensure(x => x <= {rangeLongMax}L, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeLongMax}L)) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeLongMax}."" }})));
-            if (validated.TryGetValue(out var value))
-            {{
-                string? additionalError = null;{vaInit}
-                ValidateAdditional(value, field, ref additionalError{vaArg});
-                if (additionalError is not null)
-                    return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {vaCode}) {{ Detail = additionalError }})));
-            }}
-            return validated.Map(val => new {g.ClassName}(val));
-        }}
-
-        public static Result<{g.ClassName}> TryCreate(string? stringOrNull, string? fieldName = null)
-        {{
-            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            long parsedLong = 0;
-            var validated = stringOrNull
-                .ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
-                .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
-                .Ensure(x => long.TryParse(x, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out parsedLong), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid long."" }}))){notDefaultParsedEnsure}
-                .Ensure(_ => parsedLong >= {rangeLongMin}L, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeLongMin}L)) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeLongMin}."" }})))
-                .Ensure(_ => parsedLong <= {rangeLongMax}L, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeLongMax}L)) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeLongMax}."" }})));
-            if (validated.IsSuccess)
-            {{
-                string? additionalError = null;{vaInit}
-                ValidateAdditional(parsedLong, field, ref additionalError{vaArg});
-                if (additionalError is not null)
-                    return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {vaCode}) {{ Detail = additionalError }})));
-            }}
-            return validated.Map(_ => new {g.ClassName}(parsedLong));
-        }}";
-        }
-        else
-        {
-            // Default TryCreate overloads (no [Range] — accepts any long)
-            result += $@"
-
-        /// <summary>
-        /// Optional validation hook. Implement this partial method to add custom validation.
-        /// Called after built-in validations (null-check) pass.
-        /// </summary>
-        /// <param name=""value"">The validated long value.</param>
-        /// <param name=""fieldName"">The normalized field name for error messages.</param>
-        /// <param name=""errorMessage"">Set to a non-null string to reject the value.</param>
-        static partial void ValidateAdditional(long value, string fieldName, ref string? errorMessage{vaParam});
-
-        /// <summary>
-        /// Creates a validated instance from a long.
-        /// Required by IScalarValue interface for model binding and JSON deserialization.
-        /// </summary>
-        /// <param name=""value"">The long value to validate.</param>
-        /// <param name=""fieldName"">Optional field name for validation error messages.</param>
-        /// <returns>Success with the value object, or Failure with validation errors.</returns>
-        public static Result<{g.ClassName}> TryCreate(long value, string? fieldName = null)
-        {{
-            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");{notDefaultIfCheck}
-            string? additionalError = null;{vaInit}
-            ValidateAdditional(value, field, ref additionalError{vaArg});
-            if (additionalError is not null)
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {vaCode}) {{ Detail = additionalError }})));
-            return Result.Ok(new {g.ClassName}(value));
-        }}
-
-        public static Result<{g.ClassName}> TryCreate(long? valueOrNothing, string? fieldName = null)
-        {{
-            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = valueOrNothing
-                .ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){notDefaultNullableEnsure};
-            if (validated.TryGetValue(out var value))
-            {{
-                string? additionalError = null;{vaInit}
-                ValidateAdditional(value, field, ref additionalError{vaArg});
-                if (additionalError is not null)
-                    return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {vaCode}) {{ Detail = additionalError }})));
-            }}
-            return validated.Map(val => new {g.ClassName}(val));
-        }}
-
-        public static Result<{g.ClassName}> TryCreate(string? stringOrNull, string? fieldName = null)
-        {{
-            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            long parsedLong = 0;
-            var validated = stringOrNull
-                .ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
-                .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
-                .Ensure(x => long.TryParse(x, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out parsedLong), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid long."" }}))){notDefaultParsedEnsure};
-            if (validated.IsSuccess)
-            {{
-                string? additionalError = null;{vaInit}
-                ValidateAdditional(parsedLong, field, ref additionalError{vaArg});
-                if (additionalError is not null)
-                    return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {vaCode}) {{ Detail = additionalError }})));
-            }}
-            return validated.Map(_ => new {g.ClassName}(parsedLong));
-        }}";
-        }
-
-        // IFormattableScalarValue TryCreate overload for culture-sensitive parsing
-        result += $@"
-
-        /// <summary>
-        /// Attempts to create a validated instance from a string using the specified format provider.
-        /// Use for culture-sensitive parsing of long values.
-        /// </summary>
-        /// <param name=""value"">The string value to parse.</param>
-        /// <param name=""provider"">The format provider for culture-sensitive parsing. Defaults to InvariantCulture when null.</param>
-        /// <param name=""fieldName"">Optional field name for validation error messages.</param>
-        /// <returns>Success with the value object, or Failure with validation errors.</returns>
-        public static Result<{g.ClassName}> TryCreate(string? value, IFormatProvider? provider, string? fieldName = null)
-        {{
-            using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
-            var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            if (value is null)
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})));
-            if (string.IsNullOrWhiteSpace(value))
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})));
-            if (!long.TryParse(value, System.Globalization.NumberStyles.Integer, provider ?? System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-                return Result.Fail<{g.ClassName}>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid long."" }})));
-            return TryCreate(parsed, fieldName);
-        }}";
-
-        // Create and Parse are the same regardless of [Range]
-        result += $@"
-
-        /// <summary>
-        /// Creates a validated instance from a long. Throws if validation fails.
-        /// Use this for known-valid values in tests or with constants.
-        /// </summary>
-        /// <param name=""value"">The long value to validate.</param>
-        /// <returns>The validated value object.</returns>
-        /// <exception cref=""InvalidOperationException"">Thrown when validation fails.</exception>
-        public static new {g.ClassName} Create(long value)
-        {{
-            var result = TryCreate(value, null);
-            return result.Match(
-                onSuccess: created => created,
-                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.GetDisplayMessage()}}""));
-        }}
-
-        /// <summary>
-        /// Creates a validated instance from a string by parsing it as a long. Throws if validation or parsing fails.
-        /// Use this for known-valid long strings in tests or with constants.
-        /// </summary>
-        /// <param name=""stringValue"">The string value to parse and validate.</param>
-        /// <returns>The validated value object.</returns>
-        /// <exception cref=""InvalidOperationException"">Thrown when validation or parsing fails.</exception>
-        public static {g.ClassName} Create(string stringValue)
-        {{
-            var result = TryCreate(stringValue, null);
-            return result.Match(
-                onSuccess: created => created,
-                onFailure: error => throw new InvalidOperationException($""Failed to create {g.ClassName}: {{error.GetDisplayMessage()}}""));
-        }}";
-
-        return result;
     }
 
     private static string GenerateBoolMethods(RequiredPartialClassInfo g, SourceProductionContext context, HashSet<string> reportedCollisions)

@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Http;
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -311,31 +312,10 @@ public static class HttpResponseExtensions
     /// downstream operator (typically <see cref="ReadJsonAsync"/> or
     /// <see cref="ReadJsonMaybeAsync"/>) consumes the response.
     /// </remarks>
-    public static async Task<Result<HttpResponseMessage>> HandleNotFoundAsync(
+    public static Task<Result<HttpResponseMessage>> HandleNotFoundAsync(
         this Task<HttpResponseMessage> response,
-        Error.NotFound error)
-    {
-        ArgumentNullException.ThrowIfNull(response);
-
-        // Await BEFORE the null-`error` guard so we own the HttpResponseMessage's disposal
-        // regardless of where the throw fires. Throwing before await would let the in-flight
-        // response task complete and leak the message until GC finalization.
-        var message = await response.ConfigureAwait(false);
-
-        if (error is null)
-        {
-            message.Dispose();
-            throw new ArgumentNullException(nameof(error));
-        }
-
-        if (message.StatusCode == HttpStatusCode.NotFound)
-        {
-            message.Dispose();
-            return Result.Fail<HttpResponseMessage>(error);
-        }
-
-        return Result.Ok(message);
-    }
+        Error.NotFound error) =>
+        HandleStatusAsync(response, HttpStatusCode.NotFound, error);
 
     /// <summary>
     /// Maps <see cref="HttpStatusCode.Conflict"/> to a
@@ -349,28 +329,10 @@ public static class HttpResponseExtensions
     /// On a matched 409 the underlying <see cref="HttpResponseMessage"/> is disposed
     /// before returning; on any other status the caller continues to own disposal.
     /// </remarks>
-    public static async Task<Result<HttpResponseMessage>> HandleConflictAsync(
+    public static Task<Result<HttpResponseMessage>> HandleConflictAsync(
         this Task<HttpResponseMessage> response,
-        Error.Conflict error)
-    {
-        ArgumentNullException.ThrowIfNull(response);
-
-        var message = await response.ConfigureAwait(false);
-
-        if (error is null)
-        {
-            message.Dispose();
-            throw new ArgumentNullException(nameof(error));
-        }
-
-        if (message.StatusCode == HttpStatusCode.Conflict)
-        {
-            message.Dispose();
-            return Result.Fail<HttpResponseMessage>(error);
-        }
-
-        return Result.Ok(message);
-    }
+        Error.Conflict error) =>
+        HandleStatusAsync(response, HttpStatusCode.Conflict, error);
 
     /// <summary>
     /// Maps <see cref="HttpStatusCode.Unauthorized"/> to a
@@ -384,12 +346,20 @@ public static class HttpResponseExtensions
     /// On a matched 401 the underlying <see cref="HttpResponseMessage"/> is disposed
     /// before returning; on any other status the caller continues to own disposal.
     /// </remarks>
-    public static async Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(
+    public static Task<Result<HttpResponseMessage>> HandleUnauthorizedAsync(
         this Task<HttpResponseMessage> response,
-        Error.AuthenticationRequired error)
+        Error.AuthenticationRequired error) =>
+        HandleStatusAsync(response, HttpStatusCode.Unauthorized, error);
+
+    private static async Task<Result<HttpResponseMessage>> HandleStatusAsync(
+        Task<HttpResponseMessage> response,
+        HttpStatusCode expectedStatus,
+        Error error)
     {
         ArgumentNullException.ThrowIfNull(response);
 
+        // Await before validating the error so even an invalid argument cannot leak
+        // a response that completes after this call starts.
         var message = await response.ConfigureAwait(false);
 
         if (error is null)
@@ -398,7 +368,7 @@ public static class HttpResponseExtensions
             throw new ArgumentNullException(nameof(error));
         }
 
-        if (message.StatusCode == HttpStatusCode.Unauthorized)
+        if (message.StatusCode == expectedStatus)
         {
             message.Dispose();
             return Result.Fail<HttpResponseMessage>(error);
@@ -447,16 +417,14 @@ public static class HttpResponseExtensions
             ct.ThrowIfCancellationRequested();
 
             if (!message.IsSuccessStatusCode)
-                return Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseNotSuccess, FaultId: Guid.NewGuid().ToString("N"))
-                {
-                    Detail = $"HTTP response is in a failed state for value {typeof(T).Name}. Status code: {message.StatusCode}.",
-                });
+                return Result.Fail<T>(CreateUnexpectedResponseError(
+                    FaultCodes.HttpResponseNotSuccess,
+                    $"HTTP response is in a failed state for value {typeof(T).Name}. Status code: {message.StatusCode}."));
 
             if (message.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
-                return Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseNoBody, FaultId: Guid.NewGuid().ToString("N"))
-                {
-                    Detail = $"HTTP response had no body for value {typeof(T).Name}.",
-                });
+                return Result.Fail<T>(CreateUnexpectedResponseError(
+                    FaultCodes.HttpResponseNoBody,
+                    $"HTTP response had no body for value {typeof(T).Name}."));
 
             // No `Content is null` guard: HttpResponseMessage.Content's getter substitutes an
             // EmptyContent when the backing field is null, so the property never observes null
@@ -464,38 +432,17 @@ public static class HttpResponseExtensions
             // a bodiless response.
             var bytes = await message.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             if (bytes.Length == 0)
-                return Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseNoBody, FaultId: Guid.NewGuid().ToString("N"))
-                {
-                    Detail = $"HTTP response body was empty for value {typeof(T).Name}.",
-                });
+                return Result.Fail<T>(CreateUnexpectedResponseError(
+                    FaultCodes.HttpResponseNoBody,
+                    $"HTTP response body was empty for value {typeof(T).Name}."));
 
-            T? value;
-            try
-            {
-                value = JsonSerializer.Deserialize(bytes, jsonTypeInfo);
-            }
-            catch (JsonException ex)
-            {
-                // Use only structured position info (line / byte). Avoid `ex.Message`
-                // entirely (can include offending JSON snippet text) and `ex.Path`
-                // (can contain user-controlled dictionary keys, e.g.
-                // `$.customers['alice@example.com']`). Line + byte are
-                // schema-free diagnostics that don't echo upstream-supplied content.
-                var location = ex.LineNumber.HasValue
-                    ? $" at line {ex.LineNumber}, byte {ex.BytePositionInLine ?? 0}"
-                    : string.Empty;
-
-                return Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseInvalidBody, FaultId: Guid.NewGuid().ToString("N"))
-                {
-                    Detail = $"Failed to deserialize HTTP response to {typeof(T).Name}{location}.",
-                });
-            }
+            if (!TryDeserializeJson(bytes, jsonTypeInfo, out var value, out error))
+                return Result.Fail<T>(error);
 
             return value is null
-                ? Result.Fail<T>(new Error.Unexpected(Code: FaultCodes.HttpResponseInvalidBody, FaultId: Guid.NewGuid().ToString("N"))
-                {
-                    Detail = $"HTTP response deserialized to null for value {typeof(T).Name}.",
-                })
+                ? Result.Fail<T>(CreateUnexpectedResponseError(
+                    FaultCodes.HttpResponseInvalidBody,
+                    $"HTTP response deserialized to null for value {typeof(T).Name}."))
                 : Result.Ok(value);
         }
         finally
@@ -547,10 +494,9 @@ public static class HttpResponseExtensions
             ct.ThrowIfCancellationRequested();
 
             if (!message.IsSuccessStatusCode)
-                return Result.Fail<Maybe<T>>(new Error.Unexpected(Code: FaultCodes.HttpResponseNotSuccess, FaultId: Guid.NewGuid().ToString("N"))
-                {
-                    Detail = $"HTTP response is in a failed state for value {typeof(T).Name}. Status code: {message.StatusCode}.",
-                });
+                return Result.Fail<Maybe<T>>(CreateUnexpectedResponseError(
+                    FaultCodes.HttpResponseNotSuccess,
+                    $"HTTP response is in a failed state for value {typeof(T).Name}. Status code: {message.StatusCode}."));
 
             if (message.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
                 return Result.Ok(Maybe<T>.None);
@@ -560,22 +506,8 @@ public static class HttpResponseExtensions
             if (bytes.Length == 0)
                 return Result.Ok(Maybe<T>.None);
 
-            T? value;
-            try
-            {
-                value = JsonSerializer.Deserialize(bytes, jsonTypeInfo);
-            }
-            catch (JsonException ex)
-            {
-                var location = ex.LineNumber.HasValue
-                    ? $" at line {ex.LineNumber}, byte {ex.BytePositionInLine ?? 0}"
-                    : string.Empty;
-
-                return Result.Fail<Maybe<T>>(new Error.Unexpected(Code: FaultCodes.HttpResponseInvalidBody, FaultId: Guid.NewGuid().ToString("N"))
-                {
-                    Detail = $"Failed to deserialize HTTP response to {typeof(T).Name}{location}.",
-                });
-            }
+            if (!TryDeserializeJson(bytes, jsonTypeInfo, out var value, out error))
+                return Result.Fail<Maybe<T>>(error);
 
             return Result.Ok(value is null ? Maybe<T>.None : Maybe.From(value));
         }
@@ -584,4 +516,36 @@ public static class HttpResponseExtensions
             message.Dispose();
         }
     }
+
+    private static bool TryDeserializeJson<T>(
+        byte[] bytes,
+        JsonTypeInfo<T> jsonTypeInfo,
+        out T? value,
+        [NotNullWhen(false)] out Error? error)
+        where T : notnull
+    {
+        try
+        {
+            value = JsonSerializer.Deserialize(bytes, jsonTypeInfo);
+            error = null;
+            return true;
+        }
+        catch (JsonException ex)
+        {
+            // Message can echo payload data; Path can contain user-controlled dictionary keys.
+            // Only structured line/byte positions are safe to include in public diagnostics.
+            var location = ex.LineNumber.HasValue
+                ? $" at line {ex.LineNumber}, byte {ex.BytePositionInLine ?? 0}"
+                : string.Empty;
+
+            value = default;
+            error = CreateUnexpectedResponseError(
+                FaultCodes.HttpResponseInvalidBody,
+                $"Failed to deserialize HTTP response to {typeof(T).Name}{location}.");
+            return false;
+        }
+    }
+
+    private static Error.Unexpected CreateUnexpectedResponseError(string code, string detail) =>
+        new(Code: code, FaultId: Guid.NewGuid().ToString("N")) { Detail = detail };
 }
