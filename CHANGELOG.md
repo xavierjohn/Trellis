@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `TRLS066`: use `ToResult(error)` for a nullable value
+
+`UseToResultForNullableAnalyzer` (Info) flags `Result.Ensure(x is not null, error)` — also `x != null` and
+`x is { }` — over a nullable reference or `Nullable<T>`, and suggests `x.ToResult(error)`, which returns the
+non-null value as a `Result<T>` instead of a discarded `Unit` and so removes the `!` suppressions that follow.
+`UseToResultForNullableCodeFixProvider` rewrites the call only where it is an operand of a Trellis `Combine` chain
+whose type-erasing consumer (`Map`/`Bind`) has a lambda that ignores that tuple slot, so the change of payload type (`Result<Unit>` to `Result<T>`)
+is not observable; every other position keeps the diagnostic without a fix. `Combine` still accumulates every failure, so multi-field validation keeps reporting all
+missing fields at once. WRONG/FIX shapes: `trellis-api-anti-patterns.md` → TRLS066.
+
 ### Added — durable integration-event lineage and W3C trace context (TFR-12)
 
 Domain outbox rows now capture the current W3C `traceparent` / `tracestate`, an explicit

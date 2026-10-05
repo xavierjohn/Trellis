@@ -15,7 +15,7 @@
 ///     Justification = "guarded by HasValue check earlier in the pipeline")]
 /// </code>
 /// <para>
-/// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges, plus the IDs <c>TRLS063</c>–<c>TRLS065</c>, are emitted by the
+/// IDs in the <c>TRLS001</c>–<c>TRLS023</c> and <c>TRLS054</c>–<c>TRLS055</c> ranges, plus the IDs <c>TRLS063</c>–<c>TRLS066</c>, are emitted by the
 /// <c>Trellis.Analyzers</c> assembly. IDs in the <c>TRLS031</c>–<c>TRLS045</c>, <c>TRLS056</c>–<c>TRLS058</c> and <c>TRLS060</c>–<c>TRLS062</c>
 /// ranges are emitted by the bundled source generators
 /// (<c>Trellis.Core.Generator</c>, <c>Trellis.EntityFrameworkCore.Generator</c>,
@@ -180,4 +180,7 @@ public static class TrellisDiagnosticIds
 
     /// <summary>TRLS065 — <c>[Produces]</c> lists a JSON-family media type, which rewrites RFC 9457 problem responses.</summary>
     public const string ProducesClobbersProblemDetails = "TRLS065";
+
+    /// <summary>TRLS066 — <c>Result.Ensure(x is not null, error)</c> hand-rolls what <c>x.ToResult(error)</c> already does for a nullable reference or value.</summary>
+    public const string UseToResultForNullable = "TRLS066";
 }
