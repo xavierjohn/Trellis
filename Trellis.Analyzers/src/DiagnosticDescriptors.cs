@@ -418,4 +418,22 @@ public static class DiagnosticDescriptors
                      "JSON-family type at all — text/csv, application/pdf — is not reported: those formatters decline " +
                      "ProblemDetails in CanWriteType, so MVC falls back and the problem response keeps its media type.",
         helpLinkUri: HelpLinkBase);
+
+    /// <summary>
+    /// TRLS066: <c>Result.Ensure(x is not null, error)</c> where <c>x.ToResult(error)</c> says the same thing.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UseToResultForNullable = new(
+        id: TrellisDiagnosticIds.UseToResultForNullable,
+        title: "Use ToResult(error) to convert a nullable value to a Result<T>",
+        messageFormat: "Use ToResult(error) to convert a nullable value to a Result<T>",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        description: "Result.Ensure(x is not null, error) checks for null but discards the value, so the caller keeps " +
+                     "using x with a null-forgiving '!' afterwards. x.ToResult(error) performs the same check on a nullable " +
+                     "reference or Nullable<T> and yields a Result<T> that carries the non-null value. The two differ in " +
+                     "payload type (Result<Unit> versus Result<T>), so the code fix is offered only where the payload is " +
+                     "provably discarded: an operand of a Trellis Combine chain whose result feeds a lambda that discards that slot. Combine still accumulates every failure, so a form that reports " +
+                     "all missing fields at once keeps doing so.",
+        helpLinkUri: HelpLinkBase);
 }

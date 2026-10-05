@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059, TRLS062, TRLS063, TRLS064]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059, TRLS062, TRLS063, TRLS064, TRLS065, TRLS066]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-08-18
@@ -667,6 +667,34 @@ public ActionResult<string[]> Export() => Ok(rows);
 XML is a separate matter and is deliberately not listed as a safe example, though not because it is dangerous: Trellis failure responses ignore output formatters entirely and always write `application/problem+json`, so neither `AddXmlSerializerFormatters()` nor `AddXmlDataContractSerializerFormatters()` can change a Trellis problem document — and neither one can be *repaired* by `[Produces]` either, since TRLS065 is about which media type a formatter claims and no formatter is consulted here. See the JSON-only note in `trellis-api-asp.md`.
 
 > Severity: Warning, rather than the Info used for TRLS063/TRLS064. Those rules report a legal shape that a codebase may reasonably be full of; this one reports a wire-format defect whose symptom — a failure body that parses fine but arrives under the wrong media type — is invisible in the response the developer eyeballs. Trellis's own responses are already immune (`AsActionResult<T>()` returns a plain `ActionResult`, and `ScalarValueValidationFilter` owns every invalid `ModelState`), so what this rule protects is the `ObjectResult`s your application builds itself.
+
+## TRLS066 — `Result.Ensure(x is not null, error)` instead of `ToResult`
+
+`Result.Ensure(x is not null, error)` checks for null but throws the value away, so every later use of `x` needs a `!`. `x.ToResult(error)` does the same check on a nullable reference or `Nullable<T>` and returns a `Result<T>` carrying the **non-null** value. It is the same idiom whether the guard is a single field or one of several.
+
+```csharp
+// WRONG — Result<Unit> guards, then '!' to recover what the guard already proved
+Result.Ensure(title is not null, Error.InvalidInput.ForField(code: "required", field: "title", detail: "Title is required."))
+    .Combine(Result.Ensure(dueDate is not null, Error.InvalidInput.ForField(code: "required", field: "dueDate", detail: "Due date is required.")))
+    .Map((_, _) => new CreateTodoCommand(title!, dueDate!.Value, tag));        // TRLS066 on both guards
+
+// FIX — the Result carries the value; no '!' and no discarded Unit
+title.ToResult(Error.InvalidInput.ForField(code: "required", field: "title", detail: "Title is required."))
+    .Combine(dueDate.ToResult(Error.InvalidInput.ForField(code: "required", field: "dueDate", detail: "Due date is required.")))
+    .Map((title, dueDate) => new CreateTodoCommand(title, dueDate, tag));
+```
+
+`Combine` over `Result<T>` values yields a `Result<(T1, T2)>`, and `Map` accepts a lambda taking the tuple elements as separate parameters, so the chain stays one expression and **still reports every missing field at once**. The code fix performs only the first rewrite (guard to `ToResult`) and leaves the later lambda untouched, so a `title!` there still compiles; take the tuple elements as lambda parameters to drop it.
+
+The null test must be the whole condition. These are left alone because the replacement would change the meaning:
+
+```csharp
+Result.Ensure(title is not null && title.Length > 0, error);   // extra clause — a pure null test is the only shape rewritten
+Result.Ensure(title is { Length: > 0 }, error);                // property pattern, not a pure null test
+Result.Ensure(value is string { }, error);                    // also tests the runtime type
+```
+
+> Severity: Info, because both shapes are correct. The two differ in payload type — `Result.Ensure` returns `Result<Unit>`, `ToResult` returns `Result<T>` — so the code fix is offered only where the payload is provably discarded: an operand of a Trellis `Combine` chain whose Trellis `Map`/`Bind` consumer has a lambda that ignores that slot. A standalone `Result.Ensure(...)` keeps the diagnostic and gets no automatic rewrite; change the declared type by hand.
 
 ## (No analyzer) — `Result.FailAfterCommit` composed with aggregating operators
 Not an analyzer-flagged rule (no diagnostic ID), but a recurring shape that the FailAfterCommit XML doc cautions against. `Result.FailAfterCommit<TValue>(error)` is a **leaf** worker-handler operation: it converts a single aggregate's transient external rejection into a persisted `permanently_failed` state and returns. Threading that result through `Combine` / `TraverseAll` / `SequenceAll` / `WhenAllAsync` OR-accumulates the `PersistOnFailure` flag onto the aggregated failure — `TransactionalCommandBehavior` then commits the staged permanent-failure mutation alongside whatever the other legs produced, which is almost never what the handler author intended.
