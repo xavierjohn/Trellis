@@ -237,6 +237,94 @@ public class TrellisServiceBuilderTests
     }
 
     [Fact]
+    public void UseAsp_RepeatedCalls_InvokesConfigureCallbacksInOrder()
+    {
+        List<int> calls = [];
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseAsp(_ => calls.Add(1))
+            .UseAsp()
+            .UseAsp(_ => calls.Add(2))
+            .UseAsp(_ => calls.Add(3)));
+
+        using var provider = services.BuildServiceProvider();
+        _ = provider.GetRequiredService<TrellisAspOptions>();
+
+        calls.Should().Equal([1, 2, 3]);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void UseAsp_RepeatedCalls_ContravariantCallbacks_InvokeInRegistrationOrder(bool contravariantFirst)
+    {
+        List<int> calls = [];
+        Action<object> commonConfigure = _ => calls.Add(1);
+        commonConfigure += _ => calls.Add(2);
+        Action<TrellisAspOptions> configureSpecific = _ => calls.Add(3);
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options =>
+        {
+            if (contravariantFirst)
+                options.UseAsp(commonConfigure).UseAsp().UseAsp(configureSpecific);
+            else
+                options.UseAsp(configureSpecific).UseAsp().UseAsp(commonConfigure);
+        });
+
+        using var provider = services.BuildServiceProvider();
+        _ = provider.GetRequiredService<TrellisAspOptions>();
+
+        int[] expected = contravariantFirst ? [1, 2, 3] : [3, 1, 2];
+        calls.Should().Equal(expected);
+    }
+
+    [Fact]
+    public void UseMediator_RepeatedCalls_InvokesConfigureCallbacksInOrder()
+    {
+        List<int> calls = [];
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options => options
+            .UseMediator(_ => calls.Add(1))
+            .UseMediator()
+            .UseMediator(_ => calls.Add(2))
+            .UseMediator(_ => calls.Add(3)));
+
+        using var provider = services.BuildServiceProvider();
+        _ = provider.GetRequiredService<TrellisMediatorTelemetryOptions>();
+
+        calls.Should().Equal([1, 2, 3]);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void UseMediator_RepeatedCalls_ContravariantCallbacks_InvokeInRegistrationOrder(bool contravariantFirst)
+    {
+        List<int> calls = [];
+        Action<object> commonConfigure = _ => calls.Add(1);
+        commonConfigure += _ => calls.Add(2);
+        Action<TrellisMediatorTelemetryOptions> configureSpecific = _ => calls.Add(3);
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options =>
+        {
+            if (contravariantFirst)
+                options.UseMediator(commonConfigure).UseMediator().UseMediator(configureSpecific);
+            else
+                options.UseMediator(configureSpecific).UseMediator().UseMediator(commonConfigure);
+        });
+
+        using var provider = services.BuildServiceProvider();
+        _ = provider.GetRequiredService<TrellisMediatorTelemetryOptions>();
+
+        int[] expected = contravariantFirst ? [1, 2, 3] : [3, 1, 2];
+        calls.Should().Equal(expected);
+    }
+
+    [Fact]
     public void UseAsp_alone_DoesNotRegisterScalarValidation()
     {
         // The scalar-value validation slot is independent of UseAsp(). Hosts that only
@@ -541,11 +629,21 @@ public class TrellisServiceBuilderTests
     [Fact]
     public void UseIdempotency_repeated_calls_compose_options_callbacks()
     {
+        List<int> calls = [];
         var services = new ServiceCollection();
         services.AddTrellis(options => options
-            .UseIdempotency(o => o.HeaderName = "X-First")
+            .UseIdempotency(o =>
+            {
+                o.HeaderName = "X-First";
+                calls.Add(1);
+            })
             .UseIdempotency()
-            .UseIdempotency(o => o.MaxKeyLength = 99));
+            .UseIdempotency(o =>
+            {
+                o.HeaderName.Should().Be("X-First");
+                o.MaxKeyLength = 99;
+                calls.Add(2);
+            }));
 
         using var sp = services.BuildServiceProvider();
         var opts = sp.GetRequiredService<IOptions<Trellis.Asp.Idempotency.IdempotencyOptions>>().Value;
@@ -554,6 +652,33 @@ public class TrellisServiceBuilderTests
             "the first UseIdempotency callback must not be cleared by a later call");
         opts.MaxKeyLength.Should().Be(99,
             "the third UseIdempotency callback must also apply alongside the first");
+        calls.Should().Equal([1, 2]);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void UseIdempotency_RepeatedCalls_ContravariantCallbacks_InvokeInRegistrationOrder(bool contravariantFirst)
+    {
+        List<int> calls = [];
+        Action<object> commonConfigure = _ => calls.Add(1);
+        commonConfigure += _ => calls.Add(2);
+        Action<Trellis.Asp.Idempotency.IdempotencyOptions> configureSpecific = _ => calls.Add(3);
+        var services = new ServiceCollection();
+
+        services.AddTrellis(options =>
+        {
+            if (contravariantFirst)
+                options.UseIdempotency(commonConfigure).UseIdempotency().UseIdempotency(configureSpecific);
+            else
+                options.UseIdempotency(configureSpecific).UseIdempotency().UseIdempotency(commonConfigure);
+        });
+
+        using var provider = services.BuildServiceProvider();
+        _ = provider.GetRequiredService<IOptions<Trellis.Asp.Idempotency.IdempotencyOptions>>().Value;
+
+        int[] expected = contravariantFirst ? [1, 2, 3] : [3, 1, 2];
+        calls.Should().Equal(expected);
     }
 
     private sealed class TestDbContext : DbContext

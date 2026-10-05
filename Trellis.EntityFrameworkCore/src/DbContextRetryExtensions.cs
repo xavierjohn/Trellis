@@ -133,38 +133,17 @@ public static class DbContextRetryExtensions
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                return Result.Fail<Unit>(new Error.Conflict(
-                    Resource: null,
-                    Code: FaultCodes.ConcurrentModification)
-                {
-                    Detail = $"One or more entities were modified by another process. {ex.Entries.Count} entities affected."
-                });
+                return Result.Fail<Unit>(DbUpdateErrorFactory.ConcurrentModification(ex));
             }
             catch (DbUpdateException ex)
             {
                 if (!shouldRetry(ex))
                 {
                     if (DbExceptionClassifier.IsDuplicateKey(ex))
-                    {
-                        var (constraintName, constraintTable) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
-                        return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: "duplicate.key")
-                        {
-                            Detail = "A record with the same unique value already exists.",
-                            ConstraintName = constraintName,
-                            ConstraintTableName = constraintTable,
-                        });
-                    }
+                        return Result.Fail<Unit>(DbUpdateErrorFactory.DuplicateKey(ex));
 
                     if (DbExceptionClassifier.IsForeignKeyViolation(ex))
-                    {
-                        var (constraintName, constraintTable) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
-                        return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: "referential.integrity")
-                        {
-                            Detail = "Operation violates a referential integrity constraint.",
-                            ConstraintName = constraintName,
-                            ConstraintTableName = constraintTable,
-                        });
-                    }
+                        return Result.Fail<Unit>(DbUpdateErrorFactory.ForeignKeyViolation(ex));
 
                     throw;
                 }

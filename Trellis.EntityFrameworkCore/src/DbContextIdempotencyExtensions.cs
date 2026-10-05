@@ -155,15 +155,7 @@ public static class DbContextIdempotencyExtensions
         {
             RestoreChangeTracker(introducedAdded, transitionedToAdded);
 
-            var (constraintName, tableName) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
-            return Result.Fail<TEntity>(new Error.Conflict(
-                Resource: null,
-                Code: "duplicate.key")
-            {
-                Detail = "A record with the same unique value already exists.",
-                ConstraintName = constraintName,
-                ConstraintTableName = tableName,
-            });
+            return Result.Fail<TEntity>(DbUpdateErrorFactory.DuplicateKey(ex));
         }
         catch (OperationCanceledException)
         {

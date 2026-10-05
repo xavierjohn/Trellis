@@ -67,36 +67,15 @@ public static class DbContextExtensions
         }
         catch (DbUpdateConcurrencyException ex)
         {
-            return Result.Fail<int>(new Error.Conflict(
-                Resource: null,
-                Code: FaultCodes.ConcurrentModification)
-            { Detail = $"One or more entities were modified by another process. {ex.Entries.Count} entities affected." });
+            return Result.Fail<int>(DbUpdateErrorFactory.ConcurrentModification(ex));
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsDuplicateKey(ex))
         {
-            // Use a safe generic message for Error.Detail — it flows to API responses.
-            // ConstraintName / ConstraintTableName are [JsonIgnore]'d telemetry fields,
-            // populated on a best-effort basis for structured logging.
-            var (constraintName, constraintTable) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
-            return Result.Fail<int>(new Error.Conflict(Resource: null, Code: "duplicate.key")
-            {
-                Detail = "A record with the same unique value already exists.",
-                ConstraintName = constraintName,
-                ConstraintTableName = constraintTable,
-            });
+            return Result.Fail<int>(DbUpdateErrorFactory.DuplicateKey(ex));
         }
         catch (DbUpdateException ex) when (DbExceptionClassifier.IsForeignKeyViolation(ex))
         {
-            // Use a safe generic message for Error.Detail — it flows to API responses.
-            // ConstraintName / ConstraintTableName are [JsonIgnore]'d telemetry fields,
-            // populated on a best-effort basis for structured logging.
-            var (constraintName, constraintTable) = DbExceptionClassifier.ExtractConstraintIdentity(ex);
-            return Result.Fail<int>(new Error.Conflict(Resource: null, Code: "referential.integrity")
-            {
-                Detail = "Operation violates a referential integrity constraint.",
-                ConstraintName = constraintName,
-                ConstraintTableName = constraintTable,
-            });
+            return Result.Fail<int>(DbUpdateErrorFactory.ForeignKeyViolation(ex));
         }
     }
 

@@ -88,7 +88,7 @@ public sealed class TrellisServiceBuilder
     {
         _useAsp = true;
         if (configure is not null)
-            _configureAsp = Combine(_configureAsp, configure);
+            _configureAsp += configure.Invoke;
 
         return this;
     }
@@ -169,7 +169,7 @@ public sealed class TrellisServiceBuilder
     {
         _useIdempotency = true;
         if (configure is not null)
-            _configureIdempotency = Combine(_configureIdempotency, configure);
+            _configureIdempotency += configure.Invoke;
 
         return this;
     }
@@ -185,7 +185,7 @@ public sealed class TrellisServiceBuilder
     {
         _useMediator = true;
         if (configureTelemetry is not null)
-            _configureMediatorTelemetry = Combine(_configureMediatorTelemetry, configureTelemetry);
+            _configureMediatorTelemetry += configureTelemetry.Invoke;
 
         return this;
     }
@@ -1081,13 +1081,6 @@ public sealed class TrellisServiceBuilder
                 target.Add(assemblies[i]);
         }
     }
-
-    private static Action<T> Combine<T>(Action<T>? existing, Action<T> next) =>
-        existing is null ? next : value =>
-        {
-            existing(value);
-            next(value);
-        };
 
     private enum ActorProviderKind
     {
