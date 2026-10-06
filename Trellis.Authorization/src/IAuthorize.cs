@@ -5,7 +5,7 @@
 /// Authorization checks verify that the current actor has ALL of the
 /// <see cref="RequiredPermissions"/> before calling the handler.
 /// </summary>
-public interface IAuthorize
+public interface IAuthorize : IAuthorizationMessage
 {
     /// <summary>
     /// Permissions the actor must have to execute this command/query.

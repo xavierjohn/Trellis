@@ -65,6 +65,17 @@ internal sealed class AuthorizedResourceHolder<TMessage, TResource>
         return frame.Resource;
     }
 
+    internal static TResource GetRequiredResourceForDispatch(object dispatch)
+    {
+        var frame = s_frame.Value;
+        if (frame is null || !frame.IsActive || !ReferenceEquals(frame.AuthorizationDispatch, dispatch))
+            throw new InvalidOperationException(
+                $"No authorized {typeof(TResource).Name} for {typeof(TMessage).Name} belongs to the current dispatch. " +
+                "Register the matching AddResourceAuthorization pipeline and invoke the handler through Mediator, " +
+                "or use its explicit actor/resource overload for an isolated business test.");
+        return frame.Resource;
+    }
+
     /// <inheritdoc />
     public bool TryGetResource([MaybeNullWhen(false)] out TResource resource)
     {
@@ -127,11 +138,14 @@ internal sealed class AuthorizedResourceHolder<TMessage, TResource>
         {
             Previous = previous;
             Resource = resource;
+            AuthorizationDispatch = AuthorizationDispatchContext.CurrentIdentity;
         }
 
         public Frame? Previous { get; }
 
         public TResource Resource { get; }
+
+        public object? AuthorizationDispatch { get; }
 
         public volatile bool IsActive = true;
     }

@@ -31,6 +31,9 @@ builder.Services.AddTrellisBehaviors();
 > Use `ServiceLifetime.Scoped` when calling `AddMediator(...)` in a host with a request scope. The Trellis behaviors are scoped (they depend on per-request services); the Mediator default of `Singleton` will fail ASP.NET's root-scope validation as soon as the first behavior tries to resolve a scoped dependency.
 
 ## Key Features
+- Six parameterless actor-aware bases: `ActorCommandHandler`, `ActorQueryHandler`, direct `ActorResourceCommandHandler` / `ActorResourceQueryHandler`, and indirect `ActorResourceViaCommandHandler` / `ActorResourceViaQueryHandler`. Override protected `HandleCore`; concrete constructors keep business dependencies only.
+- One Actor reference per dispatch across static/resource authorization and these handler bases. The integral `AuthorizationContextBehavior` guards pending/mismatched/expired snapshots and isolates nested and concurrent sends. Via business methods receive the leaf, not owners.
+- Explicit `Handle(message, actor[, resource/leaf], token)` overloads support isolated business tests without DI. They bypass authorization, validation, commits, and events; use actual Mediator sends for policy tests. Existing accessor-only handlers and provider extensions remain supported.
 - Adds validation, authorization, tracing, logging, and exception behaviors that understand `Result<T>`.
 - Tracing is registered but not *collected* until you call `AddTrellisMediatorInstrumentation()` on your `TracerProviderBuilder`; without it the handler span is silently never recorded.
 - Short-circuits failures before handlers do unnecessary work.
@@ -44,6 +47,8 @@ builder.Services.AddTrellisBehaviors();
 - `IntegrationMessageContext.BeginCorrelation("workflow-id")` supplies an application-owned business correlation id; inbox dispatch scopes inherit nonblank inbound correlation and expose the inbound message id as the direct cause for outbox capture. `OutboundIntegrationMessage` carries persisted lineage and W3C trace context without guessing from the relay's ambient activity.
 
 ## Documentation
+- [Handler migration and dispatch contracts](../docs/docfx_project/api_reference/trellis-api-mediator.md#actor-aware-handler-bases): replace custom actor/resource bases, rename business overrides to `HandleCore`, and remove lookup-only constructor dependencies. Standard managed registrations supply the context automatically; hand-built authorization pipelines must add it before authorization.
+- [Native AOT registration](../docs/docfx_project/api_reference/trellis-api-mediator.md#native-aot-registration): use literal generator `typeof(...)` configuration for closed behaviors. Native DI cannot close open behaviors over struct `Result<T>` responses; do not combine the closed-generator shape with `AddTrellisBehaviors` or builder slots that imply it.
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html)
 - [Package API reference](../docs/docfx_project/api_reference/trellis-api-mediator.md)
 

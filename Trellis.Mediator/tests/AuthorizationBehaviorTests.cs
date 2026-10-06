@@ -19,7 +19,7 @@ public class AuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Should().Be("Done");
@@ -39,7 +39,7 @@ public class AuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
@@ -57,7 +57,7 @@ public class AuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<MultiPermissionCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Detail.Should().Be("Insufficient permissions.");
@@ -78,7 +78,7 @@ public class AuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<NoPermissionsCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         tracker.WasInvoked.Should().BeTrue();
@@ -97,7 +97,7 @@ public class AuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         tracker.WasInvoked.Should().BeTrue();
@@ -114,7 +114,7 @@ public class AuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.AuthenticationRequired>();
@@ -136,7 +136,7 @@ public class AuthorizationBehaviorTests
         var next = NextDelegate.ReturningAsync<AdminCommand, Result<string>>(
             Result.Ok("Done"));
 
-        await behavior.Handle(command, next, cts.Token);
+        await behavior.HandleWithContext(command, next, cts.Token);
 
         capturingProvider.LastCancellationToken.Should().Be(cts.Token);
     }
@@ -155,7 +155,7 @@ public class AuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<AdminCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         tracker.WasInvoked.Should().BeTrue();

@@ -12,7 +12,7 @@ using Trellis.Mediator.Tests.Helpers;
 /// <para>
 /// The canonical Trellis pipeline (outermost to innermost) is documented on
 /// <see cref="ServiceCollectionExtensions.PipelineBehaviors"/>:
-/// Exception → Tracing → Logging → Authorization → ResourceAuthorization → Validation →
+/// Exception → Tracing → Logging → AuthorizationContext → Authorization → ResourceAuthorization → Validation →
 /// TransactionalCommand (opt-in, <c>Trellis.EntityFrameworkCore</c>).
 /// </para>
 /// <para>
@@ -27,16 +27,17 @@ using Trellis.Mediator.Tests.Helpers;
 public class PipelineOrderingTests
 {
     [Fact]
-    public void PipelineBehaviors_exposes_five_always_on_behaviors_in_canonical_order()
+    public void PipelineBehaviors_exposes_six_always_on_behaviors_in_canonical_order()
         => ServiceCollectionExtensions.PipelineBehaviors.Should().Equal(
             typeof(ExceptionBehavior<,>),
             typeof(TracingBehavior<,>),
             typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>),
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>));
 
     [Fact]
-    public void AddTrellisBehaviors_registers_five_open_generics_in_canonical_order()
+    public void AddTrellisBehaviors_registers_six_open_generics_in_canonical_order()
     {
         var services = new ServiceCollection();
 
@@ -51,6 +52,7 @@ public class PipelineOrderingTests
             typeof(ExceptionBehavior<,>),
             typeof(TracingBehavior<,>),
             typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>),
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>));
     }
@@ -67,6 +69,7 @@ public class PipelineOrderingTests
             typeof(ExceptionBehavior<,>),
             typeof(TracingBehavior<,>),
             typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>),
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(TransactionalCommandBehavior<,>));
@@ -84,6 +87,7 @@ public class PipelineOrderingTests
             typeof(ExceptionBehavior<,>),
             typeof(TracingBehavior<,>),
             typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>),
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(TransactionalCommandBehavior<,>));
@@ -103,6 +107,7 @@ public class PipelineOrderingTests
             typeof(ExceptionBehavior<,>),
             typeof(TracingBehavior<,>),
             typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>),
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(TransactionalCommandBehavior<,>));
@@ -154,15 +159,11 @@ public class PipelineOrderingTests
                     && d.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
             .ToList();
 
-        behaviors.Should().HaveCount(7);
-        behaviors[0].ImplementationType.Should().Be(typeof(ExceptionBehavior<,>));
-        behaviors[1].ImplementationType.Should().Be(typeof(TracingBehavior<,>));
-        behaviors[2].ImplementationType.Should().Be(typeof(LoggingBehavior<,>));
-        behaviors[3].ImplementationType.Should().Be(typeof(AuthorizationBehavior<,>));
-        behaviors[4].ImplementationType.Should().Be<
-            ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>>();
-        behaviors[5].ImplementationType.Should().Be(typeof(ValidationBehavior<,>));
-        behaviors[6].ImplementationType.Should().Be(typeof(DomainEventDispatchBehavior<,>));
+        behaviors.Select(d => d.ImplementationType).Should().Equal(
+            typeof(ExceptionBehavior<,>), typeof(TracingBehavior<,>), typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>), typeof(AuthorizationBehavior<,>),
+            typeof(ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>),
+            typeof(ValidationBehavior<,>), typeof(DomainEventDispatchBehavior<,>));
     }
 
     [Fact]
@@ -179,28 +180,24 @@ public class PipelineOrderingTests
                     && d.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)))
             .ToList();
 
-        // Order should be: Exception, Tracing, Logging, Authorization, ResourceAuthorization (closed), Validation
-        behaviors.Should().HaveCount(6);
-        behaviors[0].ImplementationType.Should().Be(typeof(ExceptionBehavior<,>));
-        behaviors[1].ImplementationType.Should().Be(typeof(TracingBehavior<,>));
-        behaviors[2].ImplementationType.Should().Be(typeof(LoggingBehavior<,>));
-        behaviors[3].ImplementationType.Should().Be(typeof(AuthorizationBehavior<,>));
-        behaviors[4].ImplementationType.Should().Be<
-            ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>>();
-        behaviors[5].ImplementationType.Should().Be(typeof(ValidationBehavior<,>));
+        behaviors.Select(d => d.ImplementationType).Should().Equal(
+            typeof(ExceptionBehavior<,>), typeof(TracingBehavior<,>), typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>), typeof(AuthorizationBehavior<,>),
+            typeof(ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>),
+            typeof(ValidationBehavior<,>));
     }
 
     [Fact]
-    public void AddResourceAuthorization_with_no_validation_registered_appends_at_end()
+    public void AddResourceAuthorization_with_no_validation_registered_installs_context_and_resource_behavior()
     {
         var services = new ServiceCollection();
 
         services.AddResourceAuthorization<ResourceOwnerCommand, TestResource, Result<string>>();
 
         var descriptors = services.ToList();
-        descriptors.Should().ContainSingle(d =>
+        descriptors.Count(d =>
             d.ServiceType.IsGenericType
-            && d.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>));
+            && d.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)).Should().Be(2);
     }
 
     [Fact]
@@ -218,7 +215,7 @@ public class PipelineOrderingTests
             .Where(d => d.ServiceType == typeof(IPipelineBehavior<,>))
             .ToList();
 
-        behaviors.Should().HaveCount(5);
+        behaviors.Should().HaveCount(6);
         behaviors.Select(d => d.ImplementationType).Should().BeEquivalentTo(
             ServiceCollectionExtensions.PipelineBehaviors,
             o => o.WithStrictOrdering());

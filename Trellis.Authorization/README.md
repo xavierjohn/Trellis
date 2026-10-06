@@ -23,6 +23,8 @@ IResult result = actor.HasPermission("orders:read")
 ```
 
 ## Key Features
+- `IAuthorizationMessage` and `IResourceAuthorizationMessage` are capability markers inherited by the existing static/direct/via interfaces. They do not authenticate or authorize on their own.
+- Trellis Mediator's authorization stages share one Actor snapshot per dispatch. Its six actor-aware handler bases receive that checked instance and, for resource handlers, the loaded resource/leaf. This is distinct from another provider lookup; resource-only messages need not add static `IAuthorize`.
 - `AddSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` from `Trellis.Mediator` registers the typed behavior, accessor, and shared-loader bridge together; register your `SharedResourceLoaderById<TResource,TId>` implementation separately. The lower-level `AddResourceAuthorization<TMessage,TResource,TResponse>()` still leaves all loader registration to the caller.
 - `ActorId` opts into `[Trim, NotDefault]`; trimming and blank rejection are not the unannotated `RequiredString<T>` defaults.
 - Defines `Actor`, `ActorId`, `IActorProvider`, `IAuthorize`, and resource authorization interfaces.

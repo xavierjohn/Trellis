@@ -35,7 +35,7 @@
 /// }
 /// </code>
 /// </example>
-public interface IAuthorizeResource<in TResource>
+public interface IAuthorizeResource<in TResource> : IResourceAuthorizationMessage
 {
     /// <summary>
     /// Determines whether the actor is authorized to perform this operation

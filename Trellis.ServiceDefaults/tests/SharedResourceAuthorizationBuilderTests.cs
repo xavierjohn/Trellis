@@ -22,15 +22,16 @@ public class SharedResourceAuthorizationBuilderTests
         using var scope = provider.CreateScope();
         var behaviors = scope.ServiceProvider.GetServices<IPipelineBehavior<Command, Result<Unit>>>().ToArray();
         var behavior = behaviors.OfType<ResourceAuthorizationBehavior<Command, Resource, Result<Unit>>>().Single();
+        var context = behaviors.OfType<AuthorizationContextBehavior<Command, Result<Unit>>>().Single();
         var accessor = scope.ServiceProvider.GetRequiredService<IAuthorizedResource<Command, Resource>>();
         var handlerCalled = false;
 
-        var result = await behavior.Handle(new Command("order-42"), (_, _) =>
+        var result = await context.Handle(new Command("order-42"), (message, token) => behavior.Handle(message, (_, _) =>
         {
             handlerCalled = true;
             accessor.GetRequiredResource().Id.Should().Be("order-42");
             return ValueTask.FromResult(Result.Ok());
-        }, TestContext.Current.CancellationToken);
+        }, token), TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         handlerCalled.Should().BeTrue();
@@ -137,6 +138,7 @@ public class SharedResourceAuthorizationBuilderTests
                 typeof(ExceptionBehavior<,>),
                 typeof(TracingBehavior<,>),
                 typeof(LoggingBehavior<,>),
+                typeof(AuthorizationContextBehavior<,>),
                 typeof(AuthorizationBehavior<,>),
                 typeof(ResourceAuthorizationBehavior<Command, Resource, Result<Unit>>),
                 typeof(ValidationBehavior<,>),

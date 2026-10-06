@@ -178,7 +178,7 @@ public sealed partial class ResourceAuthorizationViaBehavior<
         // "No authenticated actor" is client-error state per RFC 9110 §15.5.2; route to 401.
         // Genuine provider failures (missing HttpContext, mapping delegate threw, etc.) still
         // throw plain InvalidOperationException and surface as 500 via ExceptionBehavior.
-        var actor = await ActorResolution.TryResolveAsync(_actorProvider, cancellationToken).ConfigureAwait(false);
+        var actor = await ActorResolution.TryResolveAsync<TMessage, TResponse>(_actorProvider, cancellationToken).ConfigureAwait(false);
         if (actor is null)
             return TResponse.CreateFailure(MaybeTranslateExposure(ActorResolution.AuthenticationRequired(), message));
 
@@ -275,6 +275,7 @@ public sealed partial class ResourceAuthorizationViaBehavior<
         // reload via their repository. Backed by a linked-frame design with a volatile
         // IsActive flag: dispose flips IsActive (visible to orphan tasks that captured the
         // frame at fork time but outlived the parent dispatch) and restores the parent frame.
+        AuthorizationDispatchContext.MarkResourceAuthorized<TMessage, TLeaf, TResponse>();
         using var _ = AuthorizedResourceHolder<TMessage, TLeaf>.Push(leaf);
 
         return await next(message, cancellationToken).ConfigureAwait(false);

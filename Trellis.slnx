@@ -140,6 +140,12 @@
     <Project Path="Trellis.Mediator.FluentValidation/src/Trellis.Mediator.FluentValidation.csproj" />
     <Project Path="Trellis.Mediator.FluentValidation/tests/Trellis.Mediator.FluentValidation.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Mediator/generator-tests/">
+    <Project Path="Trellis.Mediator/generator-tests/ActorHandlers.Consumer/ActorHandlers.Consumer.csproj" />
+    <Project Path="Trellis.Mediator/generator-tests/ActorHandlers.GeneratedPipeline/ActorHandlers.GeneratedPipeline.csproj" />
+    <Project Path="Trellis.Mediator/generator-tests/ActorHandlers.ScanApplication/ActorHandlers.ScanApplication.csproj" />
+    <Project Path="Trellis.Mediator/generator-tests/ActorHandlers.ScanPersistence/ActorHandlers.ScanPersistence.csproj" />
+  </Folder>
   <Folder Name="/Trellis.Mediator/src/" />
   <Folder Name="/Trellis.Primitives/">
     <File Path="Trellis.Primitives/SAMPLES.md" />

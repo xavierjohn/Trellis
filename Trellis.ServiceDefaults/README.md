@@ -40,7 +40,7 @@ builder.Services.AddTrellis(options => options
 - Domain-event slots preserve owning-commit dispatch: deferred inner commands do not publish or clear events, including when the outer response is a DTO/Unit. `UseOutbox<TContext>()` validates the reporting publisher at host startup, and validates the integration publisher only when integration features are registered.
 - `UseWorkerActor(systemActor)` can wrap a compatible pre-existing unkeyed `IActorProvider`; selecting a builder actor-provider slot is not required.
 - One composition root for the typical Trellis web service: `AddTrellis(...)` chains every framework slot (`UseAsp`, `UseProblemDetails`, `UseMediator`, `UseFluentValidation`, an actor provider, `UseResourceAuthorization`, `UseEntityFrameworkUnitOfWork`) so consumers don't have to remember per-package wiring order.
-- Mediator pipeline order is owned by `Trellis.Mediator` (outermost → innermost: `ExceptionBehavior`, `TracingBehavior`, `LoggingBehavior`, `AuthorizationBehavior`, `ResourceAuthorizationBehavior` (opt-in), `ValidationBehavior`, `TransactionalCommandBehavior` (opt-in)). `Trellis.ServiceDefaults` preserves that order across its helpers: `UseEntityFrameworkUnitOfWork<TContext>()` is always applied last so the transactional commit runs innermost; domain events also register before UoW when enabled.
+- Mediator pipeline order is owned by `Trellis.Mediator` (outermost → innermost: `ExceptionBehavior`, `TracingBehavior`, `LoggingBehavior`, `AuthorizationContextBehavior`, static authorization, direct/via resource authorization (opt-in), `ValidationBehavior`, selected event dispatch, `TransactionalCommandBehavior` (opt-in)). Existing builder slots automatically supply the context for actor-aware handlers; there is no new toggle. The unit of work remains innermost.
 - Actor-provider selectors (`UseClaimsActorProvider`, `UseEntraActorProvider`, `UseDevelopmentActorProvider`) are mutually exclusive; selecting more than one throws. `UseCachingActorProvider<T>` wraps the selected provider.
 - `UseWorkerActor(systemActor)` composes the selected actor provider with a worker/system fallback for background scopes that have no `HttpContext`. It is applied after the actor-provider selection and the optional caching wrap, so HTTP requests still resolve through the inner provider (and its cache) and `BackgroundService` ticks resolve to the supplied system actor without traversing caching.
 
@@ -49,6 +49,11 @@ builder.Services.AddTrellis(options => options
 `Trellis.ServiceDefaults` is **AOT- and trim-compatible**. The package enables the AOT and trim analyzers (`IsAotCompatible`, `IsTrimmable`, `EnableAotAnalyzer`, `EnableTrimAnalyzer`) and keeps the default composition slots safe when you choose explicit overloads.
 
 AOT-safe builder shapes are `UseFluentValidation()` plus `UseFluentValidation<TValidator, TMessage>()` per validator, `UseResourceAuthorization()` plus `UseResourceAuthorization<TMessage, TResource, TResponse>()` per command, and `UseDomainEvents()` or `UseTrackedAggregateDomainEvents()` plus their `<TEvent, THandler>()` per-handler overloads.
+
+Analyzer compatibility does not remove Native DI's restriction on open behaviors with
+value-type `Result<T>` responses. That host shape needs the [literal closed-generator
+pipeline](../docs/docfx_project/api_reference/trellis-api-mediator.md#native-aot-registration)
+and direct typed resource registrations, without `UseMediator` or slots that imply it.
 
 The assembly-scanning overloads (`UseFluentValidation(asm)`, `UseResourceAuthorization(asm)`, `UseDomainEvents(asm)`, `UseTrackedAggregateDomainEvents(asm)`) remain convenience APIs for non-AOT consumers. They are annotated with `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]`, so trimmed/AOT applications must either switch to explicit registrations or make that choice visible at the consumer call site, for example by annotating the composition method or suppressing the analyzer warning.
 

@@ -41,7 +41,7 @@ Trellis emits OpenTelemetry `Activity` spans and `ILogger` entries from three `A
 | Primitive value-object tracing | `"Trellis.Primitives"` `ActivitySource` | Exactly one `Activity` per value-object factory call (`TryCreate` / `FromFraction`; a `Parse` call delegates to and is traced under `.TryCreate`), named after the factory (e.g. `EmailAddress.TryCreate`), with `Ok` / `Error` status on both success and failure | `tracing.AddTrellisPrimitivesInstrumentation()` |
 | Result / ROP tracing | `"Trellis.Results"` `ActivitySource` (`ResultsTraceProviderBuilderExtensions.ActivitySourceName`) | Spans for individual `Result` operations — verbose; intended for diagnostics | `tracing.AddTrellisResultsInstrumentation()` |
 | Validation metrics | `ValidationMetrics` (`Trellis.Core`) | `trellis.validation.failures`, one increment per violation as a `FieldViolation` or `RuleViolation` is created; tags `validation.code`, `validation.violation` | `metrics.AddTrellisValidationInstrumentation()` (meter name: `"Trellis.Validation"`) |
-| Composition root | `TrellisServiceBuilder.UseMediator(Action<TrellisMediatorTelemetryOptions>?)` | Registers the five canonical behaviors and the telemetry options | `services.AddTrellis(o => o.UseMediator(...))` |
+| Composition root | `TrellisServiceBuilder.UseMediator(Action<TrellisMediatorTelemetryOptions>?)` | Registers the six standard behaviors and the telemetry options | `services.AddTrellis(o => o.UseMediator(...))` |
 
 Full signatures: [`trellis-api-servicedefaults.md`](../api_reference/trellis-api-servicedefaults.md), [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md), [`trellis-api-core.md`](../api_reference/trellis-api-core.md).
 
@@ -106,10 +106,10 @@ Every dispatch of `CreateOrder` now produces:
 
 | Wiring step | What it adds |
 |---|---|
-| `o.UseMediator()` | Registers `ExceptionBehavior<,>`, `TracingBehavior<,>`, `LoggingBehavior<,>`, `AuthorizationBehavior<,>`, `ValidationBehavior<,>` and a default `TrellisMediatorTelemetryOptions` (Detail redacted). |
+| `o.UseMediator()` | Registers `ExceptionBehavior<,>`, `TracingBehavior<,>`, `LoggingBehavior<,>`, `AuthorizationContextBehavior<,>`, `AuthorizationBehavior<,>`, `ValidationBehavior<,>` and a default `TrellisMediatorTelemetryOptions` (Detail redacted). |
 | `o.UseMediator(t => t.IncludeErrorDetail = true)` | Same, but replaces the options singleton so `Error.Detail` flows into telemetry. |
 
-Pipeline order (outermost → innermost) is: Exception → Tracing → Logging → Authorization → (ResourceAuthorization, opt-in) → Validation → (Transactional, opt-in via `UseEntityFrameworkUnitOfWork<TContext>`). Every inner behavior runs *inside* the `Trellis.Mediator` activity, so its logs and child spans inherit the same trace and span correlation IDs. See [`trellis-api-mediator.md` → Canonical pipeline order](../api_reference/trellis-api-mediator.md#canonical-pipeline-order).
+Pipeline order (outermost → innermost) is: Exception → Tracing → Logging → AuthorizationContext → static authorization → (direct/via resource authorization, opt-in) → Validation → selected event dispatch → (Transactional, opt-in via `UseEntityFrameworkUnitOfWork<TContext>`). Every inner behavior runs *inside* the `Trellis.Mediator` activity, so its logs and child spans inherit the same trace and span correlation IDs. See [`trellis-api-mediator.md` → Canonical pipeline order](../api_reference/trellis-api-mediator.md#canonical-pipeline-order).
 
 ## Tracing
 

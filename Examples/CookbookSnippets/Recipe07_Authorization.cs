@@ -31,6 +31,21 @@ public sealed record UpdateOrderCommand(OrderId OrderId, decimal NewAmount)
                 Resource: ResourceRef.For<Order>(OrderId)));
 }
 
+public sealed record ReadOrderQuery(OrderId OrderId)
+    : IQuery<Result<Order>>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
+{
+    public OrderId GetResourceId() => OrderId;
+    public IResult Authorize(Actor actor, Order resource) =>
+        Result.Ensure(resource.OwnerId == actor.Id, () => new Error.Forbidden("orders.owner"));
+}
+
+public sealed class ReadOrderHandler : ActorResourceQueryHandler<ReadOrderQuery, Order, Result<Order>>
+{
+    protected override ValueTask<Result<Order>> HandleCore(
+        ReadOrderQuery query, Actor actor, Order order, CancellationToken cancellationToken)
+        => new(Result.Ok(order));
+}
+
 public static class AuthorizationDi
 {
     public static IServiceCollection Wire(IServiceCollection services)

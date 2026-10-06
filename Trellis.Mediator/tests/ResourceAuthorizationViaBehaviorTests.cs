@@ -30,7 +30,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<SingleHopCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Should().Be("Done");
@@ -53,7 +53,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<SingleHopCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
@@ -75,7 +75,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<SingleHopCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.NotFound>();
@@ -97,7 +97,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<SingleHopCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         var error = result.UnwrapError();
@@ -128,7 +128,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<SingleHopCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         var error = result.UnwrapError();
@@ -164,7 +164,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<UploadScorecardCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         tracker.WasInvoked.Should().BeTrue();
@@ -184,7 +184,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<UploadScorecardCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         tracker.WasInvoked.Should().BeTrue();
@@ -203,7 +203,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<UploadScorecardCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
@@ -226,7 +226,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, _) = NextDelegate.TrackingAsync<UploadScorecardCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         captured.Should().HaveCount(1);
@@ -248,7 +248,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<UploadScorecardCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
@@ -283,7 +283,7 @@ public class ResourceAuthorizationViaBehaviorTests
             return new ValueTask<Result<string>>(Result.Ok("Done"));
         };
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         observedDuringNext.Should().NotBeNull();
@@ -305,7 +305,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<SingleHopCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
@@ -331,7 +331,7 @@ public class ResourceAuthorizationViaBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<SingleHopCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.IsFailure.Should().BeTrue();
         tracker.WasInvoked.Should().BeFalse();
@@ -353,7 +353,7 @@ public class ResourceAuthorizationViaBehaviorTests
             new ValueTask<Result<string>>(Result.Fail<string>(
                 new Error.Conflict(Resource: null, Code: "test.conflict") { Detail = "Handler-level failure" }));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Conflict>();

@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RootNamespace>ActorHandlers.Consumer</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Native DI cannot close open behaviors over value-type Result responses. -->
+    <DefineConstants Condition="'$(PublishAot)' == 'true'">$(DefineConstants);NATIVE_AOT</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Trellis.Mediator.csproj" />
+    <PackageReference Include="Mediator.SourceGenerator" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <InternalsVisibleTo Include="Trellis.Mediator.Tests" />
+  </ItemGroup>
+</Project>

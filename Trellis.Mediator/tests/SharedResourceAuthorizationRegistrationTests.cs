@@ -21,7 +21,8 @@ public class SharedResourceAuthorizationRegistrationTests
         services.AddSharedResourceAuthorization<SharedCancelCommand, SharedOrder, string, Result<Unit>>();
 
         returned.Should().BeSameAs(services);
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IPipelineBehavior<SharedCancelCommand, Result<Unit>>));
+        services.Should().ContainSingle(d => d.ImplementationType == typeof(ResourceAuthorizationBehavior<SharedCancelCommand, SharedOrder, Result<Unit>>));
+        services.Should().ContainSingle(d => d.ImplementationType == typeof(AuthorizationContextBehavior<SharedCancelCommand, Result<Unit>>));
         services.Should().ContainSingle(d => d.ServiceType == typeof(IResourceLoader<SharedCancelCommand, SharedOrder>));
         services.Should().ContainSingle(d => d.ServiceType == typeof(IAuthorizedResource<SharedCancelCommand, SharedOrder>));
         services.Should().OnlyContain(d => d.ServiceType != typeof(SharedResourceLoaderById<SharedOrder, string>));
@@ -45,7 +46,8 @@ public class SharedResourceAuthorizationRegistrationTests
         if (!scanFirst)
             services.AddResourceAuthorization(typeof(SharedCancelCommand).Assembly);
 
-        services.Should().ContainSingle(d => d.ServiceType == typeof(IPipelineBehavior<SharedCancelCommand, Result<Unit>>));
+        services.Should().ContainSingle(d => d.ImplementationType == typeof(ResourceAuthorizationBehavior<SharedCancelCommand, SharedOrder, Result<Unit>>));
+        services.Should().ContainSingle(d => d.ImplementationType == typeof(AuthorizationContextBehavior<SharedCancelCommand, Result<Unit>>));
         services.Should().ContainSingle(d => d.ServiceType == typeof(IResourceLoader<SharedCancelCommand, SharedOrder>));
         services.Should().ContainSingle(d => d.ServiceType == typeof(IAuthorizedResource<SharedCancelCommand, SharedOrder>));
     }
@@ -66,7 +68,7 @@ public class SharedResourceAuthorizationRegistrationTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var handlerCalled = false;
 
-        var result = await behavior.Handle(new SharedCancelCommand(order.Id), (_, ct) =>
+        var result = await behavior.HandleWithContext(new SharedCancelCommand(order.Id), (_, ct) =>
         {
             handlerCalled = true;
             ct.Should().Be(cancellationToken);
@@ -96,7 +98,7 @@ public class SharedResourceAuthorizationRegistrationTests
         var behavior = scope.ServiceProvider.GetRequiredService<IPipelineBehavior<SharedCancelCommand, Result<Unit>>>();
         var handlerCalled = false;
 
-        var result = await behavior.Handle(new SharedCancelCommand("order-1"), (_, _) =>
+        var result = await behavior.HandleWithContext(new SharedCancelCommand("order-1"), (_, _) =>
         {
             handlerCalled = true;
             return ValueTask.FromResult(Result.Ok(default(Unit)));

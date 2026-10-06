@@ -3,7 +3,7 @@ package: Trellis.ServiceDefaults
 namespaces: [Trellis.ServiceDefaults]
 types: [TrellisServiceCollectionExtensions, TrellisServiceBuilder]
 version: v3
-last_verified: 2026-09-12
+last_verified: 2026-10-06
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring a composition root with AddTrellis(...) so Trellis modules apply in the canonical order, and what it deliberately does not register."
@@ -54,7 +54,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 
 ## AOT compatibility
 
-`Trellis.ServiceDefaults` is now **AOT- and trim-compatible** (`<IsAotCompatible>true</IsAotCompatible>`, `<IsTrimmable>true</IsTrimmable>`, `<EnableAotAnalyzer>true</EnableAotAnalyzer>`, `<EnableTrimAnalyzer>true</EnableTrimAnalyzer>`). The compatibility surface is split across two overload shapes per assembly-scanning slot:
+`Trellis.ServiceDefaults` is **AOT- and trim-compatible** (`<IsAotCompatible>true</IsAotCompatible>`, `<IsTrimmable>true</IsTrimmable>`, `<EnableAotAnalyzer>true</EnableAotAnalyzer>`, `<EnableTrimAnalyzer>true</EnableTrimAnalyzer>`). The compatibility surface is split across two overload shapes per assembly-scanning slot:
 
 | Slot | AOT-safe overload | Scanning overload (`[RequiresUnreferencedCode]` + `[RequiresDynamicCode]`) |
 | --- | --- | --- |
@@ -66,6 +66,11 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 | Domain events (tracked-aggregate) | `o.UseTrackedAggregateDomainEvents()` (publisher + behavior only) plus `o.UseTrackedAggregateDomainEvents<TEvent, THandler>()` per handler | `o.UseTrackedAggregateDomainEvents(asm)` |
 
 The AOT-safe overloads use only open-generic DI registrations and explicit closed-type method calls — no reflection over assemblies. The scanning overloads remain available for fast iteration in non-AOT consumers and surface the IL2026 / IL3050 warnings at the consumer's call site so the choice between AOT and convenience is explicit, never silent.
+
+**Native AOT with struct `Result<T>`.** Use
+Mediator's [literal closed-generator pipeline](trellis-api-mediator.md#native-aot-registration)
+and direct typed resource registrations. Native DI cannot close open behaviors over
+value-type responses. Do not call `UseMediator` or slots that imply it in this configuration.
 
 Direct per-package registrations (`services.AddTrellisFluentValidation()` from `Trellis.Mediator.FluentValidation`, `services.AddResourceAuthorization<TMessage, TResource, TResponse>()`, `services.AddDomainEventHandler<TEvent, THandler>()`) remain valid as an escape hatch — call them outside the builder when you need to register a type the builder does not yet model.
 
@@ -147,6 +152,15 @@ Domain-event dispatch uses `IUnitOfWorkScope.IsOwner` to distinguish a real oute
 13. Transactional inbox dispatch registration (when `UseInbox<TContext>()` is selected).
 
 That order preserves the important pipeline invariant: `TransactionalCommandBehavior<,>` is the innermost behavior, closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors. The lower-level registration helpers are also order-independent: if a transaction behavior is present before `AddTrellisBehaviors()` or domain-event dispatch runs, it is rehomed to the innermost slot.
+
+Mediator's order is Exception -> Tracing -> Logging -> AuthorizationContext -> static
+authorization -> direct/via resource authorization -> Validation -> selected event
+dispatch -> TransactionalCommand -> handler. `UseMediator` and the resource slots supply
+the integral `AuthorizationContextBehavior` automatically: there is no separate actor
+handler toggle. Known closed/open context descriptors normalize to one applicable frame.
+Options before or after a two-assembly application/persistence scan compose normally;
+repeat callbacks run in registration order and scans do not duplicate execution.
+See [actor-aware bases and migration](trellis-api-mediator.md#actor-aware-handler-bases).
 
 ### Repeated configuration callbacks
 

@@ -48,6 +48,14 @@ Event dispatch retains nested aggregate responses until the owning successful un
 
 This sequence preserves the central pipeline invariant: the transactional behavior is closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors. Domain events fire after the transaction commits because dispatch is registered before the unit of work.
 
+The standard Mediator stage now includes `AuthorizationContextBehavior` before static
+and direct/via resource checks. Those checks share one Actor snapshot per dispatch, which
+the [six actor-aware handler bases](integration-mediator.md#checked-actor-and-resource-parameters)
+can receive along with the loaded resource/leaf. Existing builder slots install the
+context automatically; no new `UseXxx` call is needed. Closed/open context descriptors
+normalize without duplicate execution, including resource registrations preceding the
+standard pipeline.
+
 ## Mutually-exclusive slots
 
 | Slot | Single-selection rule |
@@ -69,7 +77,7 @@ builder.Services.AddTrellis(options => options
 
 ## Order-independence for explicit resource-authorization registrations
 
-The no-assembly form `UseResourceAuthorization()` is for AOT consumers who register each `ResourceAuthorizationBehavior<TMessage, TResource, TResponse>` explicitly via `services.AddResourceAuthorization<TMessage, TResource, TResponse>()`. Those explicit calls can be made **before** `AddTrellis(...)`; `AddTrellisBehaviors()` (called by `UseMediator()`) detects pre-existing closed-generic resource-auth behaviors and re-positions them to sit immediately before `ValidationBehavior<,>` in the canonical pipeline envelope. This mirrors the same symmetry between `AddTrellisUnitOfWork<TContext>` and `AddDomainEventDispatch`: pipeline-position-aware registrations are order-independent regardless of which one runs first.
+The no-assembly form `UseResourceAuthorization()` avoids scanning while consumers register each `ResourceAuthorizationBehavior<TMessage, TResource, TResponse>` explicitly via `services.AddResourceAuthorization<TMessage, TResource, TResponse>()`. Those explicit calls can be made **before** `AddTrellis(...)`; `AddTrellisBehaviors()` (called by `UseMediator()`) detects pre-existing closed-generic resource-auth behaviors and re-positions them to sit immediately before `ValidationBehavior<,>` in the canonical pipeline envelope. This mirrors the same symmetry between `AddTrellisUnitOfWork<TContext>` and `AddDomainEventDispatch`: pipeline-position-aware registrations are order-independent regardless of which one runs first.
 
 ```csharp
 // Either order works; resource-auth ends up in the canonical position.
@@ -91,6 +99,12 @@ builder.Services.AddTrellis(options => options.UseResourceAuthorization());
 | Domain events (tracked-aggregate) | `o.UseTrackedAggregateDomainEvents()` plus `o.UseTrackedAggregateDomainEvents<TEvent, THandler>()` per handler | `o.UseTrackedAggregateDomainEvents(asm)` |
 
 The AOT-safe overloads use open-generic DI registrations and explicit closed-type method calls — no reflection over assemblies. The scanning overloads remain available for non-AOT consumers and surface IL2026 / IL3050 at the consumer's call site; trimmed/AOT applications must either switch to explicit registrations or make that choice visible on their own composition code, for example with `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` or an intentional suppression.
+
+**Runtime DI qualification:** Native AOT cannot close open behaviors over value-type
+`Result<T>` responses. Such a host needs the [literal closed-generator
+pipeline](../api_reference/trellis-api-mediator.md#native-aot-registration) and direct
+typed resource registrations, without `UseMediator` or slots that imply it. The
+analyzer-clean registration surface alone does not prove native dispatch.
 
 `UseEntityFrameworkUnitOfWork<TContext>()` is also annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]` because the EF Core integration depends on runtime reflection and is excluded from the Trellis AOT publish gate. AOT consumers can still use the ASP, Mediator, FluentValidation, authorization, and domain-event slots through this builder, but should compose data access separately.
 

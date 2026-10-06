@@ -59,7 +59,7 @@
 /// }
 /// </code>
 /// </example>
-public interface IAuthorizeResourceVia<TOwner>
+public interface IAuthorizeResourceVia<TOwner> : IResourceAuthorizationMessage
 {
     /// <summary>
     /// Authorizes the actor against the resolved owner resources.

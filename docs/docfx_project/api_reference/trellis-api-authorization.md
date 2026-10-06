@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Authorization
 namespaces: [Trellis.Authorization]
-types: [Actor, ActorAttributes, ActorId, ActorProviderExtensions, IActorProvider, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
+types: [Actor, ActorAttributes, ActorId, ActorProviderExtensions, IActorProvider, IAuthorizationMessage, IResourceAuthorizationMessage, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
 version: v3
-last_verified: 2026-09-12
+last_verified: 2026-10-06
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when modeling actors and permissions, or implementing IAuthorize and resource-based authorization (Trellis.Authorization)."
@@ -25,6 +25,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-7--authorizat
 - You are implementing static permission authorization through `IAuthorize`.
 - You are implementing resource-based authorization through `IAuthorizeResource<TResource>` and want the canonical guard shape.
 - You need a required-actor accessor where actor presence and stable or cached provider resolution are already guaranteed.
+- You need to distinguish provider lookups from the checked dispatch snapshot supplied by Mediator's actor-aware handler bases.
 
 ## Owner check quick-start — copy this
 
@@ -73,6 +74,7 @@ For multi-hop authorization (the resource the actor must own is reached via one 
 | Represent the current user/service | `Actor` | [`Actor`](#actor) |
 | Check granted permissions with explicit deny override | `actor.HasPermission(...)`, `HasAllPermissions(...)`, `HasAnyPermission(...)` | [`Actor`](#actor) |
 | Resolve actor for a request/message | `IActorProvider.GetCurrentActorAsync(...)` | [`IActorProvider`](#iactorprovider) |
+| Receive the actor actually checked by this dispatch without another provider lookup | `ActorCommandHandler`, `ActorQueryHandler`, or the direct/via resource variants in `Trellis.Mediator` | [Mediator handler bases](trellis-api-mediator.md#actor-aware-handler-bases) |
 | Read a required actor through a stable or explicitly cached provider after authorization | `actorProvider.RequireActorAsync(cancellationToken)` | [`ActorProviderExtensions`](#actorproviderextensions) |
 | Require static permissions on a message | Implement `IAuthorize.RequiredPermissions` | [`IAuthorize`](#iauthorize) |
 | Authorize against a loaded resource | Implement `IAuthorizeResource<TResource>.Authorize(actor, resource)` | [`IAuthorizeResource<TResource>`](#iauthorizeresourcetresource) |
@@ -85,6 +87,7 @@ For multi-hop authorization (the resource the actor must own is reached via one 
 - `Trellis.Authorization` is domain/application-layer only. ASP.NET actor providers are documented in [trellis-api-asp.md](trellis-api-asp.md#namespace-trellisaspauthorization).
 - Prefer `Result.Ensure` for boolean authorization guards so generated code uses the same ROP primitive as the rest of Trellis.
 - `RequireActorAsync` is an invariant accessor, not an authentication gate. Keep ordinary missing-actor handling on `GetCurrentActorAsync` / `Error.AuthenticationRequired`; do not replace the authorization behaviors' normal 401 path with this throwing helper.
+- Standard Mediator authorization stages share one Actor reference per dispatch. Actor-aware handler bases expose that reference only after all declared gates pass; `RequireActorAsync` still performs another provider lookup. A caching provider may span dispatches, whereas the framework snapshot does not.
 - Do not mutate `RequiredPermissions`; expose the complete permission list as an immutable/read-only collection.
 - The DI registration extension `AddResourceAuthorization(...)` lives in `Trellis.Mediator` (`namespace Trellis.Mediator`), not in `Trellis.Authorization`. Wiring an `IAuthorizeResource<TResource>` therefore typically requires both `using Trellis.Authorization;` (for the interfaces) and `using Trellis.Mediator;` (for the DI extension). The compile error if the second is missing is `CS1061: 'IServiceCollection' does not contain a definition for 'AddResourceAuthorization' and no accessible extension method 'AddResourceAuthorization' accepting a first argument of type 'IServiceCollection' could be found` — see [trellis-api-mediator.md](trellis-api-mediator.md#servicecollectionextensions).
 
@@ -254,12 +257,34 @@ responsibility. Normal missing-actor 401 and insufficient-permission 403 behavio
 An absent actor at this explicit
 invariant boundary is a programming/configuration fault, not a replacement 401 result.
 
+### `IAuthorizationMessage`
+
+```csharp
+public interface IAuthorizationMessage;
+```
+
+Common capability inherited by static, direct, and via authorization messages.
+It lets the Mediator dispatch context and actor-aware handler bases identify
+authorization participation without adding another interface to existing messages.
+The marker alone neither authenticates nor authorizes; the concrete authorization
+contracts still declare the required checks.
+
+### `IResourceAuthorizationMessage`
+
+```csharp
+public interface IResourceAuthorizationMessage : IAuthorizationMessage;
+```
+
+Capability inherited by both resource authorization contracts. It requires a
+resource-authorization gate in the dispatch context, but does not require static
+`IAuthorize` permissions. Resource-only existence-hiding messages remain supported.
+
 ### `IAuthorize`
 
 **Declaration**
 
 ```csharp
-public interface IAuthorize
+public interface IAuthorize : IAuthorizationMessage
 ```
 
 Marker for commands/queries enforcing static (permission-only) authorization. The mediator's `AuthorizationBehavior<TMessage, TResponse>` requires the current actor to hold **all** listed permissions (AND semantics).
@@ -273,7 +298,7 @@ Marker for commands/queries enforcing static (permission-only) authorization. Th
 **Declaration**
 
 ```csharp
-public interface IAuthorizeResource<in TResource>
+public interface IAuthorizeResource<in TResource> : IResourceAuthorizationMessage
 ```
 
 Implemented by a command/query to perform resource-based authorization once the resource has been loaded.
@@ -301,7 +326,7 @@ Companion to `IAuthorizeResource<TResource>` that exposes a typed resource ident
 **Declaration**
 
 ```csharp
-public interface IAuthorizeResourceVia<TOwner>
+public interface IAuthorizeResourceVia<TOwner> : IResourceAuthorizationMessage
 ```
 
 Declares resource-based authorization against a resource that is **not** the leaf the command identifies, but is reachable via one or more `IIdentifyRelatedResource[s]<,>` declarations on entities along the navigation chain. The originating motivation is the cricket-style "actor owns Team1 OR Team2" pattern: command identifies a `Match`, authorization is evaluated against the set of teams it points at.

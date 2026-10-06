@@ -56,7 +56,7 @@ public class GptReviewRegressionTests
         var command = new ResourceOwnerCommand("res-1");
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.AuthenticationRequired>();

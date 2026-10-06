@@ -34,7 +34,7 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>
         MessageHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken)
     {
-        var actor = await ActorResolution.TryResolveAsync(_actorProvider, cancellationToken).ConfigureAwait(false);
+        var actor = await ActorResolution.TryResolveAsync<TMessage, TResponse>(_actorProvider, cancellationToken).ConfigureAwait(false);
         if (actor is null)
             return TResponse.CreateFailure(ActorResolution.AuthenticationRequired());
 
@@ -45,6 +45,7 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>
             return TResponse.CreateFailure(error);
         }
 
+        AuthorizationDispatchContext.MarkStaticAuthorized<TMessage, TResponse>();
         return await next(message, cancellationToken).ConfigureAwait(false);
     }
 }
