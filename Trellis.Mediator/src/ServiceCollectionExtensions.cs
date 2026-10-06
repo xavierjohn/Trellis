@@ -15,13 +15,14 @@ public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Gets the ordered array of Trellis Result-aware pipeline behavior types contributed by this
-    /// package. Assign this to <c>MediatorOptions.PipelineBehaviors</c> in your <c>AddMediator</c>
-    /// call when wiring the AOT-friendly source generator path.
+    /// package. The pinned Mediator generator reads literal <c>typeof</c> expressions,
+    /// not this property's value; use literal types for generator-configured pipelines.
     /// <para>The canonical Trellis pipeline (outermost to innermost) is:</para>
     /// <list type="number">
     ///   <item><description><see cref="ExceptionBehavior{TMessage, TResponse}"/> — catches unhandled exceptions and converts to typed failures.</description></item>
     ///   <item><description><see cref="TracingBehavior{TMessage, TResponse}"/> — emits an OpenTelemetry activity span around the message.</description></item>
     ///   <item><description><see cref="LoggingBehavior{TMessage, TResponse}"/> — structured logging with duration and outcome.</description></item>
+    ///   <item><description><see cref="AuthorizationContextBehavior{TMessage, TResponse}"/> — establishes one authorization snapshot per dispatch.</description></item>
     ///   <item><description><see cref="AuthorizationBehavior{TMessage, TResponse}"/> — checks static permissions declared by <see cref="IAuthorize"/>.</description></item>
     ///   <item><description><see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/> — checks resource-bound authorization for <see cref="IAuthorizeResource{TResource}"/> commands. Inserted by <see cref="AddResourceAuthorization{TMessage, TResource, TResponse}"/> or <see cref="AddResourceAuthorization(IServiceCollection, Assembly[])"/> immediately before the validation behavior so the loaded resource is checked once per request.</description></item>
     ///   <item><description><see cref="ValidationBehavior{TMessage, TResponse}"/> — unified
@@ -31,8 +32,9 @@ public static class ServiceCollectionExtensions
     ///   External validation sources (e.g., the optional <c>Trellis.Mediator.FluentValidation</c>
     ///   package contributes <c>FluentValidationMessageValidatorAdapter&lt;TMessage&gt;</c> via
     ///   <c>AddTrellisFluentValidation()</c>) plug in here without an extra pipeline behavior.</description></item>
-    ///   <item><description><c>TransactionalCommandBehavior&lt;TMessage, TResponse&gt;</c>
-    ///   (in the optional <c>Trellis.EntityFrameworkCore</c> package) — runs the handler then
+    ///   <item><description>Optional domain/tracked-aggregate event dispatch wraps the eventual command commit.</description></item>
+    ///   <item><description><see cref="TransactionalCommandBehavior{TMessage, TResponse}"/>
+    ///   — runs the handler then
     ///   calls <c>IUnitOfWork.CommitAsync</c> on success. Opt in via
     ///   <c>AddTrellisUnitOfWork&lt;TContext&gt;()</c>; registration is order-independent
     ///   versus <c>AddTrellisBehaviors()</c> so it lands innermost (closest to the handler).</description></item>
@@ -40,6 +42,7 @@ public static class ServiceCollectionExtensions
     /// <para>
     /// This array contains the always-on behaviors (<see cref="ExceptionBehavior{TMessage, TResponse}"/>,
     /// <see cref="TracingBehavior{TMessage, TResponse}"/>, <see cref="LoggingBehavior{TMessage, TResponse}"/>,
+    /// <see cref="AuthorizationContextBehavior{TMessage, TResponse}"/>,
     /// <see cref="AuthorizationBehavior{TMessage, TResponse}"/>, and
     /// <see cref="ValidationBehavior{TMessage, TResponse}"/>). The resource-authorization and
     /// transactional behaviors are opt-in and supplied by separate registration helpers.
@@ -55,8 +58,8 @@ public static class ServiceCollectionExtensions
     /// {
     ///     options.Assemblies = [typeof(MyCommand).Assembly];
     ///     options.ServiceLifetime = ServiceLifetime.Scoped;
-    ///     options.PipelineBehaviors = ServiceCollectionExtensions.PipelineBehaviors.ToArray();
     /// });
+    /// services.AddTrellisBehaviors();
     /// </code>
     /// </example>
     private static readonly IReadOnlyList<Type> s_pipelineBehaviors =
@@ -64,6 +67,7 @@ public static class ServiceCollectionExtensions
         typeof(ExceptionBehavior<,>),
         typeof(TracingBehavior<,>),
         typeof(LoggingBehavior<,>),
+        typeof(AuthorizationContextBehavior<,>),
         typeof(AuthorizationBehavior<,>),
         typeof(ValidationBehavior<,>),
     ];
@@ -74,12 +78,15 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers Trellis Result-aware pipeline behaviors as open generic
     /// <see cref="IPipelineBehavior{TMessage, TResponse}"/> implementations.
-    /// Use this when NOT using <c>MediatorOptions.PipelineBehaviors</c> (non-AOT scenario).
+    /// Use this when NOT configuring the standard behaviors through
+    /// <c>MediatorOptions.PipelineBehaviors</c>.
     /// </summary>
     /// <remarks>
     /// Idempotent: calling this method more than once registers each behavior exactly once,
     /// so an extension method that defensively calls it as a precondition will not produce
     /// duplicate pipeline entries when the consumer also calls it explicitly.
+    /// Native AOT hosts using value-type Result responses require literal source-generator
+    /// configuration that emits closed behaviors instead of this open-generic registration.
     /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
@@ -91,11 +98,14 @@ public static class ServiceCollectionExtensions
         // a prior call to AddTrellisBehaviors(configure) wins — idempotency is preserved.
         services.TryAddSingleton<TrellisMediatorTelemetryOptions>();
 
+        RemoveClosedAuthorizationContexts(services);
+
         // TryAddEnumerable deduplicates by (ServiceType, ImplementationType), preserving the
         // canonical insertion order documented on PipelineBehaviors.
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(ExceptionBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(TracingBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>)));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationContextBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>)));
         services.TryAddEnumerable(ServiceDescriptor.Scoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
 
@@ -108,6 +118,8 @@ public static class ServiceCollectionExtensions
         // AddDomainEventDispatch symmetry: pipeline-position-aware registrations are
         // order-independent regardless of which one runs first.
         RelocateResourceAuthorizationBehaviorsBeforeValidation(services);
+        EnsureAuthorizationContextRegistered(services,
+            services.First(d => IsAuthorizationContext(d) && d.ServiceType == typeof(IPipelineBehavior<,>)));
         RelocateTransactionalBehaviorsToEnd(services);
 
         AssertMediatorLifetimeSupportsScopedBehaviors(services);
@@ -343,6 +355,8 @@ public static class ServiceCollectionExtensions
 
         EnsureResourceAuthorizationOptionsRegistered(services);
 
+        EnsureAuthorizationContextRegistered(services,
+            ServiceDescriptor.Scoped<IPipelineBehavior<TMessage, TResponse>, AuthorizationContextBehavior<TMessage, TResponse>>());
         InsertResourceAuthorizationBehavior(
             services,
             ServiceDescriptor.Scoped<
@@ -490,6 +504,7 @@ public static class ServiceCollectionExtensions
         var adapterDef = typeof(SharedResourceLoaderAdapter<,,>);
         var behaviorDef = typeof(ResourceAuthorizationBehavior<,,>);
         var viaBehaviorDef = typeof(ResourceAuthorizationViaBehavior<,,,>);
+        var contextBehaviorDef = typeof(AuthorizationContextBehavior<,>);
         var pipelineDef = typeof(IPipelineBehavior<,>);
 
         Type[] messageInterfaces =
@@ -606,6 +621,8 @@ public static class ServiceCollectionExtensions
 
                     var closedBehavior = behaviorDef.MakeGenericType(type, commandResource, tResponse);
                     var closedPipeline = pipelineDef.MakeGenericType(type, tResponse);
+                    EnsureAuthorizationContextRegistered(services, ServiceDescriptor.Scoped(
+                        closedPipeline, contextBehaviorDef.MakeGenericType(type, tResponse)));
                     InsertResourceAuthorizationBehavior(
                         services,
                         ServiceDescriptor.Scoped(closedPipeline, closedBehavior));
@@ -708,6 +725,8 @@ public static class ServiceCollectionExtensions
 
             var closedViaBehavior = viaBehaviorDef.MakeGenericType(commandType, tLeaf, tOwner, tResponse);
             var closedPipeline = pipelineDef.MakeGenericType(commandType, tResponse);
+            EnsureAuthorizationContextRegistered(services, ServiceDescriptor.Scoped(
+                closedPipeline, contextBehaviorDef.MakeGenericType(commandType, tResponse)));
 
             // TYPED descriptor (not factory): the via-behavior's holder-taking constructor
             // is selected by DI because the holder is registered and the alternate
@@ -864,6 +883,9 @@ public static class ServiceCollectionExtensions
         // Closed-generic holder so DI naturally disambiguates per via-authorized command.
         services.TryAddSingleton(new ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TResponse>(path));
 
+        EnsureAuthorizationContextRegistered(services,
+            ServiceDescriptor.Scoped<IPipelineBehavior<TMessage, TResponse>, AuthorizationContextBehavior<TMessage, TResponse>>());
+
         // TYPED descriptor — the holder-taking constructor of ResourceAuthorizationViaBehavior
         // is selected by DI because the holder is registered and the alternate path-taking
         // ctor's parameter is not. Letting the relocator match by ImplementationType eliminates
@@ -940,8 +962,92 @@ public static class ServiceCollectionExtensions
             return;
         }
 
-        services.Add(descriptor);
+        services.Insert(FindInnerBehaviorIndex(services, descriptor.ServiceType), descriptor);
     }
+
+    private static bool IsAuthorizationContext(ServiceDescriptor descriptor)
+        => !descriptor.IsKeyedService
+            && descriptor.ServiceType.IsGenericType
+            && descriptor.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)
+            && descriptor.ImplementationType is { IsGenericType: true } implementation
+            && implementation.GetGenericTypeDefinition() == typeof(AuthorizationContextBehavior<,>);
+
+    private static void RemoveClosedAuthorizationContexts(IServiceCollection services)
+    {
+        for (var index = services.Count - 1; index >= 0; index--)
+            if (IsAuthorizationContext(services[index]) && !services[index].ServiceType.IsGenericTypeDefinition)
+                services.RemoveAt(index);
+    }
+
+    private static void EnsureAuthorizationContextRegistered(IServiceCollection services, ServiceDescriptor descriptor)
+    {
+        var open = services.FirstOrDefault(d =>
+            IsAuthorizationContext(d) && d.ServiceType == typeof(IPipelineBehavior<,>));
+        if (open is not null)
+        {
+            for (var index = services.Count - 1; index >= 0; index--)
+                if (IsAuthorizationContext(services[index]))
+                    services.RemoveAt(index);
+            RehomeAuthorizationContext(services, open);
+            return;
+        }
+
+        var existing = services.FirstOrDefault(d =>
+            IsAuthorizationContext(d) && d.ServiceType == descriptor.ServiceType);
+        var selected = existing ?? descriptor;
+        for (var index = services.Count - 1; index >= 0; index--)
+            if (IsAuthorizationContext(services[index]) && services[index].ServiceType == descriptor.ServiceType)
+                services.RemoveAt(index);
+
+        RehomeAuthorizationContext(services, selected);
+    }
+
+    private static void RehomeAuthorizationContext(IServiceCollection services, ServiceDescriptor context)
+    {
+        services.Remove(context);
+        var index = FindInnerBehaviorIndex(services, context.ServiceType);
+        for (var candidate = 0; candidate < services.Count; candidate++)
+        {
+            var descriptor = services[candidate];
+            if (!IsApplicablePipeline(descriptor, context.ServiceType)
+                || descriptor.ImplementationType is not { IsGenericType: true } implementation)
+                continue;
+            var definition = implementation.GetGenericTypeDefinition();
+            if (definition == typeof(AuthorizationBehavior<,>)
+                || definition == typeof(ResourceAuthorizationBehavior<,,>)
+                || definition == typeof(ResourceAuthorizationViaBehavior<,,,>))
+            {
+                index = candidate;
+                break;
+            }
+        }
+
+        services.Insert(index, context);
+    }
+
+    private static int FindInnerBehaviorIndex(IServiceCollection services, Type pipelineType)
+    {
+        for (var index = 0; index < services.Count; index++)
+        {
+            var descriptor = services[index];
+            if (!IsApplicablePipeline(descriptor, pipelineType)
+                || descriptor.ImplementationType is not { IsGenericType: true } implementation)
+                continue;
+            var definition = implementation.GetGenericTypeDefinition();
+            if (definition == typeof(ValidationBehavior<,>) || definition == typeof(TransactionalCommandBehavior<,>))
+                return index;
+        }
+
+        return services.Count;
+    }
+
+    private static bool IsApplicablePipeline(ServiceDescriptor descriptor, Type pipelineType)
+        => !descriptor.IsKeyedService
+            && (descriptor.ServiceType == typeof(IPipelineBehavior<,>)
+                || descriptor.ServiceType == pipelineType
+                || (pipelineType == typeof(IPipelineBehavior<,>)
+                    && descriptor.ServiceType.IsGenericType
+                    && descriptor.ServiceType.GetGenericTypeDefinition() == typeof(IPipelineBehavior<,>)));
 
     /// <summary>
     /// Registers <c>IAuthorizedResource&lt;TMessage, TResource&gt;</c> implemented by

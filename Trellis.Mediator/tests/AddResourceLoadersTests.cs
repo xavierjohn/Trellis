@@ -114,7 +114,7 @@ public class AddResourceAuthorizationTests
         services.AddResourceAuthorization<TestAuthCommand, TestAuthResource, Result<string>>();
 
         var descriptor = services.SingleOrDefault(
-            d => d.ServiceType == typeof(IPipelineBehavior<TestAuthCommand, Result<string>>));
+            d => d.ImplementationType == typeof(ResourceAuthorizationBehavior<TestAuthCommand, TestAuthResource, Result<string>>));
 
         descriptor.Should().NotBeNull();
         descriptor!.Lifetime.Should().Be(ServiceLifetime.Scoped);
@@ -226,7 +226,7 @@ public class AddResourceAuthorizationScanTests
         services.AddResourceAuthorization(typeof(ScanTestCommand).Assembly);
 
         var descriptor = services.SingleOrDefault(
-            d => d.ServiceType == typeof(IPipelineBehavior<ScanTestCommand, Result<string>>));
+            d => d.ImplementationType == typeof(ResourceAuthorizationBehavior<ScanTestCommand, ScanTestResource, Result<string>>));
 
         descriptor.Should().NotBeNull();
         descriptor!.Lifetime.Should().Be(ServiceLifetime.Scoped);
@@ -292,7 +292,7 @@ public class AddResourceAuthorizationScanTests
         services.AddResourceAuthorization(typeof(ScanTestQuery).Assembly);
 
         var descriptor = services.SingleOrDefault(
-            d => d.ServiceType == typeof(IPipelineBehavior<ScanTestQuery, Result<string>>));
+            d => d.ImplementationType == typeof(ResourceAuthorizationBehavior<ScanTestQuery, ScanTestResource, Result<string>>));
 
         descriptor.Should().NotBeNull();
         descriptor!.Lifetime.Should().Be(ServiceLifetime.Scoped);
@@ -319,6 +319,7 @@ public class AddResourceAuthorizationScanTests
             typeof(ExceptionBehavior<,>),
             typeof(TracingBehavior<,>),
             typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>),
             typeof(AuthorizationBehavior<,>),
             typeof(ResourceAuthorizationBehavior<,,>),
             typeof(ValidationBehavior<,>));

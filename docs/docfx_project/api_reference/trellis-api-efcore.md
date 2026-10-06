@@ -3,7 +3,7 @@ package: Trellis.EntityFrameworkCore
 namespaces: [Trellis.EntityFrameworkCore]
 types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, GeoCoordinateExpressions, IUnitOfWork, MaybeColumnMapping, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeStorageKind, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, PaginationQueryableExtensions, SeekDefinition, "SeekDefinition<T,TState>", "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-02
+last_verified: 2026-10-06
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when using Trellis.EntityFrameworkCore for persistence, Maybe queries, conventions, unit of work, seek pagination, or translated spherical nearby queries."
@@ -462,6 +462,13 @@ Pipeline behavior that auto-commits staged changes after a successful command ha
 > **Persist-on-failure outcomes.** If `TResponse` implements `IPersistOnFailure` and the per-instance `PersistOnFailure` flag is `true` — the canonical producer is `Result.FailAfterCommit<T>(error)` — the commit step runs even though the result is a failure. This enables the worker-handler pattern of persisting a `permanently_failed` state row alongside the failure outcome. On commit failure for a persist-on-failure outcome, the commit error replaces the handler error in the returned response.
 
 > **Important:** This behavior is **not** registered by `Trellis.Mediator.ServiceCollectionExtensions.AddTrellisBehaviors()`. Consumers of `Trellis.EntityFrameworkCore` must register it explicitly via `AddTrellisUnitOfWork<TContext>()` (see below). Ordering is independent versus `AddTrellisBehaviors()` and domain-event dispatch helpers: the transaction behavior is rehomed innermost — closest to the handler — so commit failures remain visible to outer logging/tracing/exception behaviors.
+
+The authorization dispatch context wraps static and direct/via resource gates before
+validation, event dispatch, and this commit behavior. Actor-aware handlers therefore
+receive the actor/resource checked by that dispatch before any commit. This does not open
+a database transaction around authorization reads or close ownership TOCTOU windows.
+Typed/scanned resource registration before or after unit-of-work registration preserves
+authorization-before-commit order.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

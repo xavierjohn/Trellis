@@ -116,7 +116,7 @@ public class ResourceAuthorizationViaScanningTests
         var (next, tracker) = NextDelegate.TrackingAsync<ScanCricketCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(new ScanCricketCommand("match-1"), next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(new ScanCricketCommand("match-1"), next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         tracker.WasInvoked.Should().BeTrue();

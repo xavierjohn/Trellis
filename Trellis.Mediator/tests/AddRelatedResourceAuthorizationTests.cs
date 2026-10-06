@@ -44,7 +44,7 @@ public class AddRelatedResourceAuthorizationTests
         var (next, tracker) = NextDelegate.TrackingAsync<ExplicitCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(new ExplicitCommand("l-1"), next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(new ExplicitCommand("l-1"), next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         tracker.WasInvoked.Should().BeTrue();
@@ -79,7 +79,7 @@ public class AddRelatedResourceAuthorizationTests
         var (next, tracker) = NextDelegate.TrackingAsync<ExplicitCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(new ExplicitCommand("l-1"), next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(new ExplicitCommand("l-1"), next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
@@ -121,7 +121,7 @@ public class AddRelatedResourceAuthorizationTests
         var (next, tracker) = NextDelegate.TrackingAsync<ExplicitCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(new ExplicitCommand("l-1"), next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(new ExplicitCommand("l-1"), next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         var error = result.UnwrapError();
@@ -311,7 +311,7 @@ public class AddRelatedResourceAuthorizationTests
             Result.Ok("should not reach"));
 
         Func<Task> act = async () =>
-            await behavior.Handle(new ExplicitCommand("l-1"), next, CancellationToken.None);
+            await behavior.HandleWithContext(new ExplicitCommand("l-1"), next, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*SharedResourceLoaderById<ExplicitOwner, String>*");

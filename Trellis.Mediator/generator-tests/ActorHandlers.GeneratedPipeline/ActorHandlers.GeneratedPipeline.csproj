@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RootNamespace>ActorHandlers.GeneratedPipeline</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <DefineConstants>$(DefineConstants);GENERATED_PIPELINE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\ActorHandlers.Consumer\*.cs" Link="%(Filename)%(Extension)" />
+    <ProjectReference Include="..\..\src\Trellis.Mediator.csproj" />
+    <PackageReference Include="Mediator.SourceGenerator" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <InternalsVisibleTo Include="Trellis.Mediator.Tests" />
+  </ItemGroup>
+</Project>

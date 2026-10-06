@@ -17,6 +17,7 @@ audience: [developer]
 | Register the standard Trellis behaviors | `services.AddTrellisBehaviors()` | [Quick start](#quick-start) |
 | Inspect or override the canonical behavior order | `ServiceCollectionExtensions.PipelineBehaviors` | [Pipeline order](#pipeline-order) |
 | Gate a message on static permissions | Implement `IAuthorize` on the message | [Permission authorization](#permission-authorization) |
+| Receive the checked actor/resource directly in business logic | One of the six `Actor...Handler` bases | [Checked parameters](#checked-actor-and-resource-parameters) |
 | Authorize against a loaded resource (ownership, tenancy) | Implement `IAuthorizeResource<T>` and register a loader | [Resource authorization](#resource-authorization) |
 | Reuse one loader across many commands for the same resource | `IIdentifyResource<T, TId>` + `SharedResourceLoaderById<T, TId>` | [Shared resource loaders](#shared-resource-loaders) |
 | Self-validate a message | Implement `IValidate.Validate()` | [Validation](#validation) |
@@ -40,7 +41,7 @@ audience: [developer]
 
 | Type / member | Kind | Purpose |
 |---|---|---|
-| `AddTrellisBehaviors()` | DI extension | Registers the five always-on behaviors (idempotent). |
+| `AddTrellisBehaviors()` | DI extension | Registers the six standard behaviors, including the authorization dispatch context (idempotent). |
 | `AddTrellisBehaviors(Action<TrellisMediatorTelemetryOptions>)` | DI extension | Same, with telemetry options (e.g., `IncludeErrorDetail`). |
 | `AddResourceAuthorization(params Assembly[])` | DI extension | Scans assemblies for `IAuthorizeResource<>`, loaders, and shared loaders. |
 | `AddResourceAuthorization<TMessage, TResource, TResponse>()` | DI extension | Explicit registration (AOT/trimming friendly). |
@@ -50,7 +51,7 @@ audience: [developer]
 | `IMessageValidator<TMessage>` | Interface | DI-resolved async validator; aggregated by `ValidationBehavior`. |
 | `TrellisMediatorTelemetryOptions.IncludeErrorDetail` | Property | Opt-in to include `Error.Detail` in logs/traces (default `false`). |
 | `TracingBehavior<,>.ActivitySourceName` | `const string` | `"Trellis.Mediator"` — add this to your OpenTelemetry config. |
-| `ServiceCollectionExtensions.PipelineBehaviors` | Property | Ordered behavior list for AOT `MediatorOptions.PipelineBehaviors`. |
+| `ServiceCollectionExtensions.PipelineBehaviors` | Property | Ordered inspection list; source-generator configuration must use literal `typeof(...)` entries. |
 | `AddDomainEventDispatch()` / `AddDomainEventDispatch(params Assembly[])` | DI extension | Registers `DomainEventDispatchBehavior<,>` (open-generic) + the default `IDomainEventPublisher`; the assembly overload also scans for `IDomainEventHandler<TEvent>` implementations. Idempotent. |
 | `AddDomainEventHandler<TEvent, THandler>()` | DI extension | AOT/trim-friendly per-handler registration (also wires up the dispatch behavior + publisher). |
 | `IDomainEventHandler<TEvent>` | Interface | Side-effect handler invoked once per matching event after the command commits. |
@@ -118,23 +119,29 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 
 ## Pipeline order
 
-`AddTrellisBehaviors()` registers the five always-on behaviors in this fixed order (outermost → innermost). The opt-in entries in rows 5, 7, and 8 slot in only when their registration helpers are called.
+`AddTrellisBehaviors()` registers the six standard behaviors in this fixed order (outermost → innermost). The opt-in entries in rows 6, 8, and 9 slot in only when their registration helpers are called.
 
 | # | Behavior | Runs for | What it does |
 |---|---|---|---|
 | 1 | `ExceptionBehavior` | all messages | Catches everything except `OperationCanceledException`; returns `Error.Unexpected`. |
 | 2 | `TracingBehavior` | all messages | Opens an `Activity` under `"Trellis.Mediator"`; tags `error.code` / `error.type` on failure, records exception events for thrown handlers, and leaves consumer-initiated cancellations non-error. |
 | 3 | `LoggingBehavior` | all messages | Structured start/end with elapsed ms; emits `Error.Code` on failure. |
-| 4 | `AuthorizationBehavior` | `IAuthorize` messages | Resolves the actor and checks `RequiredPermissions`. |
-| 5 | `ResourceAuthorizationBehavior` *(opt-in)* | `IAuthorizeResource<T>` messages | Loads the resource and calls `Authorize(actor, resource)`. Inserted by `AddResourceAuthorization(...)` immediately before `ValidationBehavior`. |
-| 6 | `ValidationBehavior` | all messages | Runs `IValidate.Validate()` and every `IMessageValidator<TMessage>`; aggregates `Error.InvalidInput`. |
-| 7 | `DomainEventDispatchBehavior` *(opt-in)* | `ICommand<TResponse>` where `TResponse : IResult` | After a successful response, extracts the aggregate via `IResult<TAggregate>` and publishes the events it raised. Inserted by `AddDomainEventDispatch(...)`. See [Domain event dispatch](#domain-event-dispatch). |
-| 8 | `TransactionalCommandBehavior` *(opt-in, EFCore)* | `ICommand<TResponse>` | `IUnitOfWork.CommitAsync` on success; wraps each command in `using var scope = unitOfWork.BeginScope();` so nested commands defer commit to the outermost scope. Register **after** `AddTrellisBehaviors()` so it lands innermost. See [Nested commands and scope-aware commit](integration-ef.md#nested-commands-and-scope-aware-commit). |
+| 4 | `AuthorizationContextBehavior` | authorization-marked messages | Creates a dispatch frame; authorization shares one Actor resolution, and handler reads require completed gates. |
+| 5 | `AuthorizationBehavior` | `IAuthorize` messages | Resolves/reuses the actor and checks `RequiredPermissions`. |
+| 6 | Direct/via resource authorization *(opt-in)* | `IAuthorizeResource<T>` / `IAuthorizeResourceVia<T>` messages | Loads the resource/owners and applies the message's rule. Publishes the direct resource or via leaf, immediately before validation. |
+| 7 | `ValidationBehavior` | all messages | Runs `IValidate.Validate()` and every `IMessageValidator<TMessage>`; aggregates `Error.InvalidInput`. |
+| 8 | `DomainEventDispatchBehavior` *(opt-in)* | `ICommand<TResponse>` where `TResponse : IResult` | After a successful response, extracts the aggregate via `IResult<TAggregate>` and publishes the events it raised. Inserted by `AddDomainEventDispatch(...)`. See [Domain event dispatch](#domain-event-dispatch). |
+| 9 | `TransactionalCommandBehavior` *(opt-in, EFCore)* | `ICommand<TResponse>` | `IUnitOfWork.CommitAsync` on success; wraps each command in `using var scope = unitOfWork.BeginScope();` so nested commands defer commit to the outermost scope. Remains innermost in either registration order. See [Nested commands and scope-aware commit](integration-ef.md#nested-commands-and-scope-aware-commit). |
 
-The first five live in `ServiceCollectionExtensions.PipelineBehaviors` for the AOT-friendly source-generator path; assign that list to `MediatorOptions.PipelineBehaviors` when configuring `AddMediator`.
+`ServiceCollectionExtensions.PipelineBehaviors` exposes the six standard types for
+inspection. Mediator `3.0.2` does not evaluate `PipelineBehaviors.ToArray()` as generator
+configuration. Native AOT hosts using struct `Result<T>` responses need [literal closed
+behavior configuration](../api_reference/trellis-api-mediator.md#native-aot-registration),
+not the managed open-generic `AddTrellisBehaviors()` shape. Do not mix the two standard
+registration paths; publish-only success does not prove native DI dispatch works.
 
 > [!NOTE]
-> Rows 7 and 8 are designed to be **registration-order-independent**: `AddDomainEventDispatch(...)` and `AddTrellisUnitOfWork<TContext>()` both detect the other and shuffle so the canonical order (events fire after the transaction commits, so handlers see committed state) holds regardless of which `services.Add*` call comes first.
+> Rows 8 and 9 are designed to be **registration-order-independent**: `AddDomainEventDispatch(...)` and `AddTrellisUnitOfWork<TContext>()` both detect the other and shuffle so the canonical order (events fire after the transaction commits, so handlers see committed state) holds regardless of which `services.Add*` call comes first.
 
 ## Permission authorization
 
@@ -153,7 +160,41 @@ public sealed record PublishDocumentCommand(string DocumentId)
 }
 ```
 
-`AuthorizationBehavior` performs no I/O — it only reads from the resolved `Actor`. Use `IAuthorizeResource<T>` (next section) when the answer depends on the resource itself.
+Permission evaluation reads the resolved `Actor`; the actor provider may itself perform
+I/O. Use `IAuthorizeResource<T>` when the answer depends on the resource itself.
+
+## Checked actor and resource parameters
+
+The optional six-base family removes actor/provider and resource/accessor constructor
+plumbing. Concrete constructors retain business dependencies; override protected
+`HandleCore`, not the normal public `Handle` entry.
+
+| Business inputs | Command base | Query base |
+|---|---|---|
+| Checked actor | `ActorCommandHandler` | `ActorQueryHandler` |
+| Checked actor + directly authorized resource | `ActorResourceCommandHandler` | `ActorResourceQueryHandler` |
+| Checked actor + indirectly authorized leaf | `ActorResourceViaCommandHandler` | `ActorResourceViaQueryHandler` |
+
+One Actor reference is resolved per dispatch, shared by static/resource checks and the
+business method even if the provider could return changed permissions under the same
+actor ID. Via handlers receive the leaf: Cricket checks home **OR** away team ownership
+but supplies the match; `Document -> Folder` checks the folder but supplies the document.
+Resource bases do not force static permissions onto resource-only messages, preserving
+configured existence hiding. They do not normalize differing NotFound bodies (TFR-18).
+
+Nested and concurrent sends get separate frames. The normal entry fails before business
+logic for missing gates, wrong leaf/path, mismatched or expired state, or resources from
+another dispatch. Standard registration installs the context automatically; manually
+composed authorization pipelines must add it before their authorization stages.
+
+For isolated business tests, `Handle(message, actor[, resource/leaf], token)` uses only
+supplied arguments without DI or ambient state. It bypasses authentication, authorization,
+validation, commits, and events; policy assertions must use actual Mediator dispatch.
+The existing `IAuthorizedResource` pattern remains valid when the business body does not
+need an actor. `RequireActorAsync` remains a separate provider lookup, not a snapshot read.
+Loaded-instance identity is not mutation-readiness or a database ownership guarantee.
+
+See [exact constraints, examples, and custom-base migration](../api_reference/trellis-api-mediator.md#actor-aware-handler-bases).
 
 ## Resource authorization
 

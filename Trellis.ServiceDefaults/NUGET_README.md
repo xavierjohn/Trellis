@@ -31,12 +31,18 @@ Call `AddTrellis(...)` once. If omitted, the composition features are intentiona
 ## Key Features
 
 - Applies Trellis registrations in canonical pipeline order.
+- Existing Mediator/resource slots automatically install the dispatch authorization context: static/resource stages and actor-aware handlers share one checked Actor reference. No new actor-handler toggle is needed.
 - Keeps feature selection explicit and discoverable at the application composition root.
 - Provides slots for ASP.NET Core, authorization, FluentValidation, EF Core unit of work, outbox, inbox, idempotency, and events.
 - Preserves package-specific options through focused `UseXxx(...)` methods.
 - Leaves vendor stores and transport adapters in their owning packages, avoiding unnecessary SDK dependencies.
 
 For most applications, use the builder instead of mixing standalone `AddTrellis*` calls. Provider-specific stores and adapters remain separate registrations by design.
+
+Native AOT hosts with struct `Result<T>` responses need the [literal closed-generator
+pipeline](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-mediator.html#native-aot-registration)
+and direct typed resource registrations, without `UseMediator` or slots that imply it:
+native DI cannot dynamically close open behaviors over value-type responses.
 
 ## Documentation
 

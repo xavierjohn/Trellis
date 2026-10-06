@@ -25,7 +25,7 @@ public static class DomainEventDispatchServiceCollectionExtensions
     /// <para>
     /// The behavior is inserted as the innermost of the always-on Trellis behaviors,
     /// running after <c>ValidationBehavior</c>
-    /// (Exception → Tracing → Logging → Authorization → Validation → DomainEventDispatch).
+    /// (Exception → Tracing → Logging → AuthorizationContext → static/direct/via authorization → Validation → DomainEventDispatch).
     /// If <c>TransactionalCommandBehavior</c> (from <c>Trellis.Mediator</c>) is
     /// already registered, this method temporarily yanks it, ensures the always-on Trellis
     /// behaviors are present, appends dispatch, and re-appends the transactional behavior as

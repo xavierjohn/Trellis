@@ -8,10 +8,17 @@
   <ItemGroup>
     <ProjectReference Include="..\src\Trellis.Mediator.csproj" />
     <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+    <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\generator-tests\ActorHandlers.Consumer\ActorHandlers.Consumer.csproj" />
+    <ProjectReference Include="..\generator-tests\ActorHandlers.GeneratedPipeline\ActorHandlers.GeneratedPipeline.csproj" />
+    <ProjectReference Include="..\generator-tests\ActorHandlers.ScanApplication\ActorHandlers.ScanApplication.csproj" />
+    <ProjectReference Include="..\generator-tests\ActorHandlers.ScanPersistence\ActorHandlers.ScanPersistence.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Mediator.Abstractions" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />

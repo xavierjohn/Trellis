@@ -31,7 +31,7 @@
 /// branch alone.
 /// </para>
 /// <para>
-/// <b>Cache safety.</b> Hidden 404s look identical to real 404s on the wire. Protect them
+/// <b>Cache safety.</b> Hidden 404s can be shared across actors regardless of body differences. Protect them
 /// with <c>Cache-Control: no-store</c> or <c>private</c> — a shared cache will otherwise
 /// serve an unauthorized actor's synthetic 404 to a later authorized actor.
 /// </para>

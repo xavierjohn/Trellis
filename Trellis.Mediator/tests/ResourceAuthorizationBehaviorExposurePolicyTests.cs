@@ -233,7 +233,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         where TMessage : IAuthorizeResource<HiddenResource>, IMessage
     {
         var (next, _) = NextDelegate.TrackingAsync<TMessage, Result<string>>(Result.Ok("Done"));
-        return await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        return await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
     }
 
     private static async Task<Result<string>> InvokeOwner(
@@ -241,7 +241,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         ResourceOwnerCommand command)
     {
         var (next, _) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(Result.Ok("Done"));
-        return await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        return await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
     }
 
     private static async Task<Result<string>> InvokeProjection(
@@ -249,7 +249,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         ProjectionAuthorizedCommand command)
     {
         var (next, _) = NextDelegate.TrackingAsync<ProjectionAuthorizedCommand, Result<string>>(Result.Ok("Done"));
-        return await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        return await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
     }
 
     private static ResourceAuthorizationBehavior<TMessage, HiddenResource, Result<string>>

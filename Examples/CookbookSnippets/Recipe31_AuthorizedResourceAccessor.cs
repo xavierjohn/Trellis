@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using global::Mediator;
 using Trellis;
 using Trellis.Authorization;
+using Trellis.Mediator;
 
 public sealed partial class OrderId : RequiredGuid<OrderId>;
 
@@ -40,6 +41,17 @@ public sealed class CancelOrderHandler(IAuthorizedResource<CancelOrderCommand, O
     {
         authorized.GetRequiredResource().Cancel();
         return new(Result.Ok(Trellis.Unit.Value));
+    }
+}
+
+public sealed class ActorCancelOrderHandler
+    : ActorResourceCommandHandler<CancelOrderCommand, Order, Result<Trellis.Unit>>
+{
+    protected override ValueTask<Result<Trellis.Unit>> HandleCore(
+        CancelOrderCommand command, Actor actor, Order order, CancellationToken cancellationToken)
+    {
+        order.Cancel();
+        return new(Result.Ok());
     }
 }
 
@@ -98,6 +110,10 @@ public sealed class UploadScorecardHandler(IAuthorizedResource<UploadScorecardCo
 
 internal static class Recipe31Demonstrator
 {
+    public static ValueTask<Result<Trellis.Unit>> ExplicitBusinessTest(
+        ActorCancelOrderHandler handler, CancelOrderCommand command, Actor actor, Order order, CancellationToken token)
+        => handler.Handle(command, actor, order, token);
+
     // TryGetResource is the non-throwing read for optional access.
     public static bool OptionalRead(IAuthorizedResource<CancelOrderCommand, Order> accessor)
         => accessor.TryGetResource(out Order? order) && order is not null;

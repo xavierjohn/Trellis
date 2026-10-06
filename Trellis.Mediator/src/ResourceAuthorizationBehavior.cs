@@ -113,7 +113,7 @@ public sealed partial class ResourceAuthorizationBehavior<
         //    letting it fall through to the resource-load path. Reported by GPT-5.5 review:
         //    the previous order (resolve loader → resolve actor) let an unauthenticated
         //    caller trigger loader-side effects via the DI factory before the actor check.
-        var actor = await ActorResolution.TryResolveAsync(_actorProvider, cancellationToken).ConfigureAwait(false);
+        var actor = await ActorResolution.TryResolveAsync<TMessage, TResponse>(_actorProvider, cancellationToken).ConfigureAwait(false);
         if (actor is null)
             return TResponse.CreateFailure(MaybeTranslateExposure(ActorResolution.AuthenticationRequired(), message));
 
@@ -159,6 +159,7 @@ public sealed partial class ResourceAuthorizationBehavior<
         //    flips IsActive (visible across cores to orphan tasks that captured the frame
         //    at fork time but outlived the parent dispatch) and restores the parent frame,
         //    so nested mediator.Send of the same closed pair sees the outer resource again.
+        AuthorizationDispatchContext.MarkResourceAuthorized<TMessage, TResource, TResponse>();
         using var _ = AuthorizedResourceHolder<TMessage, TResource>.Push(resource);
 
         // 6. Proceed to handler

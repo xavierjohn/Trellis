@@ -213,6 +213,7 @@ public class UnitOfWorkServiceCollectionExtensionsTests
             typeof(ExceptionBehavior<,>),
             typeof(TracingBehavior<,>),
             typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>),
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(TransactionalCommandBehavior<,>));
@@ -236,6 +237,7 @@ public class UnitOfWorkServiceCollectionExtensionsTests
             typeof(ExceptionBehavior<,>),
             typeof(TracingBehavior<,>),
             typeof(LoggingBehavior<,>),
+            typeof(AuthorizationContextBehavior<,>),
             typeof(AuthorizationBehavior<,>),
             typeof(ValidationBehavior<,>),
             typeof(TransactionalCommandBehavior<,>));

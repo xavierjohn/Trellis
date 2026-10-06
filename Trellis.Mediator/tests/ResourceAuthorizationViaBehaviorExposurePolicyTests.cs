@@ -25,7 +25,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         var command = new ViaSingleHopCommand("leaf-1");
         var (next, _) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Ok("nope"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
     }
@@ -42,7 +42,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         var command = new ViaSingleHopCommand("leaf-1");
         var (next, _) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Ok("nope"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
         notFound.Resource.Type.Should().Be("ViaLeaf");
@@ -62,7 +62,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         var command = new ViaSingleHopCommand("leaf-1");
         var (next, _) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Ok("nope"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.UnwrapError().Should().BeOfType<Error.Forbidden>(
             "via-path policy lookup is keyed on TLeaf — opting the owner in is a no-op");
@@ -82,7 +82,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         var command = new ViaSingleHopCommand("leaf-1");
         var (next, _) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Ok("nope"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
         notFound.Resource.Type.Should().Be("ViaLeaf");
@@ -99,7 +99,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         var command = new ViaSingleHopCommand("missing-leaf");
         var (next, _) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Ok("nope"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
         // Loader's NotFound carries TLeaf's typeof().Name shape ("ViaLeaf"), but importantly the
@@ -119,7 +119,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         var command = new ViaSingleHopCommand("leaf-1");
         var (next, _) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Ok("nope"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
         notFound.Resource.Type.Should().Be("ViaLeaf");

@@ -24,7 +24,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().Should().Be("Done");
@@ -44,7 +44,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
@@ -64,7 +64,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.NotFound>();
@@ -83,7 +83,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, _) = NextDelegate.TrackingAsync<TrackingAuthCommand, Result<string>>(
             Result.Ok("done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         command.AuthorizeWasCalled.Should().BeFalse("Authorize should not be called when resource loading fails");
@@ -102,7 +102,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<FullAuthResourceCommand, Result<string>>(
             Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         tracker.WasInvoked.Should().BeTrue();
@@ -121,7 +121,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<FullAuthResourceCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Detail.Should().Contain("Cannot modify another user's resource");
@@ -141,7 +141,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, _) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Detail.Should().Contain("Order 'xyz' was not found.");
@@ -169,7 +169,7 @@ public class ResourceAuthorizationBehaviorTests
         var command = new ResourceOwnerCommand("res-1");
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(Result.Ok("Done"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.AuthenticationRequired>();
@@ -191,7 +191,7 @@ public class ResourceAuthorizationBehaviorTests
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("Done"));
 
-        await behavior.Handle(command, next, cts.Token);
+        await behavior.HandleWithContext(command, next, cts.Token);
 
         loader.LastCancellationToken.Should().Be(cts.Token);
     }
@@ -209,7 +209,7 @@ public class ResourceAuthorizationBehaviorTests
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var act = async () => await behavior.Handle(command, next, CancellationToken.None);
+        var act = async () => await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result`1>*")
@@ -229,7 +229,7 @@ public class ResourceAuthorizationBehaviorTests
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.AuthenticationRequired>();
@@ -258,7 +258,7 @@ public class ResourceAuthorizationBehaviorTests
         var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("Done"));
 
-        await behavior.Handle(command, next, cts.Token);
+        await behavior.HandleWithContext(command, next, cts.Token);
 
         capturingProvider.LastCancellationToken.Should().Be(cts.Token);
     }
@@ -285,7 +285,7 @@ public class ResourceAuthorizationBehaviorTests
             return new ValueTask<Result<string>>(Result.Ok("Done"));
         };
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         observedDuringNext.Should().NotBeNull();
@@ -307,7 +307,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Forbidden>();
@@ -326,7 +326,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.IsFailure.Should().BeTrue();
         tracker.WasInvoked.Should().BeFalse();
@@ -347,7 +347,7 @@ public class ResourceAuthorizationBehaviorTests
             new ValueTask<Result<string>>(Result.Fail<string>(
                 new Error.Conflict(Resource: null, Code: "test.conflict") { Detail = "Handler-level failure" }));
 
-        var result = await behavior.Handle(command, next, TestContext.Current.CancellationToken);
+        var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
         result.IsFailure.Should().BeTrue();
         result.UnwrapError().Should().BeOfType<Error.Conflict>();
@@ -384,13 +384,13 @@ public class ResourceAuthorizationBehaviorTests
         MessageHandlerDelegate<ResourceOwnerCommand, Result<string>> outerNext = async (_, ct) =>
         {
             observations.Add($"outer-next-before-nested:{holder.GetRequiredResource().Id}");
-            var innerResult = await innerBehavior.Handle(innerCommand, innerNext, ct);
+            var innerResult = await innerBehavior.HandleWithContext(innerCommand, innerNext, ct);
             innerResult.IsSuccess.Should().BeTrue();
             observations.Add($"outer-next-after-nested:{holder.GetRequiredResource().Id}");
             return Result.Ok("outer-done");
         };
 
-        var result = await outerBehavior.Handle(outerCommand, outerNext, TestContext.Current.CancellationToken);
+        var result = await outerBehavior.HandleWithContext(outerCommand, outerNext, TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
         observations.Should().Equal(
@@ -523,7 +523,7 @@ public class ResourceAuthorizationBehaviorTests
         var (next, tracker) = NextDelegate.TrackingAsync<ResourceOwnerCommand, Result<string>>(
             Result.Ok("should not reach"));
 
-        var result = await behavior.Handle(command, next, CancellationToken.None);
+        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         var error = result.UnwrapError();

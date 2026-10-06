@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-10-02
+last_verified: 2026-10-06
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when the task lookup in trellis-start-here.md points to a recipe: compile-checked end-to-end patterns that cross Trellis packages."
@@ -474,19 +474,50 @@ services.AddResourceAuthorization(
 
 **What it shows.** Lead with `IAuthorizeResource<TResource>` + `IIdentifyResource<TResource, TId>` for the owner-on-loaded-resource case — that pair covers most domain authorization decisions, and the framework wires up `SharedResourceLoaderById<TResource, TId>` automatically so no per-command loader is needed. Fall back to `IAuthorize` for static permission gates that do not require a resource load. `IAuthorizeResource<TResource>` runs *after* the resource loader produces the loaded resource, then calls `Authorize(actor, resource)`; `IAuthorize` enforces an AND-permission gate via `AuthorizationBehavior<,>` before the handler runs.
 
-**Actor access after authorization.** A handler reached through the correctly registered
-behavior can use `await actorProvider.RequireActorAsync(cancellationToken)` from
-`Trellis.Authorization` **only with stable or explicitly cached provider resolution**.
-The helper performs another lookup; authorization does not freeze the actor's identity or
-permission snapshot. For mutable providers, both behavior and handler must use the same
-scoped caching provider, configured before dispatch. With the claims provider above, opt in
-after registering it via `services.AddCachingActorProvider<ClaimsActorProvider>()`; for a
-database-backed provider, wrap that provider instead. A stable provider contract is also valid.
-The helper returns the actor or throws `InvalidOperationException` if the presence invariant
-is broken; it does not authenticate, check permissions, enforce stability, or add a cache.
-Keep ordinary missing-actor handling in the pipeline (401). Direct endpoints and callers
-without an established actor-presence invariant must still use `GetCurrentActorAsync` and
-handle `None`.
+**Checked actor/resource parameters.** Derive from `ActorCommandHandler` /
+`ActorQueryHandler` for actor-only business logic, or `ActorResourceCommandHandler` /
+`ActorResourceQueryHandler` for direct resource logic, and override protected `HandleCore`.
+The standard context supplies the **identical Actor instance** checked by this dispatch's
+authorization stages, after every declared gate passes. Resource bases additionally supply
+the exact loaded resource, without provider/accessor constructor dependencies or a second
+load. They do not require `IAuthorize` on a resource-only message.
+
+```csharp
+public sealed record ReadOrderQuery(OrderId OrderId)
+    : IQuery<Result<Order>>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
+{
+    public OrderId GetResourceId() => OrderId;
+    public IResult Authorize(Actor actor, Order resource) =>
+        Result.Ensure(resource.OwnerId == actor.Id, () => new Error.Forbidden("orders.owner"));
+}
+
+public sealed class ReadOrderHandler : ActorResourceQueryHandler<ReadOrderQuery, Order, Result<Order>>
+{
+    protected override ValueTask<Result<Order>> HandleCore(
+        ReadOrderQuery query, Actor actor, Order order, CancellationToken cancellationToken)
+        => new(Result.Ok(order));
+}
+```
+
+Keep the existing shared-loader registration and add the query's resource registration.
+Ordinary accessor-based handlers remain valid; an actor-free business body need not adopt
+these bases. See [all six bases and migration](trellis-api-mediator.md#actor-aware-handler-bases).
+
+**Existing provider lookup.** `await actorProvider.RequireActorAsync(cancellationToken)`
+still performs another lookup, not a dispatch-snapshot read. It requires established actor
+presence and a stable or explicitly cached provider when its result must match authorization.
+For claims-backed hosts, register `AddCachingActorProvider<ClaimsActorProvider>()` after
+`AddClaimsActorProvider`; wrap the same scoped provider used by authorization. The helper
+throws when the presence invariant fails; it does not authenticate, check permissions, or
+cache independently. Endpoints without that invariant still use `GetCurrentActorAsync`
+and handle `None`.
+
+**Pipeline migration.** Normal helpers install `AuthorizationContextBehavior`
+automatically. Hand-built pipelines must place it before authorization; missing context is
+a diagnosed configuration fault, not an implicit provider lookup. Nested sends have their
+own snapshots, even inside the same DI scope. Native AOT hosts use the [literal closed
+generator configuration](trellis-api-mediator.md#native-aot-registration), not open
+behaviors closed dynamically over struct Result responses.
 
 For the same shared-loader shape without assembly scanning, register the implementation once and the behavior/accessor/adapter together per message:
 
@@ -779,6 +810,14 @@ invariant.Code.Should().Be("state-machine.invalid-transition");
 ## Recipe 10 — Test: handler test using `Trellis.Testing` `Should().Be(...)` / `UnwrapError()`
 
 **Problem.** Unit-test the `PlaceOrderHandler` from Recipe 2 using FluentAssertions extensions from `Trellis.Testing`.
+
+For an actor-aware base, isolated business tests call the public explicit overload
+`Handle(command, actor, [resource/leaf,] cancellationToken)` with supplied inputs, then use
+the same Result assertions below. It needs no DI or ambient frame and deliberately bypasses
+authentication, ownership, validation, commits, and events. Null actor/resource arguments
+are rejected. Calling its normal two-argument `Handle` directly requires an authorized
+dispatch and throws without one. Test ownership, existence hiding, and actor snapshot
+identity with actual Mediator sends, not this business-only seam.
 
 ```csharp
 using FluentAssertions;
@@ -2068,6 +2107,17 @@ The pipeline:
 4. Calls `command.Authorize(actor, [homeTeam, awayTeam])`.
 5. On any leaf-load failure, the loader's error bubbles. On any **intermediate** or owner-load failure, the pipeline collapses to `Error.Forbidden` (no existence leak). Empty ID list at any hop short-circuits to `Forbidden` without invoking `Authorize`.
 
+**Handler parameters.** `ActorResourceViaCommandHandler<UploadScorecardCommand,Match,Team,Result<Trellis.Unit>>`
+passes the checked actor and loaded **match** to protected `HandleCore`, not either team or
+the owner collection. Keep `owners.Any(...)` unchanged: owning the away team alone still
+allows an upload. For `Document -> Folder`, use
+`ActorResourceViaQueryHandler<ReadDocumentQuery,Document,Folder,Result<Document>>`;
+the business body receives the document while the folder remains an authorization input.
+All static/resource stages share one provider resolution per dispatch.
+These bases do not require static `IAuthorize`, and the registered leaf must agree with
+`TLeaf` or the normal handler entry throws diagnostically. Existing leaf accessors remain
+available when the business body does not need an actor.
+
 ### Chain — `Match → Team → Tournament`
 
 ```csharp
@@ -2825,6 +2875,30 @@ public sealed class CancelOrderHandler(IAuthorizedResource<CancelOrderCommand, O
 
 **Command and loader are unchanged.** Existing `IAuthorizeResource<Order>` + `IIdentifyResource<Order, OrderId>` + `SharedResourceLoaderById<Order, OrderId>` registrations stay exactly as in Recipe 7. The accessor is **auto-registered** by `AddResourceAuthorization(...)` for every closed `(TMessage, TResource)` pair the scan sees, and by the explicit `AddResourceAuthorization<TMessage, TResource, TResponse>()` / `AddRelatedResourceAuthorization<...>()` helpers for AOT consumers. No additional composition-root call is required.
 
+**Actor/resource parameter alternative.** When business logic also needs the checked
+actor, the accessor constructor can be replaced by a parameterless framework base:
+
+```csharp
+public sealed class CancelOrderHandler
+    : ActorResourceCommandHandler<CancelOrderCommand, Order, Result<Trellis.Unit>>
+{
+    protected override ValueTask<Result<Trellis.Unit>> HandleCore(
+        CancelOrderCommand command, Actor actor, Order order, CancellationToken cancellationToken)
+    {
+        order.Cancel();
+        return new(Result.Ok());
+    }
+}
+```
+
+Keep genuine business constructor dependencies; remove only actor/accessor plumbing.
+The normal entry checks every declared gate and binds the resource to that exact dispatch,
+so an inner handler cannot borrow an outer dispatch's resource. Via commands use the
+corresponding `ActorResourceViaCommandHandler<TCommand,TLeaf,TOwner,TResponse>` and
+receive the same leaf, not owners. Isolated tests use `Handle(command, actor, order, ct)`;
+that overload does not authorize or commit. All mutation-readiness and TOCTOU cautions
+below apply equally to base-supplied resources.
+
 **Via commands** (multi-hop authorization via `IAuthorizeResourceVia<TOwner>`) expose the **leaf** through the accessor — the resource the message identifies via `IIdentifyResource<TLeaf, TLeafId>`, which is the typical mutation target. The owner accessor is intentionally **not** exposed in v4; handlers that need owner state read it from their repository.
 
 ```csharp
@@ -2903,7 +2977,7 @@ public sealed record GetIncidentQuery(IncidentId Id)
 }
 ```
 
-**On the wire.** Unauthorized request → `404 Not Found` with `ResourceRef` `{ "Type": "Incident", "Id": "inc-42" }`. The synthetic `NotFound` is indistinguishable from the real 404 a missing incident would produce.
+**On the wire.** Unauthorized request → `404 Not Found` with `ResourceRef` `{ "Type": "Incident", "Id": "inc-42" }`. Loader NotFounds pass through unchanged, so hidden and missing resources share the status but can have distinguishable error codes/details.
 
 **Multiple resources.** `HideExistence<T>()` returns the options for fluent chaining, and repeated `UseResourceAuthorization(Action<>)` calls compose (each delegate runs against the same options instance in registration order — verified by `UseResourceAuthorization_ConfigureDelegate_CalledTwice_ComposesBothConfigurations`). All four styles below produce the same merged policy; pick the one that reads best for your composition root.
 
@@ -2953,7 +3027,12 @@ The pipeline extracts the ID from `IIdentifyResource<Incident, IncidentId>` firs
 
 **Pipeline interaction caveat.** When a command implements both `IAuthorize` (static permissions) and `IAuthorizeResource<T>`, the canonical pipeline runs `AuthorizationBehavior` **before** `ResourceAuthorizationBehavior`. An unauthenticated caller fails the static gate first — that `AuthenticationRequired` is **not** translated to `NotFound`, because `AuthorizationBehavior` has no concept of the resource it's protecting. Commands that need full existence-hiding (anonymous probes return 404, not 401) must omit `IAuthorize` and let `HideAsNotFound` cover the resource-authorization branch alone.
 
-**Cache safety.** Hidden 404s look identical to real 404s on the wire. A shared cache will serve an unauthorized actor's synthetic 404 to a later authorized actor — incorrectly. Mark responses for hidden resources with `Cache-Control: private` or `no-store`:
+`ActorResourceQueryHandler<GetIncidentQuery,Incident,Result<IncidentDto>>` and the
+corresponding direct-command/via bases preserve this resource-only shape: they do **not**
+force `IAuthorize`. Their `HandleCore` receives the authenticated, resource-authorized
+actor and loaded incident/leaf only after the resource gate succeeds.
+
+**Cache safety.** A shared cache can serve an unauthorized actor's synthetic 404 to a later authorized actor, regardless of whether their error bodies match. Mark responses for hidden resources with `Cache-Control: private` or `no-store`:
 
 ```csharp
 endpoints.MapGet("/incidents/{id}", async (...) =>

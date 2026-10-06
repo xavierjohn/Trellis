@@ -29,13 +29,10 @@ internal static class ActorResolution
     /// (HTTP 500). That preserves the bug-vs-auth-state distinction.
     /// </para>
     /// </remarks>
-    public static async ValueTask<Actor?> TryResolveAsync(
+    public static ValueTask<Actor?> TryResolveAsync<TMessage, TResponse>(
         IActorProvider actorProvider,
         CancellationToken cancellationToken)
-    {
-        var maybeActor = await actorProvider.GetCurrentActorAsync(cancellationToken).ConfigureAwait(false);
-        return maybeActor.TryGetValue(out var actor) ? actor : null;
-    }
+        => AuthorizationDispatchContext.ResolveActorAsync<TMessage, TResponse>(actorProvider, cancellationToken);
 
     /// <summary>
     /// Canonical <see cref="Error.AuthenticationRequired"/> instance for the "no authenticated actor"
