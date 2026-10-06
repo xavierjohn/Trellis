@@ -289,6 +289,12 @@ dispatch the query on parse failure, so no database query runs. The endpoint's q
 metadata also promotes a later, transport-neutral `/cursor` decode failure to the `cursor` query
 parameter.
 
+For versioned endpoints, use `HttpContext.PageUrl(...)` from
+[`Trellis.Asp.ApiVersioning`](trellis-api-asp-apiversioning.md#httpcontextpageurlextensions)
+instead of assembling version values manually. Identically routed namespace-versioned list
+actions may share a route name: implicit self-pagination resolves against the active endpoint,
+so emitted next/previous links retain the correct version regardless of registration order.
+
 The handler receives the validated, transport-neutral `PageRequest`. A non-HTTP adapter constructs
 the same type with `PageRequest.TryCreate(rawCursor, rawLimit)` before creating
 the application query. `SeekDefinition` owns ordering, extraction, and the matching predicate;

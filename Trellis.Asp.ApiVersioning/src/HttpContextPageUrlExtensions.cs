@@ -5,6 +5,7 @@ using global::Asp.Versioning;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 /// <summary>
 /// API-versioning extensions on <see cref="HttpContext"/> that build paginated-list URLs in the
@@ -47,6 +48,7 @@ public static class HttpContextPageUrlExtensions
     /// <param name="httpContext">The current request context.</param>
     /// <param name="routeName">
     /// The name of the target route (typically the current paginated endpoint's route name).
+    /// Versioned variants may share a name when their route templates and defaults match.
     /// </param>
     /// <param name="routeValues">
     /// A callback that maps <c>(cursor, appliedLimit)</c> to the route-value dictionary for the
@@ -58,11 +60,15 @@ public static class HttpContextPageUrlExtensions
     /// <exception cref="ArgumentException"><paramref name="routeName"/> is <c>null</c>, empty, or whitespace.</exception>
     /// <exception cref="InvalidOperationException">
     /// Thrown by the returned builder when (a) the target route name resolves to no registered
-    /// endpoint, (b) a multi-version endpoint has no client-requested version AND no
-    /// <c>DefaultApiVersion</c> is configured, or (c) <c>LinkGenerator</c> returns <c>null</c>
+    /// link-enabled endpoint, (b) the named destination remains ambiguous, (c) a multi-version
+    /// endpoint has no mapped client-requested or default version, or (d) <c>LinkGenerator</c> returns <c>null</c>
     /// (route + ambient values produced no match).
     /// </exception>
     /// <remarks>
+    /// Self-referential pagination uses the active endpoint when its route name matches.
+    /// For shared cross-route names, a supplied or requested version, then a configured
+    /// default, must identify one destination using its actual action mappings.
+    /// <para>
     /// Cross-route caveat: when <paramref name="routeName"/> differs from the current endpoint's
     /// route name, the skip rules and declared-version fallback are evaluated against the
     /// TARGET endpoint, not the current one. The per-request <c>RequestedApiVersion</c>
@@ -70,6 +76,7 @@ public static class HttpContextPageUrlExtensions
     /// otherwise the resolver falls through to the target's single declared version or to
     /// <c>DefaultApiVersion</c>. This prevents emitting a URL the target would reject when the
     /// client follows it.
+    /// </para>
     /// <para>
     /// Unversioned-host behaviour: when the target endpoint has no <see cref="ApiVersionMetadata"/>
     /// — the host never called <c>AddApiVersioning()</c>, or the endpoint sits outside its
@@ -117,14 +124,6 @@ public static class HttpContextPageUrlExtensions
 
         return (cursor, direction, appliedLimit) =>
         {
-            var targetEndpoint = FindEndpointByRouteName(httpContext, routeName)
-                ?? throw new InvalidOperationException(
-                    $"PageUrl: no registered endpoint has route name '{routeName}'. " +
-                    "Ensure the target endpoint is named — for example [HttpGet(Name = \"...\")] on " +
-                    "an MVC controller action or .WithName(\"...\") on a minimal-API endpoint — and " +
-                    "registered with the routing pipeline (MapControllers(), MapGet(...), " +
-                    "MapGroup(...), etc.).");
-
             var consumerValues = routeValues(cursor, direction, appliedLimit)
                 ?? throw new InvalidOperationException(
                     "PageUrl: the routeValues callback returned null. Return a RouteValueDictionary " +
@@ -134,6 +133,13 @@ public static class HttpContextPageUrlExtensions
             // instance returned from a closure — is never mutated. Required by the contract
             // documented on the routeValues parameter.
             var values = new RouteValueDictionary(consumerValues);
+            var targetEndpoint = FindEndpointByRouteName(httpContext, routeName, values: values)
+                ?? throw new InvalidOperationException(
+                    $"PageUrl: no registered endpoint has route name '{routeName}'. " +
+                    "Ensure the target endpoint is named — for example [HttpGet(Name = \"...\")] on " +
+                    "an MVC controller action or .WithName(\"...\") on a minimal-API endpoint — and " +
+                    "registered with the routing pipeline (MapControllers(), MapGet(...), " +
+                    "MapGroup(...), etc.).");
 
             // Consumer-supplied api-version wins over framework injection — gives callers
             // an escape hatch for cross-version Location-like URLs without a separate overload.
@@ -194,7 +200,8 @@ public static class HttpContextPageUrlExtensions
     /// <exception cref="ArgumentException"><paramref name="routeName"/> is <c>null</c>, empty, or whitespace.</exception>
     /// <exception cref="InvalidOperationException">
     /// Thrown by the returned builder when (a) the target route name resolves to no registered
-    /// endpoint, (b) the target route is URL-segment-versioned (route template contains
+    /// link-enabled endpoint or remains ambiguous, (b) the target route is URL-segment-versioned
+    /// (route template contains
     /// <c>:apiVersion</c>) — the pin cannot be honoured as a query parameter because the version
     /// belongs in the path segment, and silently dropping the pin would let <c>LinkGenerator</c>
     /// fill the segment from ambient route data and produce a URL with the wrong version; switch
@@ -205,9 +212,13 @@ public static class HttpContextPageUrlExtensions
     /// middleware) when the client follows it, or (d) <c>LinkGenerator</c> returns <c>null</c>.
     /// </exception>
     /// <remarks>
+    /// When versioned endpoints share a route name and matching templates/defaults, the pin
+    /// selects a uniquely mapped destination, not necessarily the active endpoint.
+    /// <para>
     /// The explicit version is still silently suppressed on version-neutral endpoints — emitting
     /// a query <c>api-version</c> on a neutral endpoint would mislead clients into resending the
     /// URL with a parameter the target rejects.
+    /// </para>
     /// <para>
     /// Unversioned-host behaviour: when the target endpoint has no <see cref="ApiVersionMetadata"/>
     /// — the host never called <c>AddApiVersioning()</c>, or the endpoint sits outside its
@@ -262,7 +273,7 @@ public static class HttpContextPageUrlExtensions
 
         return (cursor, direction, appliedLimit) =>
         {
-            var targetEndpoint = FindEndpointByRouteName(httpContext, routeName)
+            var targetEndpoint = FindEndpointByRouteName(httpContext, routeName, explicitVersion: version)
                 ?? throw new InvalidOperationException(
                     $"PageUrl: no registered endpoint has route name '{routeName}'. " +
                     "Ensure the target endpoint is named — for example [HttpGet(Name = \"...\")] on " +
@@ -351,30 +362,93 @@ public static class HttpContextPageUrlExtensions
             throw new ArgumentException("Route name must be a non-empty, non-whitespace string.", nameof(routeName));
     }
 
-    private static Endpoint? FindEndpointByRouteName(HttpContext httpContext, string routeName)
+    private static Endpoint? FindEndpointByRouteName(
+        HttpContext httpContext,
+        string routeName,
+        ApiVersion? explicitVersion = null,
+        RouteValueDictionary? values = null)
     {
-        // EndpointDataSource is the supported public API for enumerating registered endpoints
-        // (MVC registers a CompositeEndpointDataSource; the framework merges all sources).
-        // Walking it is O(endpoints) per call. Paginated controllers are not the hot path of
-        // a high-throughput API — typical pages serve tens of items at the cost of a database
-        // round-trip, so this lookup is in the noise. Caching would require invalidation
-        // semantics for dynamically-modified endpoint sources (development hot-reload, plug-ins),
-        // and the corresponding bug class is harder to detect than this lookup is expensive.
         var dataSource = httpContext.RequestServices.GetService<EndpointDataSource>();
         if (dataSource is null)
             return null;
 
-        foreach (var endpoint in dataSource.Endpoints)
+        var candidates = dataSource.Endpoints
+            .Where(endpoint => string.Equals(
+                endpoint.Metadata.GetMetadata<IRouteNameMetadata>()?.RouteName, routeName, StringComparison.Ordinal)
+                && endpoint.Metadata.GetMetadata<ISuppressLinkGenerationMetadata>()?.SuppressLinkGeneration != true)
+            .ToArray();
+        if (candidates.Length == 0)
+            return null;
+        if (candidates.Length > 1)
         {
-            var routeNameMetadata = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.RouteNameMetadata>();
-            if (routeNameMetadata is not null
-                && string.Equals(routeNameMetadata.RouteName, routeName, StringComparison.Ordinal))
+            var pattern = (candidates[0] as RouteEndpoint)?.RoutePattern;
+            if (pattern?.RawText is null || candidates.Any(endpoint =>
+                endpoint is not RouteEndpoint routeEndpoint
+                || !string.Equals(pattern.RawText, routeEndpoint.RoutePattern.RawText, StringComparison.OrdinalIgnoreCase)
+                || pattern.Defaults.Count != routeEndpoint.RoutePattern.Defaults.Count
+                || pattern.Defaults.Any(pair => !routeEndpoint.RoutePattern.Defaults.TryGetValue(pair.Key, out var value)
+                    || !Equals(pair.Value, value))))
             {
-                return endpoint;
+                throw new InvalidOperationException(
+                    $"PageUrl: route name '{routeName}' is ambiguous because its endpoints use different " +
+                    "route templates or defaults. Named URL generation cannot guarantee the selected " +
+                    "destination. Give these destinations distinct route names.");
             }
         }
 
-        return null;
+        var current = httpContext.GetEndpoint();
+        if (explicitVersion is null && current is not null
+            && string.Equals(current.Metadata.GetMetadata<IRouteNameMetadata>()?.RouteName, routeName, StringComparison.Ordinal)
+            && current.Metadata.GetMetadata<ISuppressLinkGenerationMetadata>()?.SuppressLinkGeneration != true)
+            return current;
+        if (candidates.Length == 1)
+            return candidates[0];
+
+        var requested = explicitVersion ?? ResolveTargetVersion(httpContext, candidates[0], values);
+        if (requested is not null
+            && FindUniqueVersionTarget(candidates, routeName, requested) is { } requestedTarget)
+            return requestedTarget;
+
+        if (explicitVersion is null
+            && httpContext.RequestServices.GetService<IOptions<ApiVersioningOptions>>()?.Value.DefaultApiVersion is { } defaultVersion
+            && FindUniqueVersionTarget(candidates, routeName, defaultVersion) is { } defaultTarget)
+            return defaultTarget;
+
+        throw new InvalidOperationException(
+            $"PageUrl: route name '{routeName}' is ambiguous: no requested, pinned, or configured default " +
+            "API version selects a unique destination. Supply a version mapped to one destination, " +
+            "or give the destinations distinct route names.");
+    }
+
+    private static Endpoint? FindUniqueVersionTarget(Endpoint[] candidates, string routeName, ApiVersion version)
+    {
+        Endpoint? match = null;
+        foreach (var candidate in candidates)
+        {
+            var metadata = candidate.Metadata.GetMetadata<ApiVersionMetadata>();
+            if (metadata is not null && !metadata.IsApiVersionNeutral
+                && !HttpResponseOptionsBuilderApiVersioningExtensions.TargetDeclaresVersion(metadata, version))
+                continue;
+            if (match is not null)
+                throw new InvalidOperationException(
+                    $"PageUrl: route name '{routeName}' is ambiguous for api-version='{version}': " +
+                    "more than one link-enabled endpoint accepts it. Give these destinations distinct route names.");
+            match = candidate;
+        }
+
+        return match;
+    }
+
+    private static ApiVersion? ResolveTargetVersion(HttpContext httpContext, Endpoint candidate, RouteValueDictionary? values)
+    {
+        var segmentKey = HttpResponseOptionsBuilderApiVersioningExtensions.TryGetUrlSegmentVersionParameterName(candidate);
+        var key = segmentKey ?? HttpResponseOptionsBuilderApiVersioningExtensions.DefaultRouteValueKey;
+        object? rawVersion = null;
+        if (values?.TryGetValue(key, out rawVersion) != true && segmentKey is not null)
+            httpContext.Request.RouteValues.TryGetValue(segmentKey, out rawVersion);
+
+        var parser = httpContext.RequestServices.GetService<IApiVersionParser>() ?? ApiVersionParser.Default;
+        return parser.TryParse(rawVersion?.ToString(), out var parsed) ? parsed : httpContext.RequestedApiVersion;
     }
 
     internal static void ValidateUrlSegmentCrossRouteOrThrow(
