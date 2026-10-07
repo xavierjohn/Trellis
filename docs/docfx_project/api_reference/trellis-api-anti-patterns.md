@@ -696,6 +696,22 @@ Result.Ensure(value is string { }, error);                    // also tests the 
 
 > Severity: Info, because both shapes are correct. The two differ in payload type — `Result.Ensure` returns `Result<Unit>`, `ToResult` returns `Result<T>` — so the code fix is offered only where the payload is provably discarded: an operand of a Trellis `Combine` chain whose Trellis `Map`/`Bind` consumer has a lambda that ignores that slot. A standalone `Result.Ensure(...)` keeps the diagnostic and gets no automatic rewrite; change the declared type by hand.
 
+**Named guard alternative.** For new code or a manual rewrite, use
+`Result.EnsureNotNull(value, error)` (or a lazy factory), with the same typed tuple
+control flow. The field/detail form also avoids allocating a standard required error
+on success:
+
+```csharp
+Result.EnsureNotNull(title, "title", "Title is required.")
+    .Combine(Result.EnsureNotNull(dueDate, "dueDate", "Due date is required."))
+    .Map((title, dueDate) => new CreateTodoCommand(title, dueDate, tag));
+```
+
+`EnsureNotNullAsync` extends `Task<T?>` and `ValueTask<T?>`; continue those chains with
+`CombineAsync` / `MapAsync`. The current TRLS066 code fix still emits `ToResult`, and
+the nullable `ToResult` APIs remain supported. Do not apply a null-only guard to one
+of the compound/type-testing conditions above.
+
 ## (No analyzer) — `Result.FailAfterCommit` composed with aggregating operators
 Not an analyzer-flagged rule (no diagnostic ID), but a recurring shape that the FailAfterCommit XML doc cautions against. `Result.FailAfterCommit<TValue>(error)` is a **leaf** worker-handler operation: it converts a single aggregate's transient external rejection into a persisted `permanently_failed` state and returns. Threading that result through `Combine` / `TraverseAll` / `SequenceAll` / `WhenAllAsync` OR-accumulates the `PersistOnFailure` flag onto the aggregated failure — `TransactionalCommandBehavior` then commits the staged permanent-failure mutation alongside whatever the other legs produced, which is almost never what the handler author intended.
 

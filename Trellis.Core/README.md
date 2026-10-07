@@ -22,6 +22,7 @@ Result<string> email = Result.Ok("ada@example.com")
 ## Key Features
 - Compose success and failure paths with `Bind`, `Map`, `Tap`, and `Ensure`.
 - Use static `Result.Ensure(condition, () => error)` guards to create errors only on failure; predicate and async-predicate overloads support the same lazy factories.
+- Carry required non-null values with static `Result.EnsureNotNull(value, fieldName, detail)`; nullable-query `EnsureNotNullAsync` forms support Task and ValueTask receivers.
 - Model optional data with `Maybe<T>` instead of `null`.
 - Treat blank optional text as absent with `Maybe.OptionalNonBlank`; nonblank input reaches the factory unchanged, while `Maybe.Optional` remains null-only.
 - Return typed errors that map cleanly to APIs, logs, and tests.
@@ -48,6 +49,28 @@ Error.NotFound.For<Order>(id: orderId);
 ```
 
 Required codes must be nonblank; `NotFound` and `Gone` still allow omission. See [factory signatures](../docs/docfx_project/api_reference/trellis-api-core.md#construction-and-case-scoped-factories) and [migration guidance](../MIGRATION_v3.md#code-first-error-factories) before changing positional string arguments.
+
+## Required values
+
+```csharp
+string? name = "Ada";
+int? quantity = 0;
+Result<string> label = Result.EnsureNotNull(name, "name", "Name is required.")
+    .Combine(Result.EnsureNotNull(quantity, "quantity", "Quantity is required."))
+    .Map((name, quantity) => $"{name}:{quantity}");
+```
+
+Success carries the non-null reference or unwrapped struct, so `Map` needs no `!`;
+`Combine` still accumulates missing-field failures. These guards are null-only:
+blank strings and default scalar values succeed. Supply an `Error` or `Func<Error>`
+for a custom failure. Field/detail overloads create required errors only on null.
+For nullable queries, use `task.EnsureNotNullAsync(...)` and continue with async
+composition; task faults and cancellation propagate.
+
+`Error.InvalidInput.Required(fieldName, detail)` names the standard
+`ValidationCodes.ValueNotNull` error. `FieldViolation.Required` also accepts an
+`InputPointer` for composite/indexed validators, preserving its location.
+Existing nullable `ToResult` APIs remain available.
 
 ## Typed pagination
 

@@ -4,7 +4,7 @@ namespaces: [Trellis]
 types: [orientation, routing]
 related_docs: [trellis-api-cookbook.md, trellis-api-core.md, trellis-api-anti-patterns.md, trellis-api-analyzers.md]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-07
 audience: [llm]
 agent_usage: required
 agent_description: "Routing head for every Trellis task: which reference to open, the recipe lookup and how to read the set. Read before writing or changing code that uses Trellis."
@@ -112,6 +112,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Return 201 for a PUT upsert without an application-layer URL, or let the endpoint supply a Created Location | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [write outcomes](trellis-api-http-abstractions.md#writeoutcomet-case-payloads) |
 | Generate versioned Location links to a named route or MVC action, including cross-route segment pins | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) |
 | Map primitive DTO fields to value objects | [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
+| Require nullable values in a command factory without `!`, or guard a nullable-returning query | [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap), then [`Result.EnsureNotNull` / `EnsureNotNullAsync`](trellis-api-core.md#value-returning-null-guards) |
 | Add resource authorization | [Recipe 7](trellis-api-cookbook.md#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) |
 | Obtain checked actor/resource parameters without provider/accessor constructor dependencies | [Recipe 7](trellis-api-cookbook.md#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth), [Recipe 24](trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization), [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource), then [actor-aware handler bases](trellis-api-mediator.md#actor-aware-handler-bases) |
 | Authorize against a related resource one or more navigation hops away (cricket-style fan-out, owner chains) | [Recipe 24](trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization) |

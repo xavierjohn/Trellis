@@ -29,6 +29,7 @@ Result<string> email = Result.Ok("ada@example.com")
 
 - Compose explicit success and failure paths with `Bind`, `Map`, `Tap`, `Ensure`, `Combine`, and their async variants.
 - Use static `Result.Ensure(condition, () => error)` guards to create errors only on failure; predicate and async-predicate overloads support the same lazy factories.
+- Carry required non-null values with static `Result.EnsureNotNull(value, fieldName, detail)`; nullable-query `EnsureNotNullAsync` forms support Task and ValueTask receivers.
 - Model expected absence with `Maybe<T>` instead of `null` or exceptions.
 - Treat blank optional text as absent with `Maybe.OptionalNonBlank`; nonblank input reaches the factory unchanged, while `Maybe.Optional` remains null-only.
 - Return a closed set of typed errors that adapters can map consistently.
@@ -52,6 +53,28 @@ provide frozen persistence conflict codes for clients and tests without an EF Co
 Case-scoped factories put `code` first and optional `detail` last. Use `Error.Conflict.For<Order>("order.already-shipped", id: orderId)` for a resource conflict, or `Error.NotFound.For<Order>(id: orderId)` without inventing a reason code. `ForField(code, field, args: ..., detail: ...)` supports a property name or `InputPointer`; `ForRule(code, fields: ..., args: ..., detail: ...)` supports related fields.
 
 Required codes reject null/empty/whitespace, including constructors and `with` assignments. Custom codes remain supported. `NotFound` and `Gone` retain optional codes and the unspecified sentinel. Explicit resources use `ResourceRef`. This is a breaking argument-order change: migrate positional string IDs and validation fields by meaning, not just until the code compiles.
+
+## Required values
+
+```csharp
+string? name = "Ada";
+int? quantity = 0;
+Result<string> label = Result.EnsureNotNull(name, "name", "Name is required.")
+    .Combine(Result.EnsureNotNull(quantity, "quantity", "Quantity is required."))
+    .Map((name, quantity) => $"{name}:{quantity}");
+```
+
+These null-only guards carry the non-null reference or unwrapped struct, with no `!`.
+Blank strings and default scalar values succeed. Pass an `Error` or `Func<Error>`
+for a custom failure; field/detail overloads construct standard required errors only
+when null. Use `task.EnsureNotNullAsync(...)` for `Task<T?>` / `ValueTask<T?>`,
+then compose with async methods. Source faults and cancellation propagate.
+
+`Error.InvalidInput.Required(fieldName, detail)` names the
+`ValidationCodes.ValueNotNull` error. `FieldViolation.Required(fieldName, detail)` or
+`FieldViolation.Required(inputPointer, detail)` serves composite/indexed validators;
+the pointer form preserves input location. Existing nullable `ToResult` APIs remain
+available.
 
 ## Optional: API guidance for coding assistants
 

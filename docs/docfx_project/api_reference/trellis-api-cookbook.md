@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-07
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when the task lookup in trellis-start-here.md points to a recipe: compile-checked end-to-end patterns that cross Trellis packages."
@@ -1595,6 +1595,38 @@ var command = Result.Combine(
         CustomerName.TryCreate(request.CustomerName, nameof(request.CustomerName)))
     .Map((email, customerName) => new CreateCustomerCommand(email, customerName));
 ```
+
+**Already-created but nullable values.** A command factory can also receive value objects
+that have already been validated but might be absent. Guard their presence without
+re-parsing, returning `Result<Unit>`, or recovering the values with `!`:
+
+```csharp
+public static Result<CreateCustomerCommand> RequireValues(
+    EmailAddress? email, CustomerName? customerName) =>
+    Result.EnsureNotNull(email, "email", "Email is required.")
+        .Combine(Result.EnsureNotNull(customerName, "customerName", "Customer name is required."))
+        .Map((email, customerName) => new CreateCustomerCommand(email, customerName));
+
+public static Task<Result<CreateCustomerCommand>> RequireValuesAsync(
+    Task<EmailAddress?> email, Task<CustomerName?> customerName) =>
+    email.EnsureNotNullAsync("email", "Email is required.")
+        .CombineAsync(customerName.EnsureNotNullAsync("customerName", "Customer name is required."))
+        .MapAsync((email, customerName) => new CreateCustomerCommand(email, customerName));
+```
+
+These methods belong on the command type above. Success carries the exact
+non-null references; `Combine` still reports every missing field. Nullable structs
+are unwrapped by the same guard, and the async forms also accept `ValueTask<T?>`.
+The field/detail overloads construct standard `value.not-null` violations only on
+failure. To choose another error, pass `Error` or a lazy `Func<Error>`. For a query
+where absence means not found rather than invalid input, choose a lazy
+`Error.NotFound` factory instead of a required-field violation.
+
+Use `Error.InvalidInput.Required(fieldName, detail)` for conditional requiredness or
+collection-element rules that are not a plain null check. Composite validators can use
+`FieldViolation.Required(fieldName, detail)` or `FieldViolation.Required(inputPointer, detail)`
+to retain an indexed path and input location. No existing nullable `ToResult` API or
+TRLS066 code fix is removed or changed by these guards.
 
 **Nested collections.** When `CreateCustomerRequest` carries a `List<AddressDto>` whose items each need to become value objects, the `Result.Combine` shape above doesn't generalize to the collection — use [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) (`TraverseAll`) to validate every row and accumulate per-item failures into one `Error.InvalidInput`. Inlining `.Select(item => item.ToCommand().Match(c => c, e => throw …))` throws on the first invalid row and surfaces as HTTP 500 instead of HTTP 422 with field violations.
 

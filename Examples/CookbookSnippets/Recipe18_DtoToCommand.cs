@@ -26,6 +26,18 @@ public sealed record CreateCustomerCommand(EmailAddress Email, CustomerName Cust
                 EmailAddress.TryCreate(request.Email, nameof(request.Email)),
                 CustomerName.TryCreate(request.CustomerName, nameof(request.CustomerName)))
             .Map((email, customerName) => new CreateCustomerCommand(email, customerName));
+
+    public static Result<CreateCustomerCommand> RequireValues(
+        EmailAddress? email, CustomerName? customerName) =>
+        Result.EnsureNotNull(email, "email", "Email is required.")
+            .Combine(Result.EnsureNotNull(customerName, "customerName", "Customer name is required."))
+            .Map((email, customerName) => new CreateCustomerCommand(email, customerName));
+
+    public static Task<Result<CreateCustomerCommand>> RequireValuesAsync(
+        Task<EmailAddress?> email, Task<CustomerName?> customerName) =>
+        email.EnsureNotNullAsync("email", "Email is required.")
+            .CombineAsync(customerName.EnsureNotNullAsync("customerName", "Customer name is required."))
+            .MapAsync((email, customerName) => new CreateCustomerCommand(email, customerName));
 }
 
 [ApiController]

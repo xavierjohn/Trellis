@@ -15,6 +15,42 @@ using Returns = Recipe22;
 public class RecipeBehaviorTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RequireValues_TypedCommand_PreservesValidatedInstances(bool asynchronous)
+    {
+        var email = Recipe18.CreateCustomerCommand.TryCreate(
+            new Recipe18.CreateCustomerRequest("ada@example.com", "Ada")).Unwrap().Email;
+        var name = Recipe18.CustomerName.Create("Ada");
+
+        var result = asynchronous
+            ? await Recipe18.CreateCustomerCommand.RequireValuesAsync(
+                Task.FromResult<Trellis.Primitives.EmailAddress?>(email),
+                Task.FromResult<Recipe18.CustomerName?>(name))
+            : Recipe18.CreateCustomerCommand.RequireValues(email, name);
+
+        var command = result.Should().BeSuccess().Which;
+        command.Email.Should().BeSameAs(email);
+        command.CustomerName.Should().BeSameAs(name);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RequireValues_TypedCommand_MissingFieldsAccumulate(bool asynchronous)
+    {
+        var result = asynchronous
+            ? await Recipe18.CreateCustomerCommand.RequireValuesAsync(
+                Task.FromResult<Trellis.Primitives.EmailAddress?>(null),
+                Task.FromResult<Recipe18.CustomerName?>(null))
+            : Recipe18.CreateCustomerCommand.RequireValues(null, null);
+
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        error.Fields.Items.Select(v => v.Field.Path).Should().Equal(["/email", "/customerName"]);
+        error.Fields.Items.Should().OnlyContain(v => v.ReasonCode == ValidationCodes.ValueNotNull);
+    }
+
+    [Theory]
     [InlineData(false, false, false)]
     [InlineData(false, true, true)]
     [InlineData(false, true, false)]

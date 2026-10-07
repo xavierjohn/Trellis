@@ -1,12 +1,50 @@
 ﻿namespace Trellis.Core.Tests.Errors;
 
 using System.Diagnostics.Metrics;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="ValidationMetrics"/> and the counting site in <see cref="Error.InvalidInput"/>.
 /// </summary>
 public class ValidationMetricsTests
 {
+    [Fact]
+    public void Required_factories_count_one_field_violation_each()
+    {
+        using var probe = new MeterProbe();
+
+        _ = Error.InvalidInput.Required("name");
+        _ = FieldViolation.Required("name");
+        _ = FieldViolation.Required(InputPointer.ForQuery("name"));
+
+        probe.Total.Should().Be(3);
+        probe.CountFor(ValidationCodes.ValueNotNull).Should().Be(3);
+        probe.ViolationKindFor(ValidationCodes.ValueNotNull).Should().Be("field");
+    }
+
+    [Fact]
+    public async Task Required_guards_count_only_missing_values()
+    {
+        using var probe = new MeterProbe();
+
+        Result.EnsureNotNull("value", "name").Should().BeSuccess();
+        Result.EnsureNotNull((int?)0, "count").Should().BeSuccess();
+        (await Task.FromResult<string?>("value").EnsureNotNullAsync("name")).Should().BeSuccess();
+        (await Task.FromResult<int?>(0).EnsureNotNullAsync("count")).Should().BeSuccess();
+        (await ValueTask.FromResult<string?>("value").EnsureNotNullAsync("name")).Should().BeSuccess();
+        (await ValueTask.FromResult<int?>(0).EnsureNotNullAsync("count")).Should().BeSuccess();
+        probe.Total.Should().Be(0);
+
+        Result.EnsureNotNull<string>(null, "name").Should().BeFailure();
+        Result.EnsureNotNull<int>(null, "count").Should().BeFailure();
+        (await Task.FromResult<string?>(null).EnsureNotNullAsync("name")).Should().BeFailure();
+        (await Task.FromResult<int?>(null).EnsureNotNullAsync("count")).Should().BeFailure();
+        (await ValueTask.FromResult<string?>(null).EnsureNotNullAsync("name")).Should().BeFailure();
+        (await ValueTask.FromResult<int?>(null).EnsureNotNullAsync("count")).Should().BeFailure();
+        probe.Total.Should().Be(6);
+        probe.CountFor(ValidationCodes.ValueNotNull).Should().Be(6);
+    }
+
     [Fact]
     public void Creating_violations_counts_one_per_violation()
     {

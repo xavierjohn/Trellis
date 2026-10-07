@@ -286,6 +286,15 @@ public abstract record Error
             new(EquatableArray.Create(new FieldViolation(field, code, args, detail)));
 
         /// <summary>
+        /// Creates a single required-field violation with <see cref="ValidationCodes.ValueNotNull"/>.
+        /// </summary>
+        /// <param name="fieldName">Property name or full JSON Pointer; null or empty targets the root.</param>
+        /// <param name="detail">Optional human-readable violation detail.</param>
+        /// <returns>The same error shape as <c>ForField(ValidationCodes.ValueNotNull, fieldName, detail: detail)</c>.</returns>
+        public static InvalidInput Required(string fieldName, string? detail = null) =>
+            new(EquatableArray.Create(FieldViolation.Required(fieldName, detail)));
+
+        /// <summary>
         /// Convenience factory that produces an <see cref="InvalidInput"/> carrying a
         /// single <see cref="RuleViolation"/> — the global / multi-field counterpart to
         /// <c>ForField</c>. Use for invariants that are not bound
