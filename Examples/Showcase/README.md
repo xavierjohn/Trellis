@@ -135,6 +135,20 @@ against a host you started yourself. Every request is sent in file order and che
 `# @expect status:`, `# @expect header:`, and `# @expect content-type:` directives, and the
 script exits non-zero if any request no longer does what the file says it does.
 
+Variables come from `http-client.env.json` (`$shared`, then the selected environment) and
+`-Set name=value` overrides. `{{$guid}}` is reserved: each occurrence in a URL, header value,
+or body gets a fresh D-format GUID when that request runs, including repeat replays. Multiple
+occurrences are independent, not one shared key per request. Header names must be literal.
+Any unresolved or unterminated placeholder stops the script **before sending that request**,
+with the token, request title, and location in the error; later requests are not sent.
+The script does not implement file-level `@var` declarations or named-response chaining.
+
+For an in-process CI guard over a service's `.http` files, use the .NET `HttpFileParser`,
+`HttpFileRunner`, and `HttpFileAssertions` helpers with a `WebApplicationFactory` client
+instead. That path supports file variables and named responses; this script is for
+live-host transcript inspection. See the
+[replay reference](../../docs/docfx_project/api_reference/trellis-api-testing-aspnetcore.md#replay-variables-and-failure-handling).
+
 The content-type directive is on every error response for a specific reason. Applying
 `[Produces("application/json")]` to a controller rewrites the automatic model-validation 422
 from `application/problem+json` to `application/json` while leaving its status *and* its
@@ -161,6 +175,8 @@ neither. Transcripts are git-ignored, because each run mints fresh account ids a
 
 A replay assumes a freshly started host: the expectations encode the seeded balances and account
 statuses, and the idempotent-transfer block expects an empty idempotency store.
+Those fixed keys intentionally exercise same-key replay; replacing each with an independent
+`{{$guid}}` would change the scenario, not make the seeded-state assumptions disappear.
 
 ### Telemetry
 

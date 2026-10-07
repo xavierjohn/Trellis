@@ -11,7 +11,7 @@ using Trellis.Testing.AspNetCore.Http;
 /// <summary>
 /// Extra coverage for <see cref="HttpFileRunner"/>: argument validation, content vs request
 /// header routing, BuildUri unanchored relative path, response capture for unnamed requests,
-/// substitution leaves unknown tokens intact.
+/// unresolved placeholders are rejected before sending.
 /// </summary>
 public class HttpFileRunnerExtraTests
 {
@@ -146,14 +146,10 @@ public class HttpFileRunnerExtraTests
             GET http://fake/things/{{create.response.body.id}}
             """;
         var reqs = HttpFileParser.Parse(file);
-        var results = await HttpFileRunner.RunAsync(client, reqs, Ct);
+        Func<Task> act = async () => await HttpFileRunner.RunAsync(client, reqs, Ct);
 
-        results.Should().HaveCount(2);
-        // Token is left unresolved (no named record) — the URL gets percent-encoded
-        // when the HttpRequestMessage Uri is constructed.
-        capturedSecond.Should().NotBeNull();
-        capturedSecond!.Should().NotContain("abc");
-        Uri.UnescapeDataString(capturedSecond!).Should().Contain("{{create.response.body.id}}");
+        await act.Should().ThrowAsync<HttpFileAssertionException>().WithMessage("*{{create.response.body.id}}*");
+        capturedSecond.Should().BeNull();
     }
 
     [Fact]
@@ -174,7 +170,7 @@ public class HttpFileRunnerExtraTests
     }
 
     [Fact]
-    public async Task RunAsync_substitution_preserves_unmatched_open_braces()
+    public async Task RunAsync_substitution_rejects_unmatched_open_braces()
     {
         Uri? captured = null;
         using var handler = new StubHandler((req, _) =>
@@ -185,8 +181,9 @@ public class HttpFileRunnerExtraTests
         using var client = new HttpClient(handler) { BaseAddress = new Uri("http://x/") };
 
         var reqs = HttpFileParser.Parse("### X\nGET /a/{{unclosed\n");
-        await HttpFileRunner.RunAsync(client, reqs, Ct);
+        Func<Task> act = async () => await HttpFileRunner.RunAsync(client, reqs, Ct);
 
-        captured!.AbsolutePath.Should().Contain("unclosed");
+        await act.Should().ThrowAsync<HttpFileAssertionException>().WithMessage("*{{*");
+        captured.Should().BeNull();
     }
 }

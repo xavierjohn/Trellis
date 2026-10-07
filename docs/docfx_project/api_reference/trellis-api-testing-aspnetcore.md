@@ -3,7 +3,7 @@ package: Trellis.Testing.AspNetCore
 namespaces: [Trellis.Testing.AspNetCore, Trellis.Testing.AspNetCore.Http]
 types: [WebApplicationFactoryExtensions, WebApplicationFactoryTimeExtensions, ServiceCollectionExtensions, ServiceCollectionDbProviderExtensions, MsalTestTokenProvider, MsalTestOptions, TestUserCredentials, HttpFileParser, HttpFileRunner, HttpFileAssertions, HttpFileTheoryData, HttpFileRequest, HttpFileResult, ExpectedOutcome, HttpFileAssertionException, ScenarioContext]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-10-06
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when writing ASP.NET Core integration tests with WebApplicationFactory: replacing services, actors or time, and replaying .http files."
@@ -148,10 +148,10 @@ public static class HttpFileParser
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IReadOnlyList<HttpFileRequest> Parse(string content, IReadOnlyDictionary<string, string>? vars = null)` | `IReadOnlyList<HttpFileRequest>` | Parses raw `.http` content. File-level `@var = value` entries and supplied `vars` are substituted immediately; response placeholders are left for the runner. |
+| `public static IReadOnlyList<HttpFileRequest> Parse(string content, IReadOnlyDictionary<string, string>? vars = null)` | `IReadOnlyList<HttpFileRequest>` | Parses raw `.http` content. File-level `@var = value` entries and supplied `vars` are substituted immediately; response placeholders and the reserved `{{$guid}}` token are left for the runner. |
 | `public static IReadOnlyList<HttpFileRequest> ParseFile(string path, IReadOnlyDictionary<string, string>? vars = null)` | `IReadOnlyList<HttpFileRequest>` | Reads and parses a `.http` file from disk. |
 
-Supported syntax: `###` request separators, `# @name`, `# @expect status: 201`, `# @expect status: 2xx`, `# @expect status: 200-299`, `# @expect header: ETag`, `# @expect content-type: application/problem+json`, `# @parity: status-only`, file variables, `{{var}}`, `{{name.response.body.path}}`, `{{name.response.headers.Header-Name}}`, and `{{name.response.status}}`.
+Supported syntax: `###` request separators, `# @name`, `# @expect status: 201`, `# @expect status: 2xx`, `# @expect status: 200-299`, `# @expect header: ETag`, `# @expect content-type: application/problem+json`, `# @parity: status-only`, file variables, `{{var}}`, `{{$guid}}`, `{{name.response.body.path}}`, `{{name.response.headers.Header-Name}}`, and `{{name.response.status}}`.
 
 A separator line consisting of nothing but `#` characters is a divider rather than a title, and it discards any directives accumulated above it. That is what lets a file header *document* a directive by quoting it without thereby imposing it on the first request below.
 
@@ -164,7 +164,38 @@ public static class HttpFileRunner
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static Task<IReadOnlyList<HttpFileResult>> RunAsync(HttpClient client, IReadOnlyList<HttpFileRequest> requests, CancellationToken ct = default)` | `Task<IReadOnlyList<HttpFileResult>>` | Executes parsed requests in order, sharing a `ScenarioContext` so named responses can feed later substitutions. |
-| `public static Task<HttpFileResult> RunSingleAsync(HttpClient client, HttpFileRequest request, ScenarioContext context, CancellationToken ct = default)` | `Task<HttpFileResult>` | Executes one request after resolving deferred response placeholders, records named responses, reads the response body as text, and returns the result. |
+| `public static Task<HttpFileResult> RunSingleAsync(HttpClient client, HttpFileRequest request, ScenarioContext context, CancellationToken ct = default)` | `Task<HttpFileResult>` | Resolves deferred response placeholders and dynamic GUIDs, rejects unresolved placeholders before sending, records named responses, reads the response body as text, and returns the result. |
+
+### Replay variables and failure handling
+
+Static variable names are case-insensitive; file-level values override supplied `vars`.
+`{{$guid}}` is reserved and is **not** a static variable: each occurrence in a URL, header
+value (including content headers), or body generates a fresh D-format GUID at execution.
+Reusing the same parsed request list generates new GUIDs on every replay without mutating
+the templates. Multiple occurrences in one request are independent, including an alias such
+as `@key = {{$guid}}`. Use a supplied/file-level **literal** value when several requests must
+share one idempotency key, and captured response tokens when later requests need a created ID.
+Header names must be literal; placeholders in names are rejected rather than expanded.
+
+Both runner entry points throw `HttpFileAssertionException` before sending an offending
+request if its resolved URL, header name/value, or body still contains `{{...}}` or an
+unterminated `{{`. The message identifies the token (or unterminated opening), request title,
+and location without dumping the body or header values. This includes missing static values,
+missing named responses/JSON paths/headers, and unsupported dynamic variables such as
+`{{$timestamp}}`, `{{$randomInt}}`, and `{{$datetime}}`. Captured response values are not
+recursively evaluated as templates; any placeholder they introduce is rejected too.
+
+`RunAsync` stops at that request; earlier sends are not rolled back and later requests are
+not sent. On successful return the caller owns every response. If the sequence throws, the
+runner disposes responses from earlier completed requests because no result list is returned.
+
+For a CI guard over a service's `.http` examples, use a `WebApplicationFactory` client and
+`HttpFileAssertions.AssertExpectationsMet` in-process; no separately running host or PowerShell
+is required. The Showcase `replay-api-http.ps1` is a separate **live-host transcript** tool:
+it supports environment JSON/`-Set` variables and the same per-occurrence `{{$guid}}`, but
+does **not** implement file-level variables or named-response chaining. Unresolved tokens
+terminate that script before sending the offending request, outside its transport-error
+reporting. Fresh GUIDs do not reset seeded state or fixed-key idempotency scenarios.
 
 ### `HttpFileAssertions`
 
@@ -185,11 +216,11 @@ Do not assert a content type on a failure produced *before* the endpoint runs. A
 | Type | Declaration | Description |
 | --- | --- | --- |
 | `ExpectedOutcome` | `public sealed record ExpectedOutcome(int? StatusMin, int? StatusMax, IReadOnlyList<string> RequiredHeaders, string? ContentType = null)` | Parsed `# @expect` status, header, and content-type assertions. `ContentType` is the expected content-type value exactly as written in the file; it is not normalized on write, and parameters such as `charset` are ignored when matching. |
-| `HttpFileRequest` | `public sealed record HttpFileRequest(string Title, string Method, string Url, IReadOnlyDictionary<string, string> Headers, string? Body, string? Name, ExpectedOutcome? Expected, string? ParityMode = null)` | One parsed request. `Url` and `Body` may contain deferred response placeholders. |
+| `HttpFileRequest` | `public sealed record HttpFileRequest(string Title, string Method, string Url, IReadOnlyDictionary<string, string> Headers, string? Body, string? Name, ExpectedOutcome? Expected, string? ParityMode = null)` | One parsed request. `Url`, header values, and `Body` may contain deferred response/GUID placeholders. Header names must be literal. |
 | `HttpFileResult` | `public sealed record HttpFileResult(HttpFileRequest Request, HttpResponseMessage Response, string? Body, ExpectedOutcome? Expected)` | One executed request and response. Caller owns `Response` disposal. |
 | `HttpFileTheoryData` | `public static class HttpFileTheoryData` | Provides `FromFile(string path, IReadOnlyDictionary<string,string>? vars = null) : IEnumerable<object[]>` for xUnit-style member data without taking an xUnit dependency. |
 | `ScenarioContext` | `public sealed class ScenarioContext` | Records named responses and resolves `{{name.response.*}}` tokens. Public members: `Record(...)` and `TryResolve(...)`. |
-| `HttpFileAssertionException` | `public sealed class HttpFileAssertionException : Exception` | Thrown by `HttpFileAssertions` with constructors `()`, `(string message)`, and `(string message, Exception inner)`. |
+| `HttpFileAssertionException` | `public sealed class HttpFileAssertionException : Exception` | Thrown by `HttpFileAssertions` for unmet expectations or `HttpFileRunner` for unresolved/unterminated placeholders. Constructors: `()`, `(string message)`, and `(string message, Exception inner)`. |
 
 ## Common examples
 
@@ -230,8 +261,16 @@ var requests = HttpFileParser.ParseFile("Scenarios/orders.http", new Dictionary<
 
 var results = await HttpFileRunner.RunAsync(client, requests, cancellationToken);
 
-foreach (var result in results)
-    HttpFileAssertions.AssertExpectationsMet(result);
+try
+{
+    foreach (var result in results)
+        HttpFileAssertions.AssertExpectationsMet(result);
+}
+finally
+{
+    foreach (var result in results)
+        result.Response.Dispose();
+}
 ```
 
 ## See also

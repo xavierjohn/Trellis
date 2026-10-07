@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 /// Executes a parsed <c>.http</c> file against an <see cref="HttpClient"/>,
 /// threading a <see cref="ScenarioContext"/> through the requests so named
 /// responses can be referenced via <c>{{name.response.body.*}}</c> substitutions.
+/// Generates a fresh GUID for each <c>{{$guid}}</c> occurrence at execution time.
 /// </summary>
 public static class HttpFileRunner
 {
@@ -20,7 +21,8 @@ public static class HttpFileRunner
     /// <param name="client">Client to execute against. Typically obtained from <c>WebApplicationFactory.CreateClient()</c>.</param>
     /// <param name="requests">Parsed requests, in execution order.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>Ordered list of per-request results.</returns>
+    /// <returns>Ordered list of per-request results. The caller owns their responses.</returns>
+    /// <exception cref="HttpFileAssertionException">A request contains an unresolved or unterminated placeholder.</exception>
     public static async Task<IReadOnlyList<HttpFileResult>> RunAsync(
         HttpClient client,
         IReadOnlyList<HttpFileRequest> requests,
@@ -31,19 +33,31 @@ public static class HttpFileRunner
 
         var context = new ScenarioContext();
         var results = new List<HttpFileResult>(requests.Count);
-        foreach (var req in requests)
+        var completed = false;
+        try
         {
-            var result = await RunSingleAsync(client, req, context, ct).ConfigureAwait(false);
-            results.Add(result);
-        }
+            foreach (var req in requests)
+            {
+                var result = await RunSingleAsync(client, req, context, ct).ConfigureAwait(false);
+                results.Add(result);
+            }
 
-        return results;
+            completed = true;
+            return results;
+        }
+        finally
+        {
+            if (!completed)
+                foreach (var result in results)
+                    result.Response.Dispose();
+        }
     }
 
     /// <summary>
     /// Runs a single <paramref name="request"/>, substituting any deferred
-    /// <c>{{name.response.*}}</c> tokens against <paramref name="context"/>
-    /// first, and recording the response into the context if the request was
+    /// <c>{{name.response.*}}</c> tokens against <paramref name="context"/> and
+    /// generating a fresh GUID per <c>{{$guid}}</c> occurrence before sending.
+    /// Records the response into the context if the request was
     /// declared with <c># @name</c>.
     /// </summary>
     /// <param name="client">Client to execute against.</param>
@@ -51,6 +65,7 @@ public static class HttpFileRunner
     /// <param name="context">Shared scenario context.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>A populated <see cref="HttpFileResult"/>.</returns>
+    /// <exception cref="HttpFileAssertionException">A request contains an unresolved or unterminated placeholder.</exception>
     public static async Task<HttpFileResult> RunSingleAsync(
         HttpClient client,
         HttpFileRequest request,
@@ -61,13 +76,13 @@ public static class HttpFileRunner
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(context);
 
-        var url = Substitute(request.Url, context);
+        var url = Resolve(request.Url, context, request, "URL");
+        var bodyText = Resolve(request.Body, context, request, "body");
         using var httpRequest = new HttpRequestMessage(new HttpMethod(request.Method), BuildUri(client, url));
 
         HttpContent? content = null;
         if (!string.IsNullOrEmpty(request.Body))
         {
-            var bodyText = Substitute(request.Body, context);
             content = new StringContent(bodyText, Encoding.UTF8);
             // Content-Type may be set from headers below; default if absent.
             content.Headers.ContentType = null;
@@ -76,7 +91,8 @@ public static class HttpFileRunner
 
         foreach (var header in request.Headers)
         {
-            var value = Substitute(header.Value, context);
+            AssertResolved(header.Key, request, "header name");
+            var value = Resolve(header.Value, context, request, $"header '{header.Key}'");
             if (IsContentHeader(header.Key))
             {
                 content ??= httpRequest.Content ?? new StringContent(string.Empty, Encoding.UTF8);
@@ -109,6 +125,26 @@ public static class HttpFileRunner
         }
 
         return new HttpFileResult(request, response, bodyStr, request.Expected);
+    }
+
+    private static string Resolve(string? input, ScenarioContext context, HttpFileRequest request, string location)
+    {
+        var resolved = Substitute(input, context);
+        AssertResolved(resolved, request, location);
+        return resolved;
+    }
+
+    private static void AssertResolved(string input, HttpFileRequest request, string location)
+    {
+        var start = input.IndexOf("{{", StringComparison.Ordinal);
+        if (start < 0)
+            return;
+
+        var end = input.IndexOf("}}", start + 2, StringComparison.Ordinal);
+        var problem = end < 0
+            ? "Unterminated placeholder '{{'"
+            : $"Unresolved placeholder '{input.Substring(start, end + 2 - start)}'";
+        throw new HttpFileAssertionException($"{problem} in request '{request.Title}' ({location}).");
     }
 
     private static Uri BuildUri(HttpClient client, string url)
@@ -157,8 +193,8 @@ public static class HttpFileRunner
     }
 
     /// <summary>
-    /// Replaces deferred <c>{{...}}</c> tokens using the scenario context.
-    /// Tokens not resolvable are left intact.
+    /// Replaces deferred response tokens and generates a GUID per dynamic occurrence.
+    /// Leaves unknown tokens intact for request-aware validation.
     /// </summary>
     internal static string Substitute(string? input, ScenarioContext context)
     {
@@ -177,6 +213,13 @@ public static class HttpFileRunner
                 if (end > 0)
                 {
                     var token = input.Substring(i + 2, end - (i + 2)).Trim();
+                    if (string.Equals(token, "$guid", StringComparison.Ordinal))
+                    {
+                        sb.Append(Guid.NewGuid().ToString("D"));
+                        i = end + 2;
+                        continue;
+                    }
+
                     if (context.TryResolve(token, out var value))
                     {
                         sb.Append(value);
