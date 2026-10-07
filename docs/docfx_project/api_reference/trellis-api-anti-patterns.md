@@ -686,6 +686,8 @@ Result.EnsureNotNull(title, static () => Error.InvalidInput.ForField(code: "requ
 
 `Combine` over `Result<T>` values yields a `Result<(T1, T2)>`, and `Map` accepts a lambda taking the tuple elements as separate parameters, so the chain stays one expression and **still reports every missing field at once**. The factories preserve the custom `"required"` codes and construct violations only for missing inputs.
 
+Prefer the field/detail form, such as `Result.EnsureNotNull(title, "title", "Title is required.")`, for standard `value.not-null` violations unless you need to preserve a custom code.
+
 **Automatic code fix versus preferred manual rewrite.** The code fix changes only the guard to `EnsureNotNull`: it preserves the original error argument and leaves the later lambda untouched. An eager error therefore remains eager, and a `title!` in the lambda still compiles. For the preferred manual rewrite above, construct fresh errors inside factories and take the tuple elements as lambda parameters. Merely returning an already-created error from a factory does not avoid its allocation or validation metric.
 
 The null test must be the whole condition. These are left alone because the replacement would change the meaning:
