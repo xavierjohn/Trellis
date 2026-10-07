@@ -101,7 +101,7 @@ public class DbContextRetryExtensionsTests : IDisposable
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().BeOfType<Error.Conflict>()
-            .Which.Code.Should().Be("duplicate.key");
+            .Which.Code.Should().Be(FaultCodes.DuplicateKey);
         regenerateCalls.Should().Be(0);
         _context.ChangeTracker.Entries<TestCustomer>().Should().HaveCount(1,
             "change tracker is left untouched when shouldRetry returns false");
@@ -125,7 +125,7 @@ public class DbContextRetryExtensionsTests : IDisposable
         result.Error.Should().BeOfType<Error.Conflict>()
             .Which.Detail.Should().Contain("Retry aborted by regenerate callback");
         result.Error.Should().BeOfType<Error.Conflict>()
-            .Which.Code.Should().Be("retry.aborted");
+            .Which.Code.Should().Be(FaultCodes.RetryAborted);
         _context.Entry(customer).State.Should().Be(EntityState.Detached);
     }
 
@@ -154,7 +154,7 @@ public class DbContextRetryExtensionsTests : IDisposable
         result.Error.Should().BeOfType<Error.Conflict>()
             .Which.Detail.Should().Contain("Maximum retry attempts");
         result.Error.Should().BeOfType<Error.Conflict>()
-            .Which.Code.Should().Be("retry.exhausted");
+            .Which.Code.Should().Be(FaultCodes.RetryExhausted);
         attempts.Should().HaveCount(2);
         attempts[0].Should().Be(1);
         attempts[1].Should().Be(2);
@@ -337,7 +337,7 @@ public class DbContextRetryExtensionsTests : IDisposable
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().BeOfType<Error.Conflict>()
-            .Which.Code.Should().Be("referential.integrity");
+            .Which.Code.Should().Be(FaultCodes.ReferentialIntegrity);
     }
 
     [Fact]
@@ -539,7 +539,7 @@ public class DbContextRetryExtensionsTests : IDisposable
         result.Error.Should().BeOfType<Error.Conflict>()
             .Which.Detail.Should().Contain("Maximum retry attempts");
         result.Error.Should().BeOfType<Error.Conflict>()
-            .Which.Code.Should().Be("retry.exhausted");
+            .Which.Code.Should().Be(FaultCodes.RetryExhausted);
         regenerateCalls.Should().Be(0);
     }
 }

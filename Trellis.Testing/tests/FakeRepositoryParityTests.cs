@@ -5,9 +5,6 @@ public class FakeRepositoryParityTests
     [Fact]
     public async Task FakeRepository_DuplicateKey_UsesSameReasonCodeAsRealEfRuntime()
     {
-        // Canonical EF runtime reason code per Trellis.EntityFrameworkCore.DbContextExtensions.
-        const string canonicalDuplicateKeyCode = "duplicate.key";
-
         var fake = new FakeRepository<TestAggregate, string>()
             .WithUniqueConstraint(aggregate => aggregate.Email);
         await fake.SaveAsync(TestAggregate.Create("existing", "same@example.com"), TestContext.Current.CancellationToken);
@@ -16,7 +13,7 @@ public class FakeRepositoryParityTests
 
         conflict.IsFailure.Should().BeTrue();
         conflict.UnwrapError().Should().BeOfType<Error.Conflict>()
-            .Which.Code.Should().Be(canonicalDuplicateKeyCode);
+            .Which.Code.Should().Be(FaultCodes.DuplicateKey);
     }
 
     [Fact]

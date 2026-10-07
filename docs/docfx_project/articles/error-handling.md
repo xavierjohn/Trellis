@@ -99,7 +99,7 @@ For the common single-payload shapes, the resource-bearing cases (`NotFound`, `G
 
 ```csharp
 Error.NotFound.For<Order>(id: id, detail: "Order not found");
-Error.Conflict.ForReason("duplicate.key", detail: "Email in use");
+Error.Conflict.ForReason(FaultCodes.DuplicateKey, detail: "Email in use");
 Error.Forbidden.ForPolicy("orders.write", detail: "Admin required");
 Error.InvariantViolation.ForReason("order.cross-aggregate-rule");
 Error.InvalidInput.ForField(ValidationCodes.StringEmail, "email", detail: "Bad email");
@@ -110,7 +110,7 @@ Factories put `code` first and `detail` last. Validation, conflict, invariant, a
 | Pattern | Example |
 |---|---|
 | Resource not found | `new Error.NotFound(ResourceRef.For<Order>(id)) { Detail = $"Order {id} not found" }` |
-| State conflict | `new Error.Conflict(Resource: ResourceRef.For<User>(userId), Code: "duplicate.key") { Detail = "Email is already in use" }` |
+| State conflict | `new Error.Conflict(Resource: ResourceRef.For<User>(userId), Code: FaultCodes.DuplicateKey) { Detail = "Email is already in use" }` |
 | Domain rule conflict (no resource) | `new Error.Conflict(Resource: null, Code: "order.cancel-after-ship") { Detail = "Cannot cancel after shipment" }` |
 | Authentication missing | `new Error.AuthenticationRequired()` |
 | Authenticated but not allowed | `new Error.Forbidden("orders.write") { Detail = "Administrator role required" }` |

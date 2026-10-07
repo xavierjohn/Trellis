@@ -93,6 +93,22 @@ public class ValidationCodesTests
             .Select(g => $"{g.Key} ({string.Join(", ", g.Select(c => c.Name))})")
             .Should().BeEmpty("one code means one thing, so two names for it would let producers drift apart");
 
+    [Theory]
+    [InlineData("DuplicateKey", "duplicate.key")]
+    [InlineData("ReferentialIntegrity", "referential.integrity")]
+    [InlineData("RetryAborted", "retry.aborted")]
+    [InlineData("RetryExhausted", "retry.exhausted")]
+    public void FaultCodes_PersistenceFailures_ExposePublishedConstants(string name, string published)
+    {
+        var field = typeof(FaultCodes).GetField(name,
+            BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
+
+        field.Should().NotBeNull("{0} must be available without an EF Core dependency", name);
+        field!.FieldType.Should().Be<string>();
+        field.IsLiteral.Should().BeTrue("{0} must be a compile-time constant", name);
+        field.GetRawConstantValue().Should().Be(published);
+    }
+
     [Fact]
     public void NumberFinite_KeepsPublishedWireValue() =>
         ValidationCodes.NumberFinite.Should().Be("number.finite");

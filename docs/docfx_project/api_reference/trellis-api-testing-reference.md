@@ -3,7 +3,7 @@ package: Trellis.Testing
 namespaces: [Trellis.Testing]
 types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", TestActorProvider, TestActorScope, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator]
 version: v3
-last_verified: 2026-06-17
+last_verified: 2026-10-06
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when writing unit or handler tests for Result, Maybe, errors or mediator handlers: FluentAssertions extensions, unwrap helpers and fakes (Trellis.Testing)."
@@ -517,7 +517,7 @@ public sealed class TestActorScope : IAsyncDisposable, IDisposable
 - `Clear()`, `Exists(TId id)`, `Get(TId id)`, `GetAll()`, `Count` — direct inspection helpers
 - `GetByIdAsync` / `DeleteAsync` / `RemoveByIdAsync` return `Error.NotFound` details in the EF-runtime format:
   - `"{AggregateTypeName} with ID '{id}' not found."`
-- Unique-constraint conflicts return `Error.Conflict` with `Code` `"duplicate.key"` and detail:
+- Unique-constraint conflicts return `Error.Conflict` with `Code` `FaultCodes.DuplicateKey` (`duplicate.key`), matching the EF runtime, and detail:
   - `"A {AggregateTypeName} with the same value already exists."`
 
 > See cookbook **Recipe 16 — Unit of work in handlers** for guidance on which surface to use from where, and the pitfall of accidentally calling `SaveAsync` from a production-shaped repository contract.

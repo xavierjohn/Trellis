@@ -3,7 +3,7 @@ package: Trellis.Core
 namespaces: [Trellis]
 types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, ICodedTransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, PageSizeLimitPolicy, PageRequest, "ICursorCodec<TState>", CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, InputLocation, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, TrellisValidationFormatException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
 version: v3
-last_verified: 2026-09-12
+last_verified: 2026-10-06
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when you need exact signatures for Result, Maybe, Error, Page, aggregates, entities, specifications or Required value-object bases, or the ROP operations Bind, Map and Ensure."
@@ -804,12 +804,21 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `UnhandledException` | `unhandled-exception` | An exception escaped to a boundary that converts it into a failed `Result`. |
 | `NotImplemented` | `not-implemented` | A boundary reached a path the framework does not implement. Carried by `Error.Unexpected`; surfaces as HTTP 501. |
 | `ConcurrentModification` | `concurrent-modification` | A write lost a race — the row changed between read and save. Carried by `Error.Conflict`; surfaces as 412 when the request carried `If-Match`, otherwise 409. |
+| `DuplicateKey` | `duplicate.key` | A write violates a unique constraint, including losing a concurrent unique-index insert race. Carried by `Error.Conflict`; default HTTP status 409. Emitted by EF save/idempotent-insert helpers and `FakeRepository.SaveAsync`. |
+| `ReferentialIntegrity` | `referential.integrity` | A write violates a foreign-key constraint. Carried by `Error.Conflict`; emitted by EF Result-returning save helpers. |
+| `RetryAborted` | `retry.aborted` | A retryable save failure was aborted by the regenerate callback. Carried by `Error.Conflict`; emitted by `SaveChangesWithRetryAsync`. |
+| `RetryExhausted` | `retry.exhausted` | A retryable save failure exhausted the allowed attempts. Carried by `Error.Conflict`; emitted by `SaveChangesWithRetryAsync`. |
 | `StateMachineInvalidTransition` | `state-machine.invalid-transition` | A trigger was rejected because the aggregate's current state forbids it. Carried by `Error.InvariantViolation`; surfaces as 422. Emitted by `Trellis.StateMachine`'s `FireResult`. |
 | `HttpResponseNotSuccess` | `http.response-not-success` | A response carried a non-success status on a path that needed its body. Carried by `Error.Unexpected`; emitted by `Trellis.Http`'s `ReadJsonAsync` / `ReadJsonMaybeAsync`. |
 | `HttpResponseNoBody` | `http.response-no-body` | A response that had to carry a body did not — `204`/`205`, or a zero-length payload. Carried by `Error.Unexpected`; emitted by `Trellis.Http`. |
 | `HttpResponseInvalidBody` | `http.response-invalid-body` | A response body could not be deserialized, or deserialized to `null`. Carried by `Error.Unexpected`; emitted by `Trellis.Http`. `Detail` reports JSON line/byte position only, never body content. |
 | `HttpResponseFault` | `http.response-fault` | A response status has no more specific mapping in the status-to-error table. Carried by `Error.Unexpected`; emitted by `Trellis.Http`'s `ToResultAsync`. |
 | `ResponseLocationUnresolved` | `response.location-unresolved` | A response was configured to emit a `Location` header but the URI could not be resolved. Carried by `Error.Unexpected`; emitted by `Trellis.Asp`. |
+
+These persistence constants live in Core, so clients and tests can match them without an EF Core
+dependency. Their wire spellings and meanings are frozen under the same contract as the rest of this
+vocabulary. Match `Error.Conflict.Code` against `FaultCodes.DuplicateKey` for a unique-index race
+instead of inspecting `Detail` or provider-specific constraint text.
 
 `RateLimitExceeded`, the `http.response-*` family, and `ResponseLocationUnresolved` are *not* dispatch keys —
 nothing branches on them to pick a status code. They are constants for the other reason a code exists: they

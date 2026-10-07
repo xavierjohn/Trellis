@@ -37,6 +37,7 @@ Result<int> saved =
 - Query helpers for presence, equality, predicates, and ordering over `Maybe<T>`.
 - Inspect `Maybe<T>` storage strategies, tables/schemas, all owned columns, and known convention reasons with `GetMaybePropertyMappings()` / `ToMaybeMappingDebugString()`.
 - Result-returning save helpers and idempotent unique-key inserts.
+- Shared `FaultCodes` constants for duplicate-key, foreign-key, retry-abort, and retry-exhaustion conflicts.
 - Typed seek pagination through `SeekDefinition` and `ToPageAsync`.
 - Selector-based `GeoCoordinateExpressions` for translated bounds, exact spherical radius, distance ordering, and seek pagination over numeric latitude/longitude columns.
 - `EfUnitOfWork<TContext>` integration for mediator-owned commits.

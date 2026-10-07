@@ -15,7 +15,7 @@ public static class DbContextIdempotencyExtensions
     /// <summary>
     /// Adds <paramref name="entity"/> to <paramref name="context"/>, persists the change
     /// via <see cref="DbContext.SaveChangesAsync(CancellationToken)"/>, and converts a
-    /// duplicate-key violation into <c>Result.Fail(new Error.Conflict(Resource: null, Code: "duplicate.key"))</c>.
+    /// duplicate-key violation into <c>Result.Fail(new Error.Conflict(Resource: null, Code: FaultCodes.DuplicateKey))</c>.
     /// Use this helper to implement idempotent inserts on a unique constraint without
     /// catching <see cref="DbUpdateException"/> at the call site.
     /// </summary>
@@ -33,7 +33,7 @@ public static class DbContextIdempotencyExtensions
     /// <para>
     /// On a unique-constraint violation: <see cref="Result.Fail{TValue}(Error)"/>
     /// containing an <see cref="Error.Conflict"/> with
-    /// <see cref="Error.Code"/> = <c>"duplicate.key"</c> and the
+    /// <see cref="Error.Code"/> = <see cref="FaultCodes.DuplicateKey"/> and the
     /// provider-reported <see cref="Error.Conflict.ConstraintName"/> and
     /// <see cref="Error.Conflict.ConstraintTableName"/> populated on a best-effort
     /// basis (see <see cref="DbExceptionClassifier.ExtractConstraintIdentity(DbUpdateException)"/>).

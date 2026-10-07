@@ -40,6 +40,7 @@ Use the reflection-based `ApplyTrellisConventions(typeof(AppDbContext).Assembly)
 - Inspect `Maybe<T>` storage strategies, tables/schemas, all owned columns, and known convention reasons with `GetMaybePropertyMappings()` / `ToMaybeMappingDebugString()`.
 - `SaveChangesResultAsync` and `SaveChangesResultUnitAsync` for typed persistence failures.
 - `TryInsertUniqueAsync` for idempotent unique-key inserts.
+- Shared `FaultCodes` constants for duplicate-key, foreign-key, retry-abort, and retry-exhaustion conflicts.
 - Typed seek pagination through `SeekDefinition` and `ToPageAsync`.
 - Selector-based `GeoCoordinateExpressions` for translated bounds, exact spherical radius, distance ordering, and seek pagination over numeric latitude/longitude columns.
 - `EfUnitOfWork<TContext>` and `AddTrellisUnitOfWork<TContext>()` for mediator-owned commits.

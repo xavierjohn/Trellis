@@ -11,10 +11,10 @@ internal static class DbUpdateErrorFactory
         };
 
     internal static Error.Conflict DuplicateKey(DbUpdateException exception) =>
-        ConstraintConflict(exception, "duplicate.key", "A record with the same unique value already exists.");
+        ConstraintConflict(exception, FaultCodes.DuplicateKey, "A record with the same unique value already exists.");
 
     internal static Error.Conflict ForeignKeyViolation(DbUpdateException exception) =>
-        ConstraintConflict(exception, "referential.integrity", "Operation violates a referential integrity constraint.");
+        ConstraintConflict(exception, FaultCodes.ReferentialIntegrity, "Operation violates a referential integrity constraint.");
 
     private static Error.Conflict ConstraintConflict(DbUpdateException exception, string code, string detail)
     {
