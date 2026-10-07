@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — reliable HTTP replay variables (TFR-20)
+
+The .NET `.http` runner and Showcase live-host replay script expand reserved `{{$guid}}`
+tokens at execution, with a fresh D-format GUID per occurrence and per replay, including
+reused parsed requests. Unresolved or unterminated placeholders now stop the sequence
+before the offending send, with token/request/location diagnostics rather than malformed
+URLs, keys, or bodies. Header names must be literal.
+
+The .NET runner preserves static-variable precedence and named-response chaining, and
+disposes earlier responses when a sequence throws. The script retains its narrower
+environment/`-Set` syntax and now handles single/empty replay files consistently. Other
+dynamic variables remain unsupported; fixed-key retry and seeded-state scenarios are
+unchanged.
+
 ### Added — shared persistence conflict codes (TFR-19)
 
 `FaultCodes.DuplicateKey`, `ReferentialIntegrity`, `RetryAborted`, and `RetryExhausted`

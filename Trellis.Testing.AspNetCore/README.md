@@ -31,6 +31,14 @@ fakeTime.SetUtcNow(DateTimeOffset.UtcNow.AddDays(-7));
 - **DI service replacement** — `ReplaceDbProvider`, `ReplaceSingleton`, `ReplaceResourceLoader`
 - **Fake time provider** — `WithFakeTimeProvider` for controlling `TimeProvider` in tests
 - **MSAL token acquisition** — `MsalTestTokenProvider` for E2E tests against real Entra ID tenants
+- **`.http` replay** — parse service examples, chain named responses, generate a fresh `{{$guid}}` per occurrence, and reject unresolved placeholders before sending
+
+Use `HttpFileParser.ParseFile`, `HttpFileRunner.RunAsync`, and
+`HttpFileAssertions.AssertExpectationsMet` from `Trellis.Testing.AspNetCore.Http` with a
+`WebApplicationFactory` client to guard service `.http` examples in CI. GUIDs refresh even
+when the same parsed requests are reused; missing variables fail with request/token/location
+diagnostics. The caller disposes successful responses. See the API reference for supported
+syntax and the narrower Showcase live-host transcript script.
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-testing.html)
@@ -47,3 +55,6 @@ Run the package tests from the repository root:
 ```powershell
 dotnet test Trellis.Testing.AspNetCore\tests\Trellis.Testing.AspNetCore.Tests.csproj -c Release
 ```
+
+Repository tests require PowerShell 7 (`pwsh`) to exercise the real Showcase replay script,
+including a loopback host. Consumers of the .NET replay helpers do not need PowerShell.

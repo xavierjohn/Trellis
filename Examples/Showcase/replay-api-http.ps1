@@ -20,6 +20,13 @@
     api.http claims MVC and Minimal API behave identically, and a transcript diff is
     what makes that claim falsifiable.
 
+    Variables come from http-client.env.json and -Set. Each {{$guid}} occurrence in
+    a URL, header value, or body gets a fresh GUID when the request runs. Header names
+    must be literal. Unresolved or unterminated placeholders terminate the script
+    before the offending request is sent, with token, title, and location diagnostics.
+    File-level @var declarations and named-response chaining are not implemented.
+    For in-process CI guards, use Trellis.Testing.AspNetCore.Http replay helpers.
+
 .PARAMETER Environment
     Which host block of http-client.env.json to use: `mvc` or `minimalapi`.
 
@@ -41,6 +48,7 @@
     empty idempotency store -- so a replay assumes a freshly started host. Against a
     host that has already served a replay, the transfer blocks report a replay where
     a fresh execution is expected. Use -StartHost, or restart the host by hand.
+    Fresh dynamic GUIDs do not reset seeded state or intentional fixed-key retries.
 
 .EXAMPLE
     ./replay-api-http.ps1 -Environment mvc -StartHost
@@ -107,9 +115,29 @@ $baseUri = [uri]$variables['host']
 function Expand-Variable([string]$text) {
     if ([string]::IsNullOrEmpty($text)) { return $text }
     foreach ($name in $variables.Keys) {
+        if ($name -ceq '$guid') { continue }
         $text = $text.Replace("{{$name}}", $variables[$name])
     }
     return $text
+}
+
+function Assert-Resolved([string]$text, [string]$title, [string]$location) {
+    $start = $text.IndexOf('{{', [System.StringComparison]::Ordinal)
+    if ($start -lt 0) { return }
+    $end = $text.IndexOf('}}', $start + 2, [System.StringComparison]::Ordinal)
+    $problem = if ($end -lt 0) { "Unterminated placeholder '{{'" }
+    else { "Unresolved placeholder '$($text.Substring($start, $end + 2 - $start))'" }
+    throw "$problem in request '$title' ($location)."
+}
+
+function Expand-DynamicVariable([string]$text, [string]$title, [string]$location) {
+    if ([string]::IsNullOrEmpty($text)) { return $text }
+    $resolved = [regex]::Replace($text, '\{\{\s*\$guid\s*\}\}', [System.Text.RegularExpressions.MatchEvaluator]{
+        param($match)
+        [guid]::NewGuid().ToString('D')
+    })
+    Assert-Resolved $resolved $title $location
+    return $resolved
 }
 
 #endregion
@@ -226,8 +254,8 @@ function Read-HttpFile([string]$path) {
             }
             'headers' {
                 if ([string]::IsNullOrWhiteSpace($line)) { $state = 'body'; break }
-                if ($line -match '^([A-Za-z0-9\-]+):\s*(.*)$') {
-                    $current.Headers[$Matches[1]] = Expand-Variable $Matches[2]
+                if ($line -match '^([^:]+):\s*(.*)$') {
+                    $current.Headers[$Matches[1].Trim()] = Expand-Variable $Matches[2]
                 }
                 break
             }
@@ -352,7 +380,7 @@ function Format-Headers($headers) {
 
 #endregion
 
-$requests = Read-HttpFile $httpFile
+$requests = @(Read-HttpFile $httpFile)
 if ($requests.Count -eq 0) {
     throw "No requests parsed from $httpFile. The file format may have changed."
 }
@@ -374,15 +402,19 @@ try {
     foreach ($request in $requests) {
         $number++
 
+        $url = Expand-DynamicVariable $request.Url $request.Title 'URL'
+        $body = if ($request.Body) { (Expand-DynamicVariable $request.Body $request.Title 'body').Trim() } else { '' }
         $sendHeaders = @{}
         $contentType = $null
         foreach ($key in $request.Headers.Keys) {
-            if ($key -ieq 'Content-Type') { $contentType = $request.Headers[$key] }
-            else { $sendHeaders[$key] = $request.Headers[$key] }
+            Assert-Resolved $key $request.Title 'header name'
+            $value = Expand-DynamicVariable $request.Headers[$key] $request.Title "header '$key'"
+            if ($key -ieq 'Content-Type') { $contentType = $value }
+            else { $sendHeaders[$key] = $value }
         }
 
         $arguments = @{
-            Uri                  = $request.Url
+            Uri                  = $url
             Method               = $request.Method
             Headers              = $sendHeaders
             SkipCertificateCheck = $true
@@ -390,7 +422,6 @@ try {
             MaximumRedirection   = 0
         }
 
-        $body = if ($request.Body) { $request.Body.Trim() } else { '' }
         if ($body) {
             $arguments.Body = $body
             $arguments.ContentType = if ($contentType) { $contentType } else { 'application/json' }
@@ -455,7 +486,7 @@ try {
         $results.Add([pscustomobject]@{
                 N        = $number
                 Method   = $request.Method
-                Path     = ([uri]$request.Url).PathAndQuery
+                Path     = ([uri]$url).PathAndQuery
                 Expected = $expectedText
                 Actual   = if ($null -ne $status) { $status } else { 'ERROR' }
                 Matched  = $matched
@@ -464,7 +495,7 @@ try {
             })
 
         $null = $transcript.AppendLine('=' * 78)
-        $null = $transcript.AppendLine("[$number] $($request.Method) $(([uri]$request.Url).PathAndQuery)")
+        $null = $transcript.AppendLine("[$number] $($request.Method) $(([uri]$url).PathAndQuery)")
         if ($request.Title) { $null = $transcript.AppendLine("     $($request.Title)") }
         $null = $transcript.AppendLine('=' * 78)
         if ($body) {
@@ -486,7 +517,7 @@ try {
         $null = $transcript.AppendLine()
     }
 
-    $matchedCount = ($results | Where-Object Matched).Count
+    $matchedCount = @($results | Where-Object Matched).Count
     $summary = "$matchedCount/$($results.Count) requests matched their expectations"
     $null = $transcript.AppendLine('=' * 78)
     $null = $transcript.AppendLine($summary)

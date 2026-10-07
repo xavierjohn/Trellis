@@ -21,6 +21,7 @@ using System.Text.RegularExpressions;
 /// <item><description><c># @expect content-type: application/problem+json</c> — required response media type (parameters such as <c>charset</c> are ignored).</description></item>
 /// <item><description><c># @parity: status-only</c> — cross-host parity directive.</description></item>
 /// <item><description><c>@variable = value</c> — file-level variables usable via <c>{{variable}}</c>.</description></item>
+/// <item><description><c>{{$guid}}</c> — deferred to execution, with a fresh GUID per occurrence.</description></item>
 /// <item><description><c>{{named.response.body.jsonPath}}</c> — dotted-path substitution against a prior captured response body (JSON).</description></item>
 /// <item><description><c>{{named.response.headers.Name}}</c> — header substitution against a prior captured response.</description></item>
 /// </list>
@@ -316,8 +317,9 @@ public static class HttpFileParser
                 if (end > 0)
                 {
                     var token = input.Substring(i + 2, end - (i + 2)).Trim();
-                    // Defer any token containing "." (e.g. name.response.body.x) to the runner.
-                    if ((!token.Contains('.', StringComparison.Ordinal))
+                    // Response tokens and dynamic GUIDs must be resolved at execution time.
+                    if (!token.Contains('.')
+                        && !string.Equals(token, "$guid", StringComparison.Ordinal)
                         && vars.TryGetValue(token, out var value))
                     {
                         sb.Append(value);

@@ -3,8 +3,9 @@
 using System;
 
 /// <summary>
-/// Raised by <see cref="HttpFileAssertions"/> when a request's expectations
-/// are not met. Carries a descriptive message identifying the offending
+/// Raised by <see cref="HttpFileAssertions"/> when expectations are not met, or by
+/// <see cref="HttpFileRunner"/> when a placeholder cannot be resolved before sending.
+/// Carries a descriptive message identifying the offending
 /// request by title so failures are easy to triage in CI.
 /// </summary>
 public sealed class HttpFileAssertionException : Exception

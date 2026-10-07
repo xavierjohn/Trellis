@@ -1,9 +1,9 @@
 ﻿---
 title: Integration Testing
 package: Trellis.Testing
-topics: [testing, assertions, result, maybe, fakerepository, webfactory, actor-headers, idempotency-conformance]
+topics: [testing, assertions, result, maybe, fakerepository, webfactory, actor-headers, http-replay, idempotency-conformance]
 related_api_reference: [trellis-api-testing-reference.md, trellis-api-testing-aspnetcore.md, trellis-api-testing-worker.md, trellis-api-testing-idempotency.md, trellis-api-core.md]
-last_verified: 2026-05-01
+last_verified: 2026-10-06
 audience: [developer]
 ---
 # Integration Testing
@@ -25,7 +25,7 @@ audience: [developer]
 | Replace EF provider in `WebApplicationFactory` | `services.ReplaceDbProvider<TContext>(...)` | [WebApplicationFactory helpers](#webapplicationfactory-helpers) |
 | Replace a resource loader for tests | `services.ReplaceResourceLoader<TMessage, TResource>(...)` | [WebApplicationFactory helpers](#webapplicationfactory-helpers) |
 | Pin time deterministically in integration tests | `factory.WithFakeTimeProvider(out var fake)` | [WebApplicationFactory helpers](#webapplicationfactory-helpers) |
-| Replay a `.http` file against the test host | `HttpFileParser.ParseFile` + `HttpFileRunner.RunAsync` + `HttpFileAssertions.AssertExpectationsMet` | [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md#http-file-replay-helpers) |
+| Replay a `.http` file against the test host | `HttpFileParser.ParseFile` + `HttpFileRunner.RunAsync` + `HttpFileAssertions.AssertExpectationsMet` | [Replaying service HTTP examples](#replaying-service-http-examples) |
 | Acquire a real Entra token in gated E2E tests | `MsalTestTokenProvider` + `factory.CreateClientWithEntraTokenAsync(...)` | [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md#msal--entra-e2e-token-helpers) |
 | Test a `BackgroundService` with deterministic time + event capture | `WorkerHarness<TWorker>.CreateAsync(...)` + `Time.Advance(...)` + `WaitForEventAsync<TEvent>(...)` | [Background workers](#background-workers) |
 | Verify a custom `IIdempotencyStore` against the contract | Derive from `IdempotencyStoreConformance` (`Trellis.Testing.Idempotency`) | [Idempotency store conformance](#idempotency-store-conformance) |
@@ -412,6 +412,63 @@ WebApplicationFactory<Program> factory = default!;
 factory = factory.WithFakeTimeProvider(out var fakeTime);
 fakeTime.Advance(System.TimeSpan.FromDays(3));
 ```
+
+## Replaying service HTTP examples
+
+Keep a service's executable `.http` examples under an in-process integration-test guard.
+Use a `WebApplicationFactory` client, parse the file once, run it in order, and assert every
+result's expectations. No separately running host or PowerShell is needed:
+
+```csharp
+using Trellis.Testing.AspNetCore.Http;
+
+using var client = factory.CreateClient();
+var requests = HttpFileParser.ParseFile(
+    System.IO.Path.Combine("Scenarios", "orders.http"),
+    new Dictionary<string, string> { ["baseUrl"] = client.BaseAddress!.ToString().TrimEnd('/') });
+var results = await HttpFileRunner.RunAsync(client, requests, cancellationToken);
+try
+{
+    foreach (var result in results)
+        HttpFileAssertions.AssertExpectationsMet(result);
+}
+finally
+{
+    foreach (var result in results)
+        result.Response.Dispose();
+}
+```
+
+For example, adapt these routes/payloads to the service:
+
+```http
+### Create order
+# @name create
+# @expect status: 201
+POST {{baseUrl}}/orders
+Idempotency-Key: {{$guid}}
+Content-Type: application/json
+
+{"reference":"{{$guid}}"}
+
+### Read created order
+# @expect status: 200
+GET {{baseUrl}}/orders/{{create.response.body.id}}
+```
+
+Each `{{$guid}}` occurrence gets its **own** GUID at execution, including when replaying the
+same parsed list. It is not one shared value per request; even `@key = {{$guid}}` creates a
+new value wherever used. Supply a literal static variable for deliberate same-key retries.
+Unresolved/unsupported or unterminated placeholders throw `HttpFileAssertionException`
+with token, request, and location before that request is sent; the sequence stops and earlier
+sends are not rolled back. Header names must be literal.
+
+The Showcase `replay-api-http.ps1` serves a different purpose: it sends to a **live host**
+and records transcripts for inspection/parity diffing. It supports environment JSON/`-Set`
+variables and `{{$guid}}`, not file-level variables or named-response chaining. Fresh GUIDs
+do not reset the sample's seeded state or intentionally fixed-key idempotency scenarios.
+Full syntax and lifetime rules:
+[`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md#replay-variables-and-failure-handling).
 
 ## Composition
 
