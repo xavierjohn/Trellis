@@ -1560,7 +1560,9 @@ var guard = Result.Ensure(end != start, () =>
 | --- | --- | --- |
 | `public static Result<TValue> Ensure<TValue>(this Result<TValue> result, Func<TValue, bool> predicate, Error error)` | `Result<TValue>` | Sync ensure with predicate + `Error`. Five sync overloads (with/without value arg, factory error, embedded result). |
 | `public static Result<TValue> Ensure<TValue>(this Result<TValue> result, Func<TValue, bool> predicate, Func<TValue, Error> errorPredicate)` | `Result<TValue>` | Sync ensure with lazy error factory. |
-| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Error error)` | `Result<string>` | Lifts a possibly-blank string to `Result<string>`. |
+| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Error error)` | `Result<string>` | Rejects null/empty/whitespace with an existing error; returns valid strings unchanged. |
+| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Func<Error> errorFactory)` | `Result<string>` | Calls the factory exactly once only on null/empty/whitespace. |
+| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, string? fieldName, string? detail = null)` | `Result<string>` | Creates one field violation: `ValueNotNull` for null, or `ValueNotEmpty` for empty/whitespace. |
 | `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : class` | `Result<T>` | Reference-type `EnsureNotNull` overload that strips the nullable annotation. |
 | `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : struct` | `Result<T>` | Value-type `EnsureNotNull` overload that unwraps the nullable. |
 | `public static Task<Result<TValue>> EnsureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<TValue, Task<bool>> predicate, Error error)` | `Task<Result<TValue>>` | `EnsureExtensionsAsync` covers all `Result<T>`/`Task<Result<T>>`/`ValueTask<Result<T>>` receivers × `Func<TValue, bool>`/`Task<bool>`/`ValueTask<bool>` predicates × constant-, factory-, async-factory- and embedded-`Result<TValue>` error producers (~34 overloads across the six `Ensure.*` partial files). |
@@ -1570,6 +1572,21 @@ var guard = Result.Ensure(end != start, () =>
 | `public static Result<TValue> EnsureAll<TValue>(this Result<TValue> result, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `Result<TValue>` | Lazy accumulation: each failed check calls its factory exactly once with the successful value; passing checks never create errors. |
 | `public static Task<Result<TValue>> EnsureAllAsync<TValue>(this Task<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `Task<Result<TValue>>` | Awaits the receiver, then applies lazy accumulation. |
 | `public static ValueTask<Result<TValue>> EnsureAllAsync<TValue>(this ValueTask<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `ValueTask<Result<TValue>>` | ValueTask receiver with lazy accumulation. |
+
+`EnsureNotNullOrWhiteSpace` returns the original valid string without trimming.
+Prefer the field/detail overload for standard nonblank fields, or a `Func<Error>`
+that constructs a custom error inside its body; use `static` when no state is captured.
+The field/detail form follows the framework's absent-versus-blank convention:
+`ValueNotNull` for null and `ValueNotEmpty` for empty/whitespace, matching required
+primitive validation. The eager and factory forms preserve the caller's error and
+reason codes; use them when both cases intentionally share a custom error.
+Neither lazy form creates errors or validation violations on success. The factory is required
+even on success (`ArgumentNullException`, `errorFactory`); factory exceptions propagate,
+and a factory returning null on failure throws `ArgumentNullException` naming `error`.
+Field names follow `ForField` normalization: null/empty targets the root, simple names
+are escaped, and full JSON Pointers are validated only on failure. The eager overload
+retains higher resolution priority, so bare-null second arguments keep binding to
+`Error`; use named `fieldName:` or `errorFactory:` to select a null argument intentionally.
 
 Both `EnsureAll` families preserve upstream failures (including persist-on-failure intent)
 without invoking predicates or factories. Empty checks preserve the original result. A
@@ -1587,7 +1604,10 @@ Result<Quote> Validate(Quote q) =>
         (x => x.Currency.Length == 3, _ => Error.InvalidInput.ForField(field: "currency", code: ValidationCodes.StringCurrencyCode)));
 
 Result<string> NotBlank(string? raw) =>
-    raw.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(field: InputPointer.Root, code: ValidationCodes.ValueNotEmpty));
+    raw.EnsureNotNullOrWhiteSpace(fieldName: null);
+
+Result<string> NotBlankWithCustomError(string? raw) =>
+    raw.EnsureNotNullOrWhiteSpace(static () => new Error.Forbidden("name.denied"));
 ```
 
 ##### Nullable-task guards — `EnsureExtensionsAsync`
@@ -1875,6 +1895,7 @@ silently wrap a nullable or `Maybe<T>` in a successful result.
 | Deliberately wrap a successful payload | `Result.Ok(value)`; this does not check for null or inspect a wrapper's state. |
 | Check a boolean condition without carrying a value | `Result.Ensure(condition, errorFactory)`; returns `Result<Unit>`. Construct custom errors inside the callback. |
 | Require a nullable reference or struct | `Result.EnsureNotNull(value, fieldName, detail)` for standard required fields; `Result.EnsureNotNull(value, errorFactory)` for custom failures. |
+| Require a nonblank string without trimming | `value.EnsureNotNullOrWhiteSpace(fieldName, detail)` for `ValueNotNull` on null and `ValueNotEmpty` on blank; use `errorFactory` for a custom failure. |
 | Require a nullable task result | `task.EnsureNotNullAsync(fieldName, detail)` / `valueTask.EnsureNotNullAsync(errorFactory)`. |
 | Turn ordinary `Maybe<T>` absence into failure | `maybe.ToResult(errorFactory)`; Task/ValueTask `ToResultAsync` forms remain supported. |
 

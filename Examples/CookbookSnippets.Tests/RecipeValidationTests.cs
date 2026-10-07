@@ -73,16 +73,16 @@ public class RecipeValidationTests
 
         var error = result.Error.Should().BeOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Select(v => v.Field.Path).Should().Equal(expectedPaths);
-        error.Fields.Items.Should().OnlyContain(v => v.ReasonCode ==
-            (v.Field.Path == "/name" ? ValidationCodes.ValueNotEmpty : ValidationCodes.ValueNotNull));
+        error.Fields.Items.Should().OnlyContain(v => v.ReasonCode == ValidationCodes.ValueNotNull);
     }
 
     [Theory]
-    [InlineData(null, false)]
-    [InlineData("", false)]
-    [InlineData(" \t", false)]
-    [InlineData(" Ada ", true)]
-    public void TryCreate_CustomerName_PreservesBlankValidationAndPresentValue(string? name, bool succeeds)
+    [InlineData(null, false, ValidationCodes.ValueNotNull)]
+    [InlineData("", false, ValidationCodes.ValueNotEmpty)]
+    [InlineData(" \t", false, ValidationCodes.ValueNotEmpty)]
+    [InlineData(" Ada ", true, null)]
+    public void TryCreate_CustomerName_NullBlankOrPresent_UsesMatchingValidationCode(
+        string? name, bool succeeds, string? expectedCode)
     {
         var id = Recipe13.CustomerId.NewUniqueV7();
         var shipping = Recipe13.ShippingAddress.TryCreate("1 Main", "Redmond", "WA", "98052", "US").Unwrap();
@@ -99,7 +99,7 @@ public class RecipeValidationTests
 
         var field = result.Error.Should().BeOfType<Error.InvalidInput>().Which.Fields.Items.Should().ContainSingle().Which;
         field.Field.Path.Should().Be("/name");
-        field.ReasonCode.Should().Be(ValidationCodes.ValueNotEmpty);
+        field.ReasonCode.Should().Be(expectedCode);
         field.Detail.Should().Be("Name is required.");
     }
 

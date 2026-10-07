@@ -2,6 +2,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Provides extension methods for ensuring conditions on Result values.
@@ -160,10 +161,45 @@ public static class EnsureExtensions
     /// <param name="str">The string to validate.</param>
     /// <param name="error">The error to return if the string is null or whitespace.</param>
     /// <returns>A success result with the string if valid; otherwise a failure with the specified error.</returns>
+    [OverloadResolutionPriority(1)]
     public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Error error)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureNotNullOrWhiteSpace));
         return string.IsNullOrWhiteSpace(str) ? Result.Fail<string>(error) : Result.Ok(str);
+    }
+
+    /// <summary>
+    /// Ensures a string is not null or whitespace, creating an error only for an invalid string.
+    /// </summary>
+    /// <param name="str">The string to validate; valid strings are returned without trimming.</param>
+    /// <param name="errorFactory">Creates the error exactly once only when the string is null, empty, or whitespace.</param>
+    /// <returns>The same valid string or a failure with the created error.</returns>
+    /// <exception cref="ArgumentNullException">The factory is null, or an invoked factory returns null.</exception>
+    /// <remarks>The factory is required even on success. Factory exceptions propagate.</remarks>
+    public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Func<Error> errorFactory)
+    {
+        ArgumentNullException.ThrowIfNull(errorFactory);
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureNotNullOrWhiteSpace));
+        return string.IsNullOrWhiteSpace(str) ? Result.Fail<string>(errorFactory()) : Result.Ok(str);
+    }
+
+    /// <summary>
+    /// Ensures a string is not null or whitespace, creating a field violation only for an invalid string.
+    /// </summary>
+    /// <param name="str">The string to validate; valid strings are returned without trimming.</param>
+    /// <param name="fieldName">Property name or full JSON Pointer; null or empty targets the root.</param>
+    /// <param name="detail">Optional human-readable violation detail.</param>
+    /// <returns>The same valid string or an <see cref="Error.InvalidInput"/> containing one violation:
+    /// <see cref="ValidationCodes.ValueNotNull"/> for null, or <see cref="ValidationCodes.ValueNotEmpty"/> for empty or whitespace.</returns>
+    /// <exception cref="ArgumentException">The string is invalid and the field name is a malformed JSON Pointer.</exception>
+    public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, string? fieldName, string? detail = null)
+    {
+        using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureNotNullOrWhiteSpace));
+        return string.IsNullOrWhiteSpace(str)
+            ? Result.Fail<string>(Error.InvalidInput.ForField(
+                str is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty,
+                fieldName, detail: detail))
+            : Result.Ok(str);
     }
 
     /// <summary>

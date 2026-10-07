@@ -70,6 +70,12 @@ for a custom failure; field/detail overloads construct standard required errors 
 when null. Use `task.EnsureNotNullAsync(...)` for `Task<T?>` / `ValueTask<T?>`,
 then compose with async methods. Source faults and cancellation propagate.
 
+For a nonblank string, use `name.EnsureNotNullOrWhiteSpace("name", "Name is required.")`.
+Null fails with `ValidationCodes.ValueNotNull`; empty/whitespace fails with
+`ValidationCodes.ValueNotEmpty`. Valid strings are not trimmed. The field/detail and
+`Func<Error>` overloads create errors only on failure; eager and factory forms preserve
+the caller's chosen error. Use a `static` factory when no captured state is needed.
+
 `Error.InvalidInput.Required(fieldName, detail)` names the
 `ValidationCodes.ValueNotNull` error. Both it and `FieldViolation.Required` accept
 string field names or an `InputPointer`, preserving the pointer's input location. Use
