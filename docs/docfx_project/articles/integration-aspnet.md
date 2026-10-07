@@ -399,7 +399,7 @@ When commands return `Result<WriteOutcome<T>>`, the response is RFC 9110-shaped 
 
 | `WriteOutcome<T>` | Status |
 |---|---|
-| `Created(value)` | `201 Created` (plus `Location` from `Created`/`CreatedAtRoute`/`CreatedAtAction`) |
+| `Created(value, location: null)` | `201 Created` with optional Location; nonblank outcome location wins, otherwise use a builder fallback or omit the header |
 | `Updated(value)` | `200 OK` (or `204 No Content` with `Prefer: return=minimal` and `HonorPrefer()`) |
 | `UpdatedNoContent` | `204 No Content` |
 | `Accepted(value)` | `202 Accepted` (with `Retry-After` when configured) |
@@ -408,15 +408,25 @@ When commands return `Result<WriteOutcome<T>>`, the response is RFC 9110-shaped 
 ```csharp
 app.MapPut("/orders/{id:guid}", async (
         Guid id,
-        UpdateOrderRequest request,
+        PutOrderRequest request,
         IOrderService orders,
         CancellationToken ct) =>
-    (await orders.UpdateAsync(id, request, ct)).ToHttpResponse(
+    (await orders.UpsertAsync(id, request, ct)).ToHttpResponse(
         body: order => new OrderResponse(order.Id, order.Total),
         configure: opts => opts
             .WithETag(order => order.ETag)
             .HonorPrefer()));
 ```
+
+The application-owned `UpsertAsync` returns `Result.Ok(WriteOutcome.Created(order))`
+when it adds the resource and `Result.Ok(WriteOutcome.Updated(order))` when it updates one.
+A PUT-created resource is at the request URL, so the 201 response may omit Location.
+To supply it at the boundary, configure `Created`, `CreatedAtRoute`, `CreatedAtAction`,
+or `WithLocation`; null, empty, or whitespace outcome locations use that fallback.
+A nonblank outcome location wins. Route/action fallbacks run versioning callbacks;
+unresolved configured fallbacks return `response.location-unresolved` (500 by default).
+Builder status flags do not override outcome status, and other outcome variants retain
+their existing location/monitor URI behavior.
 
 ## Conditional requests
 

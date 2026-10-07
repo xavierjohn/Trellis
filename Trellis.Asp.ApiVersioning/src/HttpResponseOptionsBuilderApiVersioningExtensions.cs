@@ -37,6 +37,10 @@ using Trellis.Asp;
 /// <see cref="ApiVersionMetadata"/> omit version injection and remove a supplied <c>api-version</c>.
 /// The missing-metadata diagnostic identifies the destination endpoint.
 /// </para>
+/// <para>
+/// Also applies to builder-generated fallbacks for <c>WriteOutcome.Created</c> with no
+/// nonblank Location. Explicit outcome locations and Accepted monitor URIs are not rewritten.
+/// </para>
 /// </remarks>
 public static class HttpResponseOptionsBuilderApiVersioningExtensions
 {
@@ -47,7 +51,7 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
     /// or <see cref="HttpResponseOptionsBuilder{TDomain}.WithLocation(string, Func{TDomain, RouteValueDictionary})"/>
     /// call. The version is resolved per-request from <see cref="HttpContext"/>.
     /// </summary>
-    /// <typeparam name="TDomain">The domain value type from <c>Result&lt;TDomain&gt;</c>.</typeparam>
+    /// <typeparam name="TDomain">The domain value type from <c>Result&lt;TDomain&gt;</c> or a Created <c>WriteOutcome&lt;TDomain&gt;</c>.</typeparam>
     /// <param name="builder">The builder to configure.</param>
     /// <remarks>
     /// See the type-level remarks on <see cref="HttpResponseOptionsBuilderApiVersioningExtensions"/>
@@ -67,7 +71,7 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
     /// regardless of what the client requested. Use for cross-version <c>Location</c> redirects
     /// on deprecated endpoints.
     /// </summary>
-    /// <typeparam name="TDomain">The domain value type from <c>Result&lt;TDomain&gt;</c>.</typeparam>
+    /// <typeparam name="TDomain">The domain value type from <c>Result&lt;TDomain&gt;</c> or a Created <c>WriteOutcome&lt;TDomain&gt;</c>.</typeparam>
     /// <param name="builder">The builder to configure.</param>
     /// <param name="explicitVersion">The destination-supported version to inject regardless of the requested version.</param>
     /// <remarks>

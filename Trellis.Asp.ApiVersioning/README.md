@@ -39,7 +39,7 @@ return pageResult.ToHttpResponse(
 
 - Resolves the actual named-route or MVC-action destination instead of copying metadata from the current endpoint.
 - Adds a mapped query-string API version or fills the destination's `:apiVersion` segment.
-- Supports `CreatedAtRoute`, `CreatedAtAction`, and `WithLocation`.
+- Supports `CreatedAtRoute`, `CreatedAtAction`, and `WithLocation`, including fallback locations for `WriteOutcome.Created` without an explicit location.
 - Builds version-aware next and previous pagination URLs through `HttpContext.PageUrl(...)`.
 - Supports explicit version pins when cross-version links are intentional.
 - Requires no additional service registration beyond normal `Asp.Versioning` setup.

@@ -31,6 +31,10 @@ var error = new Error.TransportFault(
 - `AggregateETagExtensions`, `RepresentationMetadata`, `WriteOutcome<T>` — conditional-request and response-shaping helpers shared by server/client packages. The static `WriteOutcome` factory (`WriteOutcome.Updated(value, metadata)`, `Created(...)`, …) returns the base `WriteOutcome<T>`, so write results bind the `Result<WriteOutcome<T>>` response overloads without a cast.
 - `Error.TransportFault(ITransportFault)` integration via `HttpError : ITransportFault`.
 
+`WriteOutcome.Created(value)` leaves its optional location to the HTTP boundary.
+`Trellis.Asp` can generate it through the endpoint builder; explicit outcome locations
+take precedence, and without either source the 201 response omits Location.
+
 ## Documentation
 
 - [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-http-abstractions.html)

@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Http.Abstractions.Tests;
 
+using System.Reflection;
 using Trellis.Testing;
 
 /// <summary>
@@ -11,6 +12,47 @@ using Trellis.Testing;
 public class WriteOutcomeTests
 {
     private sealed record Doc(int Id);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Created_PublicSignatures_LocationIsNullableAndOptional(bool factory)
+    {
+        var parameter = factory
+            ? typeof(WriteOutcome).GetMethod(nameof(WriteOutcome.Created))!.GetParameters()[1]
+            : typeof(WriteOutcome<Doc>.Created).GetConstructors().Single().GetParameters()[1];
+
+        parameter.IsOptional.Should().BeTrue();
+        parameter.DefaultValue.Should().BeNull();
+        new NullabilityInfoContext().Create(parameter).ReadState.Should().Be(NullabilityState.Nullable);
+    }
+
+    [Fact]
+    public void Created_FactoryWithoutLocation_PreservesPayloadAndNamedMetadata()
+    {
+        var doc = new Doc(1);
+        var metadata = RepresentationMetadata.WithStrongETag("created");
+
+        var outcome = WriteOutcome.Created(doc, metadata: metadata);
+
+        var created = outcome.Should().BeOfType<WriteOutcome<Doc>.Created>().Subject;
+        created.Value.Should().BeSameAs(doc);
+        created.Location.Should().BeNull();
+        created.Metadata.Should().BeSameAs(metadata);
+    }
+
+    [Fact]
+    public void Created_RecordWithoutLocation_PreservesPayloadAndNamedMetadata()
+    {
+        var doc = new Doc(1);
+        var metadata = RepresentationMetadata.WithStrongETag("created");
+
+        var created = new WriteOutcome<Doc>.Created(doc, Metadata: metadata);
+
+        created.Value.Should().BeSameAs(doc);
+        created.Location.Should().BeNull();
+        created.Metadata.Should().BeSameAs(metadata);
+    }
 
     [Fact]
     public void Created_returns_base_typed_case_with_payload()

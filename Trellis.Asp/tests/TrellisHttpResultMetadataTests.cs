@@ -130,7 +130,11 @@ public sealed class TrellisHttpResultMetadataTests
 
         var statuses = builder.Metadata.OfType<IProducesResponseTypeMetadata>()
             .Select(m => m.StatusCode).ToHashSet();
-        statuses.Should().Contain([200, 201, 204, 202, 400, 412]);
+        statuses.Should().Contain([200, 201, 204, 202, 400, 412, 500]);
+        var locationFailure = builder.Metadata.OfType<IProducesResponseTypeMetadata>()
+            .Single(metadata => metadata.StatusCode == 500);
+        locationFailure.Type.Should().Be<Microsoft.AspNetCore.Mvc.ProblemDetails>();
+        locationFailure.ContentTypes.Should().Equal(["application/problem+json"]);
     }
 
     [Fact]
