@@ -117,8 +117,7 @@ using Trellis.PrimitiveValueObjectGenerator;
 ///     {
 ///         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity("CustomerId.TryCreate");
 ///         var field = fieldName.NormalizeFieldName("customerId");
-///         return Result.EnsureNotNull(requiredGuidOrNothing,
-///             () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = "Customer Id cannot be empty." }})))
+///         return Result.EnsureNotNull(requiredGuidOrNothing, field, "Customer Id cannot be empty.")
 ///             .Ensure(x =&gt; x != Guid.Empty, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = "Customer Id cannot be empty." }})))
 ///             .Map(guid =&gt; new CustomerId(guid));
 ///     }
@@ -770,8 +769,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = Result.EnsureNotNull(requiredGuidOrNothing,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){emptyNullableEnsure};
+            var validated = Result.EnsureNotNull(requiredGuidOrNothing, field, ""{g.ClassName.SplitPascalCase()} cannot be empty.""){emptyNullableEnsure};
             if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;{vaInit}
@@ -787,8 +785,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             Guid parsedGuid = default;
-            var validated = Result.EnsureNotNull(stringOrNull,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
+            var validated = Result.EnsureNotNull(stringOrNull, field, ""{g.ClassName.SplitPascalCase()} cannot be empty."")
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => Guid.TryParse(x, out parsedGuid), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatGuid) {{ Detail = ""Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"" }}))){emptyParsedEnsure};
             if (validated.IsSuccess)
@@ -1218,8 +1215,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = Result.EnsureNotNull(valueOrNothing,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){notDefaultNullableEnsure}
+            var validated = Result.EnsureNotNull(valueOrNothing, field, ""{g.ClassName.SplitPascalCase()} cannot be empty.""){notDefaultNullableEnsure}
                 .Ensure(x => x >= {rangeMin}{literalSuffix}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeMin}{literalSuffix})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."" }})))
                 .Ensure(x => x <= {rangeMax}{literalSuffix}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {rangeMax}{literalSuffix})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {rangeMax}."" }})));
             if (validated.TryGetValue(out var value))
@@ -1237,8 +1233,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             {primitiveType} {parsedName} = 0;
-            var validated = Result.EnsureNotNull(stringOrNull,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
+            var validated = Result.EnsureNotNull(stringOrNull, field, ""{g.ClassName.SplitPascalCase()} cannot be empty."")
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => {primitiveType}.TryParse(x, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out {parsedName}), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid {description}."" }}))){notDefaultParsedEnsure}
                 .Ensure(_ => {parsedName} >= {rangeMin}{literalSuffix}, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {rangeMin}{literalSuffix})) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {rangeMin}."" }})))
@@ -1289,8 +1284,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = Result.EnsureNotNull(valueOrNothing,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){notDefaultNullableEnsure};
+            var validated = Result.EnsureNotNull(valueOrNothing, field, ""{g.ClassName.SplitPascalCase()} cannot be empty.""){notDefaultNullableEnsure};
             if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;{vaInit}
@@ -1306,8 +1300,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             {primitiveType} {parsedName} = 0;
-            var validated = Result.EnsureNotNull(stringOrNull,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
+            var validated = Result.EnsureNotNull(stringOrNull, field, ""{g.ClassName.SplitPascalCase()} cannot be empty."")
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => {primitiveType}.TryParse(x, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out {parsedName}), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatInteger) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid {description}."" }}))){notDefaultParsedEnsure};
             if (validated.IsSuccess)
@@ -1496,8 +1489,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = Result.EnsureNotNull(valueOrNothing,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){notDefaultNullableEnsure}
+            var validated = Result.EnsureNotNull(valueOrNothing, field, ""{g.ClassName.SplitPascalCase()} cannot be empty.""){notDefaultNullableEnsure}
                 .Ensure(x => x >= {minStr}m, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {minStr}m)) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {minStr}."" }})))
                 .Ensure(x => x <= {maxStr}m, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMaxCode}, ValidationArgs.Of(""comparisonValue"", {maxStr}m)) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at most {maxStr}."" }})));
             if (validated.TryGetValue(out var value))
@@ -1515,8 +1507,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             decimal parsedDecimal = 0m;
-            var validated = Result.EnsureNotNull(stringOrNull,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
+            var validated = Result.EnsureNotNull(stringOrNull, field, ""{g.ClassName.SplitPascalCase()} cannot be empty."")
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => decimal.TryParse(x, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out parsedDecimal), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatDecimal) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid decimal."" }}))){notDefaultParsedEnsure}
                 .Ensure(_ => parsedDecimal >= {minStr}m, _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), {rangeMinCode}, ValidationArgs.Of(""comparisonValue"", {minStr}m)) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be at least {minStr}."" }})))
@@ -1567,8 +1558,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = Result.EnsureNotNull(valueOrNothing,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){notDefaultNullableEnsure}{signCheck.nullableEnsure};
+            var validated = Result.EnsureNotNull(valueOrNothing, field, ""{g.ClassName.SplitPascalCase()} cannot be empty.""){notDefaultNullableEnsure}{signCheck.nullableEnsure};
             if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;{vaInit}
@@ -1584,8 +1574,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             decimal parsedDecimal = 0m;
-            var validated = Result.EnsureNotNull(stringOrNull,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
+            var validated = Result.EnsureNotNull(stringOrNull, field, ""{g.ClassName.SplitPascalCase()} cannot be empty."")
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => decimal.TryParse(x, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out parsedDecimal), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatDecimal) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid decimal."" }}))){notDefaultParsedEnsure}{signCheck.parsedEnsure};
             if (validated.IsSuccess)
@@ -1732,8 +1721,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = Result.EnsureNotNull(valueOrNothing,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})));
+            var validated = Result.EnsureNotNull(valueOrNothing, field, ""{g.ClassName.SplitPascalCase()} cannot be empty."");
             if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;{vaInit}
@@ -1749,8 +1737,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             bool parsedBool = false;
-            var validated = Result.EnsureNotNull(stringOrNull,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
+            var validated = Result.EnsureNotNull(stringOrNull, field, ""{g.ClassName.SplitPascalCase()} cannot be empty."")
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => bool.TryParse(x, out parsedBool), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatBoolean) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid boolean (true or false)."" }})));
             if (validated.IsSuccess)
@@ -1866,8 +1853,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = Result.EnsureNotNull(valueOrNothing,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){notDefaultNullableEnsure};
+            var validated = Result.EnsureNotNull(valueOrNothing, field, ""{g.ClassName.SplitPascalCase()} cannot be empty.""){notDefaultNullableEnsure};
             if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;{vaInit}
@@ -1883,8 +1869,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             DateTime parsedDateTime = default;
-            var validated = Result.EnsureNotNull(stringOrNull,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
+            var validated = Result.EnsureNotNull(stringOrNull, field, ""{g.ClassName.SplitPascalCase()} cannot be empty."")
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => DateTime.TryParse(x, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out parsedDateTime), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatDateTime) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid date/time."" }}))){notDefaultParsedEnsure};
             if (validated.IsSuccess)
@@ -1993,8 +1978,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         {{
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
-            var validated = Result.EnsureNotNull(valueOrNothing,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }}))){notDefaultNullableEnsure};
+            var validated = Result.EnsureNotNull(valueOrNothing, field, ""{g.ClassName.SplitPascalCase()} cannot be empty.""){notDefaultNullableEnsure};
             if (validated.TryGetValue(out var value))
             {{
                 string? additionalError = null;{vaInit}
@@ -2010,8 +1994,7 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
             using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(""{g.ClassName}.TryCreate"");
             var field = fieldName.NormalizeFieldName(""{g.ClassName.ToCamelCase()}"");
             DateTimeOffset parsedDateTimeOffset = default;
-            var validated = Result.EnsureNotNull(stringOrNull,
-                () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
+            var validated = Result.EnsureNotNull(stringOrNull, field, ""{g.ClassName.SplitPascalCase()} cannot be empty."")
                 .Ensure(x => !string.IsNullOrWhiteSpace(x), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotEmpty) {{ Detail = ""{g.ClassName.SplitPascalCase()} cannot be empty."" }})))
                 .Ensure(x => DateTimeOffset.TryParse(x, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out parsedDateTimeOffset), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatDateTime) {{ Detail = ""{g.ClassName.SplitPascalCase()} must be a valid date/time with offset."" }}))){notDefaultParsedEnsure};
             if (validated.IsSuccess)

@@ -182,5 +182,5 @@ public static class TrellisDiagnosticIds
     public const string ProducesClobbersProblemDetails = "TRLS065";
 
     /// <summary>TRLS066 — <c>Result.Ensure(x is not null, error)</c> hand-rolls what <c>Result.EnsureNotNull(x, error)</c> already does for a nullable reference or value.</summary>
-    public const string UseToResultForNullable = "TRLS066";
+    public const string UseEnsureNotNullForNullable = "TRLS066";
 }

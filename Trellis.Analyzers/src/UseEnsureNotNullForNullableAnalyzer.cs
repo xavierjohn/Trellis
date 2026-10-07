@@ -14,14 +14,14 @@ using Microsoft.CodeAnalysis.Operations;
 /// The two are not interchangeable in type: <c>Result.Ensure</c> yields <c>Result&lt;Unit&gt;</c> and
 /// <c>Result.EnsureNotNull</c> yields <c>Result&lt;T&gt;</c> carrying the non-null value. Reporting is therefore separate from
 /// fixing: the rule reports every pure null test over a nullable value, and
-/// <see cref="UseToResultForNullableCodeFixProvider"/> offers a rewrite only where it can prove the payload is discarded.
+/// <see cref="UseEnsureNotNullForNullableCodeFixProvider"/> offers a rewrite only where it can prove the payload is discarded.
 /// </para>
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class UseToResultForNullableAnalyzer : DiagnosticAnalyzer
+public sealed class UseEnsureNotNullForNullableAnalyzer : DiagnosticAnalyzer
 {
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        [DiagnosticDescriptors.UseToResultForNullable];
+        [DiagnosticDescriptors.UseEnsureNotNullForNullable];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -50,7 +50,7 @@ public sealed class UseToResultForNullableAnalyzer : DiagnosticAnalyzer
         if (error is not null && IsConditionalError(error))
             return;
 
-        context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.UseToResultForNullable, syntax.GetLocation()));
+        context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.UseEnsureNotNullForNullable, syntax.GetLocation()));
     }
 
     internal static bool IsResultEnsureWithFlag(IInvocationOperation invocation) =>

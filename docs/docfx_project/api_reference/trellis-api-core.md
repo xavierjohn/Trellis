@@ -2973,6 +2973,12 @@ Core-owned trace source used by generated `Required*<TSelf>` value objects and c
 
 The incremental generator at `Trellis.Core/generator/RequiredPartialClassGenerator.cs` (bundled inside `Trellis.Core.nupkg` at `analyzers/dotnet/cs/Trellis.Core.Generator.dll`) augments partial classes that inherit a `Required*<TSelf>` base type.
 
+Generated Guid, numeric, boolean, and date/time nullable-input factories use
+`Result.EnsureNotNull(value, field, detail)`: the standard required-field error is
+created only when the input is null. The normalized field, `value.not-null` code,
+and existing type-specific detail are preserved; later empty, parse, range, and
+custom-validation checks keep their existing lazy factories.
+
 #### `RequiredString<TSelf>`
 
 ```csharp

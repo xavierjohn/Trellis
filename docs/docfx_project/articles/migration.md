@@ -195,8 +195,12 @@ sources, and null Task receivers report `ArgumentNullException` naming `task`.
 With valid arguments, source faults/cancellation still propagate without invoking
 the error factory. Activities are named `EnsureNotNull`.
 
-TRLS066 now fixes to the static guard while keeping its ID and historical tooling
-names. Rebuild consumers so generated Required primitives use the new guard API.
+TRLS066 now fixes to the static guard while keeping its diagnostic ID and severity
+settings. Public tooling uses `UseEnsureNotNullForNullableAnalyzer`,
+`UseEnsureNotNullForNullableCodeFixProvider`, and `UseEnsureNotNullForNullable`
+for the descriptor and ID constant; the old names have no aliases.
+Rebuild consumers so generated Required primitives use the new guard API and its
+already-lazy field/detail overload.
 See [Choosing a Result entry point](../api_reference/trellis-api-core.md#choosing-a-result-entry-point).
 
 ### Non-generic Result removed (ADR-005)

@@ -4,7 +4,7 @@
 /// Self-contained Trellis surface for TRLS066 tests: <c>Result.Ensure</c> (returning <c>Result&lt;Unit&gt;</c>),
 /// static <c>Result.EnsureNotNull</c> on nullable references and values, and <c>Combine</c>/<c>Map</c>/<c>Bind</c> over tuples.
 /// </summary>
-public static class UseToResultForNullableTestStubs
+public static class UseEnsureNotNullForNullableTestStubs
 {
     public const string Source = """
         #nullable enable

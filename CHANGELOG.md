@@ -19,8 +19,12 @@ conversion APIs are unchanged.
 
 TRLS003/TRLS007 now recommend `maybe.ToResult(error)` explicitly. TRLS066 and its
 code fix recommend static `Result.EnsureNotNull`, retaining the diagnostic ID,
-public tooling names, discarded-slot checks, semantic rebinding, and comments.
-Primitive generators and shipped examples emit the new guard shape. Compiler
+discarded-slot checks, semantic rebinding, and comments. Public tooling names now
+match the guard: `UseEnsureNotNullForNullableAnalyzer`,
+`UseEnsureNotNullForNullableCodeFixProvider`, and `UseEnsureNotNullForNullable`
+for the descriptor and ID constant. No old-name aliases are retained.
+Primitive generators use the lazy field/detail guard instead of hand-building
+required-field errors, and shipped examples emit the new guard shape. Compiler
 regressions reject retired inferred calls and preserve the full Maybe conversion family.
 
 Async guard factories are validated before awaiting; the retired nullable conversions
@@ -93,10 +97,10 @@ are unchanged. Private `ExistenceHidden` diagnostics retain the original input k
 
 ### Added — `TRLS066`: use a value-returning guard for a nullable value
 
-`UseToResultForNullableAnalyzer` (Info) flags `Result.Ensure(x is not null, error)` — also `x != null` and
+`UseEnsureNotNullForNullableAnalyzer` (Info) flags `Result.Ensure(x is not null, error)` — also `x != null` and
 `x is { }` — over a nullable reference or `Nullable<T>`, and suggests `Result.EnsureNotNull(x, error)`, which returns the
 non-null value as a `Result<T>` instead of a discarded `Unit` and so removes the `!` suppressions that follow.
-`UseToResultForNullableCodeFixProvider` rewrites the call only where it is an operand of a Trellis `Combine` chain
+`UseEnsureNotNullForNullableCodeFixProvider` rewrites the call only where it is an operand of a Trellis `Combine` chain
 whose type-erasing consumer (`Map`/`Bind`) has a lambda that ignores that tuple slot, so the change of payload type (`Result<Unit>` to `Result<T>`)
 is not observable; every other position keeps the diagnostic without a fix. `Combine` still accumulates every failure, so multi-field validation keeps reporting all
 missing fields at once. WRONG/FIX shapes: `trellis-api-anti-patterns.md` → TRLS066.

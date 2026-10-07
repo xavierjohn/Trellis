@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using SourceGenerator;
 
 public class RequiredPartialClassGeneratorCollisionTests
@@ -181,6 +182,54 @@ public class RequiredPartialClassGeneratorCollisionTests
         generated.Should().Contain("public static CleanId NewUniqueV7() =>");
         generated.Should().Contain("Result.EnsureNotNull(");
         generated.Should().NotContain(".ToResult(");
+    }
+
+    [Theory]
+    [InlineData("RequiredGuid", "")]
+    [InlineData("RequiredInt", "")]
+    [InlineData("RequiredInt", "[Range(1, 10)]")]
+    [InlineData("RequiredLong", "")]
+    [InlineData("RequiredLong", "[Range(1L, 10L)]")]
+    [InlineData("RequiredDecimal", "")]
+    [InlineData("RequiredDecimal", "[Range(1, 10)]")]
+    [InlineData("RequiredBool", "")]
+    [InlineData("RequiredDateTime", "")]
+    [InlineData("RequiredDateTimeOffset", "")]
+    public void Generate_NullableInputs_UsesRequiredFieldGuard(string baseName, string attributes)
+    {
+        var source = $$"""
+            using Trellis;
+
+            namespace Demo;
+
+            {{attributes}}
+            public sealed partial class GeneratedValue : {{baseName}}<GeneratedValue>
+            {
+            }
+            """;
+
+        var run = RunGenerator(source, TestContext.Current.CancellationToken);
+
+        CompilationDiagnostics(run).Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
+        var guards = run.RunResult.GeneratedTrees.Should().ContainSingle().Which
+            .GetRoot(TestContext.Current.CancellationToken).DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .Where(invocation => invocation.Expression is MemberAccessExpressionSyntax
+            {
+                Expression: IdentifierNameSyntax { Identifier.ValueText: "Result" },
+                Name.Identifier.ValueText: "EnsureNotNull"
+            })
+            .ToArray();
+
+        guards.Should().HaveCount(2);
+        foreach (var guard in guards)
+        {
+            var arguments = guard.ArgumentList.Arguments;
+            arguments.Should().HaveCount(3);
+            arguments[1].Expression.ToString().Should().Be("field");
+            arguments[2].Expression.Should().BeOfType<LiteralExpressionSyntax>()
+                .Which.Token.ValueText.Should().Be("Generated Value cannot be empty.");
+        }
     }
 
     private static GeneratorRun RunGenerator(string source, CancellationToken cancellationToken)

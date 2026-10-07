@@ -410,9 +410,13 @@ receivers now report `ArgumentNullException` with parameter `task`. Valid-source
 faults and cancellation still propagate without invoking a lazy error factory.
 Guard activities are named `EnsureNotNull`.
 
-TRLS066 now suggests and fixes to the static guard. Its ID and historical public
-analyzer/provider/descriptor names remain unchanged. Rebuild consumers using
-generated Required primitives so their generated code uses the new guard API.
+TRLS066 now suggests and fixes to the static guard. Its diagnostic ID remains
+`TRLS066`, so severity settings and suppressions are unchanged. Tooling that
+references the analyzer assembly must use `UseEnsureNotNullForNullableAnalyzer`,
+`UseEnsureNotNullForNullableCodeFixProvider`, and `UseEnsureNotNullForNullable`
+for the descriptor and ID constant; no old-name aliases are retained.
+Rebuild consumers using generated Required primitives so their generated code uses
+the new guard API and its already-lazy field/detail overload.
 
 ---
 

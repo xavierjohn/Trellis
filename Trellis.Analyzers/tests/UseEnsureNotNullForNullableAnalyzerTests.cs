@@ -1,14 +1,17 @@
 ﻿namespace Trellis.Analyzers.Tests;
 
+using System.Reflection;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 
 /// <summary>
-/// Tests for <see cref="UseToResultForNullableAnalyzer"/> and <see cref="UseToResultForNullableCodeFixProvider"/> (TRLS066).
+/// Tests for <see cref="UseEnsureNotNullForNullableAnalyzer"/> and <see cref="UseEnsureNotNullForNullableCodeFixProvider"/> (TRLS066).
 /// </summary>
-public class UseToResultForNullableAnalyzerTests
+public class UseEnsureNotNullForNullableAnalyzerTests
 {
     private const string Header = """
         #nullable enable
@@ -26,34 +29,53 @@ public class UseToResultForNullableAnalyzerTests
 
     private static string Wrap(string members) => Header + members + "\n}\n";
 
-    private static CSharpAnalyzerTest<UseToResultForNullableAnalyzer, DefaultVerifier> AnalyzerTest(string source, params DiagnosticResult[] expected)
+    private static CSharpAnalyzerTest<UseEnsureNotNullForNullableAnalyzer, DefaultVerifier> AnalyzerTest(string source, params DiagnosticResult[] expected)
     {
-        var test = new CSharpAnalyzerTest<UseToResultForNullableAnalyzer, DefaultVerifier>
+        var test = new CSharpAnalyzerTest<UseEnsureNotNullForNullableAnalyzer, DefaultVerifier>
         {
             TestCode = source,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         };
-        test.TestState.Sources.Add(("Stubs.cs", UseToResultForNullableTestStubs.Source));
+        test.TestState.Sources.Add(("Stubs.cs", UseEnsureNotNullForNullableTestStubs.Source));
         test.ExpectedDiagnostics.AddRange(expected);
         return test;
     }
 
-    private static CSharpCodeFixTest<UseToResultForNullableAnalyzer, UseToResultForNullableCodeFixProvider, DefaultVerifier> FixTest(
+    private static CSharpCodeFixTest<UseEnsureNotNullForNullableAnalyzer, UseEnsureNotNullForNullableCodeFixProvider, DefaultVerifier> FixTest(
         string source, string fixedSource)
     {
-        var test = new CSharpCodeFixTest<UseToResultForNullableAnalyzer, UseToResultForNullableCodeFixProvider, DefaultVerifier>
+        var test = new CSharpCodeFixTest<UseEnsureNotNullForNullableAnalyzer, UseEnsureNotNullForNullableCodeFixProvider, DefaultVerifier>
         {
             TestCode = source,
             FixedCode = fixedSource,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         };
-        test.TestState.Sources.Add(("Stubs.cs", UseToResultForNullableTestStubs.Source));
-        test.FixedState.Sources.Add(("Stubs.cs", UseToResultForNullableTestStubs.Source));
+        test.TestState.Sources.Add(("Stubs.cs", UseEnsureNotNullForNullableTestStubs.Source));
+        test.FixedState.Sources.Add(("Stubs.cs", UseEnsureNotNullForNullableTestStubs.Source));
         return test;
     }
 
     private static DiagnosticResult Expect(int location) =>
-        new DiagnosticResult(DiagnosticDescriptors.UseToResultForNullable).WithLocation(location);
+        new DiagnosticResult(DiagnosticDescriptors.UseEnsureNotNullForNullable).WithLocation(location);
+
+    [Fact]
+    public void PublicSurface_TRLS066_UsesEnsureNotNullNames()
+    {
+        var assembly = typeof(DiagnosticDescriptors).Assembly;
+        Assert.NotNull(assembly.GetType("Trellis.Analyzers.UseEnsureNotNullForNullableAnalyzer"));
+        var provider = assembly.GetType("Trellis.Analyzers.UseEnsureNotNullForNullableCodeFixProvider");
+        Assert.NotNull(provider);
+        var export = provider.GetCustomAttribute<ExportCodeFixProviderAttribute>();
+        Assert.NotNull(export);
+        Assert.Equal("UseEnsureNotNullForNullableCodeFixProvider", export.Name);
+
+        var id = typeof(TrellisDiagnosticIds).GetField("UseEnsureNotNullForNullable");
+        Assert.NotNull(id);
+        Assert.Equal("TRLS066", id.GetRawConstantValue());
+        var field = typeof(DiagnosticDescriptors).GetField("UseEnsureNotNullForNullable");
+        Assert.NotNull(field);
+        Assert.Equal("TRLS066", Assert.IsType<DiagnosticDescriptor>(field.GetValue(null)).Id);
+    }
 
     [Fact]
     public async Task CombineOfNullChecks_Fix_UsesStaticEnsureNotNullForErrorAndFactory()

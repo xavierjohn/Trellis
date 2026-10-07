@@ -709,7 +709,8 @@ Result.EnsureNotNull(title, "title", "Title is required.")
 
 `EnsureNotNullAsync` extends `Task<T?>` and `ValueTask<T?>`; continue those chains with
 `CombineAsync` / `MapAsync`. The TRLS066 code fix emits `Result.EnsureNotNull`;
-the historical analyzer/provider names and diagnostic ID stay unchanged. The old
+its analyzer/provider names now match the guard, while diagnostic ID `TRLS066`
+stays unchanged. The old
 nullable `ToResult` APIs are removed. Do not apply a null-only guard to one of the
 compound/type-testing conditions above.
 

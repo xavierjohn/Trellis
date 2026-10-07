@@ -422,8 +422,8 @@ public static class DiagnosticDescriptors
     /// <summary>
     /// TRLS066: <c>Result.Ensure(x is not null, error)</c> where <c>Result.EnsureNotNull(x, error)</c> carries the value.
     /// </summary>
-    public static readonly DiagnosticDescriptor UseToResultForNullable = new(
-        id: TrellisDiagnosticIds.UseToResultForNullable,
+    public static readonly DiagnosticDescriptor UseEnsureNotNullForNullable = new(
+        id: TrellisDiagnosticIds.UseEnsureNotNullForNullable,
         title: "Use Result.EnsureNotNull(value, error) to guard a nullable value",
         messageFormat: "Use Result.EnsureNotNull(value, error) to guard a nullable value",
         category: Category,

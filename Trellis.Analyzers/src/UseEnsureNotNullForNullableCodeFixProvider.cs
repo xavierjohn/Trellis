@@ -27,14 +27,14 @@ using Microsoft.CodeAnalysis.Operations;
 /// after each replacement rather than merging independently validated edits.
 /// </para>
 /// </remarks>
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(UseToResultForNullableCodeFixProvider))]
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(UseEnsureNotNullForNullableCodeFixProvider))]
 [Shared]
-public sealed class UseToResultForNullableCodeFixProvider : CodeFixProvider
+public sealed class UseEnsureNotNullForNullableCodeFixProvider : CodeFixProvider
 {
     private const string Title = "Use Result.EnsureNotNull(value, error)";
 
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        [DiagnosticDescriptors.UseToResultForNullable.Id];
+        [DiagnosticDescriptors.UseEnsureNotNullForNullable.Id];
 
     public override FixAllProvider GetFixAllProvider() =>
         FixAllProvider.Create(static (context, document, diagnostics) =>
@@ -105,11 +105,11 @@ public sealed class UseToResultForNullableCodeFixProvider : CodeFixProvider
             return null;
 
         if (model.GetOperation(ensure, cancellationToken) is not IInvocationOperation operation
-            || !UseToResultForNullableAnalyzer.IsResultEnsureWithFlag(operation))
+            || !UseEnsureNotNullForNullableAnalyzer.IsResultEnsureWithFlag(operation))
             return null;
 
         var flag = operation.Arguments.FirstOrDefault(static a => a.Parameter?.Ordinal == 0)?.Value;
-        if (flag is null || UseToResultForNullableAnalyzer.NullCheckedOperand(flag)?.Syntax is not ExpressionSyntax receiver)
+        if (flag is null || UseEnsureNotNullForNullableAnalyzer.NullCheckedOperand(flag)?.Syntax is not ExpressionSyntax receiver)
             return null;
 
         if (FindDiscardingConsumer(ensure, model, cancellationToken) is not { } consumer)
