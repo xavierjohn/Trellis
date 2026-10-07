@@ -59,9 +59,16 @@ public static class AntiPatternFixes
     // ─── TRLS019 — default(Result) / default(Maybe<T>) ─────────────────────
     public static Result<Unit> TRLS019_FixResult() => Result.Ok();
     public static Maybe<EmailAddress> TRLS019_FixMaybe() => Maybe<EmailAddress>.None;
+
+    public static Result<CreateTodoCommand> TRLS066_Fix(string? title, DateTime? dueDate, string tag) =>
+        Result.EnsureNotNull(title, static () => Error.InvalidInput.ForField(code: "required", field: "title", detail: "Title is required."))
+            .Combine(Result.EnsureNotNull(dueDate, static () => Error.InvalidInput.ForField(code: "required", field: "dueDate", detail: "Due date is required.")))
+            .Map((title, dueDate) => new CreateTodoCommand(title, dueDate, tag));
 #pragma warning restore CA1707
 
     // Helpers used above — minimal stubs.
     private static Result<OrderId> PlaceOrder(object cmd) => Result.Fail<OrderId>(new Error.NotFound(ResourceRef.For<Order>()));
     private static void SendEmail(EmailAddress _) { }
 }
+
+public sealed record CreateTodoCommand(string Title, DateTime DueDate, string Tag);

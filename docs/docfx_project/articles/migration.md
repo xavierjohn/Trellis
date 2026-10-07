@@ -2,13 +2,16 @@
 title: Migrating from v2 to v3
 package: Trellis (multiple)
 topics: [migration, breaking-changes, v2-to-v3, result-unit, error-adt, package-renames]
-related_api_reference: [trellis-api-core.md, trellis-api-asp.md, trellis-api-mediator.md, trellis-api-http.md, trellis-api-statemachine.md, trellis-api-analyzers.md]
+related_api_reference: [trellis-api-migration.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-mediator.md, trellis-api-http.md, trellis-api-statemachine.md, trellis-api-analyzers.md]
 last_verified: 2026-05-18
 audience: [developer]
 ---
 # Migrating from v2 to v3
 
-A package- and namespace-rename combined with a tightened public surface. Per-package "Breaking changes from v1" sections in `api_reference/` are the authoritative source of truth; this guide is the cross-cutting index and the recommended migration order.
+A package- and namespace-rename combined with a tightened public surface. The
+[migration reference](../api_reference/trellis-api-migration.md#core-and-package-migration)
+and per-package migration sections are the authoritative diffs; this guide is the
+cross-cutting index and the recommended migration order.
 
 > [!NOTE]
 > **Version-label key.** The previous public release line was published as `FunctionalDdd.*` packages (last GA: `2.1`). v3 ships as the renamed `Trellis.*` packages. Sections below sometimes use "v1" and "v2" as internal shorthand for transitional Trellis development surfaces during the rename; in terms of *public* releases, treat the v1→v2 transitions in this guide as the canonical FunctionalDdd 2.x → Trellis 3.0 upgrade path.
@@ -66,15 +69,15 @@ This page focuses on the public FunctionalDdd 2.x → Trellis 3.0 jump. For rele
 
 | Category | What changed | Authoritative diff |
 |---|---|---|
-| Result factories | `Success`/`Failure` renamed to `Ok`/`Fail`; deferred / conditional / exception factories removed | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
-| Result accessors | `.Value` getter removed; `.Error` is `Error?` and never throws | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
-| Implicit conversions | Removed on `Result<T>`; explicit factory required | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
-| Non-generic `Result` instance type | Removed; use `Result<Unit>`. `Result` is now a static factory class only. | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1), [ADR-005](../adr/ADR-005-reintroduce-unit.md) |
-| `Error` model | Open `class` + 18 subclasses + static factories → closed 12-case domain union + `Error.TransportFault` boundary case | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
-| Removed extensions | `MatchError`, `FlattenValidationErrors`, `Error.Instance` field | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
-| Package merges | DDD, Primitives generator, Asp source generator, EF Core generator, Asp authorization | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
-| `WriteOutcome<T>` move | `Trellis.Asp.WriteOutcome<T>` → `Trellis.WriteOutcome<T>` (in `Trellis.Core`) | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
-| Test helper namespace | `Trellis.Results.Tests.*` → `Trellis.Core.Tests.*` | [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) |
+| Result factories | `Success`/`Failure` renamed to `Ok`/`Fail`; deferred / conditional / exception factories removed | [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration) |
+| Result accessors | `.Value` getter removed; `.Error` is `Error?` and never throws | [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration) |
+| Implicit conversions | Removed on `Result<T>`; explicit factory required | [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration) |
+| Non-generic `Result` instance type | Removed; use `Result<Unit>`. `Result` is now a static factory class only. | [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration), [ADR-005](../adr/ADR-005-reintroduce-unit.md) |
+| `Error` model | Open `class` + 18 subclasses + static factories → closed 12-case domain union + `Error.TransportFault` boundary case | [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration) |
+| Removed extensions | `MatchError`, `FlattenValidationErrors`, `Error.Instance` field | [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration) |
+| Package merges | DDD, Primitives generator, Asp source generator, EF Core generator, Asp authorization | [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration) |
+| `WriteOutcome<T>` move | `Trellis.Asp.WriteOutcome<T>` → `Trellis.WriteOutcome<T>` (in `Trellis.Core`) | [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration) |
+| Test helper namespace | `Trellis.Results.Tests.*` → `Trellis.Core.Tests.*` | [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration) |
 | HTTP surface | 60+ overloads collapsed to one static class with seven methods; all sync removed; new disposal contract | [`trellis-api-http.md` → Breaking changes from v1](../api_reference/trellis-api-http.md#breaking-changes-from-v1) |
 | State machine | Package and namespace renamed `Trellis.Stateless` → `Trellis.StateMachine`; public surface otherwise identical | [`trellis-api-statemachine.md` → Breaking changes from v1](../api_reference/trellis-api-statemachine.md#breaking-changes-from-v1) |
 | Analyzer IDs | `TRLSGEN001`–`TRLSGEN103` renamed to `TRLS031`–`TRLS038` | [`trellis-api-analyzers.md`](../api_reference/trellis-api-analyzers.md) |
@@ -84,7 +87,7 @@ This page focuses on the public FunctionalDdd 2.x → Trellis 3.0 jump. For rele
 
 ## Result and Error renames (Trellis.Core)
 
-The full row-by-row diff (with migration notes) lives in [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1). Headlines below.
+The full row-by-row diff lives in [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration). Headlines below.
 
 ### Renamed factories
 
@@ -258,7 +261,7 @@ Two cross-cutting changes affect ASP consumers:
 - **`WriteOutcome<T>` moved to `Trellis.Core`.** The type, its case records, and member shapes are unchanged; only the assembly and namespace move. Replace `using Trellis.Asp;` with `using Trellis;` for any file that names `WriteOutcome<T>` directly. ASP-specific HTTP mapping stays in `Trellis.Asp` via `ToHttpResponse(...)` / `ToHttpResponseAsync(...)` and the typed MVC adapters `AsActionResult<T>()` / `AsActionResultAsync<T>()`.
 - **`Trellis.Asp.Authorization` package was folded into `Trellis.Asp.nupkg`.** The actor providers (`ClaimsActorProvider`, `EntraActorProvider`, `DevelopmentActorProvider`, `CachingActorProvider`) and the `AddTrellisAspAuthorization()` extension are unchanged; the namespace stays `Trellis.Asp.Authorization`. Drop the standalone `PackageReference`. `Trellis.Asp` now transitively brings in `Trellis.Authorization`.
 
-Both rows are documented in [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1) (the `WriteOutcome` move and the package-merge entries). The current ASP API surface lives in [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md).
+Both rows are documented in [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration) (the `WriteOutcome` move and the package-merge entries). The current ASP API surface lives in [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md).
 
 ## Typed ActorId audit fields (Trellis.Authorization)
 
@@ -294,7 +297,7 @@ Behavioral semantics, registration helpers, and the validation-aggregation rule 
 | `Trellis.Asp.Authorization` | _(removed — folded into `Trellis.Asp.nupkg`)_ | Namespace `Trellis.Asp.Authorization` unchanged; actor providers and `AddTrellisAspAuthorization()` are unchanged. |
 | `Trellis.Stateless` | `Trellis.StateMachine` | Namespace also renamed; public surface unchanged. |
 
-Authoritative diff (with `<PackageReference>` snippets): [`trellis-api-core.md` → Breaking changes from v1](../api_reference/trellis-api-core.md#breaking-changes-from-v1).
+Authoritative diff (with `<PackageReference>` snippets): [Core and package migration](../api_reference/trellis-api-migration.md#core-and-package-migration).
 
 > [!NOTE]
 > Earlier predecessors (`FunctionalDdd.RailwayOrientedProgramming`, `FunctionalDdd.DomainDrivenDesign`, `FunctionalDdd.PrimitiveValueObjects`, `FunctionalDdd.Asp`, `FunctionalDdd.Http`, `FunctionalDdd.FluentValidation`, `FunctionalDdd.PrimitiveValueObjectGenerator`) are not part of the v1 → v2 cut and are not documented in the api_reference breaking-changes sections. Treat them as out of scope; rename to the matching v2 package and then apply this guide.

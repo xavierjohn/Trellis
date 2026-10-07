@@ -119,10 +119,6 @@ nupkg
 NotFoundError
 MatchErrorExtensions
 FlattenValidationErrorsExtensions
-SuccessIf
-FailureIf
-SuccessIfAsync
-FailureIfAsync
 
 # --- FluentValidation's own surface, named in the Trellis.FluentValidation args-projection tables.
 # These are third-party API and the projection's rules cannot be explained without naming them; they

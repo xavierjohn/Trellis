@@ -16,13 +16,13 @@ Before writing or changing code that uses Trellis APIs, read the relevant files 
 
 **`docs/docfx_project/api_reference/trellis-start-here.md` is the start file. Read all of it first and keep it resident for the whole session.**
 
-The full reference set is ~301K tokens — it does not fit in context and is not meant to. The router is self-contained: its task-lookup table maps a task to the right recipe, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. It is only ~6K tokens (~23 KB) and is the one `required` document AgentDocs delivers to consumers. The 37 recipe bodies in `trellis-api-cookbook.md` are another ~57K, and a typical task reads one to three of them (~1.25K tokens each).
+The full reference set is larger than a narrow task needs and is not meant to be held in context. The router is self-contained: its task-lookup table maps a task to the right recipe or API section, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. It is the one `required` document AgentDocs delivers to consumers. The 37 recipe bodies in `trellis-api-cookbook.md` are on demand, and a typical end-to-end task reads one to three of them.
 
-**So hold the router, and read recipe bodies on demand.** Holding all 37 bodies costs ~57K tokens permanently to keep ~54K of them that you will not open — more than a quarter of a 200K context spent on content the task never needed. Read a body the moment the router sends you to one; do not work from a recipe's title.
+**So hold the router, and read recipe bodies on demand.** Do not spend context on bodies the task will not use. Read a body the moment the router sends you to one; do not work from a recipe's title. For a focused subtask, use the recipe's section routes and read their complete constraints and solution.
 
 This trade is safe only because the index is a complete map, which **TRLDOC007** enforces: every live recipe is reachable from the router's `## Patterns Index`, and rows are phrased as the reader's task or failure mode rather than the recipe's title. If you find yourself guessing whether a recipe exists, re-read the index rows — do not assume its absence.
 
-Then pull in only the 1–3 area-specific references the router points you at. Do not infer Trellis API behavior from these repository instructions.
+Then pull in only the area-specific references the router points you at. Start at each Patterns Index and read the complete selected API, inherited surface and linked behavioral/preflight sections; expand when the task uses another surface. This does not relax the mandatory package loads below. Do not infer Trellis API behavior from these repository instructions.
 
 If context is too tight to hold the router plus one area reference, you are too tight to write correct Trellis code — say so rather than guessing at API shapes.
 
@@ -38,7 +38,7 @@ Sub-agents are still appropriate for work whose *output* is a verdict rather tha
 
 ### Recommended context size
 
-The reference set is the 27 `*.md` files under `docs/docfx_project/api_reference/` — 25 `trellis-api-*.md` files plus `trellis-value-object-taxonomy.md` and the ~23 KB `trellis-start-here.md` router — totalling ~1,184 KB (~303K tokens); the cookbook alone is ~216 KB (~55K tokens) of recipe bodies, none of which is held resident, while the ~6K-token router is. (`completeness-report.md` sits in the same directory but is a generated audit artifact, not a reference — the lint script therefore scans 28 files.) These figures grow as the docs do — treat them as approximate. Together with framework source needed for cross-checking, project source under edit, and accumulated tool output across a typical 30–50 turn session, the working set is **1.5–2.5 MB**.
+The reference set is the shipped `*.md` files under `docs/docfx_project/api_reference/`, excluding the generated `completeness-report.md`. Only `trellis-start-here.md` is held resident; package sections, cookbook bodies and historical migration guidance are on demand. File sizes and tokenizer costs grow with the APIs, so measure the current files when estimating a context budget rather than relying on a fixed set-wide token claim. Allow room for framework source, project source and tool output as well as the selected references.
 
 | Tier | Context | When this is enough |
 |---|---|---|

@@ -1,4 +1,4 @@
-<#@ template debug="false" hostspecific="false" language="C#" #>
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Text" #>
@@ -44,7 +44,8 @@ public static partial class Result
     /// <remarks>
     /// <para>
     /// This method invokes the factory functions eagerly and returns the created tasks as a tuple.
-    /// The factory pattern prevents sequential evaluation that occurs when passing tasks directly.
+    /// No returned task is awaited here. Already-started tasks can also execute concurrently
+    /// and be combined directly with WhenAllAsync.
     /// </para>
     /// <para>
     /// Any tasks that are created successfully can execute concurrently once started by their factories.
