@@ -163,7 +163,7 @@ sequenceDiagram
     end
 ```
 
-403 always carries a `PolicyId` (the policy identifier the consumer authored) and optionally a `ResourceRef` (which resource the policy was evaluated against). 404 is reserved for the leaf resource genuinely not existing in the single-resource path above; resource-authorization failure on a loaded entity is always 403, never 404. **In multi-hop authorization** the directly identified leaf load failure bubbles verbatim (so a missing leaf can still produce 404); only intermediate hop and terminal owner load failures collapse to 403 to avoid existence leaks across team / owner boundaries — see [Multi-hop resource authorization](#multi-hop-resource-authorization-via-iauthorizeresourceviatowner) for the full sequence.
+The diagram shows the default `Propagate` policy: `Error.Forbidden` maps to 403 with its `PolicyId` and optional resource; leaf-load errors retain their metadata, while intermediate/owner load failures collapse to Forbidden. For sensitive resources, [`HideExistence`](../api_reference/trellis-api-mediator.md#resourceauthorizationoptions) normalizes resource-stage NotFound/Gone/Forbidden/AuthenticationRequired to the same public 404 for missing, removed, and withheld resources. Static `IAuthorize` failures remain outside that policy. See [Recipe 32](../api_reference/trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) and [Multi-hop resource authorization](#multi-hop-resource-authorization-via-iauthorizeresourceviatowner).
 
 ### Cache partitioning across actors
 
@@ -828,7 +828,7 @@ sequenceDiagram
     end
     Behavior->>Auth: Authorize actor and owners
     Auth-->>Behavior: Result Ok or Forbidden
-    Behavior-->>Mediator: Continue, bubble leaf load failure verbatim, or short-circuit hop/rule failures to 403
+    Behavior-->>Mediator: Continue or return failure under the configured exposure policy
 ```
 
 **Sketch:**

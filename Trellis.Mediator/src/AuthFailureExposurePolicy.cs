@@ -8,23 +8,23 @@
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="Propagate"/> is the default for backward compatibility: <c>Forbidden</c> and
+/// <see cref="Propagate"/> is the default: <c>Forbidden</c> and
 /// <c>AuthenticationRequired</c> errors flow through verbatim, and the boundary layer maps
 /// them to HTTP 403 / 401 with the original problem-details payload. This is the right choice
 /// for public resources where existence is not itself sensitive.
 /// </para>
 /// <para>
-/// <see cref="HideAsNotFound"/> translates <c>Error.Forbidden</c> and
-/// <c>Error.AuthenticationRequired</c> to <c>new Error.NotFound(ResourceRef)</c> — the boundary
-/// layer maps the synthetic NotFound to HTTP 404 so an unauthorized actor cannot distinguish
-/// "the resource does not exist" from "the resource exists but you may not access it". Choose
+/// <see cref="HideAsNotFound"/> normalizes <c>Error.NotFound</c>, <c>Error.Gone</c>, <c>Error.Forbidden</c>, and
+/// <c>Error.AuthenticationRequired</c> to the same public <c>Error.NotFound</c>. The boundary
+/// maps it to HTTP 404 with the configured public resource and metadata, without the original
+/// code, detail, resource, or cause. Choose
 /// this for resources whose mere existence reveals information (incident reports, account
 /// records, security findings, internal correspondence, …).
 /// </para>
 /// <para>
-/// Only <c>Error.Forbidden</c> and <c>Error.AuthenticationRequired</c> are translated. Other
-/// errors — <c>Error.Unexpected</c>, <c>Error.Unavailable</c>, <c>Error.NotFound</c> from a
-/// loader, and so on — pass through unchanged. Hiding <c>Error.Unexpected</c> as 404 would
+/// Other direct-resource or via-leaf errors, including <c>Error.Unexpected</c> and
+/// <c>Error.Unavailable</c>, pass through unchanged. Via intermediate/owner load failures
+/// retain their collapse-to-denial behavior. Hiding <c>Error.Unexpected</c> as 404 would
 /// destroy operational signal and lead clients/caches to treat transient failures as
 /// permanent absence.
 /// </para>
@@ -32,15 +32,15 @@
 public enum AuthFailureExposurePolicy
 {
     /// <summary>
-    /// Pass <c>Error.Forbidden</c> and <c>Error.AuthenticationRequired</c> through to the
-    /// boundary layer verbatim. Default for backward compatibility.
+    /// Preserve resource-stage error metadata. Via intermediate/owner load failures still
+    /// collapse to Forbidden. This is the default policy.
     /// </summary>
     Propagate = 0,
 
     /// <summary>
-    /// Translate <c>Error.Forbidden</c> and <c>Error.AuthenticationRequired</c> to
-    /// <c>new Error.NotFound(ResourceRef)</c> so an unauthorized actor cannot distinguish
-    /// "the resource does not exist" from "the resource exists but you may not access it".
+    /// Normalize <c>Error.NotFound</c>, <c>Error.Gone</c>, <c>Error.Forbidden</c>, and <c>Error.AuthenticationRequired</c>
+    /// to the same public <c>Error.NotFound</c>, so missing, removed, and withheld resources share the
+    /// framework-generated error representation.
     /// </summary>
     HideAsNotFound = 1,
 }

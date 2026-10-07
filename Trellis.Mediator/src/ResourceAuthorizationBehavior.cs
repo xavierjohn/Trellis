@@ -75,12 +75,11 @@ public sealed partial class ResourceAuthorizationBehavior<
     /// <param name="actorProvider">The provider used to resolve the current actor.</param>
     /// <param name="serviceProvider">The request-scoped service provider used to resolve the per-message resource loader.</param>
     /// <param name="options">
-    /// Per-resource exposure-policy options resolved from DI. Null defaults to the
-    /// always-propagate behavior for back-compat with consumers that have not opted in.
+    /// Per-resource exposure-policy options resolved from DI. Null defaults to Propagate.
     /// </param>
     /// <param name="logger">
-    /// Logger used to emit the <c>ExistenceHidden</c> structured-log event when a Forbidden or
-    /// AuthenticationRequired failure is translated to NotFound. Null defaults to
+    /// Logger used to emit the <c>ExistenceHidden</c> structured-log event when NotFound, Gone,
+    /// Forbidden, or AuthenticationRequired is normalized to the public NotFound. Null defaults to
     /// <see cref="NullLogger.Instance"/>.
     /// </param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="actorProvider"/> or <paramref name="serviceProvider"/> is null.</exception>
@@ -167,15 +166,15 @@ public sealed partial class ResourceAuthorizationBehavior<
     }
 
     /// <summary>
-    /// Translates <c>Error.Forbidden</c> / <c>Error.AuthenticationRequired</c> to
-    /// <c>new Error.NotFound(ResourceRef)</c> when the resource is opted into
+    /// Normalizes <c>Error.NotFound</c>, <c>Error.Gone</c>, <c>Error.Forbidden</c>, and
+    /// <c>Error.AuthenticationRequired</c> to the same public <c>Error.NotFound</c> when the resource is opted into
     /// <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>; otherwise returns the original
     /// error unchanged. Other error kinds are never translated — operational signal must not
     /// be hidden behind a 404.
     /// </summary>
     private Error MaybeTranslateExposure(Error original, TMessage message)
     {
-        if (original is not (Error.Forbidden or Error.AuthenticationRequired))
+        if (original is not (Error.NotFound or Error.Gone or Error.Forbidden or Error.AuthenticationRequired))
             return original;
 
         var entry = _options.Resolve(typeof(TResource));
@@ -192,7 +191,7 @@ public sealed partial class ResourceAuthorizationBehavior<
 
         LogExistenceHidden(_logger, typeof(TMessage).Name, original.Kind, original.Code, publicTypeName);
 
-        return new Error.NotFound(resourceRef);
+        return Error.NotFound.For(entry.NotFoundCode, resourceRef, entry.NotFoundDetail);
     }
 
     [LoggerMessage(

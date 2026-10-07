@@ -2953,14 +2953,13 @@ For optional reads use `TryGetResource(out var resource)` which returns `false` 
 
 **Problem.** A `Forbidden` response on `GET /incidents/{id}` tells the unauthorized caller "this resource exists and you may not access it". For some resources — incident reports, security findings, internal correspondence, private profiles — that disclosure is itself the leak. The boundary needs to return 404 (indistinguishable from "the resource does not exist") to unauthorized actors.
 
-**Fix.** Opt the resource into `AuthFailureExposurePolicy.HideAsNotFound` via `ResourceAuthorizationOptions`. The resource-authorization pipeline translates `Error.Forbidden` and `Error.AuthenticationRequired` to `new Error.NotFound(ResourceRef)`; the boundary maps the synthetic `NotFound` to HTTP 404. Other error kinds (`Unexpected`, `Unavailable`, `NotFound` from the loader, transport faults) pass through unchanged — operational signal is never hidden.
+**Fix.** Opt the resource into `AuthFailureExposurePolicy.HideAsNotFound` via `ResourceAuthorizationOptions`. Resource-stage root `Error.NotFound`, `Error.Gone`, `Error.Forbidden`, and `Error.AuthenticationRequired` become one fresh public NotFound. Its type and ID come from configuration and the request, never the original error; original code, detail, and cause are not copied. Other direct-resource / via-leaf errors pass through unchanged.
 
 ```csharp
 // Composition root.
 builder.Services.AddTrellis(options => options
-    .UseResourceAuthorization()                                      // pipeline enabled
     .UseResourceAuthorization<GetIncidentQuery, Incident, Result<IncidentDto>>()
-    .UseResourceAuthorization(o => o.HideExistence<Incident>()));    // opt-in per resource
+    .UseResourceAuthorization(o => o.HideExistence<Incident>()));
 ```
 
 ```csharp
@@ -2977,33 +2976,28 @@ public sealed record GetIncidentQuery(IncidentId Id)
 }
 ```
 
-**On the wire.** Unauthorized request → `404 Not Found` with `ResourceRef` `{ "Type": "Incident", "Id": "inc-42" }`. Loader NotFounds pass through unchanged, so hidden and missing resources share the status but can have distinguishable error codes/details.
+**Public metadata.** For the same request ID, missing, removed (`Gone`), denied, and anonymous resource-stage outcomes all yield NotFound with resource `{ Type: "Incident", Id: "inc-42" }`, code `error.unspecified`, and the standard NotFound display message. The default ASP mapper produces matching 404 ProblemDetails metadata, including `instance`; only per-request trace identifiers may vary. No original storage resource or cause reaches this public error.
 
-**Multiple resources.** `HideExistence<T>()` returns the options for fluent chaining, and repeated `UseResourceAuthorization(Action<>)` calls compose (each delegate runs against the same options instance in registration order — verified by `UseResourceAuthorization_ConfigureDelegate_CalledTwice_ComposesBothConfigurations`). All four styles below produce the same merged policy; pick the one that reads best for your composition root.
+**Fixed public code/detail.** Both `HideExistence` forms accept optional static metadata. Use the same configured reason for every concealed failure, not different missing/denied reasons:
 
 ```csharp
-// Style 1 — fluent chain in one configure delegate (small fixed list).
+.UseResourceAuthorization(o => o.HideExistence<Incident>(
+    code: "incident.not-found",
+    detail: "Incident not found."));
+```
+
+Omitted/null/empty/whitespace code uses `error.unspecified`; null detail uses the standard display message. The last call for a resource replaces its configuration; parameterless `HideExistence` resets code/detail to defaults.
+
+**Multiple resources.** Chain calls in one callback or contribute separate callbacks; callbacks compose in registration order.
+
+```csharp
 .UseResourceAuthorization(o => o
     .HideExistence<Incident>()
     .HideExistence<SecurityFinding>()
     .HideExistence<PrivateProfile>())
-
-// Style 2 — statement body when each entry warrants its own line / comment.
-.UseResourceAuthorization(o =>
-{
-    o.HideExistence<Incident>();
-    o.HideExistence<SecurityFinding>();          // SOC 2 — existence itself is sensitive
-    o.HideExistence<PrivateProfile>();
-    o.HideExistence<AccessKey, KeyPublicView>(); // projection-loader overload
-})
-
-// Style 3 — separate calls (each module contributes its own resources).
-.UseResourceAuthorization(o => o.HideExistence<Incident>())          // Incidents module
-.UseResourceAuthorization(o => o.HideExistence<SecurityFinding>())   // Security module
-.UseResourceAuthorization(o => o.HideExistence<PrivateProfile>())    // Profile module
 ```
 
-**Default is `Propagate`.** No behavior changes for resources that don't opt in. Existing consumers continue to see `Forbidden` and `AuthenticationRequired` verbatim. Set `DefaultExposurePolicy = AuthFailureExposurePolicy.HideAsNotFound` to flip the default for an entire service, then use `Propagate<TResource>()` to mark individual resources as safe-to-disclose.
+**Default is `Propagate`.** Resources that do not opt in retain their original errors. Set `DefaultExposurePolicy = AuthFailureExposurePolicy.HideAsNotFound` for service-wide hiding with default public metadata, then use `Propagate<TResource>()` for safe-to-disclose resources.
 
 ```csharp
 .UseResourceAuthorization(o =>
@@ -3016,14 +3010,13 @@ public sealed record GetIncidentQuery(IncidentId Id)
 **Projection-loader overload.** When the loader returns an internal projection for authorization but the wire-public type is different, use the two-type overload:
 
 ```csharp
-// Loader returns IncidentOwnership (small projection for auth check), but the public REST
-// resource is Incident. The synthetic NotFound must reference "Incident" on the wire.
-.UseResourceAuthorization(o => o.HideExistence<IncidentOwnership, Incident>());
+.UseResourceAuthorization(o => o.HideExistence<IncidentOwnership, Incident>(
+    code: "incident.not-found", detail: "Incident not found."));
 ```
 
-The pipeline extracts the ID from `IIdentifyResource<Incident, IncidentId>` first (the public-resource identifier), falling back to `IIdentifyResource<IncidentOwnership, ?>` if only the projection identifier is declared on the message. The synthetic `NotFound.ResourceRef.Type` is the public type name.
+The pipeline extracts the ID from `IIdentifyResource<Incident, IncidentId>` first, falling back to the projection's identifier interface when necessary. `NotFound.Resource.Type` is the public type name, for missing projections as well as denials.
 
-**Via commands** key on `TLeaf`. `HideExistence<Match>()` hides authorization failures on commands implementing `IAuthorizeResourceVia<Team>` + `IIdentifyResource<Match, MatchId>`. The synthetic `NotFound` references `Match` (the resource the command identifies), never `Team` (the authorization implementation detail).
+**Via commands** key on `TLeaf`. `HideExistence<Match>()` covers `IAuthorizeResourceVia<Team>` + `IIdentifyResource<Match,MatchId>`. Missing leaves and withheld outcomes use the same public Match error, never an owner error. The projection form can select a separate public leaf type.
 
 **Pipeline interaction caveat.** When a command implements both `IAuthorize` (static permissions) and `IAuthorizeResource<T>`, the canonical pipeline runs `AuthorizationBehavior` **before** `ResourceAuthorizationBehavior`. An unauthenticated caller fails the static gate first — that `AuthenticationRequired` is **not** translated to `NotFound`, because `AuthorizationBehavior` has no concept of the resource it's protecting. Commands that need full existence-hiding (anonymous probes return 404, not 401) must omit `IAuthorize` and let `HideAsNotFound` cover the resource-authorization branch alone.
 
@@ -3047,7 +3040,7 @@ EventId: 1 (EventName "ExistenceHidden")
 Resource-authorization failure hidden as NotFound for GetIncidentQuery: original Kind=forbidden Code=incidents.read-denied → public resource Incident
 ```
 
-The log carries the **original** `Kind` and `Code`, so SecOps can audit who tried to access what and the underlying denial reason without exposing the disclosure on the wire. Example SIEM query (KQL):
+The log retains the **original input** `Kind` and `Code` for private diagnostics, including missing-resource codes. They are not attached to the returned error or its cause. Example SIEM query (KQL):
 
 ```kusto
 Trellis_Logs
@@ -3055,9 +3048,9 @@ Trellis_Logs
 | summarize count() by MessageName, OriginalCode, PublicResourceType, bin(TimeGenerated, 5m)
 ```
 
-**Translation scope.** Only `Error.Forbidden` and `Error.AuthenticationRequired` are translated. The behavior's internal null-payload defense (a misbehaving loader returning `Result.Ok(null)`) also synthesises `Error.Forbidden` and IS translated — the same disclosure risk applies. `Error.NotFound` from the loader, `Error.Unexpected`, `Error.Unavailable`, and transport faults all pass through verbatim: hiding transient infrastructure failures behind 404 would destroy operational signal and lead clients and caches to treat them as permanent absence.
+**Normalization scope.** Only resource-stage root NotFound/Gone/Forbidden/AuthenticationRequired normalize, including the Forbidden generated for a loader's null-success contract violation. `Gone` uses the same public 404 so tombstones cannot reveal previous existence. Direct-resource / via-leaf `Unexpected`, `Unavailable`, transport faults, and other root kinds remain unchanged. Aggregates and unrelated handler failures are outside the policy. Application response customization must not reintroduce private distinctions; response timing is not equalized.
 
-**Via commands and intermediate hop failures.** The pass-through guarantee above applies to the **leaf** loader's return value (the resource the command identifies). For multi-hop authorization (`IAuthorizeResourceVia<TOwner>` with one or more intermediate / owner loads), `ResourceAuthorizationViaBehavior` follows the v1 multi-hop security model: any intermediate or owner load failure — regardless of underlying error kind — is collapsed to `new Error.Forbidden("resource.authorization-via.load-failed")` **before** exposure-policy translation runs, to avoid leaking the existence of related resources whose presence the actor may not be authorized to learn. Under `HideAsNotFound`, that synthetic Forbidden translates to `NotFound` like any other Forbidden, so an `Unavailable` from a downstream owner service surfaces as `404` to the consumer. The `ExistenceHidden` log carries `OriginalCode = "resource.authorization-via.load-failed"`, which tells SecOps that a hop failed but not the underlying downstream-failure kind — consumers needing finer-grained downstream-failure visibility for the related-resource graph should use the direct `IAuthorizeResource<TResource>` model and surface the downstream cause from their loader instead of opting into the multi-hop fan-out.
+**Via intermediate/owner failures.** Every intermediate/owner load failure collapses to `Forbidden("resource.authorization-via.load-failed")` before normalization, regardless of underlying kind. Under hiding, even owner `Unavailable` becomes the public NotFound. `ExistenceHidden` sees that collapsed code, not the downstream cause. Use direct authorization with a custom projection loader when your application needs to classify related-resource operational failures itself.
 
 **Related recipes.** [Recipe 7](#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) for the authorization model; [Recipe 24](#recipe-24--indirect-multi-hop-resource-authorization) for via commands; [Recipe 31](#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource) for the resource-handoff accessor that composes with this policy.
 
