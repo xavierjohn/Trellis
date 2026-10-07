@@ -189,13 +189,16 @@ public static class EnsureExtensions
     /// <param name="str">The string to validate; valid strings are returned without trimming.</param>
     /// <param name="fieldName">Property name or full JSON Pointer; null or empty targets the root.</param>
     /// <param name="detail">Optional human-readable violation detail.</param>
-    /// <returns>The same valid string or an <see cref="Error.InvalidInput"/> containing one <see cref="ValidationCodes.ValueNotEmpty"/> violation.</returns>
+    /// <returns>The same valid string or an <see cref="Error.InvalidInput"/> containing one violation:
+    /// <see cref="ValidationCodes.ValueNotNull"/> for null, or <see cref="ValidationCodes.ValueNotEmpty"/> for empty or whitespace.</returns>
     /// <exception cref="ArgumentException">The string is invalid and the field name is a malformed JSON Pointer.</exception>
     public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, string? fieldName, string? detail = null)
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureNotNullOrWhiteSpace));
         return string.IsNullOrWhiteSpace(str)
-            ? Result.Fail<string>(Error.InvalidInput.ForField(ValidationCodes.ValueNotEmpty, fieldName, detail: detail))
+            ? Result.Fail<string>(Error.InvalidInput.ForField(
+                str is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty,
+                fieldName, detail: detail))
             : Result.Ok(str);
     }
 

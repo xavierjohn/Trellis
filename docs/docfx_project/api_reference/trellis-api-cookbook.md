@@ -1084,7 +1084,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
 **What it shows.**
 
-- Null-only required-field guards create errors only for missing values. `EnsureNotNullOrWhiteSpace("name", "Name is required.")` rejects null, empty, and whitespace names with `value.not-empty`, without creating violations on success or trimming valid text.
+- Null-only required-field guards create errors only for missing values. `EnsureNotNullOrWhiteSpace("name", "Name is required.")` reports `value.not-null` for null names and `value.not-empty` for empty/whitespace names, without creating violations on success or trimming valid text.
 - `[OwnedEntity]` + `partial` + `ValueObject` + private ctor is the contract. The three diagnostics (`TRLS036`/`037`/`038`) catch each violation at compile time.
 - `CompositeValueObjectJsonConverter<T>` makes JSON deserialization round-trip through `TryCreate`, so an API request body with an **invalid** `state` (one that fails the VO's rule) produces the same `Error.InvalidInput` shape the domain emits. A **missing** required inner field is caught earlier as a `TrellisJsonValidationException` ("required property missing") *before* `TryCreate` runs.
 - `ApplyTrellisConventions` removes the boilerplate `OwnsOne` call. You only need `OwnsOne` when you want to **override** the convention (custom column names, table splitting, indexes on inner properties).

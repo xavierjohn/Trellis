@@ -1562,7 +1562,7 @@ var guard = Result.Ensure(end != start, () =>
 | `public static Result<TValue> Ensure<TValue>(this Result<TValue> result, Func<TValue, bool> predicate, Func<TValue, Error> errorPredicate)` | `Result<TValue>` | Sync ensure with lazy error factory. |
 | `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Error error)` | `Result<string>` | Rejects null/empty/whitespace with an existing error; returns valid strings unchanged. |
 | `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Func<Error> errorFactory)` | `Result<string>` | Calls the factory exactly once only on null/empty/whitespace. |
-| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, string? fieldName, string? detail = null)` | `Result<string>` | Creates one `ValueNotEmpty` field violation only on null/empty/whitespace. |
+| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, string? fieldName, string? detail = null)` | `Result<string>` | Creates one field violation: `ValueNotNull` for null, or `ValueNotEmpty` for empty/whitespace. |
 | `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : class` | `Result<T>` | Reference-type `EnsureNotNull` overload that strips the nullable annotation. |
 | `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : struct` | `Result<T>` | Value-type `EnsureNotNull` overload that unwraps the nullable. |
 | `public static Task<Result<TValue>> EnsureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<TValue, Task<bool>> predicate, Error error)` | `Task<Result<TValue>>` | `EnsureExtensionsAsync` covers all `Result<T>`/`Task<Result<T>>`/`ValueTask<Result<T>>` receivers × `Func<TValue, bool>`/`Task<bool>`/`ValueTask<bool>` predicates × constant-, factory-, async-factory- and embedded-`Result<TValue>` error producers (~34 overloads across the six `Ensure.*` partial files). |
@@ -1576,7 +1576,11 @@ var guard = Result.Ensure(end != start, () =>
 `EnsureNotNullOrWhiteSpace` returns the original valid string without trimming.
 Prefer the field/detail overload for standard nonblank fields, or a `Func<Error>`
 that constructs a custom error inside its body; use `static` when no state is captured.
-Neither creates errors or validation violations on success. The factory is required
+The field/detail form follows the framework's absent-versus-blank convention:
+`ValueNotNull` for null and `ValueNotEmpty` for empty/whitespace, matching required
+primitive validation. The eager and factory forms preserve the caller's error and
+reason codes; use them when both cases intentionally share a custom error.
+Neither lazy form creates errors or validation violations on success. The factory is required
 even on success (`ArgumentNullException`, `errorFactory`); factory exceptions propagate,
 and a factory returning null on failure throws `ArgumentNullException` naming `error`.
 Field names follow `ForField` normalization: null/empty targets the root, simple names
@@ -1891,7 +1895,7 @@ silently wrap a nullable or `Maybe<T>` in a successful result.
 | Deliberately wrap a successful payload | `Result.Ok(value)`; this does not check for null or inspect a wrapper's state. |
 | Check a boolean condition without carrying a value | `Result.Ensure(condition, errorFactory)`; returns `Result<Unit>`. Construct custom errors inside the callback. |
 | Require a nullable reference or struct | `Result.EnsureNotNull(value, fieldName, detail)` for standard required fields; `Result.EnsureNotNull(value, errorFactory)` for custom failures. |
-| Require a nonblank string without trimming | `value.EnsureNotNullOrWhiteSpace(fieldName, detail)` for `ValueNotEmpty`; use `errorFactory` for a custom failure. |
+| Require a nonblank string without trimming | `value.EnsureNotNullOrWhiteSpace(fieldName, detail)` for `ValueNotNull` on null and `ValueNotEmpty` on blank; use `errorFactory` for a custom failure. |
 | Require a nullable task result | `task.EnsureNotNullAsync(fieldName, detail)` / `valueTask.EnsureNotNullAsync(errorFactory)`. |
 | Turn ordinary `Maybe<T>` absence into failure | `maybe.ToResult(errorFactory)`; Task/ValueTask `ToResultAsync` forms remain supported. |
 

@@ -68,9 +68,10 @@ For nullable queries, use `task.EnsureNotNullAsync(...)` and continue with async
 composition; task faults and cancellation propagate.
 
 For a nonblank string, use `name.EnsureNotNullOrWhiteSpace("name", "Name is required.")`.
-Null, empty, and whitespace fail with `ValidationCodes.ValueNotEmpty`; valid strings
-are not trimmed. The field/detail and `Func<Error>` overloads create errors only on
-failure. Use a `static` factory for custom errors when no captured state is needed.
+Null fails with `ValidationCodes.ValueNotNull`; empty/whitespace fails with
+`ValidationCodes.ValueNotEmpty`. Valid strings are not trimmed. The field/detail and
+`Func<Error>` overloads create errors only on failure; eager and factory forms preserve
+the caller's chosen error. Use a `static` factory when no captured state is needed.
 
 `Error.InvalidInput.Required(fieldName, detail)` names the standard
 `ValidationCodes.ValueNotNull` error. Both it and `FieldViolation.Required` accept an

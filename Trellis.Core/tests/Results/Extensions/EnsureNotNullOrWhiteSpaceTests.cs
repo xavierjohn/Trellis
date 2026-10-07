@@ -61,12 +61,13 @@ public class EnsureNotNullOrWhiteSpaceTests
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData(" ")]
-    [InlineData("\t\r\n")]
-    [InlineData("\u2003")]
-    public void EnsureNotNullOrWhiteSpace_Field_BlankValue_CreatesOneNotEmptyViolation(string? value)
+    [InlineData(null, ValidationCodes.ValueNotNull)]
+    [InlineData("", ValidationCodes.ValueNotEmpty)]
+    [InlineData(" ", ValidationCodes.ValueNotEmpty)]
+    [InlineData("\t\r\n", ValidationCodes.ValueNotEmpty)]
+    [InlineData("\u2003", ValidationCodes.ValueNotEmpty)]
+    public void EnsureNotNullOrWhiteSpace_Field_NullOrBlankValue_CreatesMatchingViolation(
+        string? value, string expectedCode)
     {
         using var tracing = new ActivityTestHelper();
 
@@ -80,12 +81,32 @@ public class EnsureNotNullOrWhiteSpaceTests
         var field = error.Fields.Items.Should().ContainSingle().Which;
         field.Field.Path.Should().Be("/name");
         field.Field.In.Should().Be(InputLocation.Unspecified);
-        field.ReasonCode.Should().Be(ValidationCodes.ValueNotEmpty);
+        field.ReasonCode.Should().Be(expectedCode);
         field.Args.Should().BeNull();
         field.Detail.Should().Be("Name is required.");
         violations.Should().Be(1);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Error);
+    }
+
+    [Theory]
+    [InlineData(GuardForm.Error)]
+    [InlineData(GuardForm.Factory)]
+    public void EnsureNotNullOrWhiteSpace_CustomError_NullValue_PreservesCallerChosenCode(GuardForm form)
+    {
+        var error = Error.InvalidInput.ForField(ValidationCodes.ValueNotEmpty, "name", detail: "Name is required.");
+        string? value = null;
+
+        var result = form switch
+        {
+            GuardForm.Error => value.EnsureNotNullOrWhiteSpace(error),
+            GuardForm.Factory => value.EnsureNotNullOrWhiteSpace(() => error),
+            _ => throw new ArgumentOutOfRangeException(nameof(form)),
+        };
+
+        result.Should().BeFailure().Which.Should().BeSameAs(error);
+        result.Should().BeFailureOfType<Error.InvalidInput>().Which.Fields.Items
+            .Should().ContainSingle().Which.ReasonCode.Should().Be(ValidationCodes.ValueNotEmpty);
     }
 
     [Theory]
@@ -166,7 +187,7 @@ public class EnsureNotNullOrWhiteSpaceTests
     }
 
     [Fact]
-    public void EnsureNotNullOrWhiteSpace_Combine_BlankValues_AccumulatesWithoutMapping()
+    public void EnsureNotNullOrWhiteSpace_Combine_NullAndBlankValues_AccumulatesDistinctCodesWithoutMapping()
     {
         var mapCalls = 0;
 
@@ -178,7 +199,7 @@ public class EnsureNotNullOrWhiteSpaceTests
         var fields = result.Should().BeFailureOfType<Error.InvalidInput>().Which.Fields.Items;
         fields.Select(field => field.Field.Path).Should().Equal(["/name", "/code"]);
         fields.Select(field => field.ReasonCode).Should().Equal([
-            ValidationCodes.ValueNotEmpty, ValidationCodes.ValueNotEmpty]);
+            ValidationCodes.ValueNotNull, ValidationCodes.ValueNotEmpty]);
         fields.Select(field => field.Detail).Should().Equal(["Name is required.", "Code is required."]);
         mapCalls.Should().Be(0);
         violations.Should().Be(2);
