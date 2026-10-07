@@ -25,13 +25,14 @@ public sealed class Order : Aggregate<OrderId>
 
     public Result<Order> Approve() =>
         Result.Ok(this)
-            .Ensure(o => !o.IsApproved, Error.InvalidInput.ForRule("order.already_approved", detail: "Order is already approved."))
+            .Ensure(static o => !o.IsApproved, static _ =>
+                Error.InvalidInput.ForRule("order.already_approved", detail: "Order is already approved."))
             .Tap(o => o.IsApproved = true);
 
     public Result<Order> Replace(ReplaceOrderRequest request) =>
         Result.Ensure(
                 !string.IsNullOrWhiteSpace(request?.CustomerReference),
-                Error.InvalidInput.ForField(field: "customerReference", code: ValidationCodes.ValueNotEmpty))
+                static () => Error.InvalidInput.ForField(field: "customerReference", code: ValidationCodes.ValueNotEmpty))
             .Tap(() => CustomerReference = request!.CustomerReference)
             .Map(_ => this);
 }

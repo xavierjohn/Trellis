@@ -29,7 +29,7 @@ public sealed record CancelOrderCommand(OrderId OrderId)
     public OrderId GetResourceId() => OrderId;
 
     public Trellis.IResult Authorize(Actor actor, Order resource) =>
-        Result.Ensure(actor.HasPermission("orders:cancel"), new Error.Forbidden("orders.cancel-denied"));
+        Result.Ensure(actor.HasPermission("orders:cancel"), static () => new Error.Forbidden("orders.cancel-denied"));
 }
 
 // The handler reads the instance the pipeline already loaded to run Authorize — no second
@@ -95,7 +95,7 @@ public sealed record UploadScorecardCommand(MatchId MatchId, Scorecard Scorecard
     public MatchId GetResourceId() => MatchId;
 
     public Trellis.IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
-        Result.Ensure(owners.Any(t => t.CreatedByActorId == actor.Id), new Error.Forbidden("team.not-owner"));
+        Result.Ensure(owners.Any(t => t.CreatedByActorId == actor.Id), static () => new Error.Forbidden("team.not-owner"));
 }
 
 public sealed class UploadScorecardHandler(IAuthorizedResource<UploadScorecardCommand, Match> match)

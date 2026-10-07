@@ -36,7 +36,7 @@ public static class AntiPatternFixes
 
         // FIX 2 — convert to Result.
         Result<EmailAddress> r = customer.Email.ToResult(
-            new Error.NotFound(ResourceRef.For("Email", customer.Id.Value)));
+            () => new Error.NotFound(ResourceRef.For("Email", customer.Id.Value)));
         _ = r;
     }
 

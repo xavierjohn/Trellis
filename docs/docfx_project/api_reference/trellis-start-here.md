@@ -60,6 +60,17 @@ Conventions used throughout:
 - Examples reference an `OrderId : RequiredGuid<OrderId>` value object and an `Order` aggregate. Substitute your own types without changing the structure.
 - A command without a payload returns `Result<Trellis.Unit>` — qualified because a file that imports both `Trellis` and `Mediator` has two `Unit` types in scope (`Trellis.Unit` and `Mediator.Unit`). Add `global using TrellisUnit = Trellis.Unit;` (or `global using Unit = Trellis.Unit;`, since Trellis code never references `Mediator.Unit`) to your `GlobalUsings.cs` to drop the qualification.
 
+### Preferred patterns, not just valid overloads
+
+Primary recipe examples are the recommended defaults. Use an alternative only when its
+documented trade-off fits the task, and state why:
+
+- For required nullables, prefer `Result.EnsureNotNull(value, fieldName, detail)` (or the async form): standard required-field errors are already lazy. These guards check null only, not blank strings or other domain rules.
+- For custom guard/conversion errors, construct the error **inside** the factory whenever that overload exists: `Result.Ensure(condition, () => new Error.Forbidden(...))`, `Result.EnsureNotNull(value, () => ...)`, or `maybe.ToResult(() => ...)`. Value-threaded `Ensure` uses `value => error`, not a parameterless factory. Eager error construction wastes work and can record validation violations even when a guard passes or an earlier failure skips it.
+- Prefer `static` callbacks when they need no captured state. Capturing factories can still allocate a closure; lazy construction avoids unused errors, not every allocation. Returning an already-created error from a factory does not undo its allocation. Eager overloads remain appropriate for existing/reused errors and APIs without a factory overload; do not invent missing overloads.
+- Use `Result.Ensure` for a boolean guard without a payload, `EnsureNotNull` for required nullable values, and `Result.Ok(value)` for deliberate success wrapping. Do not substitute a `Result<Unit>` guard for a payload-bearing success.
+- Prefer expression-based EF mappings such as `builder.OwnsMany(order => order.LineItems, ...)` when convention can bind the backing field. String-based field mappings are a fallback, not the default; value-object collections need no explicit ownership mapping unless overriding a convention.
+
 ## LLM preflight: load the smallest correct reference set
 
 Before writing Trellis code, choose the task in the lookup table below, then load only the package references needed for that task. The cookbook gives the end-to-end recipe; the package references are the source of truth for exact signatures, overloads, ordering, and edge-case behavior.

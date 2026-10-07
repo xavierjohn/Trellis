@@ -36,7 +36,7 @@ public sealed record ReadOrderQuery(OrderId OrderId)
 {
     public OrderId GetResourceId() => OrderId;
     public IResult Authorize(Actor actor, Order resource) =>
-        Result.Ensure(resource.OwnerId == actor.Id, () => new Error.Forbidden("orders.owner"));
+        Result.Ensure(resource.OwnerId == actor.Id, static () => new Error.Forbidden("orders.owner"));
 }
 
 public sealed class ReadOrderHandler : ActorResourceQueryHandler<ReadOrderQuery, Order, Result<Order>>

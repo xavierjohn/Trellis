@@ -52,9 +52,10 @@ public sealed class Order : Aggregate<OrderId>
     public static Order ForTesting(OrderId id, IReadOnlyList<LineItem> lineItems) => new(id, lineItems);
 
     public Result<Trellis.Unit> CanReturn(string reason) =>
-        Result.Ensure(!string.IsNullOrWhiteSpace(reason), Error.InvalidInput.ForField(field: "reason", code: ValidationCodes.ValueNotEmpty))
-            .Ensure(_ => !IsReturned, Error.InvalidInput.ForRule(code: "order.already-returned"))
-            .Ensure(_ => LineItems.All(li => li.Quantity > 0), Error.InvalidInput.ForRule(code: "order.quantity-positive"));
+        Result.Ensure(!string.IsNullOrWhiteSpace(reason), static () =>
+                Error.InvalidInput.ForField(field: "reason", code: ValidationCodes.ValueNotEmpty))
+            .Ensure(_ => !IsReturned, static _ => Error.InvalidInput.ForRule(code: "order.already-returned"))
+            .Ensure(_ => LineItems.All(li => li.Quantity > 0), static _ => Error.InvalidInput.ForRule(code: "order.quantity-positive"));
 
     public Result<Trellis.Unit> Return(string reason, System.DateTimeOffset occurredAt) =>
         CanReturn(reason)

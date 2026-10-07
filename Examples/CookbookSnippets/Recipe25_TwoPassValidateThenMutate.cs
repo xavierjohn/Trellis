@@ -86,7 +86,7 @@ public sealed class Order : Aggregate<OrderId>
     public Result<Trellis.Unit> CanSubmit() =>
         Result.Ensure(
             LineItems.Count > 0,
-            () => Error.InvalidInput.ForRule(
+            static () => Error.InvalidInput.ForRule(
                 code: "order.empty",
                 detail: "Order must have at least one line item to submit."));
 

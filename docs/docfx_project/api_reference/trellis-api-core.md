@@ -281,7 +281,10 @@ The default exception mapper produces `new Error.Unexpected("unhandled-exception
 
 #### Value-returning null guards
 
-Use static `Result.EnsureNotNull(value, error)` for a missing-but-required value, rather
+Prefer static `Result.EnsureNotNull(value, fieldName, detail)` for ordinary required fields,
+or `Result.EnsureNotNull(value, errorFactory)` with error construction inside the
+callback for a custom failure. Use an eager error when reusing an existing instance.
+Use these guards for a missing-but-required value, rather
 than `Result.Ensure(value is not null, error)` followed by `value!`. Success carries the
 identical reference or the unwrapped struct, so typed `Combine`/`Map` needs no null
 suppression and still accumulates every missing field. These are **null-only** guards:
@@ -1870,16 +1873,21 @@ silently wrap a nullable or `Maybe<T>` in a successful result.
 | Intent | Use |
 | --- | --- |
 | Deliberately wrap a successful payload | `Result.Ok(value)`; this does not check for null or inspect a wrapper's state. |
-| Check a boolean condition without carrying a value | `Result.Ensure(condition, error)`; returns `Result<Unit>`. |
-| Require a nullable reference or struct | `Result.EnsureNotNull(value, error)` / `Result.EnsureNotNull(value, errorFactory)`. |
-| Require a nullable task result | `task.EnsureNotNullAsync(error)` / `valueTask.EnsureNotNullAsync(errorFactory)`. |
-| Turn ordinary `Maybe<T>` absence into failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)`; Task/ValueTask `ToResultAsync` forms remain supported. |
+| Check a boolean condition without carrying a value | `Result.Ensure(condition, errorFactory)`; returns `Result<Unit>`. Construct custom errors inside the callback. |
+| Require a nullable reference or struct | `Result.EnsureNotNull(value, fieldName, detail)` for standard required fields; `Result.EnsureNotNull(value, errorFactory)` for custom failures. |
+| Require a nullable task result | `task.EnsureNotNullAsync(fieldName, detail)` / `valueTask.EnsureNotNullAsync(errorFactory)`. |
+| Turn ordinary `Maybe<T>` absence into failure | `maybe.ToResult(errorFactory)`; Task/ValueTask `ToResultAsync` forms remain supported. |
 
 The null guards preserve the reference or unwrap the struct, and lazy errors run
 only on absence. Continue typed `Combine` / `Map` chains without `!`; async chains
 use `CombineAsync` / `MapAsync`. See the exact
 [sync](#value-returning-null-guards) and
 [async](#nullable-task-guards--ensureextensionsasync) guard contracts.
+
+The eager `Error` overloads remain valid for existing/reused errors. A factory must
+construct the error inside its body to avoid allocating an unused instance; use
+`static` when no captured state is needed. Capturing callbacks can still allocate
+closures, so lazy error construction is not a blanket allocation-free guarantee.
 
 **Migration edge cases.** The guards validate factories before awaiting, whereas the
 retired nullable async conversions validated them after awaiting. An invalid factory

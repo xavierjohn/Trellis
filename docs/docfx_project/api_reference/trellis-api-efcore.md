@@ -3,7 +3,7 @@ package: Trellis.EntityFrameworkCore
 namespaces: [Trellis.EntityFrameworkCore]
 types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, GeoCoordinateExpressions, IUnitOfWork, MaybeColumnMapping, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeStorageKind, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, PaginationQueryableExtensions, SeekDefinition, "SeekDefinition<T,TState>", "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-07
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when using Trellis.EntityFrameworkCore for persistence, Maybe queries, conventions, unit of work, seek pagination, or translated spherical nearby queries."
@@ -412,7 +412,7 @@ public class OrderRepository(DbContext context) : RepositoryBase<Order, OrderId>
 // In a command handler (pipeline auto-commits on success):
 var maybe = await _orders.FindByIdAsync(cmd.OrderId, ct);
 return maybe
-    .ToResult(new Error.NotFound(ResourceRef.For<Order>(cmd.OrderId)) { Detail = "Order not found." })
+    .ToResult(() => new Error.NotFound(ResourceRef.For<Order>(cmd.OrderId)) { Detail = "Order not found." })
     .Bind(order => order.Ship());
 // Tracked changes are committed automatically by TransactionalCommandBehavior.
 ```
