@@ -56,12 +56,12 @@
 ///     }
 ///     
 ///     public static Result&lt;Customer&gt; TryCreate(string name, EmailAddress email) =>
-///         name.ToResult()
+///         Result.Ok(name)
 ///             .Ensure(n => !string.IsNullOrWhiteSpace(n), Error.InvalidInput.ForField(field: "name", code: "invalid", detail: "Name required"))
 ///             .Map(n => new Customer(CustomerId.NewUniqueV7(), n, email));
 ///     
 ///     public Result&lt;Customer&gt; UpdateEmail(EmailAddress newEmail) =>
-///         newEmail.ToResult()
+///         Result.Ok(newEmail)
 ///             .Tap(e => Email = e)
 ///             .Map(_ => this);
 /// }

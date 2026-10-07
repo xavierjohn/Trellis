@@ -75,8 +75,10 @@ then compose with async methods. Source faults and cancellation propagate.
 string field names or an `InputPointer`, preserving the pointer's input location. Use
 `Result.EnsureNotNull(value, () => Error.InvalidInput.Required(pointer, detail))`
 for a location-aware lazy guard. Null/empty string field names target the root;
-guards reject malformed full pointers only when the value is missing. Existing nullable `ToResult`
-APIs remain available.
+guards reject malformed full pointers only when the value is missing. Core's nullable
+`ToResult` APIs and universal no-argument lift are removed. Use these guards for required
+values, `Result.Ok(value)` for deliberate success wrapping, and `Maybe<T>.ToResult(error)`
+when ordinary absence becomes a failure.
 
 ## Optional: API guidance for coding assistants
 

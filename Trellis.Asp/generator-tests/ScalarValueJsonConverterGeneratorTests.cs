@@ -82,7 +82,7 @@ public class ScalarValueJsonConverterGeneratorTests
                 private Temperature(decimal value) : base(value) { }
 
                 public static Result<Temperature> TryCreate(decimal value, string? fieldName = null) =>
-                    value.ToResult()
+                    Result.Ok(value)
                         .Ensure(
                             v => v >= -273.15m,
                             Error.InvalidInput.ForField("below_absolute_zero", fieldName ?? "temperature", detail: "Below absolute zero"))

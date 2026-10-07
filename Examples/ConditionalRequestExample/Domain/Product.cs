@@ -31,10 +31,10 @@ public class Product : Aggregate<ProductId>
     }
 
     public static Result<Product> TryCreate(ProductName name, MonetaryAmount price) =>
-        name.ToResult()
+        Result.Ok(name)
             .Map(_ => new Product(ProductId.NewUniqueV4(), name, price));
 
     public Result<Product> UpdatePrice(MonetaryAmount newPrice) =>
-        this.ToResult()
+        Result.Ok(this)
             .Tap(_ => Price = newPrice);
 }

@@ -56,7 +56,7 @@
 ///     
 ///     public Result&lt;Order&gt; Submit()
 ///     {
-///         return this.ToResult()
+///         return Result.Ok(this)
 ///             .Ensure(_ => Status == OrderStatus.Draft, Error.InvalidInput.ForRule(code: "invalid", detail: "Wrong status"))
 ///             .Tap(_ =>
 ///             {

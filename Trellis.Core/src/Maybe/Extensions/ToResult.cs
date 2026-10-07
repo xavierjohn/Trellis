@@ -2,7 +2,7 @@
 
 /// <summary>
 /// Provides extension methods for converting <see cref="Maybe{TValue}"/> instances to <see cref="Result{TValue}"/>
-/// objects and for wrapping values in a <see cref="Result{TValue}"/>.
+/// objects.
 /// </summary>
 /// <remarks>
 /// These extension methods enable seamless transitions between optional and result-based value
@@ -45,14 +45,6 @@ public static partial class MaybeExtensions
 
         return Result.Ok(maybe.GetValueOrThrow());
     }
-
-    /// <summary>
-    /// Wraps a value in a <see cref="Result{TValue}"/> as a success.
-    /// </summary>
-    /// <typeparam name="TValue">The type of the value.</typeparam>
-    /// <param name="value">The value to wrap.</param>
-    /// <returns>A successful Result containing the value.</returns>
-    public static Result<TValue> ToResult<TValue>(this TValue value) => Result.Ok(value);
 }
 
 /// <summary>

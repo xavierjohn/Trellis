@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — ambiguous universal and nullable `ToResult` conversions (TFR-22)
+
+Removed Core's unconstrained no-argument `ToResult` lift and all twelve nullable
+`ToResult` / `ToResultAsync` overloads. Omitted errors can no longer silently wrap a
+`Maybe<T>` or nullable value as success. Use `Result.Ok(value)` for deliberate
+success wrapping, `Result.EnsureNotNull(value, error/factory)` for required nullables,
+and `EnsureNotNullAsync` for nullable Task/ValueTask sources. `Result.Ensure` remains
+the no-payload boolean guard; `Maybe<T>` conversions and HTTP/FluentValidation
+conversion APIs are unchanged.
+
+TRLS003/TRLS007 now recommend `maybe.ToResult(error)` explicitly. TRLS066 and its
+code fix recommend static `Result.EnsureNotNull`, retaining the diagnostic ID,
+public tooling names, discarded-slot checks, semantic rebinding, and comments.
+Primitive generators and shipped examples emit the new guard shape. Compiler
+regressions reject retired inferred calls and preserve the full Maybe conversion family.
+
+Async guard factories are validated before awaiting; the retired nullable conversions
+validated after awaiting. Invalid factories now take precedence over source completion,
+and null Task receivers report `ArgumentNullException` naming `task`.
+See `MIGRATION_v3.md` for the source-breaking migration.
+
 ### Added — value-returning null guards (TFR-21)
 
 Static `Result.EnsureNotNull` carries the non-null reference or unwrapped nullable
@@ -21,8 +42,7 @@ location. Nullable string field names target the root, and malformed full pointe
 are rejected only on missing-value paths. Field/detail guards create errors and
 validation metrics only on null; blank strings and default scalar values still succeed.
 Compiler regressions pin rejection of inferred non-nullable structs, including
-Maybe and Result wrappers, across all sync and async forms. Existing nullable
-`ToResult` APIs and the TRLS066 code fix remain unchanged.
+Maybe and Result wrappers, across all sync and async forms.
 
 ### Fixed — reliable HTTP replay variables (TFR-20)
 
@@ -71,10 +91,10 @@ resource metadata, and cause are not copied. Both `HideExistence` forms accept o
 `Propagate`, direct/leaf operational errors, static gates, and via-owner collapse semantics
 are unchanged. Private `ExistenceHidden` diagnostics retain the original input kind/code.
 
-### Added — `TRLS066`: use `ToResult(error)` for a nullable value
+### Added — `TRLS066`: use a value-returning guard for a nullable value
 
 `UseToResultForNullableAnalyzer` (Info) flags `Result.Ensure(x is not null, error)` — also `x != null` and
-`x is { }` — over a nullable reference or `Nullable<T>`, and suggests `x.ToResult(error)`, which returns the
+`x is { }` — over a nullable reference or `Nullable<T>`, and suggests `Result.EnsureNotNull(x, error)`, which returns the
 non-null value as a `Result<T>` instead of a discarded `Unit` and so removes the `!` suppressions that follow.
 `UseToResultForNullableCodeFixProvider` rewrites the call only where it is an operand of a Trellis `Combine` chain
 whose type-erasing consumer (`Map`/`Bind`) has a lambda that ignores that tuple slot, so the change of payload type (`Result<Unit>` to `Result<T>`)

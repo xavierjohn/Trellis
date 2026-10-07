@@ -200,7 +200,9 @@ validated only when the value is missing, so a malformed pointer throws
 For a nullable-returning query, use `task.EnsureNotNullAsync(...)` on `Task<T?>` /
 `ValueTask<T?>`; source faults/cancellation propagate and factories run only for a
 successful source completion with null. Factories must be non-null and are validated
-before awaiting. Existing nullable `ToResult` APIs are unchanged.
+before awaiting. Core's nullable `ToResult` APIs and universal no-argument lift are
+removed; use `Result.Ok(value)` only for deliberate success wrapping.
+`Maybe<T>.ToResult(error/factory)` remains the ordinary-absence bridge.
 
 For conditional requiredness or collection-element rules, use
 `Error.InvalidInput.Required("kind", "Kind is required for this item.")`.
@@ -325,7 +327,7 @@ Its indexed overload keeps input positions available for precise error pointers:
 ```csharp
 string?[] inputs = ["Ada", null, "Grace"];
 var names = inputs.TraverseAll((name, index) =>
-    name.ToResult(() => Error.InvalidInput.ForField(
+    Result.EnsureNotNull(name, () => Error.InvalidInput.ForField(
         field: InputPointer.Root.AppendProperty("names").AppendIndex(index),
         code: ValidationCodes.ValueNotNull, detail: "Name is required.")));
 // Failure identifies /names/1; every input is examined.

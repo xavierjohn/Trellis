@@ -3,7 +3,7 @@
 using System;
 using Trellis.Testing;
 
-public class NullableExtensionTests
+public class EnsureNotNullMigrationTests
 {
     [Fact]
     public void Convert_nullable_struct_to_result_pass()
@@ -12,7 +12,7 @@ public class NullableExtensionTests
         DateTime? date = DateTime.Now;
 
         // Act
-        var result = date.ToResult(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
+        var result = Result.EnsureNotNull(date, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date.Value);
@@ -25,7 +25,7 @@ public class NullableExtensionTests
         DateTime? date = default;
 
         // Act
-        var result = date.ToResult(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
+        var result = Result.EnsureNotNull(date, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
@@ -39,7 +39,7 @@ public class NullableExtensionTests
         MyClass? myClass = new();
 
         // Act
-        var result = myClass.ToResult(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
+        var result = Result.EnsureNotNull(myClass, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(myClass);
@@ -52,7 +52,7 @@ public class NullableExtensionTests
         MyClass? myClass = default;
 
         // Act
-        var result = myClass.ToResult(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
+        var result = Result.EnsureNotNull(myClass, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
@@ -67,7 +67,7 @@ public class NullableExtensionTests
         var myClassTask = Task.FromResult((MyClass?)my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
+        var result = await myClassTask.EnsureNotNullAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(my);
@@ -81,7 +81,7 @@ public class NullableExtensionTests
         var myClassTask = Task.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
+        var result = await myClassTask.EnsureNotNullAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
@@ -96,7 +96,7 @@ public class NullableExtensionTests
         var myClassTask = ValueTask.FromResult((MyClass?)my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
+        var result = await myClassTask.EnsureNotNullAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(my);
@@ -110,7 +110,7 @@ public class NullableExtensionTests
         var myClassTask = ValueTask.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
+        var result = await myClassTask.EnsureNotNullAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." });
@@ -125,7 +125,7 @@ public class NullableExtensionTests
         var myClassTask = Task.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
+        var result = await myClassTask.EnsureNotNullAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(my);
@@ -139,7 +139,7 @@ public class NullableExtensionTests
         var myClassTask = Task.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
+        var result = await myClassTask.EnsureNotNullAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
@@ -154,7 +154,7 @@ public class NullableExtensionTests
         var myClassTask = ValueTask.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
+        var result = await myClassTask.EnsureNotNullAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(my);
@@ -168,23 +168,23 @@ public class NullableExtensionTests
         var myClassTask = ValueTask.FromResult(my);
 
         // Act
-        var result = await myClassTask.ToResultAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
+        var result = await myClassTask.EnsureNotNullAsync(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
     }
 
-    #region ToResult with Error Factory
+    #region EnsureNotNull with Error Factory
 
     [Fact]
-    public void ToResult_WithErrorFactory_HasValue_ReturnsSuccessWithoutInvokingFactory()
+    public void EnsureNotNull_WithErrorFactory_HasValue_ReturnsSuccessWithoutInvokingFactory()
     {
         // Arrange
         DateTime? date = DateTime.Now;
         var factoryInvoked = false;
 
         // Act
-        var result = date.ToResult(() =>
+        var result = Result.EnsureNotNull(date, () =>
         {
             factoryInvoked = true;
             return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." };
@@ -196,14 +196,14 @@ public class NullableExtensionTests
     }
 
     [Fact]
-    public void ToResult_WithErrorFactory_HasNoValue_ReturnsFailureAndInvokesFactory()
+    public void EnsureNotNull_WithErrorFactory_HasNoValue_ReturnsFailureAndInvokesFactory()
     {
         // Arrange
         DateTime? date = default;
         var factoryInvoked = false;
 
         // Act
-        var result = date.ToResult(() =>
+        var result = Result.EnsureNotNull(date, () =>
         {
             factoryInvoked = true;
             return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." };
@@ -215,14 +215,14 @@ public class NullableExtensionTests
     }
 
     [Fact]
-    public void ToResult_WithErrorFactory_Class_HasValue_ReturnsSuccessWithoutInvokingFactory()
+    public void EnsureNotNull_WithErrorFactory_Class_HasValue_ReturnsSuccessWithoutInvokingFactory()
     {
         // Arrange
         MyClass? myClass = new();
         var factoryInvoked = false;
 
         // Act
-        var result = myClass.ToResult(() =>
+        var result = Result.EnsureNotNull(myClass, () =>
         {
             factoryInvoked = true;
             return new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "MyClass not found" };
@@ -234,14 +234,14 @@ public class NullableExtensionTests
     }
 
     [Fact]
-    public void ToResult_WithErrorFactory_Class_HasNoValue_ReturnsFailureAndInvokesFactory()
+    public void EnsureNotNull_WithErrorFactory_Class_HasNoValue_ReturnsFailureAndInvokesFactory()
     {
         // Arrange
         MyClass? myClass = default;
         var factoryInvoked = false;
 
         // Act
-        var result = myClass.ToResult(() =>
+        var result = Result.EnsureNotNull(myClass, () =>
         {
             factoryInvoked = true;
             return new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "MyClass not found" };
@@ -254,10 +254,10 @@ public class NullableExtensionTests
 
     #endregion
 
-    #region ToResultAsync with Error Factory
+    #region EnsureNotNullAsync with Error Factory
 
     [Fact]
-    public async Task ToResultAsync_Task_WithErrorFactory_HasValue_ReturnsSuccessWithoutInvokingFactory()
+    public async Task EnsureNotNullAsync_Task_WithErrorFactory_HasValue_ReturnsSuccessWithoutInvokingFactory()
     {
         // Arrange
         MyClass? myClass = new();
@@ -265,7 +265,7 @@ public class NullableExtensionTests
         var factoryInvoked = false;
 
         // Act
-        var result = await nullableTask.ToResultAsync(() =>
+        var result = await nullableTask.EnsureNotNullAsync(() =>
         {
             factoryInvoked = true;
             return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." };
@@ -277,7 +277,7 @@ public class NullableExtensionTests
     }
 
     [Fact]
-    public async Task ToResultAsync_Task_WithErrorFactory_HasNoValue_ReturnsFailureAndInvokesFactory()
+    public async Task EnsureNotNullAsync_Task_WithErrorFactory_HasNoValue_ReturnsFailureAndInvokesFactory()
     {
         // Arrange
         DateTime? date = default;
@@ -285,7 +285,7 @@ public class NullableExtensionTests
         var factoryInvoked = false;
 
         // Act
-        var result = await nullableTask.ToResultAsync(() =>
+        var result = await nullableTask.EnsureNotNullAsync(() =>
         {
             factoryInvoked = true;
             return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." };
@@ -297,7 +297,7 @@ public class NullableExtensionTests
     }
 
     [Fact]
-    public async Task ToResultAsync_ValueTask_WithErrorFactory_HasValue_ReturnsSuccessWithoutInvokingFactory()
+    public async Task EnsureNotNullAsync_ValueTask_WithErrorFactory_HasValue_ReturnsSuccessWithoutInvokingFactory()
     {
         // Arrange
         DateTime? date = DateTime.Now;
@@ -305,7 +305,7 @@ public class NullableExtensionTests
         var factoryInvoked = false;
 
         // Act
-        var result = await nullableTask.ToResultAsync(() =>
+        var result = await nullableTask.EnsureNotNullAsync(() =>
         {
             factoryInvoked = true;
             return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." };
@@ -317,7 +317,7 @@ public class NullableExtensionTests
     }
 
     [Fact]
-    public async Task ToResultAsync_ValueTask_WithErrorFactory_HasNoValue_ReturnsFailureAndInvokesFactory()
+    public async Task EnsureNotNullAsync_ValueTask_WithErrorFactory_HasNoValue_ReturnsFailureAndInvokesFactory()
     {
         // Arrange
         MyClass? myClass = default;
@@ -325,7 +325,7 @@ public class NullableExtensionTests
         var factoryInvoked = false;
 
         // Act
-        var result = await nullableTask.ToResultAsync(() =>
+        var result = await nullableTask.EnsureNotNullAsync(() =>
         {
             factoryInvoked = true;
             return new Error.Conflict(Resource: null, Code: "conflict") { Detail = "MyClass already exists." };
@@ -341,49 +341,48 @@ public class NullableExtensionTests
     #region Null errorFactory guards (regression — ensure ArgumentNullException is raised rather than NRE)
 
     [Fact]
-    public void ToResult_struct_with_null_factory_throws_argument_null_exception()
+    public void EnsureNotNull_struct_with_null_factory_throws_argument_null_exception()
     {
         DateTime? value = null;
 
-        var act = () => value.ToResult((Func<Error>)null!);
+        var act = () => Result.EnsureNotNull(value, (Func<Error>)null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
     }
 
     [Fact]
-    public void ToResult_struct_with_null_factory_throws_even_when_value_present()
+    public void EnsureNotNull_struct_with_null_factory_throws_even_when_value_present()
     {
         // Validation runs before the HasValue check so the failure mode is consistent.
         DateTime? value = DateTime.UnixEpoch;
 
-        var act = () => value.ToResult((Func<Error>)null!);
+        var act = () => Result.EnsureNotNull(value, (Func<Error>)null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
     }
 
     [Fact]
-    public void ToResult_class_with_null_factory_throws_argument_null_exception()
+    public void EnsureNotNull_class_with_null_factory_throws_argument_null_exception()
     {
         string? value = null;
 
-        var act = () => value.ToResult((Func<Error>)null!);
+        var act = () => Result.EnsureNotNull(value, (Func<Error>)null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
     }
 
     [Fact]
-    public async Task ToResultAsync_struct_with_null_factory_throws_argument_null_exception()
+    public async Task EnsureNotNullAsync_struct_with_null_factory_throws_argument_null_exception()
     {
-        // Async overloads delegate to the sync ToResult, so the null check fires inside the awaited continuation.
-        var act = async () => await Task.FromResult<DateTime?>(null).ToResultAsync((Func<Error>)null!);
+        var act = async () => await Task.FromResult<DateTime?>(null).EnsureNotNullAsync((Func<Error>)null!);
 
         await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
     }
 
     [Fact]
-    public async Task ToResultAsync_class_with_null_factory_throws_argument_null_exception()
+    public async Task EnsureNotNullAsync_class_with_null_factory_throws_argument_null_exception()
     {
-        var act = async () => await Task.FromResult<string?>(null).ToResultAsync((Func<Error>)null!);
+        var act = async () => await Task.FromResult<string?>(null).EnsureNotNullAsync((Func<Error>)null!);
 
         await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
     }

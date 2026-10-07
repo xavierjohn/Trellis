@@ -67,7 +67,7 @@ using System.Text.Json.Serialization;
 ///     }
 ///     
 ///     public static Result<Order> Create(CustomerId customerId) =>
-///         customerId.ToResult(Error.InvalidInput.ForField(field: "customerId", code: "invalid", detail: "Customer ID required"))
+///         Result.EnsureNotNull(customerId, Error.InvalidInput.ForField(field: "customerId", code: "invalid", detail: "Customer ID required"))
 ///             .Map(id => new Order(OrderId.NewUniqueV7(), id));
 ///     
 ///     // All modifications go through methods that enforce invariants.
@@ -75,7 +75,7 @@ using System.Text.Json.Serialization;
 ///     // fail on currency mismatch or overflow); compose with Bind so AddLine surfaces those
 ///     // as a typed failure rather than silently dropping them.
 ///     public Result&lt;Order&gt; AddLine(ProductId productId, int quantity, Money unitPrice) =>
-///         this.ToResult()
+///         Result.Ok(this)
 ///             .Ensure(_ => Status == OrderStatus.Draft,
 ///                    Error.InvalidInput.ForRule(code: "invalid", detail: "Cannot modify submitted order"))
 ///             .Ensure(_ => quantity > 0,
@@ -93,7 +93,7 @@ using System.Text.Json.Serialization;
 ///                 .Map(_ => order));
 ///     
 ///     public Result<Order> Submit() =>
-///         this.ToResult()
+///         Result.Ok(this)
 ///             .Ensure(_ => Status == OrderStatus.Draft,
 ///                    Error.InvalidInput.ForRule(code: "invalid", detail: "Order already submitted"))
 ///             .Ensure(_ => _lines.Count > 0,

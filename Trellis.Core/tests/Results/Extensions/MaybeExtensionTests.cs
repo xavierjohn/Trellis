@@ -396,42 +396,42 @@ public class MaybeExtensionTests
 
     #endregion
 
-    #region ToResult extension on value
+    #region Explicit success wrapping
 
     [Fact]
-    public void ToResult_OnValue_ReturnsSuccessResult()
+    public void Ok_OnValue_ReturnsSuccessResult()
     {
         // Arrange
         var value = "hello";
 
         // Act
-        var result = value.ToResult();
+        var result = Result.Ok(value);
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be("hello");
     }
 
     [Fact]
-    public void ToResult_OnComplexType_ReturnsSuccessResult()
+    public void Ok_OnComplexType_ReturnsSuccessResult()
     {
         // Arrange
         var myClass = new MyClass();
 
         // Act
-        var result = myClass.ToResult();
+        var result = Result.Ok(myClass);
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(myClass);
     }
 
     [Fact]
-    public void ToResult_OnStruct_ReturnsSuccessResult()
+    public void Ok_OnStruct_ReturnsSuccessResult()
     {
         // Arrange
         var date = DateTime.Now;
 
         // Act
-        var result = date.ToResult();
+        var result = Result.Ok(date);
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date);

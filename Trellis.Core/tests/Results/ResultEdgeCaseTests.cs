@@ -643,16 +643,16 @@ public class ResultEdgeCaseTests
 
     #endregion
 
-    #region ToResult Extension Edge Cases
+    #region Ok Factory Edge Cases
 
     [Fact]
-    public void ToResult_OnValue_ShouldCreateSuccessResult()
+    public void Ok_OnValue_ShouldCreateSuccessResult()
     {
         // Arrange
         int value = 42;
 
         // Act
-        var result = value.ToResult();
+        var result = Result.Ok(value);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -660,13 +660,13 @@ public class ResultEdgeCaseTests
     }
 
     [Fact]
-    public void ToResult_OnNullReferenceType_ShouldCreateSuccessResultWithNull()
+    public void Ok_OnNullReferenceType_ShouldCreateSuccessResultWithNull()
     {
         // Arrange
         string? value = null;
 
         // Act
-        var result = value.ToResult();
+        var result = Result.Ok(value);
 
         // Assert
         result.IsSuccess.Should().BeTrue();

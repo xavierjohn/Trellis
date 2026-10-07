@@ -74,14 +74,14 @@ public sealed class Order : Aggregate<OrderId>
 
     private Order(OrderId id) : base(id) { }   // EF Core ctor
 
-    // Idiomatic ROP factory: nullable parameters lift to Result<T> via T?.ToResult(error);
+    // Nullable guards carry the values; Combine accumulates missing-field errors.
     // Combine aggregates per-field errors into a single Error.InvalidInput; Map's
     // tuple-deconstructing overload lets the lambda bind the validated non-null values
     // directly as id/total/ownerId.
     public static Result<Order> TryCreate(OrderId? id, Money? total, ActorId? ownerId) =>
-        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Order id is required."))
-            .Combine(total.ToResult(Error.InvalidInput.ForField(field: "total", code: ValidationCodes.ValueNotNull, detail: "Total is required.")))
-            .Combine(ownerId.ToResult(Error.InvalidInput.ForField(field: "ownerId", code: ValidationCodes.ValueNotNull, detail: "Owner id is required.")))
+        Result.EnsureNotNull(id, Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Order id is required."))
+            .Combine(Result.EnsureNotNull(total, Error.InvalidInput.ForField(field: "total", code: ValidationCodes.ValueNotNull, detail: "Total is required.")))
+            .Combine(Result.EnsureNotNull(ownerId, Error.InvalidInput.ForField(field: "ownerId", code: ValidationCodes.ValueNotNull, detail: "Owner id is required.")))
             .Map((id, total, ownerId) => new Order(id) { Total = total, Status = OrderStatus.Draft, OwnerId = ownerId });
 }
 
@@ -1044,9 +1044,9 @@ public sealed partial class Customer : Aggregate<CustomerId>
     }
 
     public static Result<Customer> TryCreate(CustomerId? id, string? name, ShippingAddress? shipping) =>
-        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Customer id is required."))
+        Result.EnsureNotNull(id, Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Customer id is required."))
             .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required.")))
-            .Combine(shipping.ToResult(Error.InvalidInput.ForField(field: "shipping", code: ValidationCodes.ValueNotNull, detail: "Shipping address is required.")))
+            .Combine(Result.EnsureNotNull(shipping, Error.InvalidInput.ForField(field: "shipping", code: ValidationCodes.ValueNotNull, detail: "Shipping address is required.")))
             .Map((id, name, shipping) => new Customer(id, name, shipping));
 }
 
@@ -1492,7 +1492,7 @@ public sealed record OrderShipped(OrderId OrderId, TrackingNumber Tracking, Date
 ```csharp
 public Result<Order> Submit(TimeProvider clock)
 {
-    return this.ToResult()
+    return Result.Ok(this)
         .Ensure(_ => Status == OrderStatus.Draft, Error.InvalidInput.ForRule(code: "order.already-submitted", detail: "Already submitted"))
         .Tap(_ =>
         {
@@ -1628,8 +1628,10 @@ preserves input location and can be used lazily:
 `Result.EnsureNotNull(value, () => Error.InvalidInput.Required(inputPointer, detail))`.
 Composite validators can use
 `FieldViolation.Required(fieldName, detail)` or `FieldViolation.Required(inputPointer, detail)`
-to retain an indexed path and input location. No existing nullable `ToResult` API or
-TRLS066 code fix is removed or changed by these guards.
+to retain an indexed path and input location. Core's nullable `ToResult` APIs and
+universal no-argument lift have been removed: use these guards for required values,
+`Result.Ok(value)` for deliberate success wrapping, and `Maybe<T>.ToResult(error)`
+when ordinary absence becomes a failure. TRLS066 now emits the static guard shape.
 
 **Nested collections.** When `CreateCustomerRequest` carries a `List<AddressDto>` whose items each need to become value objects, the `Result.Combine` shape above doesn't generalize to the collection — use [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) (`TraverseAll`) to validate every row and accumulate per-item failures into one `Error.InvalidInput`. Inlining `.Select(item => item.ToCommand().Match(c => c, e => throw …))` throws on the first invalid row and surfaces as HTTP 500 instead of HTTP 422 with field violations.
 
@@ -2843,7 +2845,7 @@ public sealed class LegacyContactRepository(AppDbContext db) : ILegacyContactRep
     public Task<Result<Contact>> FindByIdAsync(ContactId id, CancellationToken ct) =>
         db.ContactRows.AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == id.Value, ct)
-            .ToResultAsync(() => new Error.NotFound(ResourceRef.For<Contact>(id)))
+            .EnsureNotNullAsync(() => new Error.NotFound(ResourceRef.For<Contact>(id)))
             .BindAsync(row => Result.Combine(
                 ContactId.TryCreate(row.Id, "Id"),
                 FirstName.TryCreate(row.FirstName, "FirstName"),

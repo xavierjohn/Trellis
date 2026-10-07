@@ -50,7 +50,7 @@ public class ResultTests
         var value = DateTime.Now;
 
         // Act
-        var result = value.ToResult();
+        var result = Result.Ok(value);
 
         // Assert
         result.Should().BeSuccess()
@@ -64,7 +64,7 @@ public class ResultTests
         var value = "Hello";
 
         // Act
-        var result = value.ToResult();
+        var result = Result.Ok(value);
 
         // Assert
         result.Should().BeSuccess()

@@ -10,6 +10,10 @@
 > [`docs/docfx_project/articles/asp-tohttpresponse.md`](../docs/docfx_project/articles/asp-tohttpresponse.md)
 > for the canonical guide and patterns; the snippets there
 > supersede every example in this file.
+> Core's universal `ToResult()` and nullable `ToResult` / `ToResultAsync` conversions
+> are also removed. Current code uses `Result.Ok(value)` for explicit success wrapping,
+> `Result.EnsureNotNull(value, error)` / `EnsureNotNullAsync` for required nullables,
+> and `Maybe<T>.ToResult(error)` for ordinary absence.
 
 This document provides detailed examples and advanced patterns for using the ASP extension with Railway Oriented Programming in ASP.NET Core applications.
 
@@ -536,13 +540,13 @@ processingApi.MapPost("/order/{id}/complete", async (
         {
             if (order.RequiresPayment)
                 return await paymentService.ProcessAsync(order, ct);
-            return order.ToResult();
+            return Result.Ok(order);
         })
         .BindAsync(async order =>
         {
             if (order.RequiresShipping)
                 return await shippingService.ScheduleAsync(order, ct);
-            return order.ToResult();
+            return Result.Ok(order);
         })
         .TapAsync(order => orderService.SaveAsync(order, ct))
         .ToHttpResultAsync());
@@ -790,7 +794,7 @@ public class UserRepository : IUserRepository
     {
         var user = _context.Users.Find(id);
         return user is not null
-            ? user.ToResult()
+            ? Result.Ok(user)
             : new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"User {id} not found" };
     }
 
@@ -798,7 +802,7 @@ public class UserRepository : IUserRepository
     {
         var user = await _context.Users.FindAsync(new object[] { id }, ct);
         return user is not null
-            ? user.ToResult()
+            ? Result.Ok(user)
             : new Error.NotFound(ResourceRef.For("User", id)) { Detail = $"User {id} not found" };
     }
 
@@ -806,12 +810,12 @@ public class UserRepository : IUserRepository
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
         return user is not null
-            ? user.ToResult()
+            ? Result.Ok(user)
             : new Error.NotFound(ResourceRef.For("User", email)) { Detail = $"User with email {email} not found" };
     }
 
     public async Task<Result<IEnumerable<User>>> GetAllAsync(CancellationToken ct) =>
-        (await _context.Users.ToListAsync(ct)).ToResult();
+        Result.Ok<IEnumerable<User>>(await _context.Users.ToListAsync(ct));
 
     public async Task<Result> AddAsync(User user, CancellationToken ct)
     {
@@ -970,21 +974,21 @@ public async Task<ActionResult<Order>> ProcessOrderAsync(string id, Cancellation
         {
             if (order.Customer.IsVIP)
                 return await order.ApplyDiscountAsync(0.1m, ct);
-            return order.ToResult();
+            return Result.Ok(order);
         })
         // Conditionally process payment
         .BindAsync(async order =>
         {
             if (order.Total > 0)
                 return await _paymentService.ProcessAsync(order, ct);
-            return order.ToResult();
+            return Result.Ok(order);
         })
         // Conditionally schedule shipping
         .BindAsync(async order =>
         {
             if (order.RequiresShipping)
                 return await _shippingService.ScheduleAsync(order, ct);
-            return order.ToResult();
+            return Result.Ok(order);
         })
         .TapAsync(order => _orderRepository.SaveAsync(order, ct))
         .ToActionResultAsync(this);
@@ -1137,8 +1141,7 @@ public class User : Aggregate<UserId>
         EmailAddress email, Maybe<Url> website = default)
     {
         // website defaults to Maybe.None if not provided
-        return new User(UserId.NewUniqueV7(), firstName, lastName, email, website)
-            .ToResult();
+        return Result.Ok(new User(UserId.NewUniqueV7(), firstName, lastName, email, website));
     }
 }
 ```

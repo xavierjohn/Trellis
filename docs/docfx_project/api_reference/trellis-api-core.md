@@ -59,7 +59,7 @@ Use this table before searching the long type catalog.
 | Validate optional input, treating only null as absent | `Maybe.Optional(value, function)` | [`Maybe`](#public-static-class-maybe) |
 | Treat null, empty, or whitespace-only optional text as absent before validation | `Maybe.OptionalNonBlank(value, function)` | [`Maybe`](#public-static-class-maybe) |
 | Convert absence to a domain failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)` | [`MaybeExtensions`](#maybeextensions) |
-| Maintain existing nullable conversions (sync or async) | `obj.ToResult(error)` / `task.ToResultAsync(error)` / `valueTask.ToResultAsync(errorFactory)` remain supported for both `class` and `struct`; the current TRLS066 code fix emits this shape. For new guards use `Result.EnsureNotNull` / `EnsureNotNullAsync` above. | [`Nullable to Result`](#nullable-to-result--nullableextensions-nullableextensionsasync) |
+| Migrate universal or nullable `ToResult` calls | Use `Result.Ok(value)` for deliberate success wrapping, `Result.EnsureNotNull(value, error)` for required nullables, and `task.EnsureNotNullAsync(error)` for nullable tasks. Only `Maybe<T>` keeps Core's `ToResult(error/factory)` conversions. | [Choosing a Result entry point](#choosing-a-result-entry-point) |
 | Create HTTP-oriented domain errors | Closed `Error` cases plus `ResourceRef.For<TResource>(id)` | [`Error`](#public-abstract-record-error), [`Error Cases`](#error-cases-closed-adt) |
 | Validate pagination controls and return a page | `PageRequest.TryCreate(cursor, limit)` → typed `Decode(codec)` or EF `ToPageAsync`; `PageBuilder.FromOverFetch(rows, size, row => codec.Encode(state))` or direct `new Page<T>(...)` for provider tokens | [`Pagination`](#pagination) |
 | Model aggregates/entities/events | `Aggregate<TId>`, `Entity<TId>`, `IDomainEvent` | [`Domain-Driven Design`](#domain-driven-design) |
@@ -1286,7 +1286,6 @@ Non-generic factory companion that allows type inference at the call site.
 | `public static T? AsNullable<T>(in this Maybe<T> value) where T : struct` |
 | `public static Result<TValue> ToResult<TValue>(in this Maybe<TValue> maybe, Error error) where TValue : notnull` |
 | `public static Result<TValue> ToResult<TValue>(in this Maybe<TValue> maybe, Func<Error> ferror) where TValue : notnull` |
-| `public static Result<TValue> ToResult<TValue>(this TValue value)` |
 
 `ToResult(..., Func<Error> ferror)` validates `ferror` before inspecting the `Maybe<T>` state. A null factory throws `ArgumentNullException` even when the maybe currently has a value; async overloads validate the factory before awaiting the receiver.
 
@@ -1377,7 +1376,6 @@ The result API contains a large generated extension surface. Exact public famili
 | `ResultLinqExtensions`, `ResultLinqExtensionsTaskAsync`, `ResultLinqExtensionsTaskLeftAsync`, `ResultLinqExtensionsTaskRightAsync`, `ResultLinqExtensionsValueTaskAsync`, `ResultLinqExtensionsValueTaskLeftAsync`, `ResultLinqExtensionsValueTaskRightAsync` | LINQ query syntax support via `Select`/`SelectMany`/`Where` for `Result<T>`, `Task<Result<T>>` and `ValueTask<Result<T>>` (mixed sync/async sources and continuations) |
 | `MapExtensions`, `MapExtensionsAsync`, `MapIfExtensions`, `MapOnFailureExtensions` | Success-path mapping, conditional mapping, and failure remapping; tuple overloads generated for arities 2-9 |
 | `MatchExtensions`, `MatchExtensionsAsync`, `MatchTupleExtensions`, `MatchTupleExtensionsAsync` | Terminal branching for normal and tuple results. (The previous `MatchErrorExtensions` API was removed — use `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., ... })` against the closed catalog.) |
-| `NullableExtensions`, `NullableExtensionsAsync` | Converts nullable reference/value types to `Result<T>` |
 | `RecoverExtensions`, `RecoverExtensionsAsync`, `RecoverOnFailureExtensions`, `RecoverOnFailureExtensionsAsync` | Converts failures into fallback success values or results |
 | `TapExtensions`, `TapExtensionsAsync`, `TapOnFailureExtensions`, `TapOnFailureExtensionsAsync` | Side effects on success or failure; tuple overloads generated for arities 2-9 |
 | `ToMaybeExtensions`, `ToMaybeExtensionsAsync` | Converts `Result<T>` to `Maybe<T>` |
@@ -1612,8 +1610,7 @@ source exactly once with `ConfigureAwait(false)` and then calls static
 | `public static ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, string? fieldName, string? detail = null) where T : struct` | `ValueTask<Result<T>>` |
 
 Null Task inputs throw `ArgumentNullException` (parameter `task`). Factories are
-validated **before awaiting**, even if the source is pending, unlike the existing
-nullable `ToResultAsync` factory forms. These argument exceptions surface through
+validated **before awaiting**, even if the source is pending. These argument exceptions surface through
 the returned Task/ValueTask. Valid factories run only after a successful source
 completion with null; source faults/cancellation propagate unchanged without invoking
 the factory or constructing a required error. A default `ValueTask<T?>` completes
@@ -1864,48 +1861,38 @@ Project a `Result<T>` to a `Maybe<T>` (failure → `None`).
 Maybe<Order> maybe = await repo.TryLoadAsync(id).ToMaybeAsync();
 ```
 
-#### Nullable to Result — `NullableExtensions`, `NullableExtensionsAsync`
+#### Choosing a Result entry point
 
-Bridge a plain nullable value (`T?` for reference or value types) into the Result track. Mirrors `Maybe<T>.ToResult` for repositories that return raw nullables instead of `Maybe<T>`. The async overloads extend `Task<T?>` and `ValueTask<T?>` directly, so call sites can chain `.ToResultAsync(error)` onto a repository call without an intermediate `await` — matching the receiver pattern used by `BindAsync` / `EnsureAsync` / `MapAsync`.
+Core's unconstrained, no-argument `ToResult` lift and all twelve nullable-value
+`ToResult` / `ToResultAsync` overloads have been removed. An omitted failure must not
+silently wrap a nullable or `Maybe<T>` in a successful result.
 
-For new missing-but-required guards, prefer
-[`Result.EnsureNotNull`](#value-returning-null-guards) /
-[`EnsureNotNullAsync`](#nullable-task-guards--ensureextensionsasync): the name states
-the guard and the field/detail forms create standard required errors lazily.
-The nullable `ToResult` APIs remain available with their existing behavior; no removal
-or obsoletion is introduced by the new guards. `Maybe<T>.ToResult` remains the
-ordinary-absence-to-failure bridge.
+| Intent | Use |
+| --- | --- |
+| Deliberately wrap a successful payload | `Result.Ok(value)`; this does not check for null or inspect a wrapper's state. |
+| Check a boolean condition without carrying a value | `Result.Ensure(condition, error)`; returns `Result<Unit>`. |
+| Require a nullable reference or struct | `Result.EnsureNotNull(value, error)` / `Result.EnsureNotNull(value, errorFactory)`. |
+| Require a nullable task result | `task.EnsureNotNullAsync(error)` / `valueTask.EnsureNotNullAsync(errorFactory)`. |
+| Turn ordinary `Maybe<T>` absence into failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)`; Task/ValueTask `ToResultAsync` forms remain supported. |
 
-The `Func<Error>` async overloads delegate to the sync `ToResult` after awaiting, so the `ArgumentNullException.ThrowIfNull(errorFactory)` check fires on the awaited continuation rather than synchronously. The thrown exception still surfaces from the returned `Task` / `ValueTask`. This intentionally differs from `MaybeExtensionsAsync.ToResultAsync(Func<Error>)`, which validates the factory before awaiting.
+The null guards preserve the reference or unwrap the struct, and lazy errors run
+only on absence. Continue typed `Combine` / `Map` chains without `!`; async chains
+use `CombineAsync` / `MapAsync`. See the exact
+[sync](#value-returning-null-guards) and
+[async](#nullable-task-guards--ensureextensionsasync) guard contracts.
 
-**Sync — `NullableExtensions` (4 overloads)**
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static Result<T> ToResult<T>(this T? nullable, Error error) where T : struct` | `Result<T>` | Value-type variant. `null` → `Fail(error)`; otherwise `Ok(nullable.Value)`. |
-| `public static Result<T> ToResult<T>(this T? nullable, Func<Error> errorFactory) where T : struct` | `Result<T>` | Value-type factory variant. Throws `ArgumentNullException` when `errorFactory` is `null`. |
-| `public static Result<T> ToResult<T>(this T? obj, Error error) where T : class` | `Result<T>` | Reference-type variant. |
-| `public static Result<T> ToResult<T>(this T? obj, Func<Error> errorFactory) where T : class` | `Result<T>` | Reference-type factory variant. |
-
-**Async — `NullableExtensionsAsync` (8 overloads)**
-
-| Signature | Returns | Description |
-| --- | --- | --- |
-| `public static Task<Result<T>> ToResultAsync<T>(this Task<T?> nullableTask, Error error) where T : struct` | `Task<Result<T>>` | `Task<T?>` value-type variant. |
-| `public static Task<Result<T>> ToResultAsync<T>(this Task<T?> nullableTask, Func<Error> errorFactory) where T : struct` | `Task<Result<T>>` | `Task<T?>` value-type factory variant. |
-| `public static Task<Result<T>> ToResultAsync<T>(this Task<T?> nullableTask, Error error) where T : class` | `Task<Result<T>>` | `Task<T?>` reference-type variant — the canonical "repo returns `Task<User?>`" bridge. |
-| `public static Task<Result<T>> ToResultAsync<T>(this Task<T?> nullableTask, Func<Error> errorFactory) where T : class` | `Task<Result<T>>` | `Task<T?>` reference-type factory variant. |
-| `public static ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> nullableTask, Error error) where T : struct` | `ValueTask<Result<T>>` | `ValueTask<T?>` value-type variant. |
-| `public static ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> nullableTask, Func<Error> errorFactory) where T : struct` | `ValueTask<Result<T>>` | `ValueTask<T?>` value-type factory variant. |
-| `public static ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> nullableTask, Error error) where T : class` | `ValueTask<Result<T>>` | `ValueTask<T?>` reference-type variant — the canonical "repo returns `ValueTask<Order?>`" bridge. |
-| `public static ValueTask<Result<T>> ToResultAsync<T>(this ValueTask<T?> nullableTask, Func<Error> errorFactory) where T : class` | `ValueTask<Result<T>>` | `ValueTask<T?>` reference-type factory variant. |
+**Migration edge cases.** The guards validate factories before awaiting, whereas the
+retired nullable async conversions validated them after awaiting. An invalid factory
+therefore takes precedence over a pending, faulted, or cancelled source; the argument
+exception surfaces through the returned Task/ValueTask. Null Task receivers now
+produce `ArgumentNullException` naming `task`. Activities are named `EnsureNotNull`.
+These are deliberate guard semantics, not a behavior-identical rename for invalid
+arguments. The `Maybe<T>` conversion contracts are unchanged.
 
 ```csharp
-// Repository returns ValueTask<Order?>. ToResultAsync extends the task receiver
-// directly, so no intermediate await + sync ToResult call is required.
 private ValueTask<Result<Order>> LoadOrderAsync(OrderId id, CancellationToken ct) =>
     _orderRepository.FindByIdAsync(id, ct)
-        .ToResultAsync(new Error.NotFound(ResourceRef.For<Order>(id)));
+        .EnsureNotNullAsync(() => new Error.NotFound(ResourceRef.For<Order>(id)));
 ```
 
 ---

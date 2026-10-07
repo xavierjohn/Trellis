@@ -56,13 +56,13 @@ public sealed class Order : Aggregate<OrderId>
 
     private Order(OrderId id) : base(id) { }   // EF Core ctor
 
-    // Idiomatic ROP factory: nullable parameters lift to Result<T> via T?.ToResult(error);
+    // Nullable guards carry the values; Combine accumulates missing-field errors.
     // Combine aggregates per-field errors into a single Error.InvalidInput; Map
     // constructs the aggregate from the tuple of validated non-null values.
     public static Result<Order> TryCreate(OrderId? id, Money? total, ActorId? ownerId) =>
-        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Order id is required."))
-            .Combine(total.ToResult(Error.InvalidInput.ForField(field: "total", code: ValidationCodes.ValueNotNull, detail: "Total is required.")))
-            .Combine(ownerId.ToResult(Error.InvalidInput.ForField(field: "ownerId", code: ValidationCodes.ValueNotNull, detail: "Owner id is required.")))
+        Result.EnsureNotNull(id, Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Order id is required."))
+            .Combine(Result.EnsureNotNull(total, Error.InvalidInput.ForField(field: "total", code: ValidationCodes.ValueNotNull, detail: "Total is required.")))
+            .Combine(Result.EnsureNotNull(ownerId, Error.InvalidInput.ForField(field: "ownerId", code: ValidationCodes.ValueNotNull, detail: "Owner id is required.")))
             .Map((id, total, ownerId) => new Order(id) { Total = total, Status = OrderStatus.Draft, OwnerId = ownerId });
 
     // Exercises the protected `DomainEvents` member inherited from Aggregate<TId>.

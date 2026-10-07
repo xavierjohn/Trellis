@@ -104,7 +104,7 @@ using System.Diagnostics;
 ///     }
 ///     
 ///     public static Result&lt;Customer&gt; Create(EmailAddress email) =>
-///         email.ToResult()
+///         Result.Ok(email)
 ///             .Map(e => new Customer(CustomerId.NewUniqueV7(), e));
 /// }
 /// </code>
@@ -186,7 +186,7 @@ using System.Diagnostics;
 ///     private readonly List&lt;OrderLine&gt; _lines = [];
 ///     
 ///     public Result&lt;Order&gt; AddLine(ProductId productId, int quantity) =>
-///         this.ToResult()
+///         Result.Ok(this)
 ///             .Ensure(_ => quantity > 0, new Error.InvalidInput(EquatableArray&lt;FieldViolation&gt;.Empty) { Detail = "Quantity must be positive" })
 ///             .Tap(_ => _lines.Add(new OrderLine(productId, quantity)));
 ///     

@@ -668,9 +668,9 @@ XML is a separate matter and is deliberately not listed as a safe example, thoug
 
 > Severity: Warning, rather than the Info used for TRLS063/TRLS064. Those rules report a legal shape that a codebase may reasonably be full of; this one reports a wire-format defect whose symptom — a failure body that parses fine but arrives under the wrong media type — is invisible in the response the developer eyeballs. Trellis's own responses are already immune (`AsActionResult<T>()` returns a plain `ActionResult`, and `ScalarValueValidationFilter` owns every invalid `ModelState`), so what this rule protects is the `ObjectResult`s your application builds itself.
 
-## TRLS066 — `Result.Ensure(x is not null, error)` instead of `ToResult`
+## TRLS066 — `Result.Ensure(x is not null, error)` instead of `EnsureNotNull`
 
-`Result.Ensure(x is not null, error)` checks for null but throws the value away, so every later use of `x` needs a `!`. `x.ToResult(error)` does the same check on a nullable reference or `Nullable<T>` and returns a `Result<T>` carrying the **non-null** value. It is the same idiom whether the guard is a single field or one of several.
+`Result.Ensure(x is not null, error)` checks for null but throws the value away, so every later use of `x` needs a `!`. `Result.EnsureNotNull(x, error)` does the same check on a nullable reference or `Nullable<T>` and returns a `Result<T>` carrying the **non-null** value. It is the same idiom whether the guard is a single field or one of several.
 
 ```csharp
 // WRONG — Result<Unit> guards, then '!' to recover what the guard already proved
@@ -679,12 +679,12 @@ Result.Ensure(title is not null, Error.InvalidInput.ForField(code: "required", f
     .Map((_, _) => new CreateTodoCommand(title!, dueDate!.Value, tag));        // TRLS066 on both guards
 
 // FIX — the Result carries the value; no '!' and no discarded Unit
-title.ToResult(Error.InvalidInput.ForField(code: "required", field: "title", detail: "Title is required."))
-    .Combine(dueDate.ToResult(Error.InvalidInput.ForField(code: "required", field: "dueDate", detail: "Due date is required.")))
+Result.EnsureNotNull(title, Error.InvalidInput.ForField(code: "required", field: "title", detail: "Title is required."))
+    .Combine(Result.EnsureNotNull(dueDate, Error.InvalidInput.ForField(code: "required", field: "dueDate", detail: "Due date is required.")))
     .Map((title, dueDate) => new CreateTodoCommand(title, dueDate, tag));
 ```
 
-`Combine` over `Result<T>` values yields a `Result<(T1, T2)>`, and `Map` accepts a lambda taking the tuple elements as separate parameters, so the chain stays one expression and **still reports every missing field at once**. The code fix performs only the first rewrite (guard to `ToResult`) and leaves the later lambda untouched, so a `title!` there still compiles; take the tuple elements as lambda parameters to drop it.
+`Combine` over `Result<T>` values yields a `Result<(T1, T2)>`, and `Map` accepts a lambda taking the tuple elements as separate parameters, so the chain stays one expression and **still reports every missing field at once**. The code fix performs only the first rewrite (guard to `EnsureNotNull`) and leaves the later lambda untouched, so a `title!` there still compiles; take the tuple elements as lambda parameters to drop it.
 
 The null test must be the whole condition. These are left alone because the replacement would change the meaning:
 
@@ -694,9 +694,9 @@ Result.Ensure(title is { Length: > 0 }, error);                // property patte
 Result.Ensure(value is string { }, error);                    // also tests the runtime type
 ```
 
-> Severity: Info, because both shapes are correct. The two differ in payload type — `Result.Ensure` returns `Result<Unit>`, `ToResult` returns `Result<T>` — so the code fix is offered only where the payload is provably discarded: an operand of a Trellis `Combine` chain whose Trellis `Map`/`Bind` consumer has a lambda that ignores that slot. A standalone `Result.Ensure(...)` keeps the diagnostic and gets no automatic rewrite; change the declared type by hand.
+> Severity: Info, because both shapes are correct. The two differ in payload type — `Result.Ensure` returns `Result<Unit>`, `Result.EnsureNotNull` returns `Result<T>` — so the code fix is offered only where the payload is provably discarded: an operand of a Trellis `Combine` chain whose Trellis `Map`/`Bind` consumer has a lambda that ignores that slot. A standalone `Result.Ensure(...)` keeps the diagnostic and gets no automatic rewrite; change the declared type by hand.
 
-**Named guard alternative.** For new code or a manual rewrite, use
+**Required-field shorthand.** For new code or a manual rewrite, use
 `Result.EnsureNotNull(value, error)` (or a lazy factory), with the same typed tuple
 control flow. The field/detail form also avoids allocating a standard required error
 on success:
@@ -708,9 +708,10 @@ Result.EnsureNotNull(title, "title", "Title is required.")
 ```
 
 `EnsureNotNullAsync` extends `Task<T?>` and `ValueTask<T?>`; continue those chains with
-`CombineAsync` / `MapAsync`. The current TRLS066 code fix still emits `ToResult`, and
-the nullable `ToResult` APIs remain supported. Do not apply a null-only guard to one
-of the compound/type-testing conditions above.
+`CombineAsync` / `MapAsync`. The TRLS066 code fix emits `Result.EnsureNotNull`;
+the historical analyzer/provider names and diagnostic ID stay unchanged. The old
+nullable `ToResult` APIs are removed. Do not apply a null-only guard to one of the
+compound/type-testing conditions above.
 
 ## (No analyzer) — `Result.FailAfterCommit` composed with aggregating operators
 Not an analyzer-flagged rule (no diagnostic ID), but a recurring shape that the FailAfterCommit XML doc cautions against. `Result.FailAfterCommit<TValue>(error)` is a **leaf** worker-handler operation: it converts a single aggregate's transient external rejection into a persisted `permanently_failed` state and returns. Threading that result through `Combine` / `TraverseAll` / `SequenceAll` / `WhenAllAsync` OR-accumulates the `PersistOnFailure` flag onto the aggregated failure — `TransactionalCommandBehavior` then commits the staged permanent-failure mutation alongside whatever the other legs produced, which is almost never what the handler author intended.

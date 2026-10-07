@@ -13,15 +13,15 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Operations;
 
 /// <summary>
-/// Rewrites <c>Result.Ensure(x is not null, error)</c> to <c>x.ToResult(error)</c> (TRLS066).
+/// Rewrites <c>Result.Ensure(x is not null, error)</c> to <c>Result.EnsureNotNull(x, error)</c> (TRLS066).
 /// </summary>
 /// <remarks>
-/// <c>Result.Ensure</c> returns <c>Result&lt;Unit&gt;</c> and <c>ToResult</c> returns <c>Result&lt;T&gt;</c>, so the
+/// <c>Result.Ensure</c> returns <c>Result&lt;Unit&gt;</c> and <c>Result.EnsureNotNull</c> returns <c>Result&lt;T&gt;</c>, so the
 /// rewrite compiles and behaves the same only where the payload is provably unused. The fix is therefore offered
 /// only when the call is an operand of a Trellis <c>Combine</c> chain whose result goes straight into Trellis's
 /// <c>Map</c> or <c>Bind</c> with a lambda that ignores that tuple slot (a discard, or an unread <c>_</c>).
 /// <para>
-/// It is withheld when the rewritten call would not bind (for example when <c>Trellis</c> is not imported), when
+/// It is withheld when the rewritten call would not bind, when
 /// arguments are named or the invocation contains preprocessor directives, and in every other position.
 /// The enclosing pipeline must keep the same method definitions and consumer return type. Fix All rechecks this
 /// after each replacement rather than merging independently validated edits.
@@ -31,7 +31,7 @@ using Microsoft.CodeAnalysis.Operations;
 [Shared]
 public sealed class UseToResultForNullableCodeFixProvider : CodeFixProvider
 {
-    private const string Title = "Use ToResult(error)";
+    private const string Title = "Use Result.EnsureNotNull(value, error)";
 
     public override ImmutableArray<string> FixableDiagnosticIds =>
         [DiagnosticDescriptors.UseToResultForNullable.Id];
@@ -126,27 +126,39 @@ public sealed class UseToResultForNullableCodeFixProvider : CodeFixProvider
         var errorTrailing = TrimTrailingTrivia(
             arguments[1].Expression.GetTrailingTrivia(),
             LeadingIndentation(ensure.ArgumentList.CloseParenToken));
+        var separator = arguments.GetSeparator(0)
+            .WithLeadingTrivia(default(SyntaxTriviaList))
+            .WithTrailingTrivia(SyntaxFactory.Space);
+        if (receiverTrailing.Any(IsSingleLineComment))
+        {
+            separator = separator.WithTrailingTrivia(receiverTrailing);
+            receiverTrailing = default;
+        }
 
-        var toResult = SyntaxFactory.InvocationExpression(
-                SyntaxFactory.MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    AsReceiver(WithTrivia(receiver, receiverLeading, receiverTrailing)),
-                    SyntaxFactory.IdentifierName("ToResult")),
+        var guardExpression = ensure.Expression is MemberAccessExpressionSyntax member
+            ? member.WithName(SyntaxFactory.IdentifierName("EnsureNotNull"))
+            : SyntaxFactory.ParseExpression("global::Trellis.Result.EnsureNotNull");
+        var guard = SyntaxFactory.InvocationExpression(
+                guardExpression,
                 SyntaxFactory.ArgumentList(
-                    SyntaxFactory.Token(SyntaxKind.OpenParenToken).WithTrailingTrivia(errorLeading.SkipWhile(IsWhitespace)),
-                    SyntaxFactory.SingletonSeparatedList(
-                        SyntaxFactory.Argument(WithTrivia(arguments[1].Expression, default, errorTrailing))),
-                    SyntaxFactory.Token(SyntaxKind.CloseParenToken)));
+                    ensure.ArgumentList.OpenParenToken.WithTrailingTrivia(default(SyntaxTriviaList)),
+                    SyntaxFactory.SeparatedList(
+                        [
+                            SyntaxFactory.Argument(WithTrivia(receiver, receiverLeading, receiverTrailing)),
+                            SyntaxFactory.Argument(WithTrivia(arguments[1].Expression, errorLeading, errorTrailing)),
+                        ],
+                        [separator]),
+                    ensure.ArgumentList.CloseParenToken.WithLeadingTrivia(default(SyntaxTriviaList))));
 
         // The synthesized tokens carry elastic trivia that the code-action formatter would re-flow, so the outer
         // trivia is set explicitly from the call being replaced.
-        toResult = toResult
-            .WithLeadingTrivia(ensure.GetLeadingTrivia().AddRange(toResult.GetLeadingTrivia().Where(static t => !t.HasAnnotation(SyntaxAnnotation.ElasticAnnotation))))
+        guard = guard
+            .WithLeadingTrivia(ensure.GetLeadingTrivia())
             .WithTrailingTrivia(ensure.GetTrailingTrivia());
 
-        return BindsToTrellisToResult(toResult, ensure, model)
-            && PreservesPipelineBindings(ensure, toResult, consumer, model, cancellationToken)
-                ? toResult
+        return BindsToTrellisGuard(guard, ensure, model)
+            && PreservesPipelineBindings(ensure, guard, consumer, model, cancellationToken)
+                ? guard
                 : null;
     }
 
@@ -249,10 +261,11 @@ public sealed class UseToResultForNullableCodeFixProvider : CodeFixProvider
     private static bool IsWhitespace(SyntaxTrivia trivia) =>
         trivia.IsKind(SyntaxKind.WhitespaceTrivia) || trivia.IsKind(SyntaxKind.EndOfLineTrivia);
 
-    private static bool BindsToTrellisToResult(InvocationExpressionSyntax candidate, InvocationExpressionSyntax original, SemanticModel model)
+    private static bool BindsToTrellisGuard(InvocationExpressionSyntax candidate, InvocationExpressionSyntax original, SemanticModel model)
     {
         var symbol = model.GetSpeculativeSymbolInfo(original.SpanStart, candidate, SpeculativeBindingOption.BindAsExpression).Symbol;
-        return symbol is IMethodSymbol { Name: "ToResult" } method && IsTrellisMember(method, "Trellis.NullableExtensions");
+        return symbol is IMethodSymbol { Name: "EnsureNotNull", IsExtensionMethod: false, Parameters.Length: 2 } method
+            && IsTrellisMember(method, "Trellis.Result");
     }
 
     private static bool PreservesPipelineBindings(
@@ -411,11 +424,4 @@ public sealed class UseToResultForNullableCodeFixProvider : CodeFixProvider
             .Any(name => name.Identifier.ValueText == "_"
                          && SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(name).Symbol, symbol));
     }
-
-    private static ExpressionSyntax AsReceiver(ExpressionSyntax receiver) =>
-        receiver is IdentifierNameSyntax or MemberAccessExpressionSyntax or InvocationExpressionSyntax
-            or ElementAccessExpressionSyntax or ParenthesizedExpressionSyntax or ThisExpressionSyntax
-            or PostfixUnaryExpressionSyntax { RawKind: (int)SyntaxKind.SuppressNullableWarningExpression }
-            ? receiver
-            : SyntaxFactory.ParenthesizedExpression(receiver);
 }

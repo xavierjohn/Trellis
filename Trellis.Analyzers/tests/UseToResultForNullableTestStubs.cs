@@ -2,7 +2,7 @@
 
 /// <summary>
 /// Self-contained Trellis surface for TRLS066 tests: <c>Result.Ensure</c> (returning <c>Result&lt;Unit&gt;</c>),
-/// <c>ToResult</c> on nullable references and values, and <c>Combine</c>/<c>Map</c>/<c>Bind</c> over tuples.
+/// static <c>Result.EnsureNotNull</c> on nullable references and values, and <c>Combine</c>/<c>Map</c>/<c>Bind</c> over tuples.
 /// </summary>
 public static class UseToResultForNullableTestStubs
 {
@@ -28,15 +28,11 @@ public static class UseToResultForNullableTestStubs
             {
                 public static Result<Unit> Ensure(bool flag, Error error) => default;
                 public static Result<Unit> Ensure(bool flag, Func<Error> errorFactory) => default;
+                public static Result<T> EnsureNotNull<T>(T? value, Error error) where T : struct => default;
+                public static Result<T> EnsureNotNull<T>(T? value, Error error) where T : class => default;
+                public static Result<T> EnsureNotNull<T>(T? value, Func<Error> errorFactory) where T : struct => default;
+                public static Result<T> EnsureNotNull<T>(T? value, Func<Error> errorFactory) where T : class => default;
                 public static Result<(T1, T2)> Combine<T1, T2>(Result<T1> r1, Result<T2> r2) => default;
-            }
-
-            public static class NullableExtensions
-            {
-                public static Result<T> ToResult<T>(this T? nullable, Error error) where T : struct => default;
-                public static Result<T> ToResult<T>(this T? obj, Error error) where T : class => default;
-                public static Result<T> ToResult<T>(this T? nullable, Func<Error> errorFactory) where T : struct => default;
-                public static Result<T> ToResult<T>(this T? obj, Func<Error> errorFactory) where T : class => default;
             }
 
             public static class CombineExtensions

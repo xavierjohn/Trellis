@@ -179,6 +179,8 @@ public class RequiredPartialClassGeneratorCollisionTests
         var generated = GeneratedSource(run);
         generated.Should().Contain("public static bool TryParse(");
         generated.Should().Contain("public static CleanId NewUniqueV7() =>");
+        generated.Should().Contain("Result.EnsureNotNull(");
+        generated.Should().NotContain(".ToResult(");
     }
 
     private static GeneratorRun RunGenerator(string source, CancellationToken cancellationToken)

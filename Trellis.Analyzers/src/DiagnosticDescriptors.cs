@@ -50,7 +50,7 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Maybe.Value throws an InvalidOperationException if the Maybe has no value. " +
-                      "Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with ToResult.",
+                      "Check HasValue first, use TryGetValue, GetValueOrDefault, or convert to Result with maybe.ToResult(error).",
         helpLinkUri: HelpLinkBase);
 
     /// <summary>
@@ -93,7 +93,7 @@ public static class DiagnosticDescriptors
         isEnabledByDefault: true,
         description: "Maybe should not be wrapped inside another Maybe. This creates Maybe<Maybe<T>> which is almost always unintended. " +
                      "Avoid using Map when the transformation function returns a Maybe, as this creates double wrapping. " +
-                     "Consider converting to Result with ToResult() for better composability.",
+                     "Consider converting to Result with maybe.ToResult(error) for better composability.",
         helpLinkUri: HelpLinkBase);
 
     /// <summary>
@@ -420,17 +420,17 @@ public static class DiagnosticDescriptors
         helpLinkUri: HelpLinkBase);
 
     /// <summary>
-    /// TRLS066: <c>Result.Ensure(x is not null, error)</c> where <c>x.ToResult(error)</c> says the same thing.
+    /// TRLS066: <c>Result.Ensure(x is not null, error)</c> where <c>Result.EnsureNotNull(x, error)</c> carries the value.
     /// </summary>
     public static readonly DiagnosticDescriptor UseToResultForNullable = new(
         id: TrellisDiagnosticIds.UseToResultForNullable,
-        title: "Use ToResult(error) to convert a nullable value to a Result<T>",
-        messageFormat: "Use ToResult(error) to convert a nullable value to a Result<T>",
+        title: "Use Result.EnsureNotNull(value, error) to guard a nullable value",
+        messageFormat: "Use Result.EnsureNotNull(value, error) to guard a nullable value",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true,
         description: "Result.Ensure(x is not null, error) checks for null but discards the value, so the caller keeps " +
-                     "using x with a null-forgiving '!' afterwards. x.ToResult(error) performs the same check on a nullable " +
+                     "using x with a null-forgiving '!' afterwards. Result.EnsureNotNull(x, error) performs the same check on a nullable " +
                      "reference or Nullable<T> and yields a Result<T> that carries the non-null value. The two differ in " +
                      "payload type (Result<Unit> versus Result<T>), so the code fix is offered only where the payload is " +
                      "provably discarded: an operand of a Trellis Combine chain whose result feeds a lambda that discards that slot. Combine still accumulates every failure, so a form that reports " +
