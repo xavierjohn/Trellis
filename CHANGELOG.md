@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — lazy nonblank string guards (TFR-21 follow-up)
+
+`EnsureNotNullOrWhiteSpace` now accepts a lazy `Func<Error>` or a field name plus
+optional detail. The factory runs exactly once only on failure; the field/detail
+form creates one `ValidationCodes.ValueNotEmpty` violation for null, empty, or
+whitespace strings. Valid strings remain untrimmed, and success creates no validation
+violations. Existing eager-error and bare-null calls retain their behavior.
+Recipe 13 uses the one-line field/detail guard instead of repeating a custom error.
+
 ### Removed — ambiguous universal and nullable `ToResult` conversions (TFR-22)
 
 Removed Core's unconstrained no-argument `ToResult` lift and all twelve nullable

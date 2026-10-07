@@ -85,10 +85,7 @@ public sealed partial class Customer : Aggregate<CustomerId>
 
     public static Result<Customer> TryCreate(CustomerId? id, string? name, ShippingAddress? shipping) =>
         Result.EnsureNotNull(id, "id", "Customer id is required.")
-            .Combine(Result.EnsureNotNull(name, static () =>
-                    Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required."))
-                .Ensure(static value => !string.IsNullOrWhiteSpace(value), static _ =>
-                    Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required.")))
+            .Combine(name.EnsureNotNullOrWhiteSpace("name", "Name is required."))
             .Combine(Result.EnsureNotNull(shipping, "shipping", "Shipping address is required."))
             .Map((id, name, shipping) => new Customer(id, name, shipping));
 }

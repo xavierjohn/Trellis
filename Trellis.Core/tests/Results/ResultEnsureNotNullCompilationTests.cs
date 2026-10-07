@@ -119,6 +119,29 @@ public class ResultEnsureNotNullCompilationTests
                 "{0} permits a null field name to target the root", parameter.Member));
     }
 
+    [Fact]
+    public void EnsureNotNullOrWhiteSpace_AllForms_NullArgumentsAndTypedValues_CompileWithoutWarnings()
+    {
+        var diagnostics = Compile("""
+            using System;
+            using Trellis;
+
+            public static class Consumer
+            {
+                public static void Run(string? value, string? fieldName, Func<Error> factory, Error error)
+                {
+                    Result<string> eager = value.EnsureNotNullOrWhiteSpace(error);
+                    Result<string> lazy = value.EnsureNotNullOrWhiteSpace(factory);
+                    Result<string> field = value.EnsureNotNullOrWhiteSpace(fieldName);
+                    Result<string> root = value.EnsureNotNullOrWhiteSpace(fieldName: null);
+                    Result<string> nullError = value.EnsureNotNullOrWhiteSpace(null!);
+                }
+            }
+            """);
+
+        diagnostics.Should().BeEmpty();
+    }
+
     private static IEnumerable<object[]> Cases(params string[] inputTypes)
     {
         foreach (var inputType in inputTypes)
