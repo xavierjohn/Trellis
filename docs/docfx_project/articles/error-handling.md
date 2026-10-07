@@ -17,6 +17,7 @@ audience: [developer]
 | Return a typed failure from a function | `Result.Fail<T>(new Error.X(payload) { Detail = "..." })` | [Creating errors](#creating-errors) |
 | Fail but still persist staged work (worker handler) | `Result.FailAfterCommit<T>(error)` | [Persisting failure state from a worker handler](integration-mediator.md#persisting-failure-state-from-a-worker-handler) |
 | Build a single-violation 422 from a property name | `Error.InvalidInput.ForField(field: "email", code: ValidationCodes.ValueNotEmpty, detail: "...")` | [Validation failures](#validation-failures) |
+| Require nullable values without `!`, preserving typed composition | `Result.EnsureNotNull(value, "field", detail)` / `task.EnsureNotNullAsync(...)` | [Required values](#required-values) |
 | Build a single-violation 422 from an object-level rule | `Error.InvalidInput.ForRule(code: "password.confirmation-mismatch", detail: "...")` | [Validation failures](#validation-failures) |
 | Aggregate per-field and cross-field violations | `new Error.InvalidInput(Fields: ..., Rules: ...)` | [Validation failures](#validation-failures) |
 | Branch on the closed catalog at a boundary | `result.Match(value => ..., error => error switch { Error.NotFound nf => ..., ... })` | [Pattern matching](#pattern-matching) |
@@ -134,6 +135,8 @@ Factories put `code` first and `detail` last. Validation, conflict, invariant, a
 |---|---|
 | `Error.InvalidInput.ForField(code, field: propertyName, args: args, detail: detail)` | Single property failure, escaped via `InputPointer.ForProperty`; null/empty targets the root. `args` and `detail` are optional. |
 | `Error.InvalidInput.ForField(code, field: pointer, args: args, detail: detail)` | An existing `InputPointer`, preserving nested/array path and input location. |
+| `Error.InvalidInput.Required(fieldName, detail)` | Standard `ValidationCodes.ValueNotNull` violation; null/empty field targets the root. |
+| `Error.InvalidInput.Required(pointer, detail)` | The same required-field violation, preserving the pointer's path and input location. |
 | `Error.InvalidInput.ForRule(code, fields: fields, args: args, detail: detail)` | Object-level or cross-field invariant. Optional related pointers are defensively copied in order; `args` and `detail` are also optional. |
 | `new Error.InvalidInput(EquatableArray<FieldViolation> Fields, EquatableArray<RuleViolation> Rules = default)` | Aggregate multiple per-field and/or cross-field violations. |
 
@@ -171,6 +174,43 @@ var crossField = new Error.InvalidInput(
 `AppendProperty` appends a literal name and escapes `~` and `/`; it does not treat a
 leading slash as another pointer. `AppendIndex` rejects negative indexes. Both retain the
 parent pointer's input location, so the example points to `/items/2/quantity` in the body.
+
+### Required values
+
+`Result.EnsureNotNull` guards a nullable reference or nullable struct and returns
+`Result<T>`, not `Result<Unit>`. Typed `Combine`/`Map` receives the values directly:
+
+```csharp
+public sealed record CreateItemCommand(string Name, int Category)
+{
+    public static Result<CreateItemCommand> TryCreate(string? name, int? category) =>
+        Result.EnsureNotNull(name, "name", "Name is required.")
+            .Combine(Result.EnsureNotNull(category, "category", "Category is required."))
+            .Map((name, category) => new CreateItemCommand(name, category));
+}
+```
+
+Both missing fields are reported, and no `!` is needed. The guard checks only null,
+not blank strings or default scalar values; add those rules separately when required.
+Field/detail forms construct no error or violation (and record no validation failure)
+on success. Custom failures can use `Error` or a lazy `Func<Error>`.
+String field names may be null/empty to target the root. Full JSON Pointers are
+validated only when the value is missing, so a malformed pointer throws
+`ArgumentException` on that path but is unused on success.
+For a nullable-returning query, use `task.EnsureNotNullAsync(...)` on `Task<T?>` /
+`ValueTask<T?>`; source faults/cancellation propagate and factories run only for a
+successful source completion with null. Factories must be non-null and are validated
+before awaiting. Existing nullable `ToResult` APIs are unchanged.
+
+For conditional requiredness or collection-element rules, use
+`Error.InvalidInput.Required("kind", "Kind is required for this item.")`.
+Its pointer form preserves input location; use
+`Result.EnsureNotNull(value, () => Error.InvalidInput.Required(pointer, detail))`
+for a lazy location-aware guard.
+Composite validators can construct `FieldViolation.Required("kind", detail)` or
+`FieldViolation.Required(InputPointer.ForBody("/items").AppendIndex(2).AppendProperty("kind"), detail)`.
+Both use `ValidationCodes.ValueNotNull`, no structured args, and the supplied detail;
+the pointer form retains its input location. This does not change HTTP mappings.
 
 ## Pattern matching
 

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — value-returning null guards (TFR-21)
+
+Static `Result.EnsureNotNull` carries the non-null reference or unwrapped nullable
+struct into typed `Combine`/`Map`, eliminating repeated null-forgiving operators.
+All six sync forms accept an eager error, lazy error factory, or field/detail;
+twelve `EnsureNotNullAsync` forms support Task and ValueTask nullable receivers.
+Source faults/cancellation propagate and factories are validated before awaiting.
+
+`Error.InvalidInput.Required` and `FieldViolation.Required` name the standard
+`ValidationCodes.ValueNotNull` failure; both accept a pointer preserving input
+location. Nullable string field names target the root, and malformed full pointers
+are rejected only on missing-value paths. Field/detail guards create errors and
+validation metrics only on null; blank strings and default scalar values still succeed.
+Compiler regressions pin rejection of inferred non-nullable structs, including
+Maybe and Result wrappers, across all sync and async forms. Existing nullable
+`ToResult` APIs and the TRLS066 code fix remain unchanged.
+
 ### Fixed — reliable HTTP replay variables (TFR-20)
 
 The .NET `.http` runner and Showcase live-host replay script expand reserved `{{$guid}}`

@@ -48,6 +48,20 @@ public sealed record FieldViolation(
         init => _reasonCode = Error.RequireCode(value);
     }
 
+    /// <summary>Creates a required-field violation with <see cref="ValidationCodes.ValueNotNull"/>.</summary>
+    /// <param name="fieldName">Property name or full JSON Pointer; null or empty targets the root.</param>
+    /// <param name="detail">Optional human-readable violation detail.</param>
+    /// <returns>A required-field violation without structured arguments.</returns>
+    public static FieldViolation Required(string? fieldName, string? detail = null) =>
+        Required(InputPointer.ForProperty(fieldName ?? string.Empty), detail);
+
+    /// <summary>Creates a required-field violation preserving the supplied pointer and input location.</summary>
+    /// <param name="field">The pointer locating the missing field.</param>
+    /// <param name="detail">Optional human-readable violation detail.</param>
+    /// <returns>A violation with <see cref="ValidationCodes.ValueNotNull"/> and no structured arguments.</returns>
+    public static FieldViolation Required(InputPointer field, string? detail = null) =>
+        new(field, ValidationCodes.ValueNotNull, Detail: detail);
+
     /// <inheritdoc />
     public bool Equals(FieldViolation? other)
     {
