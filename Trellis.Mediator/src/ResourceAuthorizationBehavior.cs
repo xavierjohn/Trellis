@@ -78,7 +78,7 @@ public sealed partial class ResourceAuthorizationBehavior<
     /// Per-resource exposure-policy options resolved from DI. Null defaults to Propagate.
     /// </param>
     /// <param name="logger">
-    /// Logger used to emit the <c>ExistenceHidden</c> structured-log event when NotFound,
+    /// Logger used to emit the <c>ExistenceHidden</c> structured-log event when NotFound, Gone,
     /// Forbidden, or AuthenticationRequired is normalized to the public NotFound. Null defaults to
     /// <see cref="NullLogger.Instance"/>.
     /// </param>
@@ -166,15 +166,15 @@ public sealed partial class ResourceAuthorizationBehavior<
     }
 
     /// <summary>
-    /// Normalizes <c>Error.NotFound</c>, <c>Error.Forbidden</c>, and <c>Error.AuthenticationRequired</c>
-    /// to the same public <c>Error.NotFound</c> when the resource is opted into
+    /// Normalizes <c>Error.NotFound</c>, <c>Error.Gone</c>, <c>Error.Forbidden</c>, and
+    /// <c>Error.AuthenticationRequired</c> to the same public <c>Error.NotFound</c> when the resource is opted into
     /// <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>; otherwise returns the original
     /// error unchanged. Other error kinds are never translated — operational signal must not
     /// be hidden behind a 404.
     /// </summary>
     private Error MaybeTranslateExposure(Error original, TMessage message)
     {
-        if (original is not (Error.NotFound or Error.Forbidden or Error.AuthenticationRequired))
+        if (original is not (Error.NotFound or Error.Gone or Error.Forbidden or Error.AuthenticationRequired))
             return original;
 
         var entry = _options.Resolve(typeof(TResource));

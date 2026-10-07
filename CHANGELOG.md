@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed — canonical public NotFound for existence hiding (TFR-18)
 
-`HideAsNotFound` normalizes resource-stage root `NotFound`, `Forbidden`, and
+`HideAsNotFound` normalizes resource-stage root `NotFound`, `Gone`, `Forbidden`, and
 `AuthenticationRequired` to the same public error across direct, via-leaf, and projection
 authorization. Public type/ID come from configuration and the request; original code, detail,
 resource metadata, and cause are not copied. Both `HideExistence` forms accept optional fixed
-`code`/`detail`, applied equally to missing and withheld resources.
+`code`/`detail`, applied equally to missing, removed, and withheld resources.
 
 `Propagate`, direct/leaf operational errors, static gates, and via-owner collapse semantics
 are unchanged. Private `ExistenceHidden` diagnostics retain the original input kind/code.

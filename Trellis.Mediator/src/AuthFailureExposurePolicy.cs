@@ -14,7 +14,7 @@
 /// for public resources where existence is not itself sensitive.
 /// </para>
 /// <para>
-/// <see cref="HideAsNotFound"/> normalizes <c>Error.NotFound</c>, <c>Error.Forbidden</c>, and
+/// <see cref="HideAsNotFound"/> normalizes <c>Error.NotFound</c>, <c>Error.Gone</c>, <c>Error.Forbidden</c>, and
 /// <c>Error.AuthenticationRequired</c> to the same public <c>Error.NotFound</c>. The boundary
 /// maps it to HTTP 404 with the configured public resource and metadata, without the original
 /// code, detail, resource, or cause. Choose
@@ -38,8 +38,8 @@ public enum AuthFailureExposurePolicy
     Propagate = 0,
 
     /// <summary>
-    /// Normalize <c>Error.NotFound</c>, <c>Error.Forbidden</c>, and <c>Error.AuthenticationRequired</c>
-    /// to the same public <c>Error.NotFound</c>, so missing and withheld resources share the
+    /// Normalize <c>Error.NotFound</c>, <c>Error.Gone</c>, <c>Error.Forbidden</c>, and <c>Error.AuthenticationRequired</c>
+    /// to the same public <c>Error.NotFound</c>, so missing, removed, and withheld resources share the
     /// framework-generated error representation.
     /// </summary>
     HideAsNotFound = 1,

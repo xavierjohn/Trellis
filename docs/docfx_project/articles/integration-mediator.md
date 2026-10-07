@@ -321,7 +321,7 @@ public static class Composition
 
 ### Hide existence with `AuthFailureExposurePolicy.HideAsNotFound`
 
-For sensitive resources, opt into `HideAsNotFound` to give missing and withheld resources the same public NotFound. Resource-stage root `NotFound`, `Forbidden`, and `AuthenticationRequired` normalize using the public type and request ID, without copying original code, detail, resource metadata, or cause. Both `HideExistence` forms accept optional fixed public code/detail:
+For sensitive resources, opt into `HideAsNotFound` to give missing, removed, and withheld resources the same public NotFound. Resource-stage root `NotFound`, `Gone`, `Forbidden`, and `AuthenticationRequired` normalize using the public type and request ID, without copying original code, detail, resource metadata, or cause. Both `HideExistence` forms accept optional fixed public code/detail:
 
 ```csharp
 builder.Services.AddTrellis(options => options

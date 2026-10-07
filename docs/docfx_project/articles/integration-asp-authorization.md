@@ -163,7 +163,7 @@ sequenceDiagram
     end
 ```
 
-The diagram shows the default `Propagate` policy: `Error.Forbidden` maps to 403 with its `PolicyId` and optional resource; leaf-load errors retain their metadata, while intermediate/owner load failures collapse to Forbidden. For sensitive resources, [`HideExistence`](../api_reference/trellis-api-mediator.md#resourceauthorizationoptions) normalizes resource-stage NotFound/Forbidden/AuthenticationRequired to the same public 404 for missing and withheld resources. Static `IAuthorize` failures remain outside that policy. See [Recipe 32](../api_reference/trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) and [Multi-hop resource authorization](#multi-hop-resource-authorization-via-iauthorizeresourceviatowner).
+The diagram shows the default `Propagate` policy: `Error.Forbidden` maps to 403 with its `PolicyId` and optional resource; leaf-load errors retain their metadata, while intermediate/owner load failures collapse to Forbidden. For sensitive resources, [`HideExistence`](../api_reference/trellis-api-mediator.md#resourceauthorizationoptions) normalizes resource-stage NotFound/Gone/Forbidden/AuthenticationRequired to the same public 404 for missing, removed, and withheld resources. Static `IAuthorize` failures remain outside that policy. See [Recipe 32](../api_reference/trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) and [Multi-hop resource authorization](#multi-hop-resource-authorization-via-iauthorizeresourceviatowner).
 
 ### Cache partitioning across actors
 

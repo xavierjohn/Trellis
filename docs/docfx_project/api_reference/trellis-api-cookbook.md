@@ -2953,7 +2953,7 @@ For optional reads use `TryGetResource(out var resource)` which returns `false` 
 
 **Problem.** A `Forbidden` response on `GET /incidents/{id}` tells the unauthorized caller "this resource exists and you may not access it". For some resources — incident reports, security findings, internal correspondence, private profiles — that disclosure is itself the leak. The boundary needs to return 404 (indistinguishable from "the resource does not exist") to unauthorized actors.
 
-**Fix.** Opt the resource into `AuthFailureExposurePolicy.HideAsNotFound` via `ResourceAuthorizationOptions`. Resource-stage root `Error.NotFound`, `Error.Forbidden`, and `Error.AuthenticationRequired` become one fresh public NotFound. Its type and ID come from configuration and the request, never the original error; original code, detail, and cause are not copied. Other direct-resource / via-leaf errors pass through unchanged.
+**Fix.** Opt the resource into `AuthFailureExposurePolicy.HideAsNotFound` via `ResourceAuthorizationOptions`. Resource-stage root `Error.NotFound`, `Error.Gone`, `Error.Forbidden`, and `Error.AuthenticationRequired` become one fresh public NotFound. Its type and ID come from configuration and the request, never the original error; original code, detail, and cause are not copied. Other direct-resource / via-leaf errors pass through unchanged.
 
 ```csharp
 // Composition root.
@@ -2976,7 +2976,7 @@ public sealed record GetIncidentQuery(IncidentId Id)
 }
 ```
 
-**Public metadata.** For the same request ID, missing, denied, and anonymous resource-stage outcomes all yield NotFound with resource `{ Type: "Incident", Id: "inc-42" }`, code `error.unspecified`, and the standard NotFound display message. The default ASP mapper produces matching 404 ProblemDetails metadata, including `instance`; only per-request trace identifiers may vary. No original storage resource or cause reaches this public error.
+**Public metadata.** For the same request ID, missing, removed (`Gone`), denied, and anonymous resource-stage outcomes all yield NotFound with resource `{ Type: "Incident", Id: "inc-42" }`, code `error.unspecified`, and the standard NotFound display message. The default ASP mapper produces matching 404 ProblemDetails metadata, including `instance`; only per-request trace identifiers may vary. No original storage resource or cause reaches this public error.
 
 **Fixed public code/detail.** Both `HideExistence` forms accept optional static metadata. Use the same configured reason for every concealed failure, not different missing/denied reasons:
 
@@ -3048,7 +3048,7 @@ Trellis_Logs
 | summarize count() by MessageName, OriginalCode, PublicResourceType, bin(TimeGenerated, 5m)
 ```
 
-**Normalization scope.** Only resource-stage root NotFound/Forbidden/AuthenticationRequired normalize, including the Forbidden generated for a loader's null-success contract violation. Direct-resource / via-leaf `Unexpected`, `Unavailable`, transport faults, and other root kinds remain unchanged. Aggregates and unrelated handler failures are outside the policy. Application response customization must not reintroduce private distinctions; response timing is not equalized.
+**Normalization scope.** Only resource-stage root NotFound/Gone/Forbidden/AuthenticationRequired normalize, including the Forbidden generated for a loader's null-success contract violation. `Gone` uses the same public 404 so tombstones cannot reveal previous existence. Direct-resource / via-leaf `Unexpected`, `Unavailable`, transport faults, and other root kinds remain unchanged. Aggregates and unrelated handler failures are outside the policy. Application response customization must not reintroduce private distinctions; response timing is not equalized.
 
 **Via intermediate/owner failures.** Every intermediate/owner load failure collapses to `Forbidden("resource.authorization-via.load-failed")` before normalization, regardless of underlying kind. Under hiding, even owner `Unavailable` becomes the public NotFound. `ExistenceHidden` sees that collapsed code, not the downstream cause. Use direct authorization with a custom projection loader when your application needs to classify related-resource operational failures itself.
 

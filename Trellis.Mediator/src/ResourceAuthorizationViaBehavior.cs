@@ -25,7 +25,7 @@ using Trellis.Authorization;
 /// <para>
 /// Failure semantics:
 /// <list type="bullet">
-///   <item><description><b>Leaf load failure</b> — propagates under <see cref="AuthFailureExposurePolicy.Propagate"/>; root NotFound, Forbidden, and AuthenticationRequired normalize to the public NotFound under <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>. Other leaf errors are unchanged.</description></item>
+///   <item><description><b>Leaf load failure</b> — propagates under <see cref="AuthFailureExposurePolicy.Propagate"/>; root NotFound, Gone, Forbidden, and AuthenticationRequired normalize to the public NotFound under <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>. Other leaf errors are unchanged.</description></item>
 ///   <item><description><b>Intermediate / owner load failure</b> — collapsed to <see cref="Error.Forbidden"/> to avoid leaking existence of related resources whose presence/absence the actor may not be authorized to learn.</description></item>
 ///   <item><description><b>Empty result at any hop</b> (singular extract returning 0 IDs or plural extract returning 0 IDs) — short-circuits to <see cref="Error.Forbidden"/> without calling <see cref="IAuthorizeResourceVia{TOwner}.Authorize"/>.</description></item>
 /// </list>
@@ -73,7 +73,7 @@ public sealed partial class ResourceAuthorizationViaBehavior<
     /// <param name="serviceProvider">The request-scoped service provider used to resolve the leaf loader and per-hop loaders.</param>
     /// <param name="pathHolder">The closed-generic carrier for the resolved path.</param>
     /// <param name="options">Per-resource exposure-policy options resolved from DI. Null defaults to the always-propagate behavior.</param>
-    /// <param name="logger">Logger used to emit the <c>ExistenceHidden</c> event when NotFound, Forbidden, or AuthenticationRequired is normalized to the public NotFound. Null defaults to <see cref="NullLogger.Instance"/>.</param>
+    /// <param name="logger">Logger used to emit the <c>ExistenceHidden</c> event when NotFound, Gone, Forbidden, or AuthenticationRequired is normalized to the public NotFound. Null defaults to <see cref="NullLogger.Instance"/>.</param>
     /// <exception cref="ArgumentNullException">Thrown when any required argument is null.</exception>
     public ResourceAuthorizationViaBehavior(
         IActorProvider actorProvider,
@@ -275,15 +275,15 @@ public sealed partial class ResourceAuthorizationViaBehavior<
     }
 
     /// <summary>
-    /// Normalizes <c>Error.NotFound</c>, <c>Error.Forbidden</c>, and <c>Error.AuthenticationRequired</c>
-    /// to the configured public NotFound when the leaf resource is opted into
+    /// Normalizes <c>Error.NotFound</c>, <c>Error.Gone</c>, <c>Error.Forbidden</c>, and
+    /// <c>Error.AuthenticationRequired</c> to the configured public NotFound when the leaf resource is opted into
     /// <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>. Lookup key is
     /// <typeparamref name="TLeaf"/> (the resource the command identifies), not
     /// <typeparamref name="TOwner"/> (an authorization implementation detail).
     /// </summary>
     private Error MaybeTranslateExposure(Error original, TMessage message)
     {
-        if (original is not (Error.NotFound or Error.Forbidden or Error.AuthenticationRequired))
+        if (original is not (Error.NotFound or Error.Gone or Error.Forbidden or Error.AuthenticationRequired))
             return original;
 
         var entry = _options.Resolve(typeof(TLeaf));

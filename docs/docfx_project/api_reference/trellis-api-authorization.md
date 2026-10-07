@@ -339,7 +339,7 @@ The pipeline always passes `IReadOnlyList<TOwner>` to `Authorize` — size 1 for
 
 **Failure semantics**:
 
-- **Leaf load failure** — propagates under the default `Propagate` policy. `HideAsNotFound` normalizes root NotFound/Forbidden/AuthenticationRequired to the configured public NotFound; other leaf errors are unchanged.
+- **Leaf load failure** — propagates under the default `Propagate` policy. `HideAsNotFound` normalizes root NotFound/Gone/Forbidden/AuthenticationRequired to the configured public NotFound; other leaf errors are unchanged.
 - **Intermediate or owner load failure** — collapsed to `Error.Forbidden` to avoid leaking existence of related resources whose presence/absence the actor may not be authorized to learn.
 - **Empty result at any hop** (singular extract returning 0 IDs or plural extract returning 0 IDs) — short-circuits to `Error.Forbidden` without invoking `Authorize`.
 - **Missing `SharedResourceLoaderById<TTo, TToId>`** at any hop — throws `InvalidOperationException` (deployment bug, not authorization denial).

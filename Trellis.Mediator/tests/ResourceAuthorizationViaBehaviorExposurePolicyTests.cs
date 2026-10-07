@@ -90,17 +90,25 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         notFound.Resource.Id.Should().Be("leaf-1");
     }
 
-    [Fact]
-    public async Task Handle_HideExistenceOnLeaf_LeafLoadNotFound_UsesCanonicalLeafError()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Handle_HideAsNotFound_LeafLoadAbsent_UsesCanonicalLeafError(bool useDefaultPolicy, bool gone)
     {
-        var original = new Error.NotFound(ResourceRef.For("InternalLeaf", "database-id"))
+        var resourceRef = ResourceRef.For("InternalLeaf", "database-id");
+        Error original = gone ? new Error.Gone(resourceRef) : new Error.NotFound(resourceRef);
+        original = original with
         {
-            Code = "leaf.missing",
-            Detail = "Internal leaf database-id was not found.",
+            Code = gone ? "leaf.gone" : "leaf.missing",
+            Detail = gone ? "Internal leaf database-id was purged." : "Internal leaf database-id was not found.",
             Cause = new Error.Forbidden("leaf.partition-hidden"),
         };
         var ownerRepo = new InMemoryRepo<ViaOwner>(o => o.Id);
-        var options = new ResourceAuthorizationOptions().HideExistence<ViaLeaf>();
+        var options = useDefaultPolicy
+            ? new ResourceAuthorizationOptions { DefaultExposurePolicy = AuthFailureExposurePolicy.HideAsNotFound }
+            : new ResourceAuthorizationOptions().HideExistence<ViaLeaf>();
         var behavior = CreateBehavior("actor-1", leaf: null, ownerRepo, options, original);
         var command = new ViaSingleHopCommand("missing-leaf");
         var (next, _) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Ok("nope"));
@@ -132,6 +140,46 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Handle_Propagate_LeafLoadGone_PreservesOriginalError(bool overrideDefaultHide)
+    {
+        var original = Error.Gone.For<ViaLeaf>("leaf.gone", id: "removed-leaf", detail: "Detailed tombstone failure.");
+        var options = new ResourceAuthorizationOptions
+        {
+            DefaultExposurePolicy = overrideDefaultHide
+                ? AuthFailureExposurePolicy.HideAsNotFound
+                : AuthFailureExposurePolicy.Propagate,
+        };
+        if (overrideDefaultHide)
+            options.Propagate<ViaLeaf>();
+        var ownerRepo = new InMemoryRepo<ViaOwner>(owner => owner.Id);
+        var behavior = CreateBehavior("actor-1", null, ownerRepo, options, original);
+        var (next, _) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Ok("nope"));
+
+        var result = await behavior.HandleWithContext(
+            new ViaSingleHopCommand("removed-leaf"), next, TestContext.Current.CancellationToken);
+
+        result.UnwrapError().Should().BeSameAs(original);
+    }
+
+    [Fact]
+    public async Task Handle_HideAsNotFound_HandlerGone_PreservesOriginalError()
+    {
+        var original = Error.Gone.For<ViaLeaf>("leaf.removed", id: "leaf-1");
+        var ownerRepo = new InMemoryRepo<ViaOwner>(owner => owner.Id, new ViaOwner("owner-1", "actor-1"));
+        var behavior = CreateBehavior("actor-1", new ViaLeaf("leaf-1", "owner-1"), ownerRepo,
+            new ResourceAuthorizationOptions().HideExistence<ViaLeaf>());
+        var (next, tracker) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Fail<string>(original));
+
+        var result = await behavior.HandleWithContext(
+            new ViaSingleHopCommand("leaf-1"), next, TestContext.Current.CancellationToken);
+
+        tracker.WasInvoked.Should().BeTrue();
+        result.UnwrapError().Should().BeSameAs(original);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Handle_HideExistenceOnLeaf_LeafOperationalFailure_PreservesOriginalError(bool unavailable)
     {
         Error original = unavailable
@@ -150,10 +198,12 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
 
     [Theory]
     [InlineData("missing", false)]
+    [InlineData("gone", false)]
     [InlineData("denied", false)]
     [InlineData("anonymous", false)]
     [InlineData("owner-missing", false)]
     [InlineData("missing", true)]
+    [InlineData("gone", true)]
     [InlineData("denied", true)]
     [InlineData("anonymous", true)]
     [InlineData("owner-missing", true)]
@@ -168,9 +218,12 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         var ownerRepo = source == "owner-missing"
             ? new InMemoryRepo<ViaOwner>(owner => owner.Id)
             : new InMemoryRepo<ViaOwner>(owner => owner.Id, new ViaOwner("owner-1", "someone-else"));
-        var leafError = source == "missing"
-            ? Error.NotFound.For<ViaOwner>("leaf.missing", id: "internal-id", detail: "Private leaf detail.")
-            : null;
+        Error? leafError = source switch
+        {
+            "missing" => Error.NotFound.For<ViaOwner>("leaf.missing", id: "internal-id", detail: "Private leaf detail."),
+            "gone" => Error.Gone.For<ViaOwner>("leaf.gone", id: "internal-id", detail: "Private tombstone detail."),
+            _ => null,
+        };
         var behavior = CreateBehavior(source == "anonymous" ? null : "actor-1", leaf, ownerRepo, options, leafError);
         var (next, _) = NextDelegate.TrackingAsync<ViaSingleHopCommand, Result<string>>(Result.Ok("nope"));
 
@@ -186,6 +239,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
 
     [Theory]
     [InlineData("not-found")]
+    [InlineData("gone")]
     [InlineData("forbidden")]
     [InlineData("authentication-required")]
     public async Task Handle_HideAsNotFound_PrivateDiagnostics_RetainOriginalKindAndCode(string kind)
@@ -193,6 +247,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         Error original = kind switch
         {
             "not-found" => Error.NotFound.For<ViaOwner>("private.missing", id: "internal-id"),
+            "gone" => Error.Gone.For<ViaOwner>("private.gone", id: "internal-id"),
             "forbidden" => new Error.Forbidden("private.denied"),
             _ => new Error.AuthenticationRequired { Code = "private.unauthenticated" },
         };

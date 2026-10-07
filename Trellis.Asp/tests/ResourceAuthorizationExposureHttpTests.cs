@@ -15,23 +15,35 @@ using Trellis.Testing;
 public sealed class ResourceAuthorizationExposureHttpTests
 {
     [Theory]
-    [InlineData(ExposurePath.Direct, false, false)]
-    [InlineData(ExposurePath.Direct, true, false)]
-    [InlineData(ExposurePath.Via, false, false)]
-    [InlineData(ExposurePath.Via, true, false)]
-    [InlineData(ExposurePath.Projection, false, false)]
-    [InlineData(ExposurePath.Projection, true, false)]
-    [InlineData(ExposurePath.Direct, false, true)]
-    [InlineData(ExposurePath.Direct, true, true)]
-    [InlineData(ExposurePath.Via, false, true)]
-    [InlineData(ExposurePath.Via, true, true)]
-    [InlineData(ExposurePath.Projection, false, true)]
-    [InlineData(ExposurePath.Projection, true, true)]
-    public async Task Get_HideExistence_MissingAndDenied_HaveIdenticalPublicResponses(
-        ExposurePath path, bool mvc, bool publicMetadata)
+    [InlineData(ExposurePath.Direct, false, false, false)]
+    [InlineData(ExposurePath.Direct, true, false, false)]
+    [InlineData(ExposurePath.Via, false, false, false)]
+    [InlineData(ExposurePath.Via, true, false, false)]
+    [InlineData(ExposurePath.Projection, false, false, false)]
+    [InlineData(ExposurePath.Projection, true, false, false)]
+    [InlineData(ExposurePath.Direct, false, true, false)]
+    [InlineData(ExposurePath.Direct, true, true, false)]
+    [InlineData(ExposurePath.Via, false, true, false)]
+    [InlineData(ExposurePath.Via, true, true, false)]
+    [InlineData(ExposurePath.Projection, false, true, false)]
+    [InlineData(ExposurePath.Projection, true, true, false)]
+    [InlineData(ExposurePath.Direct, false, false, true)]
+    [InlineData(ExposurePath.Direct, true, false, true)]
+    [InlineData(ExposurePath.Via, false, false, true)]
+    [InlineData(ExposurePath.Via, true, false, true)]
+    [InlineData(ExposurePath.Projection, false, false, true)]
+    [InlineData(ExposurePath.Projection, true, false, true)]
+    [InlineData(ExposurePath.Direct, false, true, true)]
+    [InlineData(ExposurePath.Direct, true, true, true)]
+    [InlineData(ExposurePath.Via, false, true, true)]
+    [InlineData(ExposurePath.Via, true, true, true)]
+    [InlineData(ExposurePath.Projection, false, true, true)]
+    [InlineData(ExposurePath.Projection, true, true, true)]
+    public async Task Get_HideExistence_AbsentAndDenied_HaveIdenticalPublicResponses(
+        ExposurePath path, bool mvc, bool publicMetadata, bool gone)
     {
-        using var missingHost = CreateHost(missing: true, mvc, publicMetadata);
-        using var deniedHost = CreateHost(missing: false, mvc, publicMetadata);
+        using var missingHost = CreateHost(missing: true, mvc, publicMetadata, gone);
+        using var deniedHost = CreateHost(missing: false, mvc, publicMetadata, gone: false);
         using var missingClient = missingHost.GetTestClient();
         using var deniedClient = deniedHost.GetTestClient();
         var url = $"/hidden-resource/{path}/public-id";
@@ -45,6 +57,7 @@ public sealed class ResourceAuthorizationExposureHttpTests
         deniedResponse.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
         missingResponse.Headers.CacheControl?.NoStore.Should().BeTrue();
         deniedResponse.Headers.CacheControl?.NoStore.Should().BeTrue();
+        PublicHeaders(missingResponse).Should().BeEquivalentTo(PublicHeaders(deniedResponse));
 
         using var missingBody = JsonDocument.Parse(
             await missingResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -61,12 +74,43 @@ public sealed class ResourceAuthorizationExposureHttpTests
         deniedHost.Services.GetRequiredService<ExposureState>().HandlerCalls.Should().Be(0);
     }
 
+    [Fact]
+    public void PublicHeaders_ResponseAndContentHeaders_CapturesAllStableFields()
+    {
+        using var response = new HttpResponseMessage(HttpStatusCode.NotFound) { Content = new StringContent("{}") };
+        response.Headers.Vary.Add("Accept-Encoding");
+        response.Headers.Add("X-Resource-State", "hidden");
+        response.Content.Headers.Add("X-Payload-Version", "1");
+        response.Headers.Add("X-Shared", "response");
+        response.Content.Headers.Add("X-Shared", "content");
+        response.Headers.Date = new DateTimeOffset(2026, 10, 6, 18, 0, 0, TimeSpan.Zero);
+        response.Headers.Add("TraceId", "request-trace");
+
+        var headers = PublicHeaders(response);
+
+        headers["vary"].Should().Equal(["Accept-Encoding"]);
+        headers["x-resource-state"].Should().Equal(["hidden"]);
+        headers["content-type"].Should().Equal(["text/plain; charset=utf-8"]);
+        headers["x-payload-version"].Should().Equal(["1"]);
+        headers["x-shared"].Should().Equal(["response", "content"]);
+        headers.Should().NotContainKey("date");
+        headers.Should().NotContainKey("traceid");
+    }
+
+    private static Dictionary<string, string[]> PublicHeaders(HttpResponseMessage response) =>
+        response.Headers.Concat(response.Content.Headers)
+            .Where(header => !header.Key.Equals("Date", StringComparison.OrdinalIgnoreCase)
+                && !header.Key.Equals("traceId", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(header => header.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key.ToLowerInvariant(),
+                group => group.SelectMany(header => header.Value).ToArray());
+
     private static Dictionary<string, string> PublicMetadata(JsonDocument body) =>
         body.RootElement.EnumerateObject()
             .Where(property => property.Name != "traceId")
             .ToDictionary(property => property.Name, property => property.Value.GetRawText());
 
-    private static IHost CreateHost(bool missing, bool mvc, bool publicMetadata)
+    private static IHost CreateHost(bool missing, bool mvc, bool publicMetadata, bool gone)
     {
         var builder = Host.CreateDefaultBuilder()
             .ConfigureWebHostDefaults(web => web
@@ -75,7 +119,7 @@ public sealed class ResourceAuthorizationExposureHttpTests
                 {
                     services.AddTrellisAsp();
                     services.AddTrellisProblemDetails();
-                    services.AddSingleton(new ExposureState(missing));
+                    services.AddSingleton(new ExposureState(missing, gone));
                     services.AddScoped<ExposurePipeline>();
                     services.AddScoped<IActorProvider>(_ => new TestActorProvider("actor-1"));
                     services.AddScoped<IResourceLoader<DirectExposureQuery, ExposureDocument>, DocumentLoader>();
@@ -120,9 +164,10 @@ public sealed class ResourceAuthorizationExposureHttpTests
 
     public enum ExposurePath { Direct, Via, Projection }
 
-    internal sealed class ExposureState(bool missing)
+    internal sealed class ExposureState(bool missing, bool gone)
     {
         internal bool Missing { get; } = missing;
+        internal bool Gone { get; } = gone;
         internal int HandlerCalls { get; set; }
     }
 
@@ -154,15 +199,22 @@ public sealed class ResourceAuthorizationExposureHttpTests
             Result.Ensure(actor.IsOwner(resource.OwnerId), new Error.Forbidden("projection.denied"));
     }
 
-    private static Result<T> Load<T>(ExposureState state, T resource) =>
-        state.Missing
-            ? Result.Fail<T>(new Error.NotFound(ResourceRef.For("InternalStorage", "database-id"))
-            {
-                Code = "storage.row-missing",
-                Detail = "Internal database-id was not found in tenant secret-tenant.",
-                Cause = new Error.Forbidden("storage.partition-hidden"),
-            })
-            : Result.Ok(resource);
+    private static Result<T> Load<T>(ExposureState state, T resource)
+    {
+        if (!state.Missing)
+            return Result.Ok(resource);
+
+        var resourceRef = ResourceRef.For("InternalStorage", "database-id");
+        Error error = state.Gone ? new Error.Gone(resourceRef) : new Error.NotFound(resourceRef);
+        return Result.Fail<T>(error with
+        {
+            Code = state.Gone ? "storage.row-gone" : "storage.row-missing",
+            Detail = state.Gone
+                ? "Internal database-id was purged from tenant secret-tenant."
+                : "Internal database-id was not found in tenant secret-tenant.",
+            Cause = new Error.Forbidden("storage.partition-hidden"),
+        });
+    }
 
     private sealed class DocumentLoader(ExposureState state) : IResourceLoader<DirectExposureQuery, ExposureDocument>
     {

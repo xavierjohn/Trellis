@@ -15,7 +15,7 @@
 /// authorization failure.
 /// </para>
 /// <para>
-/// <b>Translation scope.</b> The pipeline normalizes root <c>Error.NotFound</c>, <c>Error.Forbidden</c>, and
+/// <b>Translation scope.</b> The pipeline normalizes root <c>Error.NotFound</c>, <c>Error.Gone</c>, <c>Error.Forbidden</c>, and
 /// <c>Error.AuthenticationRequired</c> to the same public NotFound. Its type and identifier
 /// come from the configured public resource and message, and its code/detail come only from
 /// this configuration. Original metadata and causes are not copied to the public error.
