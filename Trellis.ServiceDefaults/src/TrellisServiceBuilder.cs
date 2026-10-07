@@ -303,8 +303,9 @@ public sealed class TrellisServiceBuilder
     /// Configures the per-resource failure-exposure policy for the resource-authorization
     /// pipeline (see <see cref="Trellis.Mediator.ResourceAuthorizationOptions"/> for the
     /// configuration surface, including
-    /// <see cref="Trellis.Mediator.ResourceAuthorizationOptions.HideExistence{TResource}"/>
-    /// and the projection-loader overload). Repeated calls compose configure delegates rather
+    /// <see cref="Trellis.Mediator.ResourceAuthorizationOptions.HideExistence{TResource}()"/>
+    /// and the projection-loader form; both accept optional fixed public code/detail).
+    /// Repeated calls compose configure delegates rather
     /// than overwriting. Enables the resource-authorization pipeline (<see cref="UseResourceAuthorization()"/>)
     /// and implies <see cref="UseMediator"/>.
     /// </summary>

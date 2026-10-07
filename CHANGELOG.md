@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — canonical public NotFound for existence hiding (TFR-18)
+
+`HideAsNotFound` normalizes resource-stage root `NotFound`, `Forbidden`, and
+`AuthenticationRequired` to the same public error across direct, via-leaf, and projection
+authorization. Public type/ID come from configuration and the request; original code, detail,
+resource metadata, and cause are not copied. Both `HideExistence` forms accept optional fixed
+`code`/`detail`, applied equally to missing and withheld resources.
+
+`Propagate`, direct/leaf operational errors, static gates, and via-owner collapse semantics
+are unchanged. Private `ExistenceHidden` diagnostics retain the original input kind/code.
+
 ### Added — `TRLS066`: use `ToResult(error)` for a nullable value
 
 `UseToResultForNullableAnalyzer` (Info) flags `Result.Ensure(x is not null, error)` — also `x != null` and

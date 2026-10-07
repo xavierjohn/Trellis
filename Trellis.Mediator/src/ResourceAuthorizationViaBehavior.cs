@@ -25,7 +25,7 @@ using Trellis.Authorization;
 /// <para>
 /// Failure semantics:
 /// <list type="bullet">
-///   <item><description><b>Leaf load failure</b> — the loader's error bubbles verbatim (matches the existing <see cref="ResourceAuthorizationBehavior{TMessage, TResource, TResponse}"/> semantics for the resource the command identifies).</description></item>
+///   <item><description><b>Leaf load failure</b> — propagates under <see cref="AuthFailureExposurePolicy.Propagate"/>; root NotFound, Forbidden, and AuthenticationRequired normalize to the public NotFound under <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>. Other leaf errors are unchanged.</description></item>
 ///   <item><description><b>Intermediate / owner load failure</b> — collapsed to <see cref="Error.Forbidden"/> to avoid leaking existence of related resources whose presence/absence the actor may not be authorized to learn.</description></item>
 ///   <item><description><b>Empty result at any hop</b> (singular extract returning 0 IDs or plural extract returning 0 IDs) — short-circuits to <see cref="Error.Forbidden"/> without calling <see cref="IAuthorizeResourceVia{TOwner}.Authorize"/>.</description></item>
 /// </list>
@@ -67,14 +67,13 @@ public sealed partial class ResourceAuthorizationViaBehavior<
 
     /// <summary>
     /// Initializes a new instance using a <see cref="ResolvedAuthorizationPathHolder{TMessage, TLeaf, TOwner, TResponse}"/>
-    /// for DI-friendly typed registration. Includes exposure-policy options and logger for
-    /// the v2 hide-as-NotFound translation.
+    /// for DI-friendly typed registration. Includes exposure-policy options and diagnostics.
     /// </summary>
     /// <param name="actorProvider">Provider used to resolve the current actor.</param>
     /// <param name="serviceProvider">The request-scoped service provider used to resolve the leaf loader and per-hop loaders.</param>
     /// <param name="pathHolder">The closed-generic carrier for the resolved path.</param>
     /// <param name="options">Per-resource exposure-policy options resolved from DI. Null defaults to the always-propagate behavior.</param>
-    /// <param name="logger">Logger used to emit the <c>ExistenceHidden</c> event when a Forbidden or AuthenticationRequired failure is translated to NotFound. Null defaults to <see cref="NullLogger.Instance"/>.</param>
+    /// <param name="logger">Logger used to emit the <c>ExistenceHidden</c> event when NotFound, Forbidden, or AuthenticationRequired is normalized to the public NotFound. Null defaults to <see cref="NullLogger.Instance"/>.</param>
     /// <exception cref="ArgumentNullException">Thrown when any required argument is null.</exception>
     public ResourceAuthorizationViaBehavior(
         IActorProvider actorProvider,
@@ -120,7 +119,7 @@ public sealed partial class ResourceAuthorizationViaBehavior<
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ResourceAuthorizationViaBehavior{TMessage, TLeaf, TOwner, TResponse}"/>
-    /// class with exposure-policy options and logger for the v2 hide-as-NotFound translation.
+    /// class with exposure-policy options and diagnostics.
     /// </summary>
     /// <param name="actorProvider">Provider used to resolve the current actor.</param>
     /// <param name="serviceProvider">The request-scoped service provider used to resolve the leaf loader and per-hop loaders.</param>
@@ -194,13 +193,7 @@ public sealed partial class ResourceAuthorizationViaBehavior<
         if (!leafResult.TryGetValue(out var leaf, out var leafError))
             return TResponse.CreateFailure(MaybeTranslateExposure(leafError, message));
 
-        // Defense-in-depth: a leaf loader that violates its Result<T> contract by returning
-        // a successful Result carrying a null payload must NOT crash the pipeline with
-        // NullReferenceException from a downstream ExtractIds cast — fail closed with
-        // Forbidden so the documented "load failure collapses to a fail-closed result"
-        // posture also covers this corner. Leaf-load *errors* (TryGetValue=false) bubble
-        // verbatim per the documented zero-hop semantics; only the null-success corner is
-        // collapsed here.
+        // Fail closed on a loader's null-success contract violation before ExtractIds can dereference it.
         if (leaf is null)
             return TResponse.CreateFailure(MaybeTranslateExposure(
                 new Error.Forbidden("resource.authorization-via.null-payload")
@@ -282,15 +275,15 @@ public sealed partial class ResourceAuthorizationViaBehavior<
     }
 
     /// <summary>
-    /// Translates <c>Error.Forbidden</c> / <c>Error.AuthenticationRequired</c> to
-    /// <c>new Error.NotFound(ResourceRef)</c> when the LEAF resource is opted into
+    /// Normalizes <c>Error.NotFound</c>, <c>Error.Forbidden</c>, and <c>Error.AuthenticationRequired</c>
+    /// to the configured public NotFound when the leaf resource is opted into
     /// <see cref="AuthFailureExposurePolicy.HideAsNotFound"/>. Lookup key is
     /// <typeparamref name="TLeaf"/> (the resource the command identifies), not
     /// <typeparamref name="TOwner"/> (an authorization implementation detail).
     /// </summary>
     private Error MaybeTranslateExposure(Error original, TMessage message)
     {
-        if (original is not (Error.Forbidden or Error.AuthenticationRequired))
+        if (original is not (Error.NotFound or Error.Forbidden or Error.AuthenticationRequired))
             return original;
 
         var entry = _options.Resolve(typeof(TLeaf));
@@ -307,7 +300,7 @@ public sealed partial class ResourceAuthorizationViaBehavior<
 
         LogExistenceHidden(_logger, typeof(TMessage).Name, original.Kind, original.Code, publicTypeName);
 
-        return new Error.NotFound(resourceRef);
+        return Error.NotFound.For(entry.NotFoundCode, resourceRef, entry.NotFoundDetail);
     }
 
     [LoggerMessage(

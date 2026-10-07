@@ -321,21 +321,24 @@ public static class Composition
 
 ### Hide existence with `AuthFailureExposurePolicy.HideAsNotFound`
 
-For resources whose mere existence is sensitive — incident reports, security findings, internal correspondence, private profiles — the default `Forbidden` response leaks that the resource exists. Opt the resource into `AuthFailureExposurePolicy.HideAsNotFound` via `ResourceAuthorizationOptions` and the pipeline translates `Error.Forbidden` and `Error.AuthenticationRequired` to `new Error.NotFound(ResourceRef)`. Other error kinds (`Unexpected`, `Unavailable`, loader-`NotFound`, transport faults) returned by the **direct** loader pass through verbatim — operational signal is never hidden. For multi-hop `IAuthorizeResourceVia<TOwner>` commands, intermediate / owner hop failures are already collapsed to a synthetic `Forbidden("resource.authorization-via.load-failed")` by the v1 multi-hop security model (existence-leak protection on related resources) before exposure translation runs; under `HideAsNotFound` that synthetic Forbidden becomes `404`, so a downstream owner-service `Unavailable` surfaces as `404` to the consumer. See cookbook [Recipe 32](../api_reference/trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) for the leaf-vs-hop distinction in detail.
+For sensitive resources, opt into `HideAsNotFound` to give missing and withheld resources the same public NotFound. Resource-stage root `NotFound`, `Forbidden`, and `AuthenticationRequired` normalize using the public type and request ID, without copying original code, detail, resource metadata, or cause. Both `HideExistence` forms accept optional fixed public code/detail:
 
 ```csharp
 builder.Services.AddTrellis(options => options
-    .UseResourceAuthorization()                                                // pipeline enabled
     .UseResourceAuthorization<GetIncidentQuery, Incident, Result<IncidentDto>>()
-    .UseResourceAuthorization(o => o.HideExistence<Incident>()));              // opt-in per resource
+    .UseResourceAuthorization(o => o.HideExistence<Incident>(
+        code: "incident.not-found", detail: "Incident not found.")));
 ```
 
-Default is `Propagate` — no behavior change for resources that don't opt in. Set `DefaultExposurePolicy = HideAsNotFound` to flip the default service-wide and use `Propagate<TResource>()` for individual safe-to-disclose resources. Each translation emits a structured `[LoggerMessage]` event `ExistenceHidden` carrying the original `Kind` and `Code` so SecOps can audit the underlying denial reason via SIEM.
+Parameterless `HideExistence` uses `error.unspecified` and the standard NotFound display message. The default policy is `Propagate`; `DefaultExposurePolicy = HideAsNotFound` enables service-wide hiding, while `Propagate<TResource>()` opts out individual resources. Each normalization emits private `ExistenceHidden` diagnostics with the original input kind/code.
+
+Other direct-resource / via-leaf errors remain unchanged. Intermediate/owner load failures collapse to `Forbidden("resource.authorization-via.load-failed")` before normalization, so even owner `Unavailable` becomes a hidden NotFound. See [Recipe 32](../api_reference/trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound).
 
 **Caveats.**
 - **`AuthorizationBehavior` runs first.** Commands implementing both `IAuthorize` and `IAuthorizeResource<T>` have static-permission `AuthenticationRequired` / `Forbidden` surfaced by `AuthorizationBehavior` — those are NOT translated, because the static-auth behavior has no concept of the resource. Commands needing existence-hiding to apply to anonymous probes must omit `IAuthorize`.
-- **Cache safety.** Synthetic 404s look identical to real 404s on the wire — pair these endpoints with `Cache-Control: no-store` or `private` so a shared cache cannot serve an unauthorized actor's 404 to a later authorized actor.
-- **Via commands key on the leaf.** `HideExistence<Match>()` covers commands implementing `IAuthorizeResourceVia<Team>` + `IIdentifyResource<Match, MatchId>` — the synthetic NotFound references the leaf the command identifies, never the owner.
+- **Cache safety.** Use `Cache-Control: no-store` or `private` so a shared cache cannot serve an unauthorized actor's 404 to a later authorized actor.
+- **Via commands key on the leaf.** `HideExistence<Match>()` covers `IAuthorizeResourceVia<Team>` + `IIdentifyResource<Match,MatchId>` and references the leaf, never the owner.
+- **Boundary scope.** Handler failures, aggregates, per-request trace IDs, application response customization, and timing are not normalized.
 
 See cookbook [Recipe 32](../api_reference/trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) for the projection-loader overload, SIEM query examples, and the full worked example.
 

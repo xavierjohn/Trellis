@@ -339,10 +339,13 @@ The pipeline always passes `IReadOnlyList<TOwner>` to `Authorize` — size 1 for
 
 **Failure semantics**:
 
-- **Leaf load failure** — the loader's error bubbles verbatim (matches existing `IAuthorizeResource<T>` semantics for the resource the command identifies).
+- **Leaf load failure** — propagates under the default `Propagate` policy. `HideAsNotFound` normalizes root NotFound/Forbidden/AuthenticationRequired to the configured public NotFound; other leaf errors are unchanged.
 - **Intermediate or owner load failure** — collapsed to `Error.Forbidden` to avoid leaking existence of related resources whose presence/absence the actor may not be authorized to learn.
 - **Empty result at any hop** (singular extract returning 0 IDs or plural extract returning 0 IDs) — short-circuits to `Error.Forbidden` without invoking `Authorize`.
 - **Missing `SharedResourceLoaderById<TTo, TToId>`** at any hop — throws `InvalidOperationException` (deployment bug, not authorization denial).
+
+Exposure policy is configured in [`ResourceAuthorizationOptions`](trellis-api-mediator.md#resourceauthorizationoptions)
+and keyed on the leaf, not the owner. See [Recipe 32](trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound).
 
 A command may implement either `IAuthorizeResource<T>` **or** `IAuthorizeResourceVia<TOwner>`, never both. Registration throws at startup if both are present — security primitives are not silently composed.
 

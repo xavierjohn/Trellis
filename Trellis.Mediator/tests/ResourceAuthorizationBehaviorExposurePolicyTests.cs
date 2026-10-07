@@ -2,6 +2,7 @@
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Trellis.Authorization;
@@ -59,19 +60,157 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         notFound.Resource.Id.Should().Be("res-1");
     }
 
-    [Fact]
-    public async Task Handle_HideExistenceConfigured_LoadFailureNotFoundPassesThroughUnchanged()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Handle_HideAsNotFound_LoadFailureNotFound_UsesCanonicalPublicError(bool useDefaultPolicy)
     {
-        // Only Forbidden and AuthenticationRequired are translated. A loader's NotFound stays
-        // a NotFound (although it might carry a different ResourceRef than the synthetic one).
-        var loaderNotFound = new Error.NotFound(ResourceRef.For("HiddenResource", "res-1"));
-        var options = new ResourceAuthorizationOptions().HideExistence<HiddenResource>();
+        var loaderNotFound = new Error.NotFound(ResourceRef.For("InternalRow", "database-id"))
+        {
+            Code = "storage.row-missing",
+            Detail = "Internal row database-id was not found.",
+            Cause = new Error.Forbidden("storage.partition-hidden"),
+        };
+        var options = useDefaultPolicy
+            ? new ResourceAuthorizationOptions { DefaultExposurePolicy = AuthFailureExposurePolicy.HideAsNotFound }
+            : new ResourceAuthorizationOptions().HideExistence<HiddenResource>();
         var behavior = CreateBehaviorWithLoaderError(actorId: "owner-1", loaderNotFound, options);
         var command = new HideExistenceCommand("res-1");
 
         var result = await InvokeHide(behavior, command);
 
-        result.UnwrapError().Should().BeSameAs(loaderNotFound, "loader-returned errors must be passed through verbatim when not in the translation set");
+        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        notFound.Should().NotBeSameAs(loaderNotFound);
+        notFound.Resource.Should().Be(ResourceRef.For<HiddenResource>("res-1"));
+        notFound.Code.Should().Be("error.unspecified");
+        notFound.Detail.Should().BeNull();
+        notFound.Cause.Should().BeNull();
+        loaderNotFound.Code.Should().Be("storage.row-missing");
+        loaderNotFound.Detail.Should().Be("Internal row database-id was not found.");
+    }
+
+    [Fact]
+    public async Task Handle_Propagate_LoadFailureNotFound_PreservesOriginalError()
+    {
+        var original = Error.NotFound.For<HiddenResource>(
+            "storage.row-missing", id: "res-1", detail: "Detailed loader failure.");
+        var behavior = CreateBehaviorWithLoaderError("owner-1", original, new ResourceAuthorizationOptions());
+
+        var result = await InvokeHide(behavior, new HideExistenceCommand("res-1"));
+
+        result.UnwrapError().Should().BeSameAs(original);
+    }
+
+    [Fact]
+    public async Task Handle_HideAsNotFound_LoadFailureUnexpected_PreservesOriginalError()
+    {
+        var original = new Error.Unexpected("storage.failed", "fault-42");
+        var behavior = CreateBehaviorWithLoaderError(
+            "owner-1", original, new ResourceAuthorizationOptions().HideExistence<HiddenResource>());
+
+        var result = await InvokeHide(behavior, new HideExistenceCommand("res-1"));
+
+        result.UnwrapError().Should().BeSameAs(original);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("denied")]
+    [InlineData("anonymous")]
+    [InlineData("loader-forbidden")]
+    [InlineData("loader-authentication")]
+    [InlineData("authorize-not-found")]
+    public async Task Handle_PublicMetadata_FailureSources_UseSamePublicError(string source)
+    {
+        var options = new ResourceAuthorizationOptions()
+            .HideExistence<HiddenResource>("resource.not-found", "Resource not found.");
+        var resource = new HiddenResource("res-1", "owner-1", "kind");
+        var command = new HideExistenceCommand("res-1",
+            source == "authorize-not-found"
+                ? Error.NotFound.For<UnrelatedResource>("policy.hidden", detail: "Private policy detail.")
+                : null);
+        var behavior = source switch
+        {
+            "missing" => CreateBehaviorWithLoaderError("other-user",
+                Error.NotFound.For<UnrelatedResource>("storage.missing", id: "internal-id", detail: "Private loader detail."), options),
+            "loader-forbidden" => CreateBehaviorWithLoaderError("other-user", new Error.Forbidden("loader.denied"), options),
+            "loader-authentication" => CreateBehaviorWithLoaderError("other-user", new Error.AuthenticationRequired("PrivateScheme"), options),
+            "anonymous" => CreateBehavior<HideExistenceCommand>(null, resource, options),
+            _ => CreateBehavior<HideExistenceCommand>("other-user", resource, options),
+        };
+
+        var result = await InvokeHide(behavior, command);
+
+        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        notFound.Resource.Should().Be(ResourceRef.For<HiddenResource>("res-1"));
+        notFound.Code.Should().Be("resource.not-found");
+        notFound.Detail.Should().Be("Resource not found.");
+        notFound.Cause.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task Handle_PublicDetail_OptionalCode_UsesStandardUnspecifiedCode(string? code)
+    {
+        var options = new ResourceAuthorizationOptions().HideExistence<HiddenResource>(code, "Resource not found.");
+        var behavior = CreateBehaviorWithLoaderError("owner-1",
+            Error.NotFound.For<HiddenResource>("private.missing", id: "res-1"), options);
+
+        var result = await InvokeHide(behavior, new HideExistenceCommand("res-1"));
+
+        result.UnwrapError().Code.Should().Be("error.unspecified");
+        result.UnwrapError().Detail.Should().Be("Resource not found.");
+    }
+
+    [Theory]
+    [InlineData("not-found")]
+    [InlineData("forbidden")]
+    [InlineData("authentication-required")]
+    public async Task Handle_HideAsNotFound_PrivateDiagnostics_RetainOriginalKindAndCode(string kind)
+    {
+        Error original = kind switch
+        {
+            "not-found" => Error.NotFound.For<UnrelatedResource>("private.missing", id: "internal-id"),
+            "forbidden" => new Error.Forbidden("private.denied"),
+            _ => new Error.AuthenticationRequired { Code = "private.unauthenticated" },
+        };
+        var logger = new CapturingLogger<ResourceAuthorizationBehavior<HideExistenceCommand, HiddenResource, Result<string>>>();
+        var options = new ResourceAuthorizationOptions()
+            .HideExistence<HiddenResource>("resource.not-found", "Resource not found.");
+        var behavior = CreateBehaviorWithLoaderError("owner-1", original, options, logger);
+
+        var result = await InvokeHide(behavior, new HideExistenceCommand("res-1"));
+
+        result.UnwrapError().Code.Should().Be("resource.not-found");
+        logger.Entries.Should().ContainSingle();
+        var entry = logger.Entries.Single();
+        entry.Level.Should().Be(LogLevel.Information);
+        entry.EventId.Id.Should().Be(1);
+        entry.EventId.Name.Should().Be("ExistenceHidden");
+        var fields = entry.State.Should()
+            .BeAssignableTo<IEnumerable<KeyValuePair<string, object?>>>().Which;
+        fields.Should().Contain(new KeyValuePair<string, object?>("OriginalKind", original.Kind));
+        fields.Should().Contain(new KeyValuePair<string, object?>("OriginalCode", original.Code));
+        fields.Should().Contain(new KeyValuePair<string, object?>("PublicResourceType", nameof(HiddenResource)));
+    }
+
+    [Fact]
+    public async Task Handle_ProjectionPublicMetadata_MissingResource_UsesConfiguredPublicError()
+    {
+        var options = new ResourceAuthorizationOptions()
+            .HideExistence<AuthorizationProjection, PublicAggregate>("public.not-found", "Public aggregate not found.");
+        var behavior = CreateProjectionBehavior("owner-1",
+            Result.Fail<AuthorizationProjection>(Error.NotFound.For<AuthorizationProjection>(
+                "projection.missing", id: "internal-id", detail: "Private projection detail.")), options);
+
+        var result = await InvokeProjection(behavior, new ProjectionAuthorizedCommand("public-id-42"));
+
+        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        notFound.Resource.Should().Be(ResourceRef.For<PublicAggregate>("public-id-42"));
+        notFound.Code.Should().Be("public.not-found");
+        notFound.Detail.Should().Be("Public aggregate not found.");
     }
 
     [Theory]
@@ -171,7 +310,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         var projection = new AuthorizationProjection("owner-1");
         var options = new ResourceAuthorizationOptions()
             .HideExistence<AuthorizationProjection, PublicAggregate>();
-        var behavior = CreateProjectionBehavior(actorId: "other-user", projection, options);
+        var behavior = CreateProjectionBehavior(actorId: "other-user", Result.Ok(projection), options);
         var command = new ProjectionAuthorizedCommand("public-id-42");
 
         var result = await InvokeProjection(behavior, command);
@@ -179,6 +318,28 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
         notFound.Resource.Type.Should().Be("PublicAggregate");
         notFound.Resource.Id.Should().Be("public-id-42");
+    }
+
+    [Fact]
+    public async Task Handle_ProjectionOverload_LoadFailureNotFound_UsesPublicIdentifierAndCanonicalMetadata()
+    {
+        var original = new Error.NotFound(ResourceRef.For<AuthorizationProjection>("internal-id"))
+        {
+            Code = "projection.missing",
+            Detail = "The internal projection was not found.",
+            Cause = new Error.Forbidden("projection.hidden"),
+        };
+        var options = new ResourceAuthorizationOptions()
+            .HideExistence<AuthorizationProjection, PublicAggregate>();
+        var behavior = CreateProjectionBehavior("owner-1", Result.Fail<AuthorizationProjection>(original), options);
+
+        var result = await InvokeProjection(behavior, new ProjectionAuthorizedCommand("public-id-42"));
+
+        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        notFound.Resource.Should().Be(ResourceRef.For<PublicAggregate>("public-id-42"));
+        notFound.Code.Should().Be("error.unspecified");
+        notFound.Detail.Should().BeNull();
+        notFound.Cause.Should().BeNull();
     }
 
     [Fact]
@@ -277,7 +438,8 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         CreateBehaviorWithLoaderError(
             string actorId,
             Error loaderError,
-            ResourceAuthorizationOptions options)
+            ResourceAuthorizationOptions options,
+            ILogger<ResourceAuthorizationBehavior<HideExistenceCommand, HiddenResource, Result<string>>>? logger = null)
     {
         var loader = new ErrorReturningLoader<HideExistenceCommand>(loaderError);
         var services = new ServiceCollection();
@@ -287,7 +449,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
             FakeActorProvider.NoPermissions(actorId),
             provider,
             Options.Create(options),
-            logger: NullLogger<ResourceAuthorizationBehavior<HideExistenceCommand, HiddenResource, Result<string>>>.Instance);
+            logger: logger ?? NullLogger<ResourceAuthorizationBehavior<HideExistenceCommand, HiddenResource, Result<string>>>.Instance);
     }
 
     private static ResourceAuthorizationBehavior<HideExistenceCommand, HiddenResource, Result<string>>
@@ -326,10 +488,10 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
     private static ResourceAuthorizationBehavior<ProjectionAuthorizedCommand, AuthorizationProjection, Result<string>>
         CreateProjectionBehavior(
             string actorId,
-            AuthorizationProjection projection,
+            Result<AuthorizationProjection> loadResult,
             ResourceAuthorizationOptions options)
     {
-        var loader = new ProjectionLoader(projection);
+        var loader = new ProjectionLoader(loadResult);
         var services = new ServiceCollection();
         services.AddScoped<IResourceLoader<ProjectionAuthorizedCommand, AuthorizationProjection>>(_ => loader);
         var provider = services.BuildServiceProvider();
@@ -342,7 +504,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
     internal sealed record HiddenResource(string Id, string OwnerId, string Kind);
 
-    internal sealed record HideExistenceCommand(string ResourceId)
+    internal sealed record HideExistenceCommand(string ResourceId, Error? AuthorizationError = null)
         : ICommand<Result<string>>,
           IAuthorizeResource<HiddenResource>,
           IIdentifyResource<HiddenResource, string>
@@ -350,7 +512,9 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         public string GetResourceId() => ResourceId;
 
         public IResult Authorize(Actor actor, HiddenResource resource) =>
-            actor.Id == resource.OwnerId
+            AuthorizationError is not null
+                ? Result.Fail(AuthorizationError)
+                : actor.Id == resource.OwnerId
                 ? Result.Ok()
                 : Result.Fail(new Error.Forbidden("authorization.forbidden"));
     }
@@ -401,10 +565,10 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
             Task.FromResult(Result.Ok(resource));
     }
 
-    private sealed class ProjectionLoader(AuthorizationProjection projection)
+    private sealed class ProjectionLoader(Result<AuthorizationProjection> result)
         : IResourceLoader<ProjectionAuthorizedCommand, AuthorizationProjection>
     {
         public Task<Result<AuthorizationProjection>> LoadAsync(ProjectionAuthorizedCommand message, CancellationToken cancellationToken) =>
-            Task.FromResult(Result.Ok(projection));
+            Task.FromResult(result);
     }
 }

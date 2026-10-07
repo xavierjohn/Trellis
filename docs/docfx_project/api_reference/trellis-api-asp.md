@@ -366,7 +366,7 @@ Codes Trellis did not choose are never rewritten — an `Error.TransportFault` p
 
 > **Breaking change.** Every error without an explicit reason now emits `error.unspecified` where it previously emitted its kind slug. This includes `InvalidInput` and `Aggregate` — whose codes live per-violation and per-child, not at the root — and `NotFound`, `Gone`, `RateLimited`, `AuthenticationRequired`, and `Unavailable` constructed without a `Code`. Clients branching on `code` for these cases must branch on `kind` (or `status`) instead — which is what those members were always for.
 
-> **Naming the reason.** Every error case carries an inherited `Code` (see [`Error` cases](trellis-api-core.md#concrete-error-cases)), so `error.unspecified` on a response means the producer named no reason — not that the case is incapable of carrying one. `new Error.NotFound(ResourceRef.For<Account>(id)) { Code = "account.not-found" }` puts `account.not-found` on the wire, which is what lets a client tell "no such row" from "withheld from you" without parsing `detail`.
+> **Naming the reason.** Every error case carries an inherited `Code` (see [`Error` cases](trellis-api-core.md#concrete-error-cases)), so `error.unspecified` means the producer named no reason. `new Error.NotFound(ResourceRef.For<Account>(id)) { Code = "account.not-found" }` emits that application reason verbatim. For sensitive resources, configure [`HideExistence`](trellis-api-mediator.md#resourceauthorizationoptions) so missing and withheld outcomes share the same public code, detail, and resource metadata; do not restore private distinctions in response customization.
 
 #### Reading the reason from a response
 

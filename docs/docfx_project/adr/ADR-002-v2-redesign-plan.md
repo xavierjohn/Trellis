@@ -938,7 +938,9 @@ public sealed class ResourceAuthorizationOptions
 {
     public AuthFailureExposurePolicy DefaultExposurePolicy { get; set; } = Propagate;
     public ResourceAuthorizationOptions HideExistence<TResource>() where TResource : class;
+    public ResourceAuthorizationOptions HideExistence<TResource>(string? code = null, string? detail = null) where TResource : class;
     public ResourceAuthorizationOptions HideExistence<TAuthorizationResource, TPublicResource>() where TAuthorizationResource : class;
+    public ResourceAuthorizationOptions HideExistence<TAuthorizationResource, TPublicResource>(string? code = null, string? detail = null) where TAuthorizationResource : class;
     public ResourceAuthorizationOptions Propagate<TResource>() where TResource : class;
 }
 ```
@@ -949,7 +951,7 @@ Composition root:
 services.AddTrellis(o => o.UseResourceAuthorization(opts => opts.HideExistence<Incident>()));
 ```
 
-**Translation scope is deliberately narrow.** Only `Error.Forbidden` and `Error.AuthenticationRequired` are translated to `new Error.NotFound(ResourceRef)`. Other errors — `Unexpected`, `Unavailable`, `NotFound` from the loader, transport faults — pass through verbatim. Hiding transient infrastructure failures behind 404 would destroy operational signal and lead clients and caches to treat them as permanent absence. For the via path the pass-through guarantee applies only to the LEAF loader; intermediate / owner hop failures continue to collapse to `new Error.Forbidden("resource.authorization-via.load-failed")` per the v1 multi-hop security model (existence-leak protection on related resources, §5.3 of ADR-002 v1 reference) before exposure-policy translation sees them, so an `Unavailable` from a downstream owner service does become `404` to the consumer under `HideAsNotFound`. The `ExistenceHidden` log carries the collapsed `OriginalCode` (`resource.authorization-via.load-failed`) — finer-grained downstream-failure visibility on the related-resource graph requires the direct `IAuthorizeResource<TResource>` model instead of the via fan-out shape.
+**Normalization scope is deliberately narrow.** Resource-stage root `Error.NotFound`, `Error.Forbidden`, and `Error.AuthenticationRequired` receive one fresh public NotFound. Public type/ID come from configuration and the request, never the original error; fixed optional code/detail apply identically to missing and withheld resources, with no original cause copied. Other direct-resource / via-leaf errors pass through unchanged. Intermediate/owner failures of any kind collapse to `Forbidden("resource.authorization-via.load-failed")` before normalization, so even owner `Unavailable` becomes a hidden NotFound and private diagnostics see the collapsed code.
 
 **Both load- and authorize-failure paths translate.** A remote loader returning `Forbidden` (e.g. a downstream ACL refused) and the local `message.Authorize(actor, resource)` returning `Forbidden` both flow through the same translation. The behavior's internal null-payload defense — which synthesises `new Error.Forbidden("resource.authorization.null-payload")` when a loader violates its `Result<T>` contract — is also translated; a misbehaving loader must not leak existence either.
 
