@@ -3,7 +3,7 @@ package: Trellis.Asp.ApiVersioning
 namespaces: [Trellis.Asp.ApiVersioning]
 types: [HttpResponseOptionsBuilderApiVersioningExtensions, HttpContextPageUrlExtensions]
 version: v1
-last_verified: 2026-10-05
+last_verified: 2026-10-06
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when versioned controllers return Result or Page and need Location or next-page URLs that carry the api-version (Trellis.Asp.ApiVersioning)."
@@ -20,7 +20,7 @@ See also: [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdom
 
 ## Use this file when
 
-- You return `Result<T>` responses from versioned controllers (`[ApiVersion("…")]`) and need a builder-generated `Location` header to round-trip the client's requested `api-version`.
+- You return `Result<T>` or a Created `Result<WriteOutcome<T>>` from versioned controllers (`[ApiVersion("…")]`) and need a builder-generated `Location` to carry a destination-supported `api-version`.
 - You return paginated `Result<Page<T>>` responses from versioned controllers and need the `next`-page URL (the `nextUrlBuilder` parameter of `ToHttpResponse(Async)`) to carry the version, honor URL-segment ambient route values, and skip injection on neutral endpoints — without hard-coding the version literal or hand-rolling URL encoding.
 - You configured `Asp.Versioning` with query, header, URL-segment, or composite readers and need Location links to carry a version accepted by their destination.
 - You need destination-aware Location customization (`WithLocationRouteResolver`), after ordinary per-request values (`WithRouteValueResolver`) have been applied.
@@ -47,7 +47,7 @@ See also: [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdom
 - Do **not** supply competing version values when chaining `.WithVersionedRoute()`. It owns version route values after the selector and **all** `WithRouteValueResolver` callbacks, regardless of configuration order. It overwrites query/segment version values or removes `api-version` for segment, neutral, and missing-metadata targets.
 - Do not treat `PageUrl` segment behavior as identical to Location: Location writes and honors segment pins; implicit `PageUrl` retains ambient routing and cross-route validation, and explicit `PageUrl` still rejects segment pins.
 - Location destinations must be uniquely addressable: zero or multiple link-generation candidates throw rather than falling back to the current endpoint. `PageUrl` supports versioned variants sharing a name and matching templates/defaults: implicit self-pagination uses the active endpoint; cross-route links and explicit pins require a uniquely mapped destination. Suppressed link-generation endpoints are excluded by both helpers.
-- `WithLocation(...)` produces a `Location` header **without** changing the status code (typically 200 OK on `Result<T>` responses). Use it on state-transition endpoints that mutate an existing resource and want to point clients at the canonical URL (e.g., `POST /orders/{id}/return` returning 200 OK). For new-resource creation, use `CreatedAtRoute(...)` / `CreatedAtAction(...)` (201 Created). `Result<WriteOutcome<T>>` uses the `WriteOutcome` location/monitor URI instead; builder `WithLocation(...)` and route-value resolvers do not rewrite those outcome-owned URIs.
+- `WithLocation(...)` does not change status: typically 200 for `Result<T>`, or 201 when it supplies a missing `WriteOutcome.Created` location. Builder route/action fallbacks run version resolution when the outcome Location is null, empty, or whitespace. Nonblank outcome locations and Accepted monitor URIs are not rewritten; other outcome variants do not use builder locations.
 - The route values selector must return a non-null `RouteValueDictionary`. The runtime clones it before applying resolvers, so callbacks do not mutate a shared selector dictionary. Application code must not modify a shared dictionary concurrently.
 - For a target with multiple mapped declared versions, supply a mapped requested version or configure a mapped `DefaultApiVersion`. If neither is available, resolution throws rather than silently picking one. Controller declarations alone do not make an action multi-version.
 - `HttpContext.PageUrl(routeName, ...)` requires the target action to carry a route name (`[HttpGet("...", Name = "Things_List")]`). Without a name the helper cannot resolve the endpoint and the returned builder throws `InvalidOperationException` on first invocation. The route name typically matches the current paginated endpoint (self-referential pagination) but cross-route pagination is supported — supply path parameters in the callback's `RouteValueDictionary` for the target route's template.
@@ -98,7 +98,7 @@ Location-specific application (both overloads):
 - A neutral or missing-metadata target receives no version injection, and any supplied `"api-version"` entry is **removed from the cloned dictionary**. Neutral targets stay quiet. Missing metadata logs once per **destination endpoint / AppDomain** under `Trellis.Asp.ApiVersioning`, identifying the destination; `TrellisAspOptions.FailFastOnSilentVersionInjection = true` throws on every offending execution instead. `PageUrl` remains quiet for missing metadata.
 - Warning deduplication uses endpoint instance identity, not display names or route templates. Distinct endpoints, including same-named destinations in separate hosts, warn independently. Weak keys allow discarded endpoints to be collected; concurrent calls for the same endpoint still produce only one warning.
 - There is one `WithLocationRouteResolver` callback slot: the last registration wins, including repeated `WithVersionedRoute` calls or a custom hook that replaces one. Callback errors propagate; shared selector dictionaries are not mutated.
-- Literal/selector `Created(...)` locations and `WriteOutcome`-owned Location/monitor URIs ignore the hook. `CreatedAtRoute` / `CreatedAtAction` retain 201, while `WithLocation` retains the normal 2xx status. Named routes remain AOT-compatible; `CreatedAtAction` retains its existing trimming/AOT limitations.
+- Literal/selector `Created(...)` locations, nonblank outcome locations, and Accepted monitor URIs ignore the hook. Route/action fallbacks for `WriteOutcome.Created` run it and retain the outcome's 201, including when configured with `WithLocation`. Named routes remain AOT-compatible; `CreatedAtAction` retains its existing trimming/AOT limitations.
 
 #### Migration: existing syntax, stricter destination checks
 
@@ -140,7 +140,10 @@ return result.ToHttpResponse(opts => opts
     .WithVersionedRoute());
 ```
 
-Unlike `CreatedAtRoute`, `WithLocation` does **not** force the status code to 201 — the `Result<T>` response's natural 200 OK status is preserved. It does not affect `Result<WriteOutcome<T>>` responses, where `WriteOutcome.Created`, `WriteOutcome.Accepted`, and `WriteOutcome.AcceptedNoContent` own their literal `Location` / monitor URI values.
+Unlike `CreatedAtRoute`, `WithLocation` does **not** force 201: ordinary `Result<T>` retains
+200, while a Created `WriteOutcome<T>` retains its natural 201. It supplies and versions that
+outcome's location only when the outcome has no nonblank Location. Explicit outcome locations,
+Accepted monitor URIs, and other outcome variants are unchanged.
 
 #### Explicit-version overload
 

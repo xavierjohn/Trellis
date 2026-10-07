@@ -30,6 +30,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Parses raw cursor/limit query input into `PageRequest` consistently across MVC and Minimal APIs without collapsing an empty cursor into absence.
 - Emits RFC 9457 Problem Details for typed Trellis failures.
 - Supports `Created`, named-route and action locations, ETags, conditional requests, `Prefer`, cache controls, and pagination links.
+- Supplies endpoint-builder locations for `WriteOutcome.Created` when its optional location is absent; an explicit outcome location wins.
 - Validates scalar value objects during MVC and Minimal API binding and JSON deserialization.
 - Provides claims, nested-JSON claims, Entra, Easy Auth, development, caching, and worker actor-provider composition.
 - Maps ASP.NET Core rate-limit middleware rejections to the standard Trellis 429 Problem Details envelope and `Retry-After`.

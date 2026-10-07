@@ -66,6 +66,20 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
         if (_options.HonorPrefer)
             TrellisHttpResult<TDomain, TBody>.AppendVaryUnique(response, "Prefer");
 
+        string? createdLocation = null;
+        if (outcome is WriteOutcome<TDomain>.Created createdOutcome)
+        {
+            createdLocation = createdOutcome.Location;
+            if (string.IsNullOrWhiteSpace(createdLocation))
+            {
+                createdLocation = _options.LocationKind == LocationKind.None
+                    ? null
+                    : TrellisHttpResult<TDomain, TBody>.ResolveLocation(httpContext, createdOutcome.Value, _options);
+                if (_options.LocationKind != LocationKind.None && string.IsNullOrWhiteSpace(createdLocation))
+                    return TrellisHttpResult<TDomain, TBody>.WriteLocationFailureAsync(httpContext, _options);
+            }
+        }
+
         ApplyBuilderMetadata(response, outcome);
 
         // RFC 7240 Prefer is opt-in: only inspect/honor the request header and emit
@@ -78,8 +92,8 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
                 if (created.Metadata is not null)
                     ApplyMetadataHeaders(response, created.Metadata);
                 if (_body is not null)
-                    return Results.Created(created.Location, _body(created.Value)).ExecuteAsync(httpContext);
-                return Results.Created(created.Location, created.Value).ExecuteAsync(httpContext);
+                    return Results.Created(createdLocation, _body(created.Value)).ExecuteAsync(httpContext);
+                return Results.Created(createdLocation, created.Value).ExecuteAsync(httpContext);
 
             case WriteOutcome<TDomain>.Updated replaced:
                 if (replaced.Metadata is not null)
@@ -230,5 +244,6 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status202Accepted));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status400BadRequest, typeof(ProblemDetails), ["application/problem+json"]));
         builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status412PreconditionFailed, typeof(ProblemDetails), ["application/problem+json"]));
+        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status500InternalServerError, typeof(ProblemDetails), ["application/problem+json"]));
     }
 }

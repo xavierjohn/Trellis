@@ -141,14 +141,9 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
         if (_options.LocationKind != LocationKind.None)
         {
-            var location = ResolveLocation(httpContext, domain!);
+            var location = ResolveLocation(httpContext, domain!, _options);
             if (location is null)
-            {
-                var error = new Error.Unexpected(Code: FaultCodes.ResponseLocationUnresolved, FaultId: Guid.NewGuid().ToString("N"))
-                { Detail = "Could not generate Location URI for the response." };
-
-                return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(httpContext, error, _options));
-            }
+                return WriteLocationFailureAsync(httpContext, _options);
 
             ApplyCacheControlSelector(response, domain!);
             var body = _bodyProjector is not null ? (object?)_bodyProjector(domain!) : domain;
@@ -185,6 +180,14 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
     internal static int ResolveErrorStatusCode(HttpContext httpContext, Error error, HttpResponseOptions<TDomain> options) =>
         ErrorStatusCodeResolver.Resolve(httpContext, error, options.ErrorMapper, options.ErrorOverrides);
+
+    internal static Task WriteLocationFailureAsync(HttpContext httpContext, HttpResponseOptions<TDomain> options)
+    {
+        var error = new Error.Unexpected(Code: FaultCodes.ResponseLocationUnresolved, FaultId: Guid.NewGuid().ToString("N"))
+        { Detail = "Could not generate Location URI for the response." };
+
+        return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(httpContext, error, options));
+    }
 
     private RepresentationMetadata? BuildMetadataForEvaluation(TDomain domain)
     {
@@ -358,40 +361,42 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         Justification = "ResolveLocation routes to ResolveActionLocation only when the consumer opted into LocationKind.Action via CreatedAtAction. CreatedAtAction itself is annotated [RequiresUnreferencedCode] so the requirement is surfaced at the public API boundary; consumers who don't use it pay no AOT cost.")]
     [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("AOT", "IL3050",
         Justification = "ResolveLocation routes to ResolveActionLocation only when the consumer opted into LocationKind.Action via CreatedAtAction. CreatedAtAction itself is annotated [RequiresDynamicCode] so the requirement is surfaced at the public API boundary; consumers who don't use it pay no AOT cost.")]
-    private string? ResolveLocation(HttpContext httpContext, TDomain domain)
+    internal static string? ResolveLocation(
+        HttpContext httpContext, TDomain domain, HttpResponseOptions<TDomain> options)
     {
-        switch (_options.LocationKind)
+        switch (options.LocationKind)
         {
             case LocationKind.Literal:
-                return _options.LocationLiteral;
+                return options.LocationLiteral;
 
             case LocationKind.Selector:
-                return _options.LocationSelector!(domain);
+                return options.LocationSelector!(domain);
 
             case LocationKind.Route:
                 {
                     var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
-                    var rv = ApplyRouteValueResolvers(_options.RouteValuesSelector!(domain), httpContext);
-                    return lg.GetPathByName(httpContext, _options.RouteName!, rv);
+                    var rv = ApplyRouteValueResolvers(options.RouteValuesSelector!(domain), httpContext, options);
+                    return lg.GetPathByName(httpContext, options.RouteName!, rv);
                 }
 
             case LocationKind.Action:
-                return ResolveActionLocation(httpContext, domain);
+                return ResolveActionLocation(httpContext, domain, options);
 
             default:
                 return null;
         }
     }
 
-    private Microsoft.AspNetCore.Routing.RouteValueDictionary ApplyRouteValueResolvers(
+    private static Microsoft.AspNetCore.Routing.RouteValueDictionary ApplyRouteValueResolvers(
         Microsoft.AspNetCore.Routing.RouteValueDictionary routeValues,
-        HttpContext httpContext)
+        HttpContext httpContext,
+        HttpResponseOptions<TDomain> options)
     {
         if (routeValues is null)
             throw new InvalidOperationException("The Location route-values selector returned null. Return a RouteValueDictionary instead.");
 
         Microsoft.AspNetCore.Routing.RouteValueDictionary? withResolved = null;
-        if (_options.RouteValueResolvers is { } resolvers)
+        if (options.RouteValueResolvers is { } resolvers)
         {
             foreach (var (key, resolver) in resolvers)
             {
@@ -404,15 +409,15 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             }
         }
 
-        if (_options.LocationRouteResolver is { } locationResolver)
+        if (options.LocationRouteResolver is { } locationResolver)
         {
             withResolved ??= new Microsoft.AspNetCore.Routing.RouteValueDictionary(routeValues);
-            var isNamedRoute = _options.LocationKind == LocationKind.Route;
+            var isNamedRoute = options.LocationKind == LocationKind.Route;
             locationResolver(new LocationRouteContext(
                 httpContext,
-                isNamedRoute ? _options.RouteName : null,
-                isNamedRoute ? null : _options.ActionName,
-                isNamedRoute ? null : _options.ControllerName,
+                isNamedRoute ? options.RouteName : null,
+                isNamedRoute ? null : options.ActionName,
+                isNamedRoute ? null : options.ControllerName,
                 withResolved));
         }
 
@@ -421,7 +426,8 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
 
     [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode("LocationKind.Action calls into MVC's ControllerLinkGeneratorExtensions which is not trim-safe. Use CreatedAtRoute (named routes) instead for AOT/trim scenarios.")]
     [System.Diagnostics.CodeAnalysis.RequiresDynamicCode("LocationKind.Action calls into MVC's ControllerLinkGeneratorExtensions which is not AOT-safe. Use CreatedAtRoute (named routes) instead for AOT scenarios.")]
-    private string? ResolveActionLocation(HttpContext httpContext, TDomain domain)
+    private static string? ResolveActionLocation(
+        HttpContext httpContext, TDomain domain, HttpResponseOptions<TDomain> options)
     {
         // RuntimeFeature.IsDynamicCodeSupported is a trimmer-substituted constant: under PublishAot
         // the trimmer rewrites it to `false` and removes the entire body of this branch, eliminating
@@ -435,8 +441,8 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         }
 
         var lg = httpContext.RequestServices.GetRequiredService<LinkGenerator>();
-        var rv = ApplyRouteValueResolvers(_options.RouteValuesSelector!(domain), httpContext);
-        return lg.GetPathByAction(httpContext, _options.ActionName!, _options.ControllerName, rv);
+        var rv = ApplyRouteValueResolvers(options.RouteValuesSelector!(domain), httpContext, options);
+        return lg.GetPathByAction(httpContext, options.ActionName!, options.ControllerName, rv);
     }
 
     /// <summary>

@@ -47,6 +47,63 @@ public sealed class TargetAwareLocationTests
     }
 
     [Theory]
+    [InlineData("route", "/target-location/v1/42?api-version=1.0")]
+    [InlineData("action", "/target-location/actions/42?api-version=1.0")]
+    [InlineData("ambient-action", "/target-location/source/canonical/42?api-version=1.0")]
+    [InlineData("neutral", "/target-location/neutral/42")]
+    [InlineData("unversioned", "/target-location/unversioned/42")]
+    [InlineData("transition", "/target-location/v1/42?api-version=1.0")]
+    [InlineData("segment", "/target-location/v2.0/42")]
+    [InlineData("segment-pin", "/target-location/v1.0/42")]
+    [InlineData("mapped", "/target-location/v1.0/only-v1/42")]
+    [InlineData("version-first", "/target-location/v1/42?api-version=1.0")]
+    public async Task WithVersionedRoute_CreatedOutcome_EmitsFollowableFallbackLocation(
+        string scenario, string expected)
+    {
+        using var host = CreateHost();
+        using var client = host.GetTestClient();
+        var ct = TestContext.Current.CancellationToken;
+
+        using var response = await client.PostAsync(
+            $"/target-location/source/{scenario}?api-version=2.0&writeOutcome=true", null, ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.OriginalString.Should().Be(expected);
+        using var followed = await client.GetAsync(response.Headers.Location, ct);
+        followed.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData("invalid-pin", "*not declared*")]
+    [InlineData("invalid-segment-pin", "*not declared*")]
+    [InlineData("missing-route", "*no registered endpoint*")]
+    public async Task WithVersionedRoute_CreatedOutcome_InvalidFallbackThrows(string scenario, string message)
+    {
+        using var host = CreateHost();
+        using var client = host.GetTestClient();
+        var act = () => client.PostAsync(
+            $"/target-location/source/{scenario}?api-version=2.0&writeOutcome=true", null,
+            TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage(message);
+    }
+
+    [Fact]
+    public async Task WithVersionedRoute_ExplicitOutcomeLocation_DoesNotRunFallbackResolver()
+    {
+        using var host = CreateHost();
+        using var client = host.GetTestClient();
+
+        using var response = await client.PostAsync(
+            "/target-location/source/invalid-pin?api-version=2.0&writeOutcome=true&location=/explicit/42",
+            null, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.Headers.Location!.OriginalString.Should().Be("/explicit/42");
+    }
+
+    [Theory]
     [InlineData("invalid-pin", "*not declared*")]
     [InlineData("invalid-segment-pin", "*not declared*")]
     [InlineData("invalid-action-pin", "*not declared*")]
@@ -96,16 +153,19 @@ public sealed class TargetAwareLocationTests
     }
 
     [Theory]
-    [InlineData("route", "/application/target-location/v1/42?api-version=1.0")]
-    [InlineData("action", "/application/target-location/actions/42?api-version=1.0")]
-    public async Task WithVersionedRoute_PathBase_PreservesApplicationPrefix(string scenario, string expected)
+    [InlineData("route", "/application/target-location/v1/42?api-version=1.0", false)]
+    [InlineData("action", "/application/target-location/actions/42?api-version=1.0", false)]
+    [InlineData("route", "/application/target-location/v1/42?api-version=1.0", true)]
+    [InlineData("action", "/application/target-location/actions/42?api-version=1.0", true)]
+    public async Task WithVersionedRoute_PathBase_PreservesApplicationPrefix(
+        string scenario, string expected, bool writeOutcome)
     {
         using var host = CreateHost("/application");
         using var client = host.GetTestClient();
         var ct = TestContext.Current.CancellationToken;
 
         using var response = await client.PostAsync(
-            $"/application/target-location/source/{scenario}?api-version=2.0", null, ct);
+            $"/application/target-location/source/{scenario}?api-version=2.0&writeOutcome={writeOutcome}", null, ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location!.OriginalString.Should().Be(expected);
@@ -161,8 +221,10 @@ public sealed class TargetLocationSourceController : ControllerBase
 
     [HttpPost("{scenario}")]
     [MapToApiVersion("2.0")]
-    public Microsoft.AspNetCore.Http.IResult Post(string scenario) =>
-        Result.Ok(42).ToHttpResponse(options =>
+    public Microsoft.AspNetCore.Http.IResult Post(
+        string scenario, [FromQuery] bool writeOutcome = false, [FromQuery] string? location = null)
+    {
+        void Configure(HttpResponseOptionsBuilder<int> options)
         {
             switch (scenario)
             {
@@ -254,7 +316,12 @@ public sealed class TargetLocationSourceController : ControllerBase
                     options.CreatedAtRoute(target, id => id).WithVersionedRoute();
                     break;
             }
-        });
+        }
+
+        return writeOutcome
+            ? Result.Ok(WriteOutcome.Created(42, location)).ToHttpResponse(Configure)
+            : Result.Ok(42).ToHttpResponse(Configure);
+    }
 }
 
 [ApiController]

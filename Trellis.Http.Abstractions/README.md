@@ -40,6 +40,10 @@ The server boundary (`Trellis.Asp.ResponseFailureWriter`) unwraps `Error.Transpo
 | `RepresentationMetadata`, `WriteOutcome<T>` | Response metadata and write-result shapes shared by server and client packages |
 | `AggregateETagExtensions` | `OptionalETag` and `RequireETag` operators for aggregate result pipelines |
 
+`WriteOutcome.Created(value)` returns a 201-shaped outcome without requiring an
+application-layer URL. Its optional `location` can be supplied explicitly or generated
+by the `Trellis.Asp` endpoint builder; without either, the Location header is omitted.
+
 ## Documentation
 
 - [Package API reference](../docs/docfx_project/api_reference/trellis-api-http-abstractions.md)

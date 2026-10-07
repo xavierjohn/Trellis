@@ -8,7 +8,12 @@ using Trellis;
 /// Fluent options builder for <see cref="HttpResponseExtensions.ToHttpResponse{T}(Result{T},Action{HttpResponseOptionsBuilder{T}}?)"/>.
 /// Selectors run against the <typeparamref name="TDomain"/> value (not the projected response body).
 /// </summary>
-/// <typeparam name="TDomain">The domain value type from <c>Result&lt;TDomain&gt;</c>.</typeparam>
+/// <remarks>
+/// Location options also supply a fallback for <c>WriteOutcome.Created</c> when the
+/// outcome Location is null, empty, or whitespace. A nonblank outcome Location wins.
+/// The outcome determines status; other outcome variants do not use builder locations.
+/// </remarks>
+/// <typeparam name="TDomain">The domain value type from <c>Result&lt;TDomain&gt;</c> or <c>WriteOutcome&lt;TDomain&gt;</c>.</typeparam>
 public sealed class HttpResponseOptionsBuilder<TDomain>
 {
     private Func<TDomain, EntityTagValue?>? _eTagSelector;
@@ -247,15 +252,12 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
     /// <remarks>
     /// Unlike <see cref="CreatedAtRoute(string, Func{TDomain, Microsoft.AspNetCore.Routing.RouteValueDictionary})"/>,
     /// this does <b>not</b> set the status code to 201 Created — the response ships with its
-    /// natural 2xx status code. This applies on the <c>Result&lt;T&gt;</c> execution path
-    /// (<c>ToHttpResponse</c>). On <c>Result&lt;WriteOutcome&lt;T&gt;&gt;</c>, the builder still
-    /// applies for other options, but <c>WithLocation</c> itself has no effect on the outcome's
-    /// Location handling — that path reads <c>WriteOutcome.Created.Location</c>,
-    /// <c>WriteOutcome.Accepted.MonitorUri</c>, and <c>WriteOutcome.AcceptedNoContent.MonitorUri</c>
-    /// directly. On the <c>Result&lt;T&gt;</c> path, to round-trip the requested <c>api-version</c>
-    /// through the generated <c>Location</c>, chain <c>WithVersionedRoute()</c> from
-    /// <c>Trellis.Asp.ApiVersioning</c>; on the <c>Result&lt;WriteOutcome&lt;T&gt;&gt;</c> path,
-    /// the version must instead be present in the URL the outcome itself carries.
+    /// natural 2xx status code. On <c>Result&lt;WriteOutcome&lt;T&gt;&gt;</c>, it supplies a
+    /// fallback for <c>Created</c> when the outcome's Location is null, empty, or whitespace;
+    /// the outcome still determines the status (201). A nonblank outcome Location wins.
+    /// Other outcome variants do not use builder locations, and Accepted monitor URIs are
+    /// unchanged. To version a builder-generated Location on either response path, chain
+    /// <c>WithVersionedRoute()</c> from <c>Trellis.Asp.ApiVersioning</c>.
     /// </remarks>
     public HttpResponseOptionsBuilder<TDomain> WithLocation(string routeName, Func<TDomain, Microsoft.AspNetCore.Routing.RouteValueDictionary> routeValues)
     {

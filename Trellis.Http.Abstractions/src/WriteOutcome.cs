@@ -16,9 +16,9 @@ public abstract record WriteOutcome<T>
 
     /// <summary>A new resource was created. Transports as HTTP <c>201 Created</c>.</summary>
     /// <param name="Value">The created entity.</param>
-    /// <param name="Location">An address that identifies the newly created resource (e.g. a URI path).</param>
+    /// <param name="Location">Optional address of the newly created resource. Null, empty, or whitespace leaves Location generation to the HTTP boundary; without a boundary-supplied address, the header is omitted.</param>
     /// <param name="Metadata">Optional representation metadata (ETag, Last-Modified, …) for the new resource.</param>
-    public sealed record Created(T Value, string Location, RepresentationMetadata? Metadata = null) : WriteOutcome<T>;
+    public sealed record Created(T Value, string? Location = null, RepresentationMetadata? Metadata = null) : WriteOutcome<T>;
 
     /// <summary>An existing resource was replaced/updated and the new representation is returned. Transports as HTTP <c>200 OK</c>.</summary>
     /// <param name="Value">The updated entity.</param>
@@ -53,10 +53,10 @@ public static class WriteOutcome
     /// <summary>Builds the <c>Created</c> case (HTTP <c>201</c>), returned as the base <see cref="WriteOutcome{T}"/>.</summary>
     /// <typeparam name="T">The representation/body type.</typeparam>
     /// <param name="value">The created entity.</param>
-    /// <param name="location">An address that identifies the newly created resource.</param>
+    /// <param name="location">Optional address of the newly created resource. Null, empty, or whitespace leaves Location generation to the HTTP boundary; without a boundary-supplied address, the header is omitted.</param>
     /// <param name="metadata">Optional representation metadata (ETag, Last-Modified, …).</param>
     /// <returns>The created outcome typed as <see cref="WriteOutcome{T}"/>.</returns>
-    public static WriteOutcome<T> Created<T>(T value, string location, RepresentationMetadata? metadata = null)
+    public static WriteOutcome<T> Created<T>(T value, string? location = null, RepresentationMetadata? metadata = null)
         => new WriteOutcome<T>.Created(value, location, metadata);
 
     /// <summary>Builds the <c>Updated</c> case (HTTP <c>200</c>), returned as the base <see cref="WriteOutcome{T}"/>.</summary>

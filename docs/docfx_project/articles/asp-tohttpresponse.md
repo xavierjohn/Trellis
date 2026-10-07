@@ -244,6 +244,14 @@ The extension uses `WithLocationRouteResolver` after all legacy callbacks; it ov
 
 When the receiver is `Result<WriteOutcome<T>>`, the outcome variant drives status and headers — `Created*` builder methods are **not** required (they are required for `Result<T>` create endpoints). See [`integration-aspnet.md → WriteOutcome<T>`](integration-aspnet.md#writeoutcomet) for the full mapping table and command examples.
 
+`WriteOutcome.Created(value)` permits a 201 with no Location, suitable for a PUT creating
+at its request URL. A nonblank outcome Location wins; null, empty, or whitespace falls
+back to the builder's `Created`, `CreatedAtRoute`, `CreatedAtAction`, or `WithLocation`.
+The outcome still determines status, including 201 when `WithLocation` supplies the fallback.
+Route/action fallbacks run route-value and API-versioning hooks. An unresolved configured
+fallback returns `response.location-unresolved` (500 by default); callback exceptions
+propagate. Updated and Accepted outcomes do not use these fallbacks.
+
 ## Pagination
 
 `Result<Page<T>>` has a dedicated overload requiring `nextUrlBuilder` and a per-item `body` projector. The pagination signature is **not** the same as the `Result<T>` overload:

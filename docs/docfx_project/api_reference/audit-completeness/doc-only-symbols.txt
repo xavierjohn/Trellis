@@ -36,6 +36,7 @@ OrderSubmitted
 OrderHeader
 LineItem
 IOrderRepository
+IOrderWriter
 OrderResourceLoader
 IHealthProbe
 IRepository

@@ -3,7 +3,7 @@ package: Trellis.Http.Abstractions
 namespaces: [Trellis]
 types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionKind, RepresentationMetadata, "RepresentationMetadata.Builder", "WriteOutcome<T>", WriteOutcome, AggregateETagExtensions]
 version: v3
-last_verified: 2026-06-19
+last_verified: 2026-10-06
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when you need HTTP fault cases, ETag and Retry-After helpers, RepresentationMetadata or WriteOutcome shapes (Trellis.Http.Abstractions)."
@@ -127,13 +127,22 @@ Fluent builder returned by `RepresentationMetadata.Create()`; every setter retur
 
 | Case | Parameters | Transports as |
 | --- | --- | --- |
-| `Created` | `T Value`, `string Location`, `RepresentationMetadata? Metadata = null` | `201 Created` |
+| `Created` | `T Value`, `string? Location = null`, `RepresentationMetadata? Metadata = null` | `201 Created` |
 | `Updated` | `T Value`, `RepresentationMetadata? Metadata = null` | `200 OK` |
 | `UpdatedNoContent` | `RepresentationMetadata? Metadata = null` | `204 No Content` |
 | `Accepted` | `T StatusBody`, `string? MonitorUri = null`, `RetryAfterValue? RetryAfter = null` | `202 Accepted` |
 | `AcceptedNoContent` | `string? MonitorUri = null`, `RetryAfterValue? RetryAfter = null` | `202 Accepted` |
 
 `StatusBody` describes the in-flight operation; `MonitorUri` is the address a client polls for progress; `RetryAfter` hints when to poll next.
+
+`WriteOutcome.Created<T>(T value, string? location = null, RepresentationMetadata? metadata = null)`
+returns the base `WriteOutcome<T>`. Both it and `new WriteOutcome<T>.Created(value)` allow the
+location to be omitted; named `metadata:` / `Metadata:` arguments remain available.
+
+For `Trellis.Asp`, a nonblank Created Location takes precedence. Null, empty, or whitespace uses
+the endpoint builder's `Created`, `CreatedAtRoute`, `CreatedAtAction`, or `WithLocation` fallback;
+without one, the response is 201 with no Location header. This supports a PUT that creates at its
+request URL without making the application layer build a URL. Other outcome variants are unchanged.
 
 ## `AggregateETagExtensions`
 

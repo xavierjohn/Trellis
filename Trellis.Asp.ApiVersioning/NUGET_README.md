@@ -27,7 +27,7 @@ For paginated responses, use `HttpContext.PageUrl(...)` as the `nextUrlBuilder` 
 
 - Resolves the final named-route or MVC-action destination and validates its supported versions.
 - Emits mapped query-string versions and supports URL-segment destinations.
-- Composes with `CreatedAtRoute`, `CreatedAtAction`, and `WithLocation`.
+- Composes with `CreatedAtRoute`, `CreatedAtAction`, and `WithLocation`, including fallback locations for `WriteOutcome.Created` without an explicit location.
 - Builds version-aware next and previous pagination URLs.
 - Supports explicit version pins for intentional cross-version links.
 - Skips version injection for neutral and unversioned destinations.

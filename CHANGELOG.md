@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — optional Created locations and endpoint fallback (TFR-17)
+
+`WriteOutcome.Created(value)` and `new WriteOutcome<T>.Created(value)` no longer require
+a URL from the application layer. A nonblank outcome Location wins; null, empty, or
+whitespace uses the endpoint builder's literal, selector, named-route, action, or
+`WithLocation` fallback. With no source, Created emits 201 without a Location header,
+including PUT creation at the request URL.
+
+Route/action fallbacks share ordinary Result location generation, route-value callbacks,
+and API-versioning hooks. Unresolved configured fallbacks emit
+`response.location-unresolved` (500 by default), with matching OpenAPI metadata.
+Outcome statuses, representation metadata, and other outcome variants are preserved.
+
 ### Fixed — canonical public NotFound for existence hiding (TFR-18)
 
 `HideAsNotFound` normalizes resource-stage root `NotFound`, `Gone`, `Forbidden`, and

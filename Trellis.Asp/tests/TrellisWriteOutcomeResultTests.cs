@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Asp.Tests;
 
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -88,6 +89,147 @@ public sealed class TrellisWriteOutcomeResultTests
 
         ctx.Response.StatusCode.Should().Be(201);
         ctx.Response.Headers.Location.ToString().Should().Be("/items/7");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public async Task Created_WithoutLocation_OmitsHeader(string? location)
+    {
+        var ctx = NewContext();
+        var outcome = WriteOutcome.Created(new Item(7, "n", "v", default), location);
+
+        await Result.Ok(outcome).ToHttpResponse().ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(201);
+        ctx.Response.Headers.ContainsKey("Location").Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Created_BlankOutcomeLocation_UsesBuilderLiteralOrSelector(bool selector)
+    {
+        var ctx = NewContext();
+        var outcome = WriteOutcome.Created(new Item(7, "n", "v", default), string.Empty);
+
+        await Result.Ok(outcome).ToHttpResponse(i => new ItemBody(i.Id), options =>
+        {
+            if (selector)
+                options.Created(item => $"/items/{item.Id}");
+            else
+                options.Created("/items/7");
+        }).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(201);
+        ctx.Response.Headers.Location.ToString().Should().Be("/items/7");
+    }
+
+    [Fact]
+    public async Task Created_ExplicitLocation_SkipsBuilderLocationAndResolvers()
+    {
+        var ctx = NewContext();
+        var outcome = WriteOutcome.Created(new Item(7, "n", "v", default), "/items/7");
+
+        await Result.Ok(outcome).ToHttpResponse((HttpResponseOptionsBuilder<Item> options) => options
+            .CreatedAtRoute("Missing", _ => throw new InvalidOperationException("Selector must not run."))
+            .WithRouteValueResolver("tenant", _ => throw new InvalidOperationException("Resolver must not run."))
+            .WithLocationRouteResolver(_ => throw new InvalidOperationException("Destination callback must not run.")))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(201);
+        ctx.Response.Headers.Location.ToString().Should().Be("/items/7");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public async Task Created_UnresolvedBuilderLocation_ReturnsCodedFailureWithoutSuccessHeaders(string? location)
+    {
+        var ctx = NewContext();
+        var successSelectorRan = false;
+        var outcome = WriteOutcome.Created(new Item(7, "n", "v", default), string.Empty);
+
+        await Result.Ok(outcome).ToHttpResponse((HttpResponseOptionsBuilder<Item> options) => options
+            .Created(_ => location!)
+            .WithCacheControl(CacheControl.NoStore())
+            .WithCacheControl(_ =>
+            {
+                successSelectorRan = true;
+                return CacheControl.Public(TimeSpan.FromMinutes(1));
+            })
+            .WithLink("describedby", "/items/schema"))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(500);
+        ctx.Response.Headers.ContainsKey("Location").Should().BeFalse();
+        ctx.Response.Headers.ContainsKey("Link").Should().BeFalse();
+        ctx.Response.Headers.CacheControl.ToString().Should().Be("no-store");
+        successSelectorRan.Should().BeFalse();
+        ctx.Response.Body.Position = 0;
+        using var body = await JsonDocument.ParseAsync(
+            ctx.Response.Body, cancellationToken: TestContext.Current.CancellationToken);
+        body.RootElement.GetProperty("code").GetString().Should().Be(FaultCodes.ResponseLocationUnresolved);
+    }
+
+    [Fact]
+    public async Task Created_UnresolvedBuilderLocation_UsesPerCallErrorMapping()
+    {
+        var ctx = NewContext();
+        var outcome = WriteOutcome.Created(new Item(7, "n", "v", default), string.Empty);
+
+        await Result.Ok(outcome).ToHttpResponse((HttpResponseOptionsBuilder<Item> options) => options
+            .Created(_ => null!)
+            .WithErrorMapping<Error.Unexpected>(502))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(502);
+    }
+
+    [Fact]
+    public async Task Created_BuilderLocationWithHonorPrefer_Preserves201AndRepresentation()
+    {
+        var ctx = NewContext();
+        ctx.Request.Headers["Prefer"] = "return=minimal";
+        var outcome = WriteOutcome.Created(new Item(7, "n", "v", default), string.Empty);
+
+        await Result.Ok(outcome).ToHttpResponse((HttpResponseOptionsBuilder<Item> options) =>
+                options.Created("/items/7").HonorPrefer())
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(201);
+        ctx.Response.Headers.Location.ToString().Should().Be("/items/7");
+        ctx.Response.Headers.ContainsKey("Preference-Applied").Should().BeFalse();
+        ctx.Response.Body.Length.Should().BeGreaterThan(0);
+    }
+
+    [Theory]
+    [InlineData("updated", 200, null)]
+    [InlineData("updated-no-content", 204, null)]
+    [InlineData("accepted", 202, "/jobs/7")]
+    [InlineData("accepted-no-content", 202, "/jobs/7")]
+    public async Task NonCreated_BuilderLocation_DoesNotChangeOutcome(
+        string variant, int status, string? location)
+    {
+        var ctx = NewContext();
+        var item = new Item(7, "n", "v", default);
+        var outcome = variant switch
+        {
+            "updated" => WriteOutcome.Updated(item),
+            "updated-no-content" => WriteOutcome.UpdatedNoContent<Item>(),
+            "accepted" => WriteOutcome.Accepted(item, location),
+            "accepted-no-content" => WriteOutcome.AcceptedNoContent<Item>(location),
+            _ => throw new ArgumentOutOfRangeException(nameof(variant)),
+        };
+
+        await Result.Ok(outcome).ToHttpResponse((HttpResponseOptionsBuilder<Item> options) => options
+            .Created(_ => throw new InvalidOperationException("Location selector must not run.")))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(status);
+        ctx.Response.Headers.Location.ToString().Should().Be(location ?? string.Empty);
     }
 
     [Fact]

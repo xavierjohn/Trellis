@@ -355,6 +355,30 @@ app.Run();
 
 **What it shows.** `ToHttpResponse` returns `Microsoft.AspNetCore.Http.IResult` and is the **only** supported response verb. The fluent `HttpResponseOptionsBuilder<TDomain>` configures protocol semantics (`WithETag`, `WithLastModified`, `Vary`, `EvaluatePreconditions`) without leaking HTTP into the handler. Failures (`Error.NotFound`, `Error.InvalidInput`, …) round-trip through Problem Details using the `TrellisAspOptions` mapping registered by `AddTrellisAsp`.
 
+**PUT upserts.** The application returns `Result.Ok(WriteOutcome.Created(order))` when it adds
+the resource, or `Result.Ok(WriteOutcome.Updated(order))` when it updates one. No URL is needed
+in the application layer. In this endpoint, `IOrderWriter.UpsertAsync` is an application-owned
+service returning `Task<Result<WriteOutcome<Order>>>`:
+
+```csharp
+app.MapPut("/orders/{id:guid}", async (
+    Guid id, PutOrderRequest request, IOrderWriter writer, CancellationToken ct) =>
+{
+    Result<WriteOutcome<Order>> result = await writer.UpsertAsync(id, request, ct);
+    return result.ToHttpResponse(
+        body: order => new { Id = order.Id.Value },
+        configure: options => options.WithETag(order => order.ETag));
+});
+```
+
+Created returns 201 without a Location when the new resource is at the PUT request URL;
+Updated returns 200. To generate a Location at the endpoint instead, configure `Created`,
+`CreatedAtRoute`, `CreatedAtAction`, or `WithLocation`. Null, empty, or whitespace outcome
+locations use that fallback; a nonblank outcome Location wins. The outcome controls status,
+so `WithLocation` cannot turn Created into 200 or Updated into 201. Updated and Accepted
+do not use these fallbacks. An unresolved configured fallback returns
+`response.location-unresolved` (500 by default); callback exceptions propagate.
+
 **Versioned Location links.** For `CreatedAtRoute` / `CreatedAtAction` (201) or `WithLocation` (normal 2xx), load [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) before chaining the existing `.WithVersionedRoute()` / `.WithVersionedRoute(ApiVersion)` APIs. They now inspect the final destination, honor actual action mappings and segment pins, and reject missing/ambiguous targets or unsupported pins. The optional ASP [`WithLocationRouteResolver`](trellis-api-asp.md#locationroutecontext) hook runs after all legacy callbacks on a cloned dictionary; last registration wins. Literal `Created` and `WriteOutcome` URIs are unchanged. Do not transfer Location segment behavior to `PageUrl`: its implicit ambient routing and explicit segment-pin rejection remain.
 
 ---
@@ -392,6 +416,11 @@ public sealed record OrderDto(Guid Id, decimal Amount, string Currency);
 ```
 
 **What it shows.** `.AsActionResult<TBody>()` projects an `IResult` into a typed `ActionResult<TBody>`, so MVC clients still get OpenAPI/Swagger-friendly typed responses while the response itself executes through the same `IResult` pipeline as Minimal API.
+
+The same adapter supports the Created/Updated outcomes in Recipe 4. For
+`Result<WriteOutcome<Order>>`, project the body with `ToHttpResponse(...)` and chain
+`.AsActionResult<OrderDto>()`; route/action location fallbacks run against the Order,
+not the projected DTO. A nonblank outcome Location takes precedence.
 
 ---
 
