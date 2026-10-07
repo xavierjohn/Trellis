@@ -7,6 +7,35 @@ using Trellis.Testing;
 public class RecipeValidationTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void TRLS066_Fix_MissingInputs_CreatesOnlyRequiredViolations(bool missingTitle, bool missingDueDate)
+    {
+        var title = missingTitle ? null : "Todo";
+        DateTime? dueDate = missingDueDate ? null : new DateTime(2026, 10, 7, 0, 0, 0, DateTimeKind.Utc);
+        var expectedPaths = new List<string>();
+        if (missingTitle) expectedPaths.Add("/title");
+        if (missingDueDate) expectedPaths.Add("/dueDate");
+
+        var (result, violations) = MeasureValidation(() => Recipe11.AntiPatternFixes.TRLS066_Fix(title, dueDate, "work"));
+
+        result.IsSuccess.Should().Be(expectedPaths.Count == 0);
+        violations.Should().Be(expectedPaths.Count);
+        if (result.IsSuccess)
+        {
+            var command = ((Result<Recipe11.CreateTodoCommand>)result).Unwrap();
+            command.Should().Be(new Recipe11.CreateTodoCommand(title!, dueDate!.Value, "work"));
+            return;
+        }
+
+        var error = result.Error.Should().BeOfType<Error.InvalidInput>().Which;
+        error.Fields.Items.Select(v => v.Field.Path).Should().Equal(expectedPaths);
+        error.Fields.Items.Should().OnlyContain(v => v.ReasonCode == "required");
+    }
+
+    [Theory]
     [InlineData(1)]
     [InlineData(13)]
     [InlineData(16)]

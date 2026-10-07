@@ -36,6 +36,11 @@ The task lookup, the load-the-smallest-reference-set preflight and the conventio
 [trellis-start-here.md](trellis-start-here.md#patterns-index), the required reading for Trellis work. Open a recipe
 body here when that lookup sends you to one; every live recipe has a row there.
 
+Read the selected recipe's problem, constraints and solution together. For a focused
+subtask in a large recipe, follow its section links instead of loading unrelated
+alternatives. Expand to the complete recipe when composing its domain, HTTP and
+persistence surfaces.
+
 Primary solution blocks follow the router's
 [preferred-pattern defaults](trellis-start-here.md#preferred-patterns-not-just-valid-overloads):
 required-field shorthand, lazy custom errors, and typed mappings where available.
@@ -972,6 +977,15 @@ public static class CompositionRoot
 
 ## Recipe 13 — Composite value object end-to-end (Domain + API JSON binding + EF Core ownership)
 
+| Task within this recipe | Read |
+|---|---|
+| Define and persist the composite value object | [Domain and persistence contract](#composite-value-object-domain-and-persistence-contract), including the solution and storage rules |
+| Choose the JSON boundary shape | [JSON wire shape](#composite-value-object-json-wire-shape), then [supported interiors and DTO seam](#supported-property-shapes-inside-a-composite-vo--when-to-map-to-a-dto-instead) |
+| Map a read-only collection with a backing field | [Owned collections](#owned-collections-with-a-private-backing-field) |
+| Only require a nonblank string | [Core string guard](trellis-api-core.md#required-nonblank-strings); the composite recipe is not needed |
+
+### Composite value object domain and persistence contract
+
 **Problem.** Persist a multi-field value object (`ShippingAddress` with street/city/state/postalCode/country) as part of a `Customer` aggregate. Every field is required, the VO must validate at construction, and the JSON wire format must reuse the same validation as the domain TryCreate.
 
 The unobvious bits this recipe pins down:
@@ -1096,7 +1110,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 | Required `ShippingAddress` (non-nullable) | Table-split: 5 columns on the `Customers` table — `ShippingAddress_Street`, `ShippingAddress_City`, `ShippingAddress_State`, `ShippingAddress_PostalCode`, `ShippingAddress_Country` (all `NOT NULL`). |
 | Optional `Maybe<ShippingAddress>` | `CompositeValueObjectConvention` **table-splits** it into the `Customers` table as **nullable** columns (`BillingAddress_Street`, …, all `NULL`-able); absence is encoded as all-null. It uses a **separate table** `{Owner}_{Property}` when the composite has **nested owned navigations** *or* a **non-nullable value-type inner property** — table-splitting can't represent either for an optional dependent (all-null columns would make existence ambiguous, and EF Core rejects making a non-nullable value-type column optional), so row existence encodes presence instead. See the storage rules in [trellis-api-efcore.md](trellis-api-efcore.md#maybet-storage-owned-types-and-migrations) for the full decision matrix. |
 
-**JSON wire shape.**
+### Composite value object JSON wire shape
 
 The `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` attribute on the value object controls the wire format. There is no auto-discovery — the attribute is required for the converter to engage on request bodies and response payloads.
 
@@ -1768,7 +1782,7 @@ return rows.TraverseAll(row => EmailAddress.TryCreate(row.Email));
 
 ## Recipe 21 — Parallel independent loads in handlers: `Result.ParallelAsync` + `WhenAllAsync`
 
-**Problem.** A handler needs two (or more) loads that are *genuinely* independent — a customer record from one upstream service, a product record from another; an HTTP call to authn plus a DB read for profile; or two reads against two distinct EF Core `DbContext` instances. Written sequentially, each `await` blocks the next, so latency = sum of fetches. Written naively in parallel with `Task.WhenAll`, error handling falls back to throwing, you lose the `Result<T>` track, and the lab evidence shows that authors (human and AI) reach for the sequential form by default because it "looks correct" and the tests pass.
+**Problem.** A handler needs two (or more) loads that are *genuinely* independent — a customer record from one upstream service, a product record from another; an HTTP call to authn plus a DB read for profile; or two reads against two distinct EF Core `DbContext` instances. Awaiting each load before starting the next serializes their latency. Starting both before awaiting either allows concurrency. `Task.WhenAll` preserves their `Result<T>` values but does not combine them into one result; the tuple `.WhenAllAsync()` extension supplies that fold.
 
 `Result.ParallelAsync(...)` is the framework's opinionated entry point: factory-takes-no-args, eagerly invokes each factory so both tasks actually run concurrently, returns a tuple of `Task<Result<T>>` that the matching `.WhenAllAsync()` extension awaits with `Task.WhenAll` and folds via `Result.Combine` into a single `Result<(T1, T2, …)>`. Failures combine through `Error.Combine`, so two `Error.InvalidInput` failures merge their fields, heterogeneous failures become an `Error.Aggregate`.
 
@@ -1805,14 +1819,15 @@ public sealed class CheckoutHandler(
 
 **What it shows.**
 
-- `Result.ParallelAsync` takes `Func<Task<Result<T>>>` factories, NOT `Task<Result<T>>` instances. The factory shape is the API's only safeguard against the "I started the tasks before passing them in" mistake that makes them sequential anyway.
+- `Result.ParallelAsync` takes `Func<Task<Result<T>>>` factories, NOT `Task<Result<T>>` instances. It invokes each factory without awaiting the returned tasks. Already-started tasks can also run concurrently: `(LoadUserAsync(), LoadQuoteAsync()).WhenAllAsync()` is supported. Both shapes invoke the synchronous portions of the operations in order; neither makes blocking work parallel.
 - `.WhenAllAsync()` on the tuple is the matching extension. Without it you still have a tuple of `Task<Result<T>>` — which isn't awaitable on its own; you'd have to await each task individually and combine the results by hand. `.WhenAllAsync()` is the one-line fold.
 - The combined `Result<(T1, T2)>` flows back into the standard ROP chain (`BindAsync`, `MapAsync`, `TapAsync`) — no `match` / `if (success)` branches.
-- `Result.ParallelAsync` ships overloads for 2–9 factories. For collections, prefer `TraverseAsync` ([Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall)) — it's the right tool when the count is dynamic.
+- `Result.ParallelAsync` ships overloads for 2–9 factories. For dynamic collections, `TraverseAsync` is a **sequential, fail-fast alternative**, not parallel fan-in; `TraverseAllAsync` is also sequential but accumulates failures ([Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall)). If collection loads need concurrency, use an explicitly bounded concurrency design over independent resources and deliberately choose failure aggregation and cancellation behavior.
+- Task faults and cancellation propagate from `.WhenAllAsync()` after all supplied tasks complete; they are not converted to Result failures. A factory that throws synchronously escapes from `ParallelAsync` immediately, so later factories are not invoked.
 
 **When NOT to use it.**
 
-1. **Two or more repositories sharing the same scoped `DbContext`.** The most common case in a typical Trellis service. The repos look independent at the C# level, but they all derive from `RepositoryBase<TAggregate, TId>` over the same scoped `TContext`. Parallelising them races the underlying connection and throws `InvalidOperationException`. **Keep them sequential with `BindZipAsync`** (it awaits the first, runs the second only on success, and zips both into a tuple — short-circuiting on failure) — the savings vs the sum-of-fetches are negligible against a local DB anyway, and the integrity loss is real.
+1. **Two or more repositories sharing the same scoped `DbContext`.** The most common case in a typical Trellis service. The repos look independent at the C# level, but they all derive from `RepositoryBase<TAggregate, TId>` over the same scoped `TContext`. Parallelising them races the underlying context and throws `InvalidOperationException`. **Keep them sequential with `BindZipAsync`** (it awaits the first, runs the second only on success, and zips both into a tuple — short-circuiting on failure). This is a correctness requirement regardless of database latency. Use independent contexts only when their consistency and unit-of-work boundaries fit the operation.
 2. **The second factory's body references a value produced by the first.** Not independent — keep the sequential `BindAsync` chain. The rule is mechanical: if the second load requires data the first one produced (an id, a filter, a cursor), the two are sequential by definition.
 3. **Side-effecting writes.** `Result.ParallelAsync` is for reads. Parallel `repository.Add(...)` calls against a shared context have the same race as parallel reads, plus tracker contention; parallel writes against per-scope contexts need transaction coordination outside this helper.
 
@@ -1821,7 +1836,7 @@ public sealed class CheckoutHandler(
 ```csharp
 // ❌ UNSAFE — two repository calls against repositories that share a scoped DbContext.
 // Looks "obviously parallelisable" but races the underlying EF context. `Task.WhenAll`
-// waits for both factories to complete (or one to throw), so the concrete failure mode
+// waits for both returned tasks to complete before surfacing a task fault. The failure mode
 // is an `InvalidOperationException("A second operation was started on this context...")`
 // thrown by EF Core when the second concurrent operation hits the shared connection.
 // Reproduction is timing-dependent: the throw is reliable under contention but can be
@@ -1839,7 +1854,7 @@ public ValueTask<Result<DraftOrderId>> Handle(CreateDraftOrderCommand command, C
 // `BindZipAsync` awaits the first read, runs the second ONLY if the first succeeded
 // (short-circuits), and zips both into `Result<(Customer, Product)>`. The two reads
 // never overlap, so the shared context is never raced. Latency = the sum of two
-// local reads, which is negligible in practice.
+// reads; correctness does not depend on those reads being fast.
 public ValueTask<Result<DraftOrderId>> Handle(CreateDraftOrderCommand command, CancellationToken cancellationToken) =>
     new(_customers.FindByIdAsync(command.CustomerId, cancellationToken)
         .BindZipAsync(_ => _products.FindByIdAsync(command.ProductId, cancellationToken))

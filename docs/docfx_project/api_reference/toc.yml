@@ -1,4 +1,6 @@
-﻿- name: Cookbook (start here)
+﻿- name: Start here
+  href: trellis-start-here.md
+- name: Cookbook
   href: trellis-api-cookbook.md
 - name: Anti-pattern gallery
   href: trellis-api-anti-patterns.md
@@ -40,3 +42,5 @@
   href: trellis-value-object-taxonomy.md
 - name: Analyzer surface
   href: trellis-api-analyzers.md
+- name: Migration reference
+  href: trellis-api-migration.md

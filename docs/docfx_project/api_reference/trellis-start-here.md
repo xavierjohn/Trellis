@@ -38,8 +38,8 @@ compile error to redeclare — the cookbook's Recipe 1 lists that inherited surf
 
 ## How to read these recipes
 
-**Hold this file resident; read recipe bodies on demand.** This file is the routing head for the whole set (~6K tokens)
-and routes every task. The 37 recipe bodies in `trellis-api-cookbook.md` are another ~57K, and a typical task needs
+**Hold this file resident; read recipe bodies on demand.** This file is the routing head for the whole set
+and routes every task. The 37 recipe bodies in `trellis-api-cookbook.md` are on demand, and a typical task needs
 one to three of them — so open a body when the [task lookup table](#task---recipe-lookup) sends you to one, rather than
 loading all of them up front. Every live recipe is reachable from that table (enforced by the repository's TRLDOC007 lint
 gate), so if a task is not listed there, no recipe covers it. Never write code from a recipe's title alone.
@@ -73,19 +73,25 @@ documented trade-off fits the task, and state why:
 
 ## LLM preflight: load the smallest correct reference set
 
-Before writing Trellis code, choose the task in the lookup table below, then load only the package references needed for that task. The cookbook gives the end-to-end recipe; the package references are the source of truth for exact signatures, overloads, ordering, and edge-case behavior.
+Before writing Trellis code, choose the task in the lookup table below, then open the
+required package references at their **Patterns Index**. Read the complete selected
+API section, its constraints and linked behavioral/preflight sections; do not load an
+unrelated full catalog. Expand when the task uses another surface, inherited members,
+or cross-package ordering. Section-first reading does not remove any required package
+or safety contract. The cookbook supplies end-to-end composition; a direct API route
+is enough for a small guard or conversion task.
 
 | If you are changing... | Load these references before coding | Why |
 |---|---|---|
-| Result, Maybe, errors, value-object bases, aggregates, specifications, pagination | `trellis-api-cookbook.md`, `trellis-api-core.md` | Core owns the ROP primitives and DDD base types used by every package. |
-| ASP.NET endpoints, controllers, response mapping, ETags, Prefer, ranges, actor providers | `trellis-api-cookbook.md`, `trellis-api-asp.md`, `trellis-api-core.md`; add `trellis-api-mediator.md` when endpoints send messages | `ToHttpResponse` and scalar validation are ASP-owned, while handlers and result shapes come from Core/Mediator. |
-| Mediator handlers, pipeline behaviors, validation, authorization, domain events | `trellis-api-cookbook.md`, `trellis-api-mediator.md`, `trellis-api-core.md`; add `trellis-api-efcore.md` for unit-of-work and `trellis-api-authorization.md` for resource guards | Pipeline ordering and opt-in behaviors are cross-package; missing one reference usually creates a registration-order bug. |
-| EF Core persistence, repositories, unit of work, `Maybe<T>` queries, `[OwnedEntity]` | `trellis-api-cookbook.md`, `trellis-api-efcore.md`, `trellis-api-core.md`; add `trellis-api-mediator.md` when commits happen through handlers | EF owns mapping/interceptors; Mediator owns when command commits run. |
-| FluentValidation integration | `trellis-api-cookbook.md`, `trellis-api-fluentvalidation.md`, `trellis-api-mediator.md` | FluentValidation plugs into `ValidationBehavior` through `IMessageValidator<TMessage>`; it is not a separate pipeline behavior. |
-| Composition-root helpers (`AddTrellis`, `UseXxx`) | `trellis-api-cookbook.md`, `trellis-api-servicedefaults.md`, plus every package reference for selected modules | `TrellisServiceBuilder` preserves canonical order but does not register app-owned services like `DbContext` or Mediator handlers. |
-| HTTP client adapters | `trellis-api-cookbook.md`, `trellis-api-http.md`, `trellis-api-core.md` | The HTTP package maps upstream responses into Core `Result<T>` / `Maybe<T>` shapes. |
-| Tests | `trellis-api-testing-reference.md`; add `trellis-api-testing-aspnetcore.md` for `WebApplicationFactory` or `.http` replay | Unit/helper assertions and ASP integration helpers live in separate test packages. |
-| Analyzer diagnostics | `trellis-api-anti-patterns.md` first for the canonical WRONG/FIX shape to adapt, then `trellis-api-analyzers.md`, then the package reference named by the diagnostic category | Anti-pattern file shows the canonical control-flow shape; analyzer docs explain the warning; the package reference gives the canonical API to use instead. |
+| Result, Maybe, errors, value-object bases, aggregates, specifications, pagination | [Core index](trellis-api-core.md#patterns-index); selected recipe for end-to-end work | Core owns the ROP primitives and DDD base types used by every package. |
+| ASP.NET endpoints, controllers, response mapping, ETags, Prefer, ranges, actor providers | [ASP index](trellis-api-asp.md#patterns-index), [Core index](trellis-api-core.md#patterns-index); add [Mediator preflight](trellis-api-mediator.md#cross-package-preflight-for-pipeline-changes) when endpoints send messages | `ToHttpResponse` and scalar validation are ASP-owned, while handlers and result shapes come from Core/Mediator. |
+| Mediator handlers, pipeline behaviors, validation, authorization, domain events | [Mediator preflight](trellis-api-mediator.md#cross-package-preflight-for-pipeline-changes), [Core index](trellis-api-core.md#patterns-index), selected recipe; [EF unit-of-work](trellis-api-efcore.md#transactionalcommandbehaviortmessage-tresponse) and [authorization index](trellis-api-authorization.md#patterns-index) for composed stages | Preserve cross-package pipeline ordering and opt-in behavior contracts. |
+| EF Core persistence, repositories, unit of work, `Maybe<T>` queries, `[OwnedEntity]` | [EF index](trellis-api-efcore.md#patterns-index), [Core index](trellis-api-core.md#patterns-index), selected recipe; [Mediator preflight](trellis-api-mediator.md#cross-package-preflight-for-pipeline-changes) when commits happen through handlers | EF owns mapping/interceptors; Mediator owns when command commits run. |
+| FluentValidation integration | [FluentValidation index](trellis-api-fluentvalidation.md#patterns-index), [Mediator preflight](trellis-api-mediator.md#cross-package-preflight-for-pipeline-changes), selected recipe | FluentValidation plugs into `ValidationBehavior` through `IMessageValidator<TMessage>`; it is not a separate pipeline behavior. |
+| Composition-root helpers (`AddTrellis`, `UseXxx`) | [ServiceDefaults index](trellis-api-servicedefaults.md#patterns-index), selected recipe, plus the selected modules' API and ordering sections | `TrellisServiceBuilder` preserves canonical order but does not register app-owned services like `DbContext` or Mediator handlers. |
+| HTTP client adapters | [HTTP index](trellis-api-http.md#patterns-index), [Core index](trellis-api-core.md#patterns-index), selected recipe | The HTTP package maps upstream responses into Core `Result<T>` / `Maybe<T>` shapes. |
+| Tests | [Testing index](trellis-api-testing-reference.md#patterns-index); add [ASP testing index](trellis-api-testing-aspnetcore.md#patterns-index) for `WebApplicationFactory` or `.http` replay | Unit/helper assertions and ASP integration helpers live in separate test packages. |
+| Analyzer diagnostics | Matching [WRONG/FIX section](trellis-api-anti-patterns.md#trls001--result-return-value-not-handled), then the [diagnostic index](trellis-api-analyzers.md#diagnostics) and its detail link, then the named package API section | Adapt the canonical control-flow shape; check the exact API and code-fix limitations. |
 
 Measurable completion check for generated code: every Trellis method call should be traceable to a loaded package reference, every selected integration module should be wired in the documented order, and every public API or behavior change should update the matching package reference plus the matching recipe in `trellis-api-cookbook.md` (and this router's lookup row) when it affects a cross-package recipe.
 
@@ -118,19 +124,21 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Parse cursor/limit query input in MVC or Minimal APIs without treating `?cursor=` as missing | [`HttpRequestPaginationExtensions`](trellis-api-asp.md#httprequestpaginationextensions), then [Recipe 3](trellis-api-cookbook.md#recipe-3--query-handler-returning-paget-paginated-list-with-cursor) |
 | Paginate a translated spherical distance or an application-computed score with validated continuation state bound to query context | [Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) |
 | Validate geographic coordinates, calculate in-memory distance, build conservative bounds, or compose an EF Core radius query | [`GeoCoordinate`](trellis-api-primitives.md#geocoordinate) and [`GeoBounds`](trellis-api-primitives.md#geobounds), then [`GeoCoordinateExpressions` in the EF Core reference](trellis-api-efcore.md#geocoordinateexpressions) for database queries; use Recipe 40 for distance pagination |
-| Model weekly availability, overnight periods, or time-zone-aware membership | [`WeeklySchedule` and `WeeklyPeriod` in the Primitives reference](trellis-api-primitives.md#weeklyschedule); use Recipe 13's DTO boundary guidance for JSON/persistence |
+| Model weekly availability, overnight periods, or time-zone-aware membership | [`WeeklySchedule` and `WeeklyPeriod` in the Primitives reference](trellis-api-primitives.md#weeklyschedule); use [Recipe 13's DTO seam](trellis-api-cookbook.md#supported-property-shapes-inside-a-composite-vo--when-to-map-to-a-dto-instead) for JSON |
 | Add Minimal API or MVC endpoints | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), [Recipe 5](trellis-api-cookbook.md#recipe-5--mvc-controller-using-asactionresult) |
 | Return 201 for a PUT upsert without an application-layer URL, or let the endpoint supply a Created Location | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [write outcomes](trellis-api-http-abstractions.md#writeoutcomet-case-payloads) |
 | Generate versioned Location links to a named route or MVC action, including cross-route segment pins | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) |
 | Map primitive DTO fields to value objects | [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
-| Require nullable values in a command factory without `!`, or guard a nullable-returning query | [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap), then [`Result.EnsureNotNull` / `EnsureNotNullAsync`](trellis-api-core.md#value-returning-null-guards) |
-| Require a nonblank string without trimming or constructing unused errors | [Recipe 13](trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership), then [`EnsureNotNullOrWhiteSpace`](trellis-api-core.md#ensure-family--ensureextensions-ensureextensionsasync-ensureallextensions-ensureallextensionsasync) |
+| Require nullable values without `!`, or guard a nullable-returning query | [`Result.EnsureNotNull` / `EnsureNotNullAsync`](trellis-api-core.md#value-returning-null-guards); add [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) for command-factory composition |
+| Require a nonblank string without trimming or constructing unused errors | [`EnsureNotNullOrWhiteSpace`](trellis-api-core.md#required-nonblank-strings); no composite recipe is needed |
 | Migrate universal or nullable `ToResult` calls without losing payloads or treating absence as success | [Choosing a Result entry point](trellis-api-core.md#choosing-a-result-entry-point), then [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
 | Add resource authorization | [Recipe 7](trellis-api-cookbook.md#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) |
 | Obtain checked actor/resource parameters without provider/accessor constructor dependencies | [Recipe 7](trellis-api-cookbook.md#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth), [Recipe 24](trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization), [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource), then [actor-aware handler bases](trellis-api-mediator.md#actor-aware-handler-bases) |
 | Authorize against a related resource one or more navigation hops away (cricket-style fan-out, owner chains) | [Recipe 24](trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization) |
 | Enforce tenant isolation on a command (per-command scope check, no base type) | [Recipe 38](trellis-api-cookbook.md#recipe-38--tenant-scoped-resource-authorization-with-a-typed-actor-attribute) |
 | Map `Maybe<T>` or composite value objects with EF Core | [Recipe 8](trellis-api-cookbook.md#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects), [Recipe 13](trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership) |
+| Choose JSON transport for a composite value object with nested/optional fields | [Recipe 13's JSON boundary](trellis-api-cookbook.md#composite-value-object-json-wire-shape) and [DTO seam](trellis-api-cookbook.md#supported-property-shapes-inside-a-composite-vo--when-to-map-to-a-dto-instead) |
+| Map an aggregate's read-only collection with a private backing field | [Recipe 13's collection mapping](trellis-api-cookbook.md#owned-collections-with-a-private-backing-field) |
 | Add optional request/response fields | [Recipe 14](trellis-api-cookbook.md#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport) |
 | Read optional HTTP resources where 404 means absent | [Recipe 19](trellis-api-cookbook.md#recipe-19--http-client-result-safety-and-optional-reads) |
 | Choose between fail-fast and accumulating-error collection ops, including indexed validation | [Recipe 20](trellis-api-cookbook.md#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) |
@@ -154,6 +162,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Wire the composition root | [Recipe 12](trellis-api-cookbook.md#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
 | Rehydrate an entity from a database row (fail-loud vs Result-track) | [Recipe 30](trellis-api-cookbook.md#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
 | Reconstitute an aggregate in a non-EF repository without re-running its factory (no re-validation, no events) | [Recipe 37](trellis-api-cookbook.md#recipe-37--reconstituting-an-aggregate-without-its-factory-non-ef-repositories) |
+| Upgrade previous Result factories, Error cases, or merged/renamed Trellis packages | [Migration guide](trellis-api-migration.md#core-and-package-migration); not needed for current-API work |
 | Avoid the pipeline-then-handler duplicate load when a command both authorizes and mutates the same resource | [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource) |
 | Hide existence of sensitive resources — give missing, removed, and withheld resources the same public `NotFound`, optionally with fixed code/detail | [Recipe 32](trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) |
 | Configure the strict `AddJwtBearer` validation profile + key-rotation runbook for a gateway-minted internal JWT | [Moved: xavierjohn/Trellis.Microservices](trellis-api-cookbook.md#recipes-33-34--moved-to-xavierjohntrellismicroservices) (Recipe 1 in the microservices cookbook) |
@@ -183,6 +192,7 @@ These rows route recurring LLM lab mistakes to the most relevant reference befor
 |---|---|
 | [`trellis-api-cookbook.md`](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) | End-to-end recipes spanning packages. Open a recipe body when the lookup above sends you to one. |
 | [`trellis-api-core.md`](trellis-api-core.md#use-this-file-when) | `Result<T>`, `Maybe<T>`, `Error`, aggregates, entities, specifications, pagination. |
+| [`trellis-api-migration.md`](trellis-api-migration.md#core-and-package-migration) | Previous Core APIs and cross-package renames/merges; open only for an upgrade. |
 | [`trellis-api-analyzers.md`](trellis-api-analyzers.md#use-this-file-when) | The analyzer and generator diagnostics, `TRLS001`-`TRLS066`, and `TrellisDiagnosticIds`. |
 | [`trellis-api-anti-patterns.md`](trellis-api-anti-patterns.md#trls001--result-return-value-not-handled) | Ready-to-apply WRONG/FIX shapes for the analyzer diagnostics (`TRLSxxx`). |
 | [`trellis-value-object-taxonomy.md`](trellis-value-object-taxonomy.md#patterns-index) | Choosing a value-object category: scalar, symbolic, structured, optional. |

@@ -10,6 +10,7 @@
     CrossCuttingDocs = @(
         'trellis-api-cookbook.md',
         'trellis-api-anti-patterns.md',
+        'trellis-api-migration.md',
         'trellis-value-object-taxonomy.md',
         'trellis-start-here.md'
     )

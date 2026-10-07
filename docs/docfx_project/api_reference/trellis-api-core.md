@@ -49,8 +49,9 @@ Use this table before searching the long type catalog.
 | Return success/failure with payload | `Result.Ok(value)` / `Result.Fail<T>(error)` | [`Result<TValue>`](#public-readonly-struct-resulttvalue--iresulttvalue-iequatableresulttvalue-ifailurefactoryresulttvalue-ipersistonfailure) |
 | Fail but still persist staged work (worker pattern) | `Result.FailAfterCommit<T>(error)` / `Result.FailAfterCommit(error)` | [`Result`](#public-static-partial-class-result), [`IPersistOnFailure`](#public-interface-ipersistonfailure) |
 | Classify an `Error` for a worker/consumer retry loop | `error.Classify()` / `error.IsTransient()` / `error.IsPermanent()` / `error.IsFailFast()` / `error.GetRetryAdvice()` | [`Retry classification`](#retry-classification-errorretryextensions) |
-| Turn a boolean guard into a result | `Result.Ensure(condition, error)` or `Result.Ensure(condition, () => error)` for lazy errors; `.Ensure(...)` in a value-threaded chain | [`Result`](#public-static-partial-class-result), [`Ensure family`](#ensure-family--ensureextensions-ensureextensionsasync-ensureallextensions-ensureallextensionsasync) |
-| Require nullable values without `!`, including nullable-returning queries | `Result.EnsureNotNull(value, error)` / `Result.EnsureNotNull(value, fieldName, detail)` / `task.EnsureNotNullAsync(...)` | [Value-returning null guards](#value-returning-null-guards), [Nullable-task guards](#nullable-task-guards--ensureextensionsasync) |
+| Turn a boolean guard into a result | `Result.Ensure(condition, errorFactory)` with fresh errors inside the factory; use `error` for a reused instance, or `.Ensure(...)` in a value-threaded chain | [`Result`](#public-static-partial-class-result), [`Ensure family`](#ensure-family--ensureextensions-ensureextensionsasync-ensureallextensions-ensureallextensionsasync) |
+| Require nullable values without `!`, including nullable-returning queries | `Result.EnsureNotNull(value, fieldName, detail)` for standard errors, `errorFactory` for custom failures, or `task.EnsureNotNullAsync(...)` | [Value-returning null guards](#value-returning-null-guards), [Nullable-task guards](#nullable-task-guards--ensureextensionsasync) |
+| Require nonblank text without trimming | `value.EnsureNotNullOrWhiteSpace(fieldName, detail)`; use a factory for custom failures | [Required nonblank strings](#required-nonblank-strings) |
 | Start independent async result-producing operations concurrently | `Result.ParallelAsync(...)`, then combine the returned tasks | [`Result`](#public-static-partial-class-result) |
 | Combine multiple validated *typed* fields into a tuple | static `Result.Combine<T1,T2>(Result<T1>, Result<T2>)` or instance `r1.Combine(r2)`, then `.Map(...)` | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
 | Combine multiple boolean guards | `Result.Ensure(...).Combine(Result.Ensure(...))` then `.Bind(...)` (extension `Combine` aggregates errors and adds each value as the next tuple element; pass a `Result<Unit>` from a no-payload guard and ignore it with `_` in the next lambda) | [`Combine family`](#combine-family--combineextensions-combineextensionsasync-combineerrorextensions) |
@@ -129,37 +130,8 @@ public Task<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct) =
 
 ## Breaking changes from v1
 
-Migration notes for users moving from the previous `Trellis.Core` API surface.
-
-| Change | Previous API | Current API | Migration |
-|---|---|---|---|
-| Result success factory | `Result.Success(value)` / `Result.Success<T>(...)` / `Result.Success()` | `Result.Ok(value)` / `Result.Ok<T>(...)` / `Result.Ok()` | Mechanical find-and-replace of `Result.Success` → `Result.Ok` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Result failure factory | `Result.Failure<T>(error)` / `Result.Failure(error)` | `Result.Fail<T>(error)` / `Result.Fail(error)` | Mechanical find-and-replace of `Result.Failure` → `Result.Fail` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Deferred success factory | `Result.Success(Func<T> funcOk)` | *(removed)* | Inline the factory: `Result.Ok(funcOk())` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Deferred failure factory | `Result.Failure<T>(Func<Error> errorFactory)` | *(removed)* | Inline the factory: `Result.Fail<T>(errorFactory())` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Conditional factory | `Result.SuccessIf(cond, value, error)` / `Result.SuccessIf(cond, t1, t2, error)` | *(removed)* | Use a ternary: `cond ? Result.Ok(value) : Result.Fail<T>(error)` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Inverse-conditional factory | `Result.FailureIf(cond, value, error)` / `Result.FailureIf(predicate, value, error)` | *(removed)* | Use a ternary: `cond ? Result.Fail<T>(error) : Result.Ok(value)` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Async-conditional factories | `Result.SuccessIfAsync(predicate, value, error)` / `Result.FailureIfAsync(predicate, value, error)` | *(removed)* | `(await predicate()) ? Result.Ok(value) : Result.Fail<T>(error)` (invert as needed; parens required because `await` binds tighter than `?:`) | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Try` / `Result.TryAsync` for inline exception capture, or log the exception and return `Result.Fail(new Error.Unexpected("unhandled-exception", faultId) { Detail = "An unexpected error occurred while processing the request." })`. Do not copy `ex.Message` into public `Detail`. |
-| Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` | *(removed)* | Use the explicit factory: `Result.Ok(value)` / `Result.Fail<T>(error)`. The compiler flags every site with CS0029. |
-| Non-generic `Result` for void flows | `Result` was a separate `readonly struct` for success/failure with no payload, distinct from `Result<T>`. | The non-generic `Result` instance type was removed. `Result` is now a `public static partial class` factory only; for no-payload success/failure use `Result<Unit>` (returned by parameterless `Result.Ok()` / `Result.Fail(error)` / `Result.Ensure(...)` / `Result.Try(...)` factories). The `Trellis.Unit` type is a public `readonly record struct` with a single value (`Unit.Default`). | Replace `Result` parameter/return types with `Result<Unit>`; replace `Task<Result>` with `Task<Result<Unit>>`; in lambdas after `.Bind(...)` / `BindAsync(...)` accept the `Unit` argument explicitly (`_ =>` or `(Unit _) =>`). |
-| `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **12 nested `sealed record` cases** (`Error.NotFound`, `Error.InvalidInput`, …). Closed via `private` constructor; static factories live on individual cases, not the base. | Replace not-found factories with `Error.NotFound.For<TResource>(id: id, detail: "...")`. Replace validation factories with `Error.InvalidInput.ForField(code, field, detail: detail)` or `Error.InvalidInput.ForRule(code, detail: detail)`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.InvalidInput`, `Error.NotFound`. See "Error Cases (closed ADT)" below. | <!-- v1-stale-ok: migration-comparison row intentionally cites removed v1 factories -->
-| `MatchErrorExtensions` | `result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)` | *(removed)* | Use a `switch` expression on the closed ADT: `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., Error.InvalidInput uc => ..., _ => ... })`. C# verifies exhaustiveness against the closed catalog. |
-| `FlattenValidationErrorsExtensions` | `result.FlattenValidationErrors()` | *(removed)* | `Combine` over multiple `Result<T>` automatically merges `Error.InvalidInput.Fields` and `.Rules`. |
-| `Error.Instance` field | `error.Instance` (string-shaped HTTP vocabulary) | *(removed)* | The ASP wire layer populates `ProblemDetails.Instance` from the server-relative request path+query (RFC 9457 §3.1). Typed payloads expose `ResourceRef` directly via fields like `Error.NotFound.Resource` for callers that need to assert on the resource identity. |
-| Public `Value` / `Error` accessors on `Result<T>` | Both threw on the wrong branch. | `result.Error` is `public Error?` and **never throws** (null on success). The throwing `result.Value` getter was removed entirely because it was the primary cause of unsafe value access. | Read errors with `if (result.Error is { } error) { ... }` or `result.TryGetError(out var error)`. Extract success values with `result.TryGetValue(out var v)`, `result.TryGetValue(out var v, out var err)`, `result.Match(...)`, or `var (ok, v, err) = result;` (Deconstruct). | <!-- stale-doc-ok: migration-comparison row intentionally cites removed value accessor -->
-| HTTP transport abstractions package | `Trellis.Core` | `Trellis.Http.Abstractions` | Add a PackageReference to `Trellis.Http.Abstractions` for code that names `WriteOutcome<T>`, `RepresentationMetadata`, `EntityTagValue`, `RetryAfterValue`, `PreconditionKind`, `AuthChallenge`, or `AggregateETagExtensions`. The CLR namespace stays `Trellis`, so most source files only need the package-reference change. |
-| Package id | `Trellis.Results` | `Trellis.Core` | Replace `<PackageReference Include="Trellis.Results" ... />` with `<PackageReference Include="Trellis.Core" ... />`. The CLR namespace stays `Trellis` — no `using` changes are needed. The legacy `Trellis.Results` package is unlisted with a redirect notice; there is no metapackage shim. | <!-- stale-doc-ok: migration-comparison row intentionally cites previous package id -->
-| OpenTelemetry `ActivitySource` name | `"Trellis.Results"` | `"Trellis.Results"` (unchanged) | No change needed. The source is named for the operations it traces, not for the package that ships it, so the v1 name carried over. The `ResultsTraceProviderBuilderExtensions.ActivitySourceName` constant exposes it programmatically. | <!-- stale-doc-ok: migration-comparison row intentionally cites the v1 activity source name -->
-| Test helper namespace | `Trellis.Results.Tests.*` | `Trellis.Core.Tests.*` | Internal change only — affects users who took an InternalsVisibleTo dependency on the test assembly (none expected). | <!-- stale-doc-ok: migration-comparison row intentionally cites previous test namespace -->
-| Package merge: DDD | <PackageReference Include="Trellis.DomainDrivenDesign" .../> | *(removed)* | All DDD types (`Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, etc.) moved into `Trellis.Core`. Drop the `Trellis.DomainDrivenDesign` PackageReference; the types are still in `namespace Trellis;` so no using changes are needed. | <!-- stale-doc-ok: migration-comparison row intentionally cites previous package id -->
-| Package merge: Primitives generator | <PackageReference Include="Trellis.Primitives.Generator" .../> | *(removed)* | The Required* source generator is now bundled inside `Trellis.Core.nupkg` (`analyzers/dotnet/cs/Trellis.Core.Generator.dll`). Installing `Trellis.Core` (or any package depending on it) attaches the analyzer automatically. Drop the standalone PackageReference. |
-| `Required*` base classes | `Trellis.Primitives` | `Trellis.Core` | Source-tree consumers may need to ensure they reference `Trellis.Core`. Namespace is unchanged (`Trellis`), so no using edits are required. |
-| Package merge: Asp generator | `<PackageReference Include="Trellis.AspSourceGenerator" .../>` | *(removed)* | The ASP source generator is now bundled inside `Trellis.Asp.nupkg` (`analyzers/dotnet/cs/Trellis.AspSourceGenerator.dll`). Installing `Trellis.Asp` attaches the analyzer automatically. Drop the standalone PackageReference. |
-| Package merge: EF Core generator | `<PackageReference Include="Trellis.EntityFrameworkCore.Generator" .../>` | *(removed)* | The EF Core source generator (Maybe&lt;T&gt; partial properties + owned value-object helpers) is now bundled inside `Trellis.EntityFrameworkCore.nupkg` (`analyzers/dotnet/cs/Trellis.EntityFrameworkCore.Generator.dll`). Installing `Trellis.EntityFrameworkCore` attaches the analyzer automatically. Drop the standalone PackageReference. |
-| Package merge: Asp authorization | `<PackageReference Include="Trellis.Asp.Authorization" .../>` | *(removed)* | The ASP.NET actor providers (`ClaimsActorProvider`, `EntraActorProvider`, `DevelopmentActorProvider`, `CachingActorProvider`, `AddTrellisAspAuthorization()`) are now part of `Trellis.Asp.nupkg`. The CLR namespace stays `Trellis.Asp.Authorization` — no `using` changes needed. Drop the standalone PackageReference. `Trellis.Asp` now transitively brings in `Trellis.Authorization`. |
-
-The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form.
+Read the separate [migration reference](trellis-api-migration.md#core-and-package-migration)
+when upgrading previous APIs or package names. It is not needed for current-API work.
 
 ---
 
@@ -233,6 +205,9 @@ None.
 
 Static factory and helper surface for `Result<TValue>`. There is no non-generic instance `Result` type — for no-payload success/failure, use `Result<Unit>` (returned by the parameterless overloads listed below).
 
+`Trellis.Unit` is a public `readonly record struct` with a single value, `Unit.Default`.
+Qualify it when importing both Trellis and Mediator, which also declares a `Unit` type.
+
 > **Default-state invariant.** `default(Result<T>)` represents a **failure** carrying the
 > shared `new Error.Unexpected("default-initialized")` sentinel — *not* success. This makes uninitialized
 > state a typed failure rather than a silent success that would hide a programming error. Always
@@ -277,7 +252,7 @@ The default exception mapper produces `new Error.Unexpected("unhandled-exception
 
 #### Factory Methods
 
-`Ok`, `Fail`, `FailAfterCommit`, `Ensure`, `EnsureNotNull`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. Removed from the current API (see "Breaking changes from v1" above): `Success`, `Failure`, `Success(Func<T>)`, `Failure<T>(Func<Error>)`, `SuccessIf`, `FailureIf`, `SuccessIfAsync`, `FailureIfAsync`, `FromException`, and the non-generic `Result` instance type itself (`CreateFailure`, `IFailureFactory<Result>`, `IEquatable<Result>`, etc.).
+`Ok`, `Fail`, `FailAfterCommit`, `Ensure`, `EnsureNotNull`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. For previous factories and instance types, read the [migration guide](trellis-api-migration.md#core-and-package-migration).
 
 #### Value-returning null guards
 
@@ -1538,8 +1513,9 @@ Task<Result<Settings>> Load(UserId id) =>
 
 Predicate-based validation. `Ensure` short-circuits on the first failed predicate; `EnsureAll` accumulates every failure via `Error.Combine` (homogeneous `Error.InvalidInput` failures merge into a single `Error.InvalidInput`; heterogeneous failures fold into `Error.Aggregate`) for applicative-style validation.
 
-**Static guards need no receiver.** `Result.Ensure(condition, () => error)` returns
-`Result<Unit>` and constructs no error on success. The predicate and async-predicate
+**Static guards need no receiver.** `Result.Ensure(condition, errorFactory)` returns
+`Result<Unit>` and invokes the factory only on failure. Construct a fresh error inside
+the factory to avoid unused allocation and validation metrics. The predicate and async-predicate
 static overloads also accept `Func<Error>`. Factories run exactly once on a false result,
 never while an async predicate is pending or after a predicate throws, faults, or cancels.
 Null delegates throw `ArgumentNullException` before evaluating the predicate, even for a
@@ -1560,9 +1536,6 @@ var guard = Result.Ensure(end != start, () =>
 | --- | --- | --- |
 | `public static Result<TValue> Ensure<TValue>(this Result<TValue> result, Func<TValue, bool> predicate, Error error)` | `Result<TValue>` | Sync ensure with predicate + `Error`. Five sync overloads (with/without value arg, factory error, embedded result). |
 | `public static Result<TValue> Ensure<TValue>(this Result<TValue> result, Func<TValue, bool> predicate, Func<TValue, Error> errorPredicate)` | `Result<TValue>` | Sync ensure with lazy error factory. |
-| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Error error)` | `Result<string>` | Rejects null/empty/whitespace with an existing error; returns valid strings unchanged. |
-| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Func<Error> errorFactory)` | `Result<string>` | Calls the factory exactly once only on null/empty/whitespace. |
-| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, string? fieldName, string? detail = null)` | `Result<string>` | Creates one field violation: `ValueNotNull` for null, or `ValueNotEmpty` for empty/whitespace. |
 | `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : class` | `Result<T>` | Reference-type `EnsureNotNull` overload that strips the nullable annotation. |
 | `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : struct` | `Result<T>` | Value-type `EnsureNotNull` overload that unwraps the nullable. |
 | `public static Task<Result<TValue>> EnsureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<TValue, Task<bool>> predicate, Error error)` | `Task<Result<TValue>>` | `EnsureExtensionsAsync` covers all `Result<T>`/`Task<Result<T>>`/`ValueTask<Result<T>>` receivers × `Func<TValue, bool>`/`Task<bool>`/`ValueTask<bool>` predicates × constant-, factory-, async-factory- and embedded-`Result<TValue>` error producers (~34 overloads across the six `Ensure.*` partial files). |
@@ -1572,6 +1545,14 @@ var guard = Result.Ensure(end != start, () =>
 | `public static Result<TValue> EnsureAll<TValue>(this Result<TValue> result, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `Result<TValue>` | Lazy accumulation: each failed check calls its factory exactly once with the successful value; passing checks never create errors. |
 | `public static Task<Result<TValue>> EnsureAllAsync<TValue>(this Task<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `Task<Result<TValue>>` | Awaits the receiver, then applies lazy accumulation. |
 | `public static ValueTask<Result<TValue>> EnsureAllAsync<TValue>(this ValueTask<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `ValueTask<Result<TValue>>` | ValueTask receiver with lazy accumulation. |
+
+##### Required nonblank strings
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Error error)` | `Result<string>` | Rejects null/empty/whitespace with an existing error; returns valid strings unchanged. |
+| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, Func<Error> errorFactory)` | `Result<string>` | Calls the factory exactly once only on null/empty/whitespace. |
+| `public static Result<string> EnsureNotNullOrWhiteSpace(this string? str, string? fieldName, string? detail = null)` | `Result<string>` | Creates one field violation: `ValueNotNull` for null, or `ValueNotEmpty` for empty/whitespace. |
 
 `EnsureNotNullOrWhiteSpace` returns the original valid string without trimming.
 Prefer the field/detail overload for standard nonblank fields, or a `Func<Error>`
@@ -1588,6 +1569,16 @@ are escaped, and full JSON Pointers are validated only on failure. The eager ove
 retains higher resolution priority, so bare-null second arguments keep binding to
 `Error`; use named `fieldName:` or `errorFactory:` to select a null argument intentionally.
 
+```csharp
+Result<string> NotBlank(string? raw) =>
+    raw.EnsureNotNullOrWhiteSpace(fieldName: null);
+
+Result<string> NotBlankWithCustomError(string? raw) =>
+    raw.EnsureNotNullOrWhiteSpace(static () => new Error.Forbidden("name.denied"));
+```
+
+##### Accumulating predicate validation
+
 Both `EnsureAll` families preserve upstream failures (including persist-on-failure intent)
 without invoking predicates or factories. Empty checks preserve the original result. A
 null checks array throws; on success, null predicates/factories throw with their check
@@ -1602,12 +1593,6 @@ Result<Quote> Validate(Quote q) =>
     Result.Ok(q).EnsureAll(
         (x => x.Total > 0,            _ => Error.InvalidInput.ForField(field: "total", code: ValidationCodes.ValueGreaterThan)),
         (x => x.Currency.Length == 3, _ => Error.InvalidInput.ForField(field: "currency", code: ValidationCodes.StringCurrencyCode)));
-
-Result<string> NotBlank(string? raw) =>
-    raw.EnsureNotNullOrWhiteSpace(fieldName: null);
-
-Result<string> NotBlankWithCustomError(string? raw) =>
-    raw.EnsureNotNullOrWhiteSpace(static () => new Error.Forbidden("name.denied"));
 ```
 
 ##### Nullable-task guards — `EnsureExtensionsAsync`
