@@ -23,7 +23,7 @@ public static class DbContextRetryExtensions
     /// <para>
     /// <b>Concurrency exceptions bypass retry.</b> <see cref="DbUpdateConcurrencyException"/>
     /// is mapped to <see cref="Error.Conflict"/> with reason code
-    /// <c>concurrent-modification</c> WITHOUT calling <paramref name="shouldRetry"/> —
+    /// <see cref="FaultCodes.ConcurrentModification"/> WITHOUT calling <paramref name="shouldRetry"/> —
     /// regenerating a natural key cannot resolve a stale rowversion conflict.
     /// </para>
     /// <para>
@@ -47,22 +47,22 @@ public static class DbContextRetryExtensions
     /// <paramref name="shouldRetry"/> returns <see langword="false"/>, OR if the failure
     /// occurs on the final allowed attempt (<paramref name="maxAttempts"/> exhausted), no
     /// detach is performed and the change tracker is left untouched. Exhaustion returns
-    /// <see cref="Error.Conflict"/> with reason code <c>retry.exhausted</c>. If
+    /// <see cref="Error.Conflict"/> with reason code <see cref="FaultCodes.RetryExhausted"/>. If
     /// <paramref name="regenerate"/> returns <see langword="false"/>, the conflicting
     /// entries remain detached and the method returns <see cref="Error.Conflict"/> with
-    /// reason code <c>retry.aborted</c>. These reason codes are distinct from the
-    /// caller-classifier-related <c>duplicate.key</c> / <c>referential.integrity</c>
+    /// reason code <see cref="FaultCodes.RetryAborted"/>. These reason codes are distinct from the
+    /// caller-classifier-related <see cref="FaultCodes.DuplicateKey"/> / <see cref="FaultCodes.ReferentialIntegrity"/>
     /// codes (which are only returned when <paramref name="shouldRetry"/> returns
     /// <see langword="false"/> for a recognised non-retryable <see cref="DbUpdateException"/>),
     /// so a broader <paramref name="shouldRetry"/> classifier (e.g. one accepting a
     /// provider-specific transient error) does not surface a misleading
-    /// <c>duplicate.key</c> reason code on exhaust/abort.
+    /// <see cref="FaultCodes.DuplicateKey"/> reason code on exhaust/abort.
     /// </para>
     /// <para>
     /// <b>Failure mapping for non-retryable <see cref="DbUpdateException"/>.</b> Matches
     /// <see cref="DbContextExtensions.SaveChangesResultAsync(DbContext, CancellationToken)"/>:
-    /// foreign-key violations map to reason code <c>referential.integrity</c>; duplicate-key
-    /// violations map to <c>duplicate.key</c>; unrecognized <see cref="DbUpdateException"/>
+    /// foreign-key violations map to reason code <see cref="FaultCodes.ReferentialIntegrity"/>; duplicate-key
+    /// violations map to <see cref="FaultCodes.DuplicateKey"/>; unrecognized <see cref="DbUpdateException"/>
     /// shapes (connection failures wrapped as DbUpdateException, trigger failures, etc.)
     /// are <b>rethrown</b> rather than silently mapped to a conflict.
     /// </para>
@@ -149,7 +149,7 @@ public static class DbContextRetryExtensions
                 }
 
                 if (attempt >= maxAttempts)
-                    return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: "retry.exhausted")
+                    return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: FaultCodes.RetryExhausted)
                     { Detail = $"Maximum retry attempts ({maxAttempts}) exhausted; the caller-supplied classifier kept reporting the save failure as retryable." });
 
                 ValidateAllEntriesAreAdded(ex.Entries);
@@ -167,7 +167,7 @@ public static class DbContextRetryExtensions
 
                 var keepGoing = await regenerate(entriesForCallback, attempt, cancellationToken).ConfigureAwait(false);
                 if (!keepGoing)
-                    return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: "retry.aborted")
+                    return Result.Fail<Unit>(new Error.Conflict(Resource: null, Code: FaultCodes.RetryAborted)
                     { Detail = $"Retry aborted by regenerate callback after attempt {attempt}." });
 
                 foreach (var s in snapshot)

@@ -127,6 +127,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Write handler/domain tests | [Recipe 10](trellis-api-cookbook.md#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror) |
 | Write integration tests for a `BackgroundService` worker | [Recipe 26](trellis-api-cookbook.md#recipe-26--test-a-backgroundservice-with-workerharnesstworker) |
 | Insert a row idempotently on a unique constraint (de-duplicated worker outbox, "save unless exists") | [Recipe 27](trellis-api-cookbook.md#recipe-27--idempotent-inserts-on-a-unique-constraint-with-tryinsertuniqueasync) |
+| Match duplicate-key, foreign-key, or retry abort/exhaustion conflicts without copying wire strings | [`FaultCodes` vocabulary](trellis-api-core.md#validationcodes--the-reason-code-vocabulary), then [EF save helpers](trellis-api-efcore.md#dbcontextextensions) or [Recipe 27](trellis-api-cookbook.md#recipe-27--idempotent-inserts-on-a-unique-constraint-with-tryinsertuniqueasync) |
 | Make POST / PATCH safe under client retries with an IETF `Idempotency-Key` header | [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency) |
 | Render ASP.NET Core rate-limit rejections as Trellis 429 Problem Details with optional `Retry-After` | [`RateLimiterOptionsExtensions` in the ASP reference](trellis-api-asp.md#ratelimiteroptionsextensions) |
 | Define domain events | [Recipe 17](trellis-api-cookbook.md#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |

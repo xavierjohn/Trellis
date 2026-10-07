@@ -37,6 +37,9 @@ Result<string> email = Result.Ok("ada@example.com")
 
 ## Error factories
 
+Core's `FaultCodes.DuplicateKey`, `ReferentialIntegrity`, `RetryAborted`, and `RetryExhausted`
+provide frozen persistence conflict codes for clients and tests without an EF Core dependency.
+
 Factories put `code` first and optional `detail` last:
 
 ```csharp

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — shared persistence conflict codes (TFR-19)
+
+`FaultCodes.DuplicateKey`, `ReferentialIntegrity`, `RetryAborted`, and `RetryExhausted`
+expose the frozen `duplicate.key`, `referential.integrity`, `retry.aborted`, and
+`retry.exhausted` wire values from Core, without requiring an EF Core dependency.
+EF save/retry helpers, the testing fake, and the idempotent-insert recipe use the
+shared constants. Error kinds, details, constraint telemetry, retry behavior, and
+default HTTP mappings are unchanged.
+
 ### Fixed — optional Created locations and endpoint fallback (TFR-17)
 
 `WriteOutcome.Created(value)` and `new WriteOutcome<T>.Created(value)` no longer require

@@ -61,9 +61,9 @@ Moving an aggregate from in-memory to EF Core surfaces a few constraints that do
 | `MaybeQueryableExtensions.WhereHasValue` / `WhereNone` / `WhereEquals` / `OrderByMaybe` / `OrderByMaybeDescending` / `ThenByMaybe` / `ThenByMaybeDescending` | Query | Translate `Maybe<TInner>` predicates and ordering to the mapped storage member. `WhereHasValue` optionally takes a typed value predicate. |
 | `MaybeUpdateExtensions.SetMaybeValue<T>` / `SetMaybeNone<T>` | Bulk update | `ExecuteUpdate` setters for scalar `Maybe<T>` properties. |
 | `MaybeEntityTypeBuilderExtensions.HasTrellisIndex<T>` | Model builder | Indexes a `Maybe<T>` property by resolving to its storage member (avoids TRLS016). |
-| `DbContextExtensions.SaveChangesResultAsync(...)` | Save | `Task<Result<int>>`. Maps `DbUpdateConcurrencyException` / duplicate-key / FK violations to `Error.Conflict` (`duplicate.key` / `referential.integrity` carry `ConstraintName` / `ConstraintTableName` telemetry from `DbExceptionClassifier.ExtractConstraintIdentity`). |
+| `DbContextExtensions.SaveChangesResultAsync(...)` | Save | `Task<Result<int>>`. Maps `DbUpdateConcurrencyException` / duplicate-key / FK violations to `Error.Conflict` (`FaultCodes.DuplicateKey` / `FaultCodes.ReferentialIntegrity` carry `ConstraintName` / `ConstraintTableName` telemetry from `DbExceptionClassifier.ExtractConstraintIdentity`). |
 | `DbContextExtensions.SaveChangesResultUnitAsync(...)` | Save | `Task<Result<Unit>>` overload when row count is not needed. |
-| `DbContextIdempotencyExtensions.TryInsertUniqueAsync<TEntity>(entity, ct)` | Save | `Task<Result<TEntity>>`. Adds `entity`, persists, and converts a unique-constraint violation into an `Error.Conflict` with reason code `"duplicate.key"` carrying `ConstraintName` / `ConstraintTableName`. FK / concurrency / cancellation / connection exceptions propagate. Requires a clean change tracker on entry. |
+| `DbContextIdempotencyExtensions.TryInsertUniqueAsync<TEntity>(entity, ct)` | Save | `Task<Result<TEntity>>`. Adds `entity`, persists, and converts a unique-constraint violation into an `Error.Conflict` with reason code `FaultCodes.DuplicateKey` carrying `ConstraintName` / `ConstraintTableName`. FK / concurrency / cancellation / connection exceptions propagate. Requires a clean change tracker on entry. |
 | `RepositoryBase<TAggregate, TId>` | Aggregate repo base | `FindByIdAsync` (Maybe), `QueryAsync(spec)`, `ExistsAsync`, `CountAsync`, `Add`, `Remove`, `RemoveByIdAsync` (`Task<Result<Unit>>`). Staging only — never calls `SaveChanges`. |
 | `IUnitOfWork.CommitAsync(ct)` | Commit boundary | `Task<Result<Unit>>`. Implemented by `EfUnitOfWork<TContext>`. Scope-aware via `BeginScope()`: only the outermost scope's commit persists. |
 | `TransactionalCommandBehavior<TMessage, TResponse>` | Pipeline behavior | Auto-commits after a successful `ICommand<TResponse>` handler; only fires for commands. Wraps each command in `using var scope = unitOfWork.BeginScope();` so a nested command (dispatched via `IMediator` from another handler) defers its commit until the outermost handler returns. |
@@ -282,10 +282,15 @@ Failure mapping (identical for both):
 | EF Core failure | Trellis result |
 |---|---|
 | `DbUpdateConcurrencyException` | `new Error.Conflict(Resource: null, Code: FaultCodes.ConcurrentModification)` |
-| Duplicate-key `DbUpdateException` | `new Error.Conflict(Resource: null, Code: "duplicate.key")` |
-| Foreign-key `DbUpdateException` | `new Error.Conflict(Resource: null, Code: "referential.integrity")` |
+| Duplicate-key `DbUpdateException` | `new Error.Conflict(Resource: null, Code: FaultCodes.DuplicateKey)` |
+| Foreign-key `DbUpdateException` | `new Error.Conflict(Resource: null, Code: FaultCodes.ReferentialIntegrity)` |
 
 Connection failures, timeouts, and `OperationCanceledException` are **not** caught — they propagate.
+
+Persistence conflict codes are shared Core constants: `FaultCodes.DuplicateKey` (`duplicate.key`),
+`FaultCodes.ReferentialIntegrity` (`referential.integrity`), `FaultCodes.RetryAborted` (`retry.aborted`),
+and `FaultCodes.RetryExhausted` (`retry.exhausted`). Match constants rather than copying wire strings
+or parsing `Detail`; clients and tests can use them without an EF Core dependency.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -354,12 +359,12 @@ Footguns the API enforces or surfaces:
 - **Concurrency exceptions bypass `shouldRetry`.** `DbUpdateConcurrencyException` is mapped immediately to `new Error.Conflict(Resource: null, Code: FaultCodes.ConcurrentModification)`; regenerating a natural key cannot resolve a stale rowversion.
 - **Make the classifier narrow.** Returning `true` for every `DbUpdateException` will retry on FK violations, NOT-NULL violations, and check-constraint failures — which `regenerate` cannot fix. Prefer `DbExceptionClassifier.IsDuplicateKey` or a constraint-name predicate.
 - **Detach scope is precisely `ex.Entries`.** Sibling aggregates pending in the change tracker (outbox rows staged by a domain-event handler; an unrelated `Added` entity from the same logical operation; entities promoted via `db.Entry(x).State = Added` rather than `DbSet.Add`) are **not** detached. They will be saved together with the regenerated entries on the next attempt.
-- **The `regenerate` callback returns a `ValueTask<bool>`.** Return `true` to continue; return `false` to abort the retry loop. Aborting leaves the conflicting entries detached (sibling aggregates remain tracked) and returns `Error.Conflict` with reason code `"retry.aborted"`.
-- **`attempt` is 1-based and equals the regenerate-call number.** With `maxAttempts: 3` the call sequence on consecutive failures is: save → regenerate(attempt: 1) → save → regenerate(attempt: 2) → save → return `Error.Conflict` with reason code `"retry.exhausted"`. The final attempt does **not** call regenerate.
+- **The `regenerate` callback returns a `ValueTask<bool>`.** Return `true` to continue; return `false` to abort the retry loop. Aborting leaves the conflicting entries detached (sibling aggregates remain tracked) and returns `Error.Conflict` with reason code `FaultCodes.RetryAborted`.
+- **`attempt` is 1-based and equals the regenerate-call number.** With `maxAttempts: 3` the call sequence on consecutive failures is: save → regenerate(attempt: 1) → save → regenerate(attempt: 2) → save → return `Error.Conflict` with reason code `FaultCodes.RetryExhausted`. The final attempt does **not** call regenerate.
 - **Detach is conditional on attempting a retry.** When `shouldRetry` returns false, OR when `maxAttempts` is exhausted, no detach happens — the change tracker is left untouched and the caller decides what to do.
 - **Callback exception semantics.** A `shouldRetry` exception propagates with no detach having occurred. A `regenerate` exception propagates with the conflicting entries already detached.
 - **Explicit transactions vary by provider.** SQLite accepts further commands on the same transaction after a unique-key violation; SQL Server may abort the transaction depending on the error and isolation level. If your handler runs inside an open transaction, test against the target provider before relying on retry — many callers will prefer to retry **outside** the transaction scope and accept the round-trip cost.
-- **Unrecognised `DbUpdateException` shapes are rethrown.** When `shouldRetry` returns false, the method maps duplicate → `"duplicate.key"`, FK → `"referential.integrity"`, and **rethrows** anything else (connection failures wrapped in `DbUpdateException`, trigger failures, provider-specific violations). This matches `SaveChangesResultAsync` semantics. The `"duplicate.key"` / `"referential.integrity"` reason codes are only returned when `shouldRetry` declines a recognised non-retryable failure; the helper's own exhaust/abort paths use `"retry.exhausted"` / `"retry.aborted"` so a broader `shouldRetry` classifier does not surface a misleading `duplicate.key` code.
+- **Unrecognised `DbUpdateException` shapes are rethrown.** When `shouldRetry` returns false, the method maps duplicate → `FaultCodes.DuplicateKey`, FK → `FaultCodes.ReferentialIntegrity`, and **rethrows** anything else (connection failures wrapped in `DbUpdateException`, trigger failures, provider-specific violations). This matches `SaveChangesResultAsync` semantics. The `FaultCodes.DuplicateKey` / `FaultCodes.ReferentialIntegrity` reason codes are only returned when `shouldRetry` declines a recognised non-retryable failure; the helper's own exhaust/abort paths use `FaultCodes.RetryExhausted` / `FaultCodes.RetryAborted` so a broader `shouldRetry` classifier does not surface a misleading duplicate-key code.
 
 ### Idempotent inserts on a unique constraint
 
@@ -387,7 +392,7 @@ public sealed class DispatchLogger(DispatchLogDbContext db, TimeProvider time)
         if (result.IsSuccess)
             return Result.Ok(DeliveryOutcome.Recorded);
 
-        if (result.Error is Error.Conflict { Code: "duplicate.key" })
+        if (result.Error is Error.Conflict { Code: FaultCodes.DuplicateKey })
             return Result.Ok(DeliveryOutcome.AlreadyRecorded);
 
         return Result.Fail<DeliveryOutcome>(result.Error!);

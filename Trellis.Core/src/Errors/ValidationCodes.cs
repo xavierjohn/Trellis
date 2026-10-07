@@ -389,6 +389,22 @@ public static class FaultCodes
     /// </summary>
     public const string ConcurrentModification = "concurrent-modification";
 
+    /// <summary>A write violates a unique constraint. Carried by <see cref="Error.Conflict"/>.</summary>
+    public const string DuplicateKey = "duplicate.key";
+
+    /// <summary>A write violates a foreign-key constraint. Carried by <see cref="Error.Conflict"/>.</summary>
+    public const string ReferentialIntegrity = "referential.integrity";
+
+    /// <summary>
+    /// A retryable save failure was aborted by the regenerate callback. Carried by <see cref="Error.Conflict"/>.
+    /// </summary>
+    public const string RetryAborted = "retry.aborted";
+
+    /// <summary>
+    /// A retryable save failure exhausted the allowed attempts. Carried by <see cref="Error.Conflict"/>.
+    /// </summary>
+    public const string RetryExhausted = "retry.exhausted";
+
     /// <summary>
     /// A trigger was rejected because the aggregate's current state forbids it. Carried by
     /// <c>Error.InvariantViolation</c> and surfaced as HTTP 422. Emitted by
