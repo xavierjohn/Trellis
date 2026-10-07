@@ -199,7 +199,7 @@ using System.Diagnostics;
 ///     public Description Description { get; private set; }
 ///     
 ///     public Result&lt;Product&gt; UpdateName(ProductName newName) =>
-///         newName.ToResult()
+///         Result.Ok(newName)
 ///             .Tap(name => Name = name)
 ///             .Map(_ => this);
 ///     

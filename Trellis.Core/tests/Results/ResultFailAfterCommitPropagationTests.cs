@@ -17,7 +17,7 @@ using Trellis.Testing;
 /// <list type="bullet">
 /// <item><description>Single-source operators (<c>Map</c>, <c>Bind</c>, <c>MapOnFailure</c>, <c>Check</c>, <c>CheckIf</c>, <c>BindZip</c> outer-fail, <c>Ensure</c> propagation, single-failure <c>Traverse</c>) carry the upstream's flag.</description></item>
 /// <item><description>Multi-source aggregators (<c>Combine</c>, <c>TraverseAll</c>, <c>SequenceAll</c>) OR-accumulate the flag across every failing source — any persist-on-failure source promotes the aggregated outcome.</description></item>
-/// <item><description>Fresh failures (predicate-fails-after-success in <c>Ensure</c>, <c>EnsureAll</c>; <c>EnsureNotNull</c>'s value-was-null branch; <c>NullableExtensions</c>) carry no upstream flag and remain plain <c>Result.Fail</c>.</description></item>
+/// <item><description>Fresh failures (predicate-fails-after-success in <c>Ensure</c>, <c>EnsureAll</c>; <c>EnsureNotNull</c>'s value-was-null branch) carry no upstream flag and remain plain <c>Result.Fail</c>.</description></item>
 /// </list>
 /// </remarks>
 public class ResultFailAfterCommitPropagationTests

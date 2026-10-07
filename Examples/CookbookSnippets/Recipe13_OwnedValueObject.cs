@@ -84,9 +84,12 @@ public sealed partial class Customer : Aggregate<CustomerId>
     }
 
     public static Result<Customer> TryCreate(CustomerId? id, string? name, ShippingAddress? shipping) =>
-        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Customer id is required."))
-            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required.")))
-            .Combine(shipping.ToResult(Error.InvalidInput.ForField(field: "shipping", code: ValidationCodes.ValueNotNull, detail: "Shipping address is required.")))
+        Result.EnsureNotNull(id, "id", "Customer id is required.")
+            .Combine(Result.EnsureNotNull(name, static () =>
+                    Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required."))
+                .Ensure(static value => !string.IsNullOrWhiteSpace(value), static _ =>
+                    Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required.")))
+            .Combine(Result.EnsureNotNull(shipping, "shipping", "Shipping address is required."))
             .Map((id, name, shipping) => new Customer(id, name, shipping));
 }
 
@@ -151,7 +154,6 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 
 public sealed class PurchaseOrder : Aggregate<OrderId>
 {
-    internal const string LineItemsField = nameof(_lineItems);
     private readonly List<LineItem> _lineItems = [];
 
     public IReadOnlyCollection<LineItem> LineItems => _lineItems.AsReadOnly();
@@ -169,8 +171,8 @@ internal static class Recipe13OwnedValueObjectSurface
         _ = (builder, attributeType);
     }
 
-    public static void OwnedCollection_BackFieldSurface(EntityTypeBuilder<PurchaseOrder> builder) =>
-        builder.OwnsMany<LineItem>(PurchaseOrder.LineItemsField, owned =>
+    public static void OwnedCollection_TypedNavigationSurface(EntityTypeBuilder<PurchaseOrder> builder) =>
+        builder.OwnsMany(order => order.LineItems, owned =>
         {
             owned.WithOwner();
             owned.Property(item => item.Sku).HasMaxLength(64);

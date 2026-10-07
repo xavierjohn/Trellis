@@ -214,6 +214,36 @@ public class RecipeBehaviorTests
     }
 
     [Fact]
+    public void OwnedCollection_TypedNavigation_BindsReadOnlyFacadeToBackingField()
+    {
+        var options = new DbContextOptionsBuilder<TypedCollectionContext>()
+            .UseSqlite("Data Source=:memory:").Options;
+        using var db = new TypedCollectionContext(options);
+
+        var entity = db.Model.FindEntityType(typeof(Recipe13.PurchaseOrder));
+        Assert.NotNull(entity);
+        var navigation = entity.FindNavigation(nameof(Recipe13.PurchaseOrder.LineItems));
+        Assert.NotNull(navigation);
+        Assert.NotNull(navigation.FieldInfo);
+        navigation.FieldInfo.Name.Should().Be("_lineItems");
+        navigation.IsCollection.Should().BeTrue();
+        navigation.TargetEntityType.IsOwned().Should().BeTrue();
+        var sku = navigation.TargetEntityType.FindProperty(nameof(Recipe13.LineItem.Sku));
+        Assert.NotNull(sku);
+        sku.GetMaxLength().Should().Be(64);
+    }
+
+    private sealed class TypedCollectionContext(DbContextOptions<TypedCollectionContext> options) : DbContext(options)
+    {
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(Recipe13.Customer).Assembly);
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+            Recipe13.Recipe13OwnedValueObjectSurface.OwnedCollection_TypedNavigationSurface(
+                modelBuilder.Entity<Recipe13.PurchaseOrder>());
+    }
+
+    [Fact]
     public async Task CompositeAddress_SnippetContext_RoundTripsRequiredAndOptionalOwnedValues()
     {
         using var connection = new SqliteConnection("Data Source=:memory:");

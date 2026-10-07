@@ -1,14 +1,17 @@
 ﻿namespace Trellis.Analyzers.Tests;
 
+using System.Reflection;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 using Xunit;
 
 /// <summary>
-/// Tests for <see cref="UseToResultForNullableAnalyzer"/> and <see cref="UseToResultForNullableCodeFixProvider"/> (TRLS066).
+/// Tests for <see cref="UseEnsureNotNullForNullableAnalyzer"/> and <see cref="UseEnsureNotNullForNullableCodeFixProvider"/> (TRLS066).
 /// </summary>
-public class UseToResultForNullableAnalyzerTests
+public class UseEnsureNotNullForNullableAnalyzerTests
 {
     private const string Header = """
         #nullable enable
@@ -26,34 +29,115 @@ public class UseToResultForNullableAnalyzerTests
 
     private static string Wrap(string members) => Header + members + "\n}\n";
 
-    private static CSharpAnalyzerTest<UseToResultForNullableAnalyzer, DefaultVerifier> AnalyzerTest(string source, params DiagnosticResult[] expected)
+    private static CSharpAnalyzerTest<UseEnsureNotNullForNullableAnalyzer, DefaultVerifier> AnalyzerTest(string source, params DiagnosticResult[] expected)
     {
-        var test = new CSharpAnalyzerTest<UseToResultForNullableAnalyzer, DefaultVerifier>
+        var test = new CSharpAnalyzerTest<UseEnsureNotNullForNullableAnalyzer, DefaultVerifier>
         {
             TestCode = source,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         };
-        test.TestState.Sources.Add(("Stubs.cs", UseToResultForNullableTestStubs.Source));
+        test.TestState.Sources.Add(("Stubs.cs", UseEnsureNotNullForNullableTestStubs.Source));
         test.ExpectedDiagnostics.AddRange(expected);
         return test;
     }
 
-    private static CSharpCodeFixTest<UseToResultForNullableAnalyzer, UseToResultForNullableCodeFixProvider, DefaultVerifier> FixTest(
+    private static CSharpCodeFixTest<UseEnsureNotNullForNullableAnalyzer, UseEnsureNotNullForNullableCodeFixProvider, DefaultVerifier> FixTest(
         string source, string fixedSource)
     {
-        var test = new CSharpCodeFixTest<UseToResultForNullableAnalyzer, UseToResultForNullableCodeFixProvider, DefaultVerifier>
+        var test = new CSharpCodeFixTest<UseEnsureNotNullForNullableAnalyzer, UseEnsureNotNullForNullableCodeFixProvider, DefaultVerifier>
         {
             TestCode = source,
             FixedCode = fixedSource,
             ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
         };
-        test.TestState.Sources.Add(("Stubs.cs", UseToResultForNullableTestStubs.Source));
-        test.FixedState.Sources.Add(("Stubs.cs", UseToResultForNullableTestStubs.Source));
+        test.TestState.Sources.Add(("Stubs.cs", UseEnsureNotNullForNullableTestStubs.Source));
+        test.FixedState.Sources.Add(("Stubs.cs", UseEnsureNotNullForNullableTestStubs.Source));
         return test;
     }
 
     private static DiagnosticResult Expect(int location) =>
-        new DiagnosticResult(DiagnosticDescriptors.UseToResultForNullable).WithLocation(location);
+        new DiagnosticResult(DiagnosticDescriptors.UseEnsureNotNullForNullable).WithLocation(location);
+
+    [Fact]
+    public void PublicSurface_TRLS066_UsesEnsureNotNullNames()
+    {
+        var assembly = typeof(DiagnosticDescriptors).Assembly;
+        Assert.NotNull(assembly.GetType("Trellis.Analyzers.UseEnsureNotNullForNullableAnalyzer"));
+        var provider = assembly.GetType("Trellis.Analyzers.UseEnsureNotNullForNullableCodeFixProvider");
+        Assert.NotNull(provider);
+        var export = provider.GetCustomAttribute<ExportCodeFixProviderAttribute>();
+        Assert.NotNull(export);
+        Assert.Equal("UseEnsureNotNullForNullableCodeFixProvider", export.Name);
+
+        var id = typeof(TrellisDiagnosticIds).GetField("UseEnsureNotNullForNullable");
+        Assert.NotNull(id);
+        Assert.Equal("TRLS066", id.GetRawConstantValue());
+        var field = typeof(DiagnosticDescriptors).GetField("UseEnsureNotNullForNullable");
+        Assert.NotNull(field);
+        Assert.Equal("TRLS066", Assert.IsType<DiagnosticDescriptor>(field.GetValue(null)).Id);
+    }
+
+    [Fact]
+    public async Task CombineOfNullChecks_Fix_UsesStaticEnsureNotNullForErrorAndFactory()
+    {
+        var source = Wrap("""
+            public Result<Cmd> Create(string? title, DateTime? due, string? tag) =>
+                {|#0:Result.Ensure(title is not null, Missing("title"))|}
+                    .Combine({|#1:Result.Ensure(due is not null, () => Missing("due"))|})
+                    .Map((_, _) => new Cmd(title!, due!.Value, tag));
+            """);
+        var fixedSource = Wrap("""
+            public Result<Cmd> Create(string? title, DateTime? due, string? tag) =>
+                Result.EnsureNotNull(title, Missing("title"))
+                    .Combine(Result.EnsureNotNull(due, () => Missing("due")))
+                    .Map((_, _) => new Cmd(title!, due!.Value, tag));
+            """);
+
+        var test = FixTest(source, fixedSource);
+        test.ExpectedDiagnostics.Add(Expect(0));
+        test.ExpectedDiagnostics.Add(Expect(1));
+        test.NumberOfIncrementalIterations = 2;
+        test.NumberOfFixAllIterations = 1;
+        await test.RunAsync();
+    }
+
+    [Theory]
+    [InlineData("Trellis.Result.Ensure", "Trellis.Result.EnsureNotNull", "")]
+    [InlineData("Guard.Ensure", "Guard.EnsureNotNull", "using Guard = Trellis.Result;")]
+    [InlineData("Ensure", "global::Trellis.Result.EnsureNotNull", "using static Trellis.Result;")]
+    public async Task QualifiedResult_Fix_NoNamespaceImport_PreservesBinding(
+        string originalMethod, string replacementMethod, string additionalUsing)
+    {
+        var header = $$"""
+            #nullable enable
+            using static Trellis.CombineExtensions;
+            using static Trellis.MapExtensions;
+            {{additionalUsing}}
+
+            public class Consumer
+            {
+                private static Trellis.Error Missing() => new("required");
+
+            """;
+        var source = header + $$"""
+                public Trellis.Result<int> Run(string? value, string? other) =>
+                    {|#0:{{originalMethod}}(value is not null, Missing())|}
+                        .Combine(Trellis.Result.EnsureNotNull(other, Missing()))
+                        .Map((_, _) => 1);
+            }
+            """;
+        var fixedSource = header + $$"""
+                public Trellis.Result<int> Run(string? value, string? other) =>
+                    {{replacementMethod}}(value, Missing())
+                        .Combine(Trellis.Result.EnsureNotNull(other, Missing()))
+                        .Map((_, _) => 1);
+            }
+            """;
+
+        var test = FixTest(source, fixedSource);
+        test.ExpectedDiagnostics.Add(Expect(0));
+        await test.RunAsync();
+    }
 
     [Theory]
     [InlineData("title is not null")]
@@ -124,7 +208,7 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap($$"""
             public Result<int> Check(object? value, string? tag) =>
                 Result.Ensure({{condition}}, Missing("value"))
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -144,7 +228,7 @@ public class UseToResultForNullableAnalyzerTests
 
             public Result<int> Check(Token? value, string? tag) =>
                 Result.Ensure({{condition}}, Missing("value"))
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -157,7 +241,7 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(flag: title is not null, error: Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -180,7 +264,7 @@ public class UseToResultForNullableAnalyzerTests
                     is { Length: > 0 }
             #endif
                     , Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -218,7 +302,7 @@ public class UseToResultForNullableAnalyzerTests
                     is { Length: > 0 }
             #endif
                     , Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -310,10 +394,10 @@ public class UseToResultForNullableAnalyzerTests
     }
 
     [Fact]
-    public async Task ToResult_DoesNotReport()
+    public async Task EnsureNotNull_DoesNotReport()
     {
         var source = Wrap("""
-            public Result<string> Check(string? title) => title.ToResult(Missing("title"));
+            public Result<string> Check(string? title) => Result.EnsureNotNull(title, Missing("title"));
             """);
 
         await AnalyzerTest(source).RunAsync();
@@ -330,8 +414,8 @@ public class UseToResultForNullableAnalyzerTests
             """);
         var fixedSource = Wrap("""
             public Result<Cmd> Create(string? title, DateTime? due, string? tag) =>
-                title.ToResult(Missing("title"))
-                    .Combine(due.ToResult(Missing("due")))
+                Result.EnsureNotNull(title, Missing("title"))
+                    .Combine(Result.EnsureNotNull(due, Missing("due")))
                     .Map((_, _) => new Cmd(title!, due!.Value, tag));
             """);
 
@@ -353,7 +437,7 @@ public class UseToResultForNullableAnalyzerTests
             """);
         var fixedSource = Wrap("""
             public Result<int> Create(string? title, string? tag) =>
-                Result.Combine(title.ToResult(Missing("title")), tag.ToResult(Missing("tag")))
+                Result.Combine(Result.EnsureNotNull(title, Missing("title")), Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -366,18 +450,18 @@ public class UseToResultForNullableAnalyzerTests
     }
 
     [Fact]
-    public async Task CombineOperand_WithLowPrecedenceReceiver_IsParenthesized()
+    public async Task CombineOperand_WithLowPrecedenceValue_PreservesExpression()
     {
         var source = Wrap("""
             public Result<int> Create(string? a, string? b, string? c) =>
                 {|#0:Result.Ensure((a ?? b) is not null, Missing("name"))|}
-                    .Combine(c.ToResult(Missing("c")))
+                    .Combine(Result.EnsureNotNull(c, Missing("c")))
                     .Map((_, _) => 1);
             """);
         var fixedSource = Wrap("""
             public Result<int> Create(string? a, string? b, string? c) =>
-                (a ?? b).ToResult(Missing("name"))
-                    .Combine(c.ToResult(Missing("c")))
+                Result.EnsureNotNull(a ?? b, Missing("name"))
+                    .Combine(Result.EnsureNotNull(c, Missing("c")))
                     .Map((_, _) => 1);
             """);
 
@@ -406,15 +490,15 @@ public class UseToResultForNullableAnalyzerTests
 
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title != Nil, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
         var fixedSource = Wrap("""
             private const string? Nil = null;
 
             public Result<int> Check(string? title, string? tag) =>
-                title.ToResult(Missing("title"))
-                    .Combine(tag.ToResult(Missing("tag")))
+                Result.EnsureNotNull(title, Missing("title"))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -429,13 +513,13 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is not null, () => Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
         var fixedSource = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
-                title.ToResult(() => Missing("title"))
-                    .Combine(tag.ToResult(Missing("tag")))
+                Result.EnsureNotNull(title, () => Missing("title"))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -453,7 +537,7 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap($$"""
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is not null, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map({{lambda}});
             """);
 
@@ -468,13 +552,13 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is not null, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map(_ => 1);
             """);
         var fixedSource = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
-                title.ToResult(Missing("title"))
-                    .Combine(tag.ToResult(Missing("tag")))
+                Result.EnsureNotNull(title, Missing("title"))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map(_ => 1);
             """);
 
@@ -484,15 +568,15 @@ public class UseToResultForNullableAnalyzerTests
     }
 
     [Theory]
-    [InlineData(".Combine(t2: other.ToResult(Missing(\"other\"))).Map((pair, _) => pair.Item2.ToString())")]
-    [InlineData(".Combine(t2: other.ToResult(Missing(\"other\"))).Combine(other.ToResult(Missing(\"other\"))).Map((pair, _, _) => pair.Item2.ToString())")]
-    [InlineData(".Combine(t2: other.ToResult(Missing(\"other\"))).Combine(t2: other.ToResult(Missing(\"other\"))).Map((pair, _) => pair.Item1.Item2.ToString())")]
-    [InlineData(".Combine(t2: other.ToResult(Missing(\"other\"))).Bind((pair, _) => pair.Item2.ToString().ToResult(Missing(\"value\")))")]
+    [InlineData(".Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Map((pair, _) => pair.Item2.ToString())")]
+    [InlineData(".Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Combine(Result.EnsureNotNull(other, Missing(\"other\"))).Map((pair, _, _) => pair.Item2.ToString())")]
+    [InlineData(".Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Map((pair, _) => pair.Item1.Item2.ToString())")]
+    [InlineData(".Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Bind((pair, _) => Result.EnsureNotNull(pair.Item2.ToString(), Missing(\"value\")))")]
     public async Task CombineOperand_NestedTuple_IsConsumed_ReportsWithoutOfferingAFix(string pipeline)
     {
         var source = Wrap($$"""
             public Result<string> Check(string? first, string? title, string? other) =>
-                first.ToResult(Missing("first"))
+                Result.EnsureNotNull(first, Missing("first"))
                     .Combine({|#0:Result.Ensure(title is not null, Missing("title"))|}){{pipeline}};
             """);
 
@@ -502,21 +586,21 @@ public class UseToResultForNullableAnalyzerTests
     }
 
     [Theory]
-    [InlineData(".Combine(t2: other.ToResult(Missing(\"other\"))).Map((_, value) => value.Length)")]
-    [InlineData(".Combine(t2: other.ToResult(Missing(\"other\"))).Combine(other.ToResult(Missing(\"other\"))).Map((_, value, _) => value.Length)")]
-    [InlineData(".Combine(t2: other.ToResult(Missing(\"other\"))).Combine(t2: other.ToResult(Missing(\"other\"))).Map((_, value) => value.Length)")]
-    [InlineData(".Combine(t2: other.ToResult(Missing(\"other\"))).Bind((_, value) => ((int?)value.Length).ToResult(Missing(\"length\")))")]
+    [InlineData(".Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Map((_, value) => value.Length)")]
+    [InlineData(".Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Combine(Result.EnsureNotNull(other, Missing(\"other\"))).Map((_, value, _) => value.Length)")]
+    [InlineData(".Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Map((_, value) => value.Length)")]
+    [InlineData(".Combine(t2: Result.EnsureNotNull(other, Missing(\"other\"))).Bind((_, value) => Result.EnsureNotNull(((int?)value.Length), Missing(\"length\")))")]
     public async Task CombineOperand_NestedTuple_IsDiscarded_IsRewritten(string pipeline)
     {
         var source = Wrap($$"""
             public Result<int> Check(string? first, string? title, string? other) =>
-                first.ToResult(Missing("first"))
+                Result.EnsureNotNull(first, Missing("first"))
                     .Combine({|#0:Result.Ensure(title is not null, Missing("title"))|}){{pipeline}};
             """);
         var fixedSource = Wrap($$"""
             public Result<int> Check(string? first, string? title, string? other) =>
-                first.ToResult(Missing("first"))
-                    .Combine(title.ToResult(Missing("title"))){{pipeline}};
+                Result.EnsureNotNull(first, Missing("first"))
+                    .Combine(Result.EnsureNotNull(title, Missing("title"))){{pipeline}};
             """);
 
         var test = FixTest(source, fixedSource);
@@ -525,10 +609,10 @@ public class UseToResultForNullableAnalyzerTests
     }
 
     [Theory]
-    [InlineData("(int, int)? value", ".Combine(tag.ToResult(Missing(\"tag\"))).Map((_, tag) => tag.Length)")]
-    [InlineData("string? value", ".Combine<Unit, string>(tag.ToResult(Missing(\"tag\"))).Map((_, tag) => tag.Length)")]
-    [InlineData("string? value", ".Combine(tag.ToResult(Missing(\"tag\"))).Map<Unit, string, int>((_, tag) => tag.Length)")]
-    [InlineData("string? value", ".Combine(tag.ToResult(Missing(\"tag\"))).Bind<Unit, string, int>((_, tag) => ((int?)tag.Length).ToResult(Missing(\"length\")))")]
+    [InlineData("(int, int)? value", ".Combine(Result.EnsureNotNull(tag, Missing(\"tag\"))).Map((_, tag) => tag.Length)")]
+    [InlineData("string? value", ".Combine<Unit, string>(Result.EnsureNotNull(tag, Missing(\"tag\"))).Map((_, tag) => tag.Length)")]
+    [InlineData("string? value", ".Combine(Result.EnsureNotNull(tag, Missing(\"tag\"))).Map<Unit, string, int>((_, tag) => tag.Length)")]
+    [InlineData("string? value", ".Combine(Result.EnsureNotNull(tag, Missing(\"tag\"))).Bind<Unit, string, int>((_, tag) => Result.EnsureNotNull(((int?)tag.Length), Missing(\"length\")))")]
     public async Task CombineOperand_WhoseRewrittenPipelineCannotBind_ReportsWithoutOfferingAFix(string parameter, string pipeline)
     {
         var source = Wrap($$"""
@@ -547,7 +631,7 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? value, string? tag) =>
                 {|#0:Result.Ensure(value is not null, Missing("value"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """) + """
 
@@ -568,7 +652,7 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? value, string? tag) =>
                 {|#0:Result.Ensure(value is not null, Missing("value"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """) + """
 
@@ -601,7 +685,7 @@ public class UseToResultForNullableAnalyzerTests
             """) + applicationExtension;
         var fixedSource = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
-                title.ToResult(Missing("title"))
+                Result.EnsureNotNull(title, Missing("title"))
                     .Combine({|#1:Result.Ensure(tag is not null, Missing("tag"))|})
                     .Map((_, _) => 1);
             """) + applicationExtension;
@@ -621,14 +705,14 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is not null, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
-                    .Bind((_, tag) => ((int?)tag.Length).ToResult(Missing("length")));
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
+                    .Bind((_, tag) => Result.EnsureNotNull(((int?)tag.Length), Missing("length")));
             """);
         var fixedSource = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
-                title.ToResult(Missing("title"))
-                    .Combine(tag.ToResult(Missing("tag")))
-                    .Bind((_, tag) => ((int?)tag.Length).ToResult(Missing("length")));
+                Result.EnsureNotNull(title, Missing("title"))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
+                    .Bind((_, tag) => Result.EnsureNotNull(((int?)tag.Length), Missing("length")));
             """);
 
         var test = FixTest(source, fixedSource);
@@ -642,7 +726,7 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<(Unit, string)> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is not null, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")));
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")));
             """);
 
         var test = FixTest(source, source);
@@ -669,7 +753,7 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is not null, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map(_ => _.Item1.GetHashCode());
             """);
 
@@ -684,7 +768,7 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<(Unit, string)> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is not null, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Tap((_, _) => { });
             """);
 
@@ -703,7 +787,7 @@ public class UseToResultForNullableAnalyzerTests
             """);
         var fixedSource = Wrap("""
             public Result<int> Check(Result<(string, string)> pair, string? title) =>
-                CombineExtensions.Combine(pair, title.ToResult(Missing("title")))
+                CombineExtensions.Combine(pair, Result.EnsureNotNull(title, Missing("title")))
                     .Map((x, y, _) => 1);
             """);
 
@@ -731,7 +815,7 @@ public class UseToResultForNullableAnalyzerTests
     {
         var source = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
-                Result.Combine(r2: {|#0:Result.Ensure(title is not null, Missing("title"))|}, r1: tag.ToResult(Missing("tag")))
+                Result.Combine(r2: {|#0:Result.Ensure(title is not null, Missing("title"))|}, r1: Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, second) => 1);
             """);
 
@@ -746,7 +830,7 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is not null, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Consume((_, _) => 1);
             """) + """
 
@@ -762,12 +846,12 @@ public class UseToResultForNullableAnalyzerTests
     }
 
     [Fact]
-    public async Task ApplicationToResultInstanceMethod_ReportsWithoutOfferingAFix()
+    public async Task ApplicationToResultInstanceMethod_Fix_CannotShadowStaticGuard()
     {
         var source = Wrap("""
             public Result<int> Check(Tag? tag, string? other) =>
                 {|#0:Result.Ensure(tag is not null, Missing("tag"))|}
-                    .Combine(other.ToResult(Missing("other")))
+                    .Combine(Result.EnsureNotNull(other, Missing("other")))
                     .Map((_, _) => 1);
             """) + """
 
@@ -777,7 +861,11 @@ public class UseToResultForNullableAnalyzerTests
             }
             """;
 
-        var test = FixTest(source, source);
+        var fixedSource = source.Replace(
+            "{|#0:Result.Ensure(tag is not null, Missing(\"tag\"))|}",
+            "Result.EnsureNotNull(tag, Missing(\"tag\"))",
+            StringComparison.Ordinal);
+        var test = FixTest(source, fixedSource);
         test.ExpectedDiagnostics.Add(Expect(0));
         await test.RunAsync();
     }
@@ -788,13 +876,13 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(/* required */ title is not null, /* why */ Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
         var fixedSource = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
-                /* required */ title.ToResult(/* why */ Missing("title"))
-                    .Combine(tag.ToResult(Missing("tag")))
+                Result.EnsureNotNull(/* required */ title, /* why */ Missing("title"))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -810,14 +898,14 @@ public class UseToResultForNullableAnalyzerTests
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title // checked field
                     is not null, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
         var fixedSource = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
-                title // checked field
-                    .ToResult(Missing("title"))
-                    .Combine(tag.ToResult(Missing("tag")))
+                Result.EnsureNotNull(title, // checked field
+                    Missing("title"))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -832,13 +920,13 @@ public class UseToResultForNullableAnalyzerTests
         var source = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is /* pure null check */ not null, Missing("title"))|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
         var fixedSource = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
-                title /* pure null check */.ToResult(Missing("title"))
-                    .Combine(tag.ToResult(Missing("tag")))
+                Result.EnsureNotNull(title /* pure null check */, Missing("title"))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 
@@ -854,14 +942,14 @@ public class UseToResultForNullableAnalyzerTests
             public Result<int> Check(string? title, string? tag) =>
                 {|#0:Result.Ensure(title is not null, Missing("title") // chosen error
                 )|}
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
         var fixedSource = Wrap("""
             public Result<int> Check(string? title, string? tag) =>
-                title.ToResult(Missing("title") // chosen error
+                Result.EnsureNotNull(title, Missing("title") // chosen error
                 )
-                    .Combine(tag.ToResult(Missing("tag")))
+                    .Combine(Result.EnsureNotNull(tag, Missing("tag")))
                     .Map((_, _) => 1);
             """);
 

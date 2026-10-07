@@ -369,7 +369,54 @@ These methods are **unchanged**:
 - `Combine` - Merge multiple results
 - `Match`, `MatchAsync` - Pattern match success/failure
 - *(removed in Trellis V2: `MatchError` superseded by exhaustive `switch` on the closed `Error` ADT)*
-- `ToResult`, `ToResultAsync` - Convert nullables to Result
+- `Maybe<T>.ToResult(error/factory)`, Task/ValueTask `ToResultAsync(error/factory)` - Convert ordinary Maybe absence to failure
+
+### Universal and nullable conversions removed (TFR-22)
+
+Core no longer exposes the universal `value.ToResult()` lift or the nullable
+`ToResult` / `ToResultAsync` extensions. This is a source-breaking removal, not an
+obsolete compatibility shim. A required missing value must name its failure;
+ordinary optionality belongs in `Maybe<T>`.
+
+| Old call | Replacement |
+| --- | --- |
+| `value.ToResult()` (intentional success wrapping) | `Result.Ok(value)` |
+| `nullable.ToResult(error)` | `Result.EnsureNotNull(nullable, error)` |
+| `nullable.ToResult(errorFactory)` | `Result.EnsureNotNull(nullable, errorFactory)` |
+| `nullableTask.ToResultAsync(error)` | `nullableTask.EnsureNotNullAsync(error)` |
+| `nullableValueTask.ToResultAsync(errorFactory)` | `nullableValueTask.EnsureNotNullAsync(errorFactory)` |
+| `maybe.ToResult()` (omitted failure) | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)` |
+
+Do not replace a payload-bearing conversion with `Result.Ensure(condition, error)`:
+it returns `Result<Unit>`, not the checked value. Use `EnsureNotNull` to carry a
+non-null reference or unwrap a nullable struct through typed `Combine` / `Map`.
+The field/detail form creates standard required errors lazily:
+
+```csharp
+Result<string> RequireName(string? name) =>
+    Result.EnsureNotNull(name, "name", "Name is required.");
+```
+
+`Result.Ok(value)` does no null/presence/success check; wrapping a nullable,
+`Maybe<T>`, or `Result<T>` explicitly is deliberate and is not a required-value
+guard. All Maybe eager/lazy sync and Task/ValueTask conversions are preserved,
+as are `Trellis.Http` response conversions and FluentValidation conversions.
+
+**Async edge cases:** `EnsureNotNullAsync` validates a factory before awaiting,
+while the retired nullable conversion checked it after awaiting. An invalid
+factory therefore takes precedence over a pending, faulted, or cancelled source;
+the argument exception surfaces through the returned Task/ValueTask. Null Task
+receivers now report `ArgumentNullException` with parameter `task`. Valid-source
+faults and cancellation still propagate without invoking a lazy error factory.
+Guard activities are named `EnsureNotNull`.
+
+TRLS066 now suggests and fixes to the static guard. Its diagnostic ID remains
+`TRLS066`, so severity settings and suppressions are unchanged. Tooling that
+references the analyzer assembly must use `UseEnsureNotNullForNullableAnalyzer`,
+`UseEnsureNotNullForNullableCodeFixProvider`, and `UseEnsureNotNullForNullable`
+for the descriptor and ID constant; no old-name aliases are retained.
+Rebuild consumers using generated Required primitives so their generated code uses
+the new guard API and its already-lazy field/detail overload.
 
 ---
 

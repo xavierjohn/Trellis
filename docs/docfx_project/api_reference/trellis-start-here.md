@@ -60,6 +60,17 @@ Conventions used throughout:
 - Examples reference an `OrderId : RequiredGuid<OrderId>` value object and an `Order` aggregate. Substitute your own types without changing the structure.
 - A command without a payload returns `Result<Trellis.Unit>` — qualified because a file that imports both `Trellis` and `Mediator` has two `Unit` types in scope (`Trellis.Unit` and `Mediator.Unit`). Add `global using TrellisUnit = Trellis.Unit;` (or `global using Unit = Trellis.Unit;`, since Trellis code never references `Mediator.Unit`) to your `GlobalUsings.cs` to drop the qualification.
 
+### Preferred patterns, not just valid overloads
+
+Primary recipe examples are the recommended defaults. Use an alternative only when its
+documented trade-off fits the task, and state why:
+
+- For required nullables, prefer `Result.EnsureNotNull(value, fieldName, detail)` (or the async form): standard required-field errors are already lazy. These guards check null only, not blank strings or other domain rules.
+- For custom guard/conversion errors, construct the error **inside** the factory whenever that overload exists: `Result.Ensure(condition, () => new Error.Forbidden(...))`, `Result.EnsureNotNull(value, () => ...)`, or `maybe.ToResult(() => ...)`. Value-threaded `Ensure` uses `value => error`, not a parameterless factory. Eager error construction wastes work and can record validation violations even when a guard passes or an earlier failure skips it.
+- Prefer `static` callbacks when they need no captured state. Capturing factories can still allocate a closure; lazy construction avoids unused errors, not every allocation. Returning an already-created error from a factory does not undo its allocation. Eager overloads remain appropriate for existing/reused errors and APIs without a factory overload; do not invent missing overloads.
+- Use `Result.Ensure` for a boolean guard without a payload, `EnsureNotNull` for required nullable values, and `Result.Ok(value)` for deliberate success wrapping. Do not substitute a `Result<Unit>` guard for a payload-bearing success.
+- Prefer expression-based EF mappings such as `builder.OwnsMany(order => order.LineItems, ...)` when convention can bind the backing field. String-based field mappings are a fallback, not the default; value-object collections need no explicit ownership mapping unless overriding a convention.
+
 ## LLM preflight: load the smallest correct reference set
 
 Before writing Trellis code, choose the task in the lookup table below, then load only the package references needed for that task. The cookbook gives the end-to-end recipe; the package references are the source of truth for exact signatures, overloads, ordering, and edge-case behavior.
@@ -113,6 +124,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Generate versioned Location links to a named route or MVC action, including cross-route segment pins | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) |
 | Map primitive DTO fields to value objects | [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
 | Require nullable values in a command factory without `!`, or guard a nullable-returning query | [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap), then [`Result.EnsureNotNull` / `EnsureNotNullAsync`](trellis-api-core.md#value-returning-null-guards) |
+| Migrate universal or nullable `ToResult` calls without losing payloads or treating absence as success | [Choosing a Result entry point](trellis-api-core.md#choosing-a-result-entry-point), then [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
 | Add resource authorization | [Recipe 7](trellis-api-cookbook.md#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth) |
 | Obtain checked actor/resource parameters without provider/accessor constructor dependencies | [Recipe 7](trellis-api-cookbook.md#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth), [Recipe 24](trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization), [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource), then [actor-aware handler bases](trellis-api-mediator.md#actor-aware-handler-bases) |
 | Authorize against a related resource one or more navigation hops away (cricket-style fan-out, owner chains) | [Recipe 24](trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization) |

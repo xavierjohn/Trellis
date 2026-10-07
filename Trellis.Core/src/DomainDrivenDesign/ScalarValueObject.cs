@@ -43,12 +43,12 @@
 ///     public static CustomerId NewUnique() => new(Guid.NewGuid());
 ///     
 ///     public static Result<CustomerId> TryCreate(Guid value, string? fieldName = null) =>
-///         value.ToResult()
+///         Result.Ok(value)
 ///             .Ensure(v => v != Guid.Empty, Error.InvalidInput.ForField(field: fieldName ?? "customerId", code: ValidationCodes.ValueNotDefault, detail: "Customer ID cannot be empty"))
 ///             .Map(v => new CustomerId(v));
 ///     
 ///     public static Result<CustomerId> TryCreate(string? stringOrNull, string? fieldName = null) =>
-///         stringOrNull.ToResult(Error.InvalidInput.ForField(field: fieldName ?? "customerId", code: ValidationCodes.ValueNotNull, detail: "Customer ID cannot be empty"))
+///         Result.EnsureNotNull(stringOrNull, Error.InvalidInput.ForField(field: fieldName ?? "customerId", code: ValidationCodes.ValueNotNull, detail: "Customer ID cannot be empty"))
 ///             .Bind(s => Guid.TryParse(s, out var guid)
 ///                 ? Result.Ok(guid)
 ///                 : Result.Fail<Guid>(Error.InvalidInput.ForField(field: fieldName ?? "customerId", code: ValidationCodes.FormatGuid, detail: "Invalid GUID format")))
@@ -68,7 +68,7 @@
 ///     private Temperature(decimal value) : base(value) { }
 ///     
 ///     public static Result<Temperature> TryCreate(decimal value, string? fieldName = null) =>
-///         value.ToResult()
+///         Result.Ok(value)
 ///             .Ensure(v => v >= -273.15m, 
 ///                    Error.InvalidInput.ForField(field: fieldName ?? "temperature", code: ValidationCodes.ValueGreaterThanOrEqual, detail: "Temperature cannot be below absolute zero"))
 ///             .Ensure(v => v <= 1_000_000m,
@@ -113,7 +113,7 @@
 ///     private EmailAddress(string value) : base(value) { }
 ///     
 ///     public static Result<EmailAddress> TryCreate(string? email, string? fieldName = null) =>
-///         email.ToResult(Error.InvalidInput.ForField(field: fieldName ?? "email", code: ValidationCodes.ValueNotNull, detail: "Email is required"))
+///         Result.EnsureNotNull(email, Error.InvalidInput.ForField(field: fieldName ?? "email", code: ValidationCodes.ValueNotNull, detail: "Email is required"))
 ///             .Ensure(e => !string.IsNullOrWhiteSpace(e),
 ///                    Error.InvalidInput.ForField(field: fieldName ?? "email", code: ValidationCodes.ValueNotEmpty, detail: "Email cannot be empty"))
 ///             .Ensure(e => e.Contains('@'),

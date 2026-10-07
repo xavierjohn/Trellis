@@ -54,7 +54,7 @@ namespace CookbookSnippets.Recipe24.FanOut
         public Trellis.IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
             Result.Ensure(
                 owners.Any(t => t.CreatedByActorId == actor.Id),
-                new Error.Forbidden("match.upload-scorecard")
+                static () => new Error.Forbidden("match.upload-scorecard")
                 { Detail = "Actor does not own either match team." });
     }
 
@@ -123,7 +123,7 @@ namespace CookbookSnippets.Recipe24.Chain
         public Trellis.IResult Authorize(Actor actor, IReadOnlyList<Tournament> owners) =>
             Result.Ensure(
                 owners[0].OwnerActorId == actor.Id,
-                new Error.Forbidden("match.cancel"));
+                static () => new Error.Forbidden("match.cancel"));
     }
 }
 
@@ -170,7 +170,7 @@ namespace CookbookSnippets.Recipe24.ExplicitRegistration
         public Trellis.IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
             Result.Ensure(
                 owners[0].CreatedByActorId == actor.Id,
-                new Error.Forbidden("match.delete"));
+                static () => new Error.Forbidden("match.delete"));
     }
 
     public static class ExplicitWiring

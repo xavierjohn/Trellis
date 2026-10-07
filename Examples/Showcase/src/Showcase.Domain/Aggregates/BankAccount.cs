@@ -114,7 +114,7 @@ public class BankAccount : Aggregate<AccountId>
     }
 
     public Result<BankAccount> Deposit(Money amount, string description = "Deposit") =>
-        this.ToResult()
+        Result.Ok(this)
             .Ensure(_ => Status == AccountStatus.Active,
                 _ => new Error.Conflict(Resource: null, Code: "account.not-active") { Detail = $"Cannot deposit to {Status} account" })
             .Ensure(_ => amount.Amount > 0,
@@ -135,7 +135,7 @@ public class BankAccount : Aggregate<AccountId>
     {
         var todayTotal = GetTodayWithdrawals();
 
-        return this.ToResult()
+        return Result.Ok(this)
             .Ensure(_ => Status == AccountStatus.Active,
                 _ => new Error.Conflict(Resource: null, Code: "account.not-active") { Detail = $"Cannot withdraw from {Status} account" })
             .Ensure(_ => amount.Amount > 0,

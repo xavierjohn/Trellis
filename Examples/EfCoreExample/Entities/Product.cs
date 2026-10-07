@@ -39,7 +39,7 @@ public class Product : Entity<ProductId>
     /// Reduces stock when order is placed.
     /// </summary>
     public Result<Product> ReduceStock(int quantity) =>
-        this.ToResult()
+        Result.Ok(this)
             .Ensure(_ => quantity > 0, _ => Error.InvalidInput.ForField(field: nameof(quantity), code: ValidationCodes.ValueGreaterThan, detail: "Quantity must be positive"))
             .Ensure(_ => StockQuantity >= quantity, _ => Error.InvalidInput.ForField(field: nameof(quantity), code: "product.insufficient-stock", detail: $"Insufficient stock. Available: {StockQuantity}"))
             .Tap(_ => StockQuantity -= quantity);

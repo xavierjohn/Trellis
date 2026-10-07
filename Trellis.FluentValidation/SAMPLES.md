@@ -1155,7 +1155,7 @@ public class UserRepository : IUserRepository
                     {
                         _context.Users.Add(validUser);
                         await _context.SaveChangesAsync(ct);
-                        return validUser.ToResult();
+                        return Result.Ok(validUser);
                     }
                     catch (DbUpdateException ex)
                     {

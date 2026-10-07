@@ -16,6 +16,46 @@ public class ResultEnsureNotNullCompilationTests
 
     public static IEnumerable<object[]> AcceptedCases => Cases("int?", "string?");
 
+    public static IEnumerable<object[]> RetiredNullableCases => Cases("int?", "string?")
+        .Where(testCase => (GuardForm)testCase[2] != GuardForm.Required);
+
+    public static IEnumerable<object[]> PreservedMaybeCases => Cases("Maybe<int>", "Maybe<string>")
+        .Where(testCase => (GuardForm)testCase[2] != GuardForm.Required);
+
+    [Theory]
+    [InlineData("Maybe<int>")]
+    [InlineData("Maybe<string>")]
+    [InlineData("string?")]
+    [InlineData("int?")]
+    [InlineData("int")]
+    [InlineData("Result<int>")]
+    public void ToResult_NoErrorArgument_AnyValue_IsRejected(string inputType)
+    {
+        var diagnostics = CompileConversion(inputType, null, SourceKind.Sync, null);
+
+        diagnostics.Should().ContainSingle(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Theory]
+    [MemberData(nameof(RetiredNullableCases))]
+    public void ToResult_NullableValue_AnyForm_IsRejected(
+        string inputType, SourceKind source, GuardForm form)
+    {
+        var diagnostics = CompileConversion(inputType, inputType.TrimEnd('?'), source, form);
+
+        diagnostics.Should().ContainSingle(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Theory]
+    [MemberData(nameof(PreservedMaybeCases))]
+    public void ToResult_MaybeValue_AnyForm_CompilesWithUnwrappedResult(
+        string inputType, SourceKind source, GuardForm form)
+    {
+        var diagnostics = CompileConversion(inputType, inputType[6..^1], source, form);
+
+        diagnostics.Should().BeEmpty();
+    }
+
     [Theory]
     [MemberData(nameof(RejectedCases))]
     public void EnsureNotNull_InferredNonNullableStruct_AnyForm_IsRejected(
@@ -112,6 +152,41 @@ public class ResultEnsureNotNullCompilationTests
             public static class Consumer
             {
                 public static {{returnType}} Run({{inputType}} value) => {{call}};
+            }
+            """);
+    }
+
+    private static ImmutableArray<Diagnostic> CompileConversion(
+        string inputType, string? outputType, SourceKind source, GuardForm? form)
+    {
+        var argument = form switch
+        {
+            GuardForm.Error => """new Error.Forbidden("guard.denied")""",
+            GuardForm.Factory => """() => new Error.Forbidden("guard.denied")""",
+            null => string.Empty,
+            _ => throw new ArgumentOutOfRangeException(nameof(form)),
+        };
+        var call = source switch
+        {
+            SourceKind.Sync => $"value.ToResult({argument})",
+            SourceKind.Task => $"Task.FromResult<{inputType}>(value).ToResultAsync({argument})",
+            SourceKind.ValueTask => $"ValueTask.FromResult<{inputType}>(value).ToResultAsync({argument})",
+            _ => throw new ArgumentOutOfRangeException(nameof(source)),
+        };
+        var statement = outputType is null
+            ? $"_ = {call};"
+            : $"{(source == SourceKind.Sync ? $"Result<{outputType}>" : $"{source}<Result<{outputType}>>")} result = {call};";
+
+        return Compile($$"""
+            using System.Threading.Tasks;
+            using Trellis;
+
+            public static class Consumer
+            {
+                public static void Run({{inputType}} value)
+                {
+                    {{statement}}
+                }
             }
             """);
     }

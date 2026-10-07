@@ -36,6 +36,11 @@ The task lookup, the load-the-smallest-reference-set preflight and the conventio
 [trellis-start-here.md](trellis-start-here.md#patterns-index), the required reading for Trellis work. Open a recipe
 body here when that lookup sends you to one; every live recipe has a row there.
 
+Primary solution blocks follow the router's
+[preferred-pattern defaults](trellis-start-here.md#preferred-patterns-not-just-valid-overloads):
+required-field shorthand, lazy custom errors, and typed mappings where available.
+Fallbacks are labelled with the condition that justifies them.
+
 ## Recipe 1 — CRUD aggregate (DDD value objects + entity + repository contract)
 
 **Problem.** Model an `Order` aggregate with a typed identifier, a value-object money type, and a repository contract that returns `Result<T>` for not-found.
@@ -74,14 +79,14 @@ public sealed class Order : Aggregate<OrderId>
 
     private Order(OrderId id) : base(id) { }   // EF Core ctor
 
-    // Idiomatic ROP factory: nullable parameters lift to Result<T> via T?.ToResult(error);
+    // Nullable guards carry the values; Combine accumulates missing-field errors.
     // Combine aggregates per-field errors into a single Error.InvalidInput; Map's
     // tuple-deconstructing overload lets the lambda bind the validated non-null values
     // directly as id/total/ownerId.
     public static Result<Order> TryCreate(OrderId? id, Money? total, ActorId? ownerId) =>
-        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Order id is required."))
-            .Combine(total.ToResult(Error.InvalidInput.ForField(field: "total", code: ValidationCodes.ValueNotNull, detail: "Total is required.")))
-            .Combine(ownerId.ToResult(Error.InvalidInput.ForField(field: "ownerId", code: ValidationCodes.ValueNotNull, detail: "Owner id is required.")))
+        Result.EnsureNotNull(id, "id", "Order id is required.")
+            .Combine(Result.EnsureNotNull(total, "total", "Total is required."))
+            .Combine(Result.EnsureNotNull(ownerId, "ownerId", "Owner id is required."))
             .Map((id, total, ownerId) => new Order(id) { Total = total, Status = OrderStatus.Draft, OwnerId = ownerId });
 }
 
@@ -517,7 +522,7 @@ public sealed record ReadOrderQuery(OrderId OrderId)
 {
     public OrderId GetResourceId() => OrderId;
     public IResult Authorize(Actor actor, Order resource) =>
-        Result.Ensure(resource.OwnerId == actor.Id, () => new Error.Forbidden("orders.owner"));
+        Result.Ensure(resource.OwnerId == actor.Id, static () => new Error.Forbidden("orders.owner"));
 }
 
 public sealed class ReadOrderHandler : ActorResourceQueryHandler<ReadOrderQuery, Order, Result<Order>>
@@ -1044,9 +1049,12 @@ public sealed partial class Customer : Aggregate<CustomerId>
     }
 
     public static Result<Customer> TryCreate(CustomerId? id, string? name, ShippingAddress? shipping) =>
-        id.ToResult(Error.InvalidInput.ForField(field: "id", code: ValidationCodes.ValueNotNull, detail: "Customer id is required."))
-            .Combine(name.EnsureNotNullOrWhiteSpace(Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required.")))
-            .Combine(shipping.ToResult(Error.InvalidInput.ForField(field: "shipping", code: ValidationCodes.ValueNotNull, detail: "Shipping address is required.")))
+        Result.EnsureNotNull(id, "id", "Customer id is required.")
+            .Combine(Result.EnsureNotNull(name, static () =>
+                    Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required."))
+                .Ensure(static value => !string.IsNullOrWhiteSpace(value), static _ =>
+                    Error.InvalidInput.ForField(field: "name", code: ValidationCodes.ValueNotEmpty, detail: "Name is required.")))
+            .Combine(Result.EnsureNotNull(shipping, "shipping", "Shipping address is required."))
             .Map((id, name, shipping) => new Customer(id, name, shipping));
 }
 
@@ -1079,6 +1087,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
 **What it shows.**
 
+- Required-field shorthand creates errors only for missing values. The custom name guard preserves `value.not-empty` for both null and blank names, then carries the non-null string through `Ensure`; its factories construct no violations on success. The shorthand's null-only check is not a substitute for blank-string validation.
 - `[OwnedEntity]` + `partial` + `ValueObject` + private ctor is the contract. The three diagnostics (`TRLS036`/`037`/`038`) catch each violation at compile time.
 - `CompositeValueObjectJsonConverter<T>` makes JSON deserialization round-trip through `TryCreate`, so an API request body with an **invalid** `state` (one that fails the VO's rule) produces the same `Error.InvalidInput` shape the domain emits. A **missing** required inner field is caught earlier as a `TrellisJsonValidationException` ("required property missing") *before* `TryCreate` runs.
 - `ApplyTrellisConventions` removes the boilerplate `OwnsOne` call. You only need `OwnsOne` when you want to **override** the convention (custom column names, table splitting, indexes on inner properties).
@@ -1167,13 +1176,15 @@ public partial class Innings : ValueObject
 }
 ```
 
-Map an **entity** collection explicitly with `OwnsMany`. Binding against the private backing field by name keeps the public surface an immutable `IReadOnlyList<T>` while EF writes through the field:
+Map an **entity** collection explicitly with expression-based `OwnsMany`. EF binds the
+read-only navigation to its conventionally named backing field, so the public facade
+stays read-only and refactoring tools can follow the mapping:
 
 ```csharp
 public sealed partial class Order : Aggregate<OrderId>
 {
     private readonly List<LineItem> _lineItems = [];
-    public IReadOnlyList<LineItem> LineItems => _lineItems;       // public facade — interface, EF can't materialize
+    public IReadOnlyList<LineItem> LineItems => _lineItems;
     // ...
 }
 
@@ -1183,10 +1194,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
     {
         builder.HasKey(o => o.Id);
 
-        // The public facade is IReadOnlyList<T> — EF cannot instantiate an interface.
-        // Ignore the facade and map directly against the private backing field by name.
-        builder.Ignore(o => o.LineItems);
-        builder.OwnsMany<LineItem>("_lineItems", li =>
+        builder.OwnsMany(o => o.LineItems, li =>
         {
             li.ToTable("LineItems");
             li.HasKey(x => x.Id);
@@ -1199,13 +1207,26 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 }
 ```
 
-The string `"_lineItems"` is unfortunately part of the public mapping contract: rename the private field and the EF model silently stops working. Two mitigations and what they buy you:
+**Fallback: convention cannot bind the field.** Only then ignore the facade and map
+the field explicitly. The field name is now part of the mapping contract and must
+be updated if the field is renamed:
+
+```csharp
+builder.Ignore(o => o.LineItems);
+builder.OwnsMany<LineItem>("_lineItems", li =>
+{
+    li.ToTable("LineItems");
+    li.HasKey(x => x.Id);
+});
+```
+
+Choose the mapping shape deliberately:
 
 | Mitigation | Compile-time safety | Cost |
 |---|---|---|
-| Raw string `"_lineItems"` | None — typo or rename breaks at runtime model-validation. | Zero. The pattern shown above. |
-| `private const string LineItemsField = "_lineItems";` on `Order`, then `builder.OwnsMany<LineItem>(Order.LineItemsField, …)` | Refactoring tools follow the constant. Still no compile check that the field actually exists. | Leaks the field name through `internal`/`public` constant on the aggregate — adds public surface for a persistence concern. |
-| `builder.OwnsMany(o => o.LineItems, cfg => cfg.HasKey(...))` directly against the facade | Refactor-safe — no magic string; renaming the field is transparent. | Works: EF binds the read-only `IReadOnlyList<LineItem>` navigation to the backing `List<LineItem>` field by convention and round-trips. The `cfg` callback still configures the owned type (`cfg.ToTable(...)`, `cfg.Property(...).HasColumnName(...)`, etc.). Prefer this form; fall back to the string-based `OwnsMany<LineItem>("_field", …)` only when the backing field is named differently from what the convention binds, or convention cannot resolve the facade-to-field link. |
+| `builder.OwnsMany(o => o.LineItems, cfg => cfg.HasKey(...))` directly against the facade | Refactor-safe — no magic string; renaming the field is transparent while convention can bind it. | **Preferred.** EF binds the read-only `IReadOnlyList<LineItem>` navigation to the backing `List<LineItem>` field by convention. The `cfg` callback still configures the owned type (`cfg.ToTable(...)`, `cfg.Property(...).HasColumnName(...)`, etc.). |
+| Raw string `"_lineItems"` | None — typo or rename breaks at runtime model-validation. | **Fallback only** when convention cannot resolve the facade-to-field link. |
+| `internal const string LineItemsField = "_lineItems";` on `Order`, then `builder.OwnsMany<LineItem>(Order.LineItemsField, …)` in the same assembly | Refactoring tools follow the constant. Still no compile check that the field actually exists. | Exposes a persistence field name through the aggregate; unlike expression mapping, the string still needs updating when the field is renamed. |
 
 **Why no convention for _entity_ collections (yet).** Composite **value-object** collections are already handled automatically (see the value-object case above) — `CompositeValueObjectConvention` registers each composite VO as owned, so EF Core's navigation discovery maps the `IReadOnlyList<VO>` facade with no extra configuration. An equivalent convention for **entity** collections would need to walk every aggregate, find `IReadOnlyList<T>` / `IReadOnlyCollection<T>` properties whose `T` is an entity, locate a matching `_camelCase` backing field, and register the `OwnsMany` against it. This is on the roadmap (tracked as the analogue of `MaybeConvention` for collections); for now the manual pattern above is the supported approach for entity collections.
 
@@ -1492,8 +1513,9 @@ public sealed record OrderShipped(OrderId OrderId, TrackingNumber Tracking, Date
 ```csharp
 public Result<Order> Submit(TimeProvider clock)
 {
-    return this.ToResult()
-        .Ensure(_ => Status == OrderStatus.Draft, Error.InvalidInput.ForRule(code: "order.already-submitted", detail: "Already submitted"))
+    return Result.Ok(this)
+        .Ensure(static order => order.Status == OrderStatus.Draft, static _ =>
+            Error.InvalidInput.ForRule(code: "order.already-submitted", detail: "Already submitted"))
         .Tap(_ =>
         {
             Status = OrderStatus.Submitted;
@@ -1618,7 +1640,8 @@ These methods belong on the command type above. Success carries the exact
 non-null references; `Combine` still reports every missing field. Nullable structs
 are unwrapped by the same guard, and the async forms also accept `ValueTask<T?>`.
 The field/detail overloads construct standard `value.not-null` violations only on
-failure. To choose another error, pass `Error` or a lazy `Func<Error>`. For a query
+failure. To choose another error, prefer a lazy `Func<Error>` that constructs it
+inside the callback; pass `Error` when an existing instance is intentionally reused. For a query
 where absence means not found rather than invalid input, choose a lazy
 `Error.NotFound` factory instead of a required-field violation.
 
@@ -1628,8 +1651,10 @@ preserves input location and can be used lazily:
 `Result.EnsureNotNull(value, () => Error.InvalidInput.Required(inputPointer, detail))`.
 Composite validators can use
 `FieldViolation.Required(fieldName, detail)` or `FieldViolation.Required(inputPointer, detail)`
-to retain an indexed path and input location. No existing nullable `ToResult` API or
-TRLS066 code fix is removed or changed by these guards.
+to retain an indexed path and input location. Core's nullable `ToResult` APIs and
+universal no-argument lift have been removed: use these guards for required values,
+`Result.Ok(value)` for deliberate success wrapping, and `maybe.ToResult(errorFactory)`
+when ordinary absence becomes a failure. TRLS066 now emits the static guard shape.
 
 **Nested collections.** When `CreateCustomerRequest` carries a `List<AddressDto>` whose items each need to become value objects, the `Result.Combine` shape above doesn't generalize to the collection — use [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) (`TraverseAll`) to validate every row and accumulate per-item failures into one `Error.InvalidInput`. Inlining `.Select(item => item.ToCommand().Match(c => c, e => throw …))` throws on the first invalid row and surfaces as HTTP 500 instead of HTTP 422 with field violations.
 
@@ -2082,6 +2107,11 @@ app.MapPut("/orders/{id:guid}", (OrderId id, ReplaceOrderRequest request, OrderD
 
 **Rationale.** Header requirement is an endpoint policy; honoring a supplied precondition is not optional. State machines validate domain transitions, ETag checks enforce the caller's observed version, and persistence concurrency protection handles writes racing after the read. These mechanisms are complementary. A failed supplied precondition must leave state and representation metadata unchanged; no header still permits a guarded transition without a `428`.
 
+**Eager-overload exception.** `FirstOrDefaultResultAsync` accepts an `Error`, not an
+error factory, so these query examples supply it eagerly. Do not invent a factory
+overload. If lazy not-found construction is required, use the documented
+`FirstOrDefaultMaybeAsync` plus `ToResultAsync(() => new Error.NotFound(...))` composition.
+
 ---
 
 ## Cross-cutting tips
@@ -2090,6 +2120,7 @@ app.MapPut("/orders/{id:guid}", (OrderId id, ReplaceOrderRequest request, OrderD
 - **Two independent `await` calls in a handler?** `Result.ParallelAsync` + `WhenAllAsync` is the framework idiom — **but only when the loads hit different resources**. Two repository reads against the same scoped `DbContext` (the typical Trellis setup with `AddTrellisUnitOfWork<TContext>()`) race EF Core and throw `InvalidOperationException`; keep those sequential. The recipe spells out the safe shapes (HTTP + DB, two distinct upstream services, factory-created `DbContext`s via `IDbContextFactory<T>`) and the anti-pattern. See [Recipe 21](#recipe-21--parallel-independent-loads-in-handlers-resultparallelasync--whenallasync). The rule for "independent": the second factory's body does not reference any value produced by the first **and** the two factories hit distinct underlying resources.
 - **Do not mix sync chain methods with async lambdas.** `result.Map(async v => …)` triggers `TRLS009`; use `MapAsync`. The fix provider can apply this rewrite automatically.
 - **Construct errors via the closed ADT.** `new Error.NotFound(ResourceRef.For<Order>(id))` — never `new Error("not_found", "...")`, which won't compile against the abstract base record.
+- **Construct custom guard/conversion errors lazily.** Put `new Error...`, `ForField(...)`, or `ForRule(...)` inside the supported factory callback; use `static` when no state is captured. Use the already-lazy field/detail `EnsureNotNull` shorthand for ordinary required fields. Eager violation construction records validation metrics even if the guard succeeds or an earlier failure skips it. Preserve each API's documented factory signature and keep eager overloads for existing/reused errors or APIs without a factory.
 - **Use `Result.Combine` (or `EnsureAll`) for accumulating validation.** Manual `IsSuccess` checks across multiple results trigger `TRLS008`.
 - **Aggregate per-item Results with `Traverse` / `Sequence` (fail-fast) or `TraverseAll` / `SequenceAll` (accumulating).** When you have a collection and a per-item function returning `Result<T>`, use `items.Traverse(item => Compute(item))` to lift it into `Result<IReadOnlyList<T>>`. When you already have an `IEnumerable<Result<T>>` (e.g., from a `Select`), call `.Sequence()` instead. Both short-circuit on the first failure. When you need to surface every failure (form-style validation), use `TraverseAll` / `SequenceAll`: they run through every item and fold failures via `Error.Combine` — two `Error.InvalidInput` errors merge their fields/rules, heterogeneous errors flatten into `Error.Aggregate`. See [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) for when to choose which.
 - **Use `Error.InvalidInput.ForField` / `.ForRule` for single-violation 422s.** Prefer `Error.InvalidInput.ForField(ValidationCodes.StringEmail, "email", detail: "must contain @")` over manually wrapping a single `FieldViolation`. The pointer overload is `ForField(code, pointer, args: args, detail: detail)` and preserves nested/array paths and input location. Global rules use `ForRule(code, detail: detail)`; cross-field rules can also supply `fields: [firstPointer, secondPointer]` and `args`. Optional metadata can be omitted, but required codes must be nonblank. For multiple violations, keep the `Error.InvalidInput` constructor with an `EquatableArray<FieldViolation>`, or combine per-field `TryCreate` results as in Recipe 1.
@@ -2155,7 +2186,7 @@ public sealed record UploadScorecardCommand(MatchId MatchId, /* fields */)
     public IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
         Result.Ensure(
             owners.Any(t => t.CreatedByActorId == actor.Id),
-            new Error.Forbidden("match.upload-scorecard")
+            static () => new Error.Forbidden("match.upload-scorecard")
                 { Detail = "Actor does not own either match team." });
 }
 
@@ -2207,7 +2238,7 @@ public sealed record CancelMatchCommand(MatchId MatchId)
     public IResult Authorize(Actor actor, IReadOnlyList<Tournament> owners) =>
         Result.Ensure(
             owners[0].OwnerActorId == actor.Id,
-            new Error.Forbidden("match.cancel"));
+            static () => new Error.Forbidden("match.cancel"));
 }
 ```
 
@@ -2235,7 +2266,7 @@ public sealed record DeleteMatchCommand(MatchId MatchId)
     public IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
         Result.Ensure(
             owners[0].CreatedByActorId == actor.Id,
-            new Error.Forbidden("match.delete"));
+            static () => new Error.Forbidden("match.delete"));
 }
 
 services.AddRelatedResourceAuthorization<
@@ -2327,7 +2358,7 @@ public sealed class Order : Aggregate<OrderId>
     public Result<Trellis.Unit> CanSubmit() =>
         Result.Ensure(
             LineItems.Count > 0,
-            () => Error.InvalidInput.ForRule(
+            static () => Error.InvalidInput.ForRule(
                 code: "order.empty",
                 detail: "Order must have at least one line item to submit."));
 
@@ -2843,7 +2874,7 @@ public sealed class LegacyContactRepository(AppDbContext db) : ILegacyContactRep
     public Task<Result<Contact>> FindByIdAsync(ContactId id, CancellationToken ct) =>
         db.ContactRows.AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == id.Value, ct)
-            .ToResultAsync(() => new Error.NotFound(ResourceRef.For<Contact>(id)))
+            .EnsureNotNullAsync(() => new Error.NotFound(ResourceRef.For<Contact>(id)))
             .BindAsync(row => Result.Combine(
                 ContactId.TryCreate(row.Id, "Id"),
                 FirstName.TryCreate(row.FirstName, "FirstName"),
@@ -2979,7 +3010,7 @@ public sealed record UploadScorecardCommand(MatchId MatchId, Scorecard Scorecard
     public MatchId GetResourceId() => MatchId;
     public IResult Authorize(Actor actor, IReadOnlyList<Team> teams) =>
         Result.Ensure(teams.Any(t => t.CreatedByActorId == actor.Id),
-            new Error.Forbidden("team.not-owner"));
+            static () => new Error.Forbidden("team.not-owner"));
 }
 
 public sealed class UploadScorecardHandler(
@@ -3041,7 +3072,7 @@ public sealed record GetIncidentQuery(IncidentId Id)
     public IncidentId GetResourceId() => Id;
     public IResult Authorize(Actor actor, Incident incident) =>
         Result.Ensure(incident.AssigneeId == actor.Id || actor.HasPermission("incidents:read-any"),
-            new Error.Forbidden("incidents.read-denied"));
+            static () => new Error.Forbidden("incidents.read-denied"));
 }
 ```
 

@@ -27,6 +27,8 @@ This page focuses on the public FunctionalDdd 2.x → Trellis 3.0 jump. For rele
 |---|---|---|
 | `Result.Success(...)` / `Result.Failure(...)` | `Result.Ok(...)` / `Result.Fail(...)` | [Result and Error renames](#result-and-error-renames-trelliscore) |
 | Implicit `T → Result<T>` / `Error → Result<T>` | Explicit `Result.Ok(value)` / `Result.Fail<T>(error)` | [Result and Error renames](#result-and-error-renames-trelliscore) |
+| Universal `value.ToResult()` | `Result.Ok(value)` for deliberate success wrapping; `maybe.ToResult(error)` when absence must fail | [Universal and nullable conversions removed](#universal-and-nullable-conversions-removed-tfr-22) |
+| Nullable `value.ToResult(error/factory)` / `task.ToResultAsync(...)` | `Result.EnsureNotNull(value, error/factory)` / `task.EnsureNotNullAsync(...)` | [Universal and nullable conversions removed](#universal-and-nullable-conversions-removed-tfr-22) |
 | `Result.SuccessIf` / `Result.FailureIf` / `*Async` variants | Inline ternary | [Removed factories](#removed-factories) |
 | `Result.FromException(ex)` | `Result.Try` / `Result.TryAsync` or `new Error.Unexpected("unhandled-exception", ...)` | [Removed factories](#removed-factories) |
 | Non-generic `Result` instance type | `Result<Unit>` (ADR-005) | [Non-generic Result removed (ADR-005)](#non-generic-result-removed-adr-005) |
@@ -169,6 +171,37 @@ C# verifies exhaustiveness against the closed catalog when you `switch` on the c
 | `result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)` | `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., Error.InvalidInput uc => ..., _ => ... })` |
 | `result.FlattenValidationErrors()` | `Result.Combine(...)` automatically merges `Error.InvalidInput.Fields` and `.Rules` |
 | `error.Instance` field | ASP wire layer populates `ProblemDetails.Instance` from the request path+query; typed `ResourceRef` is exposed on the payload (e.g. `Error.NotFound.Resource`) for direct assertion |
+
+### Universal and nullable conversions removed (TFR-22)
+
+Core's unconstrained `value.ToResult()` lift and twelve nullable `ToResult` /
+`ToResultAsync` overloads are removed without a compatibility shim:
+
+| Intent | Replacement |
+|---|---|
+| Deliberately wrap a success value | `Result.Ok(value)` |
+| Require a nullable reference or struct | `Result.EnsureNotNull(value, error)` / `Result.EnsureNotNull(value, errorFactory)` |
+| Require a nullable Task/ValueTask result | `task.EnsureNotNullAsync(error)` / `task.EnsureNotNullAsync(errorFactory)` |
+| Convert ordinary Maybe absence to failure | `maybe.ToResult(error/factory)` and its Task/ValueTask forms remain supported |
+
+`Result.Ensure(condition, error)` returns `Result<Unit>`, so it cannot replace a
+payload-bearing conversion. `EnsureNotNull` carries the reference or unwrapped struct
+into typed `Combine` / `Map`. `Result.Ok` performs no null or wrapper-state check.
+HTTP response and FluentValidation conversions are unchanged.
+
+Async guards validate factories **before awaiting**, unlike the retired nullable
+conversions. Invalid factories now take precedence over pending/faulted/cancelled
+sources, and null Task receivers report `ArgumentNullException` naming `task`.
+With valid arguments, source faults/cancellation still propagate without invoking
+the error factory. Activities are named `EnsureNotNull`.
+
+TRLS066 now fixes to the static guard while keeping its diagnostic ID and severity
+settings. Public tooling uses `UseEnsureNotNullForNullableAnalyzer`,
+`UseEnsureNotNullForNullableCodeFixProvider`, and `UseEnsureNotNullForNullable`
+for the descriptor and ID constant; the old names have no aliases.
+Rebuild consumers so generated Required primitives use the new guard API and its
+already-lazy field/detail overload.
+See [Choosing a Result entry point](../api_reference/trellis-api-core.md#choosing-a-result-entry-point).
 
 ### Non-generic Result removed (ADR-005)
 

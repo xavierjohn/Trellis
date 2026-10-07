@@ -262,7 +262,7 @@ static Task<Result<Unit>> SendPromotionNotificationAsync(string email) =>
     Task.FromResult(Result.Ok());
 
 string message = await GetCustomerByIdAsync(1)
-    .ToResultAsync(new Error.NotFound(ResourceRef.For("Customer", 1)) { Detail = "Customer not found." })
+    .EnsureNotNullAsync(new Error.NotFound(ResourceRef.For("Customer", 1)) { Detail = "Customer not found." })
     .EnsureAsync(customer => customer.CanBePromoted, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Customer cannot be promoted." })
     .TapAsync(customer => customer.PromoteAsync())
     .BindAsync(customer => SendPromotionNotificationAsync(customer.Email))

@@ -66,7 +66,7 @@
 ///     // Factory method with validation
 ///     public static Result&lt;Address&gt; TryCreate(
 ///         string street, string city, string state, string postalCode) =>
-///         (street, city, state, postalCode).ToResult()
+///         Result.Ok((street, city, state, postalCode))
 ///             .Ensure(x => !string.IsNullOrWhiteSpace(x.street), 
 ///                    Error.InvalidInput.ForField(field: "street", code: "invalid", detail: "Street is required"))
 ///             .Ensure(x => !string.IsNullOrWhiteSpace(x.city),
@@ -112,7 +112,7 @@
 ///     }
 ///     
 ///     public static Result&lt;Money&gt; TryCreate(decimal amount, string currency = "USD") =>
-///         (amount, currency).ToResult()
+///         Result.Ok((amount, currency))
 ///             .Ensure(x => x.amount >= 0, Error.InvalidInput.ForField(field: "amount", code: "invalid", detail: "Amount cannot be negative"))
 ///             .Ensure(x => x.currency.Length == 3, 
 ///                    Error.InvalidInput.ForField(field: "currency", code: "invalid", detail: "Currency must be 3-letter ISO code"))

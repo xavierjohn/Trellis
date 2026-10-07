@@ -103,7 +103,7 @@ public sealed class WeeklySchedule : ValueObject
     }
 
     private static Result<TimeZoneInfo> ValidateTimeZone(string? id, InputPointer field) =>
-        id.ToResult(() => Error.InvalidInput.ForField(
+        Result.EnsureNotNull(id, () => Error.InvalidInput.ForField(
                 field: field, code: ValidationCodes.ValueNotNull, detail: "Time zone is required."))
             .Ensure(value => !string.IsNullOrWhiteSpace(value), _ => Error.InvalidInput.ForField(
                 field: field, code: ValidationCodes.ValueNotEmpty, detail: "Time zone must not be empty."))
@@ -112,13 +112,13 @@ public sealed class WeeklySchedule : ValueObject
                 var zone = TimeZoneInfo.TryFindSystemTimeZoneById(value.Trim(), out var resolved) && resolved.HasIanaId
                     ? resolved
                     : null;
-                return zone.ToResult(() => Error.InvalidInput.ForField(
+                return Result.EnsureNotNull(zone, () => Error.InvalidInput.ForField(
                     field: field, code: ValidationCodes.StringTimeZoneIana,
                     detail: "Time zone must be an IANA identifier available on this system."));
             });
 
     private static Result<WeeklyPeriod[]> ValidatePeriods(IReadOnlyList<WeeklyPeriod>? periods, InputPointer field) =>
-        periods.ToResult(() => Error.InvalidInput.ForField(
+        Result.EnsureNotNull(periods, () => Error.InvalidInput.ForField(
                 field: field, code: ValidationCodes.ValueNotNull, detail: "Periods are required; use an empty collection for an always-closed schedule."))
             .Map(values => values.ToArray())
             .Check(snapshot => snapshot.Select((period, index) =>

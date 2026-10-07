@@ -73,7 +73,9 @@ composition; task faults and cancellation propagate.
 `Result.EnsureNotNull(value, () => Error.InvalidInput.Required(pointer, detail))`
 for a location-aware lazy guard. String field names may be null/empty to target the root;
 guards reject malformed full pointers only when the value is missing.
-Existing nullable `ToResult` APIs remain available.
+Core's nullable `ToResult` APIs and universal no-argument lift are removed. Use
+these guards for required values, `Result.Ok(value)` for deliberate success wrapping,
+and `Maybe<T>.ToResult(error)` for ordinary absence becoming a failure.
 
 ## Typed pagination
 

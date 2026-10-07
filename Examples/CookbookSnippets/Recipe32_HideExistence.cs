@@ -36,7 +36,7 @@ public sealed record GetIncidentQuery(IncidentId Id)
     public Trellis.IResult Authorize(Actor actor, Incident incident) =>
         Result.Ensure(
             incident.AssigneeId == actor.Id || actor.HasPermission("incidents:read-any"),
-            new Error.Forbidden("incidents.read-denied"));
+            static () => new Error.Forbidden("incidents.read-denied"));
 }
 
 public sealed class GetIncidentHandler(IAuthorizedResource<GetIncidentQuery, Incident> authorized)

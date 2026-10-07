@@ -28,7 +28,7 @@ public class DomainDrivenDesignSamplesTests
             throw new NotImplementedException();
 
         public static Result<CustomerId> TryCreate(Guid? value) =>
-            value.ToResult(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID cannot be empty" })
+            Result.EnsureNotNull(value, () => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID cannot be empty" })
                 .Ensure(v => v != Guid.Empty, _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Customer ID cannot be empty" })
                 .Map(v => new CustomerId(v));
     }
@@ -48,7 +48,7 @@ public class DomainDrivenDesignSamplesTests
             throw new NotImplementedException();
 
         public static Result<OrderId> TryCreate(Guid? value) =>
-            value.ToResult(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Order ID cannot be empty" })
+            Result.EnsureNotNull(value, () => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Order ID cannot be empty" })
                 .Ensure(v => v != Guid.Empty, _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Order ID cannot be empty" })
                 .Map(v => new OrderId(v));
     }
@@ -58,7 +58,7 @@ public class DomainDrivenDesignSamplesTests
         private ProductId(string value) : base(value) { }
 
         public static Result<ProductId> TryCreate(string? value, string? fieldName = null) =>
-            value.ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productId"), ValidationCodes.ValueNotNull) { Detail = "Product ID cannot be empty" })))
+            Result.EnsureNotNull(value, () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productId"), ValidationCodes.ValueNotNull) { Detail = "Product ID cannot be empty" })))
                 .Ensure(v => !string.IsNullOrWhiteSpace(v), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "productId"), ValidationCodes.ValueNotEmpty) { Detail = "Product ID cannot be empty" })))
                 .Map(v => new ProductId(v));
     }
@@ -69,7 +69,7 @@ public class DomainDrivenDesignSamplesTests
         private EmailAddress(string value) : base(value) { }
 
         public static Result<EmailAddress> TryCreate(string? value, string? fieldName = null) =>
-            value.ToResult(() => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.ValueNotNull) { Detail = "Email cannot be empty" })))
+            Result.EnsureNotNull(value, () => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.ValueNotNull) { Detail = "Email cannot be empty" })))
                 .Ensure(v => !string.IsNullOrWhiteSpace(v), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.ValueNotEmpty) { Detail = "Email cannot be empty" })))
                 .Ensure(v => v.Contains('@'), _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(fieldName ?? "email"), ValidationCodes.StringEmail) { Detail = "Email must contain @" })))
                 .Map(v => new EmailAddress(v));
@@ -92,7 +92,7 @@ public class DomainDrivenDesignSamplesTests
         }
 
         public static Result<Customer> TryCreate(string name, EmailAddress email) =>
-            name.ToResult()
+            Result.Ok(name)
                 .Ensure(n => !string.IsNullOrWhiteSpace(n),
                        _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" })
                 .Map(n => new Customer(CustomerId.NewUnique(), n, email));
@@ -101,14 +101,14 @@ public class DomainDrivenDesignSamplesTests
             TryCreate(name, email).GetValueOrThrow();
 
         public Result<Customer> UpdateName(string newName) =>
-            newName.ToResult()
+            Result.Ok(newName)
                 .Ensure(n => !string.IsNullOrWhiteSpace(n),
                        _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" })
                 .Tap(n => Name = n)
                 .Map(_ => this);
 
         public Result<Customer> UpdateEmail(EmailAddress newEmail) =>
-            newEmail.ToResult()
+            Result.Ok(newEmail)
                 .Tap(e => Email = e)
                 .Map(_ => this);
     }
@@ -235,7 +235,7 @@ public class DomainDrivenDesignSamplesTests
             string state,
             string postalCode,
             string country) =>
-            (street, city, state, postalCode, country).ToResult()
+            Result.Ok((street, city, state, postalCode, country))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x.street),
                        _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(street)), ValidationCodes.ValueNotEmpty) { Detail = "Street is required" })))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x.city),
@@ -315,7 +315,7 @@ public class DomainDrivenDesignSamplesTests
         public static Result<Temperature> TryCreate(decimal value, string? fieldName = null)
         {
             var field = fieldName ?? "temperature";
-            return value.ToResult()
+            return Result.Ok(value)
                 .Ensure(v => v >= -273.15m,
                        _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Temperature cannot be below absolute zero" })))
                 .Ensure(v => v <= 1_000_000m,
@@ -429,7 +429,7 @@ public class DomainDrivenDesignSamplesTests
         }
 
         public static Result<Money> TryCreate(decimal amount, string currency = "USD") =>
-            (amount, currency).ToResult()
+            Result.Ok((amount, currency))
                 .Ensure(x => x.amount >= 0,
                        _ => new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(nameof(amount)), ValidationCodes.ValueGreaterThanOrEqual) { Detail = "Amount cannot be negative" })))
                 .Ensure(x => !string.IsNullOrWhiteSpace(x.currency),
@@ -642,14 +642,14 @@ public class DomainDrivenDesignSamplesTests
         }
 
         public static Result<Order> TryCreate(CustomerId customerId) =>
-            customerId.ToResult()
+            Result.Ok(customerId)
                 .Map(cid => new Order(OrderId.NewUnique(), cid));
 
         public static Order Create(CustomerId customerId) =>
             TryCreate(customerId).GetValueOrThrow();
 
         public Result<Order> AddLine(ProductId productId, string productName, Money price, int quantity) =>
-            this.ToResult()
+            Result.Ok(this)
                 .Ensure(_ => Status == OrderStatus.Draft,
                        new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Can only add items to draft orders" })
                 .Ensure(_ => quantity > 0,
@@ -674,7 +674,7 @@ public class DomainDrivenDesignSamplesTests
                 });
 
         public Result<Order> RemoveLine(ProductId productId) =>
-            this.ToResult()
+            Result.Ok(this)
                 .Ensure(_ => Status == OrderStatus.Draft,
                        new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Can only remove items from draft orders" })
                 .Ensure(_ => _lines.Any(l => l.ProductId == productId),
@@ -688,7 +688,7 @@ public class DomainDrivenDesignSamplesTests
                 });
 
         public Result<Order> Submit() =>
-            this.ToResult()
+            Result.Ok(this)
                 .Ensure(_ => Status == OrderStatus.Draft,
                        new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Can only submit draft orders" })
                 .Ensure(_ => Lines.Count > 0,
@@ -703,7 +703,7 @@ public class DomainDrivenDesignSamplesTests
                 });
 
         public Result<Order> Ship() =>
-            this.ToResult()
+            Result.Ok(this)
                 .Ensure(_ => Status == OrderStatus.Submitted,
                        new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Can only ship submitted orders" })
                 .Tap(_ =>
@@ -714,7 +714,7 @@ public class DomainDrivenDesignSamplesTests
                 });
 
         public Result<Order> Cancel(string reason) =>
-            this.ToResult()
+            Result.Ok(this)
                 .Ensure(_ => Status is OrderStatus.Draft or OrderStatus.Submitted,
                        new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Can only cancel draft or submitted orders" })
                 .Ensure(_ => !string.IsNullOrWhiteSpace(reason),

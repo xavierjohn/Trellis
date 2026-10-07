@@ -64,7 +64,7 @@ public class TraverseAllIndexedTests
         var owner = InputPointer.Root.AppendProperty("items");
 
         var result = items.TraverseAll((value, index) =>
-            value.ToResult(() => Error.InvalidInput.ForField(
+            Result.EnsureNotNull(value, () => Error.InvalidInput.ForField(
                 field: owner.AppendIndex(index), code: ValidationCodes.ValueNotNull)));
 
         var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;

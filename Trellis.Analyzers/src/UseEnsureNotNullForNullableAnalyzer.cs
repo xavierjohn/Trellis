@@ -8,20 +8,20 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
 
 /// <summary>
-/// TRLS066: Suggests <c>value.ToResult(error)</c> where <c>Result.Ensure(value is not null, error)</c>
+/// TRLS066: Suggests <c>Result.EnsureNotNull(value, error)</c> where <c>Result.Ensure(value is not null, error)</c>
 /// guards a nullable reference or <see cref="System.Nullable{T}"/> value.
 /// <para>
 /// The two are not interchangeable in type: <c>Result.Ensure</c> yields <c>Result&lt;Unit&gt;</c> and
-/// <c>ToResult</c> yields <c>Result&lt;T&gt;</c> carrying the non-null value. Reporting is therefore separate from
+/// <c>Result.EnsureNotNull</c> yields <c>Result&lt;T&gt;</c> carrying the non-null value. Reporting is therefore separate from
 /// fixing: the rule reports every pure null test over a nullable value, and
-/// <see cref="UseToResultForNullableCodeFixProvider"/> offers a rewrite only where it can prove the payload is discarded.
+/// <see cref="UseEnsureNotNullForNullableCodeFixProvider"/> offers a rewrite only where it can prove the payload is discarded.
 /// </para>
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class UseToResultForNullableAnalyzer : DiagnosticAnalyzer
+public sealed class UseEnsureNotNullForNullableAnalyzer : DiagnosticAnalyzer
 {
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        [DiagnosticDescriptors.UseToResultForNullable];
+        [DiagnosticDescriptors.UseEnsureNotNullForNullable];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -50,7 +50,7 @@ public sealed class UseToResultForNullableAnalyzer : DiagnosticAnalyzer
         if (error is not null && IsConditionalError(error))
             return;
 
-        context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.UseToResultForNullable, syntax.GetLocation()));
+        context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.UseEnsureNotNullForNullable, syntax.GetLocation()));
     }
 
     internal static bool IsResultEnsureWithFlag(IInvocationOperation invocation) =>
@@ -90,7 +90,7 @@ public sealed class UseToResultForNullableAnalyzer : DiagnosticAnalyzer
     }
 
     // A user-defined != on a reference type can carry its own sentinel semantics or side effects, which the reference-null check in
-    // ToResult would drop. string's operator is null-safe, and a lifted operator on Nullable<T> compares against null by HasValue.
+    // EnsureNotNull would drop. string's operator is null-safe, and a lifted operator on Nullable<T> compares against null by HasValue.
     private static bool IsIntrinsicNullComparison(IBinaryOperation binary) =>
         binary.OperatorMethod is null
         || binary.IsLifted

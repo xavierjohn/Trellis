@@ -2,6 +2,11 @@
 
 This document provides detailed examples and patterns for using Primitive Value Objects with source code generation in domain-driven design applications.
 
+Repository conversions below assume `Maybe<T>` or `Task<Maybe<T>>` results.
+For a repository returning raw nullables, use `Result.EnsureNotNull(value, error)`
+or `task.EnsureNotNullAsync(error)` instead. Core's universal no-argument `ToResult`
+lift is removed; deliberate success wrapping uses `Result.Ok(value)`.
+
 ## Table of Contents
 
 - [RequiredString Examples](#requiredstring-examples)
@@ -228,11 +233,11 @@ public class Order : Entity<OrderId>
         OrderNumber orderNumber,
         CustomerName customerName,
         ProductSKU productSKU) =>
-        new Order(
+        Result.Ok(new Order(
             OrderId.NewUniqueV7(),
             orderNumber,
             customerName,
-            productSKU).ToResult();
+            productSKU));
     
     // Factory from strings
     public static Result<Order> TryCreate(
@@ -291,7 +296,7 @@ public class User : Entity<UserId>
         EmailAddress email,
         string firstName,
         string lastName) =>
-        new User(UserId.NewUniqueV7(), email, firstName, lastName).ToResult();
+        Result.Ok(new User(UserId.NewUniqueV7(), email, firstName, lastName));
 }
 
 // Creating new IDs
@@ -367,13 +372,13 @@ public class Order : Aggregate<OrderId>
     }
     
     public static Result<Order> TryCreate() =>
-        new Order(OrderId.NewUniqueV7()).ToResult();
+        Result.Ok(new Order(OrderId.NewUniqueV7()));
     
     public Result<Order> AddLine(ProductId productId, int quantity, decimal price)
     {
         var line = new OrderLine(OrderLineId.NewUniqueV7(), productId, quantity, price);
         _lines.Add(line);
-        return this.ToResult();
+        return Result.Ok(this);
     }
 }
 
@@ -423,7 +428,7 @@ public class EntityService
         // Method 3: TryParse (returns bool)
         if (EntityId.TryParse(input, null, out var result3))
         {
-            return result3.ToResult();
+            return Result.Ok(result3);
         }
         
         return Error.InvalidInput.ForField(field: "entityId", code: ValidationCodes.FormatGuid, detail: "Invalid entity ID");
@@ -489,7 +494,7 @@ public class User : Entity<UserId>
         string lastName) =>
         EmailAddress.TryCreate(email)
             .Bind(validEmail =>
-                new User(UserId.NewUniqueV7(), validEmail, firstName, lastName).ToResult());
+                Result.Ok(new User(UserId.NewUniqueV7(), validEmail, firstName, lastName)));
     
     public Result<User> UpdateEmail(string newEmail) =>
         EmailAddress.TryCreate(newEmail)
@@ -758,8 +763,8 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
         var field = !string.IsNullOrEmpty(fieldName)
             ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
             : "employeeId";
-        return requiredGuidOrNothing
-            .ToResult(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) { Detail = "Employee Id cannot be null." })))
+        return Result.EnsureNotNull(requiredGuidOrNothing,
+            new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) { Detail = "Employee Id cannot be null." })))
             .Ensure(x => x != Guid.Empty, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotDefault) { Detail = "Employee Id cannot be empty." })))
             .Map(guid => new EmployeeId(guid));
      }
@@ -771,8 +776,8 @@ public partial class EmployeeId : RequiredGuid, IParsable<EmployeeId>, ITryCreat
             ? (fieldName.Length == 1 ? fieldName.ToLowerInvariant() : char.ToLowerInvariant(fieldName[0]) + fieldName[1..])
             : "employeeId";
         Guid parsedGuid = Guid.Empty;
-        return stringOrNull
-            .ToResult(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) { Detail = "Employee Id cannot be null." })))
+        return Result.EnsureNotNull(stringOrNull,
+            new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.ValueNotNull) { Detail = "Employee Id cannot be null." })))
             .Ensure(
                 x => Guid.TryParse(x, out parsedGuid), 
                 new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty(field), ValidationCodes.FormatGuid) { Detail = "Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)" })))

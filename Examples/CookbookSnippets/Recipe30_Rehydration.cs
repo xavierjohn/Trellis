@@ -91,8 +91,8 @@ public interface ILegacyContactRepository
 public sealed class LegacyContactRepository(IReadOnlyList<ContactRow> rows) : ILegacyContactRepository
 {
     public Task<Result<Contact>> FindByIdAsync(ContactId id, CancellationToken ct) =>
-        rows.FirstOrDefault(r => r.Id == id.Value)
-            .ToResult(() => new Error.NotFound(ResourceRef.For<Contact>(id)))
+        Result.EnsureNotNull(rows.FirstOrDefault(r => r.Id == id.Value),
+                () => new Error.NotFound(ResourceRef.For<Contact>(id)))
             .Bind(row => Result.Combine(
                     ContactId.TryCreate(row.Id, "Id"),
                     FirstName.TryCreate(row.FirstName, "FirstName"),
