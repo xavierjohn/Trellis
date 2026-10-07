@@ -43,7 +43,8 @@ public static partial class Result
     /// <param name="fieldName">Property name or full JSON Pointer; null or empty targets the root.</param>
     /// <param name="detail">Optional human-readable violation detail.</param>
     /// <returns>The same non-null value or an <see cref="Error.InvalidInput"/> containing one required-field violation.</returns>
-    public static Result<T> EnsureNotNull<T>(T? value, string fieldName, string? detail = null) where T : class
+    /// <exception cref="ArgumentException">The value is null and the field name is a malformed JSON Pointer.</exception>
+    public static Result<T> EnsureNotNull<T>(T? value, string? fieldName, string? detail = null) where T : class
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureNotNull));
         return value is not null ? Ok(value) : Fail<T>(Error.InvalidInput.Required(fieldName, detail));
@@ -88,7 +89,8 @@ public static partial class Result
     /// <param name="fieldName">Property name or full JSON Pointer; null or empty targets the root.</param>
     /// <param name="detail">Optional human-readable violation detail.</param>
     /// <returns>The unwrapped value or an <see cref="Error.InvalidInput"/> containing one required-field violation.</returns>
-    public static Result<T> EnsureNotNull<T>(T? value, string fieldName, string? detail = null) where T : struct
+    /// <exception cref="ArgumentException">The value is null and the field name is a malformed JSON Pointer.</exception>
+    public static Result<T> EnsureNotNull<T>(T? value, string? fieldName, string? detail = null) where T : struct
     {
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(EnsureNotNull));
         return value.HasValue ? Ok(value.Value) : Fail<T>(Error.InvalidInput.Required(fieldName, detail));
@@ -116,8 +118,8 @@ public static partial class EnsureExtensionsAsync
     }
 
     /// <summary>Awaits a nullable reference once, creating a required-field error only for a null result.</summary>
-    /// <remarks>The field name and detail follow <see cref="Error.InvalidInput.Required"/>. Source faults and cancellation propagate.</remarks>
-    public static async Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, string fieldName, string? detail = null) where T : class
+    /// <remarks>The field name and detail follow <see cref="Error.InvalidInput.Required(string, string)"/>. Source faults and cancellation propagate.</remarks>
+    public static async Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, string? fieldName, string? detail = null) where T : class
     {
         ArgumentNullException.ThrowIfNull(task);
         return Result.EnsureNotNull(await task.ConfigureAwait(false), fieldName, detail);
@@ -142,8 +144,8 @@ public static partial class EnsureExtensionsAsync
     }
 
     /// <summary>Awaits a nullable struct once, creating a required-field error only for a null result.</summary>
-    /// <remarks>The field name and detail follow <see cref="Error.InvalidInput.Required"/>. Source faults and cancellation propagate.</remarks>
-    public static async Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, string fieldName, string? detail = null) where T : struct
+    /// <remarks>The field name and detail follow <see cref="Error.InvalidInput.Required(string, string)"/>. Source faults and cancellation propagate.</remarks>
+    public static async Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, string? fieldName, string? detail = null) where T : struct
     {
         ArgumentNullException.ThrowIfNull(task);
         return Result.EnsureNotNull(await task.ConfigureAwait(false), fieldName, detail);
@@ -164,8 +166,8 @@ public static partial class EnsureExtensionsAsync
     }
 
     /// <summary>Awaits a nullable reference once, creating a required-field error only for a null result.</summary>
-    /// <remarks>The field name and detail follow <see cref="Error.InvalidInput.Required"/>. Source faults and cancellation propagate.</remarks>
-    public static async ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, string fieldName, string? detail = null) where T : class =>
+    /// <remarks>The field name and detail follow <see cref="Error.InvalidInput.Required(string, string)"/>. Source faults and cancellation propagate.</remarks>
+    public static async ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, string? fieldName, string? detail = null) where T : class =>
         Result.EnsureNotNull(await task.ConfigureAwait(false), fieldName, detail);
 
     /// <summary>Awaits a nullable struct once, returning its unwrapped value or the supplied error.</summary>
@@ -183,7 +185,7 @@ public static partial class EnsureExtensionsAsync
     }
 
     /// <summary>Awaits a nullable struct once, creating a required-field error only for a null result.</summary>
-    /// <remarks>The field name and detail follow <see cref="Error.InvalidInput.Required"/>. Source faults and cancellation propagate.</remarks>
-    public static async ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, string fieldName, string? detail = null) where T : struct =>
+    /// <remarks>The field name and detail follow <see cref="Error.InvalidInput.Required(string, string)"/>. Source faults and cancellation propagate.</remarks>
+    public static async ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, string? fieldName, string? detail = null) where T : struct =>
         Result.EnsureNotNull(await task.ConfigureAwait(false), fieldName, detail);
 }

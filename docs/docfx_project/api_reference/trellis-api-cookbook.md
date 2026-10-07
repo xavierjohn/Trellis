@@ -1623,7 +1623,10 @@ where absence means not found rather than invalid input, choose a lazy
 `Error.NotFound` factory instead of a required-field violation.
 
 Use `Error.InvalidInput.Required(fieldName, detail)` for conditional requiredness or
-collection-element rules that are not a plain null check. Composite validators can use
+collection-element rules that are not a plain null check. Its `InputPointer` form
+preserves input location and can be used lazily:
+`Result.EnsureNotNull(value, () => Error.InvalidInput.Required(inputPointer, detail))`.
+Composite validators can use
 `FieldViolation.Required(fieldName, detail)` or `FieldViolation.Required(inputPointer, detail)`
 to retain an indexed path and input location. No existing nullable `ToResult` API or
 TRLS066 code fix is removed or changed by these guards.

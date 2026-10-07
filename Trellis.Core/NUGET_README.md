@@ -71,10 +71,12 @@ when null. Use `task.EnsureNotNullAsync(...)` for `Task<T?>` / `ValueTask<T?>`,
 then compose with async methods. Source faults and cancellation propagate.
 
 `Error.InvalidInput.Required(fieldName, detail)` names the
-`ValidationCodes.ValueNotNull` error. `FieldViolation.Required(fieldName, detail)` or
-`FieldViolation.Required(inputPointer, detail)` serves composite/indexed validators;
-the pointer form preserves input location. Existing nullable `ToResult` APIs remain
-available.
+`ValidationCodes.ValueNotNull` error. Both it and `FieldViolation.Required` accept
+string field names or an `InputPointer`, preserving the pointer's input location. Use
+`Result.EnsureNotNull(value, () => Error.InvalidInput.Required(pointer, detail))`
+for a location-aware lazy guard. Null/empty string field names target the root;
+guards reject malformed full pointers only when the value is missing. Existing nullable `ToResult`
+APIs remain available.
 
 ## Optional: API guidance for coding assistants
 

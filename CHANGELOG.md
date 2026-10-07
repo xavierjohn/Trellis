@@ -16,9 +16,12 @@ twelve `EnsureNotNullAsync` forms support Task and ValueTask nullable receivers.
 Source faults/cancellation propagate and factories are validated before awaiting.
 
 `Error.InvalidInput.Required` and `FieldViolation.Required` name the standard
-`ValidationCodes.ValueNotNull` failure, with a pointer form preserving composite
-validator locations. Field/detail guards create errors and validation metrics only
-on null; blank strings and default scalar values still succeed. Existing nullable
+`ValidationCodes.ValueNotNull` failure; both accept a pointer preserving input
+location. Nullable string field names target the root, and malformed full pointers
+are rejected only on missing-value paths. Field/detail guards create errors and
+validation metrics only on null; blank strings and default scalar values still succeed.
+Compiler regressions pin rejection of inferred non-nullable structs, including
+Maybe and Result wrappers, across all sync and async forms. Existing nullable
 `ToResult` APIs and the TRLS066 code fix remain unchanged.
 
 ### Fixed — reliable HTTP replay variables (TFR-20)

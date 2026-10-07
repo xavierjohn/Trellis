@@ -68,8 +68,11 @@ For nullable queries, use `task.EnsureNotNullAsync(...)` and continue with async
 composition; task faults and cancellation propagate.
 
 `Error.InvalidInput.Required(fieldName, detail)` names the standard
-`ValidationCodes.ValueNotNull` error. `FieldViolation.Required` also accepts an
-`InputPointer` for composite/indexed validators, preserving its location.
+`ValidationCodes.ValueNotNull` error. Both it and `FieldViolation.Required` accept an
+`InputPointer`, preserving its location. Use
+`Result.EnsureNotNull(value, () => Error.InvalidInput.Required(pointer, detail))`
+for a location-aware lazy guard. String field names may be null/empty to target the root;
+guards reject malformed full pointers only when the value is missing.
 Existing nullable `ToResult` APIs remain available.
 
 ## Typed pagination

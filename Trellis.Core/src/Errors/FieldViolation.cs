@@ -52,7 +52,7 @@ public sealed record FieldViolation(
     /// <param name="fieldName">Property name or full JSON Pointer; null or empty targets the root.</param>
     /// <param name="detail">Optional human-readable violation detail.</param>
     /// <returns>A required-field violation without structured arguments.</returns>
-    public static FieldViolation Required(string fieldName, string? detail = null) =>
+    public static FieldViolation Required(string? fieldName, string? detail = null) =>
         Required(InputPointer.ForProperty(fieldName ?? string.Empty), detail);
 
     /// <summary>Creates a required-field violation preserving the supplied pointer and input location.</summary>

@@ -261,10 +261,10 @@ Static factory and helper surface for `Result<TValue>`. There is no non-generic 
 | `public static Task<Result<Unit>> EnsureAsync(Func<Task<bool>> predicate, Func<Error> errorFactory)` | Awaits the predicate once; invokes the synchronous error factory only after a false result. |
 | `public static Result<T> EnsureNotNull<T>(T? value, Error error) where T : class` | Carries the same non-null reference; null produces the supplied failure. |
 | `public static Result<T> EnsureNotNull<T>(T? value, Func<Error> errorFactory) where T : class` | Reference guard with lazy error creation. |
-| `public static Result<T> EnsureNotNull<T>(T? value, string fieldName, string? detail = null) where T : class` | Reference guard; creates `Error.InvalidInput.Required(fieldName, detail)` only when null. |
+| `public static Result<T> EnsureNotNull<T>(T? value, string? fieldName, string? detail = null) where T : class` | Reference guard; creates `Error.InvalidInput.Required(fieldName, detail)` only when null. |
 | `public static Result<T> EnsureNotNull<T>(T? value, Error error) where T : struct` | Unwraps `Nullable<T>`; null produces the supplied failure. |
 | `public static Result<T> EnsureNotNull<T>(T? value, Func<Error> errorFactory) where T : struct` | Nullable-struct guard with lazy error creation. |
-| `public static Result<T> EnsureNotNull<T>(T? value, string fieldName, string? detail = null) where T : struct` | Nullable-struct guard; creates `Error.InvalidInput.Required(fieldName, detail)` only when null. |
+| `public static Result<T> EnsureNotNull<T>(T? value, string? fieldName, string? detail = null) where T : struct` | Nullable-struct guard; creates `Error.InvalidInput.Required(fieldName, detail)` only when null. |
 | `public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)` | Converts thrown exceptions to failures |
 | `public static Task<Result<T>> TryAsync<T>(Func<Task<T>> func, Func<Exception, Error>? map = null)` | Async exception capture |
 | `public static Result<Unit> Try(Action work, Func<Exception, Error>? map = null)` | No-payload exception capture (returns `Result<Unit>`) |
@@ -297,10 +297,17 @@ disambiguate intentional null arguments to other forms.
 
 The field/detail forms create neither errors nor violations on success (no validation
 metric), and normalize the field only on failure. Each missing value creates exactly
-one `ValidationCodes.ValueNotNull` violation. All six guards emit an `EnsureNotNull`
+one `ValidationCodes.ValueNotNull` violation. A malformed full JSON Pointer therefore
+throws `ArgumentException` only when the value is missing; a present value does not
+validate the field. Null/empty field names target the root. All six guards emit an `EnsureNotNull`
 activity with the normal success/failure status and never set persist-on-failure.
 There is no `value.EnsureNotNull(...)` extension on arbitrary values; the existing
 `Result<T?>.EnsureNotNull(error)` remains a separate receiver-based operation.
+
+Ordinary inferred calls with a non-nullable struct, including `Maybe<T>` and
+`Result<T>`, are compile errors for every error/factory/field form, sync or async.
+The nullable-struct overload requires nullable input; do not use a null guard to
+inspect presence or success inside these wrappers.
 
 ```csharp
 string? name = "Ada";
@@ -599,7 +606,8 @@ Construct cases directly or use their **case-scoped static factories**. The base
 | --- | --- |
 | `InvalidInput` | `ForField(string code, string? field, ImmutableDictionary<string, ValidationArgValue>? args = null, string? detail = null)` |
 | `InvalidInput` | `ForField(string code, InputPointer field, ImmutableDictionary<string, ValidationArgValue>? args = null, string? detail = null)` |
-| `InvalidInput` | `Required(string fieldName, string? detail = null)` |
+| `InvalidInput` | `Required(string? fieldName, string? detail = null)` |
+| `InvalidInput` | `Required(InputPointer field, string? detail = null)` |
 | `InvalidInput` | `ForRule(string code, IReadOnlyList<InputPointer>? fields = null, ImmutableDictionary<string, ValidationArgValue>? args = null, string? detail = null)` |
 | `Conflict`, `InvariantViolation`, `Forbidden` | `For<TResource>(string code, object? id = null, string? detail = null)` and `For(string code, ResourceRef resource, string? detail = null)` |
 | `Conflict`, `InvariantViolation` | `ForReason(string code, string? detail = null)` |
@@ -617,6 +625,10 @@ no rules or args, unspecified root code, and detail on the violation, not the ro
 No default human-readable detail is invented. Use it for conditional/cross-field
 requiredness or missing collection elements even when a plain null guard does not fit.
 It shares its required-code definition with `FieldViolation.Required` below.
+The `InputPointer` overload preserves the supplied path and input location. To retain
+a route, query, header, or indexed-body location in a lazy null guard, use
+`Result.EnsureNotNull(value, () => Error.InvalidInput.Required(pointer, detail))`;
+the field/detail guard overloads still take string field names.
 
 Resource factories use `ResourceRef.For<TResource>(id)` for type naming and invariant ID formatting. The explicit-reference forms accept `ResourceRef.For("Order", id)` instead of the removed string-resource overloads, and reject a default reference or blank `Type`. Null IDs remain valid collection-level references. `ForReason` / `ForPolicy` produce resourceless errors.
 
@@ -989,7 +1001,7 @@ on the existing `FieldViolation` record:
 
 | Signature | Notes |
 | --- | --- |
-| `public static FieldViolation Required(string fieldName, string? detail = null)` | Normalizes via `InputPointer.ForProperty`; null/empty targets the root. |
+| `public static FieldViolation Required(string? fieldName, string? detail = null)` | Normalizes via `InputPointer.ForProperty`; null/empty targets the root. |
 | `public static FieldViolation Required(InputPointer field, string? detail = null)` | Preserves the supplied path and input location, including indexed body fields and named query/header parameters. |
 
 Both produce `FieldViolation.ReasonCode = ValidationCodes.ValueNotNull`, `Args = null`, and the exact
@@ -1588,16 +1600,16 @@ source exactly once with `ConfigureAwait(false)` and then calls static
 | --- | --- |
 | `public static Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, Error error) where T : class` | `Task<Result<T>>` |
 | `public static Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, Func<Error> errorFactory) where T : class` | `Task<Result<T>>` |
-| `public static Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, string fieldName, string? detail = null) where T : class` | `Task<Result<T>>` |
+| `public static Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, string? fieldName, string? detail = null) where T : class` | `Task<Result<T>>` |
 | `public static Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, Error error) where T : struct` | `Task<Result<T>>` |
 | `public static Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, Func<Error> errorFactory) where T : struct` | `Task<Result<T>>` |
-| `public static Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, string fieldName, string? detail = null) where T : struct` | `Task<Result<T>>` |
+| `public static Task<Result<T>> EnsureNotNullAsync<T>(this Task<T?> task, string? fieldName, string? detail = null) where T : struct` | `Task<Result<T>>` |
 | `public static ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, Error error) where T : class` | `ValueTask<Result<T>>` |
 | `public static ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, Func<Error> errorFactory) where T : class` | `ValueTask<Result<T>>` |
-| `public static ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, string fieldName, string? detail = null) where T : class` | `ValueTask<Result<T>>` |
+| `public static ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, string? fieldName, string? detail = null) where T : class` | `ValueTask<Result<T>>` |
 | `public static ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, Error error) where T : struct` | `ValueTask<Result<T>>` |
 | `public static ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, Func<Error> errorFactory) where T : struct` | `ValueTask<Result<T>>` |
-| `public static ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, string fieldName, string? detail = null) where T : struct` | `ValueTask<Result<T>>` |
+| `public static ValueTask<Result<T>> EnsureNotNullAsync<T>(this ValueTask<T?> task, string? fieldName, string? detail = null) where T : struct` | `ValueTask<Result<T>>` |
 
 Null Task inputs throw `ArgumentNullException` (parameter `task`). Factories are
 validated **before awaiting**, even if the source is pending, unlike the existing

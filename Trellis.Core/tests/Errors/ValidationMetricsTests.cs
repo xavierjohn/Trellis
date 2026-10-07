@@ -14,11 +14,12 @@ public class ValidationMetricsTests
         using var probe = new MeterProbe();
 
         _ = Error.InvalidInput.Required("name");
+        _ = Error.InvalidInput.Required(InputPointer.ForQuery("name"));
         _ = FieldViolation.Required("name");
         _ = FieldViolation.Required(InputPointer.ForQuery("name"));
 
-        probe.Total.Should().Be(3);
-        probe.CountFor(ValidationCodes.ValueNotNull).Should().Be(3);
+        probe.Total.Should().Be(4);
+        probe.CountFor(ValidationCodes.ValueNotNull).Should().Be(4);
         probe.ViolationKindFor(ValidationCodes.ValueNotNull).Should().Be("field");
     }
 
