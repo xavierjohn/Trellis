@@ -68,6 +68,10 @@ public class ValidationCodesTests
     [InlineData(nameof(FaultCodes.UnhandledException), FaultCodes.UnhandledException, "unhandled-exception")]
     [InlineData(nameof(FaultCodes.NotImplemented), FaultCodes.NotImplemented, "not-implemented")]
     [InlineData(nameof(FaultCodes.ConcurrentModification), FaultCodes.ConcurrentModification, "concurrent-modification")]
+    [InlineData(nameof(FaultCodes.DuplicateKey), FaultCodes.DuplicateKey, "duplicate.key")]
+    [InlineData(nameof(FaultCodes.ReferentialIntegrity), FaultCodes.ReferentialIntegrity, "referential.integrity")]
+    [InlineData(nameof(FaultCodes.RetryAborted), FaultCodes.RetryAborted, "retry.aborted")]
+    [InlineData(nameof(FaultCodes.RetryExhausted), FaultCodes.RetryExhausted, "retry.exhausted")]
     [InlineData(nameof(FaultCodes.StateMachineInvalidTransition), FaultCodes.StateMachineInvalidTransition, "state-machine.invalid-transition")]
     [InlineData(nameof(FaultCodes.HttpResponseNotSuccess), FaultCodes.HttpResponseNotSuccess, "http.response-not-success")]
     [InlineData(nameof(FaultCodes.HttpResponseNoBody), FaultCodes.HttpResponseNoBody, "http.response-no-body")]
@@ -94,11 +98,11 @@ public class ValidationCodesTests
             .Should().BeEmpty("one code means one thing, so two names for it would let producers drift apart");
 
     [Theory]
-    [InlineData("DuplicateKey", "duplicate.key")]
-    [InlineData("ReferentialIntegrity", "referential.integrity")]
-    [InlineData("RetryAborted", "retry.aborted")]
-    [InlineData("RetryExhausted", "retry.exhausted")]
-    public void FaultCodes_PersistenceFailures_ExposePublishedConstants(string name, string published)
+    [InlineData(nameof(FaultCodes.DuplicateKey))]
+    [InlineData(nameof(FaultCodes.ReferentialIntegrity))]
+    [InlineData(nameof(FaultCodes.RetryAborted))]
+    [InlineData(nameof(FaultCodes.RetryExhausted))]
+    public void FaultCodes_PersistenceFailures_ExposeCompileTimeConstants(string name)
     {
         var field = typeof(FaultCodes).GetField(name,
             BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
@@ -106,7 +110,6 @@ public class ValidationCodesTests
         field.Should().NotBeNull("{0} must be available without an EF Core dependency", name);
         field!.FieldType.Should().Be<string>();
         field.IsLiteral.Should().BeTrue("{0} must be a compile-time constant", name);
-        field.GetRawConstantValue().Should().Be(published);
     }
 
     [Fact]

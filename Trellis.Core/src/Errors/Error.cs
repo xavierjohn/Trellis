@@ -463,7 +463,7 @@ public abstract record Error
     }
 
     /// <summary>The request conflicts with the current state of the resource.</summary>
-    /// <param name="Code">Non-blank machine-readable code describing the kind of conflict (e.g. <c>"duplicate-key"</c>, <c>"invalid-state"</c>).</param>
+    /// <param name="Code">Non-blank machine-readable code describing the kind of conflict (e.g. <see cref="FaultCodes.DuplicateKey"/>, <c>"invalid-state"</c>).</param>
     /// <param name="Resource">
     /// The conflicting resource, when one is identifiable. May be <see langword="null"/> for
     /// stateless conflicts (e.g. workflow / state-machine guards, library code with no aggregate

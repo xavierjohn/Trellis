@@ -120,7 +120,7 @@ public sealed class ResponseFailureWriterResourceRefInstanceTests
     public async Task Conflict_with_resource_id_synthesizes_instance()
     {
         var ctx = NewContext(path: "/api/orders");
-        var r = Result.Fail<T>(new Error.Conflict(Resource: ResourceRef.For("Order", "ord-9"), Code: "duplicate_key"));
+        var r = Result.Fail<T>(new Error.Conflict(Resource: ResourceRef.For("Order", "ord-9"), Code: FaultCodes.DuplicateKey));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
