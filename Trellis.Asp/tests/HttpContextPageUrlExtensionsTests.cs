@@ -138,6 +138,67 @@ public sealed class HttpContextPageUrlExtensionsTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void PageUrl_Default_SharedRouteNonParameterDefaultConsumesCursor_Throws(bool reverseOrder)
+    {
+        var selected = BuildEndpoint("widgets/{id}");
+        var other = new RouteEndpoint(_ => Task.CompletedTask,
+            RoutePatternFactory.Parse("widgets/{id}", new { cursor = "next" }, null), 0,
+            new EndpointMetadataCollection(new RouteNameMetadata(RouteName)), RouteName);
+        using var services = CreateServices(reverseOrder ? [selected, other] : [other, selected]);
+        var context = CreateContext(services);
+        context.SetEndpoint(selected);
+        var builder = context.PageUrl(RouteName, (cursor, limit) =>
+            new() { ["id"] = 123, ["cursor"] = cursor.Token, ["limit"] = limit });
+        Action action = () => builder(new Cursor("next"), 2);
+
+        action.Should().Throw<InvalidOperationException>().WithMessage("*different*defaults*");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PageUrl_CustomResolver_SharedRouteNonMvcSelectorConsumesCursor_Throws(bool reverseOrder)
+    {
+        RouteEndpoint Target(string cursor) =>
+            new(_ => Task.CompletedTask,
+                RoutePatternFactory.Parse("widgets/{id}", defaults: new { cursor },
+                    parameterPolicies: null, requiredValues: new { cursor }), 0,
+                new EndpointMetadataCollection(new RouteNameMetadata(RouteName)), cursor);
+        var other = Target("next");
+        var selected = Target("later");
+        using var services = CreateServices(reverseOrder ? [selected, other] : [other, selected]);
+        var context = CreateContext(services);
+        var builder = context.PageUrl(RouteName, (cursor, limit) =>
+            new() { ["id"] = 123, ["cursor"] = cursor.Token, ["limit"] = limit }, _ => selected);
+        Action action = () => builder(new Cursor("next"), 2);
+
+        action.Should().Throw<InvalidOperationException>().WithMessage("*different*defaults*");
+    }
+
+    [Theory]
+    [InlineData("controller")]
+    [InlineData("action")]
+    [InlineData("area")]
+    public void PageUrl_CustomResolver_SharedRouteSelectorKeyWithoutRequiredValue_Throws(string key)
+    {
+        RouteEndpoint Target(string value) =>
+            new(_ => Task.CompletedTask,
+                RoutePatternFactory.Parse("widgets/{id}",
+                    new RouteValueDictionary { [key] = value }, parameterPolicies: null), 0,
+                new EndpointMetadataCollection(new RouteNameMetadata(RouteName)), value);
+        var other = Target("next");
+        var selected = Target("later");
+        using var services = CreateServices(other, selected);
+        var context = CreateContext(services);
+        var builder = context.PageUrl(RouteName, (_, _) => new() { ["id"] = 123, [key] = "next" }, _ => selected);
+        Action action = () => builder(new Cursor("next"), 2);
+
+        action.Should().Throw<InvalidOperationException>().WithMessage("*different*defaults*");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void PageUrl_CustomResolver_SharedRouteDifferentParameterPolicies_Throws(bool reverseOrder)
     {
         RouteEndpoint Target(IParameterPolicy policy) =>
@@ -174,6 +235,27 @@ public sealed class HttpContextPageUrlExtensionsTests
         Action action = () => builder(new Cursor("next"), 2);
 
         action.Should().Throw<InvalidOperationException>().WithMessage("*different*required values*");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PageUrl_CustomResolver_SharedRouteDifferentNonParameterValues_GeneratesSamePath(bool reverseOrder)
+    {
+        RouteEndpoint Target(string controller) =>
+            new(_ => Task.CompletedTask,
+                RoutePatternFactory.Parse("widgets/{id}", defaults: new { controller, action = "List" },
+                    parameterPolicies: null, requiredValues: new { controller, action = "List" }), 0,
+                new EndpointMetadataCollection(new RouteNameMetadata(RouteName)), controller);
+        var other = Target("First");
+        var selected = Target("Second");
+        using var services = CreateServices(reverseOrder ? [other, selected] : [selected, other]);
+        var context = CreateContext(services);
+        context.Request.RouteValues["controller"] = "First";
+        context.Request.RouteValues["action"] = "List";
+
+        context.PageUrl(RouteName, (_, _) => new() { ["id"] = 123 }, _ => selected)(new Cursor("next"), 2)
+            .Should().Be("https://example.com:8443/gateway/widgets/123");
     }
 
     [Theory]

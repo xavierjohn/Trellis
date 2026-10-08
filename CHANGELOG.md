@@ -16,13 +16,18 @@ Versioned hosts import `Trellis.Asp` and enable `UseVersionedPageUrls()` once th
 `Trellis.Asp.ApiVersioning.HttpContextPageUrlExtensions` to
 `Trellis.Asp.HttpContextPaginationExtensions`. This is an intentional alpha source
 and binary break; no duplicate implicit extensions or compatibility shim remain.
+Installing the optional package or calling `AddApiVersioning()` alone does not enable
+the pagination policy. Without it, links use unversioned routing without a warning.
 
 Typed `ApiVersion` pin syntax and Location behavior are unchanged. The optional,
 host-local pagination policy preserves shared-route selection, mapped version checks,
 consumer overrides, ambient segment routing, and explicit segment-pin rejection.
 Core ASP and ServiceDefaults acquire no versioning-SDK dependency.
-Shared pagination names also require matching required route values and parameter
+Shared pagination names also require matching defaults, required values, and parameter
 policies, preventing link generation from falling through to a different destination.
+Non-URL MVC selector metadata may differ, so differently named attribute-routed
+controllers remain supported. Other non-template defaults remain guarded because
+they can silently suppress pagination query values such as the cursor.
 
 ### Breaking — guarded actor-handler entry points
 

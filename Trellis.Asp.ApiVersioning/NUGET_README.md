@@ -40,7 +40,7 @@ as the `nextUrlBuilder` or direction-aware `urlBuilder`.
 that namespace and enable the policy in versioned hosts. Typed-pin calls and Location
 setup remain unchanged. Explicit pagination pins require no host pagination policy.
 
-Location targets must be uniquely addressable. `PageUrl` supports shared names across versioned controllers with matching route templates, defaults, required values, and parameter policies: self-pagination uses the active endpoint; cross-route links and pins select a uniquely mapped version. Missing or genuinely ambiguous destinations fail explicitly. Location helpers support URL-segment pins; explicit `PageUrl` pins intentionally do not.
+Location targets must be uniquely addressable. `PageUrl` supports shared names across versioned controllers with matching route templates, defaults, required values, and parameter policies; non-URL MVC selector metadata may differ, but other defaults stay guarded because they can suppress query values. Self-pagination uses the active endpoint; cross-route links and pins select a uniquely mapped version. Missing or genuinely ambiguous destinations fail explicitly. Location helpers support URL-segment pins; explicit `PageUrl` pins intentionally do not.
 
 ## Documentation
 

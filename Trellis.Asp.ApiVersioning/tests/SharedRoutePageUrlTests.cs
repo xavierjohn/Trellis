@@ -17,6 +17,8 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Trellis.Asp;
+using NamedV1Controller = SharedRoutes.v2026_11_12.LegacyWidgetsController;
+using NamedV2Controller = SharedRoutes.v2026_12_01.CurrentWidgetsController;
 using V1Controller = SharedRoutes.v2026_11_12.WidgetsController;
 using V2Controller = SharedRoutes.v2026_12_01.WidgetsController;
 
@@ -25,6 +27,47 @@ public sealed class SharedRoutePageUrlTests
     private const string V1 = "2026-11-12";
     private const string V2 = "2026-12-01";
     private const string RouteName = "Shared_Widgets_List";
+
+    [Theory]
+    [InlineData(V1, false)]
+    [InlineData(V2, false)]
+    [InlineData(V1, true)]
+    [InlineData(V2, true)]
+    public async Task PageUrl_DifferentControllerNames_SharedRoutesProduceFollowableLinks(
+        string version, bool reverseOrder)
+    {
+        using var host = CreateHost(reverseOrder, differentControllerNames: true);
+        using var client = host.GetTestClient();
+        host.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .Where(endpoint => endpoint.Metadata.GetMetadata<RouteNameMetadata>()?.RouteName == RouteName)
+            .Select(endpoint => endpoint.Metadata.GetMetadata<ControllerActionDescriptor>()!.ControllerName)
+            .Should().OnlyHaveUniqueItems();
+        (string Path, bool Pin)[] scenarios =
+        [
+            ("widgets", false), ("widgets", true),
+            ("directional", false), ("directional", true),
+            ("source", false)
+        ];
+        foreach (var (path, pin) in scenarios)
+        {
+            var expected = pin ? version == V1 ? V2 : V1 : version;
+            var query = pin ? $"&pin={expected}" : string.Empty;
+            using var response = await client.GetAsync(
+                $"/shared-route/{path}?api-version={version}{query}", TestContext.Current.CancellationToken);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            using var json = JsonDocument.Parse(
+                await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            var next = json.RootElement.GetProperty("next").GetProperty("href").GetString()!;
+            next.Should().Contain($"api-version={expected}");
+            await AssertFollowedVersion(client, next, expected);
+            if (path == "directional")
+            {
+                var previous = json.RootElement.GetProperty("previous").GetProperty("href").GetString()!;
+                await AssertFollowedVersion(client, previous, expected);
+            }
+        }
+    }
 
     [Theory]
     [InlineData(V1, false, false)]
@@ -284,21 +327,19 @@ public sealed class SharedRoutePageUrlTests
         json.RootElement.GetProperty("items")[0].GetProperty("version").GetString().Should().Be(expectedVersion);
     }
 
-    private static IHost CreateHost(bool reverseOrder)
+    private static IHost CreateHost(bool reverseOrder, bool differentControllerNames = false)
     {
-        Type[] controllers = reverseOrder
-            ? [typeof(V2Controller), typeof(V1Controller)]
+        Type[] controllers = differentControllerNames
+            ? [typeof(NamedV1Controller), typeof(NamedV2Controller)]
             : [typeof(V1Controller), typeof(V2Controller)];
+        if (reverseOrder)
+            Array.Reverse(controllers);
         var host = Host.CreateDefaultBuilder()
             .ConfigureWebHostDefaults(web => web.UseTestServer()
                 .ConfigureServices(services =>
                 {
                     services.AddTrellisAspWithScalarValidation(options => options.UseVersionedPageUrls());
-                    services.AddControllers().ConfigureApplicationPartManager(manager =>
-                    {
-                        manager.FeatureProviders.Clear();
-                        manager.FeatureProviders.Add(new OrderedControllerFeatureProvider(controllers));
-                    });
+                    var mvc = services.AddControllers();
                     services.AddApiVersioning(options =>
                     {
                         options.ApiVersionReader = ApiVersionReader.Combine(
@@ -307,6 +348,11 @@ public sealed class SharedRoutePageUrlTests
                             new UrlSegmentApiVersionReader());
                         options.DefaultApiVersion = ApiVersionParser.Default.Parse(V2);
                     }).AddMvc(options => options.Conventions.Add(new VersionByNamespaceConvention()));
+                    mvc.ConfigureApplicationPartManager(manager =>
+                    {
+                        manager.FeatureProviders.Clear();
+                        manager.FeatureProviders.Add(new OrderedControllerFeatureProvider(controllers));
+                    });
                 })
                 .Configure(app =>
                 {

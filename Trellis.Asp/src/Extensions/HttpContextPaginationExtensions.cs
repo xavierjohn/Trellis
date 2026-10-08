@@ -86,7 +86,8 @@ public static class HttpContextPaginationExtensions
                 || !HaveMatchingPatterns(pattern, routeEndpoint.RoutePattern)))
                 throw new InvalidOperationException(
                     $"PageUrl: route name '{routeName}' is ambiguous because its endpoints use different " +
-                    "route templates, defaults, required values, or parameter policies. Give these destinations distinct route names.");
+                    "route templates, defaults, required values, or parameter policies. " +
+                    "Give these destinations distinct route names; out-of-line policy objects must compare equal.");
         }
 
         return Array.AsReadOnly(candidates);
@@ -94,8 +95,8 @@ public static class HttpContextPaginationExtensions
 
     private static bool HaveMatchingPatterns(RoutePattern expected, RoutePattern actual) =>
         string.Equals(expected.RawText, actual.RawText, StringComparison.OrdinalIgnoreCase)
-        && HaveMatchingValues(expected.Defaults, actual.Defaults)
-        && HaveMatchingValues(expected.RequiredValues, actual.RequiredValues)
+        && HaveMatchingValues(expected, actual, expected.Defaults, actual.Defaults)
+        && HaveMatchingValues(expected, actual, expected.RequiredValues, actual.RequiredValues)
         && expected.ParameterPolicies.Count == actual.ParameterPolicies.Count
         && expected.ParameterPolicies.All(pair =>
             actual.ParameterPolicies.TryGetValue(pair.Key, out var policies)
@@ -105,10 +106,23 @@ public static class HttpContextPaginationExtensions
                 && Equals(policyPair.First.ParameterPolicy, policyPair.Second.ParameterPolicy)));
 
     private static bool HaveMatchingValues(
+        RoutePattern expectedPattern,
+        RoutePattern actualPattern,
         IReadOnlyDictionary<string, object?> expected,
         IReadOnlyDictionary<string, object?> actual) =>
         expected.Count == actual.Count
-        && expected.All(pair => actual.TryGetValue(pair.Key, out var value) && Equals(pair.Value, value));
+        && expected.All(pair =>
+            (IsNonUrlMvcSelector(expectedPattern, pair.Key) && IsNonUrlMvcSelector(actualPattern, pair.Key))
+            || (actual.TryGetValue(pair.Key, out var value) && Equals(pair.Value, value)));
+
+    private static bool IsNonUrlMvcSelector(RoutePattern pattern, string key) =>
+        (string.Equals(key, "controller", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(key, "action", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(key, "area", StringComparison.OrdinalIgnoreCase))
+        && !pattern.Parameters.Any(parameter => string.Equals(parameter.Name, key, StringComparison.OrdinalIgnoreCase))
+        && pattern.Defaults.TryGetValue(key, out var defaultValue)
+        && pattern.RequiredValues.TryGetValue(key, out var requiredValue)
+        && Equals(defaultValue, requiredValue);
 
     private static Endpoint ResolveDefaultTarget(PageUrlRouteContext context)
     {
