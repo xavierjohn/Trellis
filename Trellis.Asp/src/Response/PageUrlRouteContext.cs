@@ -24,7 +24,7 @@ public sealed class PageUrlRouteContext
     /// <summary>The name of the destination route.</summary>
     public string RouteName { get; }
 
-    /// <summary>Link-enabled destinations with matching templates, defaults, required values, and parameter policies.</summary>
+    /// <summary>Link-enabled destinations with equivalent URL generation, allowing non-URL MVC selector metadata to differ.</summary>
     public IReadOnlyList<Endpoint> Candidates { get; }
 
     /// <summary>

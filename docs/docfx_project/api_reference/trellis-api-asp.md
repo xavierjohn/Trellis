@@ -3,7 +3,7 @@ package: Trellis.Asp
 namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.Idempotency, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
 types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpRequestPaginationExtensions, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, RateLimiterOptionsExtensions, UseTrellisRejectionHandler, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-07
+last_verified: 2026-10-08
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring ASP.NET Core endpoints that parse pagination input or return Trellis Result, WriteOutcome or Page: response mapping, Problem Details, ETags, actors and route binding."
@@ -138,8 +138,14 @@ callback dictionaries are never mutated. Builders are request-scoped.
 
 Shared names require matching route templates, defaults, required values, and parameter
 policies so named link generation cannot fall through to a differently constrained
-destination. Inline policies compare by content; out-of-line policy objects must compare
-equal (normally the same instance). Otherwise give the destinations distinct route names.
+destination. Only MVC selector keys `controller`, `action`, and `area` may differ when
+they are not template parameters and each endpoint has a matching default/required value
+for that key. Differently named attribute-routed controllers can therefore share a
+pagination name; conventional `{controller}/{action}` differences still throw.
+Other non-template defaults remain checked: a `cursor` default can suppress an explicit
+query value and break continuation. Inline policies compare by content; out-of-line
+policy objects must compare equal (normally the same instance). Otherwise give the
+destinations distinct route names.
 
 ```csharp
 // Same expression in unversioned and versioned endpoints.

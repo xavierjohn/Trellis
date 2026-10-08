@@ -4,3 +4,8 @@ public sealed class WidgetsController : SharedRoutePagedControllerBase
 {
     protected override string Version => "2026-11-12";
 }
+
+public sealed class LegacyWidgetsController : SharedRoutePagedControllerBase
+{
+    protected override string Version => "2026-11-12";
+}
