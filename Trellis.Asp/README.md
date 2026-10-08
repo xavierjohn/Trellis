@@ -29,6 +29,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Converts `Result<T>`, `Result<Unit>`, `Result<Page<T>>`, and `Result<WriteOutcome<T>>` into consistent ASP.NET Core responses.
 - Parses raw cursor/limit query input into `PageRequest` consistently across MVC and Minimal APIs without collapsing an empty cursor into absence.
 - Builds named-route pagination URLs through `HttpContext.PageUrl(...)` without an API-versioning dependency.
+- Caches pagination endpoint discovery and compatible route groups until routing changes, without caching request values or selected versions.
 - Emits RFC 9457 Problem Details for typed Trellis failures.
 - Supports `Created`, named-route and action locations, ETags, conditional requests, `Prefer`, cache controls, and pagination links.
 - Supplies endpoint-builder locations for `WriteOutcome.Created` when its optional location is absent; an explicit outcome location wins.

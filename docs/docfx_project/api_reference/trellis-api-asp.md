@@ -136,6 +136,16 @@ ambiguous cross-route destinations, invalid resolver results, null callback dict
 and failed link generation throw. Links preserve scheme, host, and `PathBase`; shared
 callback dictionaries are never mutated. Builders are request-scoped.
 
+Endpoint discovery is cached by `EndpointDataSource` instance, using weak keys so retired
+sources are not kept alive. Link-enabled named endpoints are indexed once per stable
+change-token generation, and compatible route groups are validated on first use.
+Subsequent links reuse the immutable candidates without rescanning endpoints or
+rechecking compatibility. A signaled change invalidates the index and validated groups;
+a change during indexing causes a retry before publication. Custom data sources must
+signal their change token when endpoints or URL-generation metadata change.
+Callbacks, cloned route values, active-endpoint selection, and host/per-builder policies
+still run for every link; requested versions and selected destinations are not cached.
+
 Shared names require matching route templates, defaults, required values, and parameter
 policies so named link generation cannot fall through to a differently constrained
 destination. Only MVC selector keys `controller`, `action`, and `area` may differ when

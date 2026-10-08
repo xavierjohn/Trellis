@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance - pagination route discovery
+
+`HttpContext.PageUrl` now indexes link-enabled named endpoints once per endpoint data
+source change-token generation and reuses compatible route groups across builders and
+requests. Routing changes invalidate the cache; concurrent changes during indexing
+cause a retry before publication. Weak keys allow retired data sources to be collected.
+Callbacks, cursor/direction values, host policies, and version selection remain per-link.
+No additional registration or optional-package dependency is required.
+
 ### Breaking — common pagination builders
 
 Implicit `HttpContext.PageUrl` builders now belong to `Trellis.Asp`, so unversioned
