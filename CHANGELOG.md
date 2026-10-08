@@ -14,6 +14,9 @@ source change-token generation and reuses compatible route groups across builder
 requests. Routing changes invalidate the cache; concurrent changes during indexing
 cause a retry before publication. Weak keys allow retired data sources to be collected.
 Callbacks, cursor/direction values, host policies, and version selection remain per-link.
+Custom data sources must signal endpoint and metadata changes. The previous per-link
+candidate scan could observe unsignaled mutations; cached discovery no longer supports
+them.
 No additional registration or optional-package dependency is required.
 
 ### Breaking — common pagination builders

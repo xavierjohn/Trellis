@@ -12,6 +12,8 @@ using Microsoft.Extensions.Primitives;
 /// <remarks>
 /// Endpoint discovery and compatible route groups are cached per endpoint data source until its
 /// change token signals an update. Route values and destination policies remain request-specific.
+/// Custom sources must signal endpoint and metadata changes. Unlike the former per-link endpoint
+/// scan, cached discovery does not support unsignaled mutations.
 /// </remarks>
 public static class HttpContextPaginationExtensions
 {

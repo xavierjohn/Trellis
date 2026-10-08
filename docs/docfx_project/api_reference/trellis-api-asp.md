@@ -143,6 +143,9 @@ Subsequent links reuse the immutable candidates without rescanning endpoints or
 rechecking compatibility. A signaled change invalidates the index and validated groups;
 a change during indexing causes a retry before publication. Custom data sources must
 signal their change token when endpoints or URL-generation metadata change.
+Previously, candidate discovery reread `Endpoints` for each link and could observe
+unsignaled mutations. Cached discovery intentionally does not support those mutations;
+custom sources must publish a new change-token generation instead.
 Callbacks, cloned route values, active-endpoint selection, and host/per-builder policies
 still run for every link; requested versions and selected destinations are not cached.
 
