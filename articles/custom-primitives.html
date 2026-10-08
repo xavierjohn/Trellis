@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Create Custom Scalar Value Objects | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Create Custom Scalar Value Objects | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/custom-primitives.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="create-custom-scalar-value-objects">Create custom scalar value objects</h1>
+
+<p>Use a custom scalar value object when a single CLR value has domain meaning that a raw primitive cannot express. <code>OrderId</code>, <code>ProductName</code>, and <code>Quantity</code> may still store a <code>Guid</code>, <code>string</code>, and <code>int</code>, but they should not be interchangeable.</p>
+<p>Install <code>Trellis.Core</code> directly, or use the transitive reference supplied by <code>Trellis.Primitives</code>:</p>
+<pre><code class="lang-bash">dotnet add package Trellis.Core
+</code></pre>
+<h2 id="pick-the-matching-base">Pick the matching base</h2>
+<table>
+<thead>
+<tr>
+<th>Underlying value</th>
+<th>Generated base</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>string</code></td>
+<td><a class="xref" href="../api/Trellis.RequiredString-1.html">RequiredString<tself></tself></a></td>
+</tr>
+<tr>
+<td><code>Guid</code></td>
+<td><a class="xref" href="../api/Trellis.RequiredGuid-1.html">RequiredGuid<tself></tself></a></td>
+</tr>
+<tr>
+<td><code>int</code></td>
+<td><a class="xref" href="../api/Trellis.RequiredInt-1.html">RequiredInt<tself></tself></a></td>
+</tr>
+<tr>
+<td><code>long</code></td>
+<td><a class="xref" href="../api/Trellis.RequiredLong-1.html">RequiredLong<tself></tself></a></td>
+</tr>
+<tr>
+<td><code>decimal</code></td>
+<td><a class="xref" href="../api/Trellis.RequiredDecimal-1.html">RequiredDecimal<tself></tself></a></td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td><a class="xref" href="../api/Trellis.RequiredBool-1.html">RequiredBool<tself></tself></a></td>
+</tr>
+<tr>
+<td><code>DateTime</code></td>
+<td><a class="xref" href="../api/Trellis.RequiredDateTime-1.html">RequiredDateTime<tself></tself></a></td>
+</tr>
+<tr>
+<td><code>DateTimeOffset</code></td>
+<td><a class="xref" href="../api/Trellis.RequiredDateTimeOffset-1.html">RequiredDateTimeOffset<tself></tself></a></td>
+</tr>
+<tr>
+<td>A finite symbolic set</td>
+<td><a class="xref" href="../api/Trellis.RequiredEnum-1.html">RequiredEnum<tself></tself></a> and the <a href="required-enum.html">symbolic values guide</a></td>
+</tr>
+</tbody>
+</table>
+<p>Declare a <code>partial class</code> and place Trellis attributes on the class itself:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+[NotDefault]
+public sealed partial class OrderId : RequiredGuid&lt;OrderId&gt;;
+
+[Trim, NotDefault, StringLength(120, MinimumLength = 2)]
+public sealed partial class ProductName : RequiredString&lt;ProductName&gt;;
+
+[Range(1, 1_000)]
+public sealed partial class Quantity : RequiredInt&lt;Quantity&gt;;
+
+public sealed record AddOrderLine(OrderId OrderId, ProductName Product, Quantity Quantity)
+{
+    public static Result&lt;AddOrderLine&gt; TryCreate(string? product, int? quantity) =&gt;
+        Result.Combine(
+                ProductName.TryCreate(product, nameof(product)),
+                Quantity.TryCreate(quantity, nameof(quantity)))
+            .Map((validProduct, validQuantity) =&gt;
+                new AddOrderLine(OrderId.NewUniqueV7(), validProduct, validQuantity));
+}
+</code></pre>
+<p>The generator supplies the factories, scalar <code>Value</code>, parsing, equality, formatting, and JSON converter. Do not redeclare those members in the partial class.</p>
+<h2 id="make-the-default-as-strict-as-your-domain">Make the default as strict as your domain</h2>
+<p>The word &quot;Required&quot; means the input cannot be <code>null</code>; it does not reject every CLR sentinel automatically.</p>
+<table>
+<thead>
+<tr>
+<th>Base</th>
+<th>Accepted unless you opt out</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RequiredString&lt;TSelf&gt;</code></td>
+<td><code>&quot;&quot;</code> and whitespace, without trimming</td>
+</tr>
+<tr>
+<td><code>RequiredGuid&lt;TSelf&gt;</code></td>
+<td><code>Guid.Empty</code></td>
+</tr>
+<tr>
+<td>Numeric bases</td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td>Date/time bases</td>
+<td><code>MinValue</code></td>
+</tr>
+<tr>
+<td><code>RequiredBool&lt;TSelf&gt;</code></td>
+<td>Both <code>false</code> and <code>true</code> are valid</td>
+</tr>
+</tbody>
+</table>
+<p>Use <a class="xref" href="../api/Trellis.TrimAttribute.html">TrimAttribute</a> to normalize a string and <a class="xref" href="../api/Trellis.NotDefaultAttribute.html">NotDefaultAttribute</a> to reject its sentinel. Combining <code>[Trim, NotDefault]</code> rejects whitespace after trimming. Add <a class="xref" href="../api/Trellis.StringLengthAttribute.html">StringLengthAttribute</a> or <a class="xref" href="../api/Trellis.RangeAttribute.html">RangeAttribute</a> for bounded values.</p>
+<p>These are <code>Trellis</code> attributes, not similarly named <code>System.ComponentModel.DataAnnotations</code> attributes.</p>
+<h2 id="add-a-domain-specific-rule">Add a domain-specific rule</h2>
+<p>Attributes cover common constraints. Implement the generated <code>ValidateAdditional</code> hook when the value has its own rule:</p>
+<pre><code class="lang-csharp">using Trellis;
+
+[Trim, NotDefault, StringLength(12, MinimumLength = 8)]
+public sealed partial class Sku : RequiredString&lt;Sku&gt;
+{
+    static partial void ValidateAdditional(
+        string value,
+        string fieldName,
+        ref string? errorMessage,
+        ref string? errorCode)
+    {
+        if (value.StartsWith(&quot;SKU-&quot;, StringComparison.Ordinal))
+            return;
+
+        errorMessage = $&quot;{fieldName} must start with SKU-.&quot;;
+        errorCode = &quot;catalog.sku.prefix&quot;;
+    }
+}
+</code></pre>
+<p>Set both the message and a stable application-owned code. The code lets clients react without parsing prose.</p>
+<h2 id="choose-the-right-factory">Choose the right factory</h2>
+<table>
+<thead>
+<tr>
+<th>Factory</th>
+<th>Use it when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TryCreate(value, fieldName)</code></td>
+<td>Input may be invalid. Keep the returned <code>Result&lt;T&gt;</code> in the pipeline.</td>
+</tr>
+<tr>
+<td><code>Create(value)</code></td>
+<td>The value is a trusted constant or test fixture. Invalid input throws.</td>
+</tr>
+<tr>
+<td><code>Parse</code> / <code>TryParse</code></td>
+<td>A .NET API requires <code>IParsable&lt;T&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>NewUniqueV7()</code></td>
+<td>You are creating a new <code>RequiredGuid&lt;TSelf&gt;</code> identity.</td>
+</tr>
+</tbody>
+</table>
+<p>Pass the transport field name to <code>TryCreate</code>. ASP.NET Core can then return a validation pointer that matches the request instead of the type's default name.</p>
+<h2 id="serialization-and-persistence">Serialization and persistence</h2>
+<p>Generated scalar value objects carry <a class="xref" href="../api/Trellis.ParsableJsonConverter-1.html">ParsableJsonConverter<t></t></a>, so their JSON shape is the underlying scalar rather than an object containing <code>Value</code>.</p>
+<p>For request binding and validation responses, continue with <a href="integration-aspnet.html">ASP.NET Core integration</a>. For EF Core mapping and runtime query rewriting, wire the <a href="integration-ef.html#conventions-and-interceptors">conventions and interceptors</a>. The single-argument <code>StartsWith</code>, <code>Contains</code>, and <code>EndsWith</code> helpers plus <code>Length</code> on <code>RequiredString&lt;TSelf&gt;</code> are translated after <code>AddTrellisInterceptors()</code> is registered; use the generated <a class="xref" href="../api/Trellis.RequiredString-1.html">RequiredString<tself> API</tself></a> for their complete signatures and in-memory comparison semantics.</p>
+<p>For the complete generated and inherited member lists, use the .NET API pages linked in the base-class table.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/custom-primitives.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Weekly Schedules | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Weekly Schedules | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/weekly-schedules.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="model-weekly-local-time-availability">Model weekly local-time availability</h1>
+
+<p><a class="xref" href="../api/Trellis.Primitives.WeeklySchedule.html">WeeklySchedule</a> answers a focused question: is this recurring weekly schedule active at a local day and time, or at a specific instant in its IANA time zone?</p>
+<p>It is useful for opening hours and recurring availability. It is not a holiday calendar, capacity model, recurrence engine, or elapsed-duration scheduler.</p>
+<pre><code class="lang-bash">dotnet add package Trellis.Primitives
+</code></pre>
+<h2 id="create-overnight-and-all-day-periods">Create overnight and all-day periods</h2>
+<p>This complete console example creates Friday overnight hours plus an all-day Sunday:</p>
+<pre><code class="lang-csharp">using Trellis;
+using Trellis.Primitives;
+
+var scheduleResult = StoreHours.Create();
+
+if (!scheduleResult.TryGetValue(out var schedule, out var error))
+{
+    Console.Error.WriteLine(error);
+    return;
+}
+
+var instant = new DateTimeOffset(
+    2026, 9, 26, 8, 0, 0, TimeSpan.Zero);
+
+Console.WriteLine(schedule.IsActiveAt(instant));
+
+public static class StoreHours
+{
+    public static Result&lt;WeeklySchedule&gt; Create() =&gt;
+        WeeklyPeriod.TryCreate(
+                DayOfWeek.Friday,
+                new TimeOnly(22, 0),
+                new TimeOnly(2, 0),
+                &quot;friday&quot;)
+            .Bind(friday =&gt;
+                WeeklyPeriod.TryCreateAllDay(DayOfWeek.Sunday, &quot;sunday&quot;)
+                    .Bind(sunday =&gt;
+                        WeeklySchedule.TryCreate(
+                            &quot;America/Los_Angeles&quot;,
+                            [friday, sunday],
+                            &quot;hours&quot;)));
+}
+</code></pre>
+<p>A normal period includes its start and excludes its end. An end earlier than the start crosses midnight, so Friday <code>22:00</code> to <code>02:00</code> includes early Saturday morning.</p>
+<p>Equal endpoints do not mean all day. Use <code>TryCreateAllDay</code> to state that intent explicitly.</p>
+<h2 id="let-the-schedule-validate-the-week">Let the schedule validate the week</h2>
+<p><code>WeeklySchedule.TryCreate</code> copies and sorts the periods, rejects overlaps across day and week boundaries, and permits periods that only touch. An empty period list means always closed.</p>
+<p>The time-zone identifier must resolve to an IANA zone. <code>UTC</code> is valid; Windows-only identifiers are rejected. <code>IsActiveAt</code> converts the supplied instant with the schedule's retained zone rules, so repeated and skipped local times follow daylight-saving behavior.</p>
+<p>Use <code>Contains(day, time)</code> when you already have local weekly clock coordinates. Use <code>IsActiveAt(instant)</code> when you have an absolute instant.</p>
+<h2 id="keep-transport-and-persistence-explicit">Keep transport and persistence explicit</h2>
+<p>Project schedules through an application-owned DTO containing the zone ID and each period's day, start, end, and all-day flag. Rebuild the value through <code>TryCreate</code> methods at the boundary.</p>
+<p>Do not apply the composite value-object JSON converter to these types; collections and <code>TimeOnly</code> are outside that converter's shape. They also do not expose parameterless constructors for direct EF owned-type materialization. Choose an explicit JSON snapshot or separate persistence records and rehydrate through the factories.</p>
+<p>Complete generated API:</p>
+<ul>
+<li><a class="xref" href="../api/Trellis.Primitives.WeeklyPeriod.html">WeeklyPeriod</a></li>
+<li><a class="xref" href="../api/Trellis.Primitives.WeeklySchedule.html">WeeklySchedule</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/weekly-schedules.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

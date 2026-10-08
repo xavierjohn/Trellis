@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Migrating from FunctionalDDD to Trellis | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Migrating from FunctionalDDD to Trellis | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/migration.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="migrating-from-functionalddd-to-trellis">Migrating from FunctionalDDD to Trellis</h1>
+
+<p>This guide takes an application using the released FunctionalDDD 2.x packages directly
+to the current Trellis APIs. Trellis is the renamed framework and has not had a stable
+release. There is no released &quot;Trellis v1&quot; or &quot;Trellis v2&quot; to upgrade through.</p>
+<p>The <a href="../api_reference/trellis-api-migration.html#core-and-package-migration">migration reference</a>
+is the source-backed comparison of FunctionalDDD and Trellis. Intermediate alpha changes
+belong in the <a href="https://github.com/xavierjohn/Trellis/blob/main/CHANGELOG.md">changelog</a>,
+not this guide.</p>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Replace FunctionalDDD packages and namespaces</td>
+<td><a href="#package-map-legacy--current">Package map</a></td>
+</tr>
+<tr>
+<td>Rename Result factories and railway operations</td>
+<td><a href="#result-and-error-renames-trelliscore">Result and Error renames</a></td>
+</tr>
+<tr>
+<td>Replace throwing result access and implicit conversions</td>
+<td><a href="#result-access">Result access</a></td>
+</tr>
+<tr>
+<td>Port open error subclasses and validation errors</td>
+<td><a href="#error-model">Error model</a></td>
+</tr>
+<tr>
+<td>Update generated scalar value objects without changing validation accidentally</td>
+<td><a href="#value-objects">Value objects</a></td>
+</tr>
+<tr>
+<td>Map MVC and Minimal API responses</td>
+<td><a href="#aspnet-core-trellisasp">ASP.NET Core</a></td>
+</tr>
+<tr>
+<td>Update tracing subscriptions</td>
+<td><a href="#observability">Observability</a></td>
+</tr>
+<tr>
+<td>Apply the changes in a practical order</td>
+<td><a href="#practical-guidance">Migration order</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="package-map-legacy--current">Package map (legacy → current)</h2>
+<table>
+<thead>
+<tr>
+<th>FunctionalDDD package</th>
+<th>Trellis package</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FunctionalDdd.RailwayOrientedProgramming</code></td>
+<td><code>Trellis.Core</code></td>
+<td>Result, Maybe, Error, and railway operations</td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.DomainDrivenDesign</code></td>
+<td><code>Trellis.Core</code></td>
+<td>DDD primitives are in the same package as the railway operations</td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.CommonValueObjects</code></td>
+<td><code>Trellis.Primitives</code></td>
+<td>Built-in value objects; custom scalar base classes live in <code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.CommonValueObjectGenerator</code></td>
+<td>No separate package</td>
+<td>The generator is bundled in <code>Trellis.Core</code></td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.Asp</code></td>
+<td><code>Trellis.Asp</code></td>
+<td>MVC and Minimal API response mapping</td>
+</tr>
+<tr>
+<td><code>FunctionalDdd.FluentValidation</code></td>
+<td><code>Trellis.FluentValidation</code></td>
+<td>Standalone FluentValidation-to-Result adapters</td>
+</tr>
+</tbody>
+</table>
+<p>Update <code>PackageReference</code> items and <code>Directory.Packages.props</code> together. Change
+<code>FunctionalDdd</code> namespace imports, including global usings, to <code>Trellis</code>. The old response
+extensions lived in that root namespace; add <code>Trellis.Asp</code> imports for their replacements.
+Trellis targets .NET 10, so update the consuming project's SDK and target framework before restoring.</p>
+<p>Trellis's Mediator, authorization, EF Core, HTTP client, state-machine, and testing
+packages are optional additions. Do not invent corresponding old FunctionalDDD package
+references or add all Trellis modules just to complete the migration.</p>
+<h2 id="result-and-error-renames-trelliscore">Result and Error renames (Trellis.Core)</h2>
+<table>
+<thead>
+<tr>
+<th>FunctionalDDD API</th>
+<th>Trellis API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Result.Success(value)</code> / <code>Result.Success()</code></td>
+<td><code>Result.Ok(value)</code> / <code>Result.Ok()</code></td>
+</tr>
+<tr>
+<td><code>Result.Failure&lt;T&gt;(error)</code> / <code>Result.Failure(error)</code></td>
+<td><code>Result.Fail&lt;T&gt;(error)</code> / <code>Result.Fail(error)</code></td>
+</tr>
+<tr>
+<td><code>TapError</code> / <code>TapErrorAsync</code></td>
+<td><code>TapOnFailure</code> / <code>TapOnFailureAsync</code></td>
+</tr>
+<tr>
+<td><code>MapError</code> / <code>MapErrorAsync</code></td>
+<td><code>MapOnFailure</code> / <code>MapOnFailureAsync</code></td>
+</tr>
+<tr>
+<td><code>Compensate</code> / <code>CompensateAsync</code></td>
+<td><code>RecoverOnFailure</code> / <code>RecoverOnFailureAsync</code></td>
+</tr>
+<tr>
+<td>Two-branch <code>Finally</code> / <code>FinallyAsync</code></td>
+<td><code>Match</code> / <code>MatchAsync</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>IsSuccess</code> and <code>IsFailure</code> retain their names. For a whole-result <code>Finally</code> callback,
+call the callback explicitly rather than treating it as a one-callback <code>Match</code>.</p>
+<p>Deferred factories now invoke the supplied function explicitly. Replace conditional
+factories with a ternary using <code>Result.Ok</code> and <code>Result.Fail&lt;T&gt;</code>, awaiting async predicates
+before branching. Replace <code>Result.FromException</code> with <code>Result.Try</code> / <code>Result.TryAsync</code>
+around an operation, or map an already-caught exception to an appropriate safe failure.
+See the <a href="../api_reference/trellis-api-migration.html#result-factories-and-access">complete factory comparison</a>.</p>
+<p><strong>Keep no-payload handlers on <code>Result&lt;Unit&gt;</code>.</strong> FunctionalDDD already used that shape;
+Trellis's parameterless <code>Result.Ok()</code> and <code>Result.Fail(error)</code> still return it. There is
+no intermediate non-generic instance-result migration.</p>
+<h2 id="result-access">Result access</h2>
+<p>Implicit value/error conversions to <code>Result&lt;T&gt;</code> are removed. Wrap successful values
+with <code>Result.Ok(value)</code> and errors with <code>Result.Fail&lt;T&gt;(error)</code>.</p>
+<p>Replace nullable <code>value.ToResult(error)</code> with <code>Result.EnsureNotNull(value, error)</code>,
+or <code>EnsureNotNullAsync(error)</code> on a nullable Task/ValueTask result. Prefer field/detail
+guards for ordinary required fields and lazy factories for custom errors.
+<code>Maybe&lt;T&gt;.ToResult</code> still converts absence to failure and must not become a nullable guard.
+See <a href="../api_reference/trellis-api-core.html#choosing-a-result-entry-point">choosing a Result entry point</a>.</p>
+<p>The throwing <code>result.Value</code> getter is removed. Extract a payload with <code>TryGetValue</code>,
+<code>Match</code>, or guarded deconstruction; inside a railway chain, use <code>Map</code> or <code>Bind</code>.
+The <code>Error</code> getter is now nullable and never throws on success; use a null pattern or
+<code>TryGetError</code>. Default-initialized results are failures, not successes.</p>
+<p>Trellis also rejects direct JSON serialization of result wrappers. HTTP endpoints must
+map them to responses; other boundaries should extract the payload explicitly.
+See <a href="../api_reference/trellis-api-core.html#public-readonly-struct-resulttvalue--iresulttvalue-iequatableresulttvalue-ifailurefactoryresulttvalue-ipersistonfailure">current Result behavior</a>.</p>
+<h2 id="error-model">Error model</h2>
+<p>FunctionalDDD's open error hierarchy becomes the closed Trellis <code>Error</code> record catalog.
+Map errors by domain meaning and preserve application codes and safe details:</p>
+<table>
+<thead>
+<tr>
+<th>FunctionalDDD shape</th>
+<th>Trellis shape</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ValidationError</code> / <code>Error.Validation(...)</code></td>
+<td><code>Error.InvalidInput.ForField(code, field, detail: detail)</code> / <code>ForRule(code, detail: detail)</code></td>
+<td><!-- v1-stale-ok: historical FunctionalDDD API comparison --></td>
+</tr>
+<tr>
+<td><code>NotFoundError</code></td>
+<td><code>Error.NotFound.For&lt;TResource&gt;(id: id, detail: detail)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>ConflictError</code></td>
+<td><code>Error.Conflict.For&lt;TResource&gt;(code, id: id, detail: detail)</code> / <code>ForReason(code, detail: detail)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>UnauthorizedError</code></td>
+<td><code>new Error.AuthenticationRequired() { Code = code, Detail = detail }</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>ForbiddenError</code></td>
+<td><code>Error.Forbidden.ForPolicy(code, detail: detail)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>UnexpectedError</code></td>
+<td><code>new Error.Unexpected(code, faultId) { Detail = safeDetail }</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Do not recreate custom subclasses; choose a case that represents the failure.
+Factories are code-first. Validation carries field/rule violations rather than the old
+field-name/detail-list shape: keep every violation, its code, and its detail, and build
+explicit input pointers for nested paths. <code>Error.Instance</code> is not a domain field in
+Trellis; the ASP boundary sets <code>ProblemDetails.Instance</code>, while <code>ResourceRef</code> carries
+domain resource identity.</p>
+<p>Revisit equality assertions and client error parsing. FunctionalDDD's base error equality
+compared codes; Trellis errors use typed value equality. Old JSON fields and HTTP status
+mappings are not assumed unchanged. See the
+<a href="../api_reference/trellis-api-migration.html#error-model">error comparison</a> and
+<a href="../api_reference/trellis-api-core.html#construction-and-case-scoped-factories">current factories</a>.</p>
+<h2 id="value-objects">Value objects</h2>
+<p>Retain partial declarations and change the scalar bases to the self-typed forms:
+<code>RequiredString&lt;TSelf&gt;</code> and <code>RequiredGuid&lt;TSelf&gt;</code>. The generator is bundled with
+<code>Trellis.Core</code>; do not duplicate inherited value/equality members or generated factories.
+Generated <code>NewUnique()</code> calls become <code>NewUniqueV4()</code> for the same random-GUID choice,
+or <code>NewUniqueV7()</code> if the application deliberately wants time-ordered IDs.</p>
+<p><strong>Review validation, not just compilation.</strong> FunctionalDDD rejected blank required
+strings and <code>Guid.Empty</code>. Trellis accepts concrete values by default and rejects only
+null. <code>[NotDefault]</code> rejects the sentinel; <code>[Trim]</code> opts into string trimming.
+For strings, <code>[NotDefault]</code> alone still accepts whitespace-only text.
+<code>[Trim, NotDefault]</code> rejects it but also trims valid text, unlike FunctionalDDD's
+untrimmed string behavior. Use <code>ValidateAdditional</code> to preserve nonblank validation
+without changing stored text. See <a href="../api_reference/trellis-api-primitives.html#required-defaults-and-opt-ins">defaults and opt-ins</a>.</p>
+<h2 id="aspnet-core-trellisasp">ASP.NET Core (Trellis.Asp)</h2>
+<p>Register <code>AddTrellisAsp</code> and replace <code>ToHttpResult</code> / <code>ToActionResult</code> and their async
+forms with <code>ToHttpResponse</code> / <code>ToHttpResponseAsync</code>. For typed MVC signatures, chain
+<code>AsActionResult&lt;T&gt;</code> / <code>AsActionResultAsync&lt;T&gt;</code>.</p>
+<p>Created responses and failure mappings are configured through the current response
+options, not a sequence of intermediate Trellis mapping APIs. Review status codes,
+locations, and Problem Details bodies in endpoint tests.
+See the <a href="../api_reference/trellis-api-asp.html#patterns-index">ASP reference</a>.</p>
+<h2 id="observability">Observability</h2>
+<table>
+<thead>
+<tr>
+<th>FunctionalDDD subscription</th>
+<th>Trellis subscription</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;Functional DDD ROP&quot;</code></td>
+<td><code>&quot;Trellis.Results&quot;</code></td>
+</tr>
+<tr>
+<td><code>&quot;Functional DDD CVO&quot;</code></td>
+<td><code>&quot;Trellis.Primitives&quot;</code></td>
+</tr>
+<tr>
+<td><code>AddFunctionalDddRopInstrumentation</code></td>
+<td><code>AddTrellisResultsInstrumentation</code></td>
+</tr>
+<tr>
+<td><code>AddFunctionalDddCvoInstrumentation</code></td>
+<td><code>AddTrellisPrimitivesInstrumentation</code></td>
+</tr>
+</tbody>
+</table>
+<p>Update collectors, activity listeners, source filters, and tracing tests. The sources
+are renamed from FunctionalDDD; they are not unchanged subscriptions to older Trellis
+packages. See <a href="integration-observability.html">observability setup</a>.</p>
+<h2 id="practical-guidance">Practical guidance</h2>
+<ol>
+<li>Keep a passing FunctionalDDD build/test baseline.</li>
+<li>Update the SDK, target framework, package references, and namespace imports.</li>
+<li>Rename factories and railway operations; make implicit Result construction explicit.</li>
+<li>Port the Error model and scalar value-object declarations, preserving intended validation.</li>
+<li>Replace throwing result access and update HTTP mapping and telemetry subscriptions.</li>
+<li>Build and test business outcomes, value-object edge cases, failure bodies, and tracing.</li>
+<li>Adopt additional Trellis integration modules separately if the application needs them.</li>
+</ol>
+<h2 id="cross-references">Cross-references</h2>
+<ul>
+<li><a href="../api_reference/trellis-api-migration.html#core-and-package-migration">FunctionalDDD-to-Trellis API comparison</a></li>
+<li><a href="../api_reference/trellis-api-core.html#patterns-index">Core contracts</a></li>
+<li><a href="../api_reference/trellis-api-primitives.html#required-defaults-and-opt-ins">Value-object defaults</a></li>
+<li><a href="../api_reference/trellis-api-asp.html#patterns-index">ASP response mapping</a></li>
+<li><a href="../api_reference/trellis-start-here.html#patterns-index">Current recipe lookup</a></li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/migration.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

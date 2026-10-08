@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Trellis.Testing.Idempotency API Reference | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Trellis.Testing.Idempotency API Reference | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-idempotency.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trellistestingidempotency-api-reference">Trellis.Testing.Idempotency API Reference</h1>
+
+<p>Executable conformance suite for <code>IIdempotencyStore</code> implementations.</p>
+<ul>
+<li><strong>Package:</strong> <code>Trellis.Testing.Idempotency</code></li>
+<li><strong>Namespace:</strong> <code>Trellis.Testing.Idempotency</code></li>
+<li><strong>Depends on:</strong> <code>Trellis.Asp</code> (for the contract types), <code>xunit.v3.extensibility.core</code> 4.0.1, <code>FluentAssertions</code></li>
+</ul>
+<p>Consuming test projects should use <code>xunit.v3</code> 4.0.1 or later with Microsoft.Testing.Platform 2.
+The conformance library references the attributes and extensibility surface only; it does not
+bring in the executable test runner.</p>
+<h2 id="use-this-file-when">Use this file when</h2>
+<ul>
+<li>You are writing an <code>IIdempotencyStore</code> over Redis, Cosmos DB, a relational database, or anything bespoke, and need to prove it satisfies the contract.</li>
+<li>You are reviewing an existing store and want the exact rules it must obey — atomicity of reserve, expiry ownership, conditional complete/abandon.</li>
+<li>A production incident suggests duplicate execution or a lost response, and you need a reproducible test rather than a theory.</li>
+</ul>
+<h2 id="patterns-index">Patterns Index</h2>
+<table>
+<thead>
+<tr>
+<th>Goal</th>
+<th>Use this</th>
+<th>See</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Add conformance coverage to your store</td>
+<td>Derive a test class from <code>IdempotencyStoreConformance</code></td>
+<td><a href="#quick-start">Quick start</a>, <a href="#idempotencystoreconformance"><code>IdempotencyStoreConformance</code></a></td>
+</tr>
+<tr>
+<td>Supply your store to the suite</td>
+<td>The single required member</td>
+<td><a href="#required-member">Required member</a></td>
+</tr>
+<tr>
+<td>Adapt the suite to a backend with different timing or cleanup needs</td>
+<td>Optional overrides and the protected helpers</td>
+<td><a href="#optional-overrides">Optional overrides</a>, <a href="#helpers-available-to-derived-classes">Helpers available to derived classes</a></td>
+</tr>
+<tr>
+<td>Learn the contract itself before implementing</td>
+<td>The reserve / expiry / complete / abandon / concurrency rules</td>
+<td><a href="#the-rules-pinned-by-the-suite">The rules pinned by the suite</a></td>
+</tr>
+<tr>
+<td>Check your design against the failures that fail silently</td>
+<td>Non-atomic reserve, server-side expiry, eviction, unconditional abandon, snapshot cost</td>
+<td><a href="#implementation-traps-the-suite-catches">Implementation traps the suite catches</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="why-this-package-exists">Why this package exists</h2>
+<p><code>Trellis.Asp</code> ships exactly one <code>IIdempotencyStore</code>: <code>InMemoryIdempotencyStore</code>, which its own
+documentation describes as <em>&quot;not safe across multiple instances or process restarts&quot;</em>. For a
+distributed production store, Trellis ships <code>CosmosIdempotencyStore</code> in the separate
+<code>Trellis.Asp.Idempotency.Cosmos</code> package, registered with <code>AddCosmosIdempotencyStore</code>.
+Applications using Redis, a relational database, or another backend can implement their own store.</p>
+<p>Stores receive a resolved <code>scope</code>, parsed <code>key</code>, and an opaque <code>fingerprint</code> string, not the
+fingerprint's request components. They must key entries only on <code>(scope, key)</code> and compare the
+supplied fingerprint with the stored value, never use it as a third key component. The middleware
+owns fingerprint computation and scope resolution; see
+<a href="trellis-api-asp.html#namespace-trellisaspidempotency">request identity and fingerprint</a> for the
+full input list and the default actor/shared-anonymous scope.</p>
+<p>The contract those stores must satisfy is subtle, and a violation fails <strong>silently</strong>. A store that
+reserves non-atomically lets two racing callers both execute the handler; a store whose
+<code>AbandonAsync</code> deletes unconditionally destroys a response that <code>CompleteAsync</code> already persisted.
+Neither throws. The symptom is a customer charged twice, weeks later.</p>
+<p>This package turns each rule into a test you inherit.</p>
+<h2 id="quick-start">Quick start</h2>
+<p>Add a single test class per store:</p>
+<pre><code class="lang-csharp">namespace Contoso.Billing.Tests;
+
+using Trellis.Asp.Idempotency;
+using Trellis.Testing.Idempotency;
+
+public sealed class RedisIdempotencyStoreConformanceTests : IdempotencyStoreConformance
+{
+    // Expiry is enforced by the Redis server, whose clock cannot be faked, so use short real
+    // timeouts and let AdvanceAsync keep its default real delay.
+    protected override TimeSpan ReservationTimeout =&gt; TimeSpan.FromSeconds(2);
+    protected override TimeSpan Ttl =&gt; TimeSpan.FromSeconds(4);
+
+    protected override ValueTask&lt;IIdempotencyStore&gt; CreateStoreAsync(IdempotencyOptions options) =&gt;
+        new(new RedisIdempotencyStore(_multiplexer, options));
+}
+</code></pre>
+<p>For a store that reads the clock in-process through <code>TimeProvider</code>, override <code>AdvanceAsync</code>
+instead and keep the default timeouts, so the suite runs instantly:</p>
+<pre><code class="lang-csharp">public sealed class InMemoryIdempotencyStoreConformanceTests : IdempotencyStoreConformance
+{
+    private readonly FakeTimeProvider _time = new();
+
+    protected override ValueTask&lt;IIdempotencyStore&gt; CreateStoreAsync(IdempotencyOptions options) =&gt;
+        new(new InMemoryIdempotencyStore(options, _time));
+
+    protected override Task AdvanceAsync(TimeSpan duration)
+    {
+        _time.Advance(duration);
+        return Task.CompletedTask;
+    }
+}
+</code></pre>
+<h2 id="idempotencystoreconformance"><code>IdempotencyStoreConformance</code></h2>
+<p><code>public abstract class IdempotencyStoreConformance</code></p>
+<h3 id="required-member">Required member</h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected abstract ValueTask&lt;IIdempotencyStore&gt; CreateStoreAsync(IdempotencyOptions options)</code></td>
+<td>Called once per test. Must honour <code>options.Ttl</code> and <code>options.ReservationTimeout</code>, or the expiry tests are vacuous.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="optional-overrides">Optional overrides</h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Default</th>
+<th>Override when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected virtual TimeSpan ReservationTimeout</code></td>
+<td>30 s</td>
+<td>Expiry is server-enforced — drop to a few seconds.</td>
+</tr>
+<tr>
+<td><code>protected virtual TimeSpan Ttl</code></td>
+<td>1 h</td>
+<td>Expiry is server-enforced — drop to a few seconds.</td>
+</tr>
+<tr>
+<td><code>protected virtual Task AdvanceAsync(TimeSpan duration)</code></td>
+<td><code>Task.Delay(duration)</code></td>
+<td>The store reads an injectable clock — advance the fake clock and return <code>Task.CompletedTask</code>.</td>
+</tr>
+<tr>
+<td><code>protected virtual int ConcurrentReservationAttempts</code></td>
+<td>32</td>
+<td>The store is a remote service with limited throughput.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="helpers-available-to-derived-classes">Helpers available to derived classes</h3>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>protected string Scope { get; }</code></td>
+<td>Unique per test instance (xUnit constructs one per <code>[Fact]</code>), so a suite is safe against a <strong>shared</strong> Redis or Cosmos DB instance, in parallel.</td>
+</tr>
+<tr>
+<td><code>protected static IdempotencyResponseSnapshot SnapshotFor(string fingerprint, byte bodyMarker = 0x7B)</code></td>
+<td>Builds a minimal distinguishable snapshot.</td>
+</tr>
+<tr>
+<td><code>protected static void ShouldMatch(IdempotencyResponseSnapshot actual, IdempotencyResponseSnapshot expected)</code></td>
+<td>Field-by-field comparison. See the warning below.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Do not assert snapshot equality with <code>Should().Be(...)</code>.</strong> <code>IdempotencyResponseSnapshot</code> is a
+record whose <code>Headers</code> and <code>Body</code> members compare by <strong>reference</strong>. Record equality therefore
+passes only for a store that returns the very instance it was handed — that is, only for an
+in-memory store. Every durable store serialises and returns an equal-but-distinct instance. Use
+<code>ShouldMatch</code>, which compares field by field and matches header names case-insensitively, as the
+snapshot contract specifies.</p>
+</blockquote>
+<h2 id="the-rules-pinned-by-the-suite">The rules pinned by the suite</h2>
+<h3 id="reserving">Reserving</h3>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Reserve_on_a_free_key_returns_Reserved_with_a_non_empty_reservation_id</code></td>
+<td>A free key is granted with a usable token.</td>
+</tr>
+<tr>
+<td><code>Reserve_while_another_request_holds_the_key_returns_AlreadyInFlight</code></td>
+<td>Concurrent duplicate is told to retry; <code>RetryAfter</code> is positive and <code>&lt;= ReservationTimeout</code>.</td>
+</tr>
+<tr>
+<td><code>Reserve_under_a_different_scope_does_not_collide</code></td>
+<td>Scope isolates tenants and actors.</td>
+</tr>
+<tr>
+<td><code>Reserve_after_Complete_replays_the_snapshot_for_a_matching_fingerprint</code></td>
+<td>The core replay guarantee.</td>
+</tr>
+<tr>
+<td><code>Reserve_after_Complete_with_a_different_fingerprint_returns_BodyHashMismatch</code></td>
+<td>Key reuse in the same scope with a different request fingerprint is rejected, not replayed or stored as a separate entry. <code>StoredFingerprint</code> carries the original.</td>
+</tr>
+<tr>
+<td><code>Reserve_while_in_flight_with_a_different_fingerprint_returns_BodyHashMismatch</code></td>
+<td>Same protection before the first request finishes.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="expiry">Expiry</h3>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Reserve_after_the_reservation_timeout_takes_over_with_a_new_reservation_id</code></td>
+<td>A crashed handler cannot hold a key forever; takeover issues a <strong>new</strong> id.</td>
+</tr>
+<tr>
+<td><code>Reserve_after_the_reservation_timeout_with_a_different_fingerprint_returns_BodyHashMismatch</code></td>
+<td>Takeover is for retries of the <em>same</em> request only.</td>
+</tr>
+<tr>
+<td><code>Reserve_after_the_ttl_elapses_treats_a_completed_entry_as_absent</code></td>
+<td>Snapshots are retained for <code>Ttl</code> and no longer.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="completing-and-abandoning">Completing and abandoning</h3>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Complete_with_a_reservation_id_that_lost_the_slot_is_ignored</code></td>
+<td>A displaced request cannot publish its response over the winner's.</td>
+</tr>
+<tr>
+<td><code>Abandon_releases_the_slot_for_an_immediate_retry</code></td>
+<td>A failed handler frees the key at once.</td>
+</tr>
+<tr>
+<td><code>Abandon_with_a_reservation_id_that_lost_the_slot_is_ignored</code></td>
+<td>A displaced request cannot free the winner's slot.</td>
+</tr>
+<tr>
+<td><code>Abandon_after_Complete_must_not_delete_the_persisted_snapshot</code></td>
+<td>The subtle one — see below.</td>
+</tr>
+<tr>
+<td><code>Complete_on_a_key_that_was_never_reserved_is_ignored</code></td>
+<td>Best-effort cleanup, no throw, no entry created.</td>
+</tr>
+<tr>
+<td><code>Abandon_on_a_key_that_was_never_reserved_is_ignored</code></td>
+<td>Best-effort cleanup, no throw.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="concurrency">Concurrency</h3>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Concurrent_reservations_of_one_key_grant_exactly_one_winner</code></td>
+<td>Reservation must be a <strong>single atomic operation</strong>. The load-bearing guarantee. Callers are released together from a shared gate rather than through <code>Parallel.ForEachAsync</code>, so the race is exercised even on a single-CPU host.</td>
+</tr>
+<tr>
+<td><code>An_in_flight_reservation_survives_traffic_on_other_keys</code></td>
+<td>Unrelated traffic must not orphan a slow handler's reservation.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="implementation-traps-the-suite-catches">Implementation traps the suite catches</h2>
+<h3 id="non-atomic-reserve">Non-atomic reserve</h3>
+<p>A read-then-write reserve (<code>GetAsync</code> then <code>SetAsync</code>) passes every single-threaded test and fails
+under load, executing the handler twice. Reserve with one atomic primitive:</p>
+<table>
+<thead>
+<tr>
+<th>Backing store</th>
+<th>Atomic reserve</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Redis</td>
+<td>Atomic Lua script: create a non-expiring reservation containing the fingerprint and lease timestamp; for an existing reservation, compare the fingerprint before conditionally taking over an expired lease</td>
+</tr>
+<tr>
+<td>Cosmos DB</td>
+<td><code>CreateItemAsync</code> — a duplicate id in the same partition returns HTTP 409</td>
+</tr>
+<tr>
+<td>Relational</td>
+<td><code>INSERT</code> against a unique index on <code>(scope, key)</code> — catch the duplicate-key violation</td>
+</tr>
+</tbody>
+</table>
+<p><code>ReservationTimeout</code> expires the reservation's <strong>lease</strong>, not its fingerprint metadata.
+Do not use <code>SET ... NX PX &lt;reservationTimeout&gt;</code> to expire the entire reservation: a different-fingerprint
+retry must still return <code>BodyHashMismatch</code> after that timeout. Retain the fingerprint and compare it
+before atomically granting a same-fingerprint takeover. Completed snapshots have a separate <code>Ttl</code>;
+apply response expiry when completing the entry, not when reserving it.</p>
+<p><code>IDistributedCache</code> <strong>cannot</strong> back a conforming store: it has no atomic set-if-not-exists, so
+<code>TryReserveAsync</code> is not implementable on it. Use <code>StackExchange.Redis</code> directly.</p>
+<h3 id="trusting-server-side-expiry">Trusting server-side expiry</h3>
+<p>Cosmos DB deletes expired items on a best-effort background sweep, so an item can outlive its
+<code>ttl</code> and still be returned by a read. Record your own expiry timestamp on the item and re-check it
+when reading, rather than assuming a returned item is live.</p>
+<h3 id="eviction">Eviction</h3>
+<p>A Redis instance configured with <code>allkeys-lru</code> can evict a live reservation under memory pressure,
+silently permitting a double execution. Use <code>noeviction</code> for the idempotency database, and consider
+asserting the policy at startup with <code>CONFIG GET maxmemory-policy</code>.</p>
+<h3 id="unconditional-abandon">Unconditional abandon</h3>
+<p><code>IdempotencyMiddleware</code> calls <code>AbandonAsync</code> from the failure paths around <code>CompleteAsync</code>. If
+<code>CompleteAsync</code> persisted the snapshot and then threw on a later step, an <code>AbandonAsync</code> that
+deletes unconditionally destroys a durably recorded response, and the retry re-executes the
+handler. Delete only when the entry is still in the reserved state.</p>
+<h3 id="snapshot-size-and-cost">Snapshot size and cost</h3>
+<p><code>IdempotencyOptions.MaxResponseBodyBytes</code> defaults to 1 MiB. On Cosmos DB, request-unit cost scales
+with item size, so a 1 MiB snapshot costs upwards of 100 RU to write. Lower the cap, or store large
+bodies in blob storage and keep a reference in the snapshot.</p>
+<h2 id="see-also">See also</h2>
+<ul>
+<li><code>docs/docfx_project/api_reference/trellis-api-asp.md</code> — the idempotency middleware and the
+<code>IIdempotencyStore</code> contract itself.</li>
+<li><code>docs/docfx_project/api_reference/trellis-api-testing-aspnetcore.md</code> — ASP.NET Core integration
+test helpers.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/api_reference/trellis-api-testing-idempotency.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

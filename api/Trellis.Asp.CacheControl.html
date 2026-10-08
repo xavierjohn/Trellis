@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class CacheControl | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class CacheControl | Trellis ">
+      
+      <meta name="description" content="Common  presets for use with  and .">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Asp_CacheControl.md&amp;value=---%0Auid%3A%20Trellis.Asp.CacheControl%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.CacheControl">
+
+
+
+  <h1 id="Trellis_Asp_CacheControl" data-uid="Trellis.Asp.CacheControl" class="text-break">
+Class CacheControl  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/CacheControl.cs/#L23"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Asp.html">Asp</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Asp.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Common <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue">CacheControlHeaderValue</a> presets for use with
+<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html#Trellis_Asp_HttpResponseOptionsBuilder_1_WithCacheControl_System_Net_Http_Headers_CacheControlHeaderValue_">WithCacheControl(CacheControlHeaderValue)</a>
+and <a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder.html#Trellis_Asp_HttpResponseOptionsBuilder_WithCacheControl_System_Net_Http_Headers_CacheControlHeaderValue_">WithCacheControl(CacheControlHeaderValue)</a>.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class CacheControl</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">CacheControl</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="Trellis_Asp_CacheControl_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Every helper returns a <strong>fresh</strong> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue">CacheControlHeaderValue</a> on each
+call. <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue">CacheControlHeaderValue</a> is mutable, so mutating an instance returned by
+one of these helpers does not leak into a later call.
+</p>
+<p>
+Use directly: <code>opts.WithCacheControl(CacheControl.NoStore())</code>, or pick the BCL type
+directly when you need a directive that isn't represented as a property on
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue">CacheControlHeaderValue</a>.
+</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Asp_CacheControl_Immutable_" data-uid="Trellis.Asp.CacheControl.Immutable*"></a>
+
+  <h3 id="Trellis_Asp_CacheControl_Immutable_System_TimeSpan_" data-uid="Trellis.Asp.CacheControl.Immutable(System.TimeSpan)">
+  Immutable(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/CacheControl.cs/#L63"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p><code>Cache-Control: public, max-age={seconds}, immutable</code> — the response will not change for
+its freshness lifetime, so clients should not revalidate. The <code>immutable</code> directive
+(RFC 8246) is appended via the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue.extensions">Extensions</a> collection
+because the BCL type has no dedicated property for it.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static CacheControlHeaderValue Immutable(TimeSpan maxAge)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maxAge</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd><p>Freshness lifetime; emitted as <code>max-age</code> in seconds. Must be non-negative.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue">CacheControlHeaderValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception">ArgumentOutOfRangeException</a></dt>
+    <dd><p><code class="paramref">maxAge</code> is negative.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Asp_CacheControl_NoCache_" data-uid="Trellis.Asp.CacheControl.NoCache*"></a>
+
+  <h3 id="Trellis_Asp_CacheControl_NoCache" data-uid="Trellis.Asp.CacheControl.NoCache">
+  NoCache()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/CacheControl.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p><code>Cache-Control: no-cache</code> — caches must revalidate with the origin before serving.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static CacheControlHeaderValue NoCache()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue">CacheControlHeaderValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_CacheControl_NoCache_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Different from <code>no-store</code>: <code>no-cache</code> allows storage but requires revalidation.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_CacheControl_NoStore_" data-uid="Trellis.Asp.CacheControl.NoStore*"></a>
+
+  <h3 id="Trellis_Asp_CacheControl_NoStore" data-uid="Trellis.Asp.CacheControl.NoStore">
+  NoStore()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/CacheControl.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p><code>Cache-Control: no-store</code> — the response must not be stored anywhere.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static CacheControlHeaderValue NoStore()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue">CacheControlHeaderValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_CacheControl_NoStore_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Use for responses that may contain personal data, secrets, or per-user state. Applies to
+both success and failure responses through <a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html#Trellis_Asp_HttpResponseOptionsBuilder_1_WithCacheControl_System_Net_Http_Headers_CacheControlHeaderValue_">WithCacheControl(CacheControlHeaderValue)</a>
+— a 404 from a sensitive endpoint is no less sensitive than the 200.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_CacheControl_Private_" data-uid="Trellis.Asp.CacheControl.Private*"></a>
+
+  <h3 id="Trellis_Asp_CacheControl_Private_System_TimeSpan_" data-uid="Trellis.Asp.CacheControl.Private(System.TimeSpan)">
+  Private(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/CacheControl.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p><code>Cache-Control: private, max-age={seconds}</code> — only the requesting user agent may store the response.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static CacheControlHeaderValue Private(TimeSpan maxAge)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maxAge</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd><p>Freshness lifetime; emitted as <code>max-age</code> in seconds (truncated to whole seconds). Must be non-negative — RFC 9111 <code>delta-seconds</code> is unsigned.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue">CacheControlHeaderValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception">ArgumentOutOfRangeException</a></dt>
+    <dd><p><code class="paramref">maxAge</code> is negative.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="Trellis_Asp_CacheControl_Public_" data-uid="Trellis.Asp.CacheControl.Public*"></a>
+
+  <h3 id="Trellis_Asp_CacheControl_Public_System_TimeSpan_" data-uid="Trellis.Asp.CacheControl.Public(System.TimeSpan)">
+  Public(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/CacheControl.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p><code>Cache-Control: public, max-age={seconds}</code> — shared caches may store the response.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static CacheControlHeaderValue Public(TimeSpan maxAge)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maxAge</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd><p>Freshness lifetime; emitted as <code>max-age</code> in seconds (truncated to whole seconds). Must be non-negative — RFC 9111 <code>delta-seconds</code> is unsigned.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.net.http.headers.cachecontrolheadervalue">CacheControlHeaderValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception">ArgumentOutOfRangeException</a></dt>
+    <dd><p><code class="paramref">maxAge</code> is negative.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Response/CacheControl.cs/#L23" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

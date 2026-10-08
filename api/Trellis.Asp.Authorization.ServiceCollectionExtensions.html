@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ServiceCollectionExtensions | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ServiceCollectionExtensions | Trellis ">
+      
+      <meta name="description" content="Extension methods for registering actor providers in ASP.NET Core DI.">
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/new/main/apiSpec/new?filename=Trellis_Asp_Authorization_ServiceCollectionExtensions.md&amp;value=---%0Auid%3A%20Trellis.Asp.Authorization.ServiceCollectionExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions">
+
+
+
+  <h1 id="Trellis_Asp_Authorization_ServiceCollectionExtensions" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions" class="text-break">
+Class ServiceCollectionExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/ServiceCollectionExtensions.cs/#L16"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="Trellis.html">Trellis</a>.<a class="xref" href="Trellis.Asp.html">Asp</a>.<a class="xref" href="Trellis.Asp.Authorization.html">Authorization</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>Trellis.Asp.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Extension methods for registering actor providers in ASP.NET Core DI.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class ServiceCollectionExtensions</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ServiceCollectionExtensions</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddCachingActorProvider_" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddCachingActorProvider*"></a>
+
+  <h3 id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddCachingActorProvider__1_Microsoft_Extensions_DependencyInjection_IServiceCollection_" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddCachingActorProvider``1(Microsoft.Extensions.DependencyInjection.IServiceCollection)">
+  AddCachingActorProvider&lt;T&gt;(IServiceCollection)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/ServiceCollectionExtensions.cs/#L346"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a caching decorator around the specified <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> implementation.
+The inner provider is resolved per-scope and wrapped with <a class="xref" href="Trellis.Asp.Authorization.CachingActorProvider.html">CachingActorProvider</a>
+so that multiple calls within the same request return the same actor instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddCachingActorProvider&lt;T&gt;(this IServiceCollection services) where T : class, IActorProvider</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The concrete <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> implementation to cache.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddCachingActorProvider__1_Microsoft_Extensions_DependencyInjection_IServiceCollection__examples">Examples</h4>
+  <pre><code class="lang-csharp">// Pattern B(i): Custom provider with no Trellis-managed options dependencies.
+services.AddCachingActorProvider&lt;DatabaseActorProvider&gt;();
+
+// Pattern B(ii): Built-in provider — register the inner provider's options
+// helper FIRST so IOptions&lt;EntraActorOptions&gt; is configured, then wrap.
+services.AddEntraActorProvider(o =&gt; o.MapPermissions = ...);
+services.AddCachingActorProvider&lt;EntraActorProvider&gt;();
+
+// Pattern B(iii): Subclass of ClaimsActorProvider (e.g. KeycloakActorProvider).
+// Inner subclass shares ClaimsActorOptions, so AddClaimsActorProvider(...)
+// configures IOptions&lt;ClaimsActorOptions&gt; for the subclass too.
+services.AddClaimsActorProvider(o =&gt; o.ActorIdClaim = "sub");
+services.AddCachingActorProvider&lt;KeycloakActorProvider&gt;();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddCachingActorProvider__1_Microsoft_Extensions_DependencyInjection_IServiceCollection__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+<b>Replaces</b> the <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> slot with the caching wrapper. The inner
+type <code class="typeparamref">T</code> is registered via <code>TryAddScoped&lt;T&gt;()</code>, so repeated
+calls do not accumulate inner-provider descriptors.
+</p>
+<p>
+<b>Inner-provider dependencies are NOT auto-registered.</b> This helper only adds
+<code class="typeparamref">T</code> itself and <code>IHttpContextAccessor</code>. If <code class="typeparamref">T</code>
+is one of the built-in providers (<a class="xref" href="Trellis.Asp.Authorization.EntraActorProvider.html">EntraActorProvider</a>,
+<a class="xref" href="Trellis.Asp.Authorization.ClaimsActorProvider.html">ClaimsActorProvider</a>) or a subclass thereof, you must first call the matching
+<code>AddXxxActorProvider(...)</code> helper so its <code>IOptions&lt;TOptions&gt;</code> is configured.
+The matching helper's <code>Replace</code> on the <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> slot is then
+overwritten by this caching wrap — that is the intended composition order.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddClaimsActorProvider_" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddClaimsActorProvider*"></a>
+
+  <h3 id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddClaimsActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions__" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddClaimsActorProvider(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Trellis.Asp.Authorization.ClaimsActorOptions})">
+  AddClaimsActorProvider(IServiceCollection, Action&lt;ClaimsActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/ServiceCollectionExtensions.cs/#L51"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.ClaimsActorProvider.html">ClaimsActorProvider</a> as the scoped <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a>
+with configurable claim mapping for any OIDC/JWT identity provider.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddClaimsActorProvider(this IServiceCollection services, Action&lt;ClaimsActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html">ClaimsActorOptions</a>&gt;</dt>
+    <dd><p>Optional delegate to customize <a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html">ClaimsActorOptions</a>.
+Override <a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html#Trellis_Asp_Authorization_ClaimsActorOptions_ActorIdClaim">ActorIdClaim</a> and
+<a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html#Trellis_Asp_Authorization_ClaimsActorOptions_PermissionsClaim">PermissionsClaim</a> to match your token format.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddClaimsActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions___examples">Examples</h4>
+  <pre><code class="lang-csharp">// Auth0
+builder.Services.AddClaimsActorProvider(opts =&gt;
+{
+    opts.ActorIdClaim = "sub";
+    opts.PermissionsClaim = "permissions";
+});
+
+// Keycloak
+builder.Services.AddClaimsActorProvider(opts =&gt;
+{
+    opts.ActorIdClaim = "sub";
+    opts.PermissionsClaim = "realm_access.roles";
+});</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddClaimsActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p><b>Replaces</b> any prior <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> registration — actor-provider
+helpers do not stack. Pick one provider per environment (or wrap an inner provider
+with <a class="xref" href="Trellis.Asp.Authorization.ServiceCollectionExtensions.html#Trellis_Asp_Authorization_ServiceCollectionExtensions_AddCachingActorProvider__1_Microsoft_Extensions_DependencyInjection_IServiceCollection_">AddCachingActorProvider&lt;T&gt;(IServiceCollection)</a>); the last <code>AddXxxActorProvider</code> call wins.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddDevelopmentActorProvider_" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddDevelopmentActorProvider*"></a>
+
+  <h3 id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddDevelopmentActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_DevelopmentActorOptions__" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddDevelopmentActorProvider(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Trellis.Asp.Authorization.DevelopmentActorOptions})">
+  AddDevelopmentActorProvider(IServiceCollection, Action&lt;DevelopmentActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/ServiceCollectionExtensions.cs/#L288"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.DevelopmentActorProvider.html">DevelopmentActorProvider</a> as the scoped <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a>
+for development and testing environments. Reads actor identity from the
+<code>X-Test-Actor</code> HTTP header and falls back to a configurable default actor.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddDevelopmentActorProvider(this IServiceCollection services, Action&lt;DevelopmentActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.DevelopmentActorOptions.html">DevelopmentActorOptions</a>&gt;</dt>
+    <dd><p>Optional delegate to customize <a class="xref" href="Trellis.Asp.Authorization.DevelopmentActorOptions.html">DevelopmentActorOptions</a>.
+Set <a class="xref" href="Trellis.Asp.Authorization.DevelopmentActorOptions.html#Trellis_Asp_Authorization_DevelopmentActorOptions_DefaultPermissions">DefaultPermissions</a> to grant permissions
+when no header is present, or set <a class="xref" href="Trellis.Asp.Authorization.DevelopmentActorOptions.html#Trellis_Asp_Authorization_DevelopmentActorOptions_ThrowOnMalformedHeader">ThrowOnMalformedHeader</a>
+to <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a> to fall back to the default actor on a malformed header
+instead of rejecting it (rejection is the default).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddDevelopmentActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_DevelopmentActorOptions___examples">Examples</h4>
+  <pre><code class="lang-csharp">if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDevelopmentActorProvider(options =&gt;
+    {
+        options.DefaultPermissions = new HashSet&lt;string&gt;
+        {
+            "orders:create", "orders:read"
+        };
+    });
+}
+else
+{
+    builder.Services.AddEntraActorProvider();
+}</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddDevelopmentActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_DevelopmentActorOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+<b>Security:</b> The provider throws <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a> unconditionally
+when resolved outside of the Development environment, regardless of whether an
+<code>X-Test-Actor</code> header is present on the request. Use <a class="xref" href="Trellis.Asp.Authorization.ServiceCollectionExtensions.html#Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEntraActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_EntraActorOptions__">AddEntraActorProvider(IServiceCollection, Action&lt;EntraActorOptions&gt;?)</a>
+for production deployments.
+</p>
+<p>
+<b>Replaces</b> any prior <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> registration — actor-provider
+helpers do not stack. Pick one provider per environment; the last
+<code>AddXxxActorProvider</code> call wins.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEasyAuthActorProvider_" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddEasyAuthActorProvider*"></a>
+
+  <h3 id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEasyAuthActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions__" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddEasyAuthActorProvider(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Trellis.Asp.Authorization.ClaimsActorOptions})">
+  AddEasyAuthActorProvider(IServiceCollection, Action&lt;ClaimsActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/ServiceCollectionExtensions.cs/#L222"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.EasyAuthClaimsActorProvider.html">EasyAuthClaimsActorProvider</a> as the scoped
+<a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> for requests authenticated by Azure App Service /
+Container Apps built-in authentication (&quot;Easy Auth&quot;).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddEasyAuthActorProvider(this IServiceCollection services, Action&lt;ClaimsActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html">ClaimsActorOptions</a>&gt;</dt>
+    <dd><p>Optional delegate to customize <a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html">ClaimsActorOptions</a> — set
+<a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html#Trellis_Asp_Authorization_ClaimsActorOptions_ActorIdClaim">ActorIdClaim</a> and
+<a class="xref" href="Trellis.Asp.Authorization.ClaimsActorOptions.html#Trellis_Asp_Authorization_ClaimsActorOptions_PermissionsClaim">PermissionsClaim</a> to the claim types your upstream
+identity provider emits inside the Easy Auth principal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEasyAuthActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions___examples">Examples</h4>
+  <pre><code class="lang-csharp">builder.Services.AddAuthentication(EasyAuthDefaults.AuthenticationScheme).AddEasyAuth();
+builder.Services.AddEasyAuthActorProvider(opts =&gt;
+{
+    opts.ActorIdClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+    opts.PermissionsClaim = "roles";
+});
+// ... app.UseAuthentication();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEasyAuthActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This registers the actor <em>mapping</em> only. It does NOT authenticate the request —
+pair it with <code>AddAuthentication(...).AddEasyAuth()</code> and <code>UseAuthentication()</code>
+so <a class="xref" href="Trellis.Asp.Authorization.EasyAuthAuthenticationHandler.html">EasyAuthAuthenticationHandler</a> populates <code>HttpContext.User</code> from the
+<code>X-MS-CLIENT-PRINCIPAL</code> header first. Unlike the bearer providers, the resolved
+provider varies its response cache by the Easy Auth principal headers (see
+<a class="xref" href="Trellis.Asp.Authorization.EasyAuthClaimsActorProvider.html#Trellis_Asp_Authorization_EasyAuthClaimsActorProvider_VaryByHeaders">VaryByHeaders</a>). A startup validator fails fast
+when this provider is registered but no Easy Auth authentication scheme is, surfacing the
+missing-scheme misconfiguration loudly instead of silently 401-ing every request.
+</p>
+<p>
+<b>Trust precondition:</b> only register when the app is reachable exclusively through
+the Easy Auth front end — see <a class="xref" href="Trellis.Asp.Authorization.EasyAuthDefaults.html">EasyAuthDefaults</a>. Never auto-enable it.
+</p>
+<p>
+<b>Replaces</b> any prior <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> registration — actor-provider
+helpers do not stack; the last <code>AddXxxActorProvider</code> call wins.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEntraActorProvider_" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddEntraActorProvider*"></a>
+
+  <h3 id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEntraActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_EntraActorOptions__" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddEntraActorProvider(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Trellis.Asp.Authorization.EntraActorOptions})">
+  AddEntraActorProvider(IServiceCollection, Action&lt;EntraActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/ServiceCollectionExtensions.cs/#L162"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.EntraActorProvider.html">EntraActorProvider</a> as the scoped <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a>
+and configures <a class="xref" href="Trellis.Asp.Authorization.EntraActorOptions.html">EntraActorOptions</a> with default Entra v2.0 claim mappings.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddEntraActorProvider(this IServiceCollection services, Action&lt;EntraActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.EntraActorOptions.html">EntraActorOptions</a>&gt;</dt>
+    <dd><p>Optional delegate to customize <a class="xref" href="Trellis.Asp.Authorization.EntraActorOptions.html">EntraActorOptions</a>.
+Override <a class="xref" href="Trellis.Asp.Authorization.EntraActorOptions.html#Trellis_Asp_Authorization_EntraActorOptions_MapPermissions">MapPermissions</a> to flatten roles into granular permissions,
+<a class="xref" href="Trellis.Asp.Authorization.EntraActorOptions.html#Trellis_Asp_Authorization_EntraActorOptions_MapForbiddenPermissions">MapForbiddenPermissions</a> to populate deny lists, or
+<a class="xref" href="Trellis.Asp.Authorization.EntraActorOptions.html#Trellis_Asp_Authorization_EntraActorOptions_MapAttributes">MapAttributes</a> to add custom ABAC attributes.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEntraActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_EntraActorOptions___examples">Examples</h4>
+  <pre><code class="lang-csharp">// Application-owned role→permissions catalog.
+var rolePermissions = new Dictionary&lt;string, IReadOnlyCollection&lt;string&gt;&gt;
+{
+    ["orders.manager"] = ["orders:read", "orders:write"],
+};
+
+// RolePermissionProjection flattens role claims into permissions from the app-supplied
+// map, skipping any role the service does not recognize (no throw on an unmapped role).
+builder.Services.AddEntraActorProvider(options =&gt;
+{
+    options.MapPermissions = RolePermissionProjection.ForRoleClaims(rolePermissions);
+});</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEntraActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_EntraActorOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p><b>Replaces</b> any prior <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> registration — actor-provider
+helpers do not stack. Pick one provider per environment (or wrap with
+<a class="xref" href="Trellis.Asp.Authorization.ServiceCollectionExtensions.html#Trellis_Asp_Authorization_ServiceCollectionExtensions_AddCachingActorProvider__1_Microsoft_Extensions_DependencyInjection_IServiceCollection_">AddCachingActorProvider&lt;T&gt;(IServiceCollection)</a> using <code>EntraActorProvider</code> as the inner type);
+the last <code>AddXxxActorProvider</code> call wins.</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddNestedJsonPathClaimsActorProvider_" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddNestedJsonPathClaimsActorProvider*"></a>
+
+  <h3 id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddNestedJsonPathClaimsActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_NestedJsonPathClaimsActorOptions__" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddNestedJsonPathClaimsActorProvider(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{Trellis.Asp.Authorization.NestedJsonPathClaimsActorOptions})">
+  AddNestedJsonPathClaimsActorProvider(IServiceCollection, Action&lt;NestedJsonPathClaimsActorOptions&gt;?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/ServiceCollectionExtensions.cs/#L111"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers <a class="xref" href="Trellis.Asp.Authorization.NestedJsonPathClaimsActorProvider.html">NestedJsonPathClaimsActorProvider</a> as the scoped
+<a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> with nested-JSON claim shape support (Auth0
+<code>app_metadata.roles</code>, Azure B2C <code>extension_*</code>, Okta nested claims).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddNestedJsonPathClaimsActorProvider(this IServiceCollection services, Action&lt;NestedJsonPathClaimsActorOptions&gt;? configure = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="Trellis.Asp.Authorization.NestedJsonPathClaimsActorOptions.html">NestedJsonPathClaimsActorOptions</a>&gt;</dt>
+    <dd><p>Optional delegate to customize <a class="xref" href="Trellis.Asp.Authorization.NestedJsonPathClaimsActorOptions.html">NestedJsonPathClaimsActorOptions</a>.
+Set <code>ContainerClaim</code> to the top-level claim that carries the JSON document,
+<code>ActorIdPath</code> / <code>PermissionsPath</code> to the dotted JSON paths inside it, and
+optionally the inherited flat <code>ActorIdClaim</code> / <code>PermissionsClaim</code> for the
+fallback when the container claim is absent or malformed.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddNestedJsonPathClaimsActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_NestedJsonPathClaimsActorOptions___examples">Examples</h4>
+  <pre><code class="lang-csharp">// Auth0 — permissions under app_metadata.roles as a JSON array of strings.
+builder.Services.AddNestedJsonPathClaimsActorProvider(opts =&gt;
+{
+    opts.ActorIdClaim = "sub";
+    opts.ContainerClaim = "app_metadata";
+    opts.PermissionsPath = "roles";
+});</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddNestedJsonPathClaimsActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_NestedJsonPathClaimsActorOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p><b>Replaces</b> any prior <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> registration — actor-provider
+helpers do not stack. Pick one provider per environment (or wrap with
+<a class="xref" href="Trellis.Asp.Authorization.ServiceCollectionExtensions.html#Trellis_Asp_Authorization_ServiceCollectionExtensions_AddCachingActorProvider__1_Microsoft_Extensions_DependencyInjection_IServiceCollection_">AddCachingActorProvider&lt;T&gt;(IServiceCollection)</a>); the last <code>AddXxxActorProvider</code> call wins.</p>
+<p>
+<b>Startup validation caveat.</b> The matching <code>IValidateOptions&lt;NestedJsonPathClaimsActorOptions&gt;</code>
+runs at host startup (via <code>ValidateOnStart</code>) regardless of whether a later
+<code>AddXxxActorProvider</code> call replaces <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a>. If a consumer
+configures invalid nested-path options (e.g. sets <code>ActorIdPath</code> or
+<code>PermissionsPath</code> without <code>ContainerClaim</code>) and then registers a different
+actor-provider, host startup still fails with
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.options.optionsvalidationexception">OptionsValidationException</a>. Either fix the
+invalid options or remove the call entirely; the validator is permissive of default
+(unconfigured) options to avoid blocking the common "register then replace" pattern.
+</p>
+</div>
+
+
+
+
+  <a id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddTrellisWorkerActor_" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddTrellisWorkerActor*"></a>
+
+  <h3 id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddTrellisWorkerActor_Microsoft_Extensions_DependencyInjection_IServiceCollection_Trellis_Authorization_Actor_" data-uid="Trellis.Asp.Authorization.ServiceCollectionExtensions.AddTrellisWorkerActor(Microsoft.Extensions.DependencyInjection.IServiceCollection,Trellis.Authorization.Actor)">
+  AddTrellisWorkerActor(IServiceCollection, Actor)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/ServiceCollectionExtensions.cs/#L471"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Wraps the currently-registered <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> so it composes cleanly
+across HTTP requests and non-HTTP execution (typically a <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.hosting.backgroundservice">BackgroundService</a>
+tick). When the wrapper resolves outside an HTTP request scope (no
+<code>HttpContext</code>), it returns <code class="paramref">systemActor</code>; inside an HTTP request
+scope it delegates to the inner HTTP-side provider, preserving the standard
+claims/bearer/header-derived actor resolution and the
+<code>Maybe.None</code>-on-anonymous → HTTP 401 contract.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static IServiceCollection AddTrellisWorkerActor(this IServiceCollection services, Actor systemActor)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection.</p>
+</dd>
+    <dt><code>systemActor</code> <a class="xref" href="Trellis.Authorization.Actor.html">Actor</a></dt>
+    <dd><p>The actor returned for non-HTTP (worker / hosted-service) execution. Construct with
+the permissions the worker needs to issue mediator commands and queries
+(e.g. <code>new Actor(&quot;system&quot;, new HashSet&lt;string&gt; { &quot;reminders:dispatch&quot; }, ...)</code>).</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dd><p>The service collection for chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddTrellisWorkerActor_Microsoft_Extensions_DependencyInjection_IServiceCollection_Trellis_Authorization_Actor__examples">Examples</h4>
+  <pre><code class="lang-csharp">builder.Services.AddClaimsActorProvider(opts =&gt; opts.ActorIdClaim = "sub");
+builder.Services.AddTrellisWorkerActor(new Actor(
+    id: "system",
+    permissions: new HashSet&lt;string&gt; { "reminders:dispatch", "reminders:read" },
+    forbiddenPermissions: new HashSet&lt;string&gt;(),
+    attributes: new Dictionary&lt;string, string&gt;()));
+
+builder.Services.AddHostedService&lt;ReminderDispatchWorker&gt;();</code></pre>
+
+
+  <h4 class="section" id="Trellis_Asp_Authorization_ServiceCollectionExtensions_AddTrellisWorkerActor_Microsoft_Extensions_DependencyInjection_IServiceCollection_Trellis_Authorization_Actor__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+<b>Order matters.</b> Call <code>AddTrellisWorkerActor</code> AFTER the HTTP-side actor
+provider helper (<a class="xref" href="Trellis.Asp.Authorization.ServiceCollectionExtensions.html#Trellis_Asp_Authorization_ServiceCollectionExtensions_AddClaimsActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_ClaimsActorOptions__">AddClaimsActorProvider(IServiceCollection, Action&lt;ClaimsActorOptions&gt;?)</a>, <a class="xref" href="Trellis.Asp.Authorization.ServiceCollectionExtensions.html#Trellis_Asp_Authorization_ServiceCollectionExtensions_AddEntraActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_EntraActorOptions__">AddEntraActorProvider(IServiceCollection, Action&lt;EntraActorOptions&gt;?)</a>,
+<a class="xref" href="Trellis.Asp.Authorization.ServiceCollectionExtensions.html#Trellis_Asp_Authorization_ServiceCollectionExtensions_AddDevelopmentActorProvider_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_Trellis_Asp_Authorization_DevelopmentActorOptions__">AddDevelopmentActorProvider(IServiceCollection, Action&lt;DevelopmentActorOptions&gt;?)</a>) and AFTER any
+<a class="xref" href="Trellis.Asp.Authorization.ServiceCollectionExtensions.html#Trellis_Asp_Authorization_ServiceCollectionExtensions_AddCachingActorProvider__1_Microsoft_Extensions_DependencyInjection_IServiceCollection_">AddCachingActorProvider&lt;T&gt;(IServiceCollection)</a> wrap. The helper captures the
+<a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> slot present at call time and re-registers a wrapper
+that delegates to it; calling
+<code>services.AddXxxActorProvider</code> or <code>services.AddScoped&lt;IActorProvider, ...&gt;()</code>
+after this helper will silently overwrite the wrapper — background-worker ticks would
+then resolve whatever the new provider returns instead of the configured system actor
+(typically <a class="xref" href="Trellis.Maybe-1.html#Trellis_Maybe_1_None">None</a> in a tick context, surfacing as
+<a class="xref" href="Trellis.Error.AuthenticationRequired.html">Error.AuthenticationRequired</a> on the first dispatched command). The
+validator catches that case at host start.
+</p>
+<p>
+<b>Single-registration contract.</b> Calling <code>AddTrellisWorkerActor</code> twice
+throws — wrapping a wrapper would mean a worker scope returns the inner wrapper's
+system actor instead of the outer's, which is never the intended composition.
+</p>
+<p>
+<b>Lifetime.</b> The wrapper is registered as scoped (matching the other built-in
+actor providers). Built-in providers (Claims / Entra / Development / Caching) are
+scoped, so the typical wiring preserves the inner's lifetime semantics exactly. The
+inner provider is materialized lazily on first access via a thread-safe
+<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.lazy-1">Lazy&lt;T&gt;</a> with <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.lazythreadsafetymode#system-threading-lazythreadsafetymode-executionandpublication">ExecutionAndPublication</a>
+— worker ticks (HttpContext null) never construct it.
+</p>
+<p>
+<b>Inner-descriptor support matrix.</b>
+</p>
+<ul><li>
+    <b>Scoped</b> via implementation type or factory: supported. Wrapper owns the
+    materialized inner and disposes it (sync or async) when the wrapper scope ends.
+  </li><li>
+    <b>Singleton via <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.servicedescriptor.implementationinstance">ImplementationInstance</a></b>:
+    supported. Wrapper delegates without re-materializing and does not dispose the
+    instance (the consumer owns app-lifetime disposal).
+  </li><li>
+    <b>Singleton via implementation type or factory</b>: <b>rejected at registration
+    time</b> — the wrapper is scoped, so materializing per wrapper scope would
+    silently break the singleton invariant (N instances instead of 1). The helper
+    throws with guidance to either re-register the provider as scoped or supply a
+    pre-constructed instance via
+    <code>services.AddSingleton&lt;IActorProvider&gt;(instance)</code>.
+  </li><li>
+    <b>Transient via implementation type or factory</b>: <b>rejected at registration
+    time</b> — the wrapper is scoped, so a transient inner would silently become
+    scoped-per-wrapper (one instance reused per scope rather than a fresh instance per
+    resolution). The helper throws with guidance to re-register as scoped.
+  </li><li>
+    <b>Keyed registrations</b> are ignored — the helper inspects and replaces only the
+    unkeyed <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> slot.
+  </li></ul>
+<p>
+<b>Decoration awareness.</b> The wrapper implements
+<a class="xref" href="Trellis.Asp.Authorization.IProvideActorVaryHeaders.html">IProvideActorVaryHeaders</a> (delegating to the inner provider's headers)
+and <span class="xref">Trellis.Asp.Authorization.IDecoratingActorProvider</span> (so
+<a class="xref" href="Trellis.Asp.HttpResponseOptionsBuilder-1.html#Trellis_Asp_HttpResponseOptionsBuilder_1_VaryForActor">VaryForActor()</a> diagnostics name the
+underlying HTTP-side provider rather than the worker wrapper).
+</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentnullexception">ArgumentNullException</a></dt>
+    <dd><p>Thrown when <code class="paramref">services</code> or <code class="paramref">systemActor</code> is null.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown when no prior <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> registration exists, when more than
+one prior <a class="xref" href="Trellis.Authorization.IActorProvider.html">IActorProvider</a> descriptor is present (registration order is
+ambiguous), or when <code>AddTrellisWorkerActor</code> has already been called on this
+collection. A separate <code>IHostedLifecycleService</code> validator
+(<span class="xref">Trellis.Asp.Authorization.WorkerActorRegistrationValidator</span>) also runs at host start
+(in <code>StartingAsync</code>, before any <code>IHostedService.StartAsync</code>) and throws if
+a later registration overwrote the worker composition.</p>
+</dd>
+  </dl>
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/src/Authorization/ServiceCollectionExtensions.cs/#L16" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

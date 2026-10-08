@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>ADR-008 — Deliver Versioned Trellis Agent Context Without Build-Time Repository Mutation | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="ADR-008 — Deliver Versioned Trellis Agent Context Without Build-Time Repository Mutation | Trellis ">
+      
+      
+      <link rel="icon" href="../favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-008-agent-context-delivery.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+
+      <div class="content">
+        <div class="actionbar">
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="adr-008--deliver-versioned-trellis-agent-context-without-build-time-repository-mutation">ADR-008 — Deliver Versioned Trellis Agent Context Without Build-Time Repository Mutation</h1>
+
+<blockquote>
+<p><strong>Status:</strong> Accepted. The five open questions and the transaction-scope proportionality question
+raised in review are resolved in place below; see &quot;Decisions resolved in review&quot; for the summary.
+The shared experimental contract is defined by
+<a href="ADR-009-nuget-package-guidance-contract.html">ADR-009</a> and implemented with Trellis.
+External standardization and adoption do not block release.</p>
+<p><strong>Update (2026-09):</strong> The shipped design departs from this ADR in three ways. Guidance packages are
+activated by consent: the tool installs only packages listed in <code>.agentdocs/policy.json</code>
+<code>approvedPackages</code>, and every other package is reported as pending without its manifest being read.
+The manifest classifies each document by <code>usage</code> (<code>required</code>, <code>onDemand</code>, <code>supporting</code>) instead of
+naming entry points. And only <code>Trellis.Core</code> publishes guidance for the whole Trellis family: the
+consumer-side <code>Trellis.ApiReference.targets</code> bootstrap was removed, <code>Trellis.Analyzers</code> no longer ships
+its own copy of its reference, and no other Trellis package carries a manifest. Where this text
+describes <code>entryPoints</code>, restore hooks or a <code>refresh</code> command, read
+<a href="ADR-009-nuget-package-guidance-contract.html">ADR-009</a> and the AgentDocs contract document instead.</p>
+<p><strong>Context:</strong> Trellis NuGet packages ship an LLM-optimized API reference set and currently copy it
+into a consuming repository's nearest <code>.github/</code> directory during build. After adopting root
+<code>AGENTS.md</code> as the cross-agent instruction surface, the files are still delivered but no portable
+mechanism tells an agent that they exist. Automatically editing a customer's <code>AGENTS.md</code> from a
+<code>buildTransitive</code> target would solve discovery by violating repository ownership, build
+reproducibility, and the trust boundary around agent instructions. This ADR proposes an explicit,
+manifest-backed agent-context lifecycle instead.</p>
+</blockquote>
+<blockquote>
+<p><strong>Revision (2026-09-27):</strong> The repository-installation layout and scope rules below
+describe the original design and are superseded by &quot;Repository-wide guidance revision&quot;
+immediately below. The NuGet package manifest in ADR-009 is unchanged.</p>
+</blockquote>
+<blockquote>
+<p><strong>Publisher packaging revision:</strong> The build-only <code>Trellis.AgentDocs.Packaging</code>
+helper lives in its own repository and versions independently of Trellis.Core.
+Core now uses this helper privately for the complete first-party documentation set.
+A thin pack-time adapter maps Markdown front matter to <code>PackageGuidanceItem</code>
+metadata; the helper owns hashes, manifest generation and payload packing.
+Single-document publishers can use <code>PackageGuidanceDocument</code> and
+<code>PackageGuidancePath</code>; there is no Trellis-only preset.
+Its NuGet payload is a publisher-side target, not a consumer build target.
+The format remains the experimental ADR-009 contract, not a NuGet standard.
+The historical <code>org.trellis.lockstepCohort</code> proposal below is superseded:
+AgentDocs never enforced it, and Core no longer emits that unused metadata.
+First-party packages still share one repository version; neither the helper
+nor the independently versioned tool needs to match Core's version.
+Keeping all first-party guides in Core lets agents discover optional features,
+but does not imply those feature packages are installed.</p>
+<p><strong>Tool extraction revision (2026-09-27):</strong> The reader and installer now live in the
+independent <code>Trellis.AgentDocs.Packaging</code> repository. The separately versioned
+<code>Trellis.AgentDocs</code> local tool (command <code>agentdocs</code>, independently versioned)
+implements <code>init</code>, <code>sync</code>, <code>check</code>, and <code>remove</code>; it is not a first-party
+framework project and is not Core-version matched. The historical package name,
+invocation syntax, scoped-layout examples, and lockstep publication plan below
+record the superseded design, not current installation instructions. The tool
+and build helper are published on NuGet.org.</p>
+</blockquote>
+<h2 id="repository-wide-guidance-revision">Repository-wide guidance revision</h2>
+<p>The installer now owns one context per Git repository. The pinned tool manifest is at
+Git-root <code>.config/dotnet-tools.json</code>, including when the selected solution is nested.
+It materializes guides under Git-root <code>.agentdocs/</code>: Trellis's flat reference view is
+<code>.agentdocs/packages/trellis.core/trellis/</code>; all publisher guides live under
+<code>.agentdocs/packages/&lt;package-id&gt;/&lt;package-relative-path&gt;</code>. The tool-generated
+<code>.agentdocs/README.md</code> lists each approved package's documents by their manifest <code>usage</code> (<code>required</code>, <code>onDemand</code>, <code>supporting</code>). The ownership manifest
+records the resolved package versions and hashes; it rejects mixed versions of a
+package in the selected graph instead of adding a version directory. Independent
+subfolder contexts and tool manifests are not supported. An existing <code>.trellis/</code>
+context must first be removed using the previously pinned tool; it is not silently
+adopted or deleted.</p>
+<p>Explicit <code>init</code>, <code>sync</code>, and <code>remove</code> write repository files; restore and build never do, and there is no restore-time <code>refresh</code> or managed <code>Directory.*.targets</code> import. They
+maintain narrow, keyed pointers in root and relevant project-directory <code>AGENTS.md</code>
+files, plus the managed block of Git-root <code>.github/copilot-instructions.md</code> for
+Visual Studio Copilot. Customer-authored instructions outside those blocks are
+preserved, and all other <code>.github/</code> paths remain excluded. <code>check</code> is read-only.
+Visual Studio users must enable custom instructions; opening a nested solution
+must be tested to confirm the Git-root <code>.github/</code> pointer is loaded in that IDE.
+Neither <code>.agentdocs/</code> nor the package manifest is itself an agent-discovery standard.</p>
+<h2 id="context">Context</h2>
+<p>Trellis maintains API reference files specifically for coding agents. They contain exact signatures,
+cross-package recipes, analyzer fix shapes, package preflight requirements, and a small
+<code>trellis-start-here.md</code> router. The reference set exists because an agent without exact signatures
+tends to invent plausible Trellis APIs.</p>
+<p>The current delivery mechanism has several deliberate properties:</p>
+<ol>
+<li><code>Trellis.Core</code> packs the complete lockstep-versioned first-party reference set under <code>trellis/</code>.</li>
+<li>Independently versioned satellite packages ship their own references.</li>
+<li><code>build/Trellis.ApiReference.targets</code>, imported through <code>buildTransitive</code>, copies every contributed
+<code>TrellisApiReference</code> item into the nearest <code>.github/</code> directory before build.</li>
+<li>The directory search is bounded by the Git repository root, supports an explicit root override,
+and can be disabled.</li>
+<li>Packaging gates fail when a shipping package has no path to a reference payload.</li>
+<li>The complete first-party set is intentional: it prevents stale references after a first-party
+package is removed and lets an agent discover optional Trellis modules that are not installed yet.</li>
+</ol>
+<p>Those are valuable invariants and should not be discarded. The problem is the final discovery hop.
+Arbitrary Markdown under <code>.github/</code> is not a cross-agent instruction mechanism. Once a repository uses
+<code>AGENTS.md</code>, nothing automatically routes an agent from that file to
+<code>.github/trellis-start-here.md</code>.</p>
+<p>There is no package-manager-to-agent discovery standard. An agent reliably learns about dependency
+documentation only when the repository's effective instructions point to it, or when a human tells
+the agent in a prompt.</p>
+<h2 id="scope-and-relationship-to-adr-009">Scope and relationship to ADR-009</h2>
+<p>This ADR is the executable delivery plan for <strong>Trellis and its participating satellites</strong>, using the
+shared experimental contract and reader in
+<a href="ADR-009-nuget-package-guidance-contract.html">ADR-009</a> from the first release. Trellis is the working
+sample of that contract, not a separate implementation scheduled for later generalization.</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>ADR-008: Trellis publisher/installer policy</th>
+<th>ADR-009: shared experimental contract</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Package input</td>
+<td>Trellis packages emit the shared manifest while retaining existing payload ownership</td>
+<td>Experimental vendor-neutral manifest with explicit entry points</td>
+</tr>
+<tr>
+<td>Document identity</td>
+<td>Optional Trellis flat-view projection with collision checks and duplicate-source attribution</td>
+<td>Package/version/path-scoped documents with preserved relative links</td>
+</tr>
+<tr>
+<td>Routing</td>
+<td>Tool-owned index, Core router/cookbook, and satellite references</td>
+<td>Package-declared entry points; no knowledge of Core or cookbook filenames</td>
+</tr>
+<tr>
+<td>Version policy</td>
+<td>Pinned tool/Core equality, cohort checks, and nested tool manifests</td>
+<td>Reader compatibility by contract schema, independent of publisher release numbers</td>
+</tr>
+<tr>
+<td>Consumer lifecycle</td>
+<td><code>.trellis/</code>, Git-bounded installation, consented <code>AGENTS.md</code> edits, sync/check/remove</td>
+<td>Read-only discovery usable without Git or repository installation</td>
+</tr>
+<tr>
+<td>Completion</td>
+<td>Trellis acceptance criteria plus the shared reader's local conformance fixtures</td>
+<td>External interoperability and adoption evidence collected after shipping</td>
+</tr>
+</tbody>
+</table>
+<p>Trellis development and release do <strong>not</strong> wait for a NuGet design proposal,
+NuGet/client changes, unrelated package adopters, a second reader, or agent-vendor integration.
+The coordinated Trellis package cut and safety requirements below remain required; the split removes
+external standardization dependencies, not the conditions needed to ship this feature safely.</p>
+<p>Implement discovery/validation once as the shared read-only reader; the Trellis CLI calls that reader
+before applying publisher policy or repository mutation. Ordinary internal boundaries are sufficient:
+no new public .NET API, separate assembly, or plug-in framework is required. Implement ADR-009's
+resolved experimental version 1 decisions and publish its specification and fixtures as part of the
+same engineering work.</p>
+<p>The resulting reader is a reference implementation of the named experimental contract version, not an
+official NuGet standard or proof of independent interoperability. Future externally agreed changes
+require explicit schema-version and compatibility decisions for already-shipped packages.</p>
+<h2 id="decisions-resolved-in-review">Decisions resolved in review</h2>
+<p>Six items were flagged during design review as needing an explicit call rather than further drafting.
+Resolutions:</p>
+<ol>
+<li><strong>Command distribution</strong> — a local, repo-pinned .NET tool via a checked-in tool manifest
+(<code>.config/dotnet-tools.json</code>), not a global tool and not an MSBuild task. The tool version bumps in
+the same PR as the <code>Trellis.Core</code> package version bump for the scope it governs, is reviewable in the
+diff, and <code>check</code> fails when the tool version resolved for a scope disagrees with that scope's
+resolved <code>Trellis.Core</code> version. Independent scopes (see &quot;Scope and monorepos&quot;) carry independent,
+nested tool manifests with <code>&quot;isRoot&quot;: true</code> and an explicit pinned <code>trellis</code> command rather than
+one repository-wide manifest forcing one tool version on every scope. Restore and invoke the tool
+from a directory governed by the selected scope's manifest; passing a project path from the
+repository root does not select a nested manifest. See &quot;Explicit lifecycle command&quot; below.</li>
+<li><strong>Insertion point</strong> — the managed block is inserted after optional frontmatter and the file's first
+top-level heading, as originally drafted. Unchanged.</li>
+<li><strong>CI enforcement</strong> — first-party templates enable <code>trellis agent check</code> in CI by default, rather than
+documenting it as opt-in.</li>
+<li><strong>Legacy <code>.github/</code> cleanup</strong> — out of scope. <code>init</code>, <code>sync</code>, and <code>remove</code> never read, write, or
+delete anything under <code>.github/</code>, and there is no <code>migrate</code> command. Consumers handle their own
+legacy files and instructions.</li>
+<li><strong>Tool bootstrap</strong> — a low-<code>Importance</code> MSBuild <code>&lt;Message/&gt;</code> (never a warning) on restore/build,
+shown when no <code>.trellis/</code> is detected. It distinguishes a first install (no tool manifest yet: create
+one and install the pinned tool) from a subsequent clone (manifest already committed: just restore
+it) — see &quot;Explicit lifecycle command&quot; for the exact commands, since <code>dotnet tool restore</code> alone only
+restores a tool already registered in an existing manifest and does not, by itself, bootstrap a fresh
+repository. This borrows the same technique <code>_CopyTrellisApiReference</code> already uses for its own
+&quot;<code>.git</code> not found&quot; notice — an <code>Importance=&quot;Low&quot;</code> <code>&lt;Message/&gt;</code>, invisible by default and never
+participating in <code>TreatWarningsAsErrors</code> — but ships as its own independent target, not an addition to
+<code>_CopyTrellisApiReference</code> itself, which Phase 3 deletes entirely. The bootstrap message must outlive
+that removal.</li>
+<li><strong>Transaction scope for Phase 1/2</strong> — ship the exclusive writer lock, atomic per-file replacement,
+and full conflict preflight now; defer the durable recovery journal and the persistent
+generation-record read-consistency protocol described in earlier drafts. An operation interrupted
+mid-write may require reviewed repair/adoption or selective restoration of affected paths before
+rerunning <code>init</code>/<code>sync</code> with current package assets — a bare re-run is not guaranteed to complete on
+its own, and there is no automatic multi-step recovery. Revisit once
+concurrent multi-scope usage is an actual, not hypothetical, scenario. See &quot;Shared writers and
+interrupted updates&quot; and the acceptance criteria below for what changed.
+Mutation requires supported atomic file operations, with no non-atomic overwrite fallback.
+The writer lock coordinates tool invocations, not editors: callers must avoid concurrent external
+edits to affected paths. A save after the final snapshot check can still be overwritten; that
+residual race is explicitly accepted for this phase, not claimed to be prevented.</li>
+</ol>
+<h2 id="problem-statement">Problem statement</h2>
+<p>Trellis needs a delivery and discovery design that simultaneously provides:</p>
+<ul>
+<li>exact, package-version-aligned API references in a fresh clone;</li>
+<li>one portable pointer from the repository's effective <code>AGENTS.md</code>;</li>
+<li>no replacement or uncontrolled rewriting of customer-authored instructions;</li>
+<li>deterministic refresh and pruning after package upgrades or removals;</li>
+<li>support for first-party and independently versioned satellite references;</li>
+<li>a reviewable source-control diff rather than hidden instruction mutation;</li>
+<li>no restore/build races in solutions containing multiple projects; and</li>
+<li>no requirement to load the full reference set into every agent session.</li>
+</ul>
+<p>The current build-time copy solves only the first half of this list. Extending the same target to
+append to <code>AGENTS.md</code> would make the second half worse.</p>
+<h2 id="existing-invariants-to-preserve">Existing invariants to preserve</h2>
+<p>This proposal changes consumer materialization and activation, not reference ownership or authoring.</p>
+<table>
+<thead>
+<tr>
+<th>Invariant</th>
+<th>Preserve</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Trellis.Core</code> ships the complete first-party set</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Satellite packages ship their independently versioned references</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>TrellisApiRefName</code> identifies the package that owns a reference</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>trellis-start-here.md</code> routes the complete Core reference set to the cookbook</td>
+<td>Yes; a tool-owned index also supports graphs without Core</td>
+</tr>
+<tr>
+<td>API completeness, freshness, lint, and payload gates</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>References remain available without network access</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Presence of a reference does not imply that package is installed</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p>The repository's full contributor <code>AGENTS.md</code> is <strong>not</strong> part of the consumer payload. It contains
+framework-maintainer workflow and must never be copied into an application. Consumers receive only a
+small Trellis-specific pointer in their own instructions.</p>
+<h2 id="proposed-decision">Proposed decision</h2>
+<p>Adopt an explicit agent-context installation:</p>
+<ol>
+<li>Resolve references from a package-side manifest in the selected NuGet assets graph.</li>
+<li>Materialize package-owned references and a tool-owned discovery index under a tool-neutral
+<code>.trellis/</code> directory.</li>
+<li>Add a minimal, marker-delimited pointer to the consumer's <code>AGENTS.md</code> only through an explicit
+user-invoked command.</li>
+</ol>
+<p>Normal restore and build perform none of these installation steps. They compile the application but
+do not modify repository instructions or generated agent-context files.</p>
+<h3 id="1-consumer-repository-layout">1. Consumer repository layout</h3>
+<p>The default layout is:</p>
+<pre><code class="lang-text">AGENTS.md
+.trellis/
+  README.md
+  agent-context.json
+  api-reference/
+    trellis-start-here.md
+    trellis-api-cookbook.md
+    trellis-api-core.md
+    ...
+</code></pre>
+<p>The <code>trellis/</code> directory inside each <code>.nupkg</code> remains the package payload location. The change is only
+the materialized destination in the consuming repository:</p>
+<pre><code class="lang-text">.github/*.md                 -&gt; current consumer destination
+.trellis/api-reference/*.md -&gt; proposed consumer destination
+</code></pre>
+<p><code>.trellis/</code> is preferred because it is:</p>
+<ul>
+<li>independent of GitHub, Copilot, or any other agent vendor;</li>
+<li>clearly owned by Trellis rather than by the consuming application's documentation system;</li>
+<li>an exact path an instruction can name without relying on directory scanning; and</li>
+<li>isolated from GitHub workflows, issue templates, and repository governance files.</li>
+</ul>
+<p>A nested <code>.trellis/AGENTS.md</code> is not used. Hierarchical agent files govern work in their own subtree;
+an instruction under <code>.trellis/</code> would not reliably apply when an agent edits application code.</p>
+<p>The tool always generates <code>.trellis/README.md</code> as the discovery entry point:</p>
+<ul>
+<li>With Core present, it directs agents to <code>api-reference/trellis-start-here.md</code>, preserving the
+packaged router's mandatory cookbook routing-head guidance.</li>
+<li>It lists contributed satellite references with their source package IDs and resolved versions.</li>
+<li>Without Core, including analyzer-only and satellite-only graphs, it links directly to the available
+references. It must not require a missing router or cookbook, or imply that the full set is present.</li>
+</ul>
+<p>The index uses tool-authored instructions and validated manifest filenames and package identities,
+not package-supplied prose. It is generated deterministically, recorded as a tool-owned file in the
+repository manifest, and subject to the same modification and removal safeguards as references.
+It sits outside <code>api-reference/</code>, so no package document can replace it. Packages remain responsible
+for reference content; the tool only supplies discovery and does not synthesize API guidance.</p>
+<p>All routing starts from explicit entry points returned by the shared reader. Core declares its router,
+and analyzer-only/satellite-only contributions declare their own guidance entry points. Core-specific
+wording is Trellis installer policy, not package-name inference inside the generic reader.</p>
+<h3 id="2-package-side-input-contract">2. Package-side input contract</h3>
+<p>The command does <strong>not</strong> enumerate the current global <code>TrellisApiReference</code> MSBuild item. That item is
+an unconstrained local path: a project or imported package can add an arbitrary file, and it carries
+no authoritative package identity, version, package-relative path, or content hash. Copying it into a
+committed context could disclose a developer-local file or assign false provenance.</p>
+<p>Every compatible package that contributes references instead ships a machine-readable manifest at the
+fixed experimental version 1 package path:</p>
+<pre><code class="lang-text">guidance/reference-manifest.json
+</code></pre>
+<p>This location and <code>schemaVersion: 1</code> are decided in ADR-009; the path is not NuGet-reserved.
+The manifest uses the shared schema for package-relative document paths,
+explicit entry points, schema version, and SHA-256 hashes. Package ID, resolved version, and package
+root are derived from the NuGet resolved-assets graph, never trusted from the manifest itself.</p>
+<p>The package does not choose an arbitrary repository-relative output path. The shared reader retains
+package/version/path-scoped document identities and safe nested paths. The Trellis installer may
+project the known flat Trellis reference set to the layout below, deriving validated Markdown
+filenames from document paths and rejecting collisions rather than accepting publisher-chosen
+repository destinations:</p>
+<pre><code class="lang-text">.trellis/api-reference/&lt;document-filename&gt;
+</code></pre>
+<p>This keeps package content out of <code>.trellis/README.md</code>, <code>.trellis/agent-context.json</code>, <code>AGENTS.md</code>, and
+every other tool-owned or customer-owned location.</p>
+<p>That flat projection is a Trellis view, not the generic document namespace. Unrelated contributions
+remain under tool-selected package/version namespaces with their relative document paths preserved.
+No unrelated <code>README.md</code> can collide with Trellis's index or another publisher's <code>README.md</code>.</p>
+<p>Use one portable path-comparison rule on every host: normalize path separators and Unicode to NFC,
+then compare ordinally ignoring case. Reject distinct spellings that alias under this rule, including
+directory-prefix aliases, before materialization; do not rename them silently. For example, <code>Foo.md</code>
+and <code>foo.md</code> in one package, or in the same Trellis flat projection, conflict even on Linux and even
+if their content matches. Exact-path identical Trellis contributions remain eligible for the explicit
+deduplication rule in section 6. Apply the same comparison to reserved/tool-owned paths and existing
+destination entries so a differently cased existing file cannot be overwritten or silently adopted.
+Package/version namespaces keep identical filenames in unrelated contributions independent.</p>
+<p>The command:</p>
+<ol>
+<li>starts from explicit project or solution entry points;</li>
+<li>consumes already-restored <code>project.assets.json</code> graphs;</li>
+<li>resolves package roots through NuGet's declared package folders;</li>
+<li>reads only fixed-path package manifests;</li>
+<li>canonicalizes every document beneath that exact package root;</li>
+<li>validates document paths and the installer's destination mapping;</li>
+<li>rejects rooted paths, traversal, links/reparse points, and hash mismatches; and</li>
+<li>materializes only manifest-listed package documents, using the text contract in section 6.</li>
+</ol>
+<p>It does not run package build targets to discover documents. A package can influence its own reference
+content—as any dependency can influence its shipped assets—but it cannot redirect the tool to an
+unrelated project or machine file.</p>
+<p>The manifest is generated and verified during packing. Payload gates expand to require it and verify
+that every listed document exists at the declared package-relative path with the declared hash.</p>
+<h3 id="3-managed-agentsmd-pointer">3. Managed <code>AGENTS.md</code> pointer</h3>
+<p>The installer adds this small block:</p>
+<pre><code class="lang-markdown">&lt;!-- trellis-agent-context:start --&gt;
+## Trellis API usage
+
+Before writing or changing code that uses Trellis, read
+`.trellis/README.md` and follow its routing instructions.
+Use those versioned references for exact Trellis signatures; repository instructions remain
+authoritative for project conventions.
+&lt;!-- trellis-agent-context:end --&gt;
+</code></pre>
+<p>The wording is deliberately narrow:</p>
+<ul>
+<li>Trellis controls API-usage guidance, not the application's architecture or workflow.</li>
+<li>The agent loads the small index first, follows the Core router when present, and reads area
+references on demand.</li>
+<li>No tool-specific import syntax such as <code>@file</code> is used.</li>
+<li>The full reference set is not injected into every context window.</li>
+</ul>
+<p>The block is placed near the beginning of <code>AGENTS.md</code>, after optional frontmatter and the initial
+top-level heading when those can be identified safely. Appending at the end is not sufficient:
+instruction loaders may cap the number of bytes they read, so a pointer at the bottom of a large file
+can be truncated.</p>
+<h3 id="4-existing-agentsmd-behavior">4. Existing <code>AGENTS.md</code> behavior</h3>
+<p>The customer owns <code>AGENTS.md</code>. The tool follows these rules:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Selected source has no governing <code>AGENTS.md</code> up to the Git root</td>
+<td>Create a minimal root file for that uncovered source, even if other subtrees have instruction files</td>
+</tr>
+<tr>
+<td>An ancestor, scope-local, or descendant <code>AGENTS.md</code> governs selected source, with no Trellis block</td>
+<td>Insert into every applicable boundary identified in section 8; preserve all existing content</td>
+</tr>
+<tr>
+<td>One complete Trellis block</td>
+<td>Update it in place only when the canonical block changes</td>
+</tr>
+<tr>
+<td>Duplicate or incomplete markers</td>
+<td>Stop without editing and explain the manual repair</td>
+</tr>
+<tr>
+<td>Unsupported encoding, unsafe symlink, or path outside the permitted context/instruction boundaries</td>
+<td>Stop without editing and print the block for manual insertion</td>
+</tr>
+</tbody>
+</table>
+<p>The tool never creates a new child <code>AGENTS.md</code> when an ancestor instruction file already applies. Some
+agents concatenate ancestor instructions while others prefer the nearest file; creating a minimal
+child could therefore hide the customer's root policies. If a nested <code>AGENTS.md</code> already exists, it is
+the correct file to update for that subtree. If none exists below the root, the root file receives a
+path-qualified pointer.</p>
+<p>Edits preserve the existing BOM, encoding, newline style, frontmatter, and bytes outside the managed
+block. Re-running the command without a package or block change produces no diff.</p>
+<p>The tool offers a dry-run mode that prints the proposed changes before writing them.</p>
+<h3 id="5-explicit-lifecycle-command">5. Explicit lifecycle command</h3>
+<p>Introduce a small cross-platform .NET command, distributed as a <strong>local, repo-pinned .NET tool</strong>:
+a checked-in tool manifest (<code>.config/dotnet-tools.json</code>), restored with <code>dotnet tool restore</code>, not a
+machine-global tool and not an MSBuild task. The tool's exact version is therefore a file in the
+repository, bumped in the same commit as the <code>Trellis.Core</code> <code>PackageReference</code> version it governs,
+reviewable in the same diff — see the &quot;expected package-add workflow&quot; in the Source-control contract
+section. A global tool was rejected because its version lives outside the repository entirely, which
+reintroduces exactly the machine-specific-drift problem Alternative 6 rejects for the NuGet
+global-packages cache, just one layer up: nothing would force two engineers, or a laptop and a CI
+runner, to run the same tool version against the same package graph.</p>
+<p>A single repository-wide manifest cannot pin one tool version that is simultaneously correct for two
+independent scopes on different <code>Trellis.Core</code> versions (a real, required configuration — see &quot;Scope and
+monorepos&quot; and acceptance criterion 16). The tool relies on .NET's native nested tool-manifest
+resolution instead: <code>dotnet tool run</code> searches manifests upward from the current directory until it
+finds the requested command or an <code>&quot;isRoot&quot;: true</code> boundary. A nearer manifest without <code>trellis</code> and
+with <code>&quot;isRoot&quot;: false</code> does <strong>not</strong> prevent a parent <code>trellis</code> tool from running. Each independent
+scope (<code>services/orders/</code>, <code>services/billing/</code>) therefore carries a manifest at its scope root
+declaring the pinned <code>trellis</code> command and setting <code>&quot;isRoot&quot;: true</code>. A
+single-version repository still needs only the one manifest at its root. <code>check</code> compares the tool
+version resolved for a given invocation against the <code>Trellis.Core</code> version resolved for that
+invocation's own scope, never against a different scope's version, and never against a fixed
+repository-wide expectation. When a scope's resolved graph has no <code>Trellis.Core</code> at all — an
+analyzer-only or satellite-only graph, per &quot;Compatible package floor&quot; — there is no Core version to
+compare against and this check does not apply; only that scope's own contributor schema/version
+validation applies.</p>
+<p>The working directory controls the upward manifest search; an <code>init</code> project/solution argument,
+or graph entry points recorded by <code>sync</code>, does <strong>not</strong> change that search. Run
+<code>dotnet new tool-manifest --output .config</code> (if needed),
+<code>dotnet tool install --tool-manifest .config/dotnet-tools.json</code>, <code>dotnet tool restore</code>, and every
+<code>dotnet tool run</code> for a scope <strong>from that scope's directory</strong> (or a descendant governed by its
+manifest). An existing scoped manifest must be updated to declare the pinned <code>trellis</code> command and
+set <code>&quot;isRoot&quot;: true</code> before running the tool; do not assume its mere presence selects <code>trellis</code>.
+Changing <code>&quot;isRoot&quot;</code> can affect other local tools that previously fell back to ancestor manifests,
+so review those entries and add explicit scoped pins where required. For example, given
+<code>services/orders/.config/dotnet-tools.json</code> with <code>&quot;isRoot&quot;: true</code> and a pinned <code>trellis</code> command:</p>
+<pre><code class="lang-text">cd services/orders
+dotnet tool restore
+dotnet restore &lt;explicit-entry-point&gt;
+dotnet tool run trellis agent check --scope .
+</code></pre>
+<p>For first installation, create the manifest and install the explicitly pinned tool there, then run
+<code>dotnet restore &lt;explicit-entry-point&gt;</code> before
+<code>dotnet tool run trellis agent init --scope . &lt;explicit-entry-point&gt;</code> from that directory. The
+working directory selects the tool version; the explicit <code>--scope .</code> selects the context root for
+that invocation. Run the equivalent sequence separately from <code>services/billing</code> for its own
+version. Before any <code>init</code>, <code>sync</code>, or <code>remove</code> mutation, the CLI verifies that the selected
+scope's manifest is the current tool's lookup boundary, has <code>&quot;isRoot&quot;: true</code>, explicitly declares
+the <code>trellis</code> command, and pins the running tool version; <code>check</code> fails read-only on a mismatch.
+A root/ancestor <code>trellis</code> tool accidentally invoked for a nested scope must fail before writing,
+naming the expected directory and manifest.
+<code>remove</code> checks the selected scope using the repository manifest, without depending on a usable
+package graph. Guarding the running tool does not replace the scoped-manifest requirement: an
+older ancestor tool might not implement this guard.</p>
+<p>The working command shape:</p>
+<pre><code class="lang-text">trellis agent init
+trellis agent sync
+trellis agent check
+trellis agent remove
+</code></pre>
+<p>There is no <code>migrate</code> command or automated legacy-<code>.github/</code> cleanup path. The verb names above are
+logical; the actual invocation follows standard .NET local tool conventions, which have two distinct
+flows the documentation must not conflate:</p>
+<ul>
+<li><strong>First install in a repository with no tool manifest yet:</strong>
+<code>dotnet new tool-manifest --output .config</code> (only if <code>.config/dotnet-tools.json</code> does not already exist),
+<code>dotnet tool install &lt;tool-package&gt; --version &lt;matching-tool-version&gt; --tool-manifest .config/dotnet-tools.json</code>,
+<code>dotnet restore &lt;explicit-entry-point&gt;</code>, then
+<code>dotnet tool run trellis agent init --scope . &lt;explicit-entry-point&gt;</code> for a nested scope, or omit
+<code>--scope</code> for the repository-root context. <code>dotnet tool restore</code> has nothing to
+restore until a manifest exists and names the tool, so it is not part of this flow. Before invoking
+the command, confirm the scoped manifest has <code>&quot;isRoot&quot;: true</code> and declares <code>trellis</code>, including
+when the manifest predated installation.</li>
+<li><strong>Subsequent clone, with a committed tool manifest:</strong> <code>dotnet tool restore</code> (installs the pinned
+version locally), <code>dotnet restore &lt;recorded-solution-or-project&gt;</code> (creates current project assets),
+then <code>dotnet tool run trellis agent sync --scope .</code> or
+<code>dotnet tool run trellis agent check --scope .</code> for a nested scope. <code>sync</code> and <code>check</code> read the
+graph entry points and context identity recorded by <code>init</code> at that root; <code>remove --scope .</code>
+reads the same repository manifest without needing graph assets.</li>
+</ul>
+<p>Tool restore and project restore serve different purposes: <code>dotnet tool restore</code> installs the
+pinned CLI but does not produce <code>project.assets.json</code>; <code>dotnet restore</code> of the selected graph
+produces those assets. Run project restore as a visible, separate step before graph-derived
+<code>init</code>, <code>sync</code>, or <code>check</code>, including in CI. <code>remove</code> does not need either restore when the pinned
+tool is already installed.</p>
+<p>Replace the version placeholder with the scope's resolved Core version when Core is present; for a
+Core-absent graph, explicitly select a tool version supporting its contract schema. Do not omit
+<code>--version</code> or use a floating version. The setup instructions, bootstrap documentation, and templates
+must all show this same pinned-install flow from the scope directory.</p>
+<p>A local tool is not placed on <code>PATH</code> as a bare <code>trellis</code> executable — invocation is
+<code>dotnet tool run trellis agent &lt;verb&gt;</code> (or the project's chosen command name). There is no supported
+global-tool path: &quot;Decisions resolved in review&quot; item 1 rejects global distribution outright, not merely
+as a non-default option, because the version-drift rationale (nothing forces two engineers, or a laptop
+and a CI runner, to run the same tool version) applies whether or not global use is the default choice.
+<code>init</code> also requires an explicit project or solution entry point argument in every flow above; a
+bootstrap hint or template example that omits it does not run. The final package name and exact flag
+syntax other than the <code>--scope &lt;path&gt;</code> root selector are implementation details to settle during
+implementation, but must stay consistent with this invocation shape. The required semantics are:</p>
+<ul>
+<li><strong><code>init</code></strong> — require explicit project or solution entry points, resolve contributed Trellis
+references from their restored assets graphs, write <code>.trellis/</code>, and create or merge the managed
+<code>AGENTS.md</code> block.</li>
+<li><strong><code>sync</code></strong> — refresh references after package changes and prune only files owned by the previous
+manifest, using the graph entry points recorded by <code>init</code>.</li>
+<li><strong><code>check</code></strong> — strictly read-only; fail when committed context differs from the resolved package
+graph, when the managed pointer is absent, or when the manifest is invalid.</li>
+<li><strong><code>remove</code></strong> — use only the repository manifest to remove its owned instruction entries and files;
+it does not require a usable project, assets graph, package cache, or compatible installed package.</li>
+</ul>
+<p><code>--scope &lt;path&gt;</code> resolves relative to the invocation directory and must designate the context
+root within the Git boundary. <code>init</code> requires it for an independent subtree; absent an explicit
+scope, the context root remains the selected solution's Git repository root, <strong>not</strong> the current
+directory or the tool-manifest directory. For <code>sync</code>, <code>check</code>, and <code>remove</code>, <code>--scope</code> selects the
+existing <code>.trellis/agent-context.json</code> at that root; they validate its recorded scope identity
+rather than deriving a new one from the working directory. Nested-scope invocations must specify
+<code>--scope</code> rather than silently using a repository-root manifest. The tool-manifest boundary and
+selected context root must agree before any mutation or read-only <code>check</code> success.</p>
+<p>This must be a repository- or solution-scoped operation, not a <code>BeforeTargets=Build</code> action. A
+<code>buildTransitive</code> target runs once per project and may run concurrently; it has no safe installation
+or uninstallation boundary for merging one shared Markdown file.</p>
+<p>Templates run the equivalent of <code>init</code> before publication and therefore contain a working
+<code>AGENTS.md</code> pointer and committed <code>.trellis/</code> references from the first clone.</p>
+<p><code>init</code> and <code>sync</code> require current <code>project.assets.json</code> files by default. Their explicit <code>--restore</code>
+mode delegates to NuGet and may update <code>obj/</code>, the global package cache, and configured lock files;
+documentation and CI examples keep restore as a separate visible step.</p>
+<p><code>check</code> does not accept <code>--restore</code>, invoke restore/build targets, write <code>obj/</code> or <code>bin/</code>, change lock
+files, or populate the NuGet package cache. It reads existing assets, packages, repository context,
+and transaction state only. <code>remove</code> needs only <code>.trellis/agent-context.json</code>, the owned output files,
+the recorded instruction files, and local transaction state; it does not evaluate the package graph.</p>
+<p>All mutating commands use the overwrite protections and repository-wide transaction protocol in
+section 6. Modified owned content and unowned destination collisions stop the operation before any
+managed-file write. An explicit force or adoption mode may resolve a conflict only after displaying
+the exact files and keyed instruction entries it will replace, delete, or claim. It never bypasses
+path boundaries, package integrity checks, or malformed-marker checks.</p>
+<h3 id="6-manifest-and-ownership">6. Manifest and ownership</h3>
+<p><code>.trellis/agent-context.json</code> records enough information to verify and safely update generated files:</p>
+<pre><code class="lang-json">{
+  &quot;schemaVersion&quot;: 1,
+  &quot;scope&quot;: &quot;.&quot;,
+  &quot;sourceRoots&quot;: [&quot;src/App/&quot;],
+  &quot;textHashFormat&quot;: &quot;utf8-lf-no-bom-v1&quot;,
+  &quot;generatedBy&quot;: {
+    &quot;package&quot;: &quot;Trellis.AgentContext&quot;,
+    &quot;version&quot;: &quot;&lt;tool-version&gt;&quot;
+  },
+  &quot;graph&quot;: {
+    &quot;entryPoints&quot;: [
+      {
+        &quot;path&quot;: &quot;Trellis.slnx&quot;,
+        &quot;restoreSpecSha256&quot;: &quot;&lt;canonical-restore-spec-hash&gt;&quot;
+      }
+    ],
+    &quot;projects&quot;: [
+      {
+        &quot;project&quot;: &quot;src/App/App.csproj&quot;,
+        &quot;targetFramework&quot;: &quot;net10.0&quot;,
+        &quot;runtimeIdentifier&quot;: null,
+        &quot;packages&quot;: [
+          {
+            &quot;id&quot;: &quot;Trellis.Core&quot;,
+            &quot;version&quot;: &quot;&lt;resolved-version&gt;&quot;,
+            &quot;contentHash&quot;: &quot;&lt;nuget-content-hash&gt;&quot;
+          }
+        ]
+      }
+    ]
+  },
+  &quot;instructionEntries&quot;: [
+    {
+      &quot;key&quot;: &quot;&lt;stable-scope-key&gt;&quot;,
+      &quot;instructionFile&quot;: &quot;AGENTS.md&quot;,
+      &quot;scope&quot;: &quot;src/App/&quot;,
+      &quot;indexPath&quot;: &quot;.trellis/README.md&quot;,
+      &quot;canonicalSha256&quot;: &quot;&lt;previous-entry-canonical-text-hash&gt;&quot;
+    }
+  ],
+  &quot;toolOwnedFiles&quot;: [
+    {
+      &quot;path&quot;: &quot;README.md&quot;,
+      &quot;canonicalSha256&quot;: &quot;&lt;index-canonical-text-hash&gt;&quot;
+    }
+  ],
+  &quot;references&quot;: [
+    {
+      &quot;path&quot;: &quot;api-reference/trellis-api-core.md&quot;,
+      &quot;canonicalSha256&quot;: &quot;&lt;output-canonical-text-hash&gt;&quot;,
+      &quot;sources&quot;: [
+        {
+          &quot;package&quot;: &quot;Trellis.Core&quot;,
+          &quot;packageVersion&quot;: &quot;&lt;resolved-version&gt;&quot;,
+          &quot;packagePath&quot;: &quot;trellis/trellis-api-core.md&quot;,
+          &quot;sha256&quot;: &quot;&lt;exact-package-file-byte-hash&gt;&quot;
+        }
+      ]
+    }
+  ]
+}
+</code></pre>
+<p>The exact schema may change during implementation, but it must support:</p>
+<ul>
+<li>deterministic no-op synchronization;</li>
+<li>reproducible project/solution graph selection without machine-specific absolute paths;</li>
+<li>recorded source roots and stable keyed ownership of every path-qualified instruction entry;</li>
+<li>separate integrity hashes for exact package bytes and canonical materialized text;</li>
+<li>previous-content hashes for owned documents, the tool-owned index, and individual instruction entries;</li>
+<li>mandatory attribution of every source package, resolved version, package path, and content hash;</li>
+<li>collision detection;</li>
+<li>stale-file detection;</li>
+<li>pruning files previously written by Trellis without deleting unrelated files; and</li>
+<li>a no-write CI check.</li>
+</ul>
+<h4 id="text-integrity-and-checkout-portability">Text integrity and checkout portability</h4>
+<p>Package manifest SHA-256 values verify <strong>exact package-file bytes</strong>, before decoding or normalization.
+Materialized document and index hashes instead use strict UTF-8 text, remove an optional leading
+UTF-8 BOM, and normalize CRLF and lone CR to LF. The hash input is UTF-8 without BOM. Invalid UTF-8
+is rejected; spaces, final-newline presence, Unicode content, and Markdown are otherwise unchanged.
+The versioned <code>textHashFormat</code> makes this distinction explicit rather than silently changing hashes.</p>
+<p>New or changed generated Markdown is written as UTF-8 with BOM and LF. A canonical-content match is
+a no-op even if Git checked the file out with CRLF or a different BOM convention. <code>check</code>, overwrite
+preflight, and removal use the same canonical hashes, so ordinary Git text conversion does not look
+like a user edit. No consumer <code>.gitattributes</code> edit is required. Instruction-entry hashes use this
+canonical text representation too, but instruction-file edits preserve existing encoding, BOM,
+newlines, and all bytes outside the managed entries.</p>
+<p>When two Trellis contributions project to the same flat output path with identical canonical text,
+the tool deduplicates the output and records every contributor in a deterministically sorted <code>sources</code>
+array. This is required, not
+optional: <code>Trellis.Core</code> and <code>Trellis.Analyzers</code> intentionally both contribute
+<code>trellis-api-analyzers.md</code>. Each source still passes its own exact-byte hash check. When the canonical
+contents differ, synchronization fails and identifies both packages; last-writer-wins would make the
+resulting API reference dependent on restore order.
+The generic reader retains both logical package-scoped documents; this deduplication is an installer
+projection, not loss of identity in the shared discovery result.</p>
+<h4 id="overwrite-and-prune-protection">Overwrite and prune protection</h4>
+<p><code>init</code>, <code>sync</code>, and <code>remove</code> preflight the complete proposed change set before modifying any managed
+file:</p>
+<ul>
+<li>An existing document or index destination not owned by the previous repository manifest is a
+conflict, even if its content matches. The tool does not silently adopt files or claim an existing
+unowned marker entry. An existing customer-owned <code>AGENTS.md</code> is not itself a collision: insertion
+of a new entry follows section 4 without claiming ownership of the whole file.</li>
+<li>Before replacing or pruning an owned document or index, compare its current canonical hash with
+the previous manifest's hash. A mismatch requires explicit resolution rather than discarding edits.</li>
+<li>Before changing an instruction entry, compare that scope's entry with its recorded previous hash.
+Do not compare the whole shared block with a scope-local snapshot: another scope may legitimately
+have changed its own entry. Preserve other scopes' entries and customer-authored content.</li>
+<li>Validate ownership and conflicts for the whole operation, including files being pruned, before
+writing. Dry-run reports the same conflicts and never stages or writes a transaction.</li>
+</ul>
+<p>Hashes establish change detection, not permission to modify arbitrary paths. All ownership records
+remain subject to the context and instruction boundaries; force/adoption cannot expand them.</p>
+<h4 id="shared-writers-and-interrupted-updates">Shared writers and interrupted updates</h4>
+<p>All mutating commands acquire one exclusive writer lock for the Git working tree, regardless of
+context scope. They re-read and validate shared instruction state under that lock before staging any
+changes. This prevents two independent scopes from overwriting each other's root instruction entries.
+The lock is process-held and released on process exit; a leftover lock file is not by itself proof of
+a live lock, so the tool must be able to detect and clear a stale lock left by a crashed process.</p>
+<p>Phase 1/2 scope here is deliberately smaller than a fully recoverable multi-file transaction: a durable
+recovery journal and a persistent generation record for strict read-consistency across <code>check</code>/dry-run
+are deferred (see &quot;Decisions resolved in review&quot; item 6 and &quot;Out of scope&quot;) until concurrent
+multi-scope usage is an observed need rather than a hypothetical one. What ships now:</p>
+<ul>
+<li>After preflight, each managed file — a reference document, the index, the manifest, or one
+instruction file — is installed with a supported atomic per-file operation. Stage complete contents
+on the destination filesystem; never truncate and rewrite the destination or emulate replacement
+by deleting it and copying new contents. Preflight must establish support for every affected
+destination before changing any managed file; unknown or unsupported filesystem semantics fail
+explicitly. An operation failure must not trigger a non-atomic fallback. Files are written
+independently, not staged as one cross-file transaction, so earlier completed replacements may
+remain if a later atomic operation fails.</li>
+<li>Preflight reads each affected file <strong>once</strong> and derives both hashes from that same buffer: the
+<strong>canonical hash</strong>, compared against the manifest's recorded <code>canonicalSha256</code> to decide ownership and
+staleness (the same comparison &quot;Overwrite and prune protection&quot; already specifies — canonical hashing,
+with BOM stripped and CRLF/CR normalized to LF, is required here because generated files are written
+as UTF-8 with BOM and Git may rewrite line endings on checkout, so comparing raw bytes against a
+canonical hash would misreport an untouched, correctly-checked-out file as modified on every run); and
+an <strong>exact-byte snapshot hash</strong> of the identical read, kept only for the pre-write recheck below.
+Reading twice — once to decide ownership, again afterward to snapshot — would let a customer edit
+landing between the two reads become the accepted snapshot, so the later pre-write comparison would
+pass and the edit would be silently overwritten; one read producing both hashes closes that gap. For an
+instruction file such as <code>AGENTS.md</code>, the snapshot covers the <strong>entire file being replaced</strong>, not just
+the managed entry's text — the write reconstructs the whole file from this preflight read, so an
+unrelated customer edit elsewhere in the file between preflight and write must also be caught, not only
+a change to the entry itself. For a destination that does not yet exist at preflight time, record its
+<strong>absence</strong> as the snapshot state, so a file unexpectedly created before the write (by another process,
+or a customer) is also treated as a conflict rather than silently overwritten.</li>
+<li>Immediately before writing, the command recomputes the current exact bytes (or confirms continued
+absence, for a new destination) and compares against that same-run snapshot — never against the
+manifest's canonical hash, a different representation entirely. This is a narrow, same-run race check:
+it detects content changes visible at the final read, not every edit up to replacement. New files
+must use atomic no-clobber installation so a destination created after that check is not overwritten.
+For existing files, an external save after the final check but before replacement or pruning can
+still be lost. The worktree writer lock is not acquired by editors, and a hash check followed by
+replacement is not compare-and-swap. Do not claim arbitrary external-writer safety from an advisory
+lock or per-file atomicity.
+In this phase, callers must avoid editor saves, formatters, or other external writes to affected
+paths while <code>init</code>, <code>sync</code>, or <code>remove</code> runs. Document this residual race in CLI help and setup
+guidance. Tool-to-tool serialization and rejection of changes observed by the final check remain
+required; a cross-platform guarantee against uncooperative external writers is explicitly deferred.</li>
+<li>If a mutating command is interrupted partway through writing several files, the repository is left
+with whichever individual per-file replacements had already completed atomically, plus whichever had
+not yet started. Per-file atomicity guarantees no single file is left torn — but it does <strong>not</strong>
+guarantee the interrupted operation can be cleanly resumed: if a document was replaced but the manifest
+update that would record its new canonical hash did not complete before the crash, the file's new
+content now disagrees with the manifest's still-old recorded hash. Writing the manifest first instead
+of last only relocates the same problem to a different file. Deferring the recovery journal (Decisions
+resolved in review, item 6) means the tool cannot distinguish &quot;this file's content came from my own
+interrupted write&quot; from &quot;a customer edited this file&quot; — both look identical to preflight.
+So there is <strong>no automatic clean-retry guarantee</strong> in this phase: a bare re-run of <code>init</code>/<code>sync</code> after
+an interruption may report the affected files as conflicts requiring <code>--force</code>/adoption. The documented
+recovery is not a single blanket restore command — <code>git checkout -- .trellis/ AGENTS.md</code> would replace
+entire tracked files, discarding any unrelated uncommitted customer edits inside them; without a
+revision argument it restores from the index rather than a specific committed state; it does nothing
+for untracked files an interrupted <code>init</code> may have created; and it does not cover nested instruction
+files in other scopes. Instead: inspect the reported conflicts, preserve any customer changes found
+among them, then restore only the specific affected paths from an explicitly chosen revision (not a
+blanket path restore with no revision named), and handle untracked leftover outputs through reviewed
+adoption or deletion rather than a <code>git</code> command that cannot see them. Re-run afterward with current
+package assets. When there is no previously committed context to restore from — for example, an
+interrupted first-ever <code>init</code> — force/adoption is the only path, since there is nothing to fall back
+to. This applies to a single user working alone, not only to concurrent multi-scope usage — it is a
+consequence of deferring the journal, not of concurrency.</li>
+<li><code>check</code> and dry-run never write and never take the writer lock. Because there is no generation
+record in this phase, a <code>check</code> that races an in-progress <code>init</code>/<code>sync</code> is not guaranteed to observe
+a consistent before-or-after snapshot — it may see a partially updated repository. The writer lock
+still prevents two <em>mutating tool commands</em> from running concurrently; that guarantee does not cover
+the external-editor race described above.
+Add the generation record if and when that window becomes a real problem, rather than building it
+against a usage pattern that does not exist yet.</li>
+</ul>
+<h4 id="graph-identity-and-freshness">Graph identity and freshness</h4>
+<p>Raw <code>project.assets.json</code> bytes are not hashed into the committed manifest because they contain
+checkout paths, package-cache roots, and output paths. The tool instead canonicalizes a semantic graph
+of relative project identity, target framework/runtime identifier, package ID, resolved version, and
+NuGet content hash.</p>
+<p>To detect stale assets, <code>init</code>, <code>sync</code>, and <code>check</code> evaluate the current NuGet/MSBuild restore
+specification in memory without running package build targets or writing restore output, normalize
+away machine paths, and compare it with the restore specification embedded in the existing assets
+file. A mismatch fails with an instruction to run restore; it is never treated as current merely
+because the old assets file still exists. Cross-directory and cross-OS fixtures must produce the same
+semantic graph digest.</p>
+<h3 id="7-source-control-contract">7. Source-control contract</h3>
+<p>The generated <code>.trellis/</code> directory and managed <code>AGENTS.md</code> block are intended to be committed.</p>
+<p>This is necessary because cloud agents commonly begin from a fresh clone before restore. References
+that exist only in the NuGet global-packages cache, <code>obj/</code>, or a developer's previous build are not a
+portable agent context.</p>
+<p>The expected package-add workflow is therefore:</p>
+<pre><code class="lang-text">add/update the Trellis PackageReference
+restore the selected solution or projects to refresh project.assets.json
+run the explicit agent-context init or sync command
+review the AGENTS.md and .trellis/ diff
+commit both with the package change
+</code></pre>
+<p>Templates and documentation should describe the reference refresh as part of changing Trellis package
+versions. Repositories that want enforcement add <code>trellis agent check</code> to CI.</p>
+<h3 id="8-scope-and-monorepos">8. Scope and monorepos</h3>
+<p>The Git repository root is the hard outer boundary. The design distinguishes two write boundaries
+inside it:</p>
+<ul>
+<li><strong>Context root:</strong> the selected repository or subtree scope. The manifest, tool-owned index, and
+every <code>.trellis/api-reference/</code> file must remain beneath it.</li>
+<li><strong>Instruction boundary:</strong> the existing <code>AGENTS.md</code> files governing selected source, discovered
+above and within its source roots as described below. If selected source has no governing file,
+creating root <code>AGENTS.md</code> is allowed. Previously recorded instruction files remain eligible only
+for verified removal of the selected scope's old entry after a boundary change.</li>
+</ul>
+<p>No context file may escape the context root, and no instruction edit may target a file outside that
+explicit governing set. Managed outputs never escape the Git root; only the tool-owned transaction
+area described in section 6 may live in worktree metadata outside it.</p>
+<p>The default context root is the selected solution's Git repository root.
+Running from a subtree changes .NET's tool-manifest lookup, not this default. An independent
+subtree must be selected explicitly with <code>--scope &lt;path&gt;</code> on <code>init</code>; later operations select its
+recorded context using the same option.</p>
+<p>A repository may contain independent subtrees using different Trellis versions. One flat reference
+set cannot truthfully describe both. When the resolved inputs contain incompatible versions, the tool
+must not pick one silently. It requires explicit independent scopes and materializes:</p>
+<pre><code class="lang-text">services/orders/.trellis/...
+services/billing/.trellis/...
+</code></pre>
+<p>Source roots default to the selected projects' directories within the context root and are recorded
+in the manifest. For each source root, discover the nearest existing ancestor or root-local
+<code>AGENTS.md</code>, and every existing descendant <code>AGENTS.md</code> within the selected source subtree. Descendant
+discovery is not limited to directories containing a project file: a policy under
+<code>src/App/Features/</code> can govern source belonging to <code>src/App/App.csproj</code>.</p>
+<p>Exclude Git metadata, <code>.github/</code>, <code>.trellis/</code>, <code>bin/</code>, <code>obj/</code>, and evaluated generated/intermediate/output
+directories from source discovery; do not follow links/reparse points or cross nested Git repository
+boundaries. Do not blanket-exclude Git-ignored directories that may contain selected source. Phase 1
+must define how evaluated source membership and explicit source-root selection handle these cases
+without running build targets. Linked source outside a project's directory must be covered by an
+explicit recorded source root. Source outside the selected context or Git root fails with a diagnostic
+requiring scope correction; it is not silently treated as covered or used to widen instruction writes.</p>
+<p>The installer recognizes <code>.github</code> path segments case-insensitively and prunes them before descent:
+it does not inspect <code>.github/AGENTS.md</code> or legacy payloads to decide whether to include them. Explicit
+installer entry points/source roots and manifest-recorded instruction or output paths under such a
+directory are rejected before opening those files. This is a Trellis installer exclusion, not a
+restriction on package-relative document paths in ADR-009's generic reader.</p>
+<p>Group source subtrees by their effective instruction boundary and install a correctly path-qualified
+entry in every applicable file. For example, <code>AGENTS.md</code>, <code>src/App/App.csproj</code>,
+<code>src/App/Features/AGENTS.md</code>, and <code>src/App/Features/Feature.cs</code> require entries in both instruction
+files when the root file also governs selected source outside <code>Features</code>. This supports both
+ancestor-concatenating and nearest-only loaders.</p>
+<p>If any selected source has no governing instruction file, create one at the Git root for that
+uncovered source. Existing instructions in a different subtree do not prevent this. Never create an
+additional child file merely to carry a Trellis pointer.</p>
+<p>If a nested file already governs a subtree, its managed block points to the applicable local
+<code>.trellis/</code>. Otherwise, the root managed block contains path-qualified entries such as:</p>
+<pre><code class="lang-markdown">For files under `services/orders/`, read
+`services/orders/.trellis/README.md`.
+</code></pre>
+<p>Each pointer is a stable keyed entry recorded in <code>instructionEntries</code>. One managed block may contain
+entries for several independent scopes. <code>sync</code> rediscovers descendant boundaries and adds, moves, or
+removes entries when instruction layout changes. It may remove a previously owned entry from a file
+that no longer governs selected source, but may not add unrelated content there. <code>remove</code> deletes only
+the selected scope's entry and removes the marker block only after its final entry is gone.</p>
+<p>Paths in a managed block are rendered relative to the file containing that block. Tests cover
+ancestor-concatenating and nearest-only loaders, root graphs with shadowing descendant files, multiple
+scopes sharing one root block, and single-scope removal from that shared block.</p>
+<h3 id="9-normal-restore-and-build-behavior">9. Normal restore and build behavior</h3>
+<p>For a graph containing only compatible package versions:</p>
+<ul>
+<li>NuGet packages continue to carry their reference payloads.</li>
+<li>Compatible packages carry the new package-side reference manifest.</li>
+<li>The command reads NuGet assets and package manifests rather than global MSBuild items.</li>
+<li><code>_CopyTrellisApiReference</code> no longer runs automatically before <code>Build</code>.</li>
+<li>Restore and build make no repository-source changes.</li>
+<li>Missing or stale agent context does not produce ordinary compiler warnings.</li>
+<li>An explicit <code>check</code> command is the enforcement mechanism.</li>
+</ul>
+<p>Agent documentation is important, but it does not affect runtime correctness. Making every normal
+consumer build warn—or fail under warnings-as-errors—because the repository chose not to install
+agent context would be disproportionate.</p>
+<p>To address first-run discovery without repository mutation or a build warning, the packed targets emit
+a single <code>Importance=&quot;Low&quot;</code> <code>&lt;Message/&gt;</code> when no <code>.trellis/</code> directory is detected, pointing at the
+&quot;Explicit lifecycle command&quot; setup steps rather than a single copy-pasteable command — the correct
+command differs between a repository with no tool manifest yet and one with a committed manifest to
+restore, and <code>init</code> always needs an explicit entry point the message cannot supply generically. This
+borrows the same technique <code>_CopyTrellisApiReference</code> already uses for its own &quot;<code>.git</code> not found within
+11 levels&quot; notice — a low-importance message, invisible in default build output, never participating in
+<code>TreatWarningsAsErrors</code>, writing nothing — but is emitted by its <strong>own new target</strong>, packed and
+maintained independently of <code>_CopyTrellisApiReference</code>. It must keep working after Phase 3 deletes
+<code>_CopyTrellisApiReference</code>, <code>TrellisSyncApiReference</code>, and the missing-copy warning entirely; it is not a
+modification bolted onto a target scheduled for removal. It is a hint, not the enforcement mechanism —
+<code>check</code> remains that — and a repository that never runs <code>init</code> sees the same message on every build
+rather than a one-time nudge, so it costs nothing to ignore.</p>
+<h2 id="why-agentsmd-is-not-modified-automatically">Why <code>AGENTS.md</code> is not modified automatically</h2>
+<p>Automatically appending a line from <code>buildTransitive</code> was considered and rejected for five independent
+reasons:</p>
+<ol>
+<li><strong>Ownership:</strong> <code>AGENTS.md</code> is customer-authored repository policy, not package output.</li>
+<li><strong>Execution model:</strong> package targets run repeatedly and concurrently per project, not once per
+package installation.</li>
+<li><strong>No uninstall hook:</strong> removing a PackageReference cannot reliably remove or update the line.</li>
+<li><strong>Trust:</strong> changing agent instructions changes future tool behavior and therefore deserves explicit
+review, especially when initiated by a dependency.</li>
+<li><strong>Reliability:</strong> append-only merging duplicates content, cannot safely repair conflicts, and can
+place the pointer beyond an instruction loader's size limit.</li>
+</ol>
+<p>The explicit command may edit <code>AGENTS.md</code> because the user invoked that operation for that purpose and
+can review the resulting diff.</p>
+<h2 id="security-and-trust-boundary">Security and trust boundary</h2>
+<p>Package-supplied agent documentation is executable only in the social sense—it influences what an
+agent writes and which commands it may choose. That makes provenance important even though the files
+are Markdown.</p>
+<p>The implementation must:</p>
+<ul>
+<li>show every contributing package and version in the manifest;</li>
+<li>derive package identity and version from NuGet assets rather than package-authored fields;</li>
+<li>accept documents only through the fixed package-side manifest contract;</li>
+<li>require every source path to remain beneath its resolved package root;</li>
+<li>reject project-authored <code>TrellisApiReference</code> items and other arbitrary local-file inputs;</li>
+<li>refuse context writes outside the context root and instruction writes outside the approved
+governing <code>AGENTS.md</code> set;</li>
+<li>avoid following source or destination symlinks/reparse points outside their allowed roots;</li>
+<li>fail on conflicting document paths;</li>
+<li>restrict the managed root instruction to Trellis API usage;</li>
+<li>never place package-provided prose directly into <code>AGENTS.md</code>; and</li>
+<li>change only marker-delimited content during update or removal.</li>
+</ul>
+<p>The reference payload should remain API documentation. Repository workflow, credentials, command
+approval, and unrelated architectural instructions belong to the consumer's own <code>AGENTS.md</code>.</p>
+<h2 id="compatible-package-floor-and-immutable-legacy-targets">Compatible package floor and immutable legacy targets</h2>
+<p>Already-published NuGet packages are immutable. Older <code>Trellis.Analyzers</code> and Core-independent
+satellite versions may carry <code>Trellis.ApiReference.targets</code> themselves; other satellites carry
+<code>Trellis.ApiReference.Payload.targets</code>, whose build warning assumes the old copy target. Removing
+those assets from a new <code>Trellis.Core</code> cannot change what an older package imports.</p>
+<p>The clean cut therefore requires coordinated compatible releases:</p>
+<ul>
+<li>every first-party package in the lockstep release;</li>
+<li><code>Trellis.Analyzers</code>, which ships independently of Core's build assets; and</li>
+<li>every known satellite that contributes a reference payload.</li>
+</ul>
+<p>Every first-party package ships <code>guidance/reference-manifest.json</code>, even when its <code>documents</code> list is
+empty because Core carries its reference. The manifest identifies the package as a member of the
+first-party lockstep cohort. Core's manifest carries the authoritative cohort package-ID list, derived
+and gated from the repository's packable-project set.
+These cohort fields live in an explicitly namespaced Trellis publisher-metadata extension to the
+shared manifest. The generic reader does not enforce tool/Core equality or cohort membership; the
+Trellis CLI applies those policies after shared discovery. ADR-009 readers remain compatible by
+supported contract schema rather than by publisher release numbers.</p>
+<p>For every resolved package whose ID is in that cohort, the command requires:</p>
+<ol>
+<li>a current-schema manifest;</li>
+<li>the exact same resolved lockstep version as the Core reference set; and</li>
+<li>no <code>_CopyTrellisApiReference</code>, <code>TrellisSyncApiReference</code>, or old
+missing-copy-logic warning target; and</li>
+<li>a passing package-manifest payload gate.</li>
+</ol>
+<p>Without Core, the command validates each contributor's schema, payload, and absence of legacy targets
+without requiring a Core version or Core-only files. Analyzer-only and Core-independent satellite
+graphs are supported through the generated index. When Core is present, its cohort checks apply to
+all resolved cohort members, including Analyzers.</p>
+<p>An independently versioned satellite has no lockstep cohort. Its own manifest declares its documents
+and contract schema; compatibility is based on that schema and the satellite's separately released
+version. The tool also scans every resolved package for the known legacy copy/payload target paths, so
+an older or third-party satellite cannot escape detection merely because it is absent from Core's
+cohort list.</p>
+<p>Before <code>init</code>, <code>sync</code>, <code>check</code>, or any graph-derived <code>AGENTS.md</code> edit, the command inspects the
+complete resolved graph. If any cohort member has the wrong version or manifest, or any
+resolved package still contains a legacy copy/payload target, it stops without writing and lists the
+package IDs and versions that must be upgraded. The tool does not try to suppress an old target with a
+property supplied by a new package: a Core-independent old package may be the only package in the
+graph, and import ordering must not decide whether repository mutation occurs.</p>
+<p><code>remove</code> is the exception. It is repository-manifest-driven and remains available after packages are
+downgraded or removed, entry points disappear, assets become unusable, or the NuGet cache is cleared.</p>
+<p>The no-build-mutation guarantee applies only after this compatibility check passes. Mixed old/new
+graphs are unsupported and covered by end-to-end tests proving that the command refuses them before
+creating <code>.trellis/</code> or changing <code>AGENTS.md</code>.</p>
+<h2 id="legacy-github-behavior">Legacy <code>.github/</code> behavior</h2>
+<p><code>init</code>, <code>sync</code>, and <code>remove</code> never read, write, or delete anything under <code>.github/</code>. Existing files
+there have no ownership manifest and may contain customer edits. The tool does not dual-write to the
+old destination. The release that introduces the explicit command removes the old automatic copy
+target and its configuration surface; cleanup of consumer repositories is outside this plan.</p>
+<p>Existing configuration maps as follows:</p>
+<table>
+<thead>
+<tr>
+<th>Current mechanism</th>
+<th>Proposed replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TrellisApiReferenceRoot</code></td>
+<td>explicit command scope/root option</td>
+</tr>
+<tr>
+<td><code>TrellisDisableApiReferenceSync</code></td>
+<td>default behavior is no automatic sync</td>
+</tr>
+<tr>
+<td><code>TrellisSyncApiReference</code> target</td>
+<td>explicit <code>sync</code> command</td>
+</tr>
+<tr>
+<td>nearest <code>.github/</code> selection</td>
+<td>selected repository or subtree scope</td>
+</tr>
+</tbody>
+</table>
+<h2 id="consequences">Consequences</h2>
+<h3 id="positive">Positive</h3>
+<ul>
+<li>All agents receive one standard discovery pointer through <code>AGENTS.md</code>.</li>
+<li>The references are tool-neutral and available before restore in a fresh clone.</li>
+<li>Customer instructions are preserved and changed only through an explicit operation.</li>
+<li>A manifest makes update, verification, collision handling, and pruning deterministic.</li>
+<li>Normal build becomes free of repository-writing side effects and parallel copy races.</li>
+<li>First-party full-set discovery and independently versioned satellite references continue to work.</li>
+<li>Core-independent graphs receive a valid discovery index without taking a Core dependency.</li>
+<li>Canonical text verification tolerates Git newline conversion while preserving package-byte integrity.</li>
+</ul>
+<h3 id="negative">Negative</h3>
+<ul>
+<li>Adding or updating Trellis gains an explicit synchronization step.</li>
+<li>Consumers commit approximately the same documentation payload currently copied into <code>.github/</code>.</li>
+<li>A new cross-platform command must be distributed, versioned, documented, and tested.</li>
+<li>The clean cut requires coordinated releases of every first-party package and known satellite that
+carries reference-delivery assets.</li>
+<li>Every first-party package gains a small package-side manifest, even when Core carries its document.</li>
+<li>Repositories that skip initialization still have no universal way for an agent to discover the
+package-supplied references.</li>
+<li>Multi-version monorepos require explicit scopes rather than one convenient shared directory, each with
+its own nested tool manifest.</li>
+<li>An interrupted mutating command has no automatic multi-file rollback, resumption, or clean retry in
+Phase 1/2. Per-file atomic replacement prevents a single torn file, but a file whose content was
+written before a crash and a manifest whose recorded hash was not yet updated to match it look
+identical to a customer edit — the tool cannot tell them apart without the deferred recovery journal.
+The documented recovery is to review and force/adopt the reported conflicts, or to preserve any
+customer changes among them and selectively restore only the affected paths from an explicitly chosen
+revision before re-running with current package assets; a bare re-run is not guaranteed to complete on
+its own, and no single blanket restore command is safe to prescribe (see &quot;Shared writers and
+interrupted updates&quot;).</li>
+<li>A <code>check</code> run can race an in-progress <code>init</code>/<code>sync</code> and observe a partially updated repository, since
+the persistent generation record that would guarantee a consistent snapshot is also deferred.</li>
+<li>Mutating commands require supported atomic file operations and no concurrent external edits to
+affected paths. A customer save after the final snapshot check may still be overwritten; the
+worktree lock serializes tool commands, not editors.</li>
+</ul>
+<h3 id="neutral">Neutral</h3>
+<ul>
+<li>Package-owned API reference content and the Core router-to-cookbook strategy do not change; the
+generated index adds discovery for whichever references the selected graph actually contributes.</li>
+<li>NuGet package payload size does not materially change.</li>
+<li>This is not a runtime Trellis API and does not affect application binaries.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<h3 id="1-append-a-pointer-to-agentsmd-during-every-build">1. Append a pointer to <code>AGENTS.md</code> during every build</h3>
+<p>Rejected. It maximizes first-run discovery but silently changes a customer-owned policy file from a
+dependency, races in multi-project builds, has no removal lifecycle, and is difficult to make
+idempotent without a real parser and ownership markers.</p>
+<h3 id="2-create-agentsmd-automatically-only-when-one-does-not-exist">2. Create <code>AGENTS.md</code> automatically only when one does not exist</h3>
+<p>Rejected. It gives new repositories a good experience while leaving established repositories—the
+ones most likely to have meaningful instructions—with delivered but undiscoverable references. It
+also remains an unexpected build-time source mutation.</p>
+<h3 id="3-keep-references-under-github-and-add-only-a-root-pointer">3. Keep references under <code>.github/</code> and add only a root pointer</h3>
+<p>Rejected as the long-term design. A pointer would solve discovery, but generated dependency
+documentation would remain mixed into a hosting-vendor directory even though no GitHub feature
+loads those arbitrary files. <code>.trellis/</code> states ownership and intent more accurately.</p>
+<h3 id="4-put-a-package-supplied-agentsmd-under-trellis">4. Put a package-supplied <code>AGENTS.md</code> under <code>.trellis/</code></h3>
+<p>Rejected. Hierarchical instruction files apply by directory scope; this would describe edits inside
+<code>.trellis/</code>, not application code elsewhere in the repository.</p>
+<h3 id="5-use-a-tool-specific-import-from-root-agentsmd">5. Use a tool-specific import from root <code>AGENTS.md</code></h3>
+<p>Rejected. Import syntax is not part of the portable <code>AGENTS.md</code> format, and importing the entire set
+would spend context on references unrelated to the current task. A plain-language pointer to the
+small router is portable and preserves on-demand loading.</p>
+<h3 id="6-leave-references-only-in-the-nuget-global-packages-cache">6. Leave references only in the NuGet global-packages cache</h3>
+<p>Rejected. The location is machine-specific, commonly outside an agent's workspace, and unavailable
+to cloud agents before restore. It also makes the effective documentation impossible to review in the
+application's pull request.</p>
+<h3 id="7-publish-only-web-hosted-references">7. Publish only web-hosted references</h3>
+<p>Rejected as the primary path. Web references weaken exact package-version alignment, require network
+access, and may be unavailable to restricted agents. Versioned web docs may remain a human-facing
+convenience, not the source of truth for generated code.</p>
+<h3 id="8-continue-automatic-copying-but-move-the-destination-to-trellis">8. Continue automatic copying but move the destination to <code>.trellis/</code></h3>
+<p>Rejected as the final design. It improves naming but retains build-time source mutation, per-project
+parallelism, and the absence of a safe repository-level prune.</p>
+<h3 id="9-use-the-existing-trellisapireference-msbuild-item-as-command-input">9. Use the existing <code>TrellisApiReference</code> MSBuild item as command input</h3>
+<p>Rejected. The item contains an arbitrary local path and no authenticated package provenance. A project
+or unrelated package could point it at a machine-local file, which the command would then copy into a
+committed directory. Fixed-path package manifests resolved through NuGet assets constrain input to
+files shipped by the identified package.</p>
+<h3 id="10-create-a-scoped-child-agentsmd-for-every-independent-trellis-graph">10. Create a scoped child <code>AGENTS.md</code> for every independent Trellis graph</h3>
+<p>Rejected. In tools that use only the nearest instruction file, a generated minimal child would hide
+the customer's ancestor policies. Scoped context updates the nearest file that already governs the
+subtree and uses a path-qualified root entry when no child file exists.</p>
+<h2 id="implementation-plan">Implementation plan</h2>
+<p>Implementation is split so each layer can be reviewed and mutation-tested independently.
+The minimum experimental contract and reader from ADR-009 are implemented in Phases 1 and 2 below.
+External standardization and adoption milestones are deliberately not part of this release gate.</p>
+<h3 id="phase-1--define-the-context-contract">Phase 1 — Define the context contract</h3>
+<ul>
+<li>Finalize the managed <code>AGENTS.md</code> block and tool-owned <code>.trellis/README.md</code> discovery index,
+including Core-present, analyzer-only, and satellite-only routing.</li>
+<li>Encode and publish ADR-009's resolved version 1 contract as a specification and JSON Schema for
+<code>guidance/reference-manifest.json</code>, including entry points and the Trellis publisher-metadata
+extension. Keep the specification/schema with the reader and conformance fixtures with its tests.</li>
+<li>Finalize the repository-side <code>agent-context.json</code> schema, graph identity, mandatory <code>sources</code>
+provenance, and ownership rules.</li>
+<li>Generate and gate Core's authoritative first-party lockstep cohort from the packable-project set.</li>
+<li>Define repository-root, scoped-root, encoding, newline, marker-conflict, and symlink behavior.</li>
+<li>Specify exact package-byte hashes versus canonical text hashes, deterministic output encoding, and
+no-op behavior across Git checkout transformations.</li>
+<li>Define portable case-insensitive path collision validation, atomic-operation support checks with
+no unsafe fallback, and the documented boundary of external-edit detection.</li>
+<li>Define source-root discovery, below-project instruction boundaries, generated-directory exclusions,
+linked-source handling, and explicit ownership of each keyed entry.</li>
+<li>Define full-operation conflict preflight, reviewed force/adoption, and the worktree-wide writer lock.
+The durable recovery journal and generation-record read-consistency mechanism for <code>check</code>/dry-run are
+explicitly deferred (see &quot;Decisions resolved in review&quot; item 6) — do not design them in Phase 1.</li>
+<li>Decide the local tool-manifest layout, including nested per-scope manifests for multi-version
+monorepos (relying on .NET's upward command lookup with an explicit <code>&quot;isRoot&quot;: true</code> boundary),
+and how the tool's own version
+resolved for a given invocation is validated against that invocation's scope-resolved <code>Trellis.Core</code>
+version during <code>check</code> — with no Core-version check applying when a scope's graph has no Core at all.
+Require each scope's manifest to declare pinned <code>trellis</code> with <code>&quot;isRoot&quot;: true</code>; account for
+other tools that previously fell through to a parent manifest. Require invocation from the
+selected scope's manifest directory (or a governed descendant) and diagnose a missing command
+or working-directory/scope mismatch before mutation. Define <code>--scope &lt;path&gt;</code> for independent
+context roots separately from .NET's tool-manifest selection.</li>
+<li>Add golden test fixtures for empty, existing, large, malformed, and nested <code>AGENTS.md</code> files,
+including policies below a project directory and shared blocks with independent scope entries.</li>
+<li>Extend pack gates to verify package-relative paths and hashes without evaluating MSBuild items.</li>
+</ul>
+<h3 id="phase-2--build-the-explicit-command">Phase 2 — Build the explicit command</h3>
+<ul>
+<li>Require explicit project or solution entry points on <code>init</code>.</li>
+<li>Require <code>--scope &lt;path&gt;</code> when initializing or selecting an independent subtree. Preserve the
+repository-root default for root-scope <code>init</code>, and use the recorded scope and entry points from
+its manifest for scoped <code>sync</code>, <code>check</code>, and <code>remove</code>.</li>
+<li>Parse existing NuGet assets graphs and fixed-path package manifests without invoking package build
+targets.</li>
+<li>Implement ADR-009's shared read-only discovery/validation component and use it from the Trellis CLI,
+with Trellis routing and compatibility policy outside that reader. No public .NET reader API is required.</li>
+<li>Run the same reader against packed Trellis guidance and unrelated-package fixtures, including
+identical filenames, nested links, and no Git checkout. Publish the specification and fixtures with
+the experimental implementation; no external publisher or second implementation is required.</li>
+<li>Implement portable semantic graph normalization and read-only restore-spec freshness evaluation.</li>
+<li>Implement <code>init</code>, <code>sync</code>, <code>check</code>, <code>remove</code>, and dry-run behavior.</li>
+<li>Generate and own the discovery index separately from package documents; validate its local links.</li>
+<li>Implement source-root and descendant instruction discovery, including rediscovery during <code>sync</code>.</li>
+<li>Implement canonical text hashing and exact package-byte verification as separate operations.</li>
+<li>Preflight unowned destinations and modified owned content before overwriting or pruning.</li>
+<li>Serialize writers across scopes with the exclusive writer lock. Use atomic per-file replacement, with
+ownership decided against the manifest's canonical hash at preflight and a separate exact-byte
+snapshot rechecked immediately before each write to catch only same-run races — not the manifest hash
+itself, which uses a different (canonical) representation than raw file bytes. Do not build a
+dedicated recovery journal in this phase (see &quot;Decisions resolved in review&quot; item 6): a bare re-run of
+<code>init</code>/<code>sync</code> after an interruption may report conflicts requiring <code>--force</code>/adoption rather than
+completing automatically, and that is by design, not a defect to work around.</li>
+<li>Fail preflight on unknown/unsupported atomic-operation support; never fall back to in-place
+overwrite. Use no-clobber creation for new destinations and document the residual external-save
+race for replacement/pruning after the final check.</li>
+<li>Keep <code>check</code> and dry-run read-only and lock-free. A <code>check</code> racing an in-progress <code>init</code>/<code>sync</code> may
+observe a partially updated repository — that consistency guarantee is deferred, not a Phase 2 bug.</li>
+<li>Package the command as a local .NET tool consumed through a checked-in tool manifest, supporting
+nested per-scope manifests for multi-version monorepos; make <code>check</code> fail when the tool version
+resolved for an invocation and the <code>Trellis.Core</code> version resolved for that invocation's scope
+disagree, and skip the Core-version check when that scope's graph has no Core. Validate the
+invocation-directory scope and explicitly pinned command in its <code>&quot;isRoot&quot;: true</code> manifest for
+mutating commands, including graph-independent <code>remove</code>.</li>
+<li>Emit the low-<code>Importance</code> bootstrap <code>&lt;Message/&gt;</code> from its own new target when <code>.trellis/</code> is absent —
+independent of <code>_CopyTrellisApiReference</code>, so it keeps working after Phase 3 removes that target.</li>
+<li>Preserve all customer bytes outside the managed block.</li>
+<li>Implement keyed instruction-entry ownership, graph recording, collision detection, mandatory
+duplicate-source provenance, manifest validation, compatible-cohort checks, and owned-file pruning.</li>
+</ul>
+<h3 id="phase-3--coordinate-the-clean-package-cut">Phase 3 — Coordinate the clean package cut</h3>
+<ul>
+<li>Keep packing reference payloads under <code>trellis/</code>.</li>
+<li>Ship the package-side manifest from every first-party package and known satellite; Core's manifest
+carries the authoritative lockstep cohort.</li>
+<li>Remove <code>_CopyTrellisApiReference</code>, <code>TrellisSyncApiReference</code>, the missing-copy-logic warning, and
+their root/disable configuration properties from every coordinated package release.</li>
+<li>Make the explicit command reject any unresolved legacy contributor before writing.</li>
+<li>Replace the existing scratch-consumer probe with end-to-end command tests.</li>
+<li>Publish the agent-context tool package in lockstep with the first-party release cohort, so a
+tool-manifest version bump and a <code>Trellis.Core</code> version bump land together in one PR.</li>
+</ul>
+<h3 id="phase-4--migrate-first-party-entry-points">Phase 4 — Migrate first-party entry points</h3>
+<ul>
+<li>Pre-initialize Trellis templates, including a checked-in tool manifest pinned to the matching tool
+version.</li>
+<li>Update package README and NuGet README setup instructions with both flows: first install
+(<code>dotnet new tool-manifest --output .config</code> + <code>dotnet tool install &lt;tool-package&gt; --version &lt;matching-tool-version&gt; --tool-manifest .config/dotnet-tools.json</code> +
+<code>dotnet restore &lt;entry-point&gt;</code> + <code>dotnet tool run trellis agent init --scope . &lt;entry-point&gt;</code> for
+nested scopes) and subsequent clone (<code>dotnet tool restore</code> +
+<code>dotnet restore &lt;recorded-solution-or-project&gt;</code> +
+<code>dotnet tool run trellis agent sync --scope .</code> for nested scopes).
+All commands run from the selected scope's directory; templates and CI jobs working with nested
+scopes set that directory explicitly before restore and each tool invocation, pass <code>--scope .</code>
+to <code>init</code>, <code>sync</code>, <code>check</code>, and <code>remove</code>, and confirm the scoped manifest declares <code>trellis</code> and
+sets <code>&quot;isRoot&quot;: true</code>.</li>
+<li>Document the <code>.trellis/README.md</code> entry point for all graphs and conflict resolution. Document the
+actual interrupted-run recovery path — re-run <code>init</code>/<code>sync</code> with current package assets, which may
+report conflicts requiring <code>--force</code>/adoption, or preserve customer changes and selectively restore
+only the affected paths from an explicitly chosen revision before re-running — rather than a single
+blanket restore command or an implied guaranteed automatic clean retry, since Phase 1/2 defers the
+recovery journal that would provide one.</li>
+<li>Document that affected paths must not be edited externally during mutation and that unsupported
+atomic filesystem operations fail explicitly rather than falling back to unsafe writes.</li>
+<li>Update <code>trellis-start-here.md</code> wording from <code>.github/</code> to <code>.trellis/api-reference/</code>.</li>
+<li>Update framework contributor documentation without shipping the framework's <code>AGENTS.md</code>.</li>
+<li>Add <code>check</code> enforcement to first-party templates' CI by default (see &quot;Decisions resolved in review&quot;
+item 3), not as an opt-in.</li>
+</ul>
+<h3 id="phase-5--retire-legacy-output">Phase 5 — Retire legacy output</h3>
+<ul>
+<li>Do not add automated detection or deletion of consumer-owned <code>.github/</code> files.</li>
+<li>Remove the old destination's tests and documentation in the same release; do not add a dual-write
+compatibility period.</li>
+</ul>
+<h2 id="acceptance-criteria">Acceptance criteria</h2>
+<p>The design is complete only when end-to-end tests prove:</p>
+<ol>
+<li>With a compatible package graph, normal restore and build do not create or modify <code>AGENTS.md</code>,
+<code>.trellis/</code>, <code>.github/</code>, or tracked source; ordinary NuGet cache, <code>obj/</code>, and <code>bin/</code> writes remain
+normal build outputs.</li>
+<li><code>init</code> with explicit graph entry points creates <code>.trellis/README.md</code>, <code>.trellis/api-reference/</code>,
+a manifest, and a minimal root <code>AGENTS.md</code> when selected source has no effective file.</li>
+<li><code>init</code> preserves every existing byte outside the inserted block when an effective <code>AGENTS.md</code>
+exists.</li>
+<li>A second <code>init</code> or <code>sync</code> produces no diff.</li>
+<li>A package update refreshes documents and manifest versions deterministically.</li>
+<li><code>check</code> fails on a missing pointer, stale document, changed generated document, unknown manifest
+schema, graph mismatch, stale assets graph, or package-version mismatch without invoking restore
+or changing the repository, <code>obj/</code>, <code>bin/</code>, lock files, or the NuGet package cache.</li>
+<li>Removing a satellite package prunes only its manifest-owned reference.</li>
+<li>Conflicting contributions fail with both package identities in the error.</li>
+<li>Identical Core/analyzer contributions produce one file with both contributors in the sorted
+<code>sources</code> array; changing or removing one contributor updates provenance deterministically.</li>
+<li>Package manifests with traversal, rooted paths, missing files, source links/reparse points, hash
+mismatches, invalid document paths, non-Markdown documents, or tool-owned destination collisions
+fail before any managed repository write. Safe nested document paths remain valid; the Trellis
+flat-view mapping cannot flatten unrelated contributions or break their relative links.</li>
+<li>Project-authored or imported <code>TrellisApiReference</code> items cannot add a document.</li>
+<li>Incomplete or duplicate managed markers fail without editing <code>AGENTS.md</code>.</li>
+<li>UTF-8 BOM, UTF-8 without BOM, CRLF, and LF instruction files retain their original format.</li>
+<li>Repository-boundary and destination-link tests prove no context write can escape its context
+root and instruction writes are limited to approved governing files or removal of previously
+owned entries. Only validated worktree-local transaction metadata may live outside the Git root.</li>
+<li>A committed fresh clone exposes <code>.trellis/README.md</code> before restore, with valid local discovery
+links for Core-present, analyzer-only, and satellite-only graphs. Only Core-present graphs require
+the packaged <code>trellis-start-here.md</code> and cookbook route. A fresh-clone setup separately restores
+the local tool and selected project graph before invoking <code>sync</code> or read-only <code>check</code>; tool restore
+alone does not satisfy the assets prerequisite.</li>
+<li>A multi-version monorepo fails the single-scope operation and succeeds with explicit independent
+scopes without creating a child <code>AGENTS.md</code> that shadows an existing ancestor policy. Each scope
+resolves and validates its own nested tool manifest, with <code>&quot;isRoot&quot;: true</code> and a pinned <code>trellis</code>
+entry, against its own <code>Trellis.Core</code> version; <code>check</code> never compares one scope's tool version
+against a different scope's <code>Trellis.Core</code> version. Restore and invoke from each scope's
+directory, passing <code>--scope .</code> to install context locally. Without <code>--scope</code>, nested <code>init</code>
+does not infer a local context root from the working directory; it uses the repository-root
+default and fails the scope/tool-manifest boundary check before mutation. <code>sync</code>, <code>check</code>,
+and <code>remove</code> use the context and graph entry points recorded by the scoped <code>init</code>. An invocation
+at the repository root naming a nested project/solution must not silently use the root tool:
+<code>init</code>, <code>sync</code>, and <code>remove</code> fail before mutation and <code>check</code> fails read-only with the required
+working directory identified. The
+graph-independent <code>remove</code> guard works without assets or a package cache. An existing nested
+manifest with <code>&quot;isRoot&quot;: false</code> and no <code>trellis</code> entry must not silently select a parent tool;
+after adding a pinned <code>trellis</code> entry and setting <code>&quot;isRoot&quot;: true</code>, that scope uses its own tool.</li>
+<li>Root-only, nested-existing, ancestor-concatenating, and nearest-only instruction layouts all
+receive the correct path-qualified pointer, including <code>src/App/Features/AGENTS.md</code> below
+<code>src/App/App.csproj</code>. Adding or removing such a policy is reflected by <code>sync</code>; an unrelated
+subtree policy does not prevent root-file creation for uncovered source.</li>
+<li><code>init</code>, <code>sync</code>, and <code>remove</code> never read, write, or delete anything under <code>.github/</code>; legacy files
+there are left untouched regardless of whether their content matches a known package payload.
+A repository-root source fixture containing <code>.github/AGENTS.md</code> and legacy documents is pruned
+before those files are opened; explicit excluded paths are rejected before access.</li>
+<li>A mixed old/new package graph fails before changing <code>AGENTS.md</code> or <code>.trellis/</code> and identifies
+every incompatible package, including new Core plus an old non-payload first-party package; an
+all-compatible graph contains no legacy build copy or warning target.</li>
+<li>The complete first-party set and independently versioned satellite references still reach the
+consumer.</li>
+<li>Two scopes sharing one root managed block can initialize, synchronize, and remove either scope
+without changing the other's keyed entry; the marker block disappears only after the last entry.</li>
+<li><code>remove</code> succeeds after a package downgrade/removal, missing entry point, stale or absent assets,
+and empty NuGet cache; modified owned state requires an explicit reviewed force operation.</li>
+<li>The semantic graph digest is identical across checkout paths and operating systems, while a
+project, imported props/targets, central-package version, TFM/RID, or resolved-package change is
+detected even when an old assets file still exists.</li>
+<li><code>init/sync --restore</code> clearly reports and tests its allowed NuGet cache, <code>obj/</code>, and lock-file
+side effects separately from strictly read-only <code>check</code>.</li>
+<li>References and the generated index survive actual Windows-to-Linux and Linux-to-Windows
+commit/clone round trips with Git text conversion: <code>check</code> passes after the separate restore step,
+<code>sync</code> is a no-op, and <code>remove</code> does not misidentify newline/BOM conversion as a user edit.
+Substantive content changes still fail verification. Package-byte hash mismatches fail even when
+canonical text would match; same-text contributors with different line endings retain both sources.</li>
+<li><code>init</code> and <code>sync</code> reject unowned destination files, including byte-identical files, without
+silently adopting them. Modified owned references, the index, and the selected instruction entry
+block replacement or pruning until explicitly resolved. A conflict discovered late in preflight
+leaves all managed files unchanged; force/adoption previews the exact affected paths and entries.</li>
+<li>Concurrent initialization, synchronization, and removal of independent scopes sharing root
+instructions serialize without losing entries or producing manifests inconsistent with the block.
+Legitimate changes to another scope's entry do not trigger a false modification conflict.</li>
+<li>Failure injected between individual per-file replacements (including manifest replacement) leaves
+every already-completed file intact and every not-yet-started file untouched — no partial file is
+corrupted, and this holds regardless of write order (files before manifest, or manifest before
+files). Re-running <code>init</code>/<code>sync</code> afterward, with current package assets available, either completes
+or reports the affected files as conflicts requiring explicit <code>--force</code>/adoption; it is not required
+to complete automatically, since the tool cannot distinguish its own interrupted write from a
+customer edit without the deferred recovery journal. Preserving customer changes among the reported
+conflicts and selectively restoring only the affected paths from an explicitly chosen revision, then
+re-running, is a documented, tested recovery path — not a single blanket restore command. This
+criterion does not require automatic multi-file rollback, automatic clean retry, or a recovery
+journal — those are deferred (see
+&quot;Decisions resolved in review&quot; item 6).</li>
+<li><code>check</code> and dry-run perform no writes and never take the writer lock. Ordinary and linked Git
+worktrees use the correct isolated lock file location. A <code>check</code> that races an in-progress
+<code>init</code>/<code>sync</code> is allowed to observe a partially updated repository in this phase — it is not
+required to detect and reject a transaction that begins and finishes during its read interval, since
+the generation-record consistency guarantee that would provide that is deferred.</li>
+<li>Source discovery excludes tool/generated output, covers explicitly selected linked source, and
+diagnoses out-of-scope source or repository boundaries without widening writes. Git-ignored
+selected source is not silently omitted, and descendant policies need no colocated project file.</li>
+<li>Trellis packages emit ADR-009's experimental manifest and the Trellis CLI consumes it through the
+shared reader end to end. The same reader passes ADR-009's local generic fixtures without Trellis
+dependencies, Git, repository mutation, or reader/package version equality.</li>
+<li>Case-only document and directory-prefix aliases are rejected consistently on Windows and Linux,
+including identical-content aliases and aliases of existing destinations or tool-owned names.
+Unrelated package namespaces may contain the same filename without conflict.</li>
+<li>Unsupported or unknown atomic-operation support at any destination fails before managed-file
+mutation. Injected atomic-operation failures never fall back to truncation or delete-and-copy;
+previously completed replacements remain intact and no individual file is torn.</li>
+<li>Changes observed by the final snapshot read, including edits outside an instruction entry, block
+replacement/pruning. New destinations created after preflight cannot be clobbered. These checks
+do not assert protection against external edits after the final read of an existing file; CLI
+guidance states the no-concurrent-external-edits requirement and residual loss window.</li>
+<li>First-install examples and generated setup guidance explicitly select the intended tool version;
+a newer available tool release does not change the version installed by the documented command.</li>
+</ol>
+<h2 id="open-questions-for-review">Open questions for review</h2>
+<p>None outstanding. The five questions originally listed here — command distribution, default insertion
+point, CI adoption, legacy cleanup, and tool bootstrap — are resolved in &quot;Decisions resolved in review&quot;
+near the top of this document, with the detail folded into the relevant sections below.
+ADR-009's version 1 decisions are resolved locally; Phase 1 implements their schema and fixtures.
+Only upstream adoption, integration, and governance remain external follow-up, not release blockers.</p>
+<h2 id="out-of-scope">Out of scope</h2>
+<ul>
+<li>Official NuGet standardization, a public .NET reader API, unrelated-publisher adoption, and an
+independent second reader. ADR-009's minimal experimental contract and local conformance fixtures
+are in scope; external adoption work is not a release prerequisite.</li>
+<li>Changing the content or structure of the Trellis API references themselves.</li>
+<li>Loading all reference files into every agent session.</li>
+<li>Supporting legacy agent-specific instruction filenames.</li>
+<li>Enforcing application architecture or coding style through package-supplied instructions.</li>
+<li>Migration of existing consumer repositories; legacy <code>.github/</code> files remain consumer-owned.</li>
+<li>The durable recovery journal and persistent generation-record read-consistency protocol for
+concurrent multi-scope transactions; deferred until concurrent usage is observed (see &quot;Decisions
+resolved in review&quot; item 6 and &quot;Shared writers and interrupted updates&quot;).</li>
+<li>A cross-platform guarantee against edits by external processes after the final snapshot check;
+supported mutation requires callers to avoid concurrent external edits to affected paths.</li>
+<li>Treating the presence of an optional-package reference file as proof that the package is installed.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/adr/ADR-008-agent-context-delivery.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

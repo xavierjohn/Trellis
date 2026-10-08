@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>TRLS023 — CreatedAtRoute / CreatedAtAction / WithLocation is missing the api-version route value | Trellis </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="TRLS023 — CreatedAtRoute / CreatedAtAction / WithLocation is missing the api-version route value | Trellis ">
+      
+      
+      <link rel="icon" href="../../favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/analyzers/TRLS023.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../..//images/iconsmall.png" alt="">
+            
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="trls023--createdatroute--createdataction--withlocation-is-missing-the-api-version-route-value">TRLS023 — <code>CreatedAtRoute</code> / <code>CreatedAtAction</code> / <code>WithLocation</code> is missing the <code>api-version</code> route value</h1>
+
+<ul>
+<li><strong>Severity:</strong> Warning</li>
+<li><strong>Category:</strong> Trellis</li>
+</ul>
+<h2 id="what-it-detects">What it detects</h2>
+<p>Flags <code>HttpResponseOptionsBuilder&lt;T&gt;.CreatedAtRoute(routeName, routeValues)</code>, <code>CreatedAtAction(actionName, routeValues, controllerName)</code>, and <code>WithLocation(routeName, routeValues)</code> invocations that produce <code>Location</code> headers without an <code>api-version</code> route value, when the enclosing controller is decorated with <code>[ApiVersion(...)]</code>.</p>
+<p>The analyzer suppresses when the same fluent builder chain calls <code>.WithVersionedRoute(...)</code> from <code>Trellis.Asp.ApiVersioning</code> — that helper resolves the destination's version per request and removes the need to encode it in the route values literal. The analyzer also suppresses for the manual primitive <code>.WithRouteValueResolver(&quot;api-version&quot;, httpContext =&gt; ...)</code> on <code>HttpResponseOptionsBuilder&lt;T&gt;</code>. This suppression is not equivalent to destination-aware validation. The key match is case-insensitive (<code>&quot;API-Version&quot;</code> also suppresses).</p>
+<p>The analyzer runs only inside controllers/types annotated with <code>[ApiVersion]</code> and not <code>[ApiVersionNeutral]</code>. <code>[ApiVersion]</code> is <code>Inherited = false</code>, so the analyzer inspects the immediate type — derived controllers without their own <code>[ApiVersion]</code> attribute are ignored.</p>
+<p>Recognised dictionary shapes (suppress the warning when an <code>api-version</code> key is present):</p>
+<ul>
+<li><code>c =&gt; new RouteValueDictionary { [&quot;id&quot;] = c.Id, [&quot;api-version&quot;] = &quot;...&quot; }</code> — initializer block.</li>
+<li><code>c =&gt; new RouteValueDictionary { [&quot;id&quot;] = c.Id, [ApiVersionKey] = &quot;...&quot; }</code> — initializer block with a const-string identifier (resolved via the semantic model).</li>
+<li><code>c =&gt; { return new RouteValueDictionary { ... }; }</code> — block-bodied lambda with a return statement.</li>
+<li><code>c =&gt; new RouteValueDictionary(new { id = c.Id })</code> — anonymous-object ctor shape; <strong>always flagged</strong> because C# property names cannot contain <code>-</code>, so the api-version key is necessarily missing.</li>
+</ul>
+<p>Key matching is case-insensitive (matches <code>RouteValueDictionary</code>'s runtime semantics): <code>&quot;API-VERSION&quot;</code>, <code>&quot;Api-Version&quot;</code>, etc., are all accepted.</p>
+<p>The single-id overloads (<code>CreatedAtRoute(routeName, idSelector)</code> / <code>WithLocation(routeName, idSelector)</code>) construct the dictionary internally with a single non-<code>&quot;api-version&quot;</code> key, so they are always flagged unless followed by <code>.WithVersionedRoute()</code> (or the manual <code>.WithRouteValueResolver(&quot;api-version&quot;, ...)</code>).</p>
+<h2 id="why-it-matters">Why it matters</h2>
+<p>Under query-string or header API versioning (<code>Asp.Versioning.QueryStringApiVersionReader</code>, <code>HeaderApiVersionReader</code>, or any composite reader that is not URL-segment versioning), link generation does not auto-include the request's <code>api-version</code>. The route values dictionary is the only signal it has. Omitting <code>[&quot;api-version&quot;]</code> produces a <code>Location</code> header like:</p>
+<pre><code>Location: /api/orders/42
+</code></pre>
+<p>…which 404s on dereference because the controller is registered under the versioned route group. The 2xx response itself looks correct in tests; only an integration test that actually <code>GET</code>s the <code>Location</code> URL surfaces the bug.</p>
+<p>This is a recurring source of regressions: every author has to remember to add the key, and code review consistently misses it. The analyzer plus the runtime helper close the loop.</p>
+<h2 id="bad-examples">Bad examples</h2>
+<pre><code class="lang-csharp">[ApiController]
+[ApiVersion(&quot;2026-12-01&quot;)]
+[Route(&quot;api/orders&quot;)]
+public class OrdersController : ControllerBase
+{
+    [HttpGet(&quot;{id:int}&quot;, Name = &quot;Orders_GetById&quot;)]
+    public IActionResult Get(int id) =&gt; Ok(...);
+
+    [HttpPost]
+    public ActionResult&lt;Order&gt; Create(CreateOrderRequest req) =&gt;
+        _mediator.Send(new CreateOrderCommand(req))
+            .ToHttpResponse(opts =&gt; opts.CreatedAtRoute(            // TRLS023
+                &quot;Orders_GetById&quot;,
+                o =&gt; new RouteValueDictionary { [&quot;id&quot;] = o.Id }))   // missing [&quot;api-version&quot;], no .WithVersionedRoute()
+            .AsActionResult&lt;Order&gt;();
+}
+</code></pre>
+<pre><code class="lang-csharp">// Anonymous-object ctor shape — C# property names can't contain hyphens, so api-version
+// can never be present. Always flagged.
+opts.CreatedAtRoute(
+    &quot;Orders_GetById&quot;,
+    o =&gt; new RouteValueDictionary(new { id = o.Id }));              // TRLS023
+</code></pre>
+<h2 id="good-examples">Good examples</h2>
+<p>The recommended fix is to chain <code>.WithVersionedRoute()</code> from the <a href="../integration-aspnet.html#api-version-aware-location-headers"><code>Trellis.Asp.ApiVersioning</code></a> package. It resolves the <strong>final named-route or MVC-action destination</strong>, not the current endpoint. It accepts a requested version only when mapped to that target, otherwise uses a single mapped declared version, then a mapped host default, otherwise throws. Action-level <code>[MapToApiVersion]</code> narrows controller declarations.</p>
+<pre><code class="lang-csharp">using Trellis.Asp.ApiVersioning;
+
+[HttpPost]
+public ActionResult&lt;Order&gt; Create(CreateOrderRequest req) =&gt;
+    _mediator.Send(new CreateOrderCommand(req))
+        .ToHttpResponse(opts =&gt; opts
+            .CreatedAtRoute(
+                &quot;Orders_GetById&quot;,
+                o =&gt; new RouteValueDictionary { [&quot;id&quot;] = o.Id })
+            .WithVersionedRoute())
+        .AsActionResult&lt;Order&gt;();
+</code></pre>
+<p>If you can't (or prefer not to) take the package dependency, add the key manually:</p>
+<pre><code class="lang-csharp">opts.CreatedAtRoute(
+    &quot;Orders_GetById&quot;,
+    o =&gt; new RouteValueDictionary { [&quot;id&quot;] = o.Id, [&quot;api-version&quot;] = &quot;2026-12-01&quot; });
+</code></pre>
+<p>Either form silences TRLS023, but manual values do not supply target-aware checks. For manual query values, ensure the destination actually accepts the version.</p>
+<h3 id="runtime-migration-considerations">Runtime migration considerations</h3>
+<p>The code-fix syntax is unchanged; its runtime behavior is now stricter:</p>
+<ul>
+<li>Missing or ambiguous destinations throw <code>InvalidOperationException</code>; prefer uniquely named routes. Suppressed link-generation endpoints are excluded, and resolution never falls back to the current endpoint.</li>
+<li>Explicit pins must map to the destination. Segment destinations receive the resolved/pinned value in their actual <code>:apiVersion</code> parameter (not necessarily <code>version</code>), without a duplicate query value.</li>
+<li>Neutral and missing-metadata destinations skip injection and remove supplied <code>api-version</code> entries. Missing-metadata warnings identify and deduplicate by <strong>destination endpoint / AppDomain</strong>, not caller; neutral targets stay quiet.</li>
+<li>Version injection runs through <code>WithLocationRouteResolver</code> after the domain selector and all legacy route-value callbacks, overriding competing version values on a per-execution clone. One callback slot means the last registration wins, including repeated <code>WithVersionedRoute</code> calls; errors propagate.</li>
+<li>Literal/selector <code>Created(...)</code>, <code>WriteOutcome</code>-owned URIs, existing statuses, and action-link trimming/AOT limitations are unchanged. No new registration or analyzer diagnostic is introduced.</li>
+</ul>
+<p><code>PageUrl</code> shares corrected mapping checks, not the new Location segment behavior: it retains ambient segment routing, cross-route validation, consumer overrides, quiet missing-metadata handling, and rejection of explicit segment pins.</p>
+<h2 id="code-fix-available">Code fix available</h2>
+<p>Yes. The code fix:</p>
+<ol>
+<li>Wraps the flagged <code>CreatedAtRoute(...)</code>, <code>CreatedAtAction(...)</code>, or <code>WithLocation(...)</code> call so the chain becomes <code>&lt;original&gt;.WithVersionedRoute()</code>.</li>
+<li>Inserts <code>using Trellis.Asp.ApiVersioning;</code> if missing. The using is added in the same scope as existing usings (file-scoped namespace, block-scoped namespace, or top-level) and matches the file's existing line-ending style.</li>
+</ol>
+<p>The fix does <strong>not</strong> add the <code>Trellis.Asp.ApiVersioning</code> package reference. If the package isn't yet referenced you'll see a &quot;type or namespace not found&quot; build error pointing at the new namespace; add the package via:</p>
+<pre><code class="lang-bash">dotnet add package Trellis.Asp.ApiVersioning
+</code></pre>
+<h2 id="configuration">Configuration</h2>
+<p>Standard Roslyn configuration applies.</p>
+<pre><code class="lang-ini">dotnet_diagnostic.TRLS023.severity = error
+</code></pre>
+<p>For a versioned controller linking to a neutral destination, prefer <code>.WithVersionedRoute()</code> — it inspects the target and removes the query version automatically. If you deliberately own manual Location generation instead, suppress at the call site with a clear justification:</p>
+<pre><code class="lang-csharp">[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    &quot;Trellis&quot;, &quot;TRLS023&quot;,
+    Justification = &quot;Manual neutral-target link; application validates the destination and omits api-version.&quot;)]
+public ActionResult&lt;Order&gt; CrossVersionRedirect() =&gt; ...;
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>If your controller is api-version-neutral by design, prefer adding <code>[ApiVersionNeutral]</code> to it. The analyzer skips <code>[ApiVersionNeutral]</code> controllers, and the change documents the intent.</p>
+</div>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li>The analyzer recognises only the dictionary shapes listed above. Computed dictionaries (<code>c =&gt; myDict</code>, <code>c =&gt; MakeDict(c)</code>) on the 2-arg overload are bailed to false-negative — TRLS023 won't fire even if <code>myDict</code> is missing the key. Chaining <code>.WithVersionedRoute()</code> is still the right answer there.</li>
+<li>The analyzer does not run on Minimal API endpoints (<code>app.MapPost(&quot;/orders&quot;, ...)</code>); it's scoped to <code>HttpResponseOptionsBuilder&lt;T&gt;</code> calls inside MVC controllers.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/analyzers/TRLS023.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
