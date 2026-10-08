@@ -29,6 +29,32 @@ public sealed class SharedRoutePageUrlTests
     private const string RouteName = "Shared_Widgets_List";
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PageUrl_CachedCandidates_RequestedAndPinnedVersions_RemainRequestLocal(bool reverseOrder)
+    {
+        using var host = CreateHost(reverseOrder, differentControllerNames: true);
+        using var client = host.GetTestClient();
+        foreach (var version in new[] { V1, V2, V1 })
+        {
+            foreach (var pin in new[] { false, true })
+            {
+                var expected = pin ? version == V1 ? V2 : V1 : version;
+                var query = pin ? $"&pin={expected}" : string.Empty;
+                using var response = await client.GetAsync(
+                    $"/shared-route/widgets?api-version={version}{query}", TestContext.Current.CancellationToken);
+
+                response.StatusCode.Should().Be(HttpStatusCode.OK);
+                using var json = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+                var next = json.RootElement.GetProperty("next").GetProperty("href").GetString()!;
+                next.Should().Contain($"api-version={expected}");
+                await AssertFollowedVersion(client, next, expected);
+            }
+        }
+    }
+
+    [Theory]
     [InlineData(V1, false)]
     [InlineData(V2, false)]
     [InlineData(V1, true)]

@@ -3,7 +3,7 @@ title: ASP.NET Core Integration
 package: Trellis.Asp
 topics: [asp, minimal-api, controllers, http-result, problem-details, etag, prefer, pagination, idempotency]
 related_api_reference: [trellis-api-asp.md, trellis-api-core.md, trellis-api-asp-idempotency-cosmos.md]
-last_verified: 2026-10-07
+last_verified: 2026-10-08
 audience: [developer]
 ---
 # ASP.NET Core Integration
@@ -532,6 +532,11 @@ and works without an API-versioning package. Versioned hosts reference
 callback) alongside normal `AddApiVersioning(...)` setup. The endpoint expression is
 identical in both hosts; only composition changes. Typed version pins remain in the
 optional package. See the [pagination policy reference](../api_reference/trellis-api-asp-apiversioning.md#trellisaspoptionsapiversioningextensions).
+
+Endpoint discovery and compatible route groups are cached per endpoint data source,
+then rebuilt when its change token signals a routing update. Cursor values, directions,
+request hosts, and version selection remain per-link. Custom endpoint data sources must
+signal changes rather than mutating their routing metadata silently.
 
 ## Idempotency-Key middleware
 
