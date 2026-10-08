@@ -19,7 +19,7 @@ fake dependencies; no replacement bypass seam is added.
 
 Authorization-before-business, checked actor/resource identity, nested/concurrent dispatch
 isolation, and generated/native dispatch remain unchanged.
-See the [actor-handler migration guide](docs/docfx_project/api_reference/trellis-api-migration.md#actor-aware-handler-migration).
+See the [current actor-handler contracts](docs/docfx_project/api_reference/trellis-api-mediator.md#actor-aware-handler-bases).
 
 ### Added — lazy nonblank string guards (TFR-21 follow-up)
 

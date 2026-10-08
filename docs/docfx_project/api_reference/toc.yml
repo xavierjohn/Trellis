@@ -42,5 +42,5 @@
   href: trellis-value-object-taxonomy.md
 - name: Analyzer surface
   href: trellis-api-analyzers.md
-- name: Migration reference
+- name: FunctionalDDD migration reference
   href: trellis-api-migration.md
