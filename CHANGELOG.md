@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking — common pagination builders
+
+Implicit `HttpContext.PageUrl` builders now belong to `Trellis.Asp`, so unversioned
+applications generate pagination links without installing `Asp.Versioning`.
+Versioned hosts import `Trellis.Asp` and enable `UseVersionedPageUrls()` once through
+`AddTrellisAsp` or the existing `UseAsp` callback. Static implicit calls move from
+`Trellis.Asp.ApiVersioning.HttpContextPageUrlExtensions` to
+`Trellis.Asp.HttpContextPaginationExtensions`. This is an intentional alpha source
+and binary break; no duplicate implicit extensions or compatibility shim remain.
+
+Typed `ApiVersion` pin syntax and Location behavior are unchanged. The optional,
+host-local pagination policy preserves shared-route selection, mapped version checks,
+consumer overrides, ambient segment routing, and explicit segment-pin rejection.
+Core ASP and ServiceDefaults acquire no versioning-SDK dependency.
+Shared pagination names also require matching required route values and parameter
+policies, preventing link generation from falling through to a different destination.
+
 ### Breaking — guarded actor-handler entry points
 
 All six `Trellis.Mediator` actor/resource handler bases now expose only the public

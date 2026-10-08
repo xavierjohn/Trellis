@@ -1,11 +1,12 @@
 ﻿namespace Trellis.Asp;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Trellis;
 
 /// <summary>
 /// Configuration options for Trellis ASP.NET Core integration.
-/// Controls how domain error types and wrapped HTTP transport faults are mapped to status codes.
+/// Controls error-to-status-code mapping and host-local pagination route policies.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -96,6 +97,17 @@ public sealed class TrellisAspOptions
     /// </code>
     /// </example>
     public string? ProblemContentLanguage { get; set; }
+
+    /// <summary>
+    /// Optional host-local policy that selects a pagination destination and enriches its
+    /// cloned route values. Null uses ordinary named routing without API-version handling.
+    /// </summary>
+    /// <remarks>
+    /// Configure through <c>AddTrellisAsp</c> or <c>UseAsp</c>. The resolver must return a
+    /// candidate or the link-enabled active endpoint with the same route name; it must not
+    /// return null. A per-builder resolver overrides this policy.
+    /// </remarks>
+    public Func<PageUrlRouteContext, Endpoint>? PageUrlRouteResolver { get; set; }
 
     /// <summary>
     /// When <c>true</c>, calls to <c>.WithVersionedRoute()</c> (or its pinned overload)

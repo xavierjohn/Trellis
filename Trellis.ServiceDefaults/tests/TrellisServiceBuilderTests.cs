@@ -237,6 +237,25 @@ public class TrellisServiceBuilderTests
     }
 
     [Fact]
+    public void UseAsp_PaginationPolicy_UsesExistingOptionsSlotWithoutVersioningDependency()
+    {
+        var services = new ServiceCollection();
+        Func<PageUrlRouteContext, Microsoft.AspNetCore.Http.Endpoint> policy = context => context.Candidates[0];
+
+        services.AddTrellis(builder => builder
+            .UseAsp(options => options.PageUrlRouteResolver = policy)
+            .UseAsp()
+            .UseAsp(options => options.ProblemContentLanguage = "en"));
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<TrellisAspOptions>();
+
+        options.PageUrlRouteResolver.Should().BeSameAs(policy);
+        options.ProblemContentLanguage.Should().Be("en");
+        typeof(TrellisServiceBuilder).Assembly.GetReferencedAssemblies()
+            .Should().NotContain(assembly => assembly.Name!.StartsWith("Asp.Versioning", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void UseAsp_RepeatedCalls_InvokesConfigureCallbacksInOrder()
     {
         List<int> calls = [];

@@ -3,7 +3,7 @@ package: Trellis.ServiceDefaults
 namespaces: [Trellis.ServiceDefaults]
 types: [TrellisServiceCollectionExtensions, TrellisServiceBuilder]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-07
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring a composition root with AddTrellis(...) so Trellis modules apply in the canonical order, and what it deliberately does not register."
@@ -163,6 +163,14 @@ repeat callbacks run in registration order and scans do not duplicate execution.
 See [actor-aware bases and migration](trellis-api-mediator.md#actor-aware-handler-bases).
 
 ### Repeated configuration callbacks
+
+Optional version-aware pagination uses the existing ASP callback:
+`UseAsp(asp => asp.UseVersionedPageUrls())`, with the extension supplied by
+[`Trellis.Asp.ApiVersioning`](trellis-api-asp-apiversioning.md#trellisaspoptionsapiversioningextensions).
+Unversioned applications keep `UseAsp()` and the same `HttpContext.PageUrl` endpoint
+expression. There is no new registration helper or builder slot: neither this package
+nor `Trellis.Asp` references the optional versioning SDK. The host-local
+`TrellisAspOptions.PageUrlRouteResolver` policy composes with other ASP configuration.
 
 Repeated calls to `UseAsp`, `UseIdempotency`, and `UseMediator` invoke every configure callback in
 registration order on the same options instance. Contravariant callbacks such as `Action<object>`

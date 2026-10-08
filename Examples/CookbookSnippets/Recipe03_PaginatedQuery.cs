@@ -31,15 +31,21 @@ public sealed class ListOrdersHandler(AppDbContext db)
 internal static class Recipe3EndpointSurface
 {
     public static void Map(IEndpointRouteBuilder app) =>
-        app.MapGet("/orders", (HttpRequest request, ISender sender, CancellationToken cancellationToken) =>
-            request.TryCreatePageRequest()
+        app.MapGet("/orders", (HttpContext context, ISender sender, CancellationToken cancellationToken) =>
+            context.Request.TryCreatePageRequest()
                 .BindAsync(pagination => sender.Send(
                     new ListOrdersQuery(pagination),
                     cancellationToken))
                 .ToHttpResponseAsync(
-                    nextUrlBuilder: (cursor, applied) =>
-                        $"/orders?cursor={Uri.EscapeDataString(cursor.Token)}&limit={applied}",
+                    nextUrlBuilder: context.PageUrl(
+                        "Orders_List",
+                        (cursor, applied) => new RouteValueDictionary
+                        {
+                            ["cursor"] = cursor.Token,
+                            ["limit"] = applied,
+                        }),
                     body: item => item))
+            .WithName("Orders_List")
             .WithInputOrigin(InputLocation.Query);
 }
 

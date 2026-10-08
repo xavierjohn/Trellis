@@ -28,6 +28,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 
 - Converts `Result<T>`, `Result<Unit>`, `Result<Page<T>>`, and `Result<WriteOutcome<T>>` into consistent ASP.NET Core responses.
 - Parses raw cursor/limit query input into `PageRequest` consistently across MVC and Minimal APIs without collapsing an empty cursor into absence.
+- Builds named-route pagination URLs through `HttpContext.PageUrl(...)` without an API-versioning dependency.
 - Emits RFC 9457 Problem Details for typed Trellis failures.
 - Supports `Created`, named-route and action locations, ETags, conditional requests, `Prefer`, cache controls, and pagination links.
 - Supplies endpoint-builder locations for `WriteOutcome.Created` when its optional location is absent; an explicit outcome location wins.
@@ -45,7 +46,7 @@ Default failure mappings include 401 for `AuthenticationRequired`, 403 for `Forb
 - `AddTrellisProblemDetails()` pairs with `app.UseTrellisProblemDetails()`.
 - Inside `AddRateLimiter(...)`, call `options.UseTrellisRejectionHandler()` to let Trellis own `OnRejected`; use named endpoint policies without policy-level `OnRejected` callbacks. Inline `RequireRateLimiting(policy)` bypasses the options handler, even without a policy callback. Rate-limit policies and partitioning remain application-owned.
 - Idempotency requires `AddTrellisIdempotency(...)`, exactly one store registration, `app.UseTrellisIdempotency()`, and `[Idempotent]` on opted-in endpoints.
-- Version-aware `Location` and pagination links live in `Trellis.Asp.ApiVersioning`.
+- `PageUrl` is part of this package. Versioned hosts add `Trellis.Asp.ApiVersioning` and enable `AddTrellisAsp(o => o.UseVersionedPageUrls())` (or the existing `UseAsp` callback) once. Typed pins and `WithVersionedRoute()` remain optional-package helpers.
 
 ## Documentation
 

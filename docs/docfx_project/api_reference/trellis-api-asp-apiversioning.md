@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Asp.ApiVersioning
 namespaces: [Trellis.Asp.ApiVersioning]
-types: [HttpResponseOptionsBuilderApiVersioningExtensions, HttpContextPageUrlExtensions]
+types: [HttpResponseOptionsBuilderApiVersioningExtensions, HttpContextPageUrlExtensions, TrellisAspOptionsApiVersioningExtensions]
 version: v1
-last_verified: 2026-10-06
+last_verified: 2026-10-07
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when versioned controllers return Result or Page and need Location or next-page URLs that carry the api-version (Trellis.Asp.ApiVersioning)."
@@ -14,7 +14,7 @@ agent_description: "Open when versioned controllers return Result or Page and ne
 
 - **Package:** `Trellis.Asp.ApiVersioning`
 - **Namespace:** `Trellis.Asp.ApiVersioning`
-- **Purpose:** Target-aware API-versioning helpers for URLs emitted by `Trellis.Asp`. `HttpResponseOptionsBuilderApiVersioningExtensions` versions `Location` headers from `CreatedAtRoute(...)` / `CreatedAtAction(...)` (201 Created) and `WithLocation(...)` (normal 2xx on existing resources). It resolves the actual destination and writes the supported version into its `:apiVersion` segment parameter or the conventional `api-version` query route value. `HttpContextPageUrlExtensions` supplies paginated next/previous URLs to `ToHttpResponse(Async)` for `Result<Page<T>>`; its implicit URL-segment overloads still use ambient routing and its explicit overloads still reject segment pins. Both helpers skip injection for neutral or missing-metadata targets; Location additionally removes supplied `api-version` values in those cases.
+- **Purpose:** Target-aware API-versioning policies for URLs emitted by `Trellis.Asp`. `HttpResponseOptionsBuilderApiVersioningExtensions` versions `Location` headers from `CreatedAtRoute(...)` / `CreatedAtAction(...)` (201 Created) and `WithLocation(...)` (normal 2xx on existing resources). It resolves the actual destination and writes the supported version into its `:apiVersion` segment parameter or the conventional `api-version` query route value. Common pagination builders belong to `Trellis.Asp.HttpContextPaginationExtensions`; `TrellisAspOptionsApiVersioningExtensions.UseVersionedPageUrls` enables version-aware implicit builders, while this package's `HttpContextPageUrlExtensions` retains typed pins. Implicit segment links use ambient routing; explicit pagination pins reject segment targets. Neutral or missing-metadata targets skip injection; Location additionally removes supplied `api-version` values.
 
 See also: [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdomain) — the underlying `HttpResponseOptionsBuilder<T>`, `CreatedAtRoute`, `CreatedAtAction`, `WithLocation`, and destination-aware `WithLocationRouteResolver` hook this package builds on. [trellis-api-analyzers.md](trellis-api-analyzers.md#error-ef-core-and-value-object-rules) — `TRLS023` warns on `CreatedAtRoute` / `CreatedAtAction` / `WithLocation` calls in versioned controllers that omit the `api-version` route value, and offers a code fix that chains `.WithVersionedRoute()`.
 
@@ -29,6 +29,7 @@ See also: [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdom
 
 | Goal | Canonical API / pattern | See |
 |---|---|---|
+| Enable version-aware common pagination builders | `services.AddTrellisAsp(o => o.UseVersionedPageUrls())`, or configure the existing `UseAsp` builder slot; still register `Asp.Versioning` normally | [`TrellisAspOptionsApiVersioningExtensions`](#trellisaspoptionsapiversioningextensions) |
 | Return 201 Created with versioned Location | Chain `.WithVersionedRoute()` after `CreatedAtRoute(...)` or `CreatedAtAction(...)` | [`HttpResponseOptionsBuilderApiVersioningExtensions`](#httpresponseoptionsbuilderapiversioningextensions) |
 | Return 200 OK with versioned Location on an existing resource | Chain `.WithVersionedRoute()` after `WithLocation(...)` | [`WithLocation` composition](#withlocation-composition) |
 | Single id route value | `CreatedAtRoute(routeName, x => x.Id).WithVersionedRoute()` (uses the single-id overload from `Trellis.Asp`) | [Composition examples](#composition-examples) |
@@ -44,15 +45,27 @@ See also: [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdom
 
 ## Common traps
 
+- Implicit `PageUrl` overloads now belong to `Trellis.Asp`, not this package. Import `Trellis.Asp` and configure `UseVersionedPageUrls()` once in a versioned host. Omitting it selects ordinary unversioned routing; installing the package or calling `AddApiVersioning()` alone does not enable the pagination policy. Explicit pins and Location chains remain self-contained.
 - Do **not** supply competing version values when chaining `.WithVersionedRoute()`. It owns version route values after the selector and **all** `WithRouteValueResolver` callbacks, regardless of configuration order. It overwrites query/segment version values or removes `api-version` for segment, neutral, and missing-metadata targets.
 - Do not treat `PageUrl` segment behavior as identical to Location: Location writes and honors segment pins; implicit `PageUrl` retains ambient routing and cross-route validation, and explicit `PageUrl` still rejects segment pins.
-- Location destinations must be uniquely addressable: zero or multiple link-generation candidates throw rather than falling back to the current endpoint. `PageUrl` supports versioned variants sharing a name and matching templates/defaults: implicit self-pagination uses the active endpoint; cross-route links and explicit pins require a uniquely mapped destination. Suppressed link-generation endpoints are excluded by both helpers.
+- Location destinations must be uniquely addressable: zero or multiple link-generation candidates throw rather than falling back to the current endpoint. `PageUrl` supports versioned variants sharing a name and matching templates, defaults, required values, and parameter policies: implicit self-pagination uses the active endpoint; cross-route links and explicit pins require a uniquely mapped destination. Suppressed link-generation endpoints are excluded by both helpers.
 - `WithLocation(...)` does not change status: typically 200 for `Result<T>`, or 201 when it supplies a missing `WriteOutcome.Created` location. Builder route/action fallbacks run version resolution when the outcome Location is null, empty, or whitespace. Nonblank outcome locations and Accepted monitor URIs are not rewritten; other outcome variants do not use builder locations.
 - The route values selector must return a non-null `RouteValueDictionary`. The runtime clones it before applying resolvers, so callbacks do not mutate a shared selector dictionary. Application code must not modify a shared dictionary concurrently.
 - For a target with multiple mapped declared versions, supply a mapped requested version or configure a mapped `DefaultApiVersion`. If neither is available, resolution throws rather than silently picking one. Controller declarations alone do not make an action multi-version.
 - `HttpContext.PageUrl(routeName, ...)` requires the target action to carry a route name (`[HttpGet("...", Name = "Things_List")]`). Without a name the helper cannot resolve the endpoint and the returned builder throws `InvalidOperationException` on first invocation. The route name typically matches the current paginated endpoint (self-referential pagination) but cross-route pagination is supported — supply path parameters in the callback's `RouteValueDictionary` for the target route's template.
 
 ## Types
+
+### `TrellisAspOptionsApiVersioningExtensions`
+
+`public static TrellisAspOptions UseVersionedPageUrls(this TrellisAspOptions options)`
+sets `TrellisAspOptions.PageUrlRouteResolver` to the optional destination-aware version
+policy. Configure once through `services.AddTrellisAsp(o => o.UseVersionedPageUrls())`
+or `services.AddTrellis(o => o.UseAsp(asp => asp.UseVersionedPageUrls()))`.
+Normal `AddApiVersioning(...)` configuration is still required. Null options throw;
+repeated calls replace the pagination policy without resetting unrelated ASP options.
+Core implicit builders now live in `Trellis.Asp`; this package retains only typed pins.
+Pins supply a per-builder policy and need no host pagination-policy registration.
 
 ### `HttpResponseOptionsBuilderApiVersioningExtensions`
 
@@ -177,20 +190,21 @@ public static class HttpContextPageUrlExtensions
 
 | Signature | Returns | Behavior |
 | --- | --- | --- |
-| `PageUrl(this HttpContext httpContext, string routeName, Func<Cursor, int, RouteValueDictionary> routeValues)` | `Func<Cursor, int, string>` | Returns a request-scoped builder suitable for the `nextUrlBuilder` parameter of `ToHttpResponse(Async)` on `Result<Page<T>>`. Version resolution uses the shared mapping checks above: mapped client-requested version → single mapped declared target version → mapped `DefaultApiVersion` → throw. Defensively clones the consumer-returned dictionary before injecting `api-version`. Consumer-supplied `api-version` keys win. Injection is skipped on `[ApiVersionNeutral]` and `:apiVersion` URL-segment routes, and when the target endpoint has no `ApiVersionMetadata`. Ambient segment routing and existing cross-route validation are unchanged. |
 | `PageUrl(this HttpContext httpContext, string routeName, ApiVersion version, Func<Cursor, int, RouteValueDictionary> routeValues)` | `Func<Cursor, int, string>` | Pins the next-page URL to a specific `ApiVersion`. The pin is silently skipped on neutral and missing-metadata targets. Unlike Location, URL-segment targets still throw `InvalidOperationException` rather than writing the pin into the segment. For a versioned query-style target, the version must map to the destination or the pin throws; controller declarations do not override an action's narrower mappings. Existing consumer-value precedence is unchanged. |
+
+The implicit builders and their `PageUrlRouteContext` policy hook are documented in
+[`Trellis.Asp`](trellis-api-asp.md#httpcontextpaginationextensions). With
+`UseVersionedPageUrls` enabled, implicit resolution remains mapped requested version →
+single mapped declared target version → mapped default → throw. Consumer query versions
+win; neutral, unversioned, and segment targets skip injection without removing consumer
+values. The optional policy also preserves shared-name selection and segment validation.
 
 #### Directional pagination
 
-The existing two-argument callback overloads remain supported. Use these additional
-overloads when next and previous links need different route values:
+The common two- and three-argument callback overloads live in `Trellis.Asp`.
+This package supplies the direction-aware typed-pin overload:
 
 ```csharp
-public static Func<Cursor, PageDirection, int, string> PageUrl(
-    this HttpContext httpContext,
-    string routeName,
-    Func<Cursor, PageDirection, int, RouteValueDictionary> routeValues);
-
 public static Func<Cursor, PageDirection, int, string> PageUrl(
     this HttpContext httpContext,
     string routeName,
@@ -205,7 +219,8 @@ direction-aware `ToHttpResponse` / `ToHttpResponseAsync` overloads. Version reso
 dictionary cloning, consumer-version precedence, explicit-pin validation, URL-segment
 handling, and neutral/unversioned skip rules are identical to their respective
 two-argument callback overloads. Each link preserves the request's scheme, host, and
-`PathBase`. No registration changes are required.
+`PathBase`. Implicit builders require the host's `UseVersionedPageUrls` policy; typed
+pins supply their own per-builder policy and require no pagination-policy registration.
 
 ```csharp
 return pageResult.ToHttpResponse(
@@ -225,7 +240,7 @@ URL generation does not add reverse-seek support. `Page<T>.Previous` remains opt
 #### `PageUrl` behavioral notes
 
 - **Self-referential pagination is the common case.** A paginated list endpoint typically supplies its own route name to `PageUrl(...)`: the next-page URL targets the same action with a different `cursor`. The implicit overload uses the active `HttpContext.GetEndpoint()` when its name matches and it is link-enabled, including when middleware wraps the matched endpoint. Separate namespace-versioned controllers may share the route name `"Orders_List"` without dated suffixes; next/previous URLs retain the active version independently of endpoint registration order. Target version-support checks are shared with Location, but PageUrl retains its own segment, consumer-override, and missing-metadata behavior.
-- **Shared names require matching URL layouts.** Named version variants must use the same route template and defaults. Different templates/defaults throw instead of letting named URL generation render an unrelated destination's path. The helper does not add or rewrite route names; genuinely distinct destinations should keep distinct names.
+- **Shared names require equivalent URL generation.** Named version variants must use the same route template, defaults, required values, and parameter policies. Inline policies compare by content; out-of-line policy objects must compare equal (normally the same instance). Differences throw instead of letting named URL generation fall through to an unrelated or differently constrained destination. The helper does not add or rewrite route names; genuinely distinct destinations should keep distinct names.
 - **Cross-route pagination is supported.** Pass any registered route name. A single link-enabled destination retains the mapped requested → single mapped declared → mapped default resolution order. For multiple destinations, a consumer-supplied or requested version must identify exactly one candidate using its actual action mappings; if none accepts it, a configured mapped default may select one. More than one match throws rather than breaking the tie by registration order. A consumer-supplied segment value, otherwise an ambient segment value, takes precedence over the parsed requested version when selecting segment variants. Supply the target's required path parameters (besides ambient ones that `LinkGenerator` fills automatically from the current request's route values) in the callback's `RouteValueDictionary`.
 - **Explicit pins select their own destination.** A pin to another version selects that version's named variant rather than reusing the active endpoint. The pin must identify a unique mapped destination and still overrides consumer query values on versioned targets. Neutral/unversioned skip rules and rejection of explicit URL-segment pins remain unchanged.
 - **URL-segment versioning works without consumer awareness.** When the target route template carries a `{version:apiVersion}` segment, `LinkGenerator.GetUriByRouteValues(httpContext, ...)` fills the segment from ambient route data. The helper skips automatic `api-version` query injection; it does not remove a query value supplied by the consumer.
@@ -233,10 +248,21 @@ URL generation does not add reverse-seek support. `Page<T>.Previous` remains opt
 - **`PathBase` is preserved.** Building absolute URLs through `LinkGenerator.GetUriByRouteValues(httpContext, ...)` carries the request's scheme, host, and `PathBase` into the emitted URL — important for hosts mounted under a virtual directory.
 - **Request-scoped contract.** The returned `Func` captures `httpContext` and must be invoked during the same request that produced it — not handed off to a background `Task`. The framework's `ToHttpResponse(Async)` consumes the builder synchronously while building the response envelope, so the typical consumer call site honors this naturally.
 - **Cross-route version validation.** The destination action must accept the version: `[MapToApiVersion]` narrows controller declarations, so sharing a controller version is not sufficient. For query-style links, an unsupported requested version falls through to a single mapped declared version, then a mapped `DefaultApiVersion`, then throws. URL-segment links retain ambient segment routing and existing cross-route target-version validation; PageUrl does not adopt Location's segment rewriting.
-- **Failure modes.** The returned builder throws `InvalidOperationException` when (a) the target route name resolves to no link-enabled endpoint, (b) no requested, single declared, or default version maps to the versioned target, (c) `LinkGenerator.GetUriByRouteValues` returns `null` (the supplied + ambient route values do not match the target template), (d) the consumer's `routeValues` callback returns `null`, (e) the explicit-version overload targets a URL-segment-versioned route, (f) the explicit pin does not map to the target, or (g) shared-name destinations have incompatible templates/defaults or cannot be uniquely selected. Suppressed candidates cannot supply version metadata or win selection.
+- **Failure modes.** The returned builder throws `InvalidOperationException` when (a) the target route name resolves to no link-enabled endpoint, (b) no requested, single declared, or default version maps to the versioned target, (c) `LinkGenerator.GetUriByRouteValues` returns `null` (the supplied + ambient route values do not match the target template), (d) the consumer's `routeValues` callback returns `null`, (e) the explicit-version overload targets a URL-segment-versioned route, (f) the explicit pin does not map to the target, or (g) shared-name destinations have incompatible templates, defaults, required values, or parameter policies, or cannot be uniquely selected. Suppressed candidates cannot supply version metadata or win selection.
 - **Unversioned hosts compose cleanly.** When the target endpoint has no `ApiVersionMetadata`, both PageUrl overloads skip automatic injection silently rather than throwing an unresolvable-version error; the explicit overload drops its pin. Consumer-supplied version entries are retained, so the URL is version-free only when the consumer has not supplied one. This also applies to individual unversioned endpoints in mixed hosts.
 
-**Migration from version-suffixed pagination names.** After upgrading to a framework version with shared-name resolution, identically routed versioned list actions may use one name in both `[HttpGet(Name = "...")]` and `PageUrl(...)`. No additional service registration is needed. Existing unique names remain supported. Follow emitted next/previous URLs in regression tests, asserting the responding API version, not only the query-string text. This does not relax Location's uniquely addressable destination requirement.
+**Migration to common pagination builders (deliberate alpha break).** Import `Trellis.Asp`
+for implicit `PageUrl` calls and enable `UseVersionedPageUrls()` through the existing
+ASP options registration. Static implicit calls to this package's
+`HttpContextPageUrlExtensions.PageUrl` must move to `HttpContextPaginationExtensions.PageUrl`.
+Typed-pin extension syntax is unchanged. No duplicate implicit extensions or legacy shim
+remain. Unversioned consumers need only `Trellis.Asp` and no versioning registration.
+
+**Migration from version-suffixed pagination names.** Identically routed versioned list
+actions may use one name in both `[HttpGet(Name = "...")]` and `PageUrl(...)`. Existing
+unique names remain supported. Follow emitted next/previous URLs and assert the responding
+API version, not only query text. This does not relax Location's uniquely addressable
+destination requirement.
 
 #### `PageUrl` composition example
 
@@ -297,7 +323,9 @@ Use only when the next-page URL must target a fixed version (cross-version migra
 
 ### Configuration
 
-Register API versioning in the host as you would normally; `Trellis.Asp.ApiVersioning` does not require its own `services.AddXxx(...)` call:
+Register API versioning normally, then enable the common pagination policy through the
+existing ASP configuration surface. No new `IServiceCollection` registration helper or
+`TrellisServiceBuilder` slot is added:
 
 ```csharp
 builder.Services.AddApiVersioning(options =>
@@ -308,7 +336,22 @@ builder.Services.AddApiVersioning(options =>
         new QueryStringApiVersionReader("api-version"),
         new HeaderApiVersionReader("api-version"));
 });
+
+builder.Services.AddTrellisAsp(options => options.UseVersionedPageUrls());
 ```
+
+With `Trellis.ServiceDefaults`, use the existing callback instead:
+
+```csharp
+builder.Services.AddTrellis(options => options
+    .UseAsp(asp => asp.UseVersionedPageUrls()));
+```
+
+The extension is defined in this optional package; neither `Trellis.Asp` nor
+`Trellis.ServiceDefaults` takes a dependency on `Asp.Versioning`. Repeated ASP callbacks
+compose in registration order. Repeated `UseVersionedPageUrls` calls replace only the
+pagination policy. Policies are host-local and resolve metadata per link, never global.
+`WithVersionedRoute` needs no pagination policy and retains its existing setup.
 
 The package depends on `Asp.Versioning.Http` (for `HttpContext.RequestedApiVersion`), `Asp.Versioning.Mvc`, and `Asp.Versioning.Mvc.ApiExplorer`.
 

@@ -25,7 +25,7 @@ using HttpResult = Microsoft.AspNetCore.Http.IResult;
 
 /// <summary>
 /// Pins the per-request behaviour of
-/// <see cref="HttpContextPageUrlExtensions.PageUrl(HttpContext, string, Func{Cursor, int, RouteValueDictionary})"/>
+/// <c>Trellis.Asp.HttpContextPaginationExtensions.PageUrl</c>
 /// and the explicit-version overload. Each test stands up a minimal ASP.NET Core host with a
 /// specific versioning configuration, hits a paginated controller action that consumes
 /// <c>HttpContext.PageUrl(...)</c> via the <c>nextUrlBuilder</c> parameter of
@@ -798,7 +798,7 @@ public sealed class HttpContextPageUrlExtensionsTests
                 .UseTestServer()
                 .ConfigureServices(s =>
                 {
-                    s.AddTrellisAspWithScalarValidation();
+                    s.AddTrellisAspWithScalarValidation(options => options.UseVersionedPageUrls());
                     s.AddControllers().AddApplicationPart(typeof(SingleVersionPagedController).Assembly);
                     s.AddApiVersioning(o =>
                     {
@@ -822,7 +822,7 @@ public sealed class HttpContextPageUrlExtensionsTests
                 .UseTestServer()
                 .ConfigureServices(s =>
                 {
-                    s.AddTrellisAspWithScalarValidation();
+                    s.AddTrellisAspWithScalarValidation(options => options.UseVersionedPageUrls());
                     s.AddControllers().AddApplicationPart(typeof(MultiVersionPagedController).Assembly);
                     s.AddApiVersioning(o =>
                     {
@@ -849,7 +849,7 @@ public sealed class HttpContextPageUrlExtensionsTests
                 .UseTestServer()
                 .ConfigureServices(s =>
                 {
-                    s.AddTrellisAspWithScalarValidation();
+                    s.AddTrellisAspWithScalarValidation(options => options.UseVersionedPageUrls());
                     s.AddControllers().AddApplicationPart(typeof(NeutralPagedController).Assembly);
                     s.AddApiVersioning().AddMvc();
                 })
@@ -868,7 +868,7 @@ public sealed class HttpContextPageUrlExtensionsTests
                 .UseTestServer()
                 .ConfigureServices(s =>
                 {
-                    s.AddTrellisAspWithScalarValidation();
+                    s.AddTrellisAspWithScalarValidation(options => options.UseVersionedPageUrls());
                     s.AddControllers().AddApplicationPart(typeof(SegmentPagedController).Assembly);
                     s.AddApiVersioning(o => o.ApiVersionReader = new UrlSegmentApiVersionReader()).AddMvc();
                 })
@@ -887,7 +887,7 @@ public sealed class HttpContextPageUrlExtensionsTests
                 .UseTestServer()
                 .ConfigureServices(s =>
                 {
-                    s.AddTrellisAspWithScalarValidation();
+                    s.AddTrellisAspWithScalarValidation(options => options.UseVersionedPageUrls());
                     s.AddControllers().AddApplicationPart(typeof(SingleVersionPagedController).Assembly);
                     s.AddApiVersioning(o =>
                     {
@@ -917,7 +917,7 @@ public sealed class HttpContextPageUrlExtensionsTests
                 .UseTestServer()
                 .ConfigureServices(s =>
                 {
-                    s.AddTrellisAspWithScalarValidation();
+                    s.AddTrellisAspWithScalarValidation(options => options.UseVersionedPageUrls());
                     s.AddControllers()
                         .AddApplicationPart(typeof(SingleVersionPagedController).Assembly);
                     s.AddApiVersioning(o => o.ApiVersionReader = new QueryStringApiVersionReader("api-version")).AddMvc();
