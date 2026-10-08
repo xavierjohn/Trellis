@@ -27,7 +27,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#patterns-index) — reci
 | Goal | Canonical API / pattern | See |
 |---|---|---|
 | Add the standard Trellis mediator behaviors | `services.AddTrellisBehaviors()` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
-| Receive the checked actor and loaded resource/leaf without provider/accessor constructor dependencies | Derive from the appropriate `Actor...Handler` and override `HandleCore` | [Actor-aware handler bases](#actor-aware-handler-bases) |
+| Receive the checked actor and loaded resource/leaf without provider/accessor constructor dependencies | Derive from the appropriate `Actor...Handler` and override protected `Handle(message, actor[, resource/leaf], token)` | [Actor-aware handler bases](#actor-aware-handler-bases) |
 | Configure a Native AOT pipeline for value-type Result responses | Literal `typeof(...)` source-generator configuration, not open DI behaviors | [Native AOT registration](#native-aot-registration) |
 | Add validation to a message | Implement `IValidate` and register `IMessageValidator<TMessage>` or FluentValidation adapter | [`ValidationBehavior<TMessage,TResponse>`](#validationbehaviortmessage-tresponse) |
 | Add static permission authorization | Message implements `IAuthorize`; register `AddTrellisBehaviors()` | [`AuthorizationBehavior<TMessage,TResponse>`](#authorizationbehaviortmessage-tresponse) |
@@ -84,21 +84,24 @@ dependencies only. `TResponse : IResult, IFailureFactory<TResponse>`; resources/
 are `class`. There is no extra message-class or owner-class constraint.
 Resource bases do **not** require static `IAuthorize`.
 
-Each exposes nonvirtual `ValueTask<TResponse> Handle(message, CancellationToken)`
-for Mediator, and a nonvirtual explicit-argument `Handle(message, Actor actor,
-[resource/leaf,] CancellationToken)` for isolated business tests. Override only
-`protected abstract ValueTask<TResponse> HandleCore(message, Actor actor,
-[resource/leaf,] CancellationToken)`.
+Each exposes exactly one public entry:
+nonvirtual `ValueTask<TResponse> Handle(message, CancellationToken)` for Mediator.
+Override only `protected abstract ValueTask<TResponse> Handle(message, Actor actor,
+[resource/leaf,] CancellationToken)`. The protected overload is the business hook,
+not a public invocation API; sealed concrete handlers work with inherited interface dispatch.
 The normal entry acquires an active matching snapshot only after all declared gates
 succeed. For multiple direct resource contracts, explicitly register each closed form;
 the handler can receive any successfully authorized resource type in that dispatch.
 Via handlers receive the leaf, never owners; the registered leaf/path must
 match the base's `TLeaf`. Configuration/invocation faults throw before business logic.
 
-The explicit overload rejects null actor/resource arguments and uses only the supplied
-arguments, with no ambient reads or state changes. It deliberately bypasses
-authentication, authorization, validation, transactions, and event dispatch.
-Production uses Mediator; authorization assertions require pipeline-dispatch tests.
+Invoke actor-aware handlers through Mediator in production and in handler tests.
+Register `TestActorProvider` from `Trellis.Testing`, fake resource loaders/repositories,
+and the normal pipeline; use fake commit/event dependencies when those stages are enabled.
+Supplying a provider alone does not establish an authorized dispatch. There is no public
+actor/resource overload that bypasses the pipeline, and calling the two-argument entry
+without an authorized dispatch throws before business logic. Unit-test aggregates,
+policies, or application services directly when their logic needs pipeline-free isolation.
 Existing `IAuthorizedResource` handlers remain supported, including resource-only
 business methods that do not need an actor.
 
@@ -122,7 +125,7 @@ public sealed record GetOrderQuery(string Id)
 
 public sealed class GetOrderHandler : ActorResourceQueryHandler<GetOrderQuery, Order, Result<Order>>
 {
-    protected override ValueTask<Result<Order>> HandleCore(
+    protected override ValueTask<Result<Order>> Handle(
         GetOrderQuery query, Actor actor, Order resource, CancellationToken cancellationToken)
         => new(Result.Ok(resource));
 }
@@ -135,14 +138,14 @@ need an actor may also keep its ordinary handler plus `IAuthorizedResource`.
 
 For Cricket's `Match -> {HomeTeam, AwayTeam}`, use
 `ActorResourceViaCommandHandler<UploadScorecardCommand,Match,Team,Result<Trellis.Unit>>`.
-Its `HandleCore` receives the actor and **match**. The message's existing
+Its protected `Handle` receives the actor and **match**. The message's existing
 `Authorize(actor, teams)` still decides home **OR** away ownership; owners are not new
 handler parameters. See [Recipe 24](trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization).
 
 **Migration and diagnostics**
 
 Replace the corresponding application-owned actor/resource base; rename its business
-override to protected `HandleCore` and remove constructor/base arguments used only for
+override to protected `Handle(message, actor[, resource/leaf], token)` and remove constructor/base arguments used only for
 actor or loaded-resource lookup. Retain repositories, clocks, publishers, and other
 business dependencies. Normal hosts keep `AddMediator` followed by
 `AddTrellisBehaviors()` and existing loader/resource registrations.
@@ -156,8 +159,8 @@ references cannot be revoked from application code.
 
 Hand-built authorization pipelines must add `AuthorizationContextBehavior` before
 authorization. Omitting it throws; no implicit frame or second provider lookup repairs
-the configuration. Move isolated business tests to the explicit overload; keep policy,
-denial, exposure, and transaction assertions on actual Mediator sends.
+the configuration. Test handler business outcomes, policy, denial, exposure, and
+transactions with actual Mediator sends using a test actor provider and fake dependencies.
 The loaded-reference guarantee does not prove mutation readiness or close ownership
 TOCTOU windows: projections, no-tracking entities, and stale replicas may require a
 canonical reload.

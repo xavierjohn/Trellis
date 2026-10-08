@@ -15,21 +15,8 @@ public abstract class ActorResourceViaQueryHandler<TQuery, TLeaf, TOwner, TRespo
 {
     /// <inheritdoc />
     public ValueTask<TResponse> Handle(TQuery query, CancellationToken cancellationToken)
-        => HandleCore(query, AuthorizationDispatchContext.GetRequiredActor<TQuery, TResponse>(),
+        => Handle(query, AuthorizationDispatchContext.GetRequiredActor<TQuery, TResponse>(),
             AuthorizationDispatchContext.GetRequiredResource<TQuery, TLeaf, TResponse>(), cancellationToken);
-
-    /// <summary>Runs business logic with supplied actor/leaf arguments, bypassing all pipeline stages.</summary>
-    /// <param name="query">The query to handle.</param>
-    /// <param name="actor">The actor supplied by an isolated business test.</param>
-    /// <param name="leaf">The leaf supplied by that test, not an authorization owner.</param>
-    /// <param name="cancellationToken">The cancellation token to forward.</param>
-    /// <returns>The business outcome without authentication, authorization, validation, or commit.</returns>
-    public ValueTask<TResponse> Handle(TQuery query, Actor actor, TLeaf leaf, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(actor);
-        ArgumentNullException.ThrowIfNull(leaf);
-        return HandleCore(query, actor, leaf, cancellationToken);
-    }
 
     /// <summary>Executes query business logic with the exact checked actor and loaded leaf.</summary>
     /// <param name="query">The query to handle.</param>
@@ -37,5 +24,5 @@ public abstract class ActorResourceViaQueryHandler<TQuery, TLeaf, TOwner, TRespo
     /// <param name="leaf">The same leaf loaded by this dispatch, not its owner resources.</param>
     /// <param name="cancellationToken">The dispatch cancellation token.</param>
     /// <returns>The business outcome.</returns>
-    protected abstract ValueTask<TResponse> HandleCore(TQuery query, Actor actor, TLeaf leaf, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResponse> Handle(TQuery query, Actor actor, TLeaf leaf, CancellationToken cancellationToken);
 }

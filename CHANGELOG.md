@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking — guarded actor-handler entry points
+
+All six `Trellis.Mediator` actor/resource handler bases now expose only the public
+two-argument `Handle(message, cancellationToken)` entry. Handler authors override
+protected `Handle(message, actor[, resource/leaf], cancellationToken)` for business logic.
+The previous business hook is renamed and the public explicit-argument test overloads
+are removed together as one deliberate source- and binary-breaking alpha change.
+Rebuild derived handlers and test them through Mediator with `TestActorProvider` and
+fake dependencies; no replacement bypass seam is added.
+
+Authorization-before-business, checked actor/resource identity, nested/concurrent dispatch
+isolation, and generated/native dispatch remain unchanged.
+See the [actor-handler migration guide](docs/docfx_project/api_reference/trellis-api-migration.md#actor-aware-handler-migration).
+
 ### Added — lazy nonblank string guards (TFR-21 follow-up)
 
 `EnsureNotNullOrWhiteSpace` now accepts a lazy `Func<Error>` or a field name plus

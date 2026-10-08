@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.CSharp;
 public class ActorHandlerConstraintTests
 {
     [Fact]
-    public void HandlerConstraints_AllSixBases_PreserveResourceOnlyStructMessageAndValueOwnerShapes()
+    public void HandlerConstraints_AllSixSealedOverrides_UseProtectedHandleAndRetainPublicInterfaceEntry()
     {
         var diagnostics = Compile("""
             public readonly record struct Command : ICommand<R>, IAuthorize
@@ -33,15 +33,82 @@ public class ActorHandlerConstraintTests
             {
                 public IResult Authorize(Actor actor, IReadOnlyList<int> owners) => Result.Ok();
             }
-            public abstract class A : ActorCommandHandler<Command, R>;
-            public abstract class B : ActorQueryHandler<Query, R>;
-            public abstract class C : ActorResourceCommandHandler<DirectCommand, Resource, R>;
-            public abstract class D : ActorResourceQueryHandler<DirectQuery, Resource, R>;
-            public abstract class E : ActorResourceViaCommandHandler<ViaCommand, Resource, int, R>;
-            public abstract class F : ActorResourceViaQueryHandler<ViaQuery, Resource, int, R>;
+            public sealed class A : ActorCommandHandler<Command, R>
+            {
+                protected override ValueTask<R> Handle(Command command, Actor actor, CancellationToken token) =>
+                    new(Result.Ok("handled"));
+            }
+            public sealed class B : ActorQueryHandler<Query, R>
+            {
+                protected override ValueTask<R> Handle(Query query, Actor actor, CancellationToken token) =>
+                    new(Result.Ok("handled"));
+            }
+            public sealed class C : ActorResourceCommandHandler<DirectCommand, Resource, R>
+            {
+                protected override ValueTask<R> Handle(DirectCommand command, Actor actor, Resource resource, CancellationToken token) =>
+                    new(Result.Ok("handled"));
+            }
+            public sealed class D : ActorResourceQueryHandler<DirectQuery, Resource, R>
+            {
+                protected override ValueTask<R> Handle(DirectQuery query, Actor actor, Resource resource, CancellationToken token) =>
+                    new(Result.Ok("handled"));
+            }
+            public sealed class E : ActorResourceViaCommandHandler<ViaCommand, Resource, int, R>
+            {
+                protected override ValueTask<R> Handle(ViaCommand command, Actor actor, Resource leaf, CancellationToken token) =>
+                    new(Result.Ok("handled"));
+            }
+            public sealed class F : ActorResourceViaQueryHandler<ViaQuery, Resource, int, R>
+            {
+                protected override ValueTask<R> Handle(ViaQuery query, Actor actor, Resource leaf, CancellationToken token) =>
+                    new(Result.Ok("handled"));
+            }
+            public static class Entries
+            {
+                public static void Invoke()
+                {
+                    _ = new A().Handle(new Command(), CancellationToken.None);
+                    _ = new B().Handle(new Query(), CancellationToken.None);
+                    _ = new C().Handle(new DirectCommand(), CancellationToken.None);
+                    _ = new D().Handle(new DirectQuery(), CancellationToken.None);
+                    _ = new E().Handle(new ViaCommand(), CancellationToken.None);
+                    _ = new F().Handle(new ViaQuery(), CancellationToken.None);
+                    _ = ((ICommandHandler<Command, R>)new A()).Handle(new Command(), CancellationToken.None);
+                    _ = ((IQueryHandler<Query, R>)new B()).Handle(new Query(), CancellationToken.None);
+                }
+            }
             """);
 
         diagnostics.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("ICommand<R>, IAuthorize", "ActorCommandHandler<Message, R>", "Actor actor", "actor")]
+    [InlineData("IQuery<R>, IAuthorize", "ActorQueryHandler<Message, R>", "Actor actor", "actor")]
+    [InlineData("ICommand<R>, IAuthorizeResource<Resource>", "ActorResourceCommandHandler<Message, Resource, R>", "Actor actor, Resource resource", "actor, resource")]
+    [InlineData("IQuery<R>, IAuthorizeResource<Resource>", "ActorResourceQueryHandler<Message, Resource, R>", "Actor actor, Resource resource", "actor, resource")]
+    [InlineData("ICommand<R>, IAuthorizeResourceVia<int>", "ActorResourceViaCommandHandler<Message, Resource, int, R>", "Actor actor, Resource leaf", "actor, leaf")]
+    [InlineData("IQuery<R>, IAuthorizeResourceVia<int>", "ActorResourceViaQueryHandler<Message, Resource, int, R>", "Actor actor, Resource leaf", "actor, leaf")]
+    public void Handle_ExplicitArguments_AreInaccessibleToConsumers(string capabilities, string baseType, string parameters, string arguments)
+    {
+        var diagnostics = Compile($$"""
+            public record Message : {{capabilities}}
+            {
+                public IReadOnlyList<string> RequiredPermissions => [];
+                public IResult Authorize(Actor actor, Resource resource) => Result.Ok();
+                public IResult Authorize(Actor actor, IReadOnlyList<int> owners) => Result.Ok();
+            }
+            public abstract class Handler : {{baseType}};
+            public static class Consumer
+            {
+                public static void Invoke(Handler handler, Message message, {{parameters}})
+                {
+                    _ = handler.Handle(message, {{arguments}}, CancellationToken.None);
+                }
+            }
+            """);
+
+        diagnostics.Should().ContainSingle().Which.Id.Should().Be("CS1501");
     }
 
     [Theory]
@@ -83,6 +150,8 @@ public class ActorHandlerConstraintTests
     {
         var preamble = """
             using System.Collections.Generic;
+            using System.Threading;
+            using System.Threading.Tasks;
             using Mediator;
             using Trellis;
             using Trellis.Authorization;

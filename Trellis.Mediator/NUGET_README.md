@@ -31,9 +31,9 @@ builder.Services.AddTrellisBehaviors();
 > Use `ServiceLifetime.Scoped` when calling `AddMediator(...)` in a host with a request scope. The Trellis behaviors are scoped (they depend on per-request services); the Mediator default of `Singleton` will fail ASP.NET's root-scope validation as soon as the first behavior tries to resolve a scoped dependency.
 
 ## Key Features
-- Six parameterless actor-aware bases: `ActorCommandHandler`, `ActorQueryHandler`, direct `ActorResourceCommandHandler` / `ActorResourceQueryHandler`, and indirect `ActorResourceViaCommandHandler` / `ActorResourceViaQueryHandler`. Override protected `HandleCore`; concrete constructors keep business dependencies only.
+- Six parameterless actor-aware bases: `ActorCommandHandler`, `ActorQueryHandler`, direct `ActorResourceCommandHandler` / `ActorResourceQueryHandler`, and indirect `ActorResourceViaCommandHandler` / `ActorResourceViaQueryHandler`. Override protected `Handle(message, actor[, resource/leaf], token)`; concrete constructors keep business dependencies only.
 - Static/resource stages share one Actor reference per dispatch; the integral `AuthorizationContextBehavior` makes it available only after all gates succeed and isolates nested/concurrent sends. Via handlers receive the leaf, not owners.
-- Explicit `Handle(message, actor[, resource/leaf], token)` overloads exercise business logic without DI but bypass authorization, validation, commit, and events. Existing accessor-only handlers and provider extensions remain supported.
+- The only public handler entry is `Handle(message, token)`, which requires an authorized dispatch. Test through Mediator with `TestActorProvider` and fake loaders/business dependencies; no public actor/resource bypass or replacement test seam is provided. Existing accessor-only handlers and provider extensions remain supported.
 - Adds validation, authorization, tracing, logging, and exception behaviors that understand `Result<T>`.
 - Tracing is registered but not *collected* until you call `AddTrellisMediatorInstrumentation()` on your `TracerProviderBuilder`; without it the handler span is silently never recorded.
 - Short-circuits failures before handlers do unnecessary work.

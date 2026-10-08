@@ -15,21 +15,8 @@ public abstract class ActorResourceViaCommandHandler<TCommand, TLeaf, TOwner, TR
 {
     /// <inheritdoc />
     public ValueTask<TResponse> Handle(TCommand command, CancellationToken cancellationToken)
-        => HandleCore(command, AuthorizationDispatchContext.GetRequiredActor<TCommand, TResponse>(),
+        => Handle(command, AuthorizationDispatchContext.GetRequiredActor<TCommand, TResponse>(),
             AuthorizationDispatchContext.GetRequiredResource<TCommand, TLeaf, TResponse>(), cancellationToken);
-
-    /// <summary>Runs business logic with supplied actor/leaf arguments, bypassing all pipeline stages.</summary>
-    /// <param name="command">The command to handle.</param>
-    /// <param name="actor">The actor supplied by an isolated business test.</param>
-    /// <param name="leaf">The leaf supplied by that test, not an authorization owner.</param>
-    /// <param name="cancellationToken">The cancellation token to forward.</param>
-    /// <returns>The business outcome without authentication, authorization, validation, or commit.</returns>
-    public ValueTask<TResponse> Handle(TCommand command, Actor actor, TLeaf leaf, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(actor);
-        ArgumentNullException.ThrowIfNull(leaf);
-        return HandleCore(command, actor, leaf, cancellationToken);
-    }
 
     /// <summary>Executes command business logic with the exact checked actor and loaded leaf.</summary>
     /// <param name="command">The command to handle.</param>
@@ -37,5 +24,5 @@ public abstract class ActorResourceViaCommandHandler<TCommand, TLeaf, TOwner, TR
     /// <param name="leaf">The same leaf loaded by this dispatch, not its owner resources.</param>
     /// <param name="cancellationToken">The dispatch cancellation token.</param>
     /// <returns>The business outcome.</returns>
-    protected abstract ValueTask<TResponse> HandleCore(TCommand command, Actor actor, TLeaf leaf, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResponse> Handle(TCommand command, Actor actor, TLeaf leaf, CancellationToken cancellationToken);
 }

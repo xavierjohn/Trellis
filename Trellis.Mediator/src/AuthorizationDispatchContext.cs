@@ -55,7 +55,7 @@ internal static class AuthorizationDispatchContext
                 $"No authorization dispatch is in scope for {typeof(TMessage)} / {typeof(TResponse)}. " +
                 "Register AuthorizationContextBehavior before authorization, normally through AddTrellisBehaviors " +
                 "or the resource-authorization helpers. Invoke the handler through Mediator, " +
-                "or use its explicit-argument Handle overload only for isolated business tests.");
+                "using a test actor provider and fake dependencies for handler tests.");
 
         if (!frame.IsActive)
             throw frame.Fault("The authorization dispatch has expired. Do not acquire snapshots from orphan tasks.");
@@ -132,7 +132,7 @@ internal static class AuthorizationDispatchContext
 
         internal InvalidOperationException Fault(string detail) =>
             new($"Authorization dispatch for {MessageType} / {ResponseType}: {detail} " +
-                "Use the normal Mediator pipeline; explicit-argument Handle is only a business-test seam.");
+                "Invoke the handler through the normal Mediator pipeline.");
 
         internal void Deactivate() => _isActive = false;
     }

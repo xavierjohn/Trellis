@@ -1,13 +1,13 @@
 ﻿---
 package: Trellis (cross-package migration)
-namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore]
+namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator]
 types: [migration]
-related_docs: [trellis-api-core.md, trellis-start-here.md]
+related_docs: [trellis-api-core.md, trellis-api-mediator.md, trellis-start-here.md]
 version: v3
 last_verified: 2026-10-07
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when upgrading previous Result factories, Error cases or merged/renamed Trellis packages; not needed for writing code against the current API."
+agent_description: "Open when upgrading previous Result/Error APIs, actor-handler contracts or merged/renamed Trellis packages; not needed for current-API work."
 ---
 # Trellis migration reference
 
@@ -15,12 +15,29 @@ agent_description: "Open when upgrading previous Result factories, Error cases o
 
 - You are replacing previous Result factories, implicit conversions or accessors.
 - You are upgrading the Error model or removing packages merged into Core, ASP or EF Core.
+- You are upgrading actor-aware handlers from an alpha that exposed a public business-test seam.
 
 This is historical upgrade guidance, not the current API catalog. Read the destination
 package's reference for complete signatures and behavior. For current-API work, start
 at the [router](trellis-start-here.md#patterns-index) instead. The [developer migration
 article](https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/migration.md#patterns-index)
 covers the wider upgrade sequence.
+
+## Actor-aware handler migration
+
+After alpha.553, all six `Trellis.Mediator` actor/resource handler bases have only one
+public entry: `Handle(message, CancellationToken)`. Rename the previous protected business
+hook to `Handle(message, actor[, resource/leaf], CancellationToken)` with the same parameters,
+response type, business body, and cancellation forwarding. Rebuild derived handlers:
+the hook rename and removal of the public explicit-argument overloads are deliberate
+source- and binary-breaking changes delivered together.
+
+Replace direct actor/resource test calls with Mediator sends using `TestActorProvider`
+and fake loaders/business dependencies. Keep the normal pipeline registrations and
+provide fake commit/event dependencies when those stages are enabled. There is no
+replacement bypass seam. Calling the public entry without an authorized dispatch throws
+before business logic. See [current handler contracts](trellis-api-mediator.md#actor-aware-handler-bases)
+and [Recipe 10](trellis-api-cookbook.md#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror).
 
 ## Core and package migration
 
