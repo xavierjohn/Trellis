@@ -203,7 +203,7 @@ public class AuthorizationSnapshotTests
     {
         public int Calls { get; private set; }
 
-        protected override ValueTask<Result<Observation>> HandleCore(
+        protected override ValueTask<Result<Observation>> Handle(
             TMessage command, Actor actor, TResource resource, CancellationToken cancellationToken)
         {
             Calls++;

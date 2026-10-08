@@ -1,57 +1,139 @@
 ﻿---
-package: Trellis (cross-package migration)
-namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore]
+package: Trellis (FunctionalDDD migration)
+namespaces: [Trellis, Trellis.Asp]
 types: [migration]
-related_docs: [trellis-api-core.md, trellis-start-here.md]
+related_docs: [trellis-api-core.md, trellis-api-primitives.md, trellis-api-asp.md, trellis-start-here.md]
 version: v3
 last_verified: 2026-10-07
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when upgrading previous Result factories, Error cases or merged/renamed Trellis packages; not needed for writing code against the current API."
+agent_description: "Open when migrating a FunctionalDDD 2.x application to Trellis: package and namespace changes, Result/Error APIs, value objects and HTTP mapping."
 ---
-# Trellis migration reference
+# Migrating from FunctionalDDD to Trellis
 
 ## Use this file when
 
-- You are replacing previous Result factories, implicit conversions or accessors.
-- You are upgrading the Error model or removing packages merged into Core, ASP or EF Core.
+- You are replacing the released `FunctionalDdd.*` packages with `Trellis.*`.
+- You need the net API changes from FunctionalDDD 2.x to the current Trellis surface.
 
-This is historical upgrade guidance, not the current API catalog. Read the destination
-package's reference for complete signatures and behavior. For current-API work, start
-at the [router](trellis-start-here.md#patterns-index) instead. The [developer migration
-article](https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/migration.md#patterns-index)
-covers the wider upgrade sequence.
+FunctionalDDD is the released predecessor; Trellis has not had a stable release.
+This guide compares FunctionalDDD with current Trellis APIs, not successive Trellis
+alpha builds or internally labelled development versions. Alpha-to-alpha changes
+belong in the [changelog](https://github.com/xavierjohn/Trellis/blob/main/CHANGELOG.md).
+
+The source baseline was checked against the published FunctionalDDD RailwayOrientedProgramming
+2.1.10 package and its [source commit](https://github.com/xavierjohn/Trellis/tree/62c2157639d0db37028d9c20fd9a768a164c73a7).
+Read the destination package reference for complete current signatures. The
+[developer guide](https://github.com/xavierjohn/Trellis/blob/main/docs/docfx_project/articles/migration.md#patterns-index)
+gives the recommended migration order. For new Trellis code, use the [router](trellis-start-here.md#patterns-index).
 
 ## Core and package migration
 
-The previous development surface is labelled v1 below; current APIs target v3.
+### Packages and namespaces
 
-| Change | Previous API | Current API | Migration |
-|---|---|---|---|
-| Result success factory | `Result.Success(value)` / `Result.Success<T>(...)` / `Result.Success()` | `Result.Ok(value)` / `Result.Ok<T>(...)` / `Result.Ok()` | Mechanical find-and-replace of `Result.Success` → `Result.Ok` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Result failure factory | `Result.Failure<T>(error)` / `Result.Failure(error)` | `Result.Fail<T>(error)` / `Result.Fail(error)` | Mechanical find-and-replace of `Result.Failure` → `Result.Fail` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Deferred success factory | `Result.Success(Func<T> funcOk)` | *(removed)* | Inline the factory: `Result.Ok(funcOk())` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Deferred failure factory | `Result.Failure<T>(Func<Error> errorFactory)` | *(removed)* | Inline the factory: `Result.Fail<T>(errorFactory())` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Conditional factory | `Result.SuccessIf(cond, value, error)` / `Result.SuccessIf(cond, t1, t2, error)` | *(removed)* | Use a ternary: `cond ? Result.Ok(value) : Result.Fail<T>(error)` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Inverse-conditional factory | `Result.FailureIf(cond, value, error)` / `Result.FailureIf(predicate, value, error)` | *(removed)* | Use a ternary: `cond ? Result.Fail<T>(error) : Result.Ok(value)` | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Async-conditional factories | `Result.SuccessIfAsync(predicate, value, error)` / `Result.FailureIfAsync(predicate, value, error)` | *(removed)* | `(await predicate()) ? Result.Ok(value) : Result.Fail<T>(error)` (invert as needed; parens required because `await` binds tighter than `?:`) | <!-- stale-doc-ok: migration-comparison row intentionally cites removed v1 factory -->
-| Exception → result helpers | `Result.FromException(ex)` / `Result.FromException<T>(ex)` | *(removed)* | Use `Result.Try` / `Result.TryAsync` for inline exception capture, or log the exception and return `Result.Fail(new Error.Unexpected("unhandled-exception", faultId) { Detail = "An unexpected error occurred while processing the request." })`. Do not copy `ex.Message` into public `Detail`. |
-| Implicit operators on `Result<T>` | `Result<T> r = value;` and `Result<T> r = error;` | *(removed)* | Use the explicit factory: `Result.Ok(value)` / `Result.Fail<T>(error)`. The compiler flags every site with CS0029. |
-| Non-generic `Result` for void flows | `Result` was a separate `readonly struct` for success/failure with no payload, distinct from `Result<T>`. | The non-generic `Result` instance type was removed. `Result` is now a `public static partial class` factory only; for no-payload success/failure use `Result<Unit>` (returned by parameterless `Result.Ok()` / `Result.Fail(error)` / `Result.Ensure(...)` / `Result.Try(...)` factories). The `Trellis.Unit` type is a public `readonly record struct` with a single value (`Unit.Default`). | Replace `Result` parameter/return types with `Result<Unit>`; replace `Task<Result>` with `Task<Result<Unit>>`; in lambdas after `.Bind(...)` / `BindAsync(...)` accept the `Unit` argument explicitly (`_ =>` or `(Unit _) =>`). |
-| `Error` as open class hierarchy | `Error` was a `class` with 18 hand-written subclasses (`ValidationError`, `NotFoundError`, …) and static factory helpers (`Error.Validation(...)`, `Error.NotFound(...)`, …). | `Error` is an `abstract record` with **12 nested `sealed record` cases** (`Error.NotFound`, `Error.InvalidInput`, …). Closed via `private` constructor; static factories live on individual cases, not the base. | Replace not-found factories with `Error.NotFound.For<TResource>(id: id, detail: "...")`. Replace validation factories with `Error.InvalidInput.ForField(code, field, detail: detail)` or `Error.InvalidInput.ForRule(code, detail: detail)`. Replace concrete subclass type names (`ValidationError`, `NotFoundError`) with `Error.InvalidInput`, `Error.NotFound`. See [current error cases](trellis-api-core.md#concrete-error-cases). | <!-- v1-stale-ok: migration-comparison row intentionally cites removed v1 factories -->
-| `MatchErrorExtensions` | `result.MatchError(onValidation: ..., onNotFound: ..., onUnexpected: ...)` | *(removed)* | Use a `switch` expression on the closed ADT: `result.Match(_ => ..., e => e switch { Error.NotFound nf => ..., Error.InvalidInput uc => ..., _ => ... })`. C# verifies exhaustiveness against the closed catalog. |
-| `FlattenValidationErrorsExtensions` | `result.FlattenValidationErrors()` | *(removed)* | `Combine` over multiple `Result<T>` automatically merges `Error.InvalidInput.Fields` and `.Rules`. |
-| `Error.Instance` field | `error.Instance` (string-shaped HTTP vocabulary) | *(removed)* | The ASP wire layer populates `ProblemDetails.Instance` from the server-relative request path+query (RFC 9457 §3.1). Typed payloads expose `ResourceRef` directly via fields like `Error.NotFound.Resource` for callers that need to assert on the resource identity. |
-| Public `Value` / `Error` accessors on `Result<T>` | Both threw on the wrong branch. | `result.Error` is `public Error?` and **never throws** (null on success). The throwing `result.Value` getter was removed entirely because it was the primary cause of unsafe value access. | Read errors with `if (result.Error is { } error) { ... }` or `result.TryGetError(out var error)`. Extract success values with `result.TryGetValue(out var v)`, `result.TryGetValue(out var v, out var err)`, `result.Match(...)`, or `var (ok, v, err) = result;` (Deconstruct). | <!-- stale-doc-ok: migration-comparison row intentionally cites removed value accessor -->
-| HTTP transport abstractions package | `Trellis.Core` | `Trellis.Http.Abstractions` | Add a PackageReference to `Trellis.Http.Abstractions` for code that names `WriteOutcome<T>`, `RepresentationMetadata`, `EntityTagValue`, `RetryAfterValue`, `PreconditionKind`, `AuthChallenge`, or `AggregateETagExtensions`. The CLR namespace stays `Trellis`, so most source files only need the package-reference change. |
-| Package id | `Trellis.Results` | `Trellis.Core` | Replace `<PackageReference Include="Trellis.Results" ... />` with `<PackageReference Include="Trellis.Core" ... />`. The CLR namespace stays `Trellis` — no `using` changes are needed. The legacy `Trellis.Results` package is unlisted with a redirect notice; there is no metapackage shim. | <!-- stale-doc-ok: migration-comparison row intentionally cites previous package id -->
-| OpenTelemetry `ActivitySource` name | `"Trellis.Results"` | `"Trellis.Results"` (unchanged) | No change needed. The source is named for the operations it traces, not for the package that ships it, so the v1 name carried over. The `ResultsTraceProviderBuilderExtensions.ActivitySourceName` constant exposes it programmatically. | <!-- stale-doc-ok: migration-comparison row intentionally cites the v1 activity source name -->
-| Test helper namespace | `Trellis.Results.Tests.*` | `Trellis.Core.Tests.*` | Internal change only — affects users who took an InternalsVisibleTo dependency on the test assembly (none expected). | <!-- stale-doc-ok: migration-comparison row intentionally cites previous test namespace -->
-| Package merge: DDD | <PackageReference Include="Trellis.DomainDrivenDesign" .../> | *(removed)* | All DDD types (`Aggregate<T>`, `Entity<T>`, `ValueObject`, `Specification<T>`, etc.) moved into `Trellis.Core`. Drop the `Trellis.DomainDrivenDesign` PackageReference; the types are still in `namespace Trellis;` so no using changes are needed. | <!-- stale-doc-ok: migration-comparison row intentionally cites previous package id -->
-| Package merge: Primitives generator | <PackageReference Include="Trellis.Primitives.Generator" .../> | *(removed)* | The Required* source generator is now bundled inside `Trellis.Core.nupkg` (`analyzers/dotnet/cs/Trellis.Core.Generator.dll`). Installing `Trellis.Core` (or any package depending on it) attaches the analyzer automatically. Drop the standalone PackageReference. |
-| `Required*` base classes | `Trellis.Primitives` | `Trellis.Core` | Source-tree consumers may need to ensure they reference `Trellis.Core`. Namespace is unchanged (`Trellis`), so no using edits are required. |
-| Package merge: Asp generator | `<PackageReference Include="Trellis.AspSourceGenerator" .../>` | *(removed)* | The ASP source generator is now bundled inside `Trellis.Asp.nupkg` (`analyzers/dotnet/cs/Trellis.AspSourceGenerator.dll`). Installing `Trellis.Asp` attaches the analyzer automatically. Drop the standalone PackageReference. |
-| Package merge: EF Core generator | `<PackageReference Include="Trellis.EntityFrameworkCore.Generator" .../>` | *(removed)* | The EF Core source generator (Maybe&lt;T&gt; partial properties + owned value-object helpers) is now bundled inside `Trellis.EntityFrameworkCore.nupkg` (`analyzers/dotnet/cs/Trellis.EntityFrameworkCore.Generator.dll`). Installing `Trellis.EntityFrameworkCore` attaches the analyzer automatically. Drop the standalone PackageReference. |
-| Package merge: Asp authorization | `<PackageReference Include="Trellis.Asp.Authorization" .../>` | *(removed)* | The ASP.NET actor providers (`ClaimsActorProvider`, `EntraActorProvider`, `DevelopmentActorProvider`, `CachingActorProvider`) are now part of `Trellis.Asp.nupkg`. The CLR namespace stays `Trellis.Asp.Authorization` — no `using` changes needed. Drop the standalone PackageReference. `Trellis.Asp` now transitively brings in `Trellis.Authorization`. |
+| FunctionalDDD package | Trellis replacement |
+|---|---|
+| `<PackageReference Include="FunctionalDdd.RailwayOrientedProgramming" />` | `Trellis.Core` |
+| `<PackageReference Include="FunctionalDdd.DomainDrivenDesign" />` | `Trellis.Core` |
+| `<PackageReference Include="FunctionalDdd.CommonValueObjects" />` | `Trellis.Primitives`; custom scalar base classes now live in `Trellis.Core` |
+| `<PackageReference Include="FunctionalDdd.CommonValueObjectGenerator" />` | Remove the separate reference; the generator is bundled in `Trellis.Core` |
+| `<PackageReference Include="FunctionalDdd.Asp" />` | `Trellis.Asp` |
+| `<PackageReference Include="FunctionalDdd.FluentValidation" />` | `Trellis.FluentValidation` |
 
-The renames bring the factory names in line with Rust (`Ok`/`Err`), F# (`Ok`), and FluentResults (`Ok`/`Fail`). The `IsSuccess`/`IsFailure` predicate properties are **not** renamed — predicates read as questions and stay long-form.
+Update package references and centrally managed versions together. Replace `using FunctionalDdd;`
+and global imports with `using Trellis;`. FunctionalDDD's response extensions also lived in
+the root namespace; add `using Trellis.Asp;` where the new response-mapping APIs are used.
+Trellis targets .NET 10, so update the consuming project's target framework and SDK.
+Packages such as `Trellis.Mediator`, `Trellis.Authorization`, `Trellis.EntityFrameworkCore`,
+`Trellis.Http`, and `Trellis.StateMachine` are optional additions, not renamed FunctionalDDD packages.
+
+### Result factories and access
+
+| FunctionalDDD API / behavior | Current Trellis API / migration |
+|---|---|
+| `Result.Success(value)` / `Result.Success()` | `Result.Ok(value)` / `Result.Ok()` | <!-- stale-doc-ok: FunctionalDDD factory comparison -->
+| `Result.Failure<T>(error)` / `Result.Failure(error)` | `Result.Fail<T>(error)` / `Result.Fail(error)` | <!-- stale-doc-ok: FunctionalDDD factory comparison -->
+| Deferred `Result.Success(Func<T>)` / `Result.Failure<T>(Func<Error>)` | Invoke the factory explicitly: `Result.Ok(funcOk())` / `Result.Fail<T>(errorFactory())` | <!-- stale-doc-ok: FunctionalDDD factory comparison -->
+| `Result.SuccessIf(...)` / `Result.FailureIf(...)`, including tuple and async forms | Use a ternary with `Result.Ok` / `Result.Fail<T>`; await an async predicate before branching | <!-- stale-doc-ok: FunctionalDDD conditional-factory comparison -->
+| `Result.FromException` / `Result.FromException<T>` | Use `Result.Try` / `Result.TryAsync` around the operation, or log an already-caught exception and return an appropriate failure; never copy its message into public error detail |
+| Implicit value/error conversion to `Result<T>` | Wrap explicitly with `Result.Ok(value)` / `Result.Fail<T>(error)` |
+| `value.ToResult(error)` on a nullable reference or struct | `Result.EnsureNotNull(value, error)`; Task/ValueTask receivers use `EnsureNotNullAsync(error)` |
+| Throwing `result.Value` getter | Use `TryGetValue`, `Match`, guarded deconstruction, or `Map` / `Bind` inside a chain | <!-- stale-doc-ok: FunctionalDDD accessor comparison -->
+| Throwing `result.Error` getter on success | `Error` is nullable and never throws; use a null pattern or `TryGetError` |
+| `default(Result<T>)` reports success | Default is a failure; construct every intended success explicitly |
+
+**No-payload results keep their shape.** FunctionalDDD already returned `Result<Unit>` from
+its parameterless success and failure factories. In Trellis, `Result.Ok()` and
+`Result.Fail(error)` also return `Result<Unit>`; there is no non-generic instance-result
+migration to perform. `IsSuccess` and `IsFailure` retain their names.
+
+For ordinary required fields, prefer the lazy field/detail null guard; construct custom
+errors inside its factory overload. `Maybe<T>.ToResult` remains an absence-to-failure
+conversion; do not replace it with a nullable guard.
+See [choosing a Result entry point](trellis-api-core.md#choosing-a-result-entry-point).
+
+### Railway operations
+
+| FunctionalDDD operation | Current Trellis operation |
+|---|---|
+| `TapError(...)` / `TapErrorAsync(...)` | `TapOnFailure` / `TapOnFailureAsync` |
+| `MapError(...)` / `MapErrorAsync(...)` | `MapOnFailure` / `MapOnFailureAsync` |
+| `Compensate(...)` / `CompensateAsync(...)` | `RecoverOnFailure` / `RecoverOnFailureAsync` |
+| Two-branch `Finally(...)` / `FinallyAsync(...)` | `Match` / `MatchAsync` | <!-- stale-doc-ok: FunctionalDDD terminal-operation comparison -->
+
+For a `Finally` callback that accepts the whole result rather than separate success/error
+callbacks, invoke that callback explicitly; do not invent a one-callback `Match` overload.
+See [current Result extension families](trellis-api-core.md#result-pipeline-extension-families).
+
+### Error model
+
+FunctionalDDD's open `Error` class, public constructors, subclasses, and base factories
+become Trellis's closed `Error` record catalog. Choose a case by its domain meaning rather
+than recreating a custom subclass.
+
+| FunctionalDDD shape | Current Trellis shape |
+|---|---|
+| `ValidationError` / `Error.Validation(...)` | `Error.InvalidInput.ForField(code, field, detail: detail)` or `ForRule(code, detail: detail)`; preserve all violations | <!-- v1-stale-ok: historical FunctionalDDD API comparison -->
+| `NotFoundError` / `Error.NotFound(...)` | `Error.NotFound.For<TResource>(id: id, detail: detail)`; preserve an application code with the named `code:` argument | <!-- v1-stale-ok: historical FunctionalDDD API comparison -->
+| `new ConflictError(...)` | `Error.Conflict.For<TResource>(code, id: id, detail: detail)` or `ForReason(code, detail: detail)` | <!-- stale-doc-ok: FunctionalDDD error comparison -->
+| `new UnauthorizedError(...)` | `new Error.AuthenticationRequired() { Code = code, Detail = detail }` | <!-- stale-doc-ok: FunctionalDDD error comparison -->
+| `new ForbiddenError(...)` | `Error.Forbidden.ForPolicy(code, detail: detail)` or a resource-qualified `For` factory | <!-- stale-doc-ok: FunctionalDDD error comparison -->
+| `UnexpectedError` | `new Error.Unexpected(code, faultId) { Detail = safeDetail }`; keep exception details in logs | <!-- stale-doc-ok: FunctionalDDD error comparison -->
+| `validationError.FieldErrors` with field names and detail lists | `Error.InvalidInput.Fields` / `.Rules` with input pointers, reason codes, arguments, and detail | <!-- stale-doc-ok: FunctionalDDD validation comparison -->
+| `Error.Instance` | ASP owns `ProblemDetails.Instance`; use `ResourceRef` for domain resource identity |
+| Base `Error` equality compares only `Code` | Trellis errors compare their typed value payload and detail; compare `Code` explicitly when only the reason matters |
+
+Case-scoped factories are **code-first**. Preserve application codes and details, but
+reconsider clients/tests that depend on the previous error classes, JSON fields, or
+HTTP mappings. For a simple property, `ForField(code, "email", ...)` produces `/email`;
+use an explicit `InputPointer` for nested paths and input locations.
+See [current error cases and factories](trellis-api-core.md#construction-and-case-scoped-factories).
+
+### Scalar value objects
+
+Custom partial types deriving from FunctionalDDD's `RequiredString` / `RequiredGuid`
+now derive from `RequiredString<TSelf>` / `RequiredGuid<TSelf>`. Keep the partial declaration;
+reuse inherited value/equality members and generated factories rather than redeclaring them.
+Replace generated `NewUnique()` calls with `NewUniqueV4()` to retain random-GUID generation,
+or choose `NewUniqueV7()` deliberately for time-ordered IDs.
+
+FunctionalDDD rejected blank required strings and `Guid.Empty`. Trellis's generated
+Required types reject only null by default: `[NotDefault]` rejects the sentinel, while
+`[Trim]` enables string trimming. `[NotDefault]` alone does not reject whitespace-only
+strings; combining `[Trim, NotDefault]` rejects them but also changes stored text by trimming.
+Use `ValidateAdditional` when preserving the old nonblank-but-untrimmed string behavior.
+See [Required defaults and opt-ins](trellis-api-primitives.md#required-defaults-and-opt-ins).
+
+### ASP.NET Core and observability
+
+Replace FunctionalDDD's `ToHttpResult(...)` / `ToActionResult(...)` and async forms with
+`ToHttpResponse` / `ToHttpResponseAsync`. For typed MVC signatures, chain
+`AsActionResult<T>` / `AsActionResultAsync<T>`. Register `AddTrellisAsp` and use the
+[ASP reference](trellis-api-asp.md#patterns-index) for Created locations and failure mapping.
+Do not serialize a raw `Result<T>`; Trellis requires explicit HTTP mapping or payload extraction.
+
+Telemetry subscriptions change too: `"Functional DDD ROP"` becomes `"Trellis.Results"`,
+and `"Functional DDD CVO"` becomes `"Trellis.Primitives"`. Replace
+`AddFunctionalDddRopInstrumentation()` with `AddTrellisResultsInstrumentation` and
+`AddFunctionalDddCvoInstrumentation()` with `AddTrellisPrimitivesInstrumentation`.
+Update collectors, filters, and tests that use the old source names.

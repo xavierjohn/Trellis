@@ -128,10 +128,11 @@ public Task<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct) =
 | `Aggregate<TId>` / `Entity<TId>` already provide `CreatedAt` and `LastModified` (`CS0108`) | Both are `DateTimeOffset` (not `DateTime`) and infrastructure-managed by Trellis EF Core. Defining your own `public DateTime CreatedAt { ... }` on the aggregate triggers `CS0108: 'X.CreatedAt' hides inherited member 'Entity<TId>.CreatedAt'`. If your spec calls for an audit timestamp, use the inherited base property instead of declaring a new one. |
 | `Result<T>` has `.Error` (nullable, never throws) but **not** `.Value` | `result.Error` returns `Error?` (null on success). `result.TryGetError(out var err)` is the safe Boolean form. Reading the success value still requires `TryGetValue`/`Match`/destructuring. |
 
-## Breaking changes from v1
+## Migration from FunctionalDDD
 
 Read the separate [migration reference](trellis-api-migration.md#core-and-package-migration)
-when upgrading previous APIs or package names. It is not needed for current-API work.
+when moving a FunctionalDDD application to Trellis. It compares the released predecessor
+with current APIs, not intermediate Trellis alpha builds, and is not needed for new Trellis code.
 
 ---
 
@@ -252,7 +253,7 @@ The default exception mapper produces `new Error.Unexpected("unhandled-exception
 
 #### Factory Methods
 
-`Ok`, `Fail`, `FailAfterCommit`, `Ensure`, `EnsureNotNull`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. For previous factories and instance types, read the [migration guide](trellis-api-migration.md#core-and-package-migration).
+`Ok`, `Fail`, `FailAfterCommit`, `Ensure`, `EnsureNotNull`, `Try`, `TryAsync`, `Combine`, and `ParallelAsync`. For FunctionalDDD factory and accessor changes, read the [migration guide](trellis-api-migration.md#core-and-package-migration).
 
 #### Value-returning null guards
 

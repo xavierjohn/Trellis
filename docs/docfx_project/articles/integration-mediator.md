@@ -167,7 +167,7 @@ I/O. Use `IAuthorizeResource<T>` when the answer depends on the resource itself.
 
 The optional six-base family removes actor/provider and resource/accessor constructor
 plumbing. Concrete constructors retain business dependencies; override protected
-`HandleCore`, not the normal public `Handle` entry.
+`Handle(message, actor[, resource/leaf], token)`, not the public two-argument entry.
 
 | Business inputs | Command base | Query base |
 |---|---|---|
@@ -187,9 +187,12 @@ logic for missing gates, wrong leaf/path, mismatched or expired state, or resour
 another dispatch. Standard registration installs the context automatically; manually
 composed authorization pipelines must add it before their authorization stages.
 
-For isolated business tests, `Handle(message, actor[, resource/leaf], token)` uses only
-supplied arguments without DI or ambient state. It bypasses authentication, authorization,
-validation, commits, and events; policy assertions must use actual Mediator dispatch.
+Handler tests use actual Mediator dispatch with `TestActorProvider` and fake resource
+loaders/business dependencies. Retain the production pipeline registrations and use fake
+commit/event dependencies when those stages are enabled. The public two-argument entry
+requires an authorized dispatch; the actor/resource overload is a protected hook, not a
+public test seam. Unit-test aggregates, policies, or application services directly when
+their logic needs pipeline-free isolation.
 The existing `IAuthorizedResource` pattern remains valid when the business body does not
 need an actor. `RequireActorAsync` remains a separate provider lookup, not a snapshot read.
 Loaded-instance identity is not mutation-readiness or a database ownership guarantee.

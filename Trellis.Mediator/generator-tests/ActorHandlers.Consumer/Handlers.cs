@@ -117,45 +117,45 @@ internal sealed class AuditWriter
 
 internal sealed class AuditCommandHandler(AuditWriter audit) : ActorCommandHandler<AuditCommand, Result<Observation>>
 {
-    protected override ValueTask<Result<Observation>> HandleCore(AuditCommand command, Actor actor, CancellationToken cancellationToken)
+    protected override ValueTask<Result<Observation>> Handle(AuditCommand command, Actor actor, CancellationToken cancellationToken)
         => command.Body is { } body ? body(actor, cancellationToken) : new(audit.Record(command.Probe, actor, null, cancellationToken));
 }
 
 internal sealed class ActorQueryHandler(AuditWriter audit) : ActorQueryHandler<ActorQuery, Result<Observation>>
 {
-    protected override ValueTask<Result<Observation>> HandleCore(ActorQuery query, Actor actor, CancellationToken cancellationToken)
+    protected override ValueTask<Result<Observation>> Handle(ActorQuery query, Actor actor, CancellationToken cancellationToken)
         => new(audit.Record(query.Probe, actor, null, cancellationToken));
 }
 
 internal sealed class UpdateOrderHandler(AuditWriter audit) : ActorResourceCommandHandler<UpdateOrderCommand, Order, Result<Observation>>
 {
-    protected override ValueTask<Result<Observation>> HandleCore(UpdateOrderCommand command, Actor actor, Order resource, CancellationToken cancellationToken)
+    protected override ValueTask<Result<Observation>> Handle(UpdateOrderCommand command, Actor actor, Order resource, CancellationToken cancellationToken)
         => new(audit.Record(command.Probe, actor, resource, cancellationToken));
 }
 
 internal sealed class OrderQueryHandler(AuditWriter audit) : ActorResourceQueryHandler<OrderQuery, Order, Result<Observation>>
 {
-    protected override ValueTask<Result<Observation>> HandleCore(OrderQuery query, Actor actor, Order resource, CancellationToken cancellationToken)
+    protected override ValueTask<Result<Observation>> Handle(OrderQuery query, Actor actor, Order resource, CancellationToken cancellationToken)
         => new(audit.Record(query.Probe, actor, resource, cancellationToken));
 }
 
 internal sealed class MultiResourceCommandHandler(AuditWriter audit)
     : ActorResourceCommandHandler<MultiResourceCommand, Order, Result<Observation>>
 {
-    protected override ValueTask<Result<Observation>> HandleCore(
+    protected override ValueTask<Result<Observation>> Handle(
         MultiResourceCommand command, Actor actor, Order resource, CancellationToken cancellationToken)
         => new(audit.Record(command.Probe, actor, resource, cancellationToken));
 }
 
 internal sealed class UpdateDocumentHandler(AuditWriter audit) : ActorResourceViaCommandHandler<UpdateDocumentCommand, Document, Folder, Result<Observation>>
 {
-    protected override ValueTask<Result<Observation>> HandleCore(UpdateDocumentCommand command, Actor actor, Document leaf, CancellationToken cancellationToken)
+    protected override ValueTask<Result<Observation>> Handle(UpdateDocumentCommand command, Actor actor, Document leaf, CancellationToken cancellationToken)
         => new(audit.Record(command.Probe, actor, leaf, cancellationToken));
 }
 
 internal sealed class DocumentQueryHandler(AuditWriter audit) : ActorResourceViaQueryHandler<DocumentQuery, Document, Folder, Result<Observation>>
 {
-    protected override ValueTask<Result<Observation>> HandleCore(DocumentQuery query, Actor actor, Document leaf, CancellationToken cancellationToken)
+    protected override ValueTask<Result<Observation>> Handle(DocumentQuery query, Actor actor, Document leaf, CancellationToken cancellationToken)
         => new(audit.Record(query.Probe, actor, leaf, cancellationToken));
 }
 

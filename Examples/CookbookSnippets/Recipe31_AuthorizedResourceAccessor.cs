@@ -47,7 +47,7 @@ public sealed class CancelOrderHandler(IAuthorizedResource<CancelOrderCommand, O
 public sealed class ActorCancelOrderHandler
     : ActorResourceCommandHandler<CancelOrderCommand, Order, Result<Trellis.Unit>>
 {
-    protected override ValueTask<Result<Trellis.Unit>> HandleCore(
+    protected override ValueTask<Result<Trellis.Unit>> Handle(
         CancelOrderCommand command, Actor actor, Order order, CancellationToken cancellationToken)
     {
         order.Cancel();
@@ -110,10 +110,6 @@ public sealed class UploadScorecardHandler(IAuthorizedResource<UploadScorecardCo
 
 internal static class Recipe31Demonstrator
 {
-    public static ValueTask<Result<Trellis.Unit>> ExplicitBusinessTest(
-        ActorCancelOrderHandler handler, CancelOrderCommand command, Actor actor, Order order, CancellationToken token)
-        => handler.Handle(command, actor, order, token);
-
     // TryGetResource is the non-throwing read for optional access.
     public static bool OptionalRead(IAuthorizedResource<CancelOrderCommand, Order> accessor)
         => accessor.TryGetResource(out Order? order) && order is not null;

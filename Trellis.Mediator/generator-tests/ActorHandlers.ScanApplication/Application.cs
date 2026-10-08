@@ -82,7 +82,7 @@ public sealed class ScanActorProvider(ScanProbe probe) : IActorProvider
 public sealed class ScanCommandHandler(ScanProbe business)
     : ActorResourceCommandHandler<ScanCommand, ScanResource, Result<ScanObservation>>
 {
-    protected override ValueTask<Result<ScanObservation>> HandleCore(ScanCommand command, Actor actor, ScanResource resource, CancellationToken cancellationToken)
+    protected override ValueTask<Result<ScanObservation>> Handle(ScanCommand command, Actor actor, ScanResource resource, CancellationToken cancellationToken)
     {
         business.BusinessCalls++;
         business.Operations.Add("business");
@@ -93,7 +93,7 @@ public sealed class ScanCommandHandler(ScanProbe business)
 public sealed class ScanQueryHandler(ScanProbe business)
     : ActorResourceQueryHandler<ScanQuery, ScanResource, Result<ScanObservation>>
 {
-    protected override ValueTask<Result<ScanObservation>> HandleCore(ScanQuery query, Actor actor, ScanResource resource, CancellationToken cancellationToken)
+    protected override ValueTask<Result<ScanObservation>> Handle(ScanQuery query, Actor actor, ScanResource resource, CancellationToken cancellationToken)
     {
         business.BusinessCalls++;
         business.Operations.Add("business");
@@ -104,7 +104,7 @@ public sealed class ScanQueryHandler(ScanProbe business)
 public sealed class ScanViaCommandHandler(ScanProbe business)
     : ActorResourceViaCommandHandler<ScanViaCommand, ScanDocument, ScanOwner, Result<ScanObservation>>
 {
-    protected override ValueTask<Result<ScanObservation>> HandleCore(ScanViaCommand command, Actor actor, ScanDocument leaf, CancellationToken cancellationToken)
+    protected override ValueTask<Result<ScanObservation>> Handle(ScanViaCommand command, Actor actor, ScanDocument leaf, CancellationToken cancellationToken)
     {
         business.BusinessCalls++;
         business.Operations.Add("business");
@@ -115,7 +115,7 @@ public sealed class ScanViaCommandHandler(ScanProbe business)
 public sealed class ScanViaQueryHandler(ScanProbe business)
     : ActorResourceViaQueryHandler<ScanViaQuery, ScanDocument, ScanOwner, Result<ScanObservation>>
 {
-    protected override ValueTask<Result<ScanObservation>> HandleCore(ScanViaQuery query, Actor actor, ScanDocument leaf, CancellationToken cancellationToken)
+    protected override ValueTask<Result<ScanObservation>> Handle(ScanViaQuery query, Actor actor, ScanDocument leaf, CancellationToken cancellationToken)
     {
         business.BusinessCalls++;
         business.Operations.Add("business");

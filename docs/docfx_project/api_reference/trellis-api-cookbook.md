@@ -515,7 +515,7 @@ services.AddResourceAuthorization(
 
 **Checked actor/resource parameters.** Derive from `ActorCommandHandler` /
 `ActorQueryHandler` for actor-only business logic, or `ActorResourceCommandHandler` /
-`ActorResourceQueryHandler` for direct resource logic, and override protected `HandleCore`.
+`ActorResourceQueryHandler` for direct resource logic, and override protected `Handle`.
 The standard context supplies the **identical Actor instance** checked by this dispatch's
 authorization stages, after every declared gate passes. Resource bases additionally supply
 the exact loaded resource, without provider/accessor constructor dependencies or a second
@@ -532,7 +532,7 @@ public sealed record ReadOrderQuery(OrderId OrderId)
 
 public sealed class ReadOrderHandler : ActorResourceQueryHandler<ReadOrderQuery, Order, Result<Order>>
 {
-    protected override ValueTask<Result<Order>> HandleCore(
+    protected override ValueTask<Result<Order>> Handle(
         ReadOrderQuery query, Actor actor, Order order, CancellationToken cancellationToken)
         => new(Result.Ok(order));
 }
@@ -850,13 +850,17 @@ invariant.Code.Should().Be("state-machine.invalid-transition");
 
 **Problem.** Unit-test the `PlaceOrderHandler` from Recipe 2 using FluentAssertions extensions from `Trellis.Testing`.
 
-For an actor-aware base, isolated business tests call the public explicit overload
-`Handle(command, actor, [resource/leaf,] cancellationToken)` with supplied inputs, then use
-the same Result assertions below. It needs no DI or ambient frame and deliberately bypasses
-authentication, ownership, validation, commits, and events. Null actor/resource arguments
-are rejected. Calling its normal two-argument `Handle` directly requires an authorized
-dispatch and throws without one. Test ownership, existence hiding, and actor snapshot
-identity with actual Mediator sends, not this business-only seam.
+For an actor-aware base, send the command/query through Mediator with `TestActorProvider`
+and fake business dependencies, then use the same Result assertions below. Keep the normal
+authorization, validation, and resource-loader registrations; supply fake commit/event
+dependencies when those stages are enabled. Assert denied/anonymous paths as well as
+business outcomes, ownership, existence hiding, and actor/resource snapshot identity.
+The actor/resource `Handle` overload is protected business logic, not a test seam.
+Calling the public two-argument `Handle` without an authorized dispatch throws before
+business logic, and registering a test actor provider alone does not create that dispatch.
+For pipeline-free unit tests, exercise aggregates, policies, or application services
+directly rather than unsealing a handler or accessing its protected hook by reflection.
+The direct test below is for Recipe 2's ordinary handler, not an actor-aware base.
 
 ```csharp
 using FluentAssertions;
@@ -2215,7 +2219,7 @@ The pipeline:
 5. On any leaf-load failure, the loader's error bubbles. On any **intermediate** or owner-load failure, the pipeline collapses to `Error.Forbidden` (no existence leak). Empty ID list at any hop short-circuits to `Forbidden` without invoking `Authorize`.
 
 **Handler parameters.** `ActorResourceViaCommandHandler<UploadScorecardCommand,Match,Team,Result<Trellis.Unit>>`
-passes the checked actor and loaded **match** to protected `HandleCore`, not either team or
+passes the checked actor and loaded **match** to protected `Handle`, not either team or
 the owner collection. Keep `owners.Any(...)` unchanged: owning the away team alone still
 allows an upload. For `Document -> Folder`, use
 `ActorResourceViaQueryHandler<ReadDocumentQuery,Document,Folder,Result<Document>>`;
@@ -2994,7 +2998,7 @@ actor, the accessor constructor can be replaced by a parameterless framework bas
 public sealed class CancelOrderHandler
     : ActorResourceCommandHandler<CancelOrderCommand, Order, Result<Trellis.Unit>>
 {
-    protected override ValueTask<Result<Trellis.Unit>> HandleCore(
+    protected override ValueTask<Result<Trellis.Unit>> Handle(
         CancelOrderCommand command, Actor actor, Order order, CancellationToken cancellationToken)
     {
         order.Cancel();
@@ -3007,8 +3011,9 @@ Keep genuine business constructor dependencies; remove only actor/accessor plumb
 The normal entry checks every declared gate and binds the resource to that exact dispatch,
 so an inner handler cannot borrow an outer dispatch's resource. Via commands use the
 corresponding `ActorResourceViaCommandHandler<TCommand,TLeaf,TOwner,TResponse>` and
-receive the same leaf, not owners. Isolated tests use `Handle(command, actor, order, ct)`;
-that overload does not authorize or commit. All mutation-readiness and TOCTOU cautions
+receive the same leaf, not owners. Handler tests send the command through Mediator with
+`TestActorProvider` and fake loaders/business dependencies; the actor/resource hook is
+protected and cannot be invoked as a public bypass. All mutation-readiness and TOCTOU cautions
 below apply equally to base-supplied resources.
 
 **Via commands** (multi-hop authorization via `IAuthorizeResourceVia<TOwner>`) expose the **leaf** through the accessor — the resource the message identifies via `IIdentifyResource<TLeaf, TLeafId>`, which is the typical mutation target. The owner accessor is intentionally **not** exposed in v4; handlers that need owner state read it from their repository.
@@ -3134,7 +3139,7 @@ The pipeline extracts the ID from `IIdentifyResource<Incident, IncidentId>` firs
 
 `ActorResourceQueryHandler<GetIncidentQuery,Incident,Result<IncidentDto>>` and the
 corresponding direct-command/via bases preserve this resource-only shape: they do **not**
-force `IAuthorize`. Their `HandleCore` receives the authenticated, resource-authorized
+force `IAuthorize`. Their protected `Handle` receives the authenticated, resource-authorized
 actor and loaded incident/leaf only after the resource gate succeeds.
 
 **Cache safety.** A shared cache can serve an unauthorized actor's synthetic 404 to a later authorized actor, regardless of whether their error bodies match. Mark responses for hidden resources with `Cache-Control: private` or `no-store`:

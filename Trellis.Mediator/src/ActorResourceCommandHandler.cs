@@ -14,21 +14,8 @@ public abstract class ActorResourceCommandHandler<TCommand, TResource, TResponse
 {
     /// <inheritdoc />
     public ValueTask<TResponse> Handle(TCommand command, CancellationToken cancellationToken)
-        => HandleCore(command, AuthorizationDispatchContext.GetRequiredActor<TCommand, TResponse>(),
+        => Handle(command, AuthorizationDispatchContext.GetRequiredActor<TCommand, TResponse>(),
             AuthorizationDispatchContext.GetRequiredResource<TCommand, TResource, TResponse>(), cancellationToken);
-
-    /// <summary>Runs business logic with supplied actor/resource arguments, bypassing all pipeline stages.</summary>
-    /// <param name="command">The command to handle.</param>
-    /// <param name="actor">The actor supplied by an isolated business test.</param>
-    /// <param name="resource">The resource supplied by that test.</param>
-    /// <param name="cancellationToken">The cancellation token to forward.</param>
-    /// <returns>The business outcome without authentication, authorization, validation, or commit.</returns>
-    public ValueTask<TResponse> Handle(TCommand command, Actor actor, TResource resource, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(actor);
-        ArgumentNullException.ThrowIfNull(resource);
-        return HandleCore(command, actor, resource, cancellationToken);
-    }
 
     /// <summary>Executes command business logic with the exact checked actor and loaded resource.</summary>
     /// <param name="command">The command to handle.</param>
@@ -36,5 +23,5 @@ public abstract class ActorResourceCommandHandler<TCommand, TResource, TResponse
     /// <param name="resource">The same resource instance loaded and authorized by this dispatch.</param>
     /// <param name="cancellationToken">The dispatch cancellation token.</param>
     /// <returns>The business outcome.</returns>
-    protected abstract ValueTask<TResponse> HandleCore(TCommand command, Actor actor, TResource resource, CancellationToken cancellationToken);
+    protected abstract ValueTask<TResponse> Handle(TCommand command, Actor actor, TResource resource, CancellationToken cancellationToken);
 }

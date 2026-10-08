@@ -72,7 +72,7 @@ internal sealed class AuthorizedResourceHolder<TMessage, TResource>
             throw new InvalidOperationException(
                 $"No authorized {typeof(TResource).Name} for {typeof(TMessage).Name} belongs to the current dispatch. " +
                 "Register the matching AddResourceAuthorization pipeline and invoke the handler through Mediator, " +
-                "or use its explicit actor/resource overload for an isolated business test.");
+                "using fake resource loaders for handler tests.");
         return frame.Resource;
     }
 

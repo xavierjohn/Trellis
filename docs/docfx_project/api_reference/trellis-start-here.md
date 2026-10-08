@@ -162,7 +162,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Wire the composition root | [Recipe 12](trellis-api-cookbook.md#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
 | Rehydrate an entity from a database row (fail-loud vs Result-track) | [Recipe 30](trellis-api-cookbook.md#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
 | Reconstitute an aggregate in a non-EF repository without re-running its factory (no re-validation, no events) | [Recipe 37](trellis-api-cookbook.md#recipe-37--reconstituting-an-aggregate-without-its-factory-non-ef-repositories) |
-| Upgrade previous Result factories, Error cases, or merged/renamed Trellis packages | [Migration guide](trellis-api-migration.md#core-and-package-migration); not needed for current-API work |
+| Migrate a FunctionalDDD 2.x application to Trellis | [Migration guide](trellis-api-migration.md#use-this-file-when); not needed for current-API work |
 | Avoid the pipeline-then-handler duplicate load when a command both authorizes and mutates the same resource | [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource) |
 | Hide existence of sensitive resources — give missing, removed, and withheld resources the same public `NotFound`, optionally with fixed code/detail | [Recipe 32](trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) |
 | Configure the strict `AddJwtBearer` validation profile + key-rotation runbook for a gateway-minted internal JWT | [Moved: xavierjohn/Trellis.Microservices](trellis-api-cookbook.md#recipes-33-34--moved-to-xavierjohntrellismicroservices) (Recipe 1 in the microservices cookbook) |
@@ -192,7 +192,7 @@ These rows route recurring LLM lab mistakes to the most relevant reference befor
 |---|---|
 | [`trellis-api-cookbook.md`](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) | End-to-end recipes spanning packages. Open a recipe body when the lookup above sends you to one. |
 | [`trellis-api-core.md`](trellis-api-core.md#use-this-file-when) | `Result<T>`, `Maybe<T>`, `Error`, aggregates, entities, specifications, pagination. |
-| [`trellis-api-migration.md`](trellis-api-migration.md#core-and-package-migration) | Previous Core APIs and cross-package renames/merges; open only for an upgrade. |
+| [`trellis-api-migration.md`](trellis-api-migration.md#use-this-file-when) | FunctionalDDD-to-Trellis package, namespace and API changes; open only when migrating a FunctionalDDD application. |
 | [`trellis-api-analyzers.md`](trellis-api-analyzers.md#use-this-file-when) | The analyzer and generator diagnostics, `TRLS001`-`TRLS066`, and `TrellisDiagnosticIds`. |
 | [`trellis-api-anti-patterns.md`](trellis-api-anti-patterns.md#trls001--result-return-value-not-handled) | Ready-to-apply WRONG/FIX shapes for the analyzer diagnostics (`TRLSxxx`). |
 | [`trellis-value-object-taxonomy.md`](trellis-value-object-taxonomy.md#patterns-index) | Choosing a value-object category: scalar, symbolic, structured, optional. |

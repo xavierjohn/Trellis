@@ -304,7 +304,7 @@ app.Run();
 
 For Mediator business logic, prefer the [actor-aware handler bases](integration-mediator.md#checked-actor-and-resource-parameters).
 Static and direct/via authorization share one Actor reference per dispatch, and protected
-`HandleCore` receives that exact checked actor after all declared gates succeed. Resource
+`Handle` receives that exact checked actor after all declared gates succeed. Resource
 variants additionally receive the loaded resource or via leaf; no provider/accessor
 constructor plumbing is needed. Standard Trellis registration installs the context.
 

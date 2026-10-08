@@ -108,15 +108,6 @@ internal static class ConsumerScenarios
         VerifyPipeline<DocumentQuery>(scope.ServiceProvider, 1);
         Check(scope.ServiceProvider.GetRequiredService<AuditWriter>().Entries == 6,
             "The migrated handlers did not retain their business-only dependency.");
-
-        var handler = new UpdateOrderHandler(new AuditWriter());
-        var explicitActor = CreateActor("explicit");
-        var explicitResource = new Order("explicit", "explicit");
-        var explicitProbe = new DispatchProbe(explicitActor);
-        var explicitResult = RequireSuccess(await handler.Handle(new("explicit", explicitProbe), explicitActor, explicitResource, token).ConfigureAwait(false));
-        Check(ReferenceEquals(explicitResult.Actor, explicitActor) && ReferenceEquals(explicitResult.Resource, explicitResource),
-            "The business-test overload must use supplied arguments without ambient state.");
-        Check(explicitProbe.Loads == 0 && provider.Calls == 1, "The explicit overload performed pipeline work.");
     }
 
     private static async Task DenialAndMissingGatesAsync(CancellationToken token)
@@ -151,6 +142,9 @@ internal static class ConsumerScenarios
 
         var direct = new AuditCommandHandler(new AuditWriter());
         await ExpectFaultAsync(() => direct.Handle(new AuditCommand(new(expected)), token), "AuthorizationContextBehavior").ConfigureAwait(false);
+        await ExpectFaultAsync(
+            () => ((ICommandHandler<AuditCommand, Result<Observation>>)direct).Handle(new AuditCommand(new(expected)), token),
+            "AuthorizationContextBehavior").ConfigureAwait(false);
 
         var missingProvider = new SnapshotProvider();
         missingProvider.Prepare(expected);

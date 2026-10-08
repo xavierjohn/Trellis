@@ -41,7 +41,7 @@ public sealed record ReadOrderQuery(OrderId OrderId)
 
 public sealed class ReadOrderHandler : ActorResourceQueryHandler<ReadOrderQuery, Order, Result<Order>>
 {
-    protected override ValueTask<Result<Order>> HandleCore(
+    protected override ValueTask<Result<Order>> Handle(
         ReadOrderQuery query, Actor actor, Order order, CancellationToken cancellationToken)
         => new(Result.Ok(order));
 }
