@@ -3,7 +3,7 @@ package: Trellis.Asp
 namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.Idempotency, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
 types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpRequestPaginationExtensions, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, RateLimiterOptionsExtensions, UseTrellisRejectionHandler, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-07
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring ASP.NET Core endpoints that parse pagination input or return Trellis Result, WriteOutcome or Page: response mapping, Problem Details, ETags, actors and route binding."
@@ -42,6 +42,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) �
 | Honor `Prefer: return=minimal` | `.HonorPrefer()` on write responses | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
 | Parse pagination query input in MVC or Minimal APIs | `Request.TryCreatePageRequest()`; bind its `Result<PageRequest>` before dispatching the query | [`HttpRequestPaginationExtensions`](#httprequestpaginationextensions) |
 | Return paginated list responses | `Result<Page<T>>.ToHttpResponse(urlBuilder, bodySelector, ...)` with `(cursor, PageDirection, appliedLimit)`; the two-argument `nextUrlBuilder` convenience remains available | [`PagedResponse<TResponse>`](#pagedresponsetresponse), [`PageDirection`](#pagedirection) |
+| Build pagination links with or without API versioning | `HttpContext.PageUrl(routeName, routeValues)`; configure the optional version-aware policy once when using `Trellis.Asp.ApiVersioning` | [`HttpContextPaginationExtensions`](#httpcontextpaginationextensions) |
 | Resolve actors from requests | `AddClaimsActorProvider`, `AddNestedJsonPathClaimsActorProvider`, `AddEntraActorProvider`, or `AddDevelopmentActorProvider`. For microservices consuming gateway-minted internal JWTs, see [`Trellis.Microservices.AspNetCore`](https://github.com/xavierjohn/Trellis.Microservices) (the `TrellisInternalJwtActorProvider` types moved out of this repo in v3 cleanup). | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Compose a system actor for background workers | `AddTrellisWorkerActor` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Bind scalar value objects from routes/query/body | `AddTrellisAspWithScalarValidation()` (or `AddTrellisAsp()` + `AddScalarValueValidation()`), plus route constraints / validation middleware as needed | [`Trellis.Asp.ModelBinding`](#namespace-trellisaspmodelbinding), [`Trellis.Asp.Validation`](#namespace-trellisaspvalidation) |
@@ -109,6 +110,54 @@ public static ValueTask<IResult> ToHttpResponseAsync<T, TBody>(
     Func<T, TBody> body,
     Action<HttpResponseOptionsBuilder<Page<T>>>? configure = null);
 ```
+
+### `HttpContextPaginationExtensions`
+
+`HttpContext.PageUrl` builds absolute named-route pagination links without a versioning
+dependency. The two signatures return `Func<Cursor, int, string>` and
+`Func<Cursor, PageDirection, int, string>` respectively:
+
+```csharp
+public static Func<Cursor, int, string> PageUrl(this HttpContext httpContext, string routeName,
+    Func<Cursor, int, RouteValueDictionary> routeValues,
+    Func<PageUrlRouteContext, Endpoint>? routeResolver = null);
+public static Func<Cursor, PageDirection, int, string> PageUrl(this HttpContext httpContext, string routeName,
+    Func<Cursor, PageDirection, int, RouteValueDictionary> routeValues,
+    Func<PageUrlRouteContext, Endpoint>? routeResolver = null);
+```
+
+`PageUrlRouteContext` exposes `HttpContext`, `RouteName`, `Candidates`, and the cloned,
+mutable `RouteValues`. `TrellisAspOptions.PageUrlRouteResolver` configures a host-local
+destination/version policy through `AddTrellisAsp` or `UseAsp`; a per-builder resolver wins.
+Resolvers must return one candidate or the link-enabled active endpoint with the same
+name, never null. Unversioned hosts need no resolver. Versioned hosts must configure the
+optional package's version-aware policy. Missing destinations, incompatible layouts,
+ambiguous cross-route destinations, invalid resolver results, null callback dictionaries,
+and failed link generation throw. Links preserve scheme, host, and `PathBase`; shared
+callback dictionaries are never mutated. Builders are request-scoped.
+
+Shared names require matching route templates, defaults, required values, and parameter
+policies so named link generation cannot fall through to a differently constrained
+destination. Inline policies compare by content; out-of-line policy objects must compare
+equal (normally the same instance). Otherwise give the destinations distinct route names.
+
+```csharp
+// Same expression in unversioned and versioned endpoints.
+nextUrlBuilder: HttpContext.PageUrl(
+    "Orders_List",
+    (cursor, applied) => new RouteValueDictionary
+    {
+        ["cursor"] = cursor.Token,
+        ["limit"] = applied,
+    })
+```
+
+For API versioning, reference the optional package and configure
+[`UseVersionedPageUrls`](trellis-api-asp-apiversioning.md#trellisaspoptionsapiversioningextensions)
+through `AddTrellisAsp` or `UseAsp`. Without a policy, this helper performs **unversioned**
+routing; it does not inspect optional SDK metadata or infer versioning configuration.
+Versioned hosts must enable the policy even for self-pagination. Typed `ApiVersion` pins
+remain extensions in the optional package and override the host policy per builder.
 
 ### `HttpRequestPaginationExtensions`
 
@@ -309,6 +358,7 @@ Configuration registered via `AddTrellisAsp(...)` that maps domain `Error` types
 | Name | Type | Description |
 | --- | --- | --- |
 | `SystemDefault` | `static TrellisAspOptions` (internal) | Read-only default instance used when DI cannot resolve a configured `TrellisAspOptions` (e.g. the host did not call `AddTrellisAsp`). Internal — not callable from user code. Hosts customize the mappings by passing a configure delegate to `AddTrellisAsp(o => o.MapError<...>(...))`; raw `AddSingleton(new TrellisAspOptions())` is unsupported and will be replaced by the bridge factory the next time `AddTrellisAsp` runs. |
+| `PageUrlRouteResolver` | `Func<PageUrlRouteContext, Endpoint>?` | Host-local pagination policy. Selects a candidate or the matching link-enabled active endpoint and may enrich cloned route values. Null means unversioned named routing. Per-builder policies override it. Configure through `AddTrellisAsp` / `UseAsp`; the optional versioning package supplies `UseVersionedPageUrls`. |
 | `FailFastOnSilentVersionInjection` | `bool` | When `true`, every `.WithVersionedRoute()` (or pinned overload) call that would silently skip `api-version` injection because the target endpoint has no `ApiVersionMetadata` throws `InvalidOperationException` instead of logging a single warning per endpoint. Defaults to `false` (warn-once-per-(endpoint, AppDomain) via the `Trellis.Asp.ApiVersioning` `ILogger` category). Intended for non-Production environments to surface mid-migration regressions where `AddApiVersioning(...)` was removed but `.WithVersionedRoute()` chains remain. |
 | `ProblemContentLanguage` | `string?` | The language tag emitted as `Content-Language` on problem responses, or `null` (the default) to emit none. Every problem response ships prose in `title` and `detail`; setting this declares what language that prose is in. The default is deliberately unset because `detail` is frequently application-supplied, so the framework cannot know its language and would otherwise assert something it has not checked. This is a single static value, not server-side negotiation: nothing reads `Accept-Language`, and no `Vary` header is emitted, because the response genuinely does not vary by it. It composes with rather than competes against reason codes and args — `detail` is negotiated prose where negotiation exists, while codes and args let the *client* hold the catalog, which is the only option when the server has no translations at all. |
 | `SynthesizeProblemDetailsInstanceFromResourceRef` | `bool` | When `true` (the default), `ResponseFailureWriter` populates `ProblemDetails.Instance` from the failing `ResourceRef` (`/{collectionName}/{id}`) when the request URL does not already identify the resource, and preserves the original request URL under `Extensions["request"]`. Applies to `NotFound`, `Gone`, `Conflict`, `Forbidden`, `InvariantViolation`, and `TransportFault(HttpError.PreconditionFailed)`. Set to `false` to retain the historical request-URL-only `Instance`. Collection name defaults to `{Type.ToLowerInvariant()}s`; override via `[ResourceCollectionName(name)]` on the aggregate or `services.AddResourceCollectionName<T>(name)`. |

@@ -3,7 +3,7 @@ title: ASP.NET Core Integration
 package: Trellis.Asp
 topics: [asp, minimal-api, controllers, http-result, problem-details, etag, prefer, pagination, idempotency]
 related_api_reference: [trellis-api-asp.md, trellis-api-core.md, trellis-api-asp-idempotency-cosmos.md]
-last_verified: 2026-10-02
+last_verified: 2026-10-07
 audience: [developer]
 ---
 # ASP.NET Core Integration
@@ -371,7 +371,7 @@ For query-style targets, Location uses conventional `api-version`. For URL-segme
 
 Literal/selector `Created(...)` and `WriteOutcome`-owned URIs ignore the hook. Statuses remain 201 for `CreatedAtRoute` / `CreatedAtAction` and normal 2xx for `WithLocation`. Named routes remain AOT-compatible; action links retain their existing trimming/AOT limitations.
 
-**Migration:** Keep existing `.WithVersionedRoute()` / `.WithVersionedRoute(ApiVersion)` syntax, but test missing/ambiguous targets and unsupported pins (now failures), honored segment pins, removed neutral/unversioned version values, and destination-based warning identity. No new registration is required. `PageUrl` only changes shared mapping checks: implicit ambient segment routing, cross-route validation, consumer overrides, and quiet missing-metadata behavior remain; explicit PageUrl **still rejects** segment pins.
+**Location migration:** Keep existing `.WithVersionedRoute()` / `.WithVersionedRoute(ApiVersion)` syntax, but test missing/ambiguous targets and unsupported pins (now failures), honored segment pins, removed neutral/unversioned version values, and destination-based warning identity. No new registration is required for Location. Implicit `PageUrl` builders now belong to `Trellis.Asp`; versioned hosts must enable `UseVersionedPageUrls()` through `AddTrellisAsp` / `UseAsp`. Shared pagination names require matching templates, defaults, required values, and parameter policies. Ambient segment routing, cross-route validation, consumer overrides, and quiet missing-metadata behavior remain; explicit PageUrl **still rejects** segment pins.
 
 > [!NOTE]
 > See [`trellis-api-asp-apiversioning.md`](../api_reference/trellis-api-asp-apiversioning.md) for the full LLM-targeted reference and [`TRLS023`](analyzers/TRLS023.md) for the analyzer that catches missed migrations.
@@ -499,9 +499,15 @@ app.MapGet("/products", async (
         CancellationToken ct) =>
     (await ctx.Request.TryCreatePageRequest()
         .BindAsync(request => reader.ListAsync(request, ct))).ToHttpResponse(
-        nextUrlBuilder: (next, applied) =>
-            $"{ctx.Request.Scheme}://{ctx.Request.Host}/products?cursor={Uri.EscapeDataString(next.Token)}&limit={applied}",
+        nextUrlBuilder: ctx.PageUrl(
+            "Products_List",
+            (next, applied) => new Microsoft.AspNetCore.Routing.RouteValueDictionary
+            {
+                ["cursor"] = next.Token,
+                ["limit"] = applied,
+            }),
         body: product => new ProductResponse(product.Id, product.Name)))
+    .WithName("Products_List")
     .WithInputOrigin(InputLocation.Query);
 
 public sealed record ProductResponse(string Id, string Name);
@@ -518,6 +524,14 @@ either the request or page result short-circuits through the standard error pipe
 Details, default mapping). The query input-origin metadata keeps downstream opaque-cursor decode
 failures query-located. The parser does not add ApiExplorer/OpenAPI parameter metadata; document
 `cursor` and `limit` separately.
+
+`PageUrl` preserves the request's scheme, host, and `PathBase`, encodes route values,
+and works without an API-versioning package. Versioned hosts reference
+`Trellis.Asp.ApiVersioning` and enable
+`AddTrellisAsp(options => options.UseVersionedPageUrls())` (or the existing `UseAsp`
+callback) alongside normal `AddApiVersioning(...)` setup. The endpoint expression is
+identical in both hosts; only composition changes. Typed version pins remain in the
+optional package. See the [pagination policy reference](../api_reference/trellis-api-asp-apiversioning.md#trellisaspoptionsapiversioningextensions).
 
 ## Idempotency-Key middleware
 

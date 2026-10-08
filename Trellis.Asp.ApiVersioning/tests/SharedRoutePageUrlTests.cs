@@ -293,7 +293,7 @@ public sealed class SharedRoutePageUrlTests
             .ConfigureWebHostDefaults(web => web.UseTestServer()
                 .ConfigureServices(services =>
                 {
-                    services.AddTrellisAspWithScalarValidation();
+                    services.AddTrellisAspWithScalarValidation(options => options.UseVersionedPageUrls());
                     services.AddControllers().ConfigureApplicationPartManager(manager =>
                     {
                         manager.FeatureProviders.Clear();
@@ -326,6 +326,7 @@ public sealed class SharedRoutePageUrlTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddRouting();
+        services.AddTrellisAsp(options => options.UseVersionedPageUrls());
         services.Configure<ApiVersioningOptions>(options => options.DefaultApiVersion = ApiVersionParser.Default.Parse(V2));
         services.AddSingleton<EndpointDataSource>(new DefaultEndpointDataSource(endpoints));
         return services.BuildServiceProvider();

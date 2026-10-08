@@ -21,7 +21,15 @@ return result.ToHttpResponse(options => options
     .WithVersionedRoute());
 ```
 
-For paginated responses, pass a route-aware URL builder:
+For paginated responses, enable the optional policy once alongside normal
+`AddApiVersioning(...)` registration:
+
+```csharp
+builder.Services.AddTrellisAsp(options => options.UseVersionedPageUrls());
+// Or services.AddTrellis(options => options.UseAsp(asp => asp.UseVersionedPageUrls()));
+```
+
+Then use the common `Trellis.Asp` builder; unversioned endpoints use the same expression:
 
 ```csharp
 return pageResult.ToHttpResponse(
@@ -42,7 +50,7 @@ return pageResult.ToHttpResponse(
 - Supports `CreatedAtRoute`, `CreatedAtAction`, and `WithLocation`, including fallback locations for `WriteOutcome.Created` without an explicit location.
 - Builds version-aware next and previous pagination URLs through `HttpContext.PageUrl(...)`.
 - Supports explicit version pins when cross-version links are intentional.
-- Requires no additional service registration beyond normal `Asp.Versioning` setup.
+- Configures common pagination through the existing ASP options slot, without adding versioning dependencies to `Trellis.Asp` or `Trellis.ServiceDefaults`.
 
 ## Behavior to Know
 
@@ -51,6 +59,11 @@ return pageResult.ToHttpResponse(
 - Neutral and unversioned destinations skip injection. `WithVersionedRoute` also removes a supplied `api-version` value in those cases.
 - Location helpers support URL-segment pins. Explicit `PageUrl` pins intentionally do not.
 - `TRLS023` warns when a versioned controller creates a Location without version handling.
+
+**Alpha migration:** implicit `PageUrl` overloads moved to `Trellis.Asp`. Import that
+namespace and enable `UseVersionedPageUrls()` in versioned hosts. Typed-pin extension
+syntax is unchanged and does not require the host pagination policy. Location setup
+is unchanged.
 
 The complete resolution order, route-value precedence, migration notes, and diagnostics belong in the package API reference rather than this landing page.
 

@@ -21,7 +21,10 @@ return result.ToHttpResponse(options => options
     .WithVersionedRoute());
 ```
 
-For paginated responses, use `HttpContext.PageUrl(...)` as the `nextUrlBuilder` or direction-aware `urlBuilder`.
+For paginated responses, register `AddTrellisAsp(o => o.UseVersionedPageUrls())`
+(or `UseAsp(asp => asp.UseVersionedPageUrls())`) once alongside normal
+`AddApiVersioning(...)` setup. Then use common `Trellis.Asp` `HttpContext.PageUrl(...)`
+as the `nextUrlBuilder` or direction-aware `urlBuilder`.
 
 ## Key Features
 
@@ -31,9 +34,13 @@ For paginated responses, use `HttpContext.PageUrl(...)` as the `nextUrlBuilder` 
 - Builds version-aware next and previous pagination URLs.
 - Supports explicit version pins for intentional cross-version links.
 - Skips version injection for neutral and unversioned destinations.
-- Requires no additional service registration beyond normal `Asp.Versioning` setup.
+- Enables common pagination through the existing ASP options slot; unversioned applications do not need this package.
 
-Location targets must be uniquely addressable. `PageUrl` supports shared names across versioned controllers with matching route templates/defaults: self-pagination uses the active endpoint; cross-route links and pins select a uniquely mapped version. Missing or genuinely ambiguous destinations fail explicitly. Location helpers support URL-segment pins; explicit `PageUrl` pins intentionally do not.
+**Alpha migration:** implicit `PageUrl` overloads now belong to `Trellis.Asp`; import
+that namespace and enable the policy in versioned hosts. Typed-pin calls and Location
+setup remain unchanged. Explicit pagination pins require no host pagination policy.
+
+Location targets must be uniquely addressable. `PageUrl` supports shared names across versioned controllers with matching route templates, defaults, required values, and parameter policies: self-pagination uses the active endpoint; cross-route links and pins select a uniquely mapped version. Missing or genuinely ambiguous destinations fail explicitly. Location helpers support URL-segment pins; explicit `PageUrl` pins intentionally do not.
 
 ## Documentation
 

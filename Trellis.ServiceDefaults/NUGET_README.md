@@ -39,6 +39,11 @@ Call `AddTrellis(...)` once. If omitted, the composition features are intentiona
 
 For most applications, use the builder instead of mixing standalone `AddTrellis*` calls. Provider-specific stores and adapters remain separate registrations by design.
 
+Common `HttpContext.PageUrl(...)` builders require no versioning SDK. Versioned hosts
+install `Trellis.Asp.ApiVersioning` and configure the existing
+`UseAsp(asp => asp.UseVersionedPageUrls())` callback alongside normal API-versioning
+registration; ServiceDefaults itself remains versioning-independent.
+
 Native AOT hosts with struct `Result<T>` responses need the [literal closed-generator
 pipeline](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-mediator.html#native-aot-registration)
 and direct typed resource registrations, without `UseMediator` or slots that imply it:

@@ -28,6 +28,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 
 - Converts `Result<T>`, `Result<Unit>`, `Result<Page<T>>`, and `Result<WriteOutcome<T>>` into consistent ASP.NET Core responses.
 - Parses raw cursor/limit query input into `PageRequest` consistently across MVC and Minimal APIs without collapsing an empty cursor into absence.
+- Builds named-route pagination URLs through `HttpContext.PageUrl(...)` without an API-versioning dependency.
 - Emits RFC 9457 Problem Details for typed Trellis failures.
 - Supports created-resource locations, ETags, conditional requests, `Prefer`, cache controls, and pagination links.
 - Supplies endpoint-builder locations for `WriteOutcome.Created` when its optional location is absent; an explicit outcome location wins.
@@ -37,7 +38,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Adds opt-in `Idempotency-Key` middleware with pluggable stores.
 - Includes the AOT-friendly scalar JSON-converter source generator.
 
-Minimal API scalar validation also requires `app.UseScalarValueValidation()` and `.WithScalarValueValidation()` on participating endpoints. Version-aware `Location` and pagination links live in `Trellis.Asp.ApiVersioning`.
+Minimal API scalar validation also requires `app.UseScalarValueValidation()` and `.WithScalarValueValidation()` on participating endpoints. Common `PageUrl` builders live here; versioned hosts install `Trellis.Asp.ApiVersioning` and configure `AddTrellisAsp(o => o.UseVersionedPageUrls())` (or `UseAsp`) once. Typed pins and `WithVersionedRoute()` remain optional-package helpers.
 
 For ASP.NET Core rate limiting, keep policies and partitioning in the application and call
 `options.UseTrellisRejectionHandler()` inside `AddRateLimiter(...)`. The adapter owns

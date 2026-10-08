@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TrellisApiRefName>asp-apiversioning</TrellisApiRefName>
-    <Description>Target-aware API-versioning helpers for Trellis.Asp. WithVersionedRoute() versions Location headers from CreatedAtRoute(...), CreatedAtAction(...), and WithLocation(...) using the destination's actual version mappings. Supports query values and URL-segment parameters, including explicit segment pins. Neutral and missing-metadata destinations skip injection and remove supplied api-version values. PageUrl supplies version-aware pagination links while retaining ambient segment routing and rejecting explicit segment pins.</Description>
+    <PackageValidationBaselineVersion>3.0.0-alpha.554</PackageValidationBaselineVersion>
+    <Description>Target-aware API-versioning helpers for Trellis.Asp. WithVersionedRoute() versions Location headers using the destination's actual mappings, including URL-segment pins. UseVersionedPageUrls() configures common PageUrl pagination builders through existing ASP options; typed PageUrl pins remain available. Pagination retains ambient segment routing and rejects explicit segment pins. Neutral and unversioned destinations skip injection.</Description>
     <PackageTags>trellis;api-versioning;asp;versioning;result;railway-oriented;functional-programming</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
