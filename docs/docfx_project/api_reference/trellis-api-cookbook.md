@@ -2339,7 +2339,7 @@ foreach (var li in order.LineItems)
 return order.Submit();
 ```
 
-For an ordinary failed result, `TransactionalCommandBehavior` skips its automatic commit; it does not restore in-memory fields or domain events. Those changes remain visible to subsequent code using the same aggregate instances, and to unit tests asserting post-handler state. Even an explicit database rollback is not in-memory compensation.
+For an ordinary failed result, `TransactionalCommandBehavior` skips its automatic commit; it does not restore in-memory fields or domain events. `Result.FailAfterCommit` or another response with `IPersistOnFailure.PersistOnFailure` set to `true` still requests a commit, so partial staged changes can be persisted despite the failed response; see [persist-on-failure dispatch](trellis-api-mediator.md#domaineventdispatchbehavior). Those changes remain visible to subsequent code using the same aggregate instances, and to unit tests asserting post-handler state. Even an explicit database rollback is not in-memory compensation.
 
 **The invariant the recipe teaches.**
 
@@ -2470,6 +2470,8 @@ When a later operation can still reject, propagate its result through `Bind` or 
 Consider a return accepted until an inclusive deadline. Preflight reads one tick before that deadline. The same clock object later returns one tick after it. Releasing stock first and then returning the order leaves released stock and its event behind when the return rejects; no thread or intervening `await` is needed.
 
 Choose the business policy explicitly. The following compile-checked examples use application-defined `ReturnWindowOrder` and `ReturnInventory` types from the snippet: the order's return method checks eligibility before changing its return timestamp or raising an event; inventory has a time-independent release guard. The order transition cannot invalidate that guard, and neither example freezes inventory.
+
+The two policy blocks below are manually mirrored from the compiled snippet. `TRLDOC006` checks recipe/snippet presence, not code equality; keep these blocks synchronized with the corresponding source methods.
 
 **Execution-time eligibility:** recheck the live clock at the transition attempt, and perform that potentially rejecting transition before inventory changes, after all other preflight checks. A request admitted by preflight can now be rejected with unchanged stock, return metadata, and events.
 
