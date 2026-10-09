@@ -131,8 +131,9 @@ public sealed class ReturnOrderHandler(
         if (preflight.IsFailure)
             return Result.Fail<Order>(preflight.Error);
 
-        // Pass 1 succeeded for every aggregate — every Pass 2 mutation below has a matching
-        // Can* predicate that just returned Ok, so the mutation is provably non-failing.
+        // Each Product is released once using its validated total. With exclusive instance
+        // ownership, these time-independent guards stay valid through earlier releases.
+        // CanReturn does not depend on stock; the clock below supplies only an event timestamp.
         foreach (var item in releasePlan)
             item.Product.ReleaseStock(item.Quantity).Discard();
 

@@ -50,6 +50,8 @@ MyWorker
 WrongHandler
 Recipe1InheritedSurface
 CanReserve
+ReturnWindowOrder
+ReturnInventory
 ApprovedAt
 TryCreateWithValidation
 HandleNotFound

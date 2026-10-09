@@ -1918,7 +1918,7 @@ public async ValueTask<Result<DraftOrderId>> HandleAccumulating(CreateDraftOrder
 
 The wrong answer: `if (!dict.TryGetValue(id, out var related)) continue;` and move on. The handler appears to succeed, the primary aggregate transitions, the unit of work commits, and the side effect is silently skipped for the missing element. The orchestration has broken its own post-condition ("stock is released for every line item") with no signal to the caller and no rollback.
 
-The right answer: fail-loud. Return `Error.NotFound` referencing the missing related aggregate so the unit of work rolls back the primary aggregate's mutation. The invariant — "every line item resolves to a Product, or the command fails atomically" — is now enforced and observable.
+The right answer: fail-loud before mutation. Return `Error.NotFound` referencing the missing related aggregate so the ordinary failed command is not automatically committed. Do not rely on the unit of work to restore a primary aggregate already mutated in memory. The presence invariant — "every line item resolves to a Product, or no mutation begins" — is now enforced and observable.
 
 Two operating principles drive the snippet below:
 
@@ -1983,9 +1983,9 @@ public sealed class ReturnOrderHandler(
         if (preflight.IsFailure)
             return Result.Fail<Order>(preflight.Error);
 
-        // Pass 1 succeeded for every aggregate — every Pass 2 mutation below has
-        // a matching Can* predicate that just returned Ok, so the mutation is
-        // provably non-failing. Discard() marks the Result as consciously dropped.
+        // Each Product is released once using the validated total. These time-independent
+        // guards remain valid: earlier releases affect neither other Products nor CanReturn.
+        // The clock below supplies only an event timestamp, not an eligibility input.
         foreach (var item in releasePlan)
             item.Product.ReleaseStock(item.Quantity).Discard();
 
@@ -1994,7 +1994,7 @@ public sealed class ReturnOrderHandler(
 }
 ```
 
-`CanReturn(reason)` is an application-defined pure predicate, also called by `Return`: it checks the reason, eligible order state, and positive line quantities before inventory changes. The sample's `CanReleaseStock(long)` / `ReleaseStock(long)` accept the grouped total; summing into `long` prevents an `int` overflow before validation. Both passes use the same materialized plan, once per product, with no intervening awaits or mutations that invalidate the predicates. Checking two separate quantities of 3 against 5 reserved is not equivalent to checking their total of 6. Add regression cases for duplicate product ids, invalid reasons, and an already-returned order, asserting unchanged inventory and no new domain events on failure.
+`CanReturn(reason)` is an application-defined pure predicate, also called by `Return`: it checks the reason, eligible order state, and positive line quantities before inventory changes. The sample's `CanReleaseStock(long)` / `ReleaseStock(long)` accept the grouped total; summing into `long` prevents an `int` overflow before validation. Both passes use the same materialized plan, once per product, with exclusive instance ownership and no mutations that invalidate later predicates. The sample's return eligibility is time-independent; `timeProvider.GetUtcNow()` supplies only the event timestamp. If a return window is added, follow [Recipe 25's time policy](#time-dependent-eligibility-execution-time-versus-snapshot-time) rather than assuming the same provider freezes time. Checking two separate quantities of 3 against 5 reserved is not equivalent to checking their total of 6. Add regression cases for duplicate product ids, invalid reasons, and an already-returned order, asserting unchanged inventory and no new domain events on failure.
 
 **The test-design principle: Partial-Failure Atomicity.**
 
@@ -2086,7 +2086,8 @@ var preflight = releasePlan
 if (preflight.IsFailure)
     return Result.Fail<Order>(preflight.Error);
 
-// Pass 2: every mutation has a matching Can* that just returned Ok — provably non-failing.
+// Pass 2: grouped Products and time-independent, noninterfering guards preserve the
+// preflight proof under exclusive instance ownership, not merely because Can* passed.
 foreach (var item in releasePlan)
     item.Product.ReleaseStock(item.Quantity).Discard();
 ```
@@ -2338,13 +2339,13 @@ foreach (var li in order.LineItems)
 return order.Submit();
 ```
 
-`TransactionalCommandBehavior` rolls the DB commit back on failure, but the in-memory aggregate state stays mutated for the rest of the request — visible to any subsequent code that reads the same aggregate within the request scope, and outright observable in unit tests that arrange the same `Product` instance and assert on its post-handler state.
+For an ordinary failed result, `TransactionalCommandBehavior` skips its automatic commit; it does not restore in-memory fields or domain events. `Result.FailAfterCommit` or another response with `IPersistOnFailure.PersistOnFailure` set to `true` still requests a commit, so partial staged changes can be persisted despite the failed response; see [persist-on-failure dispatch](trellis-api-mediator.md#domaineventdispatchbehavior). Those changes remain visible to subsequent code using the same aggregate instances, and to unit tests asserting post-handler state. Even an explicit database rollback is not in-memory compensation.
 
 **The invariant the recipe teaches.**
 
-> Every fallible domain check across every participating aggregate must succeed BEFORE the first state-changing call. A "fallible domain check" is any `Result<T>`-returning operation that can encode a domain rejection. After validation succeeds, every Pass 2 call has a matching `Can*` predicate from Pass 1, so the mutation is provably non-failing — no compensating-rollback machinery required.
+> Preflight every fallible domain check across every participating aggregate BEFORE the first state-changing call. Then prove that each matching guard remains satisfied until its mutator executes, including through earlier Pass 2 mutations and changes to external inputs. A matching `Can*` plus unchanged fields between passes is not sufficient.
 
-**Two design moves make this work.**
+**Two design moves in the stock example.**
 
 - **Pure `Can*` predicate alongside the mutator.** The aggregate exposes a side-effect-free `CanReserve(qty) → Result<Trellis.Unit>` that returns the same domain error the mutator would, and a `Reserve(qty)` that internally delegates to `CanReserve` before mutating. Same shape as Recipe 9's state-machine `CanFire`+`Fire`/`FireResult` pattern, lifted from "single transition on one aggregate" to "collection of operations across many aggregates."
 - **Mutation-plan grouping for duplicate keys.** If the input collection can name the same related aggregate twice (e.g., two line items with the same `ProductId`), aggregate the duplicates into a single `(Product, totalQuantity)` plan entry before validating. Validating each line independently against unchanged stock is **not** equivalent to mutating them sequentially: two `CanReserve(3)` calls against `Stock=5` both pass, but the second `Reserve(3)` then fails. Grouping eliminates the aliasing.
@@ -2374,9 +2375,8 @@ public sealed class Product : Aggregate<ProductId>
                 detail: $"Cannot reserve {quantity} from stock of {Stock}."));
 
     // Mutator — re-checks via CanReserve as defense in depth so it is safe to call
-    // outside the two-pass orchestration. When called after a matching Pass 1 CanReserve
-    // succeeded in a single-threaded handler with no intervening mutations, Reserve is
-    // provably non-failing.
+    // outside the two-pass orchestration. Success remains proved only while quantity and
+    // Stock stay unchanged from validation until this call. This guard has no clock input.
     public Result<Trellis.Unit> Reserve(int quantity) =>
         CanReserve(quantity).Tap(() => Stock -= quantity);
 }
@@ -2439,10 +2439,10 @@ public sealed class SubmitOrderHandler(
         if (validation.Error is { } err)
             return Result.Fail<Order>(err);
 
-        // PASS 2 — apply every mutation. Each call is provably non-failing because its
-        // matched Can* predicate already passed in Pass 1 AND nothing has mutated the
-        // in-memory aggregate state between passes (single-threaded handler). Discard() is
-        // the idiomatic acknowledged-discard that suppresses TRLS001.
+        // PASS 2 — each distinct Product is reserved once using the validated total.
+        // Earlier reservations affect neither other Products nor the time-independent
+        // CanSubmit guard. Exclusive ownership keeps inputs stable until each call.
+        // Discard() acknowledges proved domain success; it does not enforce the proof.
         foreach (var (product, quantity) in plan)
             product.Reserve(quantity).Discard();
 
@@ -2451,16 +2451,63 @@ public sealed class SubmitOrderHandler(
 }
 ```
 
-The complete compile-checked snippet (with duplicate-product-aware test stubs and the anti-pattern `WrongHandler` under `#if FALSE`) lives at `Examples/CookbookSnippets/Recipe25_TwoPassValidateThenMutate.cs` in the framework repository.
+The complete compile-checked snippet (including the time-policy examples below and the anti-pattern `WrongHandler` under `#if FALSE`) lives at `Examples/CookbookSnippets/Recipe25_TwoPassValidateThenMutate.cs` in the framework repository. `Examples/CookbookSnippets.Tests/TwoPassMutationTests.cs` exercises the stock example, clock boundary, and intra-pass guard invalidation.
 
 **The Pass-2-cannot-fail invariant — what makes it hold.**
 
-The recipe's correctness rests on two preconditions:
+The recipe's domain-success proof requires all of these conditions:
 
-1. **Every Pass 2 call has a matching `Can*` in Pass 1.** This is a static property of the handler shape — every mutator invoked after the validation `if (validation.Error is { } err) return ...` boundary must have appeared, by name and arguments, in the Pass 1 expression.
-2. **Nothing mutates the participating aggregates between passes.** Trivially satisfied for a single-threaded async handler operating on aggregates loaded into the request scope. **Not satisfied** if Pass 1 and Pass 2 are split across threads, if another handler runs concurrently against the same instances, or if a Pass-1 callback (e.g., a logger) is allowed to mutate state. Do not parallelize the mutation pass.
+1. **Matching guards and inputs.** Every mutator has a pure preflight guard that covers all its domain rejection conditions, using the same arguments and eligibility policy. Group repeated keys and enforce per-line invariants before grouping.
+2. **Stable guard dependencies until each call.** Aggregate state, aliased collections, clocks, permissions, and other external inputs cannot invalidate a guard after preflight but before its own mutator. Exclusive ownership matters; request scope, single-threaded execution, and absence of `await` do not freeze time or protect externally shared state. Reusing one `TimeProvider` object is not reusing one decision instant.
+3. **No intra-pass invalidation.** Earlier Pass 2 mutations must preserve every later guard. Grouping repeated product keys solves the stock example's aliasing problem, not every ordering problem: freezing inventory before releasing it invalidates a guard requiring unfrozen inventory, even when both guards passed and nothing changed between passes.
 
-When both preconditions hold, `Discard()` on each Pass 2 mutator call is correct: TRLS001 is suppressed and the result really cannot fail. If you cannot prove (1) or (2) in your context, you are no longer using the two-pass pattern — you are doing transactional compensation, which needs explicit rollback machinery and is out of scope for this recipe.
+The worked stock example meets these conditions under exclusive instance ownership: guards are time-independent, the materialized plan mutates each product once, and stock reservations do not change another product's stock or the order's line count. Its `Discard()` calls therefore acknowledge proved domain success; they do not validate or enforce the proof, and suppressing TRLS001 is not evidence of atomicity. This proof does not cover exceptions, external I/O failure, or concurrent database ownership changes.
+
+When a later operation can still reject, propagate its result through `Bind` or an explicit failure branch. **Propagation alone does not undo earlier mutations.** Reorder a potentially rejecting operation before the first side effect only if its success cannot invalidate later guards, or use an explicitly designed preparation/isolation/compensation strategy. Do not discard an unproved result or claim database rollback repairs the object graph.
+
+### Time-dependent eligibility: execution-time versus snapshot-time
+
+Consider a return accepted until an inclusive deadline. Preflight reads one tick before that deadline. The same clock object later returns one tick after it. Releasing stock first and then returning the order leaves released stock and its event behind when the return rejects; no thread or intervening `await` is needed.
+
+Choose the business policy explicitly. The following compile-checked examples use application-defined `ReturnWindowOrder` and `ReturnInventory` types from the snippet: the order's return method checks eligibility before changing its return timestamp or raising an event; inventory has a time-independent release guard. The order transition cannot invalidate that guard, and neither example freezes inventory.
+
+The two policy blocks below are manually mirrored from the compiled snippet. `TRLDOC006` checks recipe/snippet presence, not code equality; keep these blocks synchronized with the corresponding source methods.
+
+**Execution-time eligibility:** recheck the live clock at the transition attempt, and perform that potentially rejecting transition before inventory changes, after all other preflight checks. A request admitted by preflight can now be rejected with unchanged stock, return metadata, and events.
+
+```csharp
+public static Result<Trellis.Unit> AtExecutionTime(
+    ReturnWindowOrder order, ReturnInventory inventory, int quantity, TimeProvider timeProvider)
+{
+    var validation = inventory.CanReleaseStock(quantity)
+        .Bind(_ => order.CanReturn(timeProvider.GetUtcNow()));
+    if (validation.IsFailure)
+        return validation;
+
+    var executionAt = timeProvider.GetUtcNow();
+    return order.Return(executionAt)
+        .Bind(_ => inventory.ReleaseStock(quantity, executionAt));
+}
+```
+
+**Snapshot-time eligibility:** if the business policy accepts eligibility at one chosen decision instant, capture that instant once and pass it to both guard and transition. The same boundary request is consistently accepted even if the clock advances before mutation. This intentionally differs from execution-time rejection; it must not silently replace a requirement to check the live deadline.
+
+```csharp
+public static Result<Trellis.Unit> AtSnapshotTime(
+    ReturnWindowOrder order, ReturnInventory inventory, int quantity, TimeProvider timeProvider)
+{
+    var decisionAt = timeProvider.GetUtcNow();
+    var validation = inventory.CanReleaseStock(quantity)
+        .Bind(_ => order.CanReturn(decisionAt));
+    if (validation.IsFailure)
+        return validation;
+
+    return order.Return(decisionAt)
+        .Bind(_ => inventory.ReleaseStock(quantity, decisionAt));
+}
+```
+
+Both examples require exclusive ownership and stable stock-release inputs. Transition-first ordering is not a general atomicity guarantee if later mutations can still fail. Capturing time stabilizes only the time input, not permissions, inventory, or other mutable dependencies.
 
 **Choosing fail-fast vs accumulating for the validation pass.**
 
@@ -2487,8 +2534,8 @@ foreach (var li in order.LineItems)
 return order.Submit();
 
 // ✅ Two-pass validate-then-mutate — same shape as the worked example above. Pass 1
-// proves every Can* succeeds across every participating aggregate; Pass 2 then calls
-// the matching mutators with provably-non-failing semantics.
+// checks every guard; exclusive ownership, grouped products, and time-independent
+// noninterfering guards keep each matching mutation's domain success proved.
 var plan = order.LineItems
     .GroupBy(li => li.ProductId)
     .Select(g => (Product: byId[g.Key], Quantity: g.Sum(li => li.Quantity)))
@@ -2531,7 +2578,7 @@ public async Task Submit_with_one_unsatisfiable_line_does_not_reserve_any_stock(
 }
 ```
 
-Together with the duplicate-product case (two lines for the same product whose summed quantity exceeds available stock), these are the two failure-mode tests that catch every form of this bug.
+Also test duplicate products whose summed quantity exceeds available stock. These two cases cover the worked stock example, not every cross-aggregate operation. For time-dependent or interacting guards, add deterministic clock changes between preflight and transition, intra-pass invalidation, and each supported business policy's stock/metadata/event assertions. The executable regressions also pin the exact deadline and one tick on either side.
 
 ---
 
