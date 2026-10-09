@@ -2,8 +2,8 @@
 //
 // This snippet pins the worked example used in cookbook Recipe 25: every fallible domain check
 // across every participating aggregate must succeed BEFORE the first state-changing call.
-// After validation succeeds, every Pass 2 call has a matching Can* predicate from Pass 1, so
-// the mutation is provably non-failing in a single-threaded handler.
+// A matching Can* is not enough: its inputs must stay stable until its mutator runs, including
+// through earlier Pass 2 mutations. A clock can change even without threads or intervening awaits.
 //
 // Key invariants the snippet demonstrates:
 //   1. Aggregates expose a pure Can* predicate alongside the matching mutator (Product.CanReserve
@@ -13,8 +13,11 @@
 //      two line items for the same product each pass CanReserve against unchanged stock; the
 //      sequential mutation then fails on the second item — the exact bug the recipe prevents.
 //   3. Recipe 22's presence preflight runs first so dictionary lookups in Pass 2 cannot throw.
-//   4. Pass 2 calls .Discard() on each mutator's Result<Trellis.Unit>, suppressing TRLS001 with the
-//      documented justification ("Can* in Pass 1 passed; mutation cannot fail").
+//   4. These guards are time-independent. Each Product is mutated once; changing its stock cannot
+//      invalidate another Product's guard or Order.CanSubmit. With exclusive instance ownership,
+//      this proves the domain results discarded in Pass 2 cannot fail.
+//   5. The internal return examples contrast live transition-time eligibility with a captured
+//      decision instant. Their tests also show a freeze invalidating a later stock-release guard.
 namespace CookbookSnippets.Recipe25;
 
 using System.Collections.Generic;
@@ -66,8 +69,8 @@ public sealed class Product : Aggregate<ProductId>
                 detail: $"Cannot reserve {quantity} from stock of {Stock}."));
 
     // Mutator — re-checks via CanReserve so the method is safe to call outside the
-    // two-pass orchestration. When called after a matching Pass 1 CanReserve succeeded
-    // (single-threaded handler, no intervening mutations), Reserve is provably non-failing.
+    // two-pass orchestration. Success remains proved only while this quantity and Stock stay
+    // unchanged from validation until this call; the guard has no external/time-dependent input.
     public Result<Trellis.Unit> Reserve(int quantity) =>
         CanReserve(quantity).Tap(() => Stock -= quantity);
 }
@@ -153,10 +156,10 @@ public sealed class SubmitOrderHandler(
         if (validation.Error is { } err)
             return Result.Fail<Order>(err);
 
-        // PASS 2 — apply every mutation. Each call is provably non-failing because its
-        // matched Can* predicate already passed in Pass 1 AND nothing has mutated the
-        // in-memory aggregate state between passes (single-threaded handler). Discard() is
-        // the idiomatic acknowledged-discard that suppresses TRLS001.
+        // PASS 2 — each distinct Product is reserved once using the validated total. These
+        // mutations cannot invalidate another Product's guard or the time-independent
+        // CanSubmit guard. Exclusive ownership keeps their inputs stable until each call.
+        // Discard() acknowledges this proved domain success; it does not enforce the proof.
         foreach (var (product, quantity) in plan)
             product.Reserve(quantity).Discard();
 
@@ -164,11 +167,94 @@ public sealed class SubmitOrderHandler(
     }
 }
 
+internal sealed class ReturnWindowOrder(OrderId id, System.DateTimeOffset deadline) : Aggregate<OrderId>(id)
+{
+    public System.DateTimeOffset? ReturnedAt { get; private set; }
+
+    public Result<Trellis.Unit> CanReturn(System.DateTimeOffset decisionAt) =>
+        Result.Ensure(ReturnedAt is null,
+                static () => Error.InvalidInput.ForRule(code: "order.already-returned"))
+            .Bind(_ => Result.Ensure(decisionAt <= deadline,
+                static () => Error.InvalidInput.ForRule(code: "order.return-window-expired")));
+
+    public Result<Trellis.Unit> Return(System.DateTimeOffset decisionAt) =>
+        CanReturn(decisionAt).Tap(() =>
+        {
+            ReturnedAt = decisionAt;
+            DomainEvents.Add(new ReturnCompleted(Id, decisionAt));
+        });
+}
+
+internal sealed record ReturnCompleted(OrderId OrderId, System.DateTimeOffset OccurredAt) : IDomainEvent;
+
+internal sealed class ReturnInventory(ProductId id, int reserved) : Aggregate<ProductId>(id)
+{
+    public int Reserved { get; private set; } = reserved;
+
+    public bool IsFrozen { get; private set; }
+
+    public Result<Trellis.Unit> CanReleaseStock(int quantity) =>
+        Result.Ensure(!IsFrozen && quantity > 0 && quantity <= Reserved,
+            static () => Error.InvalidInput.ForRule(code: "stock.release-not-allowed"));
+
+    public Result<Trellis.Unit> ReleaseStock(int quantity, System.DateTimeOffset occurredAt) =>
+        CanReleaseStock(quantity).Tap(() =>
+        {
+            Reserved -= quantity;
+            DomainEvents.Add(new StockReleased(Id, quantity, occurredAt));
+        });
+
+    public Result<Trellis.Unit> CanFreeze() =>
+        Result.Ensure(!IsFrozen,
+            static () => Error.InvalidInput.ForRule(code: "stock.already-frozen"));
+
+    public Result<Trellis.Unit> Freeze(System.DateTimeOffset occurredAt) =>
+        CanFreeze().Tap(() =>
+        {
+            IsFrozen = true;
+            DomainEvents.Add(new InventoryFrozen(Id, occurredAt));
+        });
+}
+
+internal sealed record StockReleased(
+    ProductId ProductId, int Quantity, System.DateTimeOffset OccurredAt) : IDomainEvent;
+
+internal sealed record InventoryFrozen(ProductId ProductId, System.DateTimeOffset OccurredAt) : IDomainEvent;
+
+internal static class ReturnPolicies
+{
+    public static Result<Trellis.Unit> AtExecutionTime(
+        ReturnWindowOrder order, ReturnInventory inventory, int quantity, System.TimeProvider timeProvider)
+    {
+        var validation = inventory.CanReleaseStock(quantity)
+            .Bind(_ => order.CanReturn(timeProvider.GetUtcNow()));
+        if (validation.IsFailure)
+            return validation;
+
+        var executionAt = timeProvider.GetUtcNow();
+        return order.Return(executionAt)
+            .Bind(_ => inventory.ReleaseStock(quantity, executionAt));
+    }
+
+    public static Result<Trellis.Unit> AtSnapshotTime(
+        ReturnWindowOrder order, ReturnInventory inventory, int quantity, System.TimeProvider timeProvider)
+    {
+        var decisionAt = timeProvider.GetUtcNow();
+        var validation = inventory.CanReleaseStock(quantity)
+            .Bind(_ => order.CanReturn(decisionAt));
+        if (validation.IsFailure)
+            return validation;
+
+        return order.Return(decisionAt)
+            .Bind(_ => inventory.ReleaseStock(quantity, decisionAt));
+    }
+}
+
 #if FALSE
 // ❌ Single-loop mutate-as-you-validate — the lab anti-pattern. Tests against happy-path
 // orders pass; an order that fails on a later line item leaves earlier products in the
-// reserved state while the command returns failure. TransactionalCommandBehavior rolls
-// back the DB commit, but the in-memory aggregate state stays mutated for the rest of
+// reserved state while the command returns failure. Skipping the DB commit does not
+// restore in-memory aggregate state, which stays mutated for the rest of
 // the request — visible to any code that reads the same aggregate within the request scope.
 internal sealed class WrongHandler(
     IOrderRepository orders,
