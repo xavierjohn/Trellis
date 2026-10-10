@@ -7,14 +7,14 @@ using System.Text.RegularExpressions;
 using Trellis;
 
 /// <summary>
-/// Represents an email address value object with RFC 5322-compliant validation.
-/// Ensures that email addresses are syntactically valid and prevents invalid email data in the domain model.
+/// Represents an email address value object for a common subset of RFC 5322 address syntax.
+/// Keeps the supported email format and length checks in the domain model.
 /// </summary>
 /// <remarks>
 /// <para>
 /// EmailAddress is a domain primitive that encapsulates email address validation and provides:
 /// <list type="bullet">
-/// <item>RFC 5322 email format validation using a compiled regex</item>
+/// <item>Dot-atom-style local parts and multi-label domains, rather than the complete RFC 5322 grammar</item>
 /// <item>Type safety preventing mixing of email addresses with other strings</item>
 /// <item>Immutability ensuring email addresses cannot be changed after creation</item>
 /// <item>IParsable implementation for .NET parsing conventions</item>
@@ -25,12 +25,18 @@ using Trellis;
 /// <para>
 /// Validation rules:
 /// <list type="bullet">
-/// <item>Must not be null or empty</item>
+/// <item>Must not be null, empty, or whitespace</item>
 /// <item>Must contain an @ symbol separating local and domain parts</item>
-/// <item>Local part (before @): letters, digits, and special characters (!#$%&amp;'*+/=?^_`{|}~-)</item>
-/// <item>Domain part (after @): letters, digits, hyphens, and dots with valid structure</item>
-/// <item>Case-insensitive validation (email is stored as provided, not normalized)</item>
+/// <item>Local part (before @): letters, digits, and special characters (!#$%&amp;'*+/=?^_`{|}~-), optionally separated by single dots</item>
+/// <item>No leading, trailing, or consecutive dots in the local part</item>
+/// <item>Domain part (after @): at least two labels of letters, digits, and hyphens, with no leading or trailing label hyphens</item>
+/// <item>At most 254 characters overall and 64 in the local part, based on RFC 5321 length limits</item>
+/// <item>Case-insensitive validation; surrounding whitespace is trimmed and stored casing is preserved</item>
 /// </list>
+/// </para>
+/// <para>
+/// Quoted local parts, comments, display names, and domain literals are not accepted.
+/// This is not full RFC 5322 message parsing or an email deliverability check.
 /// </para>
 /// <para>
 /// Common use cases:
@@ -60,7 +66,7 @@ using Trellis;
 /// // Returns: Failure(Error.InvalidInput with detail "Email address is not valid.")
 /// 
 /// var invalid3 = EmailAddress.TryCreate(null);
-/// // Returns: Failure(Error.InvalidInput with detail "Email address is not valid.")
+/// // Returns: Failure(Error.InvalidInput with detail "Email address is required.")
 /// </code>
 /// </example>
 /// <example>
@@ -97,22 +103,34 @@ using Trellis;
 /// var result = EmailAddress.TryCreate("invalid", "userEmail");
 /// // Returns: Failure(Error.InvalidInput with field "userEmail")
 /// 
-/// // In API validation
+/// // In API validation; the application-owned RegisterAsync returns Task&lt;Result&lt;UserDto&gt;&gt;.
 /// public record RegisterUserRequest(string Email, string Password);
 /// 
+/// builder.Services.AddTrellisAsp();
+/// builder.Services.AddEndpointsApiExplorer();
+///
 /// app.MapPost("/register", (RegisterUserRequest request) =>
 ///     EmailAddress.TryCreate(request.Email, nameof(request.Email))
-///         .Bind(email => _authService.RegisterAsync(email, request.Password))
-///         .ToHttpResponse());
+///         .BindAsync(email => _authService.RegisterAsync(email, request.Password))
+///         .ToHttpResponseAsync());
 /// 
-/// // Invalid email response:
+/// // POST /register with { "email": "invalid", "password": "example" }:
+/// // Default 422 RFC 9457 Problem Details (request-specific traceId omitted):
 /// // {
-/// //   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+/// //   "type": "https://tools.ietf.org/html/rfc4918#section-11.2",
 /// //   "title": "One or more validation errors occurred.",
-/// //   "status": 400,
+/// //   "status": 422,
+/// //   "instance": "/register",
 /// //   "errors": {
 /// //     "email": ["Email address is not valid."]
-/// //   }
+/// //   },
+/// //   "code": "error.unspecified",
+/// //   "kind": "unprocessable-content",
+/// //   "fieldViolations": [{
+/// //     "code": "string.email",
+/// //     "detail": "Email address is not valid.",
+/// //     "location": { "in": "body", "pointer": "/email" }
+/// //   }]
 /// // }
 /// </code>
 /// </example>
@@ -193,9 +211,10 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
     /// </returns>
     /// <remarks>
     /// <para>
-    /// This method performs comprehensive email validation using a regex pattern that matches
-    /// RFC 5322 email address syntax. The validation is case-insensitive. Addresses are also
-    /// bounded by the RFC 5321 limits — 254 characters overall and 64 for the local part.
+    /// This method validates the supported dot-atom-style local part and multi-label domain
+    /// profile, not the complete RFC 5322 address grammar. Matching is case-insensitive;
+    /// surrounding whitespace is trimmed and stored casing is preserved. Length checks enforce
+    /// 254 characters overall and 64 for the local part, based on RFC 5321 limits.
     /// </para>
     /// <para>
     /// Activity tracing is automatically enabled for this method, allowing you to monitor
@@ -277,7 +296,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
         StringExtensions.TryParseScalarValue(s, out result);
 
     /// <summary>
-    /// Compiled regular expression for RFC 5322-compliant email validation.
+    /// Source-generated regular expression for the supported dot-atom-style email profile.
     /// </summary>
     /// <returns>A compiled <see cref="Regex"/> for email validation.</returns>
     /// <remarks>

@@ -33,6 +33,15 @@ public class EmailAddressTests
         result.Unwrap().Should().BeOfType<EmailAddress>();
     }
 
+    [Fact]
+    public void TryCreate_EmailAddress_SurroundingWhitespace_TrimsWithoutChangingCase()
+    {
+        var result = EmailAddress.TryCreate("  John.Doe+tag@Example.COM  ");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Value.Should().Be("John.Doe+tag@Example.COM");
+    }
+
     [Theory]
     [MemberData(nameof(GetGoodEmailAddresses))]
     public void Can_create_EmailAddress_try_parsing_valid_string(string? strEmail)
@@ -160,7 +169,9 @@ public class EmailAddressTests
     [
         "xavier@somewhere.com",
         "0987654321@example.com",
-        "_______@email.com"
+        "_______@email.com",
+        "john.doe+tag@company.co.uk",
+        "John.Doe+tag@Example.COM"
     ];
 
     public static TheoryData<string?> GetBadEmailAddresses() =>
@@ -170,7 +181,12 @@ public class EmailAddressTests
         "@com",
         "@#@@##@%^%#$@#$@#.com",
         "John Doe <example@email.com>",
-        "CAT…123@email.com"
+        "CAT…123@email.com",
+        "\"quoted local\"@example.com",
+        "user(comment)@example.com",
+        "user@[127.0.0.1]",
+        "user@localhost",
+        "user..name@example.com"
     ];
 
     #region RFC 5321 length limits

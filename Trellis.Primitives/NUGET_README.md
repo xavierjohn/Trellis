@@ -40,6 +40,20 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 - `GeoCoordinate` validates finite latitude/longitude and calculates approximate in-memory great-circle distances; `GeoBounds` builds conservative one- or two-box spherical radius prefilters.
 - `WeeklyPeriod` and `WeeklySchedule` model recurring local-clock availability in an IANA time zone.
 
+## Email and hostname validation
+
+`EmailAddress` supports a common dot-atom-style local part and multi-label domain, not
+the complete RFC 5322 grammar. Quoted local parts, comments, display names, and domain
+literals are rejected. It trims surrounding whitespace and preserves casing; RFC
+5321-derived limits are 254 characters overall and 64 in the local part. This is a
+syntax check, not a deliverability check. Accepted email inputs are unchanged.
+
+`Hostname` accepts ASCII RFC 1123 labels of 1-63 characters and at most 253 characters
+after trimming, including separating dots. RFC 1035's 255-octet DNS wire limit includes
+label-length bytes and the root terminator. A trailing root dot is not accepted.
+**Breaking correction:** previously accepted 254- and 255-character hostnames now fail
+validation because they exceed that encoded limit.
+
 ## Geographic coordinates
 
 ```csharp

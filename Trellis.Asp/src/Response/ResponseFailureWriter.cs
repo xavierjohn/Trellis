@@ -508,7 +508,7 @@ internal static class ResponseFailureWriter
         }
         else if (retry.At is { } at)
         {
-            // RFC 7231 §7.1.1.1 IMF-fixdate form, e.g. "Sun, 06 Nov 1994 08:49:37 GMT".
+            // RFC 9110 §5.6.7 IMF-fixdate form, e.g. "Sun, 06 Nov 1994 08:49:37 GMT".
             response.Headers["Retry-After"] = at.UtcDateTime.ToString("r", CultureInfo.InvariantCulture);
         }
     }
