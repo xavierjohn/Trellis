@@ -3,7 +3,7 @@ title: Service Defaults (Composition Root)
 package: Trellis.ServiceDefaults
 topics: [composition-root, service-collection, di-wiring, builder, pipeline-ordering]
 related_api_reference: [trellis-api-servicedefaults.md, trellis-api-mediator.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-fluentvalidation.md, trellis-api-cookbook.md]
-last_verified: 2026-05-05
+last_verified: 2026-10-10
 audience: [developer]
 ---
 # Service Defaults (Composition Root)
@@ -35,7 +35,7 @@ builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connectionString
 
 Event dispatch retains nested aggregate responses until the owning successful unit-of-work commit; an outer DTO/Unit response still releases the nested batch. `UseOutbox<TContext>()` validates the reporting publisher during host startup and validates an integration publisher only when integration services are enabled. The collector is relay-translator-only: `Add` outside its active translation lease throws.
 
-`AddTrellis(o => ...)` records the requested modules during the configure callback, then applies them in this order:
+`AddTrellis(o => ...)` records requested modules during the configure callback. The following modules apply in this order; the [API reference](../api_reference/trellis-api-servicedefaults.md#behavior) lists every optional stage:
 
 1. **ASP integration** (`UseAsp`) — `AddTrellisAsp(...)`.
 2. **Scalar-value validation** (`UseScalarValueValidation`) — `AddScalarValueValidation()`.
@@ -44,7 +44,10 @@ Event dispatch retains nested aggregate responses until the owning successful un
 5. **Resource authorization** scanning (`UseResourceAuthorization(asm)`) when assemblies are supplied.
 6. **FluentValidation** adapter and (optionally) scanning (`UseFluentValidation`).
 7. **Domain event dispatch** (`UseDomainEvents`) — `DomainEventDispatchBehavior<,>` + default `IDomainEventPublisher` + scanned handlers.
-8. **EF Core Unit of Work** (`UseEntityFrameworkUnitOfWork<TContext>`) — applied last so `TransactionalCommandBehavior<,>` is the innermost behavior.
+8. **Integration event registration** (`UseIntegrationEvents`) — default best-effort publisher, scoped collector, and selected handler bindings.
+9. **EF Core Unit of Work** (`UseEntityFrameworkUnitOfWork<TContext>`) — innermost Mediator behavior.
+10. **Outbox relay** (`UseOutbox<TContext>`) — hosted-service registration, not a pipeline behavior.
+11. **Inbox dispatcher** (`UseInbox<TContext>`) — inbound service registration, not a pipeline behavior.
 
 This sequence preserves the central pipeline invariant: the transactional behavior is closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors. Domain events fire after the transaction commits because dispatch is registered before the unit of work.
 
@@ -55,6 +58,12 @@ can receive along with the loaded resource/leaf. Existing builder slots install 
 context automatically; no new `UseXxx` call is needed. Closed/open context descriptors
 normalize without duplicate execution, including resource registrations preceding the
 standard pipeline.
+
+## Integration delivery boundaries
+
+All `UseIntegrationEvents(...)` overloads wire the default **best-effort local** publisher when none is registered. It logs and swallows ordinary consumer failures, so the relay processes an integration row without retrying those consumers. For reliable broker handoff, replace the publisher with an adapter that awaits acceptance and propagates publication failures; acceptance is not downstream consumer success.
+
+`UseInbox<TContext>()` registers a separate non-swallowing consumption seam: handler writes through its context and the dedup row commit atomically. It does not reroute default local publication. An adapter must actually call `IInboxDispatcher.DispatchAsync` with the stable message id and expose failures for transport redelivery. See [outbox delivery semantics](integration-outbox.md#delivery-semantics) and [inbox wiring](integration-inbox.md#the-wiring).
 
 ## Mutually-exclusive slots
 

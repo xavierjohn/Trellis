@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation - integration delivery boundaries
+
+Integration-event guidance now distinguishes default best-effort local notification,
+broker publication acceptance, and transactional inbox consumption. Swallowed local
+consumer failures process integration outbox rows without a failed attempt or consumer
+retry; broker adapters must await acceptance and propagate publication failures for
+relay retry. Acceptance is not downstream processing, and inbox registration is not
+automatic publisher routing. Paired persisted-row characterizations pin these existing
+semantics; runtime behavior, registrations, cancellation, and message identity are unchanged.
+
 ### Breaking - hostname DNS length limit
 
 `Hostname` now accepts at most 253 ASCII presentation characters after trimming,

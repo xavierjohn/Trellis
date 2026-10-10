@@ -3,7 +3,7 @@ title: Transactional Outbox Integration
 package: Trellis.EntityFrameworkCore.Outbox
 topics: [outbox, domain-events, reliability, efcore, messaging]
 related_api_reference: [trellis-api-efcore-outbox.md, trellis-api-efcore.md, trellis-api-mediator.md]
-last_verified: 2026-06-20
+last_verified: 2026-10-10
 audience: [developer]
 ---
 # Transactional Outbox Integration
@@ -78,20 +78,22 @@ The capture is a `SaveChangesInterceptor` with a deliberate three-phase lifecycl
 2. **`SavedChanges`** (commit succeeded) — call each aggregate's `AcceptChanges()` to clear its events. Because this happens only after a successful commit, the in-pipeline `DomainEventDispatchBehavior` that runs next sees an empty event list and dispatches nothing — the relay is now the single dispatcher.
 3. **`SaveChangesFailed`** — detach the outbox rows the interceptor staged. The aggregate keeps its events, so a retry re-captures cleanly without leaving orphaned rows.
 
-The relay (`OutboxRelay<TContext>`) is a hosted `BackgroundService`. Each poll it opens a bookkeeping scope, reads a batch of pending rows ordered by the monotonic `Sequence` column, rehydrates each event from its stored type name, and publishes it through `IDomainEventPublisher` (the same fan-out the pipeline would use) **in its own per-message scope** — so a handler that injects `TContext` gets a fresh context, not the relay's bookkeeping one, and its tracked changes never ride the relay's save. It then marks each row processed and saves the batch.
+The relay (`OutboxRelay<TContext>`) is a hosted `BackgroundService`. Each poll it opens a bookkeeping scope, reads pending rows ordered by `Sequence`, and rehydrates each event from its stored type name. Domain rows use `IReportingDomainEventPublisher` to report per-handler outcomes; integration rows use `IIntegrationEventPublisher` for one publication handoff. Each publisher runs **in its own per-message scope**, so handlers receive a fresh context, not the bookkeeping context, and their tracked changes never ride the relay's save. The relay persists completion, failures, handler progress, and translated rows on its bookkeeping context.
 
 **Alpha schema change:** The `TrellisOutboxMessages` mapping includes nullable `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration or backfill is provided. Rows with null metadata remain valid. To collect the relay's child spans, add `Trellis.EntityFrameworkCore.Outbox` to your tracer provider's sources.
 
 ## Delivery semantics
 
-The guarantee is **at-least-once delivery**, and delivery means *every handler completed*:
+Domain dispatch, integration publication, and downstream consumption have **different completion boundaries**:
 
 - A domain message is marked processed only once **every** registered handler has completed. A handler that throws leaves the message pending, and the retry re-invokes **only the failed handlers** — `OutboxMessage.CompletedHandlers` records the ones that already succeeded, so a successful handler's side effect is never repeated because an unrelated sibling failed. (In-pipeline dispatch still swallows, because it runs post-commit and has nothing to retry with.)
 - Integration events produced by handlers that *did* succeed are staged even on a failed attempt — they must be, since the retry skips those handlers.
-- Resolution, deserialization, and publisher failures count toward `MaxAttempts` when failure bookkeeping persists. A bookkeeping save failure instead fails the drain: it logs `DrainFailed`, waits `PollInterval`, and leaves the previous lease/progress in the database. Repeated bookkeeping failures are not bounded by the message attempt cap; monitor them separately.
-- A crash between dispatch and the relay's bookkeeping save re-delivers the message to *every* handler. **Make your handlers idempotent.** The `OutboxMessage.Id` (a UUIDv7) is a stable per-message key you can use for consumer-side de-duplication.
+- **Default local integration notification is best-effort.** The publisher logs and swallows ordinary consumer failures and handler-resolution failures. It returns normally, so the relay processes the integration row even when a consumer failed; a new row has `Attempts == 0` and no relay `LastError`. There is no per-consumer retry progress, and later drains skip that processed row. A handler's `OperationCanceledException` propagates when the supplied token is canceled.
+- **Broker publication completes on acceptance, not consumption.** An adapter must await acceptance and propagate publication failures. An exposed non-cancellation failure leaves the row pending with an incremented failure count, retained error, and scheduled backoff; retry preserves the same message id and lineage. Successful publication clears the error and lease, but retains the failure count. Downstream processing requires its own boundary, such as an adapter invoking the non-swallowing inbox; enabling an inbox alone does not route publication through it.
+- Resolution, deserialization, and publisher exceptions other than `OperationCanceledException` count toward `MaxAttempts` when failure bookkeeping persists. An escaping `OperationCanceledException` aborts the drain without recording a failed attempt. A bookkeeping save failure also fails the drain: it logs `DrainFailed`, waits `PollInterval`, and leaves the previous lease/progress in the database. Repeated bookkeeping failures are not bounded by the message attempt cap; monitor them separately.
+- A crash before bookkeeping can repeat publication or domain handlers whose successful progress was not saved. **Make your handlers idempotent.** The `OutboxMessage.Id` (a UUIDv7) is stable across publication attempts and can support inbox deduplication when the transport preserves it.
 
-> **Upgrading?** This replaces the previous behavior, under which a throwing handler was silently treated as delivered. Messages whose handlers fail now retry and can park — alert on `OutboxRelay.MessageParked` — and the `TrellisOutboxMessages` table gains a `CompletedHandlers` column, so add a migration before deploying.
+> **Upgrading domain dispatch?** Reporting dispatch replaced the previous behavior for **domain rows**, under which a throwing domain handler was silently treated as delivered. Failed domain handlers now retry and can park — alert on `OutboxRelay.MessageParked` — and the table gains a `CompletedHandlers` column, so add a migration before deploying. Default integration fan-out remains best-effort; this change did not add per-integration-consumer retries.
 
 ## Retries, dead-lettering, and replay
 
@@ -158,7 +160,7 @@ public sealed class OrderPlacedTranslator(IIntegrationEventCollector collector) 
     }
 }
 
-// Wire the consumer side (or swap the publisher for a broker adapter).
+// Wire best-effort local consumers (or swap the publisher for a broker adapter).
 builder.Services.AddTrellis(trellis => trellis
     .UseDomainEvents(typeof(Program).Assembly)        // translators are domain-event handlers
     .UseIntegrationEvents(typeof(Program).Assembly)   // publisher + collector + in-process consumers
@@ -172,11 +174,15 @@ builder.Services.AddTrellis(trellis => trellis
 
 **Startup validation.** Before its background loop starts, the relay resolves `IReportingDomainEventPublisher` in a fresh scope. Integration-enabled hosts must also resolve `IIntegrationEventPublisher`; domain-only hosts need none. This validates DI construction, not broker connectivity. Post-commit Trellis ETag synchronization and event clearing ignore a newly canceled token because persistence already succeeded.
 
-The default `IIntegrationEventPublisher` fans out to in-process `IIntegrationEventHandler<T>` registrations — ideal for a modular monolith and for tests. To deliver to other services, replace that one registration with a message-broker adapter; aggregates, translators, and the outbox are unchanged. Delivery is at-least-once and a retried domain event re-runs its translator, so a consumer may see the same integration event more than once (with a different `OutboxMessage.Id` each time) — **dedupe on business identity, not on the message id.**
+The default `IIntegrationEventPublisher` provides **best-effort** local fan-out, suitable for modular monoliths and tests only when durable consumer retry is not required. Ordinary consumer failures are logged and swallowed, so the relay processes the row without retrying them. Replacing the publisher with a broker adapter leaves aggregates, translators, and the outbox unchanged, but that adapter must expose publication failures for retry. The post-commit/no-retry rationale for the default domain publisher does not apply here: the integration relay owns retries and can react only to failures it sees.
+
+Publication can repeat under the **same** integration row id after an exposed failure or a crash before bookkeeping; preserve that id for inbox deduplication. A translator that failed or whose success was not saved can also run again and create a fresh row with a **different** id, which needs business-identity deduplication. Ordinary domain retries skip translators already recorded as complete; a failed sibling does not by itself re-enroll their output.
 
 ### Writing a broker adapter
 
-Two things separate an adapter that works from one that quietly loses the inbox's guarantee.
+Three things separate reliable publication from a handoff that quietly loses retry or deduplication guarantees.
+
+**Expose publication failure.** Await broker acceptance before returning normally, and propagate publication failures to the relay. Logging and swallowing them would make the relay process the row and lose its retry opportunity. Acceptance is not proof that a subscriber has processed the message.
 
 **Publish through the message, not the event.** `IIntegrationEventPublisher` has exactly one method, `PublishAsync(OutboundIntegrationMessage, CancellationToken)`, whose `MessageId` is the outbox row's own id. Stamp it on the wire (`ServiceBusMessage.MessageId`, a Kafka header, and so on) so the consumer's `(ConsumerId, MessageId)` inbox dedup can collapse redeliveries of that row. Minting a fresh id per publish attempt makes every redelivery look like a new message and defeats the inbox. The bare-event overload was deliberately removed so an adapter cannot publish without the id by accident.
 
@@ -192,7 +198,7 @@ var names = IntegrationEventNameMap.FromAssemblies(typeof(OrderPlacedIntegration
 
 Include a version segment in the name. Once a message carrying it sits on a queue or in another team's code, changing the name is a breaking change; a new version can be consumed side-by-side instead.
 
-On the receiving end, build an `IntegrationEnvelope` from the wire id and the resolved type and hand it to `IInboxDispatcher`. Acknowledge the broker message on **both** `Processed` and `SkippedDuplicate` — the dispatcher contract says both mean the message is durably accounted for.
+On the receiving end, build an `IntegrationEnvelope` from the wire id and the resolved type and hand it to `IInboxDispatcher`. Acknowledge the broker message on **both** `Processed` and `SkippedDuplicate` — both mean the message is durably accounted for. Let dispatcher failures reach the transport for redelivery rather than acknowledging them. Merely registering `UseInbox` does not reroute the default publisher through this path.
 
 Bear in mind what the message id can and cannot do: it collapses redeliveries of a *single* outbox row, but a retried domain row re-runs its translator and stages a genuinely new row with its own id. That second duplicate still needs business-identity deduplication.
 

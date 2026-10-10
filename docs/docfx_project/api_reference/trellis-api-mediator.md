@@ -3,7 +3,7 @@ package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
 types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationContextBehavior<TMessage,TResponse>", "ActorCommandHandler<TCommand,TResponse>", "ActorQueryHandler<TQuery,TResponse>", "ActorResourceCommandHandler<TCommand,TResource,TResponse>", "ActorResourceQueryHandler<TQuery,TResource,TResponse>", "ActorResourceViaCommandHandler<TCommand,TLeaf,TOwner,TResponse>", "ActorResourceViaQueryHandler<TQuery,TLeaf,TOwner,TResponse>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", MediatorTraceProviderBuilderExtensions, TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-10
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring Trellis behaviors into the Mediator pipeline: command and query interfaces, validation, authorization, tracing, logging and unit-of-work behavior."
@@ -46,6 +46,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#patterns-index) — reci
 | Translate a domain event into an integration event | A domain-event handler injects `IIntegrationEventCollector` and calls `Add(...)` | [`IIntegrationEventCollector`](#iintegrationeventcollector) |
 | Consume an integration event in-process | Implement `IIntegrationEventHandler<TEvent>` | [`IIntegrationEventHandler`](#iintegrationeventhandler) |
 | Register integration-event publishing | `services.AddIntegrationEventDispatch(...)` or `services.AddIntegrationEventHandler<TEvent, THandler>()` | [`IntegrationEventDispatchServiceCollectionExtensions`](#integrationeventdispatchservicecollectionextensions) |
+| Distinguish best-effort local notification from broker acceptance and transactional consumption | The publisher implementation defines the handoff boundary; an inbox is a separate inbound path | [`IIntegrationEventPublisher`](#iintegrationeventpublisher), [`IIntegrationEventHandler`](#iintegrationeventhandler) |
 
 ## Common traps
 
@@ -53,6 +54,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#patterns-index) — reci
 - Loader precedence is application registration, then scanned custom loader, then framework shared-loader adapter. Both `AddResourceAuthorization(assemblies)` and `AddResourceLoaders(assembly)` replace an earlier framework adapter when a custom loader is discovered, so typed-first and scan-first composition select the same custom loader. Scanning preserves application-provided implementation, factory, and instance descriptors and leaves keyed registrations untouched.
 - `AddTrellisUnitOfWork<TContext>()` is order-independent versus `AddTrellisBehaviors()` and domain-event dispatch helpers; the transaction behavior is rehomed innermost.
 - Handlers should return Trellis `Result` / `Result<T>` failures, not throw for expected business outcomes.
+- The default integration publisher is **best-effort**, even when called by a durable outbox. Swallowed consumer failures do not reach the relay and are not retried. A broker publisher must await acceptance and propagate publication failures; registering an inbox does not route the default publisher through it.
 
 ### Cross-package preflight for pipeline changes
 
@@ -744,17 +746,19 @@ public interface IIntegrationEventHandler<in TEvent>
     where TEvent : IIntegrationEvent
 ```
 
-Handles an `IIntegrationEvent` - the in-process consumer side of the external contract. Implementations are resolved via DI and invoked once per matching event by the default [`IIntegrationEventPublisher`](#iintegrationeventpublisher). Dispatch matches the runtime type of the event **exactly**; base-type and interface-type handlers are not resolved automatically.
+Handles an `IIntegrationEvent`. The same DI registrations can be invoked by the default in-process [`IIntegrationEventPublisher`](#iintegrationeventpublisher) or by an inbound [`IInboxDispatcher`](trellis-api-efcore-inbox.md#iinboxdispatcher). Both match the event's runtime type **exactly**; base-type and interface-type handlers are not resolved automatically. The invocation path, not the handler interface, determines failure and delivery semantics.
 
-This is the framework's default, in-process consumer for integration events: it lets a modular monolith react to its own published contracts without a message broker, and it makes integration events testable. When you move a consumer to a separate service, replace the default publisher with a broker adapter and the producing side is unchanged.
+Default local fan-out is **best-effort**: ordinary handler failures are logged and swallowed so the remaining handlers still run. A handler's `OperationCanceledException` propagates when the supplied token is canceled. A swallowed failure makes the integration outbox row processed without a failed attempt or a consumer retry.
 
-Like domain-event handlers, integration-event handlers are best-effort side effects: the default publisher logs and swallows non-cancellation exceptions so one handler's failure does not block the others. Handlers must be idempotent - the transactional outbox delivers at least once.
+Transactional inbox dispatch is **non-swallowing**: a handler failure propagates before the dedup row and handler writes through the inbox's `TContext` are saved, allowing transport redelivery. Stage writes for the dispatcher to commit; do not call `SaveChanges` inside a handler. External calls and writes through another context are outside that atomic boundary.
+
+Handlers must be safe to re-run because crashes before outbox bookkeeping and transport redeliveries can repeat invocations. Inbox deduplication requires an adapter to call `IInboxDispatcher` with the stable message id; enabling `UseInbox` does not alter default local fan-out.
 
 **Methods**
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `ValueTask HandleAsync(TEvent integrationEvent, CancellationToken cancellationToken)` | `ValueTask` | Handles the specified integration event. The cancellation token is supplied by the publisher/relay. |
+| `ValueTask HandleAsync(TEvent integrationEvent, CancellationToken cancellationToken)` | `ValueTask` | Handles the specified integration event. The cancellation token is supplied by the publisher or inbox dispatcher. |
 
 ### IIntegrationEventPublisher
 **Declaration**
@@ -763,17 +767,19 @@ Like domain-event handlers, integration-event handlers are best-effort side effe
 public interface IIntegrationEventPublisher
 ```
 
-Publishes a single `IIntegrationEvent` to its consumers. The transactional outbox relay resolves this contract to deliver integration events durably after the producing transaction commits.
+Publishes a single `IIntegrationEvent` with its stable message identity. The transactional outbox relay resolves this contract after the producing transaction commits. **The implementation defines the publication completion boundary; the interface does not mandate log-and-swallow behavior.**
 
-The default implementation fans out to in-process `IIntegrationEventHandler<TEvent>` registrations for the event's runtime type - the right choice for a modular monolith and for tests. To deliver to other services, replace this registration with a message-broker adapter (for example Azure Service Bus or Kafka); the producing side - aggregates, translators, and the outbox - does not change. This is the seam that keeps the outbox transport-agnostic.
+The default implementation provides **best-effort local notification**, suitable for modular monoliths and tests that do not require durable consumer retries. It fans out to `IIntegrationEventHandler<TEvent>` registrations for the exact runtime type, logs and swallows ordinary handler failures, and continues with the remaining handlers. Handler-resolution failures are also logged and swallowed; no matching handlers is a debug-logged no-op. A handler's `OperationCanceledException` propagates when the supplied token is canceled. Normal completion makes the relay process the integration row even if consumers failed: there is no per-consumer outcome report or retry progress. A newly staged row then has `ProcessedAt` set, `Attempts == 0`, and no relay `LastError`.
 
-Implementations are expected to be best-effort: non-cancellation handler exceptions are logged and swallowed so one consumer's failure does not block the others. `OperationCanceledException` matching the supplied token is the one exception that propagates so the relay can abort cleanly.
+A **broker adapter** must await publication acceptance and propagate publication failures rather than log and swallow them. The relay can then retry the pending row; broker acceptance is not proof of downstream consumer processing. Replace the publisher registration to use a broker without changing aggregates, translators, or outbox capture.
+
+The default domain publisher's post-commit/no-retry rationale does **not** establish the integration publisher's guarantee: the integration relay owns durable retries, but can react only to failures exposed by its publisher. Transactional inbox consumption is a separate non-swallowing path; an adapter must call `IInboxDispatcher`, preserve the stable message id, and expose failures to the transport for redelivery. Registering an inbox alone does not reroute publication.
 
 **Methods**
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)` | `ValueTask` | Publishes an event together with the stable message identity a transport must stamp on the wire. Handler resolution uses `message.Event.GetType()`. Default implementation (`MediatorIntegrationEventPublisher`) is `internal` and registered by `AddIntegrationEventDispatch()`; it ignores the id, since in-process fan-out has no wire and nothing to deduplicate. |
+| `ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)` | `ValueTask` | Completes after the implementation's publication step: best-effort local fan-out for the default publisher, or broker acceptance for a broker adapter. Normal completion is not proof that every consumer succeeded. The internal default (`MediatorIntegrationEventPublisher`, registered by `AddIntegrationEventDispatch()`) resolves handlers using `message.Event.GetType()` and ignores the id; a transport or inbox-routing adapter must preserve it. |
 
 > **The message identity is part of the contract, not an optional extra.** This is the interface's only method, so a transport cannot publish without the id. Outbox delivery is at-least-once, so the same row can be published more than once; carrying `OutboundIntegrationMessage.MessageId` verbatim onto the wire is what makes redeliveries look like one message to the consumer's `(ConsumerId, MessageId)` inbox dedup. An adapter that minted its own id per publish attempt would silently defeat the inbox — making that unrepresentable is why the bare-event overload was removed rather than kept alongside.
 
@@ -976,13 +982,13 @@ DI registration helpers for the dispatch behavior, default publisher, and per-ev
 public static class IntegrationEventDispatchServiceCollectionExtensions
 ```
 
-DI registration helpers for integration-event publishing. Unlike domain-event dispatch, integration events are not dispatched by a command-pipeline behavior; they are produced via the [`IIntegrationEventCollector`](#iintegrationeventcollector) during domain-event handling and published by the transactional outbox relay. These helpers register the default in-process publisher, the scoped collector, and any in-process consumers.
+DI registration helpers for integration-event publishing. Unlike domain-event dispatch, integration events are not dispatched by a command-pipeline behavior; they are produced via the [`IIntegrationEventCollector`](#iintegrationeventcollector) during domain-event handling and published by the transactional outbox relay. These helpers register the default **best-effort** in-process publisher, the scoped collector, and any consumers. Handler bindings are also used by `IInboxDispatcher`; these registrations do not route publication through an inbox.
 
 **Methods**
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IServiceCollection AddIntegrationEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Registers the default `IIntegrationEventPublisher` (`MediatorIntegrationEventPublisher`, scoped) and the scoped `IIntegrationEventCollector` (`IntegrationEventCollector`, scoped). AOT/trim-friendly. **Idempotent**. To deliver integration events to other services, replace the `IIntegrationEventPublisher` registration with a message-broker adapter after calling this method. |
+| `public static IServiceCollection AddIntegrationEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Adds the default best-effort `IIntegrationEventPublisher` (`MediatorIntegrationEventPublisher`, scoped) and scoped `IIntegrationEventCollector` (`IntegrationEventCollector`, scoped) only when absent. AOT/trim-friendly. **Idempotent**. Replace the publisher with a broker adapter that awaits acceptance and propagates publication failures when reliable handoff is required. |
 | `public static IServiceCollection AddIntegrationEventHandler<TEvent, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler>(this IServiceCollection services) where TEvent : IIntegrationEvent where THandler : class, IIntegrationEventHandler<TEvent>` | `IServiceCollection` | Registers a single `IIntegrationEventHandler<TEvent>` implementation as scoped, and ensures the publisher + collector are wired. Use this for AOT/trim scenarios. **Idempotent**. |
 | `[RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use AddIntegrationEventHandler<TEvent, THandler> for AOT/trim scenarios.")] [RequiresDynamicCode("Constructs closed generic IIntegrationEventHandler<TEvent> at runtime.")] public static IServiceCollection AddIntegrationEventDispatch(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans the assemblies for concrete `IIntegrationEventHandler<TEvent>` implementations and registers each as scoped. A type implementing handlers for multiple event types is registered once per interface. Also wires the publisher + collector (idempotent). Throws `ArgumentNullException` when `services` or `assemblies` is null and `ArgumentException` when the array is empty or contains null. |
 

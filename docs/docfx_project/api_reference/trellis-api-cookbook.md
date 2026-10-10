@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-10-07
+last_verified: 2026-10-10
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when the task lookup in trellis-start-here.md points to a recipe: compile-checked end-to-end patterns that cross Trellis packages."
@@ -3273,7 +3273,7 @@ Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.G
 
 **Semantics to remember.**
 
-- The guarantee is at-least-once **delivery**, and delivery means *every handler completed*: a handler that throws leaves the message pending and the retry re-invokes only the failed handlers, up to `OutboxOptions.MaxAttempts`, after which the message is parked. Make handlers idempotent — a crash before the relay's bookkeeping save re-delivers to all of them. (In-pipeline dispatch still swallows handler exceptions: it runs post-commit and has no retry mechanism.)
+- **Domain rows** use reporting dispatch: every domain handler must complete before the row is processed. A handler that throws leaves it pending and retry re-invokes only failed handlers, up to `OutboxOptions.MaxAttempts`, after which it is parked. Make handlers idempotent — a crash can repeat successes whose progress was not saved. Default in-pipeline domain dispatch still swallows handler exceptions because its post-commit callers have no retry mechanism. Integration rows have a different publisher-handoff boundary; see Recipe 36.
 - `Maybe<T>` event members are supported — a present value serializes as the underlying value, an absent one as JSON `null`. Members that depend on a caller-registered (non-attribute) `JsonSerializerOptions` converter still need a nullable transport, since the outbox serializer only honors `[JsonConverter]`-attributed types.
 - This is an outbox, not an event store: rows are a transient delivery buffer and may be pruned once `ProcessedAt` is set.
 - Capture persists the current W3C trace context with each domain row; the alpha outbox schema includes nullable lineage and trace columns. See the outbox reference for the column names.
@@ -3284,7 +3284,7 @@ See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#how-the-outbox-w
 
 **Problem.** You want to publish that an order was placed to *other* services, but your `OrderPlaced` domain event carries internal value objects (`OrderId`, `CustomerEmail`, `Money`). Relaying it as-is couples external consumers to your domain model, and every refactor becomes a breaking wire change.
 
-**Fix.** Keep the domain event internal and publish a deliberately-shaped `IIntegrationEvent` translated from it. The translator is an ordinary domain-event handler that adds to `IIntegrationEventCollector`; the outbox relay captures and delivers the integration event.
+**Fix.** Keep the domain event internal and publish a deliberately-shaped `IIntegrationEvent` translated from it. The translator is an ordinary domain-event handler that adds to `IIntegrationEventCollector`; the outbox relay stages the integration event durably and later hands it to `IIntegrationEventPublisher`.
 
 ```csharp
 // 1. The external contract — primitive/nullable members, no internal value objects.
@@ -3302,13 +3302,13 @@ public sealed class OrderPlacedTranslator(IIntegrationEventCollector collector) 
     }
 }
 
-// 3. An in-process consumer (or replace IIntegrationEventPublisher with a broker adapter).
+// 3. A best-effort in-process consumer (or replace IIntegrationEventPublisher with a broker adapter).
 public sealed class NotifyShippingHandler : IIntegrationEventHandler<OrderPlacedIntegrationEvent>
 {
     public ValueTask HandleAsync(OrderPlacedIntegrationEvent e, CancellationToken ct) { /* ... */ return ValueTask.CompletedTask; }
 }
 
-// 4. Wire it — translators are domain-event handlers; the outbox delivers both kinds.
+// 4. Wire it — domain rows report handler outcomes; integration rows use one publisher handoff.
 services.AddTrellis(trellis => trellis
     .UseDomainEvents(typeof(Program).Assembly)
     .UseIntegrationEvents(typeof(Program).Assembly)
@@ -3319,8 +3319,10 @@ services.AddTrellis(trellis => trellis
 **Semantics to remember.**
 
 - The integration event is enrolled **only after** its source domain event is durably committed and dispatched by the relay — never for state that rolled back. The relay stages drained collector events as `OutboxMessageKind.Integration` rows atomically with the source row's saved handler progress (or overall completion), then publishes them on a later drain. There is no per-handler collector rollback: an event added by a translator that subsequently throws can still be enrolled, as can output from a successful translator whose sibling fails. The source row can remain pending while those integration rows are already eligible for publication; integration publication is not proof that the translator or every local handler completed.
-- The default `IIntegrationEventPublisher` fans out in-process to `IIntegrationEventHandler<T>` (great for a modular monolith and tests). Replace that one registration with a message-broker adapter to deliver to other services — the aggregate, translator, and outbox are unchanged.
-- Delivery is at-least-once. Routine retries skip translators whose success was recorded, so a failed sibling does not by itself re-enroll their integration events. A translator that added an event and then failed is retried and can produce a new row with a new message id; crashes before progress is saved can also repeat translation. Delivery retries can redeliver an existing integration row. Dedupe repeated delivery by message id, and use business identity when semantic duplicates can have distinct message ids.
+- The default `IIntegrationEventPublisher` is **best-effort local notification**: it fans out to `IIntegrationEventHandler<T>`, logs and swallows ordinary consumer failures, and returns normally. The relay then processes the integration row without a failed attempt (`Attempts == 0` on a new row) or a consumer retry. This is suitable for modular monoliths and tests only when that tradeoff is acceptable.
+- A **broker publisher** must await publication acceptance and propagate publication failures so the relay can retry the pending row under the same message id. Acceptance does not mean downstream consumer success. The default domain publisher's post-commit/no-retry rationale does not apply here: the integration relay owns retries, but sees only exposed failures.
+- **Transactional inbox consumption** is separate. An inbound adapter must call `IInboxDispatcher` with the stable message id and expose failures for transport redelivery. Handler writes through the inbox's context and the dedup row commit together; external calls do not. Enabling `UseInbox` does not reroute the default local publisher through it.
+- Publication can repeat after an exposed failure or a crash before bookkeeping. Routine domain retries skip translators whose success was recorded, so a failed sibling does not by itself re-enroll their integration events. A translator that added an event and then failed is retried and can produce a new row with a new message id; crashes before progress is saved can also repeat translation. Deduplicate repeated delivery by message id, and use business identity when semantic duplicates can have distinct message ids.
 - Integration events require the outbox. The collector accepts `Add` only inside an active outbox-relay translator invocation; calls from command handlers, direct translator calls, and ordinary in-process domain dispatch throw `InvalidOperationException`. Use the persistence/capture setup from Recipe 35 plus `UseOutbox<TContext>()`; the translator above is invoked by the relay, not by the command handler.
 - `CausationId` on a translated integration row is the source **domain row** id; the domain row's cause is the inbound envelope `MessageId` when present. Both rows share the persisted W3C trace and optional application-owned business `CorrelationId` (use `IntegrationMessageContext.BeginCorrelation("workflow-id")` to supply one explicitly). Do not derive business correlation from a trace or HTTP request id.
 

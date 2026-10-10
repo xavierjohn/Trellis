@@ -73,13 +73,16 @@ public sealed class OutboxMessage
     /// <summary>The W3C tracestate captured in the producing transaction.</summary>
     public string? TraceState { get; private set; }
 
-    /// <summary>When the message was successfully relayed; <c>null</c> while pending.</summary>
+    /// <summary>
+    /// When reporting domain dispatch completed or the integration publisher returned normally;
+    /// <c>null</c> while pending. Integration publication is not proof of downstream consumer success.
+    /// </summary>
     public DateTimeOffset? ProcessedAt { get; private set; }
 
-    /// <summary>Number of relay attempts so far.</summary>
+    /// <summary>Number of persisted failed relay attempts. Successful publication neither increments nor resets it.</summary>
     public int Attempts { get; private set; }
 
-    /// <summary>The most recent relay error, if any.</summary>
+    /// <summary>The most recent persisted relay failure; cleared when the row is processed.</summary>
     public string? LastError { get; private set; }
 
     /// <summary>
@@ -96,11 +99,12 @@ public sealed class OutboxMessage
     public Guid? LockedBy { get; private set; }
 
     /// <summary>
-    /// For <see cref="OutboxMessageKind.Domain"/> rows, the <see cref="Type.FullName"/> of every
+    /// For <see cref="OutboxMessageKind.Domain"/> rows, the identity returned by
+    /// <see cref="Trellis.Mediator.DomainEventDispatchReport.HandlerIdentity"/> for every
     /// <see cref="Trellis.Mediator.IDomainEventHandler{TEvent}"/> that has already completed for this
     /// event. A retry skips these, so a handler that succeeded on an earlier attempt is never invoked
     /// twice because an unrelated sibling failed. Empty for integration rows, which have a single
-    /// publish step rather than a fan-out.
+    /// publisher handoff without per-consumer progress tracking.
     /// </summary>
     /// <remarks>
     /// Deliberately <b>not</b> cleared by <c>IOutboxMaintenance.ReplayAsync</c>: replaying a parked

@@ -2,8 +2,8 @@
 title: Mediator Pipeline
 package: Trellis.Mediator
 topics: [mediator, command, query, pipeline, behaviors, authorization, validation, telemetry]
-related_api_reference: [trellis-api-mediator.md, trellis-api-core.md]
-last_verified: 2026-05-01
+related_api_reference: [trellis-api-mediator.md, trellis-api-core.md, trellis-api-efcore-outbox.md, trellis-api-efcore-inbox.md]
+last_verified: 2026-10-10
 audience: [developer]
 ---
 # Mediator Pipeline
@@ -545,7 +545,9 @@ Handlers must stay side-effect-only. Do not mutate the source aggregate, mutate 
 - **`OperationCanceledException`** matching the supplied cancellation token propagates so the originating request can abort cleanly.
 - **No handler resolved** for a given runtime event type is logged at `Debug` and treated as a no-op.
 
-Cascade detection does not change handler-exception semantics. A swallowed handler failure can still be followed by clean snapshot validation and `AcceptChanges()`, so the default publisher is best-effort, not durable retry. Durable at-least-once side effects require the [transactional outbox](integration-outbox.md).
+Cascade detection does not change handler-exception semantics. A swallowed handler failure can still be followed by clean snapshot validation and `AcceptChanges()`, so the default domain publisher is best-effort, not durable retry. The [transactional outbox](integration-outbox.md#delivery-semantics) uses reporting domain dispatch to retry failed domain handlers.
+
+That post-commit/no-retry rationale does **not** define integration-delivery guarantees. The integration relay owns retries, but sees only failures exposed by `IIntegrationEventPublisher`. Default integration fan-out logs and swallows ordinary consumer failures, so the row is processed without retrying them. A broker adapter must await acceptance and propagate publication failures; acceptance is not consumer success. Transactional inbox processing requires an adapter to invoke its non-swallowing dispatcher; inbox registration alone does not reroute default publication.
 
 Event-to-handler matching uses `domainEvent.GetType()` exactly. Handlers registered against a base class or interface of the runtime event type are **not** invoked — register one handler per concrete event type (or one type implementing multiple `IDomainEventHandler<TEvent>` interfaces, each of which is wired up separately).
 

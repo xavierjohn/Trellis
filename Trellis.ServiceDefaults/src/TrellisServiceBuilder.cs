@@ -646,6 +646,8 @@ public sealed class TrellisServiceBuilder
     /// is skipped and a handler failure rolls back and lets the transport redeliver. Register the handlers
     /// (for example via <c>AddIntegrationEventHandler&lt;TEvent, THandler&gt;()</c> or
     /// <see cref="UseIntegrationEvents()"/>) so the dispatcher has consumers to invoke.
+    /// These registrations do not reroute the default in-process publisher through the inbox;
+    /// the transport adapter must call <c>IInboxDispatcher.DispatchAsync</c> and expose failures for redelivery.
     /// <see cref="InboxOptions.ConsumerId"/> is required, so a <paramref name="configure"/> callback that
     /// sets it must be supplied.
     /// </para>
@@ -759,7 +761,7 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
-    /// Registers the default in-process <see cref="IIntegrationEventPublisher"/> and the scoped
+    /// Registers the default best-effort in-process <see cref="IIntegrationEventPublisher"/> and the scoped
     /// <see cref="IIntegrationEventCollector"/>, plus any <see cref="IIntegrationEventHandler{TEvent}"/>
     /// implementations found by scanning <paramref name="assemblies"/>. AOT-safe when called with no
     /// assemblies.
@@ -771,6 +773,13 @@ public sealed class TrellisServiceBuilder
     /// the transactional outbox relay - so pair this with <see cref="UseDomainEvents()"/> and
     /// <see cref="UseOutbox{TContext}"/>. To deliver to other services instead of in-process consumers,
     /// replace the <see cref="IIntegrationEventPublisher"/> registration with a message-broker adapter.
+    /// </para>
+    /// <para>
+    /// The default publisher logs and swallows ordinary consumer failures, so the relay processes an
+    /// integration row without retrying those consumers. A broker adapter must await publication
+    /// acceptance and propagate publication failures to the relay; acceptance is not consumer success.
+    /// Registering <see cref="UseInbox{TContext}"/> does not route local publication through the inbox:
+    /// an adapter must invoke <c>IInboxDispatcher.DispatchAsync</c> with the stable message id.
     /// </para>
     /// <para>
     /// Passing one or more assemblies scans them at startup using reflection and is not AOT- or
@@ -794,10 +803,16 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
-    /// Registers the default in-process <see cref="IIntegrationEventPublisher"/> and the scoped
+    /// Registers the default best-effort in-process <see cref="IIntegrationEventPublisher"/> and the scoped
     /// <see cref="IIntegrationEventCollector"/> without assembly scanning. AOT- and trim-safe. Pair with
     /// <see cref="UseIntegrationEvents{TEvent, THandler}()"/> per consumer.
     /// </summary>
+    /// <remarks>
+    /// Default local fan-out logs and swallows ordinary consumer failures; processed integration rows
+    /// do not retry them. Replace the publisher with a broker adapter that awaits acceptance and
+    /// propagates publication failures for reliable handoff. Inbox processing requires an adapter to
+    /// call <c>IInboxDispatcher.DispatchAsync</c>; registering <see cref="UseInbox{TContext}"/> is not routing.
+    /// </remarks>
     /// <returns>The same builder for chaining.</returns>
     public TrellisServiceBuilder UseIntegrationEvents()
     {
@@ -808,8 +823,14 @@ public sealed class TrellisServiceBuilder
     /// <summary>
     /// AOT-safe per-consumer integration-event registration. Registers <typeparamref name="THandler"/>
     /// as an <see cref="IIntegrationEventHandler{TEvent}"/> for <typeparamref name="TEvent"/> and wires
-    /// the default publisher and collector.
+    /// the default best-effort in-process publisher and collector.
     /// </summary>
+    /// <remarks>
+    /// The default publisher logs and swallows ordinary consumer failures, so the relay processes the
+    /// row without retrying them. This handler binding is also available to a non-swallowing inbox
+    /// dispatcher, but an adapter must route messages to <c>IInboxDispatcher.DispatchAsync</c>.
+    /// Broker adapters must await acceptance and propagate publication failures to the relay.
+    /// </remarks>
     /// <typeparam name="TEvent">The integration event type.</typeparam>
     /// <typeparam name="THandler">The handler implementation type.</typeparam>
     /// <returns>The same builder for chaining.</returns>
