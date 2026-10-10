@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking - hostname DNS length limit
+
+`Hostname` now accepts at most 253 ASCII presentation characters after trimming,
+including separating dots. RFC 1035's 255-octet DNS wire limit includes label-length
+bytes and the root terminator. Previously accepted 254- and 255-character hostnames
+exceed that encoded limit and now fail with `string.hostname`. The 63-character label
+limit, trimming, stored casing, and other syntax rules are unchanged.
+
+### Documentation - HTTP and email validation profiles
+
+HTTP-date guidance now cites RFC 9110. Primitive validation examples use current
+registration APIs and show the default 422 RFC 9457 Problem Details envelope,
+including field reason codes and input locations. The default ASP.NET Core 422
+problem-type URI is retained.
+
+`EmailAddress` guidance describes the existing common dot-atom-style local part and
+multi-label domain profile, rather than claiming full RFC 5322 conformance.
+Accepted email inputs, normalization, and RFC 5321-derived length limits are unchanged.
+
 ### Breaking - RFC 9651 Idempotency-Key syntax
 
 `Idempotency-Key` now requires an RFC 9651 Item whose value is a String, preserving

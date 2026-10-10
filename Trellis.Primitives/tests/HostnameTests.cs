@@ -69,6 +69,7 @@ public class HostnameTests
     [InlineData("example.com:8080")]
     [InlineData("@example.com")]
     [InlineData("example.com?query=1")]
+    [InlineData("example.com.")]
     public void Cannot_create_invalid_Hostname(string hostname)
     {
         // Act
@@ -81,9 +82,9 @@ public class HostnameTests
     }
 
     [Fact]
-    public void Cannot_create_Hostname_exceeding_255_characters()
+    public void Cannot_create_Hostname_exceeding_253_characters()
     {
-        // Arrange - Create a hostname longer than 255 characters
+        // Arrange - Create a hostname longer than 253 characters
         var longHostname = string.Join(".", Enumerable.Repeat("subdomain", 40));
 
         // Act
@@ -92,6 +93,36 @@ public class HostnameTests
         // Assert
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
+        validation.Fields[0].Detail.Should().Be("Hostname must be RFC 1123 compliant.");
+    }
+
+    [Fact]
+    public void TryCreate_Hostname_253Characters_ReturnsSuccess()
+    {
+        var hostname = $"{new string('a', 63)}.{new string('b', 63)}.{new string('c', 63)}.{new string('d', 61)}";
+        hostname.Length.Should().Be(253);
+
+        var result = Hostname.TryCreate($"  {hostname}  ");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Unwrap().Value.Should().Be(hostname);
+    }
+
+    [Theory]
+    [InlineData(62, 254)]
+    [InlineData(63, 255)]
+    public void TryCreate_Hostname_Over253Characters_ReturnsInvalidInput(int lastLabelLength, int expectedLength)
+    {
+        var hostname = $"{new string('a', 63)}.{new string('b', 63)}.{new string('c', 63)}.{new string('d', lastLabelLength)}";
+        hostname.Length.Should().Be(expectedLength);
+
+        var result = Hostname.TryCreate(hostname, "serverName");
+
+        result.IsFailure.Should().BeTrue();
+        var validation = (Error.InvalidInput)result.UnwrapError();
+        validation.Fields.Items.Should().ContainSingle();
+        validation.Fields[0].Field.Path.Should().Be("/serverName");
+        validation.Fields[0].ReasonCode.Should().Be(ValidationCodes.StringHostname);
         validation.Fields[0].Detail.Should().Be("Hostname must be RFC 1123 compliant.");
     }
 

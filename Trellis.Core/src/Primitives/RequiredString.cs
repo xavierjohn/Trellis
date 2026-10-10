@@ -117,12 +117,23 @@ using System.Diagnostics;
 /// <example>
 /// ASP.NET Core automatic validation (no manual Result.Combine needed):
 /// <code>
-/// // 1. Register automatic validation in Program.cs
+/// // 1. Register Trellis error mapping and automatic validation in Program.cs
+/// builder.Services.AddTrellisAsp();
 /// builder.Services
 ///     .AddControllers()
-///     .AddScalarValueObjectValidation(); // Enables automatic validation!
+///     .AddScalarValueValidation();
 ///
-/// // 2. Define your DTO with value objects
+/// var app = builder.Build();
+/// app.UseScalarValueValidation();
+/// app.MapControllers();
+///
+/// // 2. Opt into trimming and empty-name rejection
+/// [Trim, NotDefault]
+/// public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+/// [Trim, NotDefault]
+/// public partial class LastName : RequiredString&lt;LastName&gt; { }
+///
+/// // 3. Define your DTO with value objects
 /// public record RegisterUserDto
 /// {
 ///     public FirstName FirstName { get; init; } = null!;
@@ -130,7 +141,7 @@ using System.Diagnostics;
 ///     public EmailAddress Email { get; init; } = null!;
 /// }
 ///
-/// // 3. Use in controllers - automatic validation!
+/// // 4. Use in controllers - automatic validation!
 /// [ApiController]
 /// [Route("api/users")]
 /// public class UsersController : ControllerBase
@@ -148,23 +159,41 @@ using System.Diagnostics;
 /// // Invalid request automatically returns 422 Unprocessable Content:
 /// // POST /api/users with { "firstName": "", "lastName": "Doe", "email": "test@example.com" }
 /// // Response: 422 Unprocessable Content
+/// // Default RFC 9457 Problem Details (request-specific traceId omitted):
 /// // {
-/// //   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+/// //   "type": "https://tools.ietf.org/html/rfc4918#section-11.2",
 /// //   "title": "One or more validation errors occurred.",
 /// //   "status": 422,
+/// //   "instance": "/api/users",
 /// //   "errors": {
 /// //     "firstName": ["First Name cannot be empty."]
-/// //   }
+/// //   },
+/// //   "code": "error.unspecified",
+/// //   "kind": "unprocessable-content",
+/// //   "fieldViolations": [{
+/// //     "code": "value.not-empty",
+/// //     "detail": "First Name cannot be empty.",
+/// //     "location": { "in": "body", "pointer": "/firstName" }
+/// //   }]
 /// // }
 /// </code>
 /// </example>
 /// <example>
 /// Using in API validation (manual approach):
 /// <code>
+/// // Opt into trimming and empty-name rejection
+/// [Trim, NotDefault]
+/// public partial class FirstName : RequiredString&lt;FirstName&gt; { }
+/// [Trim, NotDefault]
+/// public partial class LastName : RequiredString&lt;LastName&gt; { }
+///
 /// // Request DTO
 /// public record CreateUserRequest(string FirstName, string LastName, string Email);
 /// 
-/// // API endpoint with automatic validation
+/// builder.Services.AddTrellisAsp();
+/// builder.Services.AddEndpointsApiExplorer();
+///
+/// // API endpoint with manual value-object validation
 /// app.MapPost("/users", (CreateUserRequest request) =>
 ///     FirstName.TryCreate(request.FirstName, nameof(request.FirstName))
 ///         .Combine(LastName.TryCreate(request.LastName, nameof(request.LastName)))
@@ -172,15 +201,24 @@ using System.Diagnostics;
 ///         .Bind((first, last, email) => User.Create(first, last, email))
 ///         .ToHttpResponse());
 /// 
-/// // POST /users with empty FirstName:
+/// // POST /users with { "firstName": "", "lastName": "Doe", "email": "test@example.com" }:
 /// // Response: 422 Unprocessable Content
+/// // Default RFC 9457 Problem Details (request-specific traceId omitted):
 /// // {
-/// //   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+/// //   "type": "https://tools.ietf.org/html/rfc4918#section-11.2",
 /// //   "title": "One or more validation errors occurred.",
 /// //   "status": 422,
+/// //   "instance": "/users",
 /// //   "errors": {
 /// //     "firstName": ["First Name cannot be empty."]
-/// //   }
+/// //   },
+/// //   "code": "error.unspecified",
+/// //   "kind": "unprocessable-content",
+/// //   "fieldViolations": [{
+/// //     "code": "value.not-empty",
+/// //     "detail": "First Name cannot be empty.",
+/// //     "location": { "in": "body", "pointer": "/firstName" }
+/// //   }]
 /// // }
 /// </code>
 /// </example>

@@ -6,8 +6,15 @@ using System.Text.RegularExpressions;
 using Trellis;
 
 /// <summary>
-/// RFC 1123 compliant hostname value object.
+/// ASCII hostname value object using RFC 1123 label syntax and RFC 1035 name-length limits.
 /// </summary>
+/// <remarks>
+/// Input is trimmed and its casing is preserved. Labels contain 1 to 63 letters, digits, or
+/// hyphens, with no leading or trailing hyphen. A trailing root dot is not accepted.
+/// The trimmed hostname is at most 253 characters, including separating dots: RFC 1035
+/// sections 2.3.4 and 3.1 limit the encoded DNS name to 255 octets, including label-length
+/// bytes and the root terminator, making the wire name two octets longer than this text form.
+/// </remarks>
 [JsonConverter(typeof(ParsableJsonConverter<Hostname>))]
 public partial class Hostname : ScalarValueObject<Hostname, string>, IScalarValue<Hostname, string>, IParsable<Hostname>
 {
@@ -48,7 +55,6 @@ public partial class Hostname : ScalarValueObject<Hostname, string>, IScalarValu
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Hostname result) =>
         StringExtensions.TryParseScalarValue(s, out result);
 
-    // RFC 1123 hostname: labels 1-63 chars, alphanum and hyphens, no leading/trailing hyphen, total <=255
-    [GeneratedRegex(@"^(?=.{1,255}$)([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")]
+    [GeneratedRegex(@"^(?=.{1,253}$)([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")]
     private static partial Regex HostnameRegex();
 }

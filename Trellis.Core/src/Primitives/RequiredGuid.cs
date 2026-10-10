@@ -112,12 +112,21 @@ using System.Diagnostics;
 /// <example>
 /// ASP.NET Core automatic validation with route parameters:
 /// <code>
-/// // 1. Register automatic validation in Program.cs
+/// // 1. Register Trellis error mapping and automatic validation in Program.cs
+/// builder.Services.AddTrellisAsp();
 /// builder.Services
 ///     .AddControllers()
-///     .AddScalarValueObjectValidation(); // Enables automatic validation!
+///     .AddScalarValueValidation();
 ///
-/// // 2. Use value objects directly in controller actions
+/// var app = builder.Build();
+/// app.UseScalarValueValidation();
+/// app.MapControllers();
+///
+/// // 2. Opt into rejecting all-zero identifiers
+/// [NotDefault]
+/// public partial class CustomerId : RequiredGuid&lt;CustomerId&gt; { }
+///
+/// // 3. Use value objects directly in controller actions
 /// [ApiController]
 /// [Route("api/customers")]
 /// public class CustomersController : ControllerBase
@@ -142,13 +151,22 @@ using System.Diagnostics;
 /// // All-zero GUID (with [NotDefault] on CustomerId) is rejected as the sentinel value:
 /// // GET /api/customers/00000000-0000-0000-0000-000000000000
 /// // Response: 422 Unprocessable Content
+/// // Default RFC 9457 Problem Details (request-specific traceId omitted):
 /// // {
-/// //   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+/// //   "type": "https://tools.ietf.org/html/rfc4918#section-11.2",
 /// //   "title": "One or more validation errors occurred.",
 /// //   "status": 422,
+/// //   "instance": "/api/customers/00000000-0000-0000-0000-000000000000",
 /// //   "errors": {
 /// //     "id": ["Customer Id cannot be Guid.Empty."]
-/// //   }
+/// //   },
+/// //   "code": "error.unspecified",
+/// //   "kind": "unprocessable-content",
+/// //   "fieldViolations": [{
+/// //     "code": "value.not-default",
+/// //     "detail": "Customer Id cannot be Guid.Empty.",
+/// //     "location": { "in": "path", "name": "id" }
+/// //   }]
 /// // }
 /// </code>
 /// </example>
