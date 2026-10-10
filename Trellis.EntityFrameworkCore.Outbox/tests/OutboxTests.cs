@@ -331,8 +331,10 @@ public sealed class OutboxTests
             "retrying a persisted row must not capture a new relay activity or change lineage");
     }
 
-    [Fact]
-    public async Task DrainAsync_DefaultIntegrationPublisher_ThrowingConsumer_ProcessesRowWithoutFailure()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DrainAsync_DefaultIntegrationPublisher_ThrowingConsumer_ProcessesRowWithoutFailure(bool throwsSynchronously)
     {
         var ct = TestContext.Current.CancellationToken;
         using var connection = new SqliteConnection("DataSource=:memory:");
@@ -341,14 +343,15 @@ public sealed class OutboxTests
         var invoked = new List<ThingCreatedIntegrationEvent>();
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddSingleton(invoked);
         services.AddDbContext<OutboxTestDbContext>(o => o
             .UseSqlite(connection)
             .AddTrellisInterceptors()
             .AddTrellisOutboxInterceptor());
         services.AddDomainEventDispatch();
         services.AddDomainEventHandler<ThingCreated, ThingCreatedTranslator>();
-        services.AddIntegrationEventHandler<ThingCreatedIntegrationEvent, IntegrationThrowingHandler>();
+        services.AddIntegrationEventDispatch();
+        services.AddScoped<IIntegrationEventHandler<ThingCreatedIntegrationEvent>>(_ =>
+            new IntegrationThrowingHandler(invoked, throwsSynchronously));
         services.AddTrellisOutbox<OutboxTestDbContext>();
 
         await using var provider = services.BuildServiceProvider();
@@ -1238,12 +1241,15 @@ internal sealed class IntegrationCapturingHandler(List<ThingCreatedIntegrationEv
     }
 }
 
-internal sealed class IntegrationThrowingHandler(List<ThingCreatedIntegrationEvent> invoked)
+internal sealed class IntegrationThrowingHandler(List<ThingCreatedIntegrationEvent> invoked, bool throwsSynchronously)
     : IIntegrationEventHandler<ThingCreatedIntegrationEvent>
 {
     public ValueTask HandleAsync(ThingCreatedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
     {
         invoked.Add(integrationEvent);
+        if (throwsSynchronously)
+            throw new InvalidOperationException("consumer unavailable");
+
         return ValueTask.FromException(new InvalidOperationException("consumer unavailable"));
     }
 }

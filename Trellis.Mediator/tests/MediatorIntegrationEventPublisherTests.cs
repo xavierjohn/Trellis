@@ -141,14 +141,14 @@ public class MediatorIntegrationEventPublisherTests
             "dispatch is by exact runtime type only — base/interface-type handlers are not invoked");
     }
 
-    [Fact]
-    public async Task PublishAsync_HandlerResolutionThrows_LogsAndDoesNotThrow()
+    [Theory]
+    [InlineData(typeof(UnresolvableHandler))]
+    [InlineData(typeof(ConstructorThrowingHandler))]
+    public async Task PublishAsync_HandlerResolutionThrows_LogsAndDoesNotThrow(Type handlerType)
     {
-        // A handler with an unresolvable constructor dependency makes resolving the
-        // IEnumerable<IIntegrationEventHandler<T>> throw; the publisher logs and returns.
         var captureLogger = new CaptureLogger();
         var services = new ServiceCollection();
-        services.AddScoped<IIntegrationEventHandler<TestIntegrationEvent>, UnresolvableHandler>();
+        services.AddScoped(typeof(IIntegrationEventHandler<TestIntegrationEvent>), handlerType);
 
         var provider = services.BuildServiceProvider();
         var publisher = new MediatorIntegrationEventPublisher(provider, captureLogger);
@@ -220,6 +220,14 @@ public class MediatorIntegrationEventPublisherTests
             _ = _dependency;
             return ValueTask.CompletedTask;
         }
+    }
+
+    private sealed class ConstructorThrowingHandler : IIntegrationEventHandler<TestIntegrationEvent>
+    {
+        public ConstructorThrowingHandler() => throw new InvalidOperationException("integration handler constructor boom");
+
+        public ValueTask HandleAsync(TestIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+            => ValueTask.CompletedTask;
     }
 
     private sealed class MultiEventHandler : IIntegrationEventHandler<TestIntegrationEvent>, IIntegrationEventHandler<OtherIntegrationEvent>
