@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking - RFC 9651 Idempotency-Key syntax
+
+`Idempotency-Key` now requires an RFC 9651 Item whose value is a String, preserving
+the String-valued key contract from the IETF Idempotency-Key draft while using the
+current Structured Fields standard. Send the double quotes on the wire, for example
+`Idempotency-Key: "payment-1"`; bare tokens and other Item value types now return `400`.
+There is no legacy-syntax mode.
+
+Empty Strings (`""`) are valid keys and retain the normal per-scope reservation, replay,
+and fingerprint-mismatch behavior. SP outside the Item and valid Item parameters are
+accepted, including Date and Display String values; parameters do not contribute to the
+decoded key. Display Strings require lowercase percent encoding and valid UTF-8.
+The default 200-character
+decoded-key limit and 4,096-character raw-header cap are unchanged.
+
+The Cosmos store maps the empty key to a nonempty, collision-free document id. Existing
+nonempty-key document ids are unchanged. The store conformance suite adds an empty-key
+rule, and shipped HTTP examples now send quoted keys.
+
 ### Performance - pagination route discovery
 
 `HttpContext.PageUrl` now indexes link-enabled named endpoints once per endpoint data

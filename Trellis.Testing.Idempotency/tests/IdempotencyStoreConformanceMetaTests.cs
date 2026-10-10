@@ -52,6 +52,15 @@ public class IdempotencyStoreConformanceMetaTests
             suite => suite.Reserve_under_a_different_scope_does_not_collide());
 
     [Fact]
+    public async Task Suite_rejects_a_store_that_cannot_persist_empty_keys()
+    {
+        var act = () => RunEveryRule(StoreDefects.IgnoreEmptyKeys);
+
+        await act.Should().ThrowAsync<XunitException>(
+            "an empty RFC String is a real key, not a request to bypass the store");
+    }
+
+    [Fact]
     public async Task Suite_rejects_a_store_whose_reserve_is_not_atomic() =>
         await ShouldFail(
             StoreDefects.NonAtomicReserve,
@@ -94,12 +103,17 @@ public class IdempotencyStoreConformanceMetaTests
     public async Task A_correct_store_passes_every_rule()
     {
         var rules = Rules();
-        rules.Should().HaveCountGreaterThanOrEqualTo(17,
+        rules.Should().HaveCountGreaterThanOrEqualTo(18,
             "the suite is not expected to shrink; update this floor deliberately if a rule is removed");
 
-        foreach (var rule in rules)
+        await RunEveryRule(StoreDefects.None);
+    }
+
+    private static async Task RunEveryRule(StoreDefects defects)
+    {
+        foreach (var rule in Rules())
         {
-            var suite = new DefectiveStoreSuite(StoreDefects.None);
+            var suite = new DefectiveStoreSuite(defects);
             await (Task)rule.Invoke(suite, [])!;
         }
     }

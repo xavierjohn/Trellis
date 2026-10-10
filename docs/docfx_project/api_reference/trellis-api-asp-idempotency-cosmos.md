@@ -77,8 +77,9 @@ app.UseTrellisIdempotency();
 
 **Reserve is one atomic operation.** `TryReserveAsync(scope, key, fingerprint, ct)` returns an
 `IdempotencyReservationOutcome`. A reservation is claimed with `CreateItem`, keyed by
-`id = Base64Url(key)` within partition `scope`. Cosmos DB resolves duplicates on the partition's
-primary replica, so exactly one concurrent caller wins. The store *never* grants a reservation on
+`id = Base64Url(key)` for nonempty keys, or `id = "~"` for the empty key, within partition `scope`.
+Cosmos DB resolves duplicates on the partition's primary replica, so exactly one concurrent caller wins.
+The store *never* grants a reservation on
 the strength of a read.
 
 **Scope and fingerprint have different jobs.** The document identity is `(scope, key)`; the
@@ -150,8 +151,9 @@ The example shows a completed entry; while reserved, `reservationId` is set, `co
 
 Item ids are Base64Url-encoded because idempotency keys are client-supplied and may contain
 `/`, `\`, `?`, or `#`, none of which Cosmos DB permits in an id. Encoding rather than hashing keeps
-the mapping collision-free and reversible. The longest key `IdempotencyOptions.MaxKeyLength`
-permits (200) encodes well inside the 1023-byte id limit.
+the mapping collision-free and reversible. The empty key maps to `~`, which is outside the Base64Url
+alphabet, because Cosmos DB requires a nonempty item id. A key at the default
+`IdempotencyOptions.MaxKeyLength` of 200 characters encodes well inside the 1023-byte id limit.
 
 ## `CosmosIdempotencyContainer`
 
@@ -200,9 +202,9 @@ is a *normal* outcome on the replay path — every retry produces one. The typed
 
 ## Verification
 
-The store is covered by the `Trellis.Testing.Idempotency` conformance suite running against a real
-Cosmos DB emulator — all 17 contract rules, not a substitute. Because expiry is enforced against an
-injected `TimeProvider`, the reservation-takeover and TTL rules run against real Cosmos DB with a
+The store's tests inherit all 18 rules of the `Trellis.Testing.Idempotency` conformance suite and run
+them against a real Cosmos DB emulator, including the empty-key rule. Because expiry is enforced against
+an injected `TimeProvider`, the reservation-takeover and TTL rules run against real Cosmos DB with a
 fake clock and complete in the time of ordinary round trips.
 
 The suite skips, visibly, when no emulator is reachable. The decision-ordering rules and key
@@ -220,8 +222,8 @@ dotnet test Trellis.Asp.Idempotency.Cosmos/tests/Trellis.Asp.Idempotency.Cosmos.
 
 | Run | Tests |
 |---|---|
-| Default / CI | 36 — decision ordering, document model, key encoding, service registration; no emulator needed |
-| `Category=Integration` | 19 — the 17 conformance rules plus the two `ttl` tests, against real Cosmos DB |
+| Default / CI | 40 — decision ordering, document model, key encoding, service registration; no emulator needed |
+| `Category=Integration` | 20 — the 18 conformance rules plus the two `ttl` tests, against real Cosmos DB |
 
 Because CI cannot see the integration run, `CosmosIdempotencyStore.cs` and
 `CosmosIdempotencyContainer.cs` are exempted in `codecov.yml`. The exemption is per-file, not

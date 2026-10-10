@@ -565,7 +565,7 @@ For MVC controllers add `[Idempotent]` to the action method instead of `.WithMet
 
 | Behaviour | Detail |
 |---|---|
-| Header name | `Idempotency-Key` (configurable via `IdempotencyOptions.HeaderName`). Accepts both bare `tchar` tokens and RFC 8941 quoted strings. |
+| Header name | `Idempotency-Key` (configurable via `IdempotencyOptions.HeaderName`). Requires an RFC 9651 String-valued Item, including double quotes; `""` is a valid key. |
 | Missing header on an opted-in endpoint | `400 idempotency.key_required` Problem Details. Set `RequireKeyOnOptedInEndpoints = false` to let missing-key requests pass through unchanged. |
 | First request | Reserves the key, runs the handler, captures the response (status + headers + body), and stores the snapshot under TTL (default 24 h). |
 | Retry with same key + same fingerprint | Replays the captured response and adds `Idempotent-Replayed: true` (header name configurable via `ReplayHeaderName`). |
@@ -578,13 +578,15 @@ For MVC controllers add `[Idempotent]` to the action method instead of `.WithMet
 | Response capture | `Set-Cookie`, `Date`, `Server`, and hop-by-hop headers (`Connection`, `Keep-Alive`, `Transfer-Encoding`, `Upgrade`, `Proxy-Authenticate`, `Proxy-Authorization`, `TE`, `Trailer`) are stripped from the snapshot. Cookies stay out by default so a replay does not re-issue rotated session tokens; opt back in via `IncludeSetCookieInSnapshot = true`. |
 | Failure paths | 5xx responses, response trailers, `SendFileAsync`, oversized request / response bodies (>1 MiB by default), and unhandled exceptions abandon the reservation so the next retry re-executes. |
 
+Send the quotes on the wire: `Idempotency-Key: "payment-1"`. Bare values such as `payment-1` are rejected. Strings contain zero or more printable-ASCII characters with only quote/backslash escapes (`\"` and `\\`). Leading/trailing SP outside the Item and valid Item parameters are accepted; the parsed key is only the unquoted, unescaped String value. An empty String (`""`) is one actual key within its scope, not a missing header or a bypass: matching retries replay it, while different fingerprints are rejected. Invalid syntax, duplicate headers, and over-length decoded keys return `400 Bad Request`; see [`IdempotencyKeyParser`](../api_reference/trellis-api-asp.md#idempotencykeyparser) for details and limits.
+
 **`IIdempotencyStore`** is the persistence seam.
 
 | Store | Package | Use when |
 |---|---|---|
 | `AddInMemoryIdempotencyStore()` | `Trellis.Asp` | Single-instance dev hosts and tests. Sweeps completed-and-expired snapshots opportunistically so memory stays bounded by `Ttl`. **Not safe across instances or process restarts.** |
 | `AddCosmosIdempotencyStore(...)` | `Trellis.Asp.Idempotency.Cosmos` | Production hosts that retry across replicas. Reservations are atomic (`CreateItem` → `409`), completion and abandonment are ETag-conditional, and per-item TTL reclaims storage. |
-| Your own | — | Any other backing store. Derive a test class from `IdempotencyStoreConformance` in `Trellis.Testing.Idempotency` to check it against all 17 contract rules. |
+| Your own | — | Any other backing store. Derive a test class from `IdempotencyStoreConformance` in `Trellis.Testing.Idempotency` to check it against all 18 contract rules, including empty-key handling. |
 
 Choosing a store is a one-line decision alongside `AddTrellisIdempotency()`; it does not participate in pipeline ordering, so there is no `TrellisServiceBuilder.UseXxx()` slot for it.
 

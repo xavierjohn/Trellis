@@ -285,9 +285,10 @@ Content-Type: application/json
 ### are wired in both Program.cs files. First call mutates state and the response
 ### snapshot (status + headers + body) is captured against the (Idempotency-Key, scope)
 ### tuple so that retries (next block) replay byte-for-byte.
+### Send the key as an RFC 9651 String, including the double quotes.
 POST {{host}}/api/transfers/{{aliceChecking}}
 Content-Type: application/json
-Idempotency-Key: {{transferIdempotencyKey}}
+Idempotency-Key: "{{transferIdempotencyKey}}"
 
 {
   "toAccountId": "{{aliceSavings}}",
@@ -302,7 +303,7 @@ Idempotency-Key: {{transferIdempotencyKey}}
 # @expect header: Idempotent-Replayed
 POST {{host}}/api/transfers/{{aliceChecking}}
 Content-Type: application/json
-Idempotency-Key: {{transferIdempotencyKey}}
+Idempotency-Key: "{{transferIdempotencyKey}}"
 
 {
   "toAccountId": "{{aliceSavings}}",
@@ -317,7 +318,7 @@ Idempotency-Key: {{transferIdempotencyKey}}
 # @expect content-type: application/problem+json
 POST {{host}}/api/transfers/{{aliceChecking}}
 Content-Type: application/json
-Idempotency-Key: {{transferIdempotencyKey}}
+Idempotency-Key: "{{transferIdempotencyKey}}"
 
 {
   "toAccountId": "{{aliceSavings}}",

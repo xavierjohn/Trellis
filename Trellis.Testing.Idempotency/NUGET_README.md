@@ -27,7 +27,7 @@ public sealed class RedisIdempotencyStoreConformanceTests : IdempotencyStoreConf
 }
 ```
 
-That one class runs the full contract: reserve, replay, fingerprint mismatch, reservation
+That one class runs the full contract: reserve, replay, empty keys, fingerprint mismatch, reservation
 takeover, TTL expiry, abandon semantics, and atomicity under concurrent load.
 
 ## Why
@@ -40,7 +40,7 @@ reserve lets two racing callers both execute the handler, and an unconditional `
 already persisted. Nothing throws. The symptom is a customer charged twice.
 
 ## Key Features
-- **One class per store** — implement `CreateStoreAsync` and inherit 17 contract tests
+- **One class per store** — implement `CreateStoreAsync` and inherit 18 contract tests
 - **Works with fake or real clocks** — override `AdvanceAsync` for `TimeProvider`-based stores, or
   shorten `Ttl`/`ReservationTimeout` when a remote server owns expiry
 - **Safe against shared infrastructure** — each test instance gets a unique `Scope`, so suites can

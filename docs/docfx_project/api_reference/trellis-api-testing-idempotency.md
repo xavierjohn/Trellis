@@ -45,7 +45,8 @@ distributed production store, Trellis ships `CosmosIdempotencyStore` in the sepa
 Applications using Redis, a relational database, or another backend can implement their own store.
 
 Stores receive a resolved `scope`, parsed `key`, and an opaque `fingerprint` string, not the
-fingerprint's request components. They must key entries only on `(scope, key)` and compare the
+fingerprint's request components. An empty RFC 9651 String produces an empty `key`, which stores
+must handle as a real key, not as missing input. They must key entries only on `(scope, key)` and compare the
 supplied fingerprint with the stored value, never use it as a third key component. The middleware
 owns fingerprint computation and scope resolution; see
 [request identity and fingerprint](trellis-api-asp.md#namespace-trellisaspidempotency) for the
@@ -140,6 +141,7 @@ public sealed class InMemoryIdempotencyStoreConformanceTests : IdempotencyStoreC
 | Test | Rule |
 | --- | --- |
 | `Reserve_on_a_free_key_returns_Reserved_with_a_non_empty_reservation_id` | A free key is granted with a usable token. |
+| `Empty_keys_are_reserved_and_replayed_within_their_scope` | Empty keys reserve, replay, reject fingerprint mismatches, and can be abandoned without affecting the same empty key in another scope. |
 | `Reserve_while_another_request_holds_the_key_returns_AlreadyInFlight` | Concurrent duplicate is told to retry; `RetryAfter` is positive and `<= ReservationTimeout`. |
 | `Reserve_under_a_different_scope_does_not_collide` | Scope isolates tenants and actors. |
 | `Reserve_after_Complete_replays_the_snapshot_for_a_matching_fingerprint` | The core replay guarantee. |

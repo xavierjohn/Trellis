@@ -17,7 +17,9 @@ public class HttpFileRunnerVariableTests
         using var handler = new StubHandler(async (request, ct) =>
         {
             values.Add(request.RequestUri!.Segments[^1]);
-            values.Add(request.Headers.GetValues("Idempotency-Key").Single());
+            var keyHeader = request.Headers.GetValues("Idempotency-Key").Single();
+            keyHeader.Should().StartWith("\"").And.EndWith("\"");
+            values.Add(keyHeader[1..^1]);
             values.Add(request.Headers.GetValues("X-Second").Single());
             values.Add(request.Content!.Headers.GetValues("Content-Guid").Single());
             using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
@@ -32,7 +34,7 @@ public class HttpFileRunnerVariableTests
 
             ### Create
             POST {{host}}/things/{{$guid}}
-            Idempotency-Key: {{$guid}}
+            Idempotency-Key: "{{$guid}}"
             X-Second: {{alias}}
             Content-Guid: {{$guid}}
             Content-Type: application/json
@@ -52,7 +54,7 @@ public class HttpFileRunnerVariableTests
         foreach (var value in values)
             Guid.TryParseExact(value, "D", out _).Should().BeTrue("{0} must be an expanded GUID", value);
         requests[0].Url.Should().EndWith("{{$guid}}");
-        requests[0].Headers["Idempotency-Key"].Should().Be("{{$guid}}");
+        requests[0].Headers["Idempotency-Key"].Should().Be("\"{{$guid}}\"");
         requests[0].Body.Should().Contain("{{$guid}}");
     }
 

@@ -207,6 +207,42 @@ public abstract class IdempotencyStoreConformance
     }
 
     /// <summary>
+    /// An empty RFC 9651 String is a real key: it reserves, replays, rejects fingerprint
+    /// mismatches, and can be abandoned independently in another scope.
+    /// </summary>
+    [Fact]
+    public async Task Empty_keys_are_reserved_and_replayed_within_their_scope()
+    {
+        var (store, reservationId) = await ReserveAsync(string.Empty, "fp-1").ConfigureAwait(false);
+        var inFlight = await store.TryReserveAsync(Scope, string.Empty, "fp-1", CancellationToken.None)
+            .ConfigureAwait(false);
+        inFlight.Should().BeOfType<IdempotencyReservationOutcome.AlreadyInFlight>();
+
+        var snapshot = SnapshotFor("fp-1");
+        await store.CompleteAsync(Scope, string.Empty, reservationId, snapshot, CancellationToken.None)
+            .ConfigureAwait(false);
+        var replay = await store.TryReserveAsync(Scope, string.Empty, "fp-1", CancellationToken.None)
+            .ConfigureAwait(false);
+        ShouldMatch(replay.Should().BeOfType<IdempotencyReservationOutcome.Replay>().Which.Snapshot, snapshot);
+
+        var mismatch = await store.TryReserveAsync(Scope, string.Empty, "fp-different", CancellationToken.None)
+            .ConfigureAwait(false);
+        mismatch.Should().BeOfType<IdempotencyReservationOutcome.BodyHashMismatch>();
+
+        var otherScope = $"{Scope}-other";
+        var otherReservation = await ReserveOnAsync(store, otherScope, string.Empty, "fp-1").ConfigureAwait(false);
+        await store.AbandonAsync(otherScope, string.Empty, otherReservation, CancellationToken.None)
+            .ConfigureAwait(false);
+        var retry = await store.TryReserveAsync(otherScope, string.Empty, "fp-1", CancellationToken.None)
+            .ConfigureAwait(false);
+        retry.Should().BeOfType<IdempotencyReservationOutcome.Reserved>().Which.ReservationId.Should().NotBeNullOrEmpty();
+
+        var originalReplay = await store.TryReserveAsync(Scope, string.Empty, "fp-1", CancellationToken.None)
+            .ConfigureAwait(false);
+        ShouldMatch(originalReplay.Should().BeOfType<IdempotencyReservationOutcome.Replay>().Which.Snapshot, snapshot);
+    }
+
+    /// <summary>
     /// While one request holds the slot, a second with the same fingerprint must be told to retry
     /// rather than being allowed to execute concurrently. The suggested wait must be positive and
     /// no longer than the configured timeout, since the slot cannot outlive it.

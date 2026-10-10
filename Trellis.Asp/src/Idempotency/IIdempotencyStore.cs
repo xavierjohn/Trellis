@@ -16,6 +16,10 @@ using System.Threading.Tasks;
 /// guessing a key.
 /// </para>
 /// <para>
+/// The parsed <c>key</c> may be empty: an empty RFC 9651 String is a real key within its scope,
+/// not a signal to bypass reservation, replay, or fingerprint checks.
+/// </para>
+/// <para>
 /// <see cref="CompleteAsync"/> and <see cref="AbandonAsync"/> must be conditional on the
 /// <c>reservationId</c> returned by <see cref="TryReserveAsync"/>. If the reservation has since
 /// been taken over by another request (because <see cref="IdempotencyOptions.ReservationTimeout"/>
@@ -30,7 +34,7 @@ public interface IIdempotencyStore
     /// state of an existing reservation or completed snapshot.
     /// </summary>
     /// <param name="scope">Caller-resolved scope (for example an actor identifier).</param>
-    /// <param name="key">Client-supplied idempotency key, post-validation.</param>
+    /// <param name="key">Client-supplied idempotency key, post-validation; may be empty.</param>
     /// <param name="fingerprint">SHA-256 URL-safe base64 (no padding) digest of the canonicalised request, as produced by <c>IdempotencyFingerprint.Compute</c>.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     ValueTask<IdempotencyReservationOutcome> TryReserveAsync(

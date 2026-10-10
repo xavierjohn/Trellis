@@ -142,10 +142,12 @@ public class CosmosIdempotencyKeyEncodingTests
     [InlineData("with spaces and trailing ")]
     [InlineData("unicode-\u00e9\u00e8-\u4e2d\u6587-\U0001f600")]
     [InlineData("")]
+    [InlineData("~")]
     public void Encoded_ids_round_trip_and_contain_no_reserved_characters(string key)
     {
         var id = CosmosIdempotencyStore.EncodeId(key);
 
+        id.Should().NotBeEmpty("Cosmos DB requires a nonempty item id even when the idempotency key is empty");
         id.Should().NotContainAny("/", "\\", "?", "#");
         CosmosIdempotencyStore.DecodeId(id).Should().Be(key);
     }
