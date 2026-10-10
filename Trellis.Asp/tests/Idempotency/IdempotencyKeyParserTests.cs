@@ -3,7 +3,7 @@
 using Trellis.Asp.Idempotency;
 
 /// <summary>
-/// Pins the RFC 8941 String-valued Item syntax required by the Idempotency-Key draft.
+/// Pins RFC 9651 parsing with a String-valued Item as the idempotency key.
 /// </summary>
 public sealed class IdempotencyKeyParserTests
 {
@@ -89,6 +89,116 @@ public sealed class IdempotencyKeyParserTests
         error.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData("@0")]
+    [InlineData("@-0")]
+    [InlineData("@012")]
+    [InlineData("@1659578233")]
+    [InlineData("@-62135596800")]
+    [InlineData("@253402214400")]
+    [InlineData("@999999999999999")]
+    [InlineData("@-999999999999999")]
+    [InlineData("@000000000000000")]
+    public void TryParse_DateParameter_WithinRfcBounds_ReturnsStringValue(string date)
+    {
+        IdempotencyKeyParser.TryParse($"\"key\";date={date}", "Idempotency-Key", out var parsed, out var error)
+            .Should().BeTrue();
+        parsed.Should().Be("key");
+        error.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("@")]
+    [InlineData("@-")]
+    [InlineData("@+1")]
+    [InlineData("@ 1")]
+    [InlineData("@\t1")]
+    [InlineData("@@1")]
+    [InlineData("@1.0")]
+    [InlineData("@.1")]
+    [InlineData("@1000000000000000")]
+    [InlineData("@-1000000000000000")]
+    [InlineData("@0000000000000000")]
+    [InlineData("@1e2")]
+    public void TryParse_DateParameter_InvalidSyntax_ReturnsFalse(string date)
+    {
+        IdempotencyKeyParser.TryParse($"\"key\";date={date}", "Idempotency-Key", out var parsed, out var error)
+            .Should().BeFalse();
+        parsed.Should().BeEmpty();
+        error.Should().NotBeNullOrEmpty();
+    }
+
+    [Theory]
+    [InlineData("%\"\"")]
+    [InlineData("%\"hello world\"")]
+    [InlineData("%\"%25%22\"")]
+    [InlineData("%\"a\\b\"")]
+    [InlineData("%\"%c3%bc\"")]
+    [InlineData("%\"%e4%b8%ad\"")]
+    [InlineData("%\"%f0%9f%98%80\"")]
+    [InlineData("%\"%c2%80\"")]
+    [InlineData("%\"%e0%a0%80\"")]
+    [InlineData("%\"%f0%90%80%80\"")]
+    [InlineData("%\"%f4%8f%bf%bf\"")]
+    [InlineData("%\"%00%1f%7f\"")]
+    [InlineData("%\"%ef%bf%be%ef%bf%bf\"")]
+    [InlineData("%\"%e2%80%ae\"")]
+    public void TryParse_DisplayStringParameter_ValidUtf8_ReturnsStringValue(string display)
+    {
+        IdempotencyKeyParser.TryParse($"\"key\";display={display}", "Idempotency-Key", out var parsed, out var error)
+            .Should().BeTrue();
+        parsed.Should().Be("key");
+        error.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("%")]
+    [InlineData("%text")]
+    [InlineData("%\"unterminated")]
+    [InlineData("%\"%\"")]
+    [InlineData("%\"%0\"")]
+    [InlineData("%\"%gg\"")]
+    [InlineData("%\"%c3%BC\"")]
+    [InlineData("%\"%C3%bc\"")]
+    [InlineData("%\"raw\tcontrol\"")]
+    [InlineData("%\"raw\ncontrol\"")]
+    [InlineData("%\"raw\u007f\"")]
+    [InlineData("%\"raw\u0080\"")]
+    [InlineData("%\"%80\"")]
+    [InlineData("%\"%c3\"")]
+    [InlineData("%\"%c3%28\"")]
+    [InlineData("%\"%c0%af\"")]
+    [InlineData("%\"%e0%80%af\"")]
+    [InlineData("%\"%ed%a0%80\"")]
+    [InlineData("%\"%ed%bf%bf\"")]
+    [InlineData("%\"%f0%80%80%af\"")]
+    [InlineData("%\"%f4%90%80%80\"")]
+    [InlineData("%\"%f5%80%80%80\"")]
+    [InlineData("%\"%f0%9f%98\"")]
+    [InlineData("%\"text\"junk")]
+    public void TryParse_DisplayStringParameter_InvalidEncoding_ReturnsFalse(string display)
+    {
+        IdempotencyKeyParser.TryParse($"\"key\";display={display}", "Idempotency-Key", out var parsed, out var error)
+            .Should().BeFalse();
+        parsed.Should().BeEmpty();
+        error.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void TryParse_DisplayStringParameter_AllPrintableAscii_ReturnsStringValue()
+    {
+        for (var codePoint = 0x20; codePoint <= 0x7E; codePoint++)
+        {
+            var character = (char)codePoint;
+            var encoded = character is '%' or '"' ? $"%{codePoint:x2}" : character.ToString();
+            var raw = $"\"key\";display=%\"{encoded}\"";
+
+            IdempotencyKeyParser.TryParse(raw, "Idempotency-Key", out var parsed, out _)
+                .Should().BeTrue("0x{0:X2} is valid display content", codePoint);
+            parsed.Should().Be("key");
+        }
+    }
+
     [Fact]
     public void TryParse_Parameters_SupportedMinimums_Accepts256ParametersAnd64CharacterKeys()
     {
@@ -164,6 +274,9 @@ public sealed class IdempotencyKeyParserTests
     [InlineData(":YWJj:")]
     [InlineData("?0")]
     [InlineData("?1")]
+    [InlineData("@0")]
+    [InlineData("%\"text\"")]
+    [InlineData("%\"%c3%bc\"")]
     [InlineData("\"key\"junk")]
     [InlineData("\"key\" ;flag")]
     [InlineData("\"key\";")]
@@ -206,8 +319,6 @@ public sealed class IdempotencyKeyParserTests
     [InlineData("\"key\";bytes=:YQ-_:")]
     [InlineData("\"key\";bytes=:YQ==:\r")]
     [InlineData("\"key\";list=(1 2)")]
-    [InlineData("\"key\";date=@0")]
-    [InlineData("\"key\";display=%\"text\"")]
     public void Invalid_inputs_return_false(string? input)
     {
         IdempotencyKeyParser.TryParse(input, "Idempotency-Key", out var parsed, out var error).Should().BeFalse();

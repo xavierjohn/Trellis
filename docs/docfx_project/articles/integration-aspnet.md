@@ -565,7 +565,7 @@ For MVC controllers add `[Idempotent]` to the action method instead of `.WithMet
 
 | Behaviour | Detail |
 |---|---|
-| Header name | `Idempotency-Key` (configurable via `IdempotencyOptions.HeaderName`). Requires an RFC 8941 String-valued Item, including double quotes; `""` is a valid key. |
+| Header name | `Idempotency-Key` (configurable via `IdempotencyOptions.HeaderName`). Requires an RFC 9651 String-valued Item, including double quotes; `""` is a valid key. |
 | Missing header on an opted-in endpoint | `400 idempotency.key_required` Problem Details. Set `RequireKeyOnOptedInEndpoints = false` to let missing-key requests pass through unchanged. |
 | First request | Reserves the key, runs the handler, captures the response (status + headers + body), and stores the snapshot under TTL (default 24 h). |
 | Retry with same key + same fingerprint | Replays the captured response and adds `Idempotent-Replayed: true` (header name configurable via `ReplayHeaderName`). |

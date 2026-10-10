@@ -273,7 +273,12 @@ public sealed class IdempotencyMiddlewareTests
     [InlineData("42")]
     [InlineData("?1")]
     [InlineData(":YWJj:")]
-    public async Task InvokeAsync_NonStringItem_Returns400WithoutExecutingHandler(string raw)
+    [InlineData("@0")]
+    [InlineData("%\"text\"")]
+    [InlineData("\"key\";date=@1.0")]
+    [InlineData("\"key\";display=%\"%c3%BC\"")]
+    [InlineData("\"key\";display=%\"%ed%a0%80\"")]
+    public async Task InvokeAsync_IdempotencyKey_InvalidItem_Returns400WithoutExecutingHandler(string raw)
     {
         string? received = null;
         var executions = 0;
@@ -304,6 +309,9 @@ public sealed class IdempotencyMiddlewareTests
     [InlineData("\"key\"", "\"key\";flag=?1")]
     [InlineData("\"key\"", "\"key\";n=42;text=\"note\";token=AbC/a:b;bytes=:YQ:;flag")]
     [InlineData("\"a\\\"b\\\\c\"", "\"a\\\"b\\\\c\";ignored")]
+    [InlineData("\"key\"", "\"key\";date=@1659578233")]
+    [InlineData("\"key\"", "\"key\";label=%\"%c3%bc%f0%9f%98%80\"")]
+    [InlineData("\"\"", "\"\";date=@0;label=%\"\"")]
     public async Task InvokeAsync_StringItem_SpacesAndParameters_PreserveReplayIdentity(
         string firstHeader, string retryHeader)
     {

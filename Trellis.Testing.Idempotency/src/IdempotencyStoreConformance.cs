@@ -207,7 +207,7 @@ public abstract class IdempotencyStoreConformance
     }
 
     /// <summary>
-    /// An empty RFC 8941 String is a real key: it reserves, replays, rejects fingerprint
+    /// An empty RFC 9651 String is a real key: it reserves, replays, rejects fingerprint
     /// mismatches, and can be abandoned independently in another scope.
     /// </summary>
     [Fact]

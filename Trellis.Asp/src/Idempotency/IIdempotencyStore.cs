@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 /// guessing a key.
 /// </para>
 /// <para>
-/// The parsed <c>key</c> may be empty: an empty RFC 8941 String is a real key within its scope,
+/// The parsed <c>key</c> may be empty: an empty RFC 9651 String is a real key within its scope,
 /// not a signal to bypass reservation, replay, or fingerprint checks.
 /// </para>
 /// <para>

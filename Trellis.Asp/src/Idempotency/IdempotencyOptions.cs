@@ -20,7 +20,7 @@ public sealed class IdempotencyOptions
     /// <summary>
     /// Name of the request header carrying the client-supplied idempotency key. Defaults to
     /// <c>"Idempotency-Key"</c> per IETF draft <c>draft-ietf-httpapi-idempotency-key-header</c>.
-    /// The value must be an RFC 8941 String-valued Item as documented by
+    /// The value must be an RFC 9651 String-valued Item as documented by
     /// <see cref="IdempotencyKeyParser"/>; bare tokens are not accepted.
     /// </summary>
     public string HeaderName { get; set; } = "Idempotency-Key";

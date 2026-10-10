@@ -45,7 +45,7 @@ distributed production store, Trellis ships `CosmosIdempotencyStore` in the sepa
 Applications using Redis, a relational database, or another backend can implement their own store.
 
 Stores receive a resolved `scope`, parsed `key`, and an opaque `fingerprint` string, not the
-fingerprint's request components. An empty RFC 8941 String produces an empty `key`, which stores
+fingerprint's request components. An empty RFC 9651 String produces an empty `key`, which stores
 must handle as a real key, not as missing input. They must key entries only on `(scope, key)` and compare the
 supplied fingerprint with the stored value, never use it as a third key component. The middleware
 owns fingerprint computation and scope resolution; see

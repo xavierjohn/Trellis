@@ -2,12 +2,13 @@
 
 using System;
 using System.Text;
+using System.Text.Unicode;
 
 /// <summary>
-/// Parses an <c>Idempotency-Key</c> header as an RFC 8941 Item whose value is a String.
+/// Parses an <c>Idempotency-Key</c> header as an RFC 9651 Item whose value is a String.
 /// Strings contain zero or more printable-ASCII characters (0x20-0x7E), with only
 /// <c>\\</c> and <c>\"</c> escapes. Surrounding spaces and valid Item parameters are accepted;
-/// parameters do not contribute to the parsed key.
+/// parameters, including Dates and Display Strings, do not contribute to the parsed key.
 /// </summary>
 public static class IdempotencyKeyParser
 {
@@ -45,7 +46,7 @@ public static class IdempotencyKeyParser
         if (!TryReadString(input, ref position, out var content)
             || !TryReadParameters(input, ref position))
         {
-            error = $"{headerName} must be an RFC 8941 String-valued Item.";
+            error = $"{headerName} must be an RFC 9651 String-valued Item.";
             return false;
         }
 
@@ -143,6 +144,15 @@ public static class IdempotencyKeyParser
         if (character == '-' || char.IsAsciiDigit(character))
             return TryReadNumber(input, ref position);
 
+        if (character == '@')
+        {
+            position++;
+            return TryReadNumber(input, ref position, allowDecimal: false);
+        }
+
+        if (character == '%')
+            return TryReadDisplayString(input, ref position);
+
         if (character == ':')
             return TryReadByteSequence(input, ref position);
 
@@ -165,8 +175,11 @@ public static class IdempotencyKeyParser
         return true;
     }
 
-    private static bool TryReadNumber(ReadOnlySpan<char> input, ref int position)
+    private static bool TryReadNumber(ReadOnlySpan<char> input, ref int position, bool allowDecimal = true)
     {
+        if (position >= input.Length)
+            return false;
+
         if (input[position] == '-')
             position++;
 
@@ -181,7 +194,7 @@ public static class IdempotencyKeyParser
         if (position >= input.Length || input[position] != '.')
             return integerDigits <= 15;
 
-        if (integerDigits > 12)
+        if (!allowDecimal || integerDigits > 12)
             return false;
 
         var fractionStart = ++position;
@@ -189,6 +202,42 @@ public static class IdempotencyKeyParser
             position++;
 
         return position - fractionStart is >= 1 and <= 3;
+    }
+
+    private static bool TryReadDisplayString(ReadOnlySpan<char> input, ref int position)
+    {
+        if (position + 1 >= input.Length || input[position + 1] != '"')
+            return false;
+
+        position += 2;
+        Span<byte> decoded = stackalloc byte[input.Length - position];
+        var written = 0;
+        while (position < input.Length)
+        {
+            var character = input[position++];
+            if (character is < (char)0x20 or > (char)0x7E)
+                return false;
+
+            if (character == '"')
+                return Utf8.IsValid(decoded[..written]);
+
+            if (character == '%')
+            {
+                if (position + 1 >= input.Length)
+                    return false;
+
+                var high = LowercaseHexValue(input[position++]);
+                var low = LowercaseHexValue(input[position++]);
+                if (high < 0 || low < 0)
+                    return false;
+
+                decoded[written++] = (byte)((high * 16) + low);
+            }
+            else
+                decoded[written++] = (byte)character;
+        }
+
+        return false;
     }
 
     private static bool TryReadByteSequence(ReadOnlySpan<char> input, ref int position)
@@ -224,6 +273,14 @@ public static class IdempotencyKeyParser
 
     private static bool IsParameterKeyStart(char character) =>
         character is (>= 'a' and <= 'z') or '*';
+
+    private static int LowercaseHexValue(char character) =>
+        character switch
+        {
+            >= '0' and <= '9' => character - '0',
+            >= 'a' and <= 'f' => character - 'a' + 10,
+            _ => -1
+        };
 
     private static bool IsParameterKeyChar(char character) =>
         IsParameterKeyStart(character) || char.IsAsciiDigit(character)

@@ -285,7 +285,7 @@ Content-Type: application/json
 ### are wired in both Program.cs files. First call mutates state and the response
 ### snapshot (status + headers + body) is captured against the (Idempotency-Key, scope)
 ### tuple so that retries (next block) replay byte-for-byte.
-### Send the key as an RFC 8941 String, including the double quotes.
+### Send the key as an RFC 9651 String, including the double quotes.
 POST {{host}}/api/transfers/{{aliceChecking}}
 Content-Type: application/json
 Idempotency-Key: "{{transferIdempotencyKey}}"

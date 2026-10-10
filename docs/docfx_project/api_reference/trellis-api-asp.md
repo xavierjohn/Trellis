@@ -940,7 +940,7 @@ public static class IdempotencyApplicationBuilderExtensions
 
 ### Namespace `Trellis.Asp.Idempotency`
 
-Opt-in `Idempotency-Key` middleware for `POST` / `PATCH` retry safety, using the IETF header name and status semantics with the required [RFC 8941 String-valued Item syntax](#idempotencykeyparser). See cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency).
+Opt-in `Idempotency-Key` middleware for `POST` / `PATCH` retry safety, using the IETF draft's header name and status semantics with [RFC 9651 String-valued Item syntax](#idempotencykeyparser). See cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency).
 
 **Request identity and scope.** The store key is `(scope, parsed Idempotency-Key)`, not `(scope, key, fingerprint)`. `DefaultIdempotencyScopeResolver` uses the current actor's id; when no `IActorProvider` is registered or no actor resolves, it uses the **shared anonymous scope**. A custom `IIdempotencyScopeResolver` can supply a different isolation boundary, such as tenant plus actor. The default scope is not route-specific: all of an actor's opted-in endpoints sharing the store share one client key namespace.
 
@@ -973,7 +973,7 @@ public sealed class IdempotencyOptions
 
 | Member | Default | Description |
 | --- | --- | --- |
-| `HeaderName` | `"Idempotency-Key"` | HTTP header carrying an [RFC 8941 String-valued Item](#idempotencykeyparser); double quotes are required, and an empty String is valid. |
+| `HeaderName` | `"Idempotency-Key"` | HTTP header carrying an [RFC 9651 String-valued Item](#idempotencykeyparser); double quotes are required, and an empty String is valid. |
 | `ReplayHeaderName` | `"Idempotent-Replayed"` | Response header added to replayed responses so clients can detect that the body came from a cached snapshot rather than a fresh handler invocation. |
 | `Ttl` | `24 h` | Time a completed snapshot is retained before it is evicted and the key can be reused. |
 | `ReservationTimeout` | `30 s` | Time after which a same-key retry with a matching fingerprint may atomically take over an in-flight reservation (CAS) so a crashed handler does not block retries forever. Stores MUST NOT delete outstanding reservations on this timeout; takeover replaces the entry under a new reservation token, which invalidates the previous token for `CompleteAsync` / `AbandonAsync`. |
@@ -997,9 +997,9 @@ public static class IdempotencyKeyParser
 }
 ```
 
-`TryParse` requires an **RFC 8941 Item whose value is a [String](https://www.rfc-editor.org/rfc/rfc8941#section-3.3.3)**, as specified by the Idempotency-Key draft. A String is double-quoted and contains **zero or more** printable-ASCII characters (`0x20`-`0x7E`, including spaces). Embedded quotes and backslashes must be escaped as `\"` and `\\`; no other escapes are accepted. Bare tokens and other Item value types are rejected. The returned key is the unquoted, unescaped String value.
+`TryParse` requires an **RFC 9651 Item whose value is a [String](https://www.rfc-editor.org/rfc/rfc9651#section-3.3.3)**. The Idempotency-Key draft specifies String-valued keys using RFC 8941; Trellis uses its successor, RFC 9651, while retaining that key type. The header itself remains an Internet-Draft, not a finalized RFC. A String is double-quoted and contains **zero or more** printable-ASCII characters (`0x20`-`0x7E`, including spaces). Embedded quotes and backslashes must be escaped as `\"` and `\\`; no other escapes are accepted. Bare tokens and other Item value types, including Dates and Display Strings, are rejected as the primary key. The returned key is the unquoted, unescaped String value.
 
-Leading and trailing **SP** characters outside the Item are discarded; whitespace inside the String is preserved. Tabs are not SP and are rejected. Valid [Item parameters](https://www.rfc-editor.org/rfc/rfc8941#section-3.1.2) are accepted and validated in full, including all six RFC 8941 bare-Item value types. The header defines no parameter semantics, so parameters do not contribute to the key; duplicate parameter names are permitted. Malformed parameters, lists, dictionaries, and any other trailing content fail parsing.
+Leading and trailing **SP** characters outside the Item are discarded; whitespace inside the String is preserved. Tabs are not SP and are rejected. Valid [Item parameters](https://www.rfc-editor.org/rfc/rfc9651#section-3.1.2) are accepted and validated in full, including all eight RFC 9651 bare-Item value types: Integer, Decimal, String, Token, Byte Sequence, Boolean, Date and Display String. Dates use `@` followed by an Integer, never a Decimal. Display Strings use `%"..."`, lowercase percent-encoded octets, and valid UTF-8; raw backslashes are literal, not escapes. The header defines no parameter semantics, so parameters do not contribute to the key; duplicate parameter names are permitted. Malformed parameters, lists, dictionaries, and any other trailing content fail parsing.
 
 | Header value | Result |
 | --- | --- |
@@ -1009,6 +1009,8 @@ Leading and trailing **SP** characters outside the Item are discarded; whitespac
 | `abc`, `a:b`, `a/b`, `?1`, or `42` | Rejected: the Item value must be a quoted String. |
 | `"a:b"`, `"a/b"`, or `"?1"` | Accepted as `a:b`, `a/b`, or `?1`, respectively. |
 | `"abc";flag=?1;note="example"` | Accepted as `abc`; valid parameters do not change the key. |
+| `"abc";date=@0;label=%"%c3%bc"` | Accepted as `abc`; Date and Display String parameters are validated but ignored. |
+| `@0` or `%"abc"` | Rejected: neither a Date nor a Display String is the required primary String value. |
 | `""` | Accepted as the empty key. |
 
 An empty String is one actual key per scope, not a bypass or a freshly generated key. Matching retries replay its snapshot; a different fingerprint under the same empty key is rejected like any other key. Prefer a distinct quoted key for each intended operation.
