@@ -3,7 +3,7 @@ package: Trellis.Core
 namespaces: [Trellis]
 types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, ICodedTransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, PageSizeLimitPolicy, PageRequest, "ICursorCodec<TState>", CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, InputLocation, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, TrellisValidationFormatException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
 version: v3
-last_verified: 2026-10-07
+last_verified: 2026-10-10
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when you need exact signatures for Result, Maybe, Error, Page, aggregates, entities, specifications or Required value-object bases, or the ROP operations Bind, Map and Ensure."
@@ -788,7 +788,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `StringPattern` | `string.pattern` | Did not match a required regular expression. |
 | `StringEmail` | `string.email` | Not a valid email address. |
 | `StringUrl` | `string.url` | Not a valid absolute HTTP/HTTPS URL. |
-| `StringHostname` | `string.hostname` | Not RFC 1123 compliant. |
+| `StringHostname` | `string.hostname` | Not RFC 1123 compliant or exceeds the DNS name-length limit. |
 | `StringIpAddress` | `string.ip-address` | Not a valid IPv4 or IPv6 address. |
 | `StringSlug` | `string.slug` | Not a valid slug. |
 | `StringPhoneE164` | `string.phone-e164` | Not E.164 format. |

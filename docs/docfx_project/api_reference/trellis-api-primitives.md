@@ -268,7 +268,9 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
 letters, digits, and ``!#$%&'*+/=?^_`{|}~-``,
 optionally separated by single dots (no leading, trailing, or consecutive dots).
 The domain has at least two alphanumeric/hyphen labels, with no leading or trailing
-label hyphen. Matching is case-insensitive; surrounding whitespace is trimmed.
+label hyphen. Unlike `Hostname`, it does not enforce a 63-character limit per domain
+label; the overall address-length limit still applies.
+Matching is case-insensitive; surrounding whitespace is trimmed.
 Quoted local parts, comments, display names, and domain literals are rejected.
 This validates the supported syntax and lengths, not mailbox existence or deliverability.
 The accepted-input profile is unchanged.
