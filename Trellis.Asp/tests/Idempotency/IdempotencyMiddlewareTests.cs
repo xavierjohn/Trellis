@@ -22,7 +22,7 @@ using Trellis.Asp.Idempotency;
 
 /// <summary>
 /// Integration tests for the full <see cref="IdempotencyMiddleware"/> pipeline driven through
-/// a <see cref="TestServer"/>. Pins the IETF Idempotency-Key contract end-to-end: opt-in via
+/// a <see cref="TestServer"/>. Pins Trellis's compatibility Idempotency-Key contract end-to-end: opt-in via
 /// <c>IdempotentAttribute</c>, replay verbatim, in-flight 409, fingerprint-mismatch
 /// <c>idempotency.key_reused_with_different_body</c>, and request-body 413.
 /// </summary>
@@ -904,7 +904,7 @@ public sealed class IdempotencyMiddlewareTests
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().Contain("idempotency.key_invalid",
-            "an empty quoted RFC 8941 sf-string parses to a zero-length key; every request sending Idempotency-Key: \"\" would otherwise share the same (scope, empty) store slot and silently replay each other's responses");
+            "the compatibility grammar rejects empty quoted keys; otherwise every request sending Idempotency-Key: \"\" would share the same (scope, empty) store slot and silently replay each other's responses");
     }
 
     [Fact]

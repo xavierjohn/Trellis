@@ -565,7 +565,7 @@ For MVC controllers add `[Idempotent]` to the action method instead of `.WithMet
 
 | Behaviour | Detail |
 |---|---|
-| Header name | `Idempotency-Key` (configurable via `IdempotencyOptions.HeaderName`). Accepts both bare `tchar` tokens and RFC 8941 quoted strings. |
+| Header name | `Idempotency-Key` (configurable via `IdempotencyOptions.HeaderName`). Accepts nonempty RFC 7230 bare HTTP tokens or nonempty quoted printable-ASCII strings with only quote/backslash escapes (`\"` and `\\`). |
 | Missing header on an opted-in endpoint | `400 idempotency.key_required` Problem Details. Set `RequireKeyOnOptedInEndpoints = false` to let missing-key requests pass through unchanged. |
 | First request | Reserves the key, runs the handler, captures the response (status + headers + body), and stores the snapshot under TTL (default 24 h). |
 | Retry with same key + same fingerprint | Replays the captured response and adds `Idempotent-Replayed: true` (header name configurable via `ReplayHeaderName`). |
@@ -577,6 +577,8 @@ For MVC controllers add `[Idempotent]` to the action method instead of `.WithMet
 | Scope | Resolved per-request by `IIdempotencyScopeResolver`. Default `DefaultIdempotencyScopeResolver` uses the current `Actor` id when an `IActorProvider` is registered, falling back to the **shared anonymous scope** if no provider is registered or no actor resolves. Replace with a custom implementation for a different isolation boundary, such as tenant plus actor. |
 | Response capture | `Set-Cookie`, `Date`, `Server`, and hop-by-hop headers (`Connection`, `Keep-Alive`, `Transfer-Encoding`, `Upgrade`, `Proxy-Authenticate`, `Proxy-Authorization`, `TE`, `Trailer`) are stripped from the snapshot. Cookies stay out by default so a replay does not re-issue rotated session tokens; opt back in via `IncludeSetCookieInSnapshot = true`. |
 | Failure paths | 5xx responses, response trailers, `SendFileAsync`, oversized request / response bodies (>1 MiB by default), and unhandled exceptions abandon the reservation so the next retry re-executes. |
+
+The key syntax is a compatibility grammar, not strict RFC 8941 `sf-string` or `sf-token` parsing. `abc` and `"abc"` produce the same parsed key. Unquoted `a:b`, `a/b`, and `?1` are invalid, but their quoted forms are accepted. Empty quoted keys (`""`) are rejected. Invalid syntax, duplicate headers, and over-length keys return `400 Bad Request`; see [`IdempotencyKeyParser`](../api_reference/trellis-api-asp.md#idempotencykeyparser) for details and limits.
 
 **`IIdempotencyStore`** is the persistence seam.
 

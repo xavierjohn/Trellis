@@ -3,9 +3,9 @@
 using Trellis.Asp.Idempotency;
 
 /// <summary>
-/// Pins the subset of RFC 8941 structured-fields-string parsing used by the idempotency
-/// middleware. Keys may arrive as a bare RFC 7230 token or as a quoted string with the
-/// limited escape set (<c>\\</c> and <c>\"</c>).
+/// Pins Trellis's compatibility key grammar: nonempty bare RFC 7230 tokens or nonempty
+/// quoted printable-ASCII strings with only <c>\\</c> and <c>\"</c> escapes.
+/// This is not strict RFC 8941 <c>sf-string</c> or <c>sf-token</c> parsing.
 /// </summary>
 public sealed class IdempotencyKeyParserTests
 {
@@ -19,11 +19,15 @@ public sealed class IdempotencyKeyParserTests
         parsed.Should().Be(token);
     }
 
-    [Fact]
-    public void Quoted_string_returns_content_without_quotes()
+    [Theory]
+    [InlineData("\"hello world\"", "hello world")]
+    [InlineData("\"a:b\"", "a:b")]
+    [InlineData("\"a/b\"", "a/b")]
+    [InlineData("\"?1\"", "?1")]
+    public void Quoted_string_returns_content_without_quotes(string quoted, string content)
     {
-        IdempotencyKeyParser.TryParse("\"hello world\"", "Idempotency-Key", out var parsed, out _).Should().BeTrue();
-        parsed.Should().Be("hello world");
+        IdempotencyKeyParser.TryParse(quoted, "Idempotency-Key", out var parsed, out _).Should().BeTrue();
+        parsed.Should().Be(content);
     }
 
     [Fact]
@@ -42,6 +46,9 @@ public sealed class IdempotencyKeyParserTests
     [InlineData("\"abc\"junk\"")]
     [InlineData("\"a\"b\"")]
     [InlineData("\"\"")]
+    [InlineData("a:b")]
+    [InlineData("a/b")]
+    [InlineData("?1")]
     public void Invalid_inputs_return_false(string input)
     {
         IdempotencyKeyParser.TryParse(input, "Idempotency-Key", out _, out var error).Should().BeFalse();

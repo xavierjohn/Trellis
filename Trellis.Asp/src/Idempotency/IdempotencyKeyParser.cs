@@ -3,9 +3,10 @@
 using System;
 
 /// <summary>
-/// Parses an <c>Idempotency-Key</c> header value using the subset of RFC 8941 structured-fields
-/// "sf-string" required by the idempotency middleware. Accepts either a bare token
-/// (RFC 7230 <c>tchar</c>) or a quoted string with the escape set <c>\\</c> and <c>\"</c>.
+/// Parses an <c>Idempotency-Key</c> header using Trellis's compatibility grammar: a nonempty
+/// RFC 7230 token (<c>1*tchar</c>) or a nonempty quoted printable-ASCII string (0x20-0x7E)
+/// with only <c>\\</c> and <c>\"</c> escapes. This is not strict RFC 8941
+/// <c>sf-string</c> or <c>sf-token</c> parsing.
 /// </summary>
 public static class IdempotencyKeyParser
 {

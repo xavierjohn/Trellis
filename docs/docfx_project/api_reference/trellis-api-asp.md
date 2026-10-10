@@ -940,7 +940,7 @@ public static class IdempotencyApplicationBuilderExtensions
 
 ### Namespace `Trellis.Asp.Idempotency`
 
-Opt-in IETF `Idempotency-Key` middleware for `POST` / `PATCH` retry safety. See cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency).
+Opt-in `Idempotency-Key` middleware for `POST` / `PATCH` retry safety, using the IETF header name and status semantics with Trellis's [compatibility key grammar](#idempotencykeyparser). See cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency).
 
 **Request identity and scope.** The store key is `(scope, parsed Idempotency-Key)`, not `(scope, key, fingerprint)`. `DefaultIdempotencyScopeResolver` uses the current actor's id; when no `IActorProvider` is registered or no actor resolves, it uses the **shared anonymous scope**. A custom `IIdempotencyScopeResolver` can supply a different isolation boundary, such as tenant plus actor. The default scope is not route-specific: all of an actor's opted-in endpoints sharing the store share one client key namespace.
 
@@ -948,7 +948,7 @@ Opt-in IETF `Idempotency-Key` middleware for `POST` / `PATCH` retry safety. See 
 
 For an existing reservation or an unexpired completed snapshot, reusing the same scope and key with a different fingerprint returns `BodyHashMismatch`, mapped to `MismatchStatusCode` (default `422`), **not a replay and not a new execution**. Despite its name, `BodyHashMismatch` is not limited to body changes. For example, the same actor, key, and body sent first to `POST /restaurants/A/import` and then to `POST /restaurants/B/import` have different paths and therefore different fingerprints: the second request is rejected, not replayed. Use a distinct key for each intended operation and reuse that key only for retries of the same request.
 
-The status codes follow [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header) §2.7 (Error Handling): a **missing** key on an opted-in endpoint → `400` (`RequireKeyOnOptedInEndpoints`); a key **reused in the same scope with a different request fingerprint** → `422` by default (`MismatchStatusCode`, per RFC 9110 §15.5.21); and a matching-fingerprint retry **while the original reservation is still active** → `409` (`AlreadyInFlight`). A **malformed** key (duplicate header, invalid `sf-string`, or over-length) is a request-syntax error and stays `400`.
+The status codes follow [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header) §2.7 (Error Handling): a **missing** key on an opted-in endpoint → `400` (`RequireKeyOnOptedInEndpoints`); a key **reused in the same scope with a different request fingerprint** → `422` by default (`MismatchStatusCode`, per RFC 9110 §15.5.21); and a matching-fingerprint retry **while the original reservation is still active** → `409` (`AlreadyInFlight`). A **malformed** key (duplicate header, invalid key syntax including empty quoted keys, or over-length) is a request-syntax error and stays `400`.
 
 Fingerprint mismatches carry the ProblemDetails `code` **`idempotency.key_reused_with_different_body`**. This historical wire code is retained for compatibility and covers **all fingerprint mismatches**, not just body changes. The human-readable `detail` names the request fingerprint components; clients should branch on `code`, not parse the message.
 
@@ -973,11 +973,11 @@ public sealed class IdempotencyOptions
 
 | Member | Default | Description |
 | --- | --- | --- |
-| `HeaderName` | `"Idempotency-Key"` | HTTP header carrying the IETF [`sf-string`](https://www.rfc-editor.org/rfc/rfc8941) idempotency key. |
+| `HeaderName` | `"Idempotency-Key"` | HTTP header carrying a key in Trellis's [compatibility grammar](#idempotencykeyparser): a nonempty bare HTTP token or nonempty quoted printable-ASCII string. |
 | `ReplayHeaderName` | `"Idempotent-Replayed"` | Response header added to replayed responses so clients can detect that the body came from a cached snapshot rather than a fresh handler invocation. |
 | `Ttl` | `24 h` | Time a completed snapshot is retained before it is evicted and the key can be reused. |
 | `ReservationTimeout` | `30 s` | Time after which a same-key retry with a matching fingerprint may atomically take over an in-flight reservation (CAS) so a crashed handler does not block retries forever. Stores MUST NOT delete outstanding reservations on this timeout; takeover replaces the entry under a new reservation token, which invalidates the previous token for `CompleteAsync` / `AbandonAsync`. |
-| `MaxKeyLength` | `200` | Hard cap on parsed key length; longer keys produce `400 Bad Request`. Raw header values are also rejected before parsing when they exceed the parser's 4 KiB defensive cap, using the existing invalid-key `400 Bad Request` surface. |
+| `MaxKeyLength` | `200` | Hard cap on parsed key length after unquoting and unescaping; longer keys produce `400 Bad Request`. Raw header values are also rejected before parsing when they exceed the parser's 4,096-character defensive cap, using the existing invalid-key `400 Bad Request` surface. |
 | `MaxRequestBodyBytes` | `1 MiB` | Hard cap on the buffered request body that contributes to the fingerprint; larger bodies produce `413 Payload Too Large`. |
 | `MaxResponseBodyBytes` | `1 MiB` | Hard cap on the captured response body; exceeding aborts capture and records no snapshot (the next retry re-executes). |
 | `MismatchStatusCode` | `422` | Status returned when a key already in use in the same scope arrives with a different request fingerprint, including differences in path or method even if the body is identical. |
@@ -987,6 +987,30 @@ public sealed class IdempotencyOptions
 | `AdditionalFingerprintHeaders` | empty | Extra request headers included in the fingerprint (for example a tenant header) when their semantics affect the request identity. |
 
 `AddTrellisIdempotency()` validates options at host startup: `HeaderName`, `ReplayHeaderName`, and `AdditionalFingerprintHeaders` must be valid HTTP header names; `Ttl`, `ReservationTimeout`, `MaxKeyLength`, `MaxRequestBodyBytes`, and `MaxResponseBodyBytes` must be positive; `MismatchStatusCode` must be between `400` and `599`; and `Methods` must contain at least one valid HTTP method token.
+
+### `IdempotencyKeyParser`
+
+```csharp
+public static class IdempotencyKeyParser
+{
+    public static bool TryParse(string? raw, string headerName, out string key, out string? error);
+}
+```
+
+`TryParse` accepts either a **nonempty bare [RFC 7230 HTTP token](https://www.rfc-editor.org/rfc/rfc7230#section-3.2.6)** (`1*tchar`) or a **nonempty quoted printable-ASCII string** (`0x20`-`0x7E`, including spaces). Inside quotes, embedded quotes and backslashes must be escaped as `\"` and `\\`; no other escapes are accepted. Bare tokens are returned verbatim; quoted strings are unquoted and unescaped. Values are not trimmed.
+
+This compatibility grammar is **neither strict RFC 8941 [`sf-string`](https://www.rfc-editor.org/rfc/rfc8941#section-3.3.3) nor [`sf-token`](https://www.rfc-editor.org/rfc/rfc8941#section-3.3.4)** parsing. It accepts bare keys, rejects empty quoted strings, and does not accept the colon/slash characters that `sf-token` permits after its first character.
+
+| Header value | Result |
+| --- | --- |
+| `abc` or `"abc"` | Accepted as the same parsed key, `abc`. |
+| `"hello world"` | Accepted as `hello world`. |
+| `"a\"b\\c"` | Accepted as `a"b\c`. |
+| `a:b`, `a/b`, or `?1` | Rejected as invalid bare tokens. |
+| `"a:b"`, `"a/b"`, or `"?1"` | Accepted as `a:b`, `a/b`, or `?1`, respectively. |
+| `""` | Rejected: the parsed key must be nonempty. |
+
+Null/empty values, malformed quotes or escapes, control characters, and non-ASCII characters fail parsing with an empty `key` and a diagnostic in `error` using the configured `headerName`. The parser also rejects raw values longer than 4,096 characters before parsing; the middleware separately applies `MaxKeyLength` to the parsed key.
 
 ### `IIdempotencyStore`
 
