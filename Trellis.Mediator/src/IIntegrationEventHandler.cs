@@ -1,9 +1,9 @@
 ﻿namespace Trellis.Mediator;
 
 /// <summary>
-/// Handles an <see cref="IIntegrationEvent"/> - the in-process consumer side of the external contract.
-/// Implementations are resolved via DI and invoked once per matching event by the default
-/// <see cref="IIntegrationEventPublisher"/>.
+/// Handles an <see cref="IIntegrationEvent"/>. Implementations are resolved via DI by the default
+/// in-process <see cref="IIntegrationEventPublisher"/> or by an inbound <see cref="IInboxDispatcher"/>.
+/// The invocation path, not this handler contract, determines delivery and failure semantics.
 /// </summary>
 /// <typeparam name="TEvent">
 /// The concrete integration event type. Dispatch matches the runtime type of the event exactly;
@@ -11,15 +11,22 @@
 /// </typeparam>
 /// <remarks>
 /// <para>
-/// This is the framework's default, in-process consumer for integration events: it lets a modular
-/// monolith react to its own published contracts without a message broker, and it makes integration
-/// events testable. When you move a consumer to a separate service, replace the default publisher with
-/// a broker adapter and the producing side is unchanged.
+/// The default publisher provides best-effort local notification: it logs and swallows ordinary
+/// handler failures and continues with the remaining handlers. A handler's
+/// <see cref="OperationCanceledException"/> propagates when the supplied token is canceled.
+/// A swallowed failure does not reach the outbox relay, so the integration row is processed without
+/// a failed attempt or a consumer retry.
 /// </para>
 /// <para>
-/// Like domain-event handlers, integration-event handlers are best-effort side effects: the default
-/// publisher logs and swallows non-cancellation exceptions so one handler's failure does not block the
-/// others. Handlers must be idempotent - the transactional outbox delivers at least once.
+/// Transactional inbox dispatch is non-swallowing. A handler failure propagates before the dedup row
+/// and handler writes through the inbox's context are saved, allowing the transport to redeliver.
+/// Stage local writes for that dispatcher to commit; do not call <c>SaveChanges</c> inside a handler.
+/// External calls and writes through another context are outside that atomic boundary.
+/// </para>
+/// <para>
+/// Handlers must be safe to re-run: a crash before outbox bookkeeping or a transport redelivery can
+/// repeat an invocation. Inbox deduplication requires an adapter to call <see cref="IInboxDispatcher"/>
+/// with the stable message id; registering an inbox does not change default local fan-out.
 /// </para>
 /// </remarks>
 [System.Diagnostics.CodeAnalysis.SuppressMessage(
@@ -32,7 +39,7 @@ public interface IIntegrationEventHandler<in TEvent>
     /// Handles the specified integration event.
     /// </summary>
     /// <param name="integrationEvent">The integration event being delivered.</param>
-    /// <param name="cancellationToken">A token to observe while the handler runs.</param>
+    /// <param name="cancellationToken">The publisher's or inbox dispatcher's token to observe while the handler runs.</param>
     /// <returns>A <see cref="ValueTask"/> that completes when the handler is done.</returns>
     ValueTask HandleAsync(TEvent integrationEvent, CancellationToken cancellationToken);
 }

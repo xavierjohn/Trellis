@@ -3,12 +3,12 @@ title: Transactional Inbox Integration
 package: Trellis.EntityFrameworkCore.Inbox
 topics: [inbox, integration-events, idempotency, efcore, messaging, reliability]
 related_api_reference: [trellis-api-efcore-inbox.md, trellis-api-efcore-outbox.md, trellis-api-efcore.md, trellis-api-mediator.md]
-last_verified: 2026-06-20
+last_verified: 2026-10-10
 audience: [developer]
 ---
 # Transactional Inbox Integration
 
-`Trellis.EntityFrameworkCore.Inbox` makes consuming integration events **idempotent**. It is the consume-side complement to the [transactional outbox](integration-outbox.md): the outbox guarantees a message is *published* at least once, and the inbox guarantees that — no matter how many times it is delivered — its handlers' local side effects are *applied* exactly once. The proof of processing and the side effects commit together, in one database transaction, or not at all.
+`Trellis.EntityFrameworkCore.Inbox` makes consuming integration events **idempotent**. It is the consume-side complement to the [transactional outbox](integration-outbox.md). Reliable broker handoff requires a publisher that awaits acceptance and propagates publication failures; acceptance is not consumer processing. When a redelivering transport actually routes messages through the inbox, the dedup row and handler writes through the same `TContext` commit atomically, providing **effectively-once local processing**. Default in-process publication is best-effort and does not use this boundary.
 
 ## The big picture
 
@@ -44,7 +44,7 @@ Two atomic boxes joined by an unreliable wire. The **producer** commits its stat
 
 ## Why you need it
 
-Every durable transport delivers **at least once**. A broker redelivers when a consumer's lock renewal times out; a log-based transport replays from an offset after a restart; an at-least-once outbox re-publishes a message whose acknowledgement was lost. So your consumer *will* see the same message twice, and the second time it must not charge the card again, send the second confirmation email, or write the duplicate ledger row.
+This pattern assumes an **at-least-once transport**. A broker can redeliver after a consumer lock expires; a log can replay from an offset after a restart; an outbox can republish after an acknowledgement or bookkeeping save was lost. A consumer can therefore see the same message twice and must avoid duplicate effects. Only writes through the inbox's context share its atomic dedup commit; external effects need their own idempotency.
 
 The usual fix — "check if we've already handled this id" — is only correct if the check and the work commit atomically. Do them in two steps and a crash in between either reprocesses (you checked, then died before recording) or drops (you recorded, then died before the work). The inbox makes the dedup record and the work part of the **same transaction**, so they are inseparable.
 
@@ -71,6 +71,8 @@ builder.Services.AddTrellis(trellis => trellis
 ```
 
 `ConsumerId` identifies this subscriber. Two different services consuming the same message each keep their own dedup history under their own `ConsumerId`, so each processes it once. Keep the value stable across deploys — it is part of the dedup key, and renaming it makes the consumer reprocess everything still inside the transport's redelivery window.
+
+**Registration is not routing.** `UseIntegrationEvents(...)` supplies handler bindings shared by the default publisher and the inbox. `UseInbox<TContext>()` does not reroute default publication: local fan-out still logs and swallows ordinary consumer failures and the integration outbox row is processed without retrying them. An adapter must actually call the non-swallowing `IInboxDispatcher` with the stable message id and expose failures to a transport that redelivers.
 
 Then an **application-owned** transport adapter turns each received message into an `IntegrationEnvelope` and hands it to the dispatcher:
 
@@ -146,7 +148,7 @@ The inbox guarantees exactly-once application of **local, transactional** side e
 - Sending an email, calling a downstream HTTP API, or publishing to another broker happens *outside* the database `SaveChanges`. If the external call succeeds but the save then fails or rolls back — a later handler throws, the connection drops, or a concurrent duplicate wins the race — no dedup row is written, so the transport redelivers and the handler runs again, repeating the external call. Conversely, once the dedup row commits the message is never re-run, so an external effect that failed *after* a successful commit is not retried.
 - For those, keep the handler idempotent on its own terms — make the downstream call with an idempotency key, or record "email sent" as a transactional side effect and let a separate outbox actually send it.
 
-A useful rule of thumb: **do transactional work in the inbox handler; push non-transactional work back out through an outbox.** The two patterns compose — the inbox makes consumption idempotent, the outbox makes the consumer's own emissions reliable.
+A useful rule of thumb: **do transactional work in the inbox handler; push non-transactional work back out through an outbox.** The two patterns compose: the inbox makes local consumption idempotent, and the outbox can retry the consumer's emissions when their publisher exposes failures. Default best-effort local fan-out does not provide durable downstream consumer retries.
 
 ## Choosing the MessageId
 
@@ -166,7 +168,7 @@ flowchart LR
         direction TB
         EV[Domain event]
         OB[("Outbox row<br/>written once · Id = M")]
-        RLY([Relay · publishes once])
+        RLY([Relay · one handoff per attempt])
         EV --> OB --> RLY
     end
 
@@ -188,7 +190,7 @@ flowchart LR
     style I3 fill:#e8f5e9,stroke:#388e3c
 ```
 
-Three consumers are shown; the same fan-out covers any number — five, fifty. The producer is unchanged either way: it still writes a single outbox row and the relay still publishes it once. You add or remove consumers by adding or removing subscriptions on the transport, and each new consumer simply starts its own dedup history under its own `ConsumerId`.
+Three consumers are shown; the same fan-out covers any number — five, fifty. The producer is unchanged either way: it still writes a single integration row and hands it to the publisher on each attempt. That row can be published more than once, always under the same message id. You add or remove consumers through transport subscriptions, and each new consumer starts its own dedup history under its own `ConsumerId`.
 
 That is a different axis from scaling *one* consumer to several **instances**: those instances share one `ConsumerId` and one database, and the composite primary key makes exactly one instance win a concurrent or redelivered duplicate — no leader election needed. Fan-out (many `ConsumerId`s) and scale-out (many instances of one `ConsumerId`) compose freely.
 
@@ -239,11 +241,11 @@ They are two halves of reliable messaging and frequently used together:
 |---|---|---|
 | Side | Produce | Consume |
 | Problem solved | Don't lose a message between commit and publish | Don't apply a redelivered message twice |
-| Guarantee | At-least-once delivery | Effectively-once processing (local side effects) |
+| Guarantee | At-least-once publication with a reliable publisher; default local fan-out is best-effort | Effectively-once processing (writes through the inbox's context) |
 | Trellis ships | The capture interceptor + background relay | The dispatcher + EF dedup store + table |
-| You own | Optionally, the broker adapter that sends | The transport adapter that receives |
+| You own | Choose a reliable sending adapter when broker handoff is required | An adapter that invokes the inbox and exposes failures for redelivery |
 
-The producer captures an event atomically with its state change and the relay publishes it (at least once); the consumer's inbox deduplicates the deliveries (to one effective processing). The `OutboxMessage.Id` carried across the wire is the thread that ties them together.
+The producer captures the source domain event atomically with its state change, then stages and publishes the translated integration row. A reliable publisher exposes failures for outbox retry; a receiving adapter invokes the inbox and exposes failures for transport redelivery. The `OutboxMessage.Id` carried across the wire ties repeated publications to one effective local processing per consumer. Enabling the inbox alone does not change the default best-effort publisher.
 
 ## Related guides
 

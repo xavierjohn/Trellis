@@ -2322,7 +2322,9 @@ Represents an integration event - the stable, published contract a bounded conte
 
 Domain events are internal: they are raised by aggregates, dispatched in-process to `IDomainEventHandler<T>`, and free to expose the domain's ubiquitous language because only the owning context observes them. Integration events are external: they are versioned wire contracts other systems depend on, so they should be deliberately shaped, stable, and free of internal domain types.
 
-Integration events are typically translated from domain events: a domain-event handler observes a domain event and produces one or more integration events describing the same business fact in contract terms. Publish them through the transactional outbox so external delivery is atomic with the state change and survives a crash. The outbox relays integration events through `IIntegrationEventPublisher`, whose default implementation fans out to in-process `IIntegrationEventHandler<T>` registrations and can be replaced with a message-broker adapter.
+Integration events are typically translated from domain events: a domain-event handler observes a domain event and produces one or more integration events describing the same business fact in contract terms. The transactional outbox captures the source domain event atomically with the state change, then stages translated integration events durably before publication. External publication itself is not atomic with the producing transaction.
+
+The outbox publishes through `IIntegrationEventPublisher`. Its default in-process fan-out is **best-effort**: ordinary handler failures are logged and swallowed, so the relay processes the row without retrying those consumers. Reliable broker publication requires an adapter that awaits broker acceptance and propagates publication failures. Acceptance is not downstream consumer success; transactional inbox consumption is a separate boundary. See [publisher completion semantics](trellis-api-mediator.md#iintegrationeventpublisher) and [outbox delivery semantics](trellis-api-efcore-outbox.md#delivery-semantics).
 
 | Name | Type | Description |
 | --- | --- | --- |

@@ -11,22 +11,25 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 /// <remarks>
 /// Unlike domain-event dispatch, integration events are not dispatched by a command-pipeline behavior;
 /// they are produced via the <see cref="IIntegrationEventCollector"/> during domain-event handling and
-/// published by the transactional outbox relay. These helpers register the default in-process publisher,
-/// the scoped collector, and any in-process consumers.
+/// published by the transactional outbox relay. These helpers register the default best-effort
+/// in-process publisher, the scoped collector, and any consumers. The same handler registrations are
+/// used by <see cref="IInboxDispatcher"/>, but these helpers do not route messages through an inbox.
 /// </remarks>
 public static class IntegrationEventDispatchServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the default <see cref="IIntegrationEventPublisher"/> (in-process fan-out) and the scoped
+    /// Registers the default <see cref="IIntegrationEventPublisher"/> (best-effort in-process fan-out) and the scoped
     /// <see cref="IIntegrationEventCollector"/>. This is the AOT/trim-friendly entry point; pair it with
     /// <see cref="AddIntegrationEventHandler{TEvent, THandler}(IServiceCollection)"/> for each consumer.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
-    /// Idempotent: calling this more than once registers the publisher and collector exactly once. To
-    /// deliver integration events to other services, replace the <see cref="IIntegrationEventPublisher"/>
-    /// registration with a message-broker adapter after calling this method.
+    /// Idempotent: adds the publisher and collector only if they are not already registered.
+    /// The default publisher logs and swallows ordinary consumer failures; the relay processes the row
+    /// without retrying those consumers. To deliver integration events to other services, replace the
+    /// <see cref="IIntegrationEventPublisher"/> registration with a message-broker adapter that awaits
+    /// broker acceptance and propagates publication failures so the relay can retry.
     /// </remarks>
     public static IServiceCollection AddIntegrationEventDispatch(this IServiceCollection services)
     {

@@ -4,7 +4,7 @@
 
 Transactional outbox and post-commit domain-event dispatch for EF Core applications built with Trellis.
 
-It captures domain events in the aggregate transaction and relays them after commit. Translators can then stage integration events for reliable publication.
+It captures domain events in the aggregate transaction and relays them after commit. Translators can then stage durable integration rows; publication guarantees depend on the configured publisher.
 
 > This package opts out of NativeAOT and trimming because it builds on EF Core and discovers integration-event types at runtime.
 
@@ -66,6 +66,12 @@ public sealed class OrderPlacedTranslator(
 - Supports configurable batching, locking, lease recovery, retry scheduling, and dead-lettering.
 - Exposes an explicit retryability contract for publisher failures.
 - Requires no broker dependency; transport packages implement `IIntegrationEventPublisher`.
+
+## Delivery Semantics
+
+**Domain rows** use reporting dispatch: failed domain handlers are retried while saved completed-handler progress is skipped. **Integration rows** have one publisher handoff, not per-consumer retry progress. The default in-process publisher is best-effort: ordinary consumer failures are logged and swallowed, so a new row is processed with `Attempts == 0` and no relay `LastError`; later drains do not retry it.
+
+A broker adapter must await publication acceptance and propagate publication failures. An exposed non-cancellation failure keeps the row pending, increments its persisted failure count, retains the error, and schedules retry under the same message id. Broker acceptance is not downstream consumer success. Transactional consumption requires an adapter to call the non-swallowing inbox and expose failures for transport redelivery; registering an inbox does not reroute default local publication.
 
 ## Important Setup
 

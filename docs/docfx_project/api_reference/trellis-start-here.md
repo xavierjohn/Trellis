@@ -4,7 +4,7 @@ namespaces: [Trellis]
 types: [orientation, routing]
 related_docs: [trellis-api-cookbook.md, trellis-api-core.md, trellis-api-anti-patterns.md, trellis-api-analyzers.md]
 version: v3
-last_verified: 2026-10-07
+last_verified: 2026-10-10
 audience: [llm]
 agent_usage: required
 agent_description: "Routing head for every Trellis task: which reference to open, the recipe lookup and how to read the set. Read before writing or changing code that uses Trellis."
@@ -156,7 +156,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Render ASP.NET Core rate-limit rejections as Trellis 429 Problem Details with optional `Retry-After` | [`RateLimiterOptionsExtensions` in the ASP reference](trellis-api-asp.md#ratelimiteroptionsextensions) |
 | Define domain events | [Recipe 17](trellis-api-cookbook.md#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
 | Make domain events survive a crash (transactional outbox) | [Recipe 35](trellis-api-cookbook.md#recipe-35--transactional-outbox-for-crash-safe-domain-events) |
-| Publish a stable external contract (integration events) translated from domain events | [Recipe 36](trellis-api-cookbook.md#recipe-36--translating-a-domain-event-into-an-integration-event) |
+| Publish a stable external contract (integration events) translated from domain events | [Recipe 36](trellis-api-cookbook.md#recipe-36--translating-a-domain-event-into-an-integration-event), then [publisher completion boundaries](trellis-api-mediator.md#iintegrationeventpublisher) for best-effort local notification vs. broker acceptance and inbox consumption |
 | Connect an inbound message, domain outbox row, translated integration event, and W3C trace | [Recipe 36](trellis-api-cookbook.md#recipe-36--translating-a-domain-event-into-an-integration-event), then [`IntegrationMessageContext`](trellis-api-mediator.md#integrationmessagecontext) and [outbox lineage](trellis-api-efcore-outbox.md#outboxmessage) |
 | Show a validation failure in the user's language, or render your own message from a 422 instead of showing the server's English | [Recipe 39](trellis-api-cookbook.md#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args) |
 | Fix analyzer warnings | [Recipe 11](trellis-api-cookbook.md#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |

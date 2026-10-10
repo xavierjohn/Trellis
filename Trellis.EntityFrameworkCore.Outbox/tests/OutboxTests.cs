@@ -225,14 +225,12 @@ public sealed class OutboxTests
     }
 
     [Fact]
-    public async Task Relay_republishes_a_retried_row_under_the_same_message_id()
+    public async Task DrainAsync_IntegrationPublisher_FailedPublish_RetainsRetryStateAndMessageId()
     {
         var ct = TestContext.Current.CancellationToken;
         using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync(ct);
 
-        // Fails the first publish so the row stays pending and is drained again, mimicking the crash
-        // between publish and the relay's bookkeeping save that makes delivery at-least-once.
         var recorder = new RecordingIntegrationEventPublisher { FailFirstPublish = true };
         var time = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
         var services = new ServiceCollection();
@@ -269,10 +267,57 @@ public sealed class OutboxTests
             .OfType<OutboxRelay<OutboxTestDbContext>>()
             .Single();
 
-        await relay.DrainAsync(ct); // stages the integration row
-        await relay.DrainAsync(ct); // first publish attempt throws
+        await relay.DrainAsync(ct);
+        Guid integrationRowId;
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var integration = await context.Set<OutboxMessage>().AsNoTracking()
+                .SingleAsync(r => r.Kind == OutboxMessageKind.Integration, ct);
+            integrationRowId = integration.Id;
+            integration.ProcessedAt.Should().BeNull();
+            integration.Attempts.Should().Be(0);
+            integration.LastError.Should().BeNull();
+        }
+
+        var failedDrain = await relay.DrainAsync(ct);
+
+        failedDrain.Should().Be(1);
+        recorder.Published.Should().ContainSingle().Which.MessageId.Should().Be(integrationRowId);
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var integration = await context.Set<OutboxMessage>().AsNoTracking()
+                .SingleAsync(r => r.Kind == OutboxMessageKind.Integration, ct);
+            integration.Id.Should().Be(integrationRowId);
+            integration.ProcessedAt.Should().BeNull();
+            integration.Attempts.Should().Be(1);
+            integration.LastError.Should().Be("transport unavailable");
+            integration.CompletedHandlers.Should().BeEmpty();
+            integration.LockedBy.Should().BeNull();
+            integration.LockedUntil.Should().Be(time.GetUtcNow().UtcDateTime.AddSeconds(30));
+        }
+
+        var backoffDrain = await relay.DrainAsync(ct);
+        backoffDrain.Should().Be(0);
+        recorder.Published.Should().ContainSingle();
+
         time.Advance(TimeSpan.FromSeconds(31));
-        await relay.DrainAsync(ct); // retry
+        await relay.DrainAsync(ct);
+
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var integration = await context.Set<OutboxMessage>().AsNoTracking()
+                .SingleAsync(r => r.Kind == OutboxMessageKind.Integration, ct);
+            integration.Id.Should().Be(integrationRowId);
+            integration.ProcessedAt.Should().Be(time.GetUtcNow());
+            integration.Attempts.Should().Be(1);
+            integration.LastError.Should().BeNull();
+            integration.CompletedHandlers.Should().BeEmpty();
+            integration.LockedBy.Should().BeNull();
+            integration.LockedUntil.Should().BeNull();
+        }
 
         recorder.Published.Should().HaveCount(2);
         recorder.Published[0].MessageId.Should().Be(
@@ -284,6 +329,79 @@ public sealed class OutboxTests
         recorder.Published[0].CausationId.Should().NotBeNull();
         recorder.Published[1].Should().BeEquivalentTo(recorder.Published[0],
             "retrying a persisted row must not capture a new relay activity or change lineage");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DrainAsync_DefaultIntegrationPublisher_ThrowingConsumer_ProcessesRowWithoutFailure(bool throwsSynchronously)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var invoked = new List<ThingCreatedIntegrationEvent>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, ThingCreatedTranslator>();
+        services.AddIntegrationEventDispatch();
+        services.AddScoped<IIntegrationEventHandler<ThingCreatedIntegrationEvent>>(_ =>
+            new IntegrationThrowingHandler(invoked, throwsSynchronously));
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            await context.Database.EnsureCreatedAsync(ct);
+            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "consumer-fails", DateTimeOffset.UnixEpoch));
+            await context.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>()
+            .OfType<OutboxRelay<OutboxTestDbContext>>()
+            .Single();
+
+        await relay.DrainAsync(ct);
+        invoked.Should().BeEmpty();
+        Guid integrationRowId;
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var integration = await context.Set<OutboxMessage>().AsNoTracking()
+                .SingleAsync(r => r.Kind == OutboxMessageKind.Integration, ct);
+            integrationRowId = integration.Id;
+            integration.ProcessedAt.Should().BeNull();
+            integration.Attempts.Should().Be(0);
+        }
+
+        var drained = await relay.DrainAsync(ct);
+
+        drained.Should().Be(1);
+        invoked.Should().ContainSingle().Which.Name.Should().Be("consumer-fails");
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var integration = await context.Set<OutboxMessage>().AsNoTracking()
+                .SingleAsync(r => r.Kind == OutboxMessageKind.Integration, ct);
+            integration.Id.Should().Be(integrationRowId);
+            integration.ProcessedAt.Should().NotBeNull("the default publisher swallowed the consumer failure");
+            integration.Attempts.Should().Be(0);
+            integration.LastError.Should().BeNull();
+            integration.CompletedHandlers.Should().BeEmpty();
+            integration.LockedBy.Should().BeNull();
+            integration.LockedUntil.Should().BeNull();
+        }
+
+        var laterDrain = await relay.DrainAsync(ct);
+        laterDrain.Should().Be(0);
+        invoked.Should().ContainSingle("a processed integration row is not retried after a swallowed failure");
     }
 
     [Fact]
@@ -1120,6 +1238,19 @@ internal sealed class IntegrationCapturingHandler(List<ThingCreatedIntegrationEv
     {
         captured.Add(integrationEvent);
         return ValueTask.CompletedTask;
+    }
+}
+
+internal sealed class IntegrationThrowingHandler(List<ThingCreatedIntegrationEvent> invoked, bool throwsSynchronously)
+    : IIntegrationEventHandler<ThingCreatedIntegrationEvent>
+{
+    public ValueTask HandleAsync(ThingCreatedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    {
+        invoked.Add(integrationEvent);
+        if (throwsSynchronously)
+            throw new InvalidOperationException("consumer unavailable");
+
+        return ValueTask.FromException(new InvalidOperationException("consumer unavailable"));
     }
 }
 

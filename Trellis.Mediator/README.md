@@ -44,6 +44,8 @@ builder.Services.AddTrellisBehaviors();
 
 - Nested domain-event dispatch waits for the owning successful unit-of-work commit, retaining inner aggregate responses even when the outer command returns a DTO or Unit. Failure/throw discards the dispatch batch without clearing events; the outbox still captures events on successful `FailAfterCommit` saves.
 - `IIntegrationEventCollector` is translator-only. The outbox relay opens `BeginTranslation()` while publishing and draining; `Add` from a command or outside that active lease throws rather than silently losing events.
+- Default `IIntegrationEventPublisher` fan-out is best-effort local notification: ordinary consumer failures are logged and swallowed, so the relay processes the integration row without a consumer retry. Broker adapters must await publication acceptance and propagate publication failures; acceptance is not downstream consumer success.
+- `IIntegrationEventHandler<T>` is also used by the non-swallowing transactional inbox. An adapter must call `IInboxDispatcher` with the stable message id and expose failures for transport redelivery; registering an inbox does not reroute the default publisher. Only handler writes through the inbox's context share its atomic dedup commit.
 - `IntegrationMessageContext.BeginCorrelation("workflow-id")` supplies an application-owned business correlation id; inbox dispatch scopes inherit nonblank inbound correlation and expose the inbound message id as the direct cause for outbox capture. `OutboundIntegrationMessage` carries persisted lineage and W3C trace context without guessing from the relay's ambient activity.
 
 ## Documentation

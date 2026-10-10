@@ -41,6 +41,8 @@ registration. ServiceDefaults itself does not take a dependency on the versionin
 
 `UseIdempotency(opt => ...)` wires the opt-in IETF `Idempotency-Key` middleware (options + scope resolver + marker). Composition is explicit — the slot does not register a store, so callers add `services.AddInMemoryIdempotencyStore()` (dev / tests) or an EF-backed store (production) and mount the middleware with `app.UseTrellisIdempotency()`. Endpoints opt in with `[Idempotent]`. The slot is also independent of `UseAsp()`.
 
+Every `UseIntegrationEvents(...)` overload wires the default **best-effort local** publisher when none is registered. It logs and swallows ordinary consumer failures, so processed integration outbox rows do not retry those consumers. For reliable broker handoff, replace the publisher with an adapter that awaits acceptance and propagates publication failures; acceptance is not consumer success. `UseInbox<TContext>()` supplies a separate non-swallowing consumption seam, not automatic routing: an adapter must call `IInboxDispatcher.DispatchAsync` with the stable message id and expose failures for redelivery.
+
 ## Key Features
 - Domain-event slots preserve owning-commit dispatch: deferred inner commands do not publish or clear events, including when the outer response is a DTO/Unit. `UseOutbox<TContext>()` validates the reporting publisher at host startup, and validates the integration publisher only when integration features are registered.
 - `UseWorkerActor(systemActor)` can wrap a compatible pre-existing unkeyed `IActorProvider`; selecting a builder actor-provider slot is not required.

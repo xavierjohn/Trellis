@@ -9,14 +9,16 @@ using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Default <see cref="IIntegrationEventPublisher"/> implementation that resolves
-/// <see cref="IIntegrationEventHandler{TEvent}"/> instances from the request's DI scope using the
+/// <see cref="IIntegrationEventHandler{TEvent}"/> instances from the publisher's DI scope using the
 /// event's runtime type and invokes each in turn. This is the in-process consumer side; replace the
 /// registration with a broker adapter to deliver to other services.
 /// </summary>
 /// <remarks>
-/// Non-cancellation handler exceptions are logged at <see cref="LogLevel.Error"/> and swallowed so a
-/// single misbehaving consumer does not block the others. <see cref="OperationCanceledException"/>
-/// matching the supplied token propagates so the relay can abort cleanly.
+/// Best-effort local notification: ordinary handler failures are logged at <see cref="LogLevel.Error"/>
+/// and swallowed so a single misbehaving consumer does not block the others. Handler-resolution
+/// failures are also logged and swallowed. A handler's <see cref="OperationCanceledException"/>
+/// propagates when the supplied token is canceled. Normal completion makes the relay process the
+/// integration row without recording swallowed failures or retrying those consumers.
 /// </remarks>
 internal sealed partial class MediatorIntegrationEventPublisher : IIntegrationEventPublisher
 {

@@ -3,7 +3,7 @@ package: Trellis.EntityFrameworkCore.Inbox
 namespaces: [Trellis.EntityFrameworkCore]
 types: [InboxMessage, InboxOptions, IntegrationEnvelope, InboxDispatchOutcome, IInboxStore, IInboxDispatcher, InboxServiceCollectionExtensions, InboxModelBuilderExtensions, IConsumerCheckpointStore, ConsumerCheckpoint, ConsumerCheckpointConfiguration, CheckpointServiceCollectionExtensions, CheckpointModelBuilderExtensions]
 version: v1
-last_verified: 2026-08-18
+last_verified: 2026-10-10
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when processing broker integration events effectively once with the Trellis inbox: AddTrellisInbox, its transaction boundary and the (ConsumerId, MessageId) key."
@@ -44,6 +44,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 ## Common traps
 
 - **`AddTrellisInbox<TContext>()` only registers the service half.** Without `modelBuilder.AddTrellisInbox()` the `TrellisInboxMessages` table is unmapped, and without a transport adapter calling `IInboxDispatcher.DispatchAsync(...)` nothing is ever deduplicated. See [Wiring: two required calls](#wiring-two-required-calls).
+- **Inbox registration is not publisher routing.** `UseIntegrationEvents(...)` and `UseInbox<TContext>()` can share handler registrations, but the default in-process `IIntegrationEventPublisher` does not call the inbox. Its swallowed consumer failures still process integration outbox rows without retry. An adapter must actually call `IInboxDispatcher` with the stable message id and expose failures to a redelivering transport.
 - **The `MessageId` must be stable across redeliveries.** Dedup keys on `(ConsumerId, MessageId)`. If the transport assigns a *new* id on every delivery (instead of carrying the producer's `OutboxMessage.Id` verbatim), every redelivery looks new and is reprocessed. The envelope's lineage fields (`MessageSource`, `CausationId`, `CorrelationId`) are observability only and never participate in dedup.
 - **`ConsumerId` must be stable across deploys.** It is part of the dedup key, so renaming it resets dedup history and the consumer reprocesses everything still inside the transport's redelivery window. Each independent subscriber/consumer-group uses its own stable `ConsumerId`.
 - **The guarantee is local-side-effects-only.** The dedup row and the handlers' writes through the injected `TContext` commit in one `SaveChanges`. Effects that are *not* part of that save — sending an email, calling a downstream API, writing through a different `DbContext`/connection — are not covered and need their own idempotency. A handler that writes through a second context escapes the dedup unit of work.
@@ -295,7 +296,7 @@ Configuration for the inbox.
 
 ## Processing semantics
 
-The guarantee is effectively-once **processing of local side effects**, layered on the transport's at-least-once **delivery**:
+The guarantee is effectively-once **processing of local side effects**, layered on a transport's at-least-once **delivery** when an adapter actually calls the dispatcher and exposes its failures:
 
 - A first delivery runs the handlers and commits the `(ConsumerId, MessageId)` dedup row in the same `SaveChanges`. A redelivery finds the row and is skipped.
 - **Failure leaves nothing persisted and redelivers.** A handler throw (or any infrastructure failure) aborts the unit of work before anything is saved — no dedup row, no side effects — and propagates out of `DispatchAsync`, so the transport's normal retry redelivers the message and it is reprocessed from scratch. The inbox does not itself retry or dead-letter; that is the transport's job.
@@ -304,6 +305,8 @@ The guarantee is effectively-once **processing of local side effects**, layered 
 
 ## Relationship to the outbox
 
-The outbox is the **produce** side (atomically capture and reliably publish), the inbox is the **consume** side (idempotently receive). They meet at the message id: the producer's `OutboxMessage.Id` (a UUIDv7) is carried verbatim by the transport and becomes the inbox `MessageId`. The inbox collapses redeliveries of that same row to one effective processing per `ConsumerId`. A translator that reruns because its own attempt failed or its progress was not durably saved can create a new integration row with a new ID; the inbox does not collapse those logical duplicates. Deduplicate them on business identity in the consumer's transaction.
+The outbox is the **produce** side (atomically capture, then retry exposed publication failures), the inbox is the **consume** side (idempotently receive). Reliable broker handoff requires a publisher that awaits acceptance and propagates publication failures; acceptance does not prove downstream consumption. They meet at the message id: the producer's `OutboxMessage.Id` (a UUIDv7) is carried verbatim by the transport and becomes the inbox `MessageId`. The inbox collapses redeliveries of that same row to one effective processing per `ConsumerId`. A translator that reruns because its own attempt failed or its progress was not durably saved can create a new integration row with a new ID; the inbox does not collapse those logical duplicates. Deduplicate them on business identity in the consumer's transaction.
 
-The transport between them (a broker, a log, an HTTP push) is **application-owned**: the inbox defines the `IInboxDispatcher` seam an adapter calls, and `IInboxStore` so a non-EF store can back the guarantee, but it does not ship a broker adapter. In a modular monolith the same in-process path the outbox already fans out to needs no inbox; reach for the inbox when messages cross a process boundary that can redeliver.
+The transport adapter must actually call `IInboxDispatcher` and let failures reach the transport for redelivery; this package defines the dispatcher and store seams, not broker routing. An optional [Azure Service Bus adapter](trellis-api-messaging-azureservicebus.md#wire-format) is shipped separately.
+
+A modular monolith can use default local fan-out without an inbox **when best-effort notification is acceptable**. Ordinary consumer failures are logged and swallowed, and the integration outbox row is processed without retrying them. If transactional local processing is required, an adapter must route through the inbox with the stable message id and expose failures to its delivery mechanism. `UseInbox` registration alone does not change the default publisher; Trellis does not install a reliable local loopback adapter automatically.

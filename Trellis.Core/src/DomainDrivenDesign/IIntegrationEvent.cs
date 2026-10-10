@@ -17,12 +17,14 @@
 /// <para>
 /// <strong>How they relate.</strong> Integration events are typically <em>translated</em> from domain
 /// events: a domain-event handler observes a domain event and produces one or more integration events
-/// describing the same business fact in contract terms. Publish them through the transactional outbox
-/// so external delivery is atomic with the state change and survives a crash - see
-/// <c>Trellis.EntityFrameworkCore.Outbox</c>. The outbox relays integration events through
-/// <c>IIntegrationEventPublisher</c>, whose default implementation fans out to in-process
-/// <c>IIntegrationEventHandler&lt;T&gt;</c> registrations and can be replaced with a message-broker
-/// adapter (for example Azure Service Bus or Kafka).
+/// describing the same business fact in contract terms. The transactional outbox captures the source
+/// domain event atomically with the state change and stages translated integration events durably
+/// before publication - see <c>Trellis.EntityFrameworkCore.Outbox</c>.
+/// The outbox publishes through <c>IIntegrationEventPublisher</c>. Its default in-process fan-out is
+/// best-effort: ordinary handler failures are logged and swallowed, so the relay processes the row
+/// without retrying those consumers. Reliable broker publication requires an adapter that completes
+/// only after broker acceptance and propagates publication failures to the relay. Broker acceptance
+/// is not proof of downstream processing; inbox consumers provide a separate transactional boundary.
 /// </para>
 /// <para>
 /// <strong>Best practices.</strong> Name events in the past tense (for example

@@ -12,28 +12,38 @@ using Trellis.Mediator;
 /// Background relay that drains pending <see cref="OutboxMessage"/> rows from a durable, crash-safe
 /// store and routes each by <see cref="OutboxMessage.Kind"/>: <see cref="OutboxMessageKind.Domain"/>
 /// rows re-dispatch to their <see cref="IDomainEventHandler{TEvent}"/>s via
-/// <see cref="IDomainEventPublisher"/> (the same fan-out the in-pipeline dispatch would perform), and any
+/// <see cref="IReportingDomainEventPublisher"/> (which reports per-handler outcomes), and any
 /// integration events their translators emit into <see cref="IIntegrationEventCollector"/> are staged as
 /// new <see cref="OutboxMessageKind.Integration"/> rows; those are later published through
 /// <see cref="IIntegrationEventPublisher"/>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The guarantee is at-least-once <b>delivery</b>. A domain message is marked processed only once every
+/// Domain rows have at-least-once <b>handler delivery</b>. A domain message is marked processed only once every
 /// registered handler has completed: a handler that throws leaves the message pending, and the retry
 /// re-invokes <i>only</i> the handlers that failed — <see cref="OutboxMessage.CompletedHandlers"/> records
 /// the ones that already succeeded, so an unrelated sibling failure never re-runs their side effects.
 /// Integration events produced by handlers that did succeed are still staged on that failed attempt, so
 /// skipping those handlers on the retry loses nothing. Additions made before a translator throws are
-/// also staged; there is no per-handler collector rollback. Persisted message failures retry up to
+/// also staged; there is no per-handler collector rollback.
+/// </para>
+/// <para>
+/// An integration row is marked processed when <see cref="IIntegrationEventPublisher.PublishAsync"/>
+/// returns normally, not when every downstream consumer succeeds. The default in-process publisher
+/// logs and swallows ordinary consumer failures, so the relay records no failed attempt and cannot
+/// retry those consumers. A broker adapter must await publication acceptance and propagate publication
+/// failures to keep the row retryable; acceptance is not proof of downstream processing.
+/// </para>
+/// <para>
+/// Persisted message failures retry up to
 /// <see cref="OutboxOptions.MaxAttempts"/>, after which the message is parked (dead-lettered) and
 /// surfaces through <see cref="IOutboxMaintenance"/>.
 /// Bookkeeping save failures instead fail the drain, leave progress undurable, and are not bounded
 /// by the message attempt cap.
 /// </para>
 /// <para>
-/// Handlers must still be idempotent: a crash between dispatch and the relay's bookkeeping save loses the
-/// progress record for that attempt and re-delivers to every handler.
+/// Handlers must still be idempotent: a crash before the relay's bookkeeping save can repeat publication
+/// or domain handlers whose successful progress was not saved.
 /// </para>
 /// </remarks>
 /// <typeparam name="TContext">The application's <see cref="DbContext"/> that owns the outbox table.</typeparam>
