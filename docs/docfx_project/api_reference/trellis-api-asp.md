@@ -1040,6 +1040,32 @@ All three operations must support an empty `key`. It represents the valid RFC St
 > to know a Redis, Cosmos DB, or EF Core store is correct. See
 > [`trellis-api-testing-idempotency.md`](trellis-api-testing-idempotency.md#quick-start).
 
+### `IdempotencyReservationOutcome`
+
+Closed record hierarchy returned by `IIdempotencyStore.TryReserveAsync`.
+
+| Case | Payload | Meaning |
+| --- | --- | --- |
+| `IdempotencyReservationOutcome.Reserved` | `string ReservationId` | Opaque token for this reservation; pass it unchanged to `CompleteAsync` or `AbandonAsync`. |
+| `IdempotencyReservationOutcome.AlreadyInFlight` | `TimeSpan RetryAfter` | Matching work is still in flight; the middleware returns `409` with the recommended wait. |
+| `IdempotencyReservationOutcome.Replay` | `IdempotencyResponseSnapshot Snapshot` | Matching completed response; replay it without executing the handler again. |
+| `IdempotencyReservationOutcome.BodyHashMismatch` | `string StoredFingerprint` | Different request fingerprint for the same scope/key, including an in-flight reservation. Diagnostic only; never echo the stored fingerprint to clients. |
+
+### `IdempotencyResponseSnapshot`
+
+```csharp
+public sealed record IdempotencyResponseSnapshot(
+    int StatusCode,
+    IReadOnlyDictionary<string, string[]> Headers,
+    byte[] Body,
+    string Fingerprint);
+```
+
+`StatusCode`, filtered `Headers`, and raw `Body` are the original response to replay;
+`Fingerprint` identifies the request that produced it. Record equality compares
+`StatusCode` and `Fingerprint` by value, but `Headers` and `Body` by reference;
+structural snapshot comparison must be explicit.
+
 ### `InMemoryIdempotencyStore`
 
 **Declaration**
@@ -1072,12 +1098,15 @@ It replaces `IHttpResponseBodyFeature` for the duration of an opted-in request, 
 
 | Member | Description |
 | --- | --- |
+| `Stream` | Tee stream that forwards writes to the client and, while capture is intact, the bounded buffer. |
+| `Writer` | Lazily cached `PipeWriter` over the tee stream. |
 | `StartAsync` | Delegates to the wrapped feature to begin the response. |
 | `GetCapturedBytes()` | Returns the buffered body, or `null` when capture was aborted — the signal the middleware uses to skip snapshot persistence. |
 | `AbortCapture()` | Marks capture abandoned. Called by the internal tee stream when a write would push the buffer past `IdempotencyOptions.MaxResponseBodyBytes`; the write itself still reaches the client. |
 | `CaptureAborted` | `true` once capture has been abandoned for any reason. |
 | `DisableBuffering()` | Forwards ASP.NET Core's buffering-disable signal to the wrapped feature. |
 | `FlushCachedWriterAsync` | Flushes the pooled `PipeWriter`/writer over the tee stream, if one was ever requested, so the captured bytes are complete before `GetCapturedBytes()` is read. Safe to call when no writer was requested. |
+| `Dispose()` | Completes the cached writer and disposes the capture buffer; does not dispose the wrapped client stream. |
 
 `SendFileAsync` also aborts capture: a file send bypasses the buffered write path, so no faithful snapshot can be taken. Endpoints that stream files therefore never replay, by design.
 

@@ -128,7 +128,8 @@ jobs:
       #     Catches a confidently-documented type that was renamed or never existed; the
       #     completeness direction cannot see those, because such a symbol has no counterpart
       #     in the assemblies to start from.
-      #   TRLDOC008 — every public type and member is named in its package's reference doc.
+      #   TRLDOC008 — every public type and member has structured, exact-identifier evidence
+      #     in its package's reference doc; prose, metadata, and substrings cannot vouch for it.
       #     Catches new API shipping undocumented. These totals were printed but unenforced for
       #     a long time, which let 8 types and 33 members accumulate in a green build; the
       #     process exit code now covers both audits, not just TRLDOC005.

@@ -415,6 +415,14 @@ public sealed class ResolvedAuthorizationPathHolder<TMessage, TLeaf, TOwner, TRe
 
 Closed-generic carrier that lets DI naturally disambiguate the `ResolvedAuthorizationPath` per via-authorized command. Each via-command's path is registered as `Singleton<ResolvedAuthorizationPathHolder<TM, TL, TO, TR>>(holder)`. The matching `ResourceAuthorizationViaBehavior<TM, TL, TO, TR>` constructor takes the holder, so registration is a typed (not factory) descriptor — letting the relocator recognize Trellis-owned descriptors by `ImplementationType` alone without a factory-shape heuristic.
 
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public ResolvedAuthorizationPathHolder(ResolvedAuthorizationPath path)` | — | Throws `ArgumentNullException` for null, or `ArgumentException` when `path.MessageType`, `path.LeafType`, or `path.OwnerType` differs from the corresponding holder type argument. |
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `Path` | `ResolvedAuthorizationPath` | The validated path supplied at construction; read-only. |
+
 ### ResourceAuthorizationPathResolver
 **Declaration**
 

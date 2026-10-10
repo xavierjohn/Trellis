@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using Trellis.Docs.Audit;
 
 /// <summary>
 /// Third documentation gate, complementing the other two.
@@ -15,8 +16,8 @@ using System.Text.RegularExpressions;
 /// Neither can catch a name that exists on the wrong type, because TRLDOC005 validates each
 /// dotted segment independently: <c>Error.Validation.ForField</c> passes it because some <!-- v1-stale-ok: names a nonexistent API as the motivating defect -->
 /// <c>Validation</c> and some <c>ForField</c> exist, even though <c>Error</c> has no
-/// <c>Validation</c> member. Neither looks inside fenced code blocks at all, which is where
-/// most API usage in these docs actually lives.
+/// <c>Validation</c> member. TRLDOC008 also reads fenced code, but checks name presence,
+/// not whether that member belongs to its receiver.
 ///
 /// This gate resolves chains against the receiver: wherever a segment names a real type, the
 /// following segment must be a real member (or nested type) of that type.
@@ -216,145 +217,6 @@ internal static class DocMemberAudit
     private readonly record struct Region(string Text, int Offset);
 
     /// <summary>
-    /// Blanks out string literals, char literals and comments, replacing them with spaces so
-    /// that every surviving offset still maps to its original line. A dotted chain inside a
-    /// string is not a member access -- <c>"Subscriptions.Read"</c> is a permission name and
-    /// <c>$"Corrupt User.FirstName in row {id}"</c> is prose -- and a chain inside a comment is
-    /// commentary rather than code. Interpolation holes are blanked along with their string:
-    /// they do contain real code, but recovering it costs more than the coverage is worth.
-    /// </summary>
-    private static string Blank(string source)
-    {
-        var buffer = source.ToCharArray();
-        int i = 0;
-
-        while (i < buffer.Length)
-        {
-            char c = buffer[i];
-
-            if (c == '/' && i + 1 < buffer.Length && buffer[i + 1] == '/')
-            {
-                while (i < buffer.Length && buffer[i] != '\n')
-                    buffer[i++] = ' ';
-            }
-            else if (c == '/' && i + 1 < buffer.Length && buffer[i + 1] == '*')
-            {
-                while (i < buffer.Length && !(buffer[i] == '*' && i + 1 < buffer.Length && buffer[i + 1] == '/'))
-                    BlankChar(buffer, ref i);
-
-                for (int k = 0; k < 2 && i < buffer.Length; k++)
-                    buffer[i++] = ' ';
-            }
-            else if (c == '"')
-            {
-                i = BlankString(buffer, i);
-            }
-            else if (c == '\'')
-            {
-                buffer[i++] = ' ';
-
-                while (i < buffer.Length && buffer[i] != '\'' && buffer[i] != '\n')
-                {
-                    if (buffer[i] == '\\' && i + 1 < buffer.Length)
-                        buffer[i++] = ' ';
-
-                    BlankChar(buffer, ref i);
-                }
-
-                if (i < buffer.Length && buffer[i] == '\'')
-                    buffer[i++] = ' ';
-            }
-            else
-            {
-                i++;
-            }
-        }
-
-        return new string(buffer);
-    }
-
-    private static void BlankChar(char[] buffer, ref int i)
-    {
-        if (buffer[i] != '\n')
-            buffer[i] = ' ';
-
-        i++;
-    }
-
-    private static int BlankString(char[] buffer, int i)
-    {
-        // Raw string literal: a run of three or more quotes, closed by a run at least as long.
-        int quotes = 0;
-        while (i + quotes < buffer.Length && buffer[i + quotes] == '"')
-            quotes++;
-
-        if (quotes >= 3)
-        {
-            int fence = quotes;
-
-            for (int k = 0; k < fence; k++)
-                buffer[i++] = ' ';
-
-            while (i < buffer.Length)
-            {
-                int run = 0;
-                while (i + run < buffer.Length && buffer[i + run] == '"')
-                    run++;
-
-                if (run >= fence)
-                {
-                    for (int k = 0; k < run; k++)
-                        buffer[i++] = ' ';
-
-                    return i;
-                }
-
-                BlankChar(buffer, ref i);
-            }
-
-            return i;
-        }
-
-        // Verbatim strings escape a quote by doubling it; regular strings use a backslash. Both
-        // orderings of the prefix are legal C#: $@"..." and @$"...".
-        bool verbatim = (i > 0 && buffer[i - 1] == '@')
-            || (i > 1 && buffer[i - 1] == '$' && buffer[i - 2] == '@');
-        buffer[i++] = ' ';
-
-        while (i < buffer.Length)
-        {
-            if (buffer[i] == '"')
-            {
-                if (verbatim && i + 1 < buffer.Length && buffer[i + 1] == '"')
-                {
-                    buffer[i++] = ' ';
-                    buffer[i++] = ' ';
-                    continue;
-                }
-
-                buffer[i++] = ' ';
-                return i;
-            }
-
-            if (!verbatim && buffer[i] == '\\' && i + 1 < buffer.Length)
-            {
-                buffer[i++] = ' ';
-                BlankChar(buffer, ref i);
-                continue;
-            }
-
-            // An unterminated regular string means the fence is a fragment; stop at the newline
-            // rather than blanking the rest of the snippet.
-            if (!verbatim && buffer[i] == '\n')
-                return i;
-
-            BlankChar(buffer, ref i);
-        }
-
-        return i;
-    }
-
-    /// <summary>
     /// Yields the regions worth resolving: C# fence bodies only. Inline backticks are excluded
     /// deliberately -- prose shorthand like <c>DbSet.Include</c> or <c>Value.Length</c> names a
     /// member against the type a reader is thinking about rather than the type that declares it,
@@ -369,7 +231,7 @@ internal static class DocMemberAudit
         {
             fenceCount++;
             var body = fence.Groups["body"];
-            regions.Add(new Region(Blank(body.Value), body.Index));
+            regions.Add(new Region(CSharpCode.BlankCommentsAndLiterals(body.Value), body.Index));
         }
 
         return regions;

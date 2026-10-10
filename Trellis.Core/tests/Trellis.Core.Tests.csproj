@@ -5,8 +5,8 @@
 		<ProjectReference Include="..\generator\Trellis.Core.Generator.csproj" ReferenceOutputAssembly="true" OutputItemType="None" />
 		<ProjectReference Include="..\..\Trellis.Http.Abstractions\src\Trellis.Http.Abstractions.csproj" />
 		<ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
+		<ProjectReference Include="..\..\docs\docfx_project\api_reference\audit-completeness\audit-completeness.csproj" />
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
 	</ItemGroup>
 
 </Project>
-
