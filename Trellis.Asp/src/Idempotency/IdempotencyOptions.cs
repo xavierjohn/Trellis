@@ -20,8 +20,8 @@ public sealed class IdempotencyOptions
     /// <summary>
     /// Name of the request header carrying the client-supplied idempotency key. Defaults to
     /// <c>"Idempotency-Key"</c> per IETF draft <c>draft-ietf-httpapi-idempotency-key-header</c>.
-    /// Key syntax follows the compatibility grammar documented by <see cref="IdempotencyKeyParser"/>,
-    /// not strict RFC 8941 <c>sf-string</c> or <c>sf-token</c> parsing.
+    /// The value must be an RFC 8941 String-valued Item as documented by
+    /// <see cref="IdempotencyKeyParser"/>; bare tokens are not accepted.
     /// </summary>
     public string HeaderName { get; set; } = "Idempotency-Key";
 
@@ -48,7 +48,7 @@ public sealed class IdempotencyOptions
 
     /// <summary>
     /// Maximum length, in characters, of the parsed idempotency key after unquoting and
-    /// unescaping (bare tokens are unchanged). Requests with a key longer than this fail with
+    /// unescaping. Empty strings are valid keys. Requests with a key longer than this fail with
     /// a 400 ProblemDetails before the handler runs. Defaults to 200, matching common provider conventions.
     /// </summary>
     public int MaxKeyLength { get; set; } = 200;

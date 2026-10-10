@@ -175,6 +175,7 @@ Reusing the same parsed request list generates new GUIDs on every replay without
 the templates. Multiple occurrences in one request are independent, including an alias such
 as `@key = {{$guid}}`. Use a supplied/file-level **literal** value when several requests must
 share one idempotency key, and captured response tokens when later requests need a created ID.
+Serialize idempotency keys as quoted RFC 8941 Strings, for example `Idempotency-Key: "{{key}}"`.
 Header names must be literal; placeholders in names are rejected rather than expanded.
 
 Both runner entry points throw `HttpFileAssertionException` before sending an offending

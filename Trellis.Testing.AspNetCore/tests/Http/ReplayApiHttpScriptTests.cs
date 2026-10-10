@@ -18,7 +18,7 @@ public class ReplayApiHttpScriptTests
         const string file = """
             ### Create
             POST {{host}}/things/{{$guid}}
-            Idempotency-Key: {{$guid}}
+            Idempotency-Key: "{{$guid}}"
             X-Second: {{guidAlias}}
             Content-Type: application/json
 
@@ -42,7 +42,9 @@ public class ReplayApiHttpScriptTests
             if (string.IsNullOrEmpty(bodyText))
                 continue;
             var headers = request.GetProperty("headers");
-            values.Add(headers.GetProperty("Idempotency-Key").GetString()!);
+            var keyHeader = headers.GetProperty("Idempotency-Key").GetString()!;
+            keyHeader.Should().StartWith("\"").And.EndWith("\"");
+            values.Add(keyHeader[1..^1]);
             values.Add(headers.GetProperty("X-Second").GetString()!);
             using var body = JsonDocument.Parse(bodyText);
             values.Add(body.RootElement.GetProperty("first").GetString()!);
@@ -147,7 +149,7 @@ public class ReplayApiHttpScriptTests
             const string file = """
                 ### Create
                 POST {{host}}/things/{{$guid}}
-                Idempotency-Key: {{$guid}}
+                Idempotency-Key: "{{$guid}}"
                 Content-Type: application/json
 
                 {"guid":"{{$guid}}"}
@@ -171,7 +173,8 @@ public class ReplayApiHttpScriptTests
             foreach (var request in received)
             {
                 values.Add(request.Id);
-                values.Add(request.Key);
+                request.Key.Should().StartWith("\"").And.EndWith("\"");
+                values.Add(request.Key[1..^1]);
                 using var body = JsonDocument.Parse(request.Body);
                 values.Add(body.RootElement.GetProperty("guid").GetString()!);
             }

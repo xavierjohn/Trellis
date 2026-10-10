@@ -57,7 +57,7 @@ audience: [developer]
 | `MsalTestTokenProvider` (+ `MsalTestOptions`, `TestUserCredentials`) | `Trellis.Testing.AspNetCore` | MSAL ROPC token acquisition for gated E2E tests against a dedicated test tenant. |
 | `HttpFileParser` / `HttpFileRunner` / `HttpFileAssertions` | `Trellis.Testing.AspNetCore.Http` | Parse, run, and assert `.http` files against a `WebApplicationFactory` client. |
 | `WorkerHarness<TWorker>` (+ `WorkerHarnessOptions`, `IWorkerTickSignal`, `WorkerHarnessTimeoutException`) | `Trellis.Testing.Worker` | Integration-test harness for `BackgroundService` workers: `FakeTimeProvider`, `TestActorProvider`, domain-event capture, race-proof `WaitForEventAsync` / `WaitForTickAsync`. |
-| `IdempotencyStoreConformance` | `Trellis.Testing.Idempotency` | Inheritable suite of 17 `[Fact]` rules pinning the `IIdempotencyStore` contract for any implementation. |
+| `IdempotencyStoreConformance` | `Trellis.Testing.Idempotency` | Inheritable suite of 18 `[Fact]` rules pinning the `IIdempotencyStore` contract for any implementation, including empty keys. |
 
 Full signatures: [trellis-api-testing-reference.md](../api_reference/trellis-api-testing-reference.md), [trellis-api-testing-aspnetcore.md](../api_reference/trellis-api-testing-aspnetcore.md), [trellis-api-testing-worker.md](../api_reference/trellis-api-testing-worker.md), [trellis-api-testing-idempotency.md](../api_reference/trellis-api-testing-idempotency.md#quick-start).
 
@@ -78,7 +78,7 @@ dotnet add package Trellis.Testing.Idempotency   # only when implementing IIdemp
 
 `IIdempotencyStore` (see [ASP.NET Core integration](integration-aspnet.md#idempotency-key-middleware)) has a small surface but a subtle contract: reservations must be atomic under concurrency, fingerprint mismatches must be rejected, timed-out reservations must be takeable, and an abandon after a completion must **not** delete the recorded response. A store that gets any of these wrong fails in production as a double charge or a lost receipt — exactly the failures idempotency exists to prevent.
 
-Rather than re-derive those rules, derive from `IdempotencyStoreConformance` and inherit all 17 as tests:
+Rather than re-derive those rules, derive from `IdempotencyStoreConformance` and inherit all 18 as tests:
 
 ```csharp
 using Trellis.Testing.Idempotency;

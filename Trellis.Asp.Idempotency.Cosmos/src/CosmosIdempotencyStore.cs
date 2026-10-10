@@ -359,13 +359,15 @@ public sealed class CosmosIdempotencyStore : IIdempotencyStore
     /// Encodes an idempotency key into a legal Cosmos DB item id. Keys are client-supplied and
     /// may contain <c>/</c>, <c>\</c>, <c>?</c>, or <c>#</c>, none of which are permitted in an id.
     /// Base64Url is used rather than a hash so the mapping stays collision-free and reversible.
+    /// The empty key maps to <c>~</c>, which is outside the Base64Url alphabet, because Cosmos DB
+    /// requires a nonempty item id.
     /// </summary>
     /// <param name="key">The idempotency key.</param>
     internal static string EncodeId(string key) =>
-        Base64Url.EncodeToString(Encoding.UTF8.GetBytes(key));
+        key.Length == 0 ? "~" : Base64Url.EncodeToString(Encoding.UTF8.GetBytes(key));
 
     /// <summary>Reverses <see cref="EncodeId"/>.</summary>
     /// <param name="id">A Cosmos DB item id produced by <see cref="EncodeId"/>.</param>
     internal static string DecodeId(string id) =>
-        Encoding.UTF8.GetString(Base64Url.DecodeFromChars(id.ToCharArray()));
+        id == "~" ? string.Empty : Encoding.UTF8.GetString(Base64Url.DecodeFromChars(id.ToCharArray()));
 }

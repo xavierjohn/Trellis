@@ -940,7 +940,7 @@ public static class IdempotencyApplicationBuilderExtensions
 
 ### Namespace `Trellis.Asp.Idempotency`
 
-Opt-in `Idempotency-Key` middleware for `POST` / `PATCH` retry safety, using the IETF header name and status semantics with Trellis's [compatibility key grammar](#idempotencykeyparser). See cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency).
+Opt-in `Idempotency-Key` middleware for `POST` / `PATCH` retry safety, using the IETF header name and status semantics with the required [RFC 8941 String-valued Item syntax](#idempotencykeyparser). See cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency).
 
 **Request identity and scope.** The store key is `(scope, parsed Idempotency-Key)`, not `(scope, key, fingerprint)`. `DefaultIdempotencyScopeResolver` uses the current actor's id; when no `IActorProvider` is registered or no actor resolves, it uses the **shared anonymous scope**. A custom `IIdempotencyScopeResolver` can supply a different isolation boundary, such as tenant plus actor. The default scope is not route-specific: all of an actor's opted-in endpoints sharing the store share one client key namespace.
 
@@ -948,7 +948,7 @@ Opt-in `Idempotency-Key` middleware for `POST` / `PATCH` retry safety, using the
 
 For an existing reservation or an unexpired completed snapshot, reusing the same scope and key with a different fingerprint returns `BodyHashMismatch`, mapped to `MismatchStatusCode` (default `422`), **not a replay and not a new execution**. Despite its name, `BodyHashMismatch` is not limited to body changes. For example, the same actor, key, and body sent first to `POST /restaurants/A/import` and then to `POST /restaurants/B/import` have different paths and therefore different fingerprints: the second request is rejected, not replayed. Use a distinct key for each intended operation and reuse that key only for retries of the same request.
 
-The status codes follow [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header) §2.7 (Error Handling): a **missing** key on an opted-in endpoint → `400` (`RequireKeyOnOptedInEndpoints`); a key **reused in the same scope with a different request fingerprint** → `422` by default (`MismatchStatusCode`, per RFC 9110 §15.5.21); and a matching-fingerprint retry **while the original reservation is still active** → `409` (`AlreadyInFlight`). A **malformed** key (duplicate header, invalid key syntax including empty quoted keys, or over-length) is a request-syntax error and stays `400`.
+The status codes follow [draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header) §2.7 (Error Handling): a **missing** key on an opted-in endpoint → `400` (`RequireKeyOnOptedInEndpoints`); a key **reused in the same scope with a different request fingerprint** → `422` by default (`MismatchStatusCode`, per RFC 9110 §15.5.21); and a matching-fingerprint retry **while the original reservation is still active** → `409` (`AlreadyInFlight`). Trellis rejects **malformed** keys (duplicate header, invalid String-Item syntax, or over-length) with `400`; no malformed value is used as a store key. An empty quoted String (`""`) is valid, not missing or malformed.
 
 Fingerprint mismatches carry the ProblemDetails `code` **`idempotency.key_reused_with_different_body`**. This historical wire code is retained for compatibility and covers **all fingerprint mismatches**, not just body changes. The human-readable `detail` names the request fingerprint components; clients should branch on `code`, not parse the message.
 
@@ -973,7 +973,7 @@ public sealed class IdempotencyOptions
 
 | Member | Default | Description |
 | --- | --- | --- |
-| `HeaderName` | `"Idempotency-Key"` | HTTP header carrying a key in Trellis's [compatibility grammar](#idempotencykeyparser): a nonempty bare HTTP token or nonempty quoted printable-ASCII string. |
+| `HeaderName` | `"Idempotency-Key"` | HTTP header carrying an [RFC 8941 String-valued Item](#idempotencykeyparser); double quotes are required, and an empty String is valid. |
 | `ReplayHeaderName` | `"Idempotent-Replayed"` | Response header added to replayed responses so clients can detect that the body came from a cached snapshot rather than a fresh handler invocation. |
 | `Ttl` | `24 h` | Time a completed snapshot is retained before it is evicted and the key can be reused. |
 | `ReservationTimeout` | `30 s` | Time after which a same-key retry with a matching fingerprint may atomically take over an in-flight reservation (CAS) so a crashed handler does not block retries forever. Stores MUST NOT delete outstanding reservations on this timeout; takeover replaces the entry under a new reservation token, which invalidates the previous token for `CompleteAsync` / `AbandonAsync`. |
@@ -981,7 +981,7 @@ public sealed class IdempotencyOptions
 | `MaxRequestBodyBytes` | `1 MiB` | Hard cap on the buffered request body that contributes to the fingerprint; larger bodies produce `413 Payload Too Large`. |
 | `MaxResponseBodyBytes` | `1 MiB` | Hard cap on the captured response body; exceeding aborts capture and records no snapshot (the next retry re-executes). |
 | `MismatchStatusCode` | `422` | Status returned when a key already in use in the same scope arrives with a different request fingerprint, including differences in path or method even if the body is identical. |
-| `RequireKeyOnOptedInEndpoints` | `true` | When `true`, opted-in endpoints reject requests that omit the header with `400 idempotency.key_required`; when `false`, missing-key requests pass through with no idempotency processing. |
+| `RequireKeyOnOptedInEndpoints` | `true` | When `true`, opted-in endpoints reject requests that omit the header with `400 idempotency.key_required`; when `false`, missing-key requests pass through with no idempotency processing. Present malformed values still return `400`; `""` is a present, valid key in either mode. |
 | `IncludeSetCookieInSnapshot` | `false` | When `true`, `Set-Cookie` response headers are captured in snapshots; default excludes them so a replay does not re-issue session or authentication cookies that have since been rotated. |
 | `Methods` | `{ POST, PATCH }` | Methods the middleware acts on; other methods (`GET`, `PUT`, `DELETE`) pass through. |
 | `AdditionalFingerprintHeaders` | empty | Extra request headers included in the fingerprint (for example a tenant header) when their semantics affect the request identity. |
@@ -997,20 +997,23 @@ public static class IdempotencyKeyParser
 }
 ```
 
-`TryParse` accepts either a **nonempty bare [RFC 7230 HTTP token](https://www.rfc-editor.org/rfc/rfc7230#section-3.2.6)** (`1*tchar`) or a **nonempty quoted printable-ASCII string** (`0x20`-`0x7E`, including spaces). Inside quotes, embedded quotes and backslashes must be escaped as `\"` and `\\`; no other escapes are accepted. Bare tokens are returned verbatim; quoted strings are unquoted and unescaped. Values are not trimmed.
+`TryParse` requires an **RFC 8941 Item whose value is a [String](https://www.rfc-editor.org/rfc/rfc8941#section-3.3.3)**, as specified by the Idempotency-Key draft. A String is double-quoted and contains **zero or more** printable-ASCII characters (`0x20`-`0x7E`, including spaces). Embedded quotes and backslashes must be escaped as `\"` and `\\`; no other escapes are accepted. Bare tokens and other Item value types are rejected. The returned key is the unquoted, unescaped String value.
 
-This compatibility grammar is **neither strict RFC 8941 [`sf-string`](https://www.rfc-editor.org/rfc/rfc8941#section-3.3.3) nor [`sf-token`](https://www.rfc-editor.org/rfc/rfc8941#section-3.3.4)** parsing. It accepts bare keys, rejects empty quoted strings, and does not accept the colon/slash characters that `sf-token` permits after its first character.
+Leading and trailing **SP** characters outside the Item are discarded; whitespace inside the String is preserved. Tabs are not SP and are rejected. Valid [Item parameters](https://www.rfc-editor.org/rfc/rfc8941#section-3.1.2) are accepted and validated in full, including all six RFC 8941 bare-Item value types. The header defines no parameter semantics, so parameters do not contribute to the key; duplicate parameter names are permitted. Malformed parameters, lists, dictionaries, and any other trailing content fail parsing.
 
 | Header value | Result |
 | --- | --- |
-| `abc` or `"abc"` | Accepted as the same parsed key, `abc`. |
+| `"abc"` | Accepted as `abc`. |
 | `"hello world"` | Accepted as `hello world`. |
 | `"a\"b\\c"` | Accepted as `a"b\c`. |
-| `a:b`, `a/b`, or `?1` | Rejected as invalid bare tokens. |
+| `abc`, `a:b`, `a/b`, `?1`, or `42` | Rejected: the Item value must be a quoted String. |
 | `"a:b"`, `"a/b"`, or `"?1"` | Accepted as `a:b`, `a/b`, or `?1`, respectively. |
-| `""` | Rejected: the parsed key must be nonempty. |
+| `"abc";flag=?1;note="example"` | Accepted as `abc`; valid parameters do not change the key. |
+| `""` | Accepted as the empty key. |
 
-Null/empty values, malformed quotes or escapes, control characters, and non-ASCII characters fail parsing with an empty `key` and a diagnostic in `error` using the configured `headerName`. The parser also rejects raw values longer than 4,096 characters before parsing; the middleware separately applies `MaxKeyLength` to the parsed key.
+An empty String is one actual key per scope, not a bypass or a freshly generated key. Matching retries replay its snapshot; a different fingerprint under the same empty key is rejected like any other key. Prefer a distinct quoted key for each intended operation.
+
+Null/empty raw values, malformed quotes or escapes, control characters, and non-ASCII characters fail parsing with an empty `key` and a diagnostic in `error` using the configured `headerName`. A successful empty String also returns an empty `key`, but returns `true` with a null `error`. The parser rejects raw values longer than 4,096 characters before parsing; the middleware separately applies the application-specific `MaxKeyLength` to the decoded String, excluding quotes, escape overhead, surrounding SP, and parameters. The parser supports 1,024-character decoded Strings; the middleware's default 200-character limit remains unchanged.
 
 ### `IIdempotencyStore`
 
@@ -1025,6 +1028,8 @@ public interface IIdempotencyStore
 | `ValueTask<IdempotencyReservationOutcome> TryReserveAsync(string scope, string key, string fingerprint, CancellationToken cancellationToken)` | one of `Reserved(reservationId)`, `AlreadyInFlight(retryAfter)`, `Replay(snapshot)`, `BodyHashMismatch(storedFingerprint)` | CAS reservation keyed only by `(scope, key)`, with `fingerprint` compared against the stored entry. The reservation token is an opaque `string`; pass it back to `CompleteAsync` / `AbandonAsync`. |
 | `ValueTask CompleteAsync(string scope, string key, string reservationId, IdempotencyResponseSnapshot snapshot, CancellationToken cancellationToken)` | `ValueTask` | Records the response snapshot under the reservation. Conditional on the reservation token (CAS) so a slow original handler whose reservation has been atomically taken over by a same-key retry cannot finalise the entry under the now-invalid token. |
 | `ValueTask AbandonAsync(string scope, string key, string reservationId, CancellationToken cancellationToken)` | `ValueTask` | Releases a reservation without a snapshot so the next retry can re-reserve. Called on any failure path (exception, response-too-large, `SendFileAsync`, abort, **5xx response status**, **response trailers**). |
+
+All three operations must support an empty `key`. It represents the valid RFC String `""` and has the same scope, reservation, fingerprint, and replay semantics as nonempty keys.
 
 > **Writing your own store?** Inherit `IdempotencyStoreConformance` from the
 > `Trellis.Testing.Idempotency` package to run the full contract — atomic reserve, replay,

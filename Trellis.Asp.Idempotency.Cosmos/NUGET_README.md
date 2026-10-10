@@ -40,8 +40,8 @@ app.UseTrellisIdempotency();
   its `ttl`, so the store re-checks its own timestamps rather than trusting the service.
 - **No exceptions on the hot path** — uses the stream APIs, because a `409` is the *normal* outcome
   of every replay.
-- **Verified, not asserted** — passes all 17 rules of the `Trellis.Testing.Idempotency` conformance
-  suite against a real Cosmos DB emulator.
+- **Executable conformance** — inherits all 18 rules of the `Trellis.Testing.Idempotency` suite,
+  including empty keys, and runs them against a real Cosmos DB emulator when it is reachable.
 
 ## Documentation
 See the [package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-asp-idempotency-cosmos.html)

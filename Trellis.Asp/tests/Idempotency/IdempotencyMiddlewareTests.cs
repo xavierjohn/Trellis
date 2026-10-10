@@ -22,7 +22,7 @@ using Trellis.Asp.Idempotency;
 
 /// <summary>
 /// Integration tests for the full <see cref="IdempotencyMiddleware"/> pipeline driven through
-/// a <see cref="TestServer"/>. Pins Trellis's compatibility Idempotency-Key contract end-to-end: opt-in via
+/// a <see cref="TestServer"/>. Pins the String-valued Idempotency-Key contract end-to-end: opt-in via
 /// <c>IdempotentAttribute</c>, replay verbatim, in-flight 409, fingerprint-mismatch
 /// <c>idempotency.key_reused_with_different_body</c>, and request-body 413.
 /// </summary>
@@ -34,7 +34,8 @@ public sealed class IdempotencyMiddlewareTests
         Action<IEndpointRouteBuilder>? configureEndpoints = null,
         Action<IdempotencyOptions>? configureOptions = null,
         Action<ILoggingBuilder>? configureLogging = null,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null,
+        Action<HttpContext>? observeRequest = null)
     {
         var builder = Host.CreateDefaultBuilder()
             .ConfigureLogging(logging => configureLogging?.Invoke(logging))
@@ -50,6 +51,15 @@ public sealed class IdempotencyMiddlewareTests
                 .Configure(app =>
                 {
                     app.UseRouting();
+                    if (observeRequest is not null)
+                    {
+                        app.Use((context, next) =>
+                        {
+                            observeRequest(context);
+                            return next(context);
+                        });
+                    }
+
                     app.UseTrellisIdempotency();
                     app.UseEndpoints(endpoints =>
                     {
@@ -86,6 +96,9 @@ public sealed class IdempotencyMiddlewareTests
 
     private static StringContent JsonBody(string json) =>
         new(json, Encoding.UTF8, "application/json");
+
+    private static string QuoteKey(string key) =>
+        '"' + key.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + '"';
 
     [Fact]
     public async Task Endpoint_without_attribute_is_pass_through()
@@ -154,7 +167,7 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{\"x\":1}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         var firstResp = await client.PostAsync("/idempotent", first, TestContext.Current.CancellationToken);
 
         firstResp.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -162,7 +175,7 @@ public sealed class IdempotencyMiddlewareTests
         (await firstResp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("{\"order\":\"created\"}");
 
         var second = JsonBody("{\"x\":1}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/idempotent", second, TestContext.Current.CancellationToken);
 
         secondResp.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -179,11 +192,11 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{\"x\":1}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         await client.PostAsync("/idempotent", first, TestContext.Current.CancellationToken);
 
         var second = JsonBody("{\"x\":2}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var resp = await client.PostAsync("/idempotent", second, TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -216,12 +229,12 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         using var first = new HttpRequestMessage(HttpMethod.Post, "/fingerprint/A") { Content = JsonBody("{}") };
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         using var firstResponse = await client.SendAsync(first, TestContext.Current.CancellationToken);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         using var changed = new HttpRequestMessage(new HttpMethod(method), path) { Content = JsonBody("{}") };
-        changed.Headers.Add(KeyHeader, key);
+        changed.Headers.Add(KeyHeader, QuoteKey(key));
         using var response = await client.SendAsync(changed, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be((HttpStatusCode)mismatchStatusCode);
         using var problem = System.Text.Json.JsonDocument.Parse(
@@ -232,7 +245,7 @@ public sealed class IdempotencyMiddlewareTests
         executions.Should().Be(1);
 
         using var retry = new HttpRequestMessage(HttpMethod.Post, "/fingerprint/A") { Content = JsonBody("{}") };
-        retry.Headers.Add(KeyHeader, key);
+        retry.Headers.Add(KeyHeader, QuoteKey(key));
         using var replay = await client.SendAsync(retry, TestContext.Current.CancellationToken);
         replay.StatusCode.Should().Be(HttpStatusCode.Created);
         replay.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
@@ -254,6 +267,74 @@ public sealed class IdempotencyMiddlewareTests
         body.Should().Contain("idempotency.key_invalid");
     }
 
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("9d6f6c44-1234-5678-9abc-def012345678")]
+    [InlineData("42")]
+    [InlineData("?1")]
+    [InlineData(":YWJj:")]
+    public async Task InvokeAsync_NonStringItem_Returns400WithoutExecutingHandler(string raw)
+    {
+        string? received = null;
+        var executions = 0;
+        using var host = await BuildHost(
+            configureEndpoints: endpoints =>
+                endpoints.MapPost("/string-key", context =>
+                {
+                    executions++;
+                    context.Response.StatusCode = 201;
+                    return Task.CompletedTask;
+                }).WithMetadata(new IdempotentAttribute()),
+            observeRequest: context => received = context.Request.Headers[KeyHeader].ToString());
+        var client = host.GetTestClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/string-key") { Content = JsonBody("{}") };
+        request.Headers.TryAddWithoutValidation(KeyHeader, raw).Should().BeTrue();
+
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        received.Should().Be(raw);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Contain("idempotency.key_invalid");
+        executions.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData("\"key\"", "  \"key\"  ")]
+    [InlineData("\"key\"", "\"key\";flag=?1")]
+    [InlineData("\"key\"", "\"key\";n=42;text=\"note\";token=AbC/a:b;bytes=:YQ:;flag")]
+    [InlineData("\"a\\\"b\\\\c\"", "\"a\\\"b\\\\c\";ignored")]
+    public async Task InvokeAsync_StringItem_SpacesAndParameters_PreserveReplayIdentity(
+        string firstHeader, string retryHeader)
+    {
+        var executions = 0;
+        var received = new List<string>();
+        using var host = await BuildHost(
+            configureEndpoints: endpoints =>
+                endpoints.MapPost("/string-key", async context =>
+                {
+                    executions++;
+                    context.Response.StatusCode = 201;
+                    await context.Response.WriteAsync("created", context.RequestAborted);
+                }).WithMetadata(new IdempotentAttribute()),
+            observeRequest: context => received.Add(context.Request.Headers[KeyHeader].ToString()));
+        var client = host.GetTestClient();
+        using var first = new HttpRequestMessage(HttpMethod.Post, "/string-key") { Content = JsonBody("{}") };
+        first.Headers.TryAddWithoutValidation(KeyHeader, firstHeader).Should().BeTrue();
+        using var firstResponse = await client.SendAsync(first, TestContext.Current.CancellationToken);
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        using var retry = new HttpRequestMessage(HttpMethod.Post, "/string-key") { Content = JsonBody("{}") };
+        retry.Headers.TryAddWithoutValidation(KeyHeader, retryHeader).Should().BeTrue();
+        using var replay = await client.SendAsync(retry, TestContext.Current.CancellationToken);
+
+        received.Should().Equal([firstHeader, retryHeader]);
+        replay.StatusCode.Should().Be(HttpStatusCode.Created);
+        replay.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
+        (await replay.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("created");
+        executions.Should().Be(1);
+    }
+
     [Fact]
     public async Task Key_too_long_returns_400()
     {
@@ -261,7 +342,7 @@ public sealed class IdempotencyMiddlewareTests
         var client = host.GetTestClient();
 
         var content = JsonBody("{}");
-        content.Headers.Add(KeyHeader, new string('a', 20));
+        content.Headers.Add(KeyHeader, QuoteKey(new string('a', 20)));
         var resp = await client.PostAsync("/idempotent", content, TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -276,7 +357,7 @@ public sealed class IdempotencyMiddlewareTests
         var client = host.GetTestClient();
 
         var content = JsonBody(new string('z', 100));
-        content.Headers.Add(KeyHeader, "k1");
+        content.Headers.Add(KeyHeader, QuoteKey("k1"));
         var resp = await client.PostAsync("/idempotent", content, TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be(HttpStatusCode.RequestEntityTooLarge);
@@ -435,12 +516,12 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         var firstResp = await client.PostAsync("/with-cookie", first, TestContext.Current.CancellationToken);
         firstResp.Headers.Contains("Set-Cookie").Should().BeTrue("the live response should still carry Set-Cookie");
 
         var second = JsonBody("{}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/with-cookie", second, TestContext.Current.CancellationToken);
 
         secondResp.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
@@ -464,11 +545,11 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         await client.PostAsync("/with-cookie", first, TestContext.Current.CancellationToken);
 
         var second = JsonBody("{}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/with-cookie", second, TestContext.Current.CancellationToken);
 
         secondResp.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
@@ -488,13 +569,13 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         var firstResp = await client.PostAsync("/no-content", first, TestContext.Current.CancellationToken);
         firstResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
         firstResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse();
 
         var second = JsonBody("{}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/no-content", second, TestContext.Current.CancellationToken);
 
         secondResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -515,13 +596,13 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         var firstResp = await client.PostAsync("/created-headers-only", first, TestContext.Current.CancellationToken);
         firstResp.StatusCode.Should().Be(HttpStatusCode.Created);
         firstResp.Headers.Location?.ToString().Should().Be("/orders/42");
 
         var second = JsonBody("{}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/created-headers-only", second, TestContext.Current.CancellationToken);
 
         secondResp.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -537,11 +618,11 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{\"x\":1}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         await client.PostAsync("/idempotent", first, TestContext.Current.CancellationToken);
 
         var second = JsonBody("{\"x\":1}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/idempotent", second, TestContext.Current.CancellationToken);
 
         secondResp.Headers.GetValues("X-Trellis-Replayed").Should().Contain("true");
@@ -570,7 +651,7 @@ public sealed class IdempotencyMiddlewareTests
         var client = host.GetTestClient();
 
         var request = JsonBody("{}");
-        request.Headers.Add(KeyHeader, rawKey);
+        request.Headers.Add(KeyHeader, QuoteKey(rawKey));
         var response = await client.PostAsync("/server-error-log", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
@@ -610,12 +691,12 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{\"x\":1}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         var firstResp = await client.PostAsync("/server-error", first, TestContext.Current.CancellationToken);
         firstResp.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
 
         var second = JsonBody("{\"x\":1}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/server-error", second, TestContext.Current.CancellationToken);
 
         secondResp.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable,
@@ -640,12 +721,12 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         var firstResp = await client.PostAsync("/server-error-empty", first, TestContext.Current.CancellationToken);
         firstResp.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
 
         var second = JsonBody("{}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/server-error-empty", second, TestContext.Current.CancellationToken);
 
         secondResp.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
@@ -670,12 +751,12 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{\"x\":1}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         var firstResp = await client.PostAsync("/client-error", first, TestContext.Current.CancellationToken);
         firstResp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
 
         var second = JsonBody("{\"x\":1}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/client-error", second, TestContext.Current.CancellationToken);
 
         secondResp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -706,11 +787,11 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         await client.PostAsync("/with-trailers", first, TestContext.Current.CancellationToken);
 
         var second = JsonBody("{}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/with-trailers", second, TestContext.Current.CancellationToken);
 
         secondResp.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -759,12 +840,12 @@ public sealed class IdempotencyMiddlewareTests
         var client = host.GetTestClient();
 
         var first = JsonBody("{}");
-        first.Headers.Add(KeyHeader, Guid.NewGuid().ToString());
+        first.Headers.Add(KeyHeader, QuoteKey(Guid.NewGuid().ToString()));
         var firstResp = await client.PostAsync("/idempotent-scoped", first, TestContext.Current.CancellationToken);
         firstResp.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var second = JsonBody("{}");
-        second.Headers.Add(KeyHeader, Guid.NewGuid().ToString());
+        second.Headers.Add(KeyHeader, QuoteKey(Guid.NewGuid().ToString()));
         var secondResp = await client.PostAsync("/idempotent-scoped", second, TestContext.Current.CancellationToken);
         secondResp.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -796,14 +877,14 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         var firstResp = await client.PostAsync("/pipewriter", first, TestContext.Current.CancellationToken);
         firstResp.StatusCode.Should().Be(HttpStatusCode.OK);
         var firstBody = await firstResp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         firstBody.Should().Be("{\"hello\":\"world\"}");
 
         var second = JsonBody("{}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/pipewriter", second, TestContext.Current.CancellationToken);
         secondResp.StatusCode.Should().Be(HttpStatusCode.OK);
         secondResp.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
@@ -837,7 +918,7 @@ public sealed class IdempotencyMiddlewareTests
         try
         {
             var first = JsonBody("{}");
-            first.Headers.Add(KeyHeader, key);
+            first.Headers.Add(KeyHeader, QuoteKey(key));
             firstTask = client.PostAsync("/slow", first, TestContext.Current.CancellationToken);
 
             // Wait until the first handler is in the gate; this proves TryReserveAsync
@@ -845,7 +926,7 @@ public sealed class IdempotencyMiddlewareTests
             await handlerEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
 
             var second = JsonBody("{}");
-            second.Headers.Add(KeyHeader, key);
+            second.Headers.Add(KeyHeader, QuoteKey(key));
             var secondResp = await client.PostAsync("/slow", second, TestContext.Current.CancellationToken);
 
             secondResp.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -891,20 +972,47 @@ public sealed class IdempotencyMiddlewareTests
         }
     }
 
-    [Fact]
-    public async Task Empty_quoted_idempotency_key_is_rejected_with_400()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InvokeAsync_EmptyStringKey_ExecutesReplaysAndRejectsDifferentRequest(bool requireKey)
     {
-        using var host = await BuildHost();
+        var executions = 0;
+        var received = new List<string>();
+        using var host = await BuildHost(
+            configureEndpoints: endpoints =>
+                endpoints.MapPost("/empty-key", async context =>
+                {
+                    executions++;
+                    context.Response.StatusCode = 201;
+                    await context.Response.WriteAsync("created", context.RequestAborted);
+                }).WithMetadata(new IdempotentAttribute()),
+            configureOptions: options => options.RequireKeyOnOptedInEndpoints = requireKey,
+            observeRequest: context => received.Add(context.Request.Headers[KeyHeader].ToString()));
         var client = host.GetTestClient();
+        using var first = new HttpRequestMessage(HttpMethod.Post, "/empty-key") { Content = JsonBody("{\"x\":1}") };
+        first.Headers.TryAddWithoutValidation(KeyHeader, "\"\"").Should().BeTrue();
+        using var firstResponse = await client.SendAsync(first, TestContext.Current.CancellationToken);
+        received.Should().Equal(["\"\""]);
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        firstResponse.Headers.Contains("Idempotent-Replayed").Should().BeFalse();
+        executions.Should().Be(1);
 
-        var content = JsonBody("{}");
-        content.Headers.TryAddWithoutValidation(KeyHeader, "\"\"");
-        var response = await client.PostAsync("/idempotent", content, TestContext.Current.CancellationToken);
+        using var retry = new HttpRequestMessage(HttpMethod.Post, "/empty-key") { Content = JsonBody("{\"x\":1}") };
+        retry.Headers.TryAddWithoutValidation(KeyHeader, "\"\"").Should().BeTrue();
+        using var replay = await client.SendAsync(retry, TestContext.Current.CancellationToken);
+        replay.StatusCode.Should().Be(HttpStatusCode.Created);
+        replay.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
+        (await replay.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("created");
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        body.Should().Contain("idempotency.key_invalid",
-            "the compatibility grammar rejects empty quoted keys; otherwise every request sending Idempotency-Key: \"\" would share the same (scope, empty) store slot and silently replay each other's responses");
+        using var changed = new HttpRequestMessage(HttpMethod.Post, "/empty-key") { Content = JsonBody("{\"x\":2}") };
+        changed.Headers.TryAddWithoutValidation(KeyHeader, "\"\"").Should().BeTrue();
+        using var mismatch = await client.SendAsync(changed, TestContext.Current.CancellationToken);
+        mismatch.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await mismatch.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Contain("idempotency.key_reused_with_different_body");
+        received.Should().Equal(["\"\"", "\"\"", "\"\""]);
+        executions.Should().Be(1);
     }
 
     [Fact]
@@ -963,7 +1071,7 @@ public sealed class IdempotencyMiddlewareTests
         // configured Methods set (default: POST + PATCH). Send a real key with it to
         // prove the pre-checks short-circuit even when a parseable key is present.
         var getReq = new HttpRequestMessage(HttpMethod.Get, "/idempotent-get");
-        getReq.Headers.Add(KeyHeader, Guid.NewGuid().ToString());
+        getReq.Headers.Add(KeyHeader, QuoteKey(Guid.NewGuid().ToString()));
         var getResp = await client.SendAsync(getReq, TestContext.Current.CancellationToken);
         getResp.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -1015,8 +1123,8 @@ public sealed class IdempotencyMiddlewareTests
         var client = host.GetTestClient();
 
         var content = JsonBody("{}");
-        content.Headers.TryAddWithoutValidation(CustomKeyHeader, "key-one");
-        content.Headers.TryAddWithoutValidation(CustomKeyHeader, "key-two");
+        content.Headers.TryAddWithoutValidation(CustomKeyHeader, QuoteKey("key-one"));
+        content.Headers.TryAddWithoutValidation(CustomKeyHeader, QuoteKey("key-two"));
         var resp = await client.PostAsync("/idempotent", content, TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -1052,7 +1160,7 @@ public sealed class IdempotencyMiddlewareTests
         var client = host.GetTestClient();
 
         var content = JsonBody("{}");
-        content.Headers.Add(CustomKeyHeader, new string('a', 20));
+        content.Headers.Add(CustomKeyHeader, QuoteKey(new string('a', 20)));
         var resp = await client.PostAsync("/idempotent", content, TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -1069,11 +1177,11 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{\"x\":1}");
-        first.Headers.Add(CustomKeyHeader, key);
+        first.Headers.Add(CustomKeyHeader, QuoteKey(key));
         await client.PostAsync("/idempotent", first, TestContext.Current.CancellationToken);
 
         var second = JsonBody("{\"x\":2}");
-        second.Headers.Add(CustomKeyHeader, key);
+        second.Headers.Add(CustomKeyHeader, QuoteKey(key));
         var resp = await client.PostAsync("/idempotent", second, TestContext.Current.CancellationToken);
 
         resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
@@ -1105,13 +1213,13 @@ public sealed class IdempotencyMiddlewareTests
         try
         {
             var first = JsonBody("{}");
-            first.Headers.Add(CustomKeyHeader, key);
+            first.Headers.Add(CustomKeyHeader, QuoteKey(key));
             firstTask = client.PostAsync("/slow-custom", first, TestContext.Current.CancellationToken);
 
             await handlerEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
 
             var second = JsonBody("{}");
-            second.Headers.Add(CustomKeyHeader, key);
+            second.Headers.Add(CustomKeyHeader, QuoteKey(key));
             var secondResp = await client.PostAsync("/slow-custom", second, TestContext.Current.CancellationToken);
 
             secondResp.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -1160,7 +1268,7 @@ public sealed class IdempotencyMiddlewareTests
         var key = Guid.NewGuid().ToString();
 
         var first = JsonBody("{}");
-        first.Headers.Add(KeyHeader, key);
+        first.Headers.Add(KeyHeader, QuoteKey(key));
         var firstResp = await client.PostAsync("/complete-failure", first, TestContext.Current.CancellationToken);
 
         firstResp.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -1171,7 +1279,7 @@ public sealed class IdempotencyMiddlewareTests
             "the original CompleteAsync failure cause must be logged before the best-effort abandon attempt");
 
         var second = JsonBody("{}");
-        second.Headers.Add(KeyHeader, key);
+        second.Headers.Add(KeyHeader, QuoteKey(key));
         var secondResp = await client.PostAsync("/complete-failure", second, TestContext.Current.CancellationToken);
 
         secondResp.StatusCode.Should().Be(HttpStatusCode.Created,

@@ -41,6 +41,9 @@ public enum StoreDefects
     /// to prove the suite does not over-specify.
     /// </summary>
     NormalizeHeaderCasing = 1 << 6,
+
+    /// <summary>Grant an empty key without persisting its reservation.</summary>
+    IgnoreEmptyKeys = 1 << 7,
 }
 
 /// <summary>
@@ -71,6 +74,9 @@ internal sealed class ConfigurableIdempotencyStore(
     public async ValueTask<IdempotencyReservationOutcome> TryReserveAsync(
         string scope, string key, string fingerprint, CancellationToken cancellationToken)
     {
+        if (key.Length == 0 && Has(StoreDefects.IgnoreEmptyKeys))
+            return new IdempotencyReservationOutcome.Reserved(Guid.NewGuid().ToString("N"));
+
         if (!Has(StoreDefects.NonAtomicReserve))
             return Reserve(scope, key, fingerprint);
 
