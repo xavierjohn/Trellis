@@ -64,7 +64,7 @@ Each factory reports against the matching input field. `Combine` preserves all i
 
 Built-ins validate their documented shape; they do not replace application policy:
 
-- `EmailAddress` supports a common dot-atom-style local part and multi-label domain, not the complete RFC 5322 grammar. Quoted local parts, comments, display names, and domain literals are rejected. Its RFC 5321-derived limits are 254 characters overall and 64 in the local part; it does not check deliverability.
+- `EmailAddress` supports a common dot-atom-style local part and multi-label domain, not the complete RFC 5322 grammar. Quoted local parts, comments, display names, and domain literals are rejected. Its RFC 5321-derived limits are 254 characters overall and 64 in the local part. No 63-character per-domain-label limit is enforced; the overall address-length limit still applies. It does not check deliverability.
 - `Hostname` accepts ASCII RFC 1123 labels of 1-63 characters and at most 253 characters after trimming, with no trailing root dot. DNS encoding adds two octets, so 254- and 255-character hostnames exceed RFC 1035's 255-octet wire limit and are now rejected.
 - `CurrencyCode` accepts a three-letter ISO-shaped code. If a payment provider supports only selected currencies, enforce that allow-list at the application boundary.
 - `PhoneNumber` validates normalized E.164 shape. `GetCountryCode()` may still return `Maybe.None` for an unassigned prefix.

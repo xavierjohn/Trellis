@@ -45,8 +45,10 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 `EmailAddress` supports a common dot-atom-style local part and multi-label domain, not
 the complete RFC 5322 grammar. Quoted local parts, comments, display names, and domain
 literals are rejected. It trims surrounding whitespace and preserves casing; RFC
-5321-derived limits are 254 characters overall and 64 in the local part. This is a
-syntax check, not a deliverability check. Accepted email inputs are unchanged.
+5321-derived limits are 254 characters overall and 64 in the local part. Unlike
+`Hostname`, it does not enforce a 63-character limit per domain label; the overall
+address-length limit still applies. This is a syntax check, not a deliverability
+check. Accepted email inputs are unchanged.
 
 `Hostname` accepts ASCII RFC 1123 labels of 1-63 characters and at most 253 characters
 after trimming, including separating dots. RFC 1035's 255-octet DNS wire limit includes
