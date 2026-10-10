@@ -30,6 +30,7 @@ using Trellis;
 /// <item>Local part (before @): letters, digits, and special characters (!#$%&amp;'*+/=?^_`{|}~-), optionally separated by single dots</item>
 /// <item>No leading, trailing, or consecutive dots in the local part</item>
 /// <item>Domain part (after @): at least two labels of letters, digits, and hyphens, with no leading or trailing label hyphens</item>
+/// <item>No 63-character per-domain-label limit is enforced; the overall address-length limit still applies</item>
 /// <item>At most 254 characters overall and 64 in the local part, based on RFC 5321 length limits</item>
 /// <item>Case-insensitive validation; surrounding whitespace is trimmed and stored casing is preserved</item>
 /// </list>
@@ -215,6 +216,7 @@ public partial class EmailAddress : ScalarValueObject<EmailAddress, string>, ISc
     /// profile, not the complete RFC 5322 address grammar. Matching is case-insensitive;
     /// surrounding whitespace is trimmed and stored casing is preserved. Length checks enforce
     /// 254 characters overall and 64 for the local part, based on RFC 5321 limits.
+    /// No 63-character per-domain-label limit is enforced.
     /// </para>
     /// <para>
     /// Activity tracing is automatically enabled for this method, allowing you to monitor
