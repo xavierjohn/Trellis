@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.EntityFrameworkCore.Inbox
 namespaces: [Trellis.EntityFrameworkCore]
-types: [InboxMessage, InboxOptions, IntegrationEnvelope, InboxDispatchOutcome, IInboxStore, IInboxDispatcher, InboxServiceCollectionExtensions, InboxModelBuilderExtensions, IConsumerCheckpointStore, ConsumerCheckpoint, ConsumerCheckpointConfiguration, CheckpointServiceCollectionExtensions, CheckpointModelBuilderExtensions]
+types: [InboxMessage, InboxMessageConfiguration, InboxOptions, IntegrationEnvelope, InboxDispatchOutcome, IInboxStore, IInboxDispatcher, InboxServiceCollectionExtensions, InboxModelBuilderExtensions, IConsumerCheckpointStore, ConsumerCheckpoint, ConsumerCheckpointConfiguration, CheckpointServiceCollectionExtensions, CheckpointModelBuilderExtensions]
 version: v1
 last_verified: 2026-10-10
 audience: [llm]
@@ -223,6 +223,26 @@ await checkpoints.SetAsync(consumerId, window.HighWaterMark, ct);     // advance
 - **Durable + isolated.** `EfConsumerCheckpointStore<TContext>` reads and upserts on its own fresh DI scope and `SaveChanges`, so an advance is persisted on return and never entangles the caller's unit of work. One logical advancer per `ConsumerId` is assumed (the usual pull-consumer shape); the cursor is not a coordination primitive.
 - `GetAsync` / `SetAsync` throw `ArgumentException` for a blank `consumerId`; `SetAsync` also for a blank `position`.
 
+### `CheckpointServiceCollectionExtensions`
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static IServiceCollection AddTrellisConsumerCheckpointStore<TContext>(this IServiceCollection services) where TContext : DbContext` | `IServiceCollection` | Registers singleton `IConsumerCheckpointStore` backed by `EfConsumerCheckpointStore<TContext>` and supplies `TimeProvider.System` when absent. Leaf store registration; no builder slot. Does not register `TContext` or map its table. |
+
+### `CheckpointModelBuilderExtensions`
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static ModelBuilder AddTrellisConsumerCheckpoints(this ModelBuilder modelBuilder)` | `ModelBuilder` | Applies `ConsumerCheckpointConfiguration` to map the checkpoint table. Call from `OnModelCreating` and add the corresponding migration. |
+
+### `ConsumerCheckpointConfiguration`
+
+Public `IEntityTypeConfiguration<ConsumerCheckpoint>` implementation.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public void Configure(EntityTypeBuilder<ConsumerCheckpoint> builder)` | `void` | Maps `TrellisConsumerCheckpoints`, the `ConsumerId` primary key with the inbox's consumer-id width, and required `Position` / `UpdatedAt` properties. Throws `ArgumentNullException` for a null builder. |
+
 ### ConsumerCheckpoint
 
 The persisted row behind the store, mapped by `AddTrellisConsumerCheckpoints()`.
@@ -280,6 +300,14 @@ A persisted record that a `(ConsumerId, MessageId)` message has been processed �
 `InboxMessageConfiguration` maps the table `TrellisInboxMessages`, the composite `(ConsumerId, MessageId)` primary key (the uniqueness guard that makes a concurrent duplicate fail at `SaveChanges`), and an index on `ProcessedAt`.
 
 `InboxMessage` is transient infrastructure, not a domain aggregate. Rows may be pruned once they are older than the transport's maximum redelivery window — delete sooner and a late redelivery would be reprocessed.
+
+### `InboxMessageConfiguration`
+
+Public `IEntityTypeConfiguration<InboxMessage>` implementation, normally applied by `AddTrellisInbox(ModelBuilder)`.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public void Configure(EntityTypeBuilder<InboxMessage> builder)` | `void` | Applies the inbox table mapping described above. Throws `ArgumentNullException` for a null builder. |
 
 ## InboxOptions
 

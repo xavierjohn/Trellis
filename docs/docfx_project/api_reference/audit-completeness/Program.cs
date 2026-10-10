@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Xml.Linq;
 using System.Globalization;
+using Trellis.Docs.Audit;
 
 string? fwRoot = Environment.GetEnvironmentVariable("TRELLIS_FW_ROOT")
     ?? FindRepositoryRoot(Environment.CurrentDirectory);
@@ -109,7 +110,7 @@ foreach (var package in packages) {
     if (dll == null) { Console.WriteLine($"[{package.PackageName}] DLL not found, skipping"); continue; }
     var docPath = Path.Combine(docsDir, package.DocFile);
     if (!File.Exists(docPath)) { Console.WriteLine($"[{package.PackageName}] Doc missing: {docPath}"); continue; }
-    var docText = File.ReadAllText(docPath).ToLowerInvariant();
+    var evidence = new ApiDocumentationEvidence(File.ReadAllText(docPath));
 
     Assembly asm;
     try { asm = mlc.LoadFromAssemblyPath(dll); }
@@ -126,7 +127,7 @@ foreach (var package in packages) {
     foreach (var t in types) {
         if (t.Name.StartsWith("<", StringComparison.Ordinal)) continue;
         var simple = t.Name.Contains('`') ? t.Name.Substring(0, t.Name.IndexOf('`')) : t.Name;
-        if (!docText.Contains(simple.ToLowerInvariant())) {
+        if (!evidence.Contains(simple)) {
             undocTypes.Add(t.FullName ?? simple);
             continue;
         }
@@ -141,7 +142,7 @@ foreach (var package in packages) {
             if (skipMembers.Contains(m.Name)) continue;
             if (m.Name.StartsWith("op_", StringComparison.Ordinal) || m.Name.StartsWith("get_", StringComparison.Ordinal) || m.Name.StartsWith("set_", StringComparison.Ordinal)
                 || m.Name.StartsWith("add_", StringComparison.Ordinal) || m.Name.StartsWith("remove_", StringComparison.Ordinal)) continue;
-            if (!docText.Contains(m.Name.ToLowerInvariant()))
+            if (!evidence.Contains(m.Name))
                 undocMembers.Add($"{t.FullName}::{m.Name}");
         }
     }
@@ -190,7 +191,7 @@ var gapPackages = summary.Where(s => s.Item3 > 0 || s.Item5 > 0).ToList();
 if (gapPackages.Count == 0)
 {
     Console.WriteLine();
-    Console.WriteLine("Completeness gate: every public type and member is named in its package's API reference.");
+    Console.WriteLine("Completeness gate: every public type and member has structured name evidence in its package's API reference.");
     return symbolAuditExit;
 }
 
@@ -199,8 +200,8 @@ Console.WriteLine("=== TRLDOC008: undocumented public API ===");
 foreach (var (p, _, ut, _, um) in gapPackages)
     Console.WriteLine($"error TRLDOC008: {p} has {ut} undocumented type(s) and {um} undocumented member signature(s).");
 Console.WriteLine();
-Console.WriteLine($"Every public type and member must be named in its package's API reference, because the reference is the only");
-Console.WriteLine($"source an LLM consults before generating Trellis code -- an unnamed symbol is one it cannot use and may reinvent.");
+Console.WriteLine($"Every public type and member must have structured, exact-identifier evidence in its package's API reference,");
+Console.WriteLine($"the source an LLM consults before generating Trellis code -- an unnamed symbol is one it cannot use and may reinvent.");
 Console.WriteLine($"See '{outPath}' for the per-symbol list, and docs/lint-api-reference.md (TRLDOC008) for how to resolve.");
 return 1;
 

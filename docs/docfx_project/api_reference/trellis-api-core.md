@@ -1218,7 +1218,7 @@ Wraps `ImmutableArray<T>` so records and other value-equal types get sequence eq
 | `Items` | `ImmutableArray<T>` | The wrapped array. Returns `ImmutableArray<T>.Empty` for default-initialized values rather than the uninitialized default. |
 | `Length` | `int` | Number of items. |
 | `IsEmpty` | `bool` | True when the wrapped array is empty. |
-| `this[int index]` | `T` | Indexer over the wrapped array. |
+| `this[int index]` (`Item` in CLR metadata) | `T` | Indexer over the wrapped array; use `array[index]` in C#, not an `Item` property access. |
 | `Empty` | `EquatableArray<T>` | Static empty instance, mirrors `ImmutableArray<T>.Empty`. |
 
 #### Methods
@@ -1438,6 +1438,8 @@ Pure transformation of the success value (or failure error). Use `Map` when the 
 | --- | --- | --- |
 | `public static Result<TOut> Map<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> func)` | `Result<TOut>` | Synchronous map on `Result<T>`. The selector contract requires a non-null return for reference types — `Map` does not null-check the result and downstream stages will see a `Result<TOut>` carrying a `null` value. Use `Bind` if a step can legitimately produce no value. |
 | `public static Task<Result<TOut>> MapAsync<TIn, TOut>(this Task<Result<TIn>> resultTask, Func<TIn, Task<TOut>> func)` | `Task<Result<TOut>>` | `MapExtensionsAsync` exposes all Task/ValueTask × sync-/async-lambda combinations (6 overloads). |
+| `public static Result<T> MapIf<T>(this Result<T> result, bool condition, Func<T, T> func)` | `Result<T>` | Maps the success value only when `condition` is true; otherwise returns the original result. `func` must be non-null even on the skipped/failure path. |
+| `public static Result<T> MapIf<T>(this Result<T> result, Func<T, bool> predicate, Func<T, T> func)` | `Result<T>` | Evaluates `predicate` only on success and maps only when it returns true. Preserves failures and false-predicate results; both delegates must be non-null. |
 | `public static Result<T> MapOnFailure<T>(this Result<T> result, Func<Error, Error> map)` | `Result<T>` | Replaces the failure `Error`. |
 | `public static Task<Result<T>> MapOnFailureAsync<T>(this Task<Result<T>> resultTask, Func<Error, Task<Error>> mapAsync)` | `Task<Result<T>>` | `MapOnFailureExtensions` exposes all sync/Task/ValueTask combinations of `MapOnFailure`/`MapOnFailureAsync`. |
 

@@ -211,7 +211,7 @@ When adding or changing public API surface, update the relevant API reference fi
 This is enforced, not advisory. **TRLDOC008** fails the build when any public type or member's name does not appear in its owning package's reference file, and **TRLDOC005** fails it when a doc names a symbol that does not exist. Adding a public member without documenting it will go red in CI. Two things about TRLDOC008 catch people out:
 
 - Matching is **per package**. Documenting a type in a different package's file does not satisfy it, because the owning package's file is the one an agent is routed to.
-- Matching is on the **simple name as a substring**. Describing a member conceptually ("the last-modified timestamp") does not count; the doc must contain `LastModified`. A name a reader cannot type is a name they cannot use — and an LLM that cannot find a member in the reference tends to invent a plausible signature rather than conclude it is absent.
+- Matching requires the **exact-case simple name as a complete identifier in structured evidence**: a heading, table cell, inline code span, or C# fence. Plain prose, front matter, comments, string literals, and link destinations do not count; `MapIfExtensions` does not document `MapIf`. Describing a member conceptually ("the last-modified timestamp") does not count either; name `LastModified` explicitly.
 
 When the hit is a static extension class, prefer giving it its own `###` section over name-dropping it in prose: the usual cause is that its methods were documented under a neighbouring class's heading, which is an accuracy defect in its own right.
 

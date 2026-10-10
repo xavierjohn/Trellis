@@ -194,24 +194,34 @@ It resolves symbols from the built Trellis assemblies (including internal types,
 
 ## TRLDOC008 — every public API must be documented
 
-TRLDOC008 is the other half of the same tool, and the direct counterpart to TRLDOC005: it walks each package's public types and members and fails the build when a symbol's simple name never appears in that package's API reference file.
+TRLDOC008 is the other half of the same tool, and the direct counterpart to TRLDOC005: it walks each package's public types and members and fails the build when a symbol's simple name has no structured evidence in that package's API reference file.
 
 This gate exists because the completeness numbers were printed for a long time without being enforced, and the process exit code came from TRLDOC005 alone. The result was a backlog of 8 undocumented types and 33 undocumented members accumulating across seven packages in a permanently green build — nobody was ignoring a warning, they simply never saw one. A report that nothing reads is not a control.
 
-The bar is deliberately low: the symbol's name must appear *somewhere* in the owning package's doc. That is not a claim the symbol is well explained, only that an agent reading the reference can discover it exists and spell it correctly. The failure this prevents is specific — an LLM that cannot find a member in the reference does not conclude the member is absent, it invents a plausible signature.
+The bar is name discovery, not a claim that every signature is fully explained. An agent reading the reference must be able to discover the API and spell it correctly. The failure this prevents is specific — an LLM that cannot find a member in the reference does not conclude the member is absent, it invents a plausible signature.
 
-Two consequences of the matching rule are worth knowing before chasing a report:
+Evidence is extracted from parsed Markdown: visible headings and pipe-table cells, inline code spans, and C# fences tagged `csharp`, `c#`, or `cs`. Matching is **case-sensitive and identifier-exact**. Generic type names and qualified accesses work: `Result<T>` names `Result`, and `Maybe<T>.None` names `Maybe` and `None`. `MapIfExtensions` does **not** name `MapIf`, `Items` does not name `Item`, and the keyword `new` does not name a `New` factory.
+
+Visible heading/table text includes decoded HTML entities before tokenization: `N&#97;me` names `Name`, while `Name&#50;` is the longer identifier `Name2` and does not name `Name`.
+
+Plain prose, YAML front matter, HTML comments, link destinations, image alt text, and non-C# or untagged fences provide no evidence. C# comments, string/char literals, and interpolation holes are blanked using the same helper as TRLDOC014. This prevents common names such as `Id`, `Name`, `Value`, and `New` from passing on incidental text. A capitalized word in a heading or table is still name evidence: this is not prose interpretation or signature binding.
+
+Two consequences are worth knowing before chasing a report:
 
 - Matching is per-package. A type documented in a *different* package's file still counts as a gap, because that is the file an agent will be pointed at. `IInboxDispatcher` was flagged for exactly this reason — documented in the inbox reference while living in the `Trellis.Mediator` assembly.
-- Matching is substring-based on the simple name. Describing a member conceptually ("the last-modified timestamp", "the delay in seconds") does not satisfy it; the doc has to name `LastModified` and `DelaySeconds`. This is the intended behaviour, since a name a reader cannot type is a name they cannot use.
+- Describing a member conceptually ("the last-modified timestamp", "the delay in seconds") does not satisfy it; explicitly name `LastModified` and `DelaySeconds` in structured evidence. For an indexer, document its reflected name (normally `Item`) alongside its C# `this[...]` syntax.
 
 Static extension classes are a common source of hits, and the honest fix is usually not to name-drop the class but to give it its own `###` section. When `AddTrellisIdempotency` was documented under a generic `ServiceCollectionExtensions` heading rather than its real `IdempotencyServiceCollectionExtensions` owner, the gate was reporting a genuine accuracy defect, not a bookkeeping one.
+
+The existing scope is unchanged: declared public methods, properties, events, and fields; overloads share name evidence; constructors, operators/accessors, standard object/record members, and standard Roslyn overrides remain excluded. The gate does not associate a shared member name with a particular declaring type within the same package — receiver/attribution checks remain TRLDOC014 and TRLDOC015's responsibility.
+
+`Trellis.Core/tests/Packaging/ApiDocumentationEvidenceTests.cs` exercises the actual audit assembly. Negative controls cover incidental common names, substrings, casing, Markdown metadata/trivia, and names present only in another package's reference; synthetic package assemblies also pin the executable's TRLDOC008 exit code.
 
 ## TRLDOC014 — fenced code must resolve on its receiver
 
 TRLDOC014 is the third audit in the same tool. It reads the **C# fences** and, wherever the head of a dotted chain names a real type, requires the next segment to be a real member or nested type *of that type*.
 
-It exists because the other two gates share two blind spots, and a defect walked straight through both. While TRLS064 was being written, two anti-pattern snippets used `Error.Validation.ForField` and `ValidationCodes.NumberOutOfRange`; neither exists. TRLDOC005 passed them because it validates each dotted segment **independently** — some `Validation` and some `ForField` exist somewhere in the assemblies — and because it only reads **backticked prose**, never fence bodies. They were caught only because a probe project was compiled by hand. Fenced code is the most-copied content in the doc set, so it is the last place a made-up API should be able to hide. <!-- v1-stale-ok: names a nonexistent API as the motivating defect -->
+It exists because the other two gates do not resolve a name against its receiver, and a defect walked straight through both. While TRLS064 was being written, two anti-pattern snippets used `Error.Validation.ForField` and `ValidationCodes.NumberOutOfRange`; neither exists. TRLDOC005 passed them because it validates each dotted segment **independently** — some `Validation` and some `ForField` exist somewhere in the assemblies — and because it only reads **backticked prose**, never fence bodies. TRLDOC008 now includes C# fences as name evidence, but still cannot say whether a member belongs to that receiver. The defects were caught only because a probe project was compiled by hand. Fenced code is the most-copied content in the doc set, so it is the last place a made-up API should be able to hide. <!-- v1-stale-ok: names a nonexistent API as the motivating defect -->
 
 Resolution is deliberately restricted to the **head** of a chain, because only the head can be resolved without binding. An interior segment is usually a value rather than a type: in `order.Id.Value`, `Id` is a property that happens to share a type's simple name, and judging it against that type would report correct documentation as broken.
 

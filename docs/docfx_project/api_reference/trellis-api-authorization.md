@@ -3,7 +3,7 @@ package: Trellis.Authorization
 namespaces: [Trellis.Authorization]
 types: [Actor, ActorAttributes, ActorId, ActorProviderExtensions, IActorProvider, IAuthorizationMessage, IResourceAuthorizationMessage, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-10
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when modeling actors and permissions, or implementing IAuthorize and resource-based authorization (Trellis.Authorization)."
@@ -174,6 +174,10 @@ public sealed partial class ActorId : RequiredString<ActorId>;
 ```
 
 Strongly-typed wrapper around the raw principal id (typically the JWT `sub` or AAD `oid` claim) so the authorization layer exposes a domain type instead of an untyped `string`. Its explicit `[Trim, NotDefault]` attributes trim input and reject empty / whitespace-only ids; these are opt-ins, not `RequiredString<T>` defaults (the unannotated base rejects null but allows empty/whitespace). Generated factories `ActorId.Create(string)` / `ActorId.TryCreate(string?)` come from the bundled source generator (see [`trellis-api-core.md`](trellis-api-core.md#primitive-value-object-base-classes)).
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public static ActorId Parse(string s, IFormatProvider? provider)` | `ActorId` | Generated `IParsable<ActorId>` entry point; applies the same trim/nonempty validation as `TryCreate` and throws `TrellisValidationFormatException` on failure. `provider` is unused for string-backed ids. Prefer `TryCreate` for expected invalid input. |
 
 Consumers that store the principal id at aggregate boundaries — audit-style fields like `Order.CreatedByActorId` or `Document.LastModifiedByActorId` — should reuse `ActorId` for those fields so cross-aggregate comparisons (`actor.IsOwner(order.CreatedByActorId)`) are type-checked end-to-end. Domain identifiers that are conceptually different from the principal id (a customer aggregate id, a tenant member id, a domain user aggregate's primary key) remain whatever VO the domain models and are resolved to / from the principal at the application service boundary.
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation - structured API completeness
+
+TRLDOC008 now requires exact-case identifier evidence in the owning package's
+headings, tables, inline code, or C# fences. Incidental prose, metadata, comments,
+literals, link destinations, and longer identifiers no longer mask missing names.
+References now explicitly document the public types and members exposed by the
+stronger gate. Framework runtime behavior and public signatures are unchanged.
+
 ### Documentation - integration delivery boundaries
 
 Integration-event guidance now distinguishes default best-effort local notification,

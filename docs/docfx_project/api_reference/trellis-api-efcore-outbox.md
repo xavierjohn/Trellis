@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.EntityFrameworkCore.Outbox
 namespaces: [Trellis.EntityFrameworkCore]
-types: [OutboxMessage, OutboxMessageKind, OutboxOptions, OutboxServiceCollectionExtensions, OutboxModelBuilderExtensions]
+types: [OutboxMessage, OutboxMessageConfiguration, OutboxMessageKind, OutboxOptions, OutboxServiceCollectionExtensions, OutboxModelBuilderExtensions]
 version: v1
 last_verified: 2026-10-10
 audience: [llm]
@@ -199,6 +199,14 @@ The `OutboxMessageConfiguration` maps the table `TrellisOutboxMessages`, the `Se
 > `AddSource("Trellis.EntityFrameworkCore.Outbox")` on the application's tracer provider.
 
 `OutboxMessage` is an infrastructure record, not a domain aggregate. The rows are transient and may be pruned once `ProcessedAt` is set — deleting processed rows loses no source-of-truth state. This is an outbox, **not** an event store.
+
+### `OutboxMessageConfiguration`
+
+Public `IEntityTypeConfiguration<OutboxMessage>` implementation, normally applied by `AddTrellisOutbox(ModelBuilder)`.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public void Configure(EntityTypeBuilder<OutboxMessage> builder)` | `void` | Applies the outbox table mapping described above, including the newline-delimited `CompletedHandlers` conversion and optimistic-concurrency token on `LockedBy`. Throws `ArgumentNullException` for a null builder. |
 
 ## OutboxOptions
 

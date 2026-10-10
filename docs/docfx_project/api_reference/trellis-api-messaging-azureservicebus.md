@@ -3,7 +3,7 @@ package: Trellis.Messaging.AzureServiceBus
 namespaces: [Trellis.Messaging.AzureServiceBus]
 types: [ServiceBusIntegrationEventPublisher, ServiceBusInboxConsumer, AzureServiceBusPublisherOptions, AzureServiceBusConsumerOptions, ServiceBusSubscription, ServiceBusMessageFormat, AzureServiceBusServiceCollectionExtensions]
 version: v1
-last_verified: 2026-10-04
+last_verified: 2026-10-10
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when publishing integration events to Azure Service Bus or consuming them into a Trellis inbox, including wire format and message settlement."
@@ -124,7 +124,23 @@ The duplicate check spans calls. Configuration accumulates onto one options inst
 
 `TopicNameResolver` and both `JsonSerializerOptions` properties reject `null` on assignment rather than failing with a `NullReferenceException` on the first message.
 
+## `ServiceBusSubscription`
+
+```csharp
+public sealed record ServiceBusSubscription(string TopicName, string SubscriptionName);
+```
+
+| Property | Type | Notes |
+| --- | --- | --- |
+| `TopicName` | `string` | Topic to consume; the event's wire name in the default topic-per-contract layout. |
+| `SubscriptionName` | `string` | This service's subscription on that topic. Distinct from the inbox's `ConsumerId`. |
+
+Construction rejects blank names with `ArgumentException`. Both properties are
+init-only, and record equality compares the pair by value.
+
 ## Registration
+
+### `AzureServiceBusServiceCollectionExtensions`
 
 ```csharp
 public static IServiceCollection AddAzureServiceBusIntegrationEventPublisher(
