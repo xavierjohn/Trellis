@@ -3,7 +3,7 @@ package: Trellis.Http.Abstractions
 namespaces: [Trellis]
 types: [HttpError, AuthChallenge, EntityTagValue, RetryAfterValue, PreconditionKind, RepresentationMetadata, "RepresentationMetadata.Builder", "WriteOutcome<T>", WriteOutcome, AggregateETagExtensions]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when you need HTTP fault cases, ETag and Retry-After helpers, RepresentationMetadata or WriteOutcome shapes (Trellis.Http.Abstractions)."

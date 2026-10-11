@@ -10,7 +10,7 @@ agent_description: "Open when a TRLS diagnostic appears or when checking which a
 ---
 # Trellis.Analyzers — API Reference
 
-> **Analyzer rules require `Trellis.Analyzers`; bundled generator diagnostics do not.** Add a `PackageReference` to `Trellis.Analyzers` for the analyzer-emitted rules below. Source-generator diagnostics ship with their hosting packages (`Trellis.Core`, `Trellis.EntityFrameworkCore`, and `Trellis.Asp`) and can fire without that reference. This file is delivered by `Trellis.Core`, so its presence in `.github/` does **not** mean the standalone analyzers are active — check the `.csproj` and the emitter table below.
+> **Analyzer rules require `Trellis.Analyzers`; bundled generator diagnostics do not.** Add a `PackageReference` to `Trellis.Analyzers` for the analyzer-emitted rules below. Source-generator diagnostics ship with their hosting packages (`Trellis.Core`, `Trellis.EntityFrameworkCore`, and `Trellis.Asp`) and can fire without that reference. This file is delivered by `Trellis.Core`, so its presence under `.agentdocs/packages/trellis.core/trellis/` does **not** mean the standalone analyzers are active — check the `.csproj` and the emitter table below.
 
 - **Package:** `Trellis.Analyzers`
 - **Namespace:** `Trellis.Analyzers`
@@ -668,6 +668,8 @@ The guard expects the analyzer's required `netstandard2.0` output for the select
 
 ## Compilable examples
 
+Use `Bind` when the selector returns `Result<T>`; `Map` would nest the result and trigger `TRLS002`.
+
 ```csharp
 using System.Threading.Tasks;
 using Trellis;
@@ -679,7 +681,7 @@ public static class AnalyzerExamples
     public static Result<int> Valid()
     {
         var result = Parse("abc");
-        return result.Map(length => Result.Ok(length + 1)); // TRLS002
+        return result.Bind(length => Result.Ok(length + 1));
     }
 
     public static async Task<Result<int>> ValidAsync()

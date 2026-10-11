@@ -1,6 +1,12 @@
 ﻿namespace Trellis.Core.Tests.Packaging;
 
+using Markdig;
+using Markdig.Syntax;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Trellis.Docs.Audit;
+using Trellis.Testing;
 
 public class ApiDocumentationEvidenceTests
 {
@@ -132,6 +138,46 @@ public class ApiDocumentationEvidenceTests
     }
 
     [Theory]
+    [InlineData("trellis-api-analyzers.md", "## Compilable examples", OutputKind.DynamicallyLinkedLibrary)]
+    [InlineData("trellis-api-testing-reference.md", "### FakeRepository", OutputKind.ConsoleApplication)]
+    public void Compile_ReferenceExample_CurrentApis_HasNoCompilerErrors(string document, string section, OutputKind outputKind)
+    {
+        var platformAssemblies = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string
+            ?? throw new InvalidOperationException("The runtime must provide its platform assembly paths.");
+        var references = platformAssemblies.Split(Path.PathSeparator)
+            .Append(typeof(Result).Assembly.Location)
+            .Append(typeof(FakeRepository<,>).Assembly.Location)
+            .Append(typeof(FluentAssertions.AssertionExtensions).Assembly.Location)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(path => MetadataReference.CreateFromFile(path));
+        var compilation = CSharpCompilation.Create("ApiReferenceExample",
+            [CSharpSyntaxTree.ParseText(ReadReferenceExample(document, section, "## Compilable examples"),
+                cancellationToken: TestContext.Current.CancellationToken)],
+            references,
+            new CSharpCompilationOptions(outputKind, nullableContextOptions: NullableContextOptions.Enable));
+
+        using var assembly = new MemoryStream();
+        var result = compilation.Emit(assembly, cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue($"{document} {section} must compile: {string.Join(Environment.NewLine, result.Diagnostics)}");
+    }
+
+    [Theory]
+    [InlineData("### Use `FireResult` on a regular Stateless machine")]
+    [InlineData("### Use `LazyStateMachine<TState, TTrigger>`")]
+    public void Parse_ReferenceExample_StateMachine_TopLevelStatementsPrecedeTypes(string section)
+    {
+        var syntax = CSharpSyntaxTree.ParseText(
+            ReadReferenceExample("trellis-api-statemachine.md", section, "## Code examples"),
+            cancellationToken: TestContext.Current.CancellationToken);
+        var root = syntax.GetCompilationUnitRoot(TestContext.Current.CancellationToken);
+
+        root.Members.SkipWhile(member => member is GlobalStatementSyntax)
+            .Should().NotContain(member => member is GlobalStatementSyntax,
+                "C# top-level statements must precede type declarations");
+    }
+
+    [Theory]
     [InlineData("The Id is assigned automatically.")]
     [InlineData("### Identity")]
     [InlineData("### Id&#50;")]
@@ -166,6 +212,28 @@ public class ApiDocumentationEvidenceTests
 
         result.ExitCode.Should().Be(0, result.Output);
         result.Output.Should().NotContain("error TRLDOC008");
+    }
+
+    private static string ReadReferenceExample(string document, string section, string parentSection)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Trellis.slnx")))
+            directory = directory.Parent;
+
+        directory.Should().NotBeNull("the test must locate the repository root");
+        var markdown = File.ReadAllText(Path.Combine(directory!.FullName, "docs", "docfx_project", "api_reference", document))
+            .ReplaceLineEndings("\n");
+        var parentStart = markdown.IndexOf(parentSection + "\n", StringComparison.Ordinal);
+        parentStart.Should().BeGreaterThanOrEqualTo(0, $"{document} must contain {parentSection}");
+        var start = markdown.IndexOf(section + "\n", parentStart, StringComparison.Ordinal);
+        start.Should().BeGreaterThanOrEqualTo(0, $"{document} must contain {section}");
+        var level = section.TakeWhile(character => character == '#').Count();
+
+        return Markdown.Parse(markdown[start..]).Skip(1)
+            .TakeWhile(block => block is not HeadingBlock heading || heading.Level > level)
+            .OfType<FencedCodeBlock>()
+            .First(block => string.Equals(block.Info, "csharp", StringComparison.OrdinalIgnoreCase))
+            .Lines.ToString();
     }
 
     private static async Task<(int ExitCode, string Output)> RunAuditAsync(string documentation)

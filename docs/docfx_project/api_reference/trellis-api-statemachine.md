@@ -3,7 +3,7 @@ package: Trellis.StateMachine
 namespaces: [Trellis.StateMachine]
 types: [StateMachineExtensions, "LazyStateMachine<TState, TTrigger>"]
 version: v3
-last_verified: 2026-06-21
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wrapping Stateless transitions in Trellis Result values, with lazy construction for ORM-materialized aggregates (Trellis.StateMachine)."
@@ -132,9 +132,6 @@ using Stateless;
 using Trellis;
 using Trellis.StateMachine;
 
-enum OrderState { Draft, Submitted, Cancelled }
-enum OrderTrigger { Submit, Cancel }
-
 var machine = new StateMachine<OrderState, OrderTrigger>(OrderState.Draft);
 machine.Configure(OrderState.Draft)
     .Permit(OrderTrigger.Submit, OrderState.Submitted)
@@ -142,6 +139,9 @@ machine.Configure(OrderState.Draft)
 
 Result<OrderState> submitResult = machine.FireResult(OrderTrigger.Submit);
 Result<OrderState> invalidResult = machine.FireResult(OrderTrigger.Submit);
+
+enum OrderState { Draft, Submitted, Cancelled }
+enum OrderTrigger { Submit, Cancel }
 ```
 
 ### Use `LazyStateMachine<TState, TTrigger>`
@@ -150,9 +150,6 @@ Result<OrderState> invalidResult = machine.FireResult(OrderTrigger.Submit);
 using Stateless;
 using Trellis;
 using Trellis.StateMachine;
-
-enum DocumentState { Draft, Published }
-enum DocumentTrigger { Publish }
 
 var state = DocumentState.Draft;
 
@@ -164,6 +161,9 @@ var lazyMachine = new LazyStateMachine<DocumentState, DocumentTrigger>(
 
 Result<DocumentState> result = lazyMachine.FireResult(DocumentTrigger.Publish);
 StateMachine<DocumentState, DocumentTrigger> machine = lazyMachine.Machine;
+
+enum DocumentState { Draft, Published }
+enum DocumentTrigger { Publish }
 ```
 
 ## Cross-references

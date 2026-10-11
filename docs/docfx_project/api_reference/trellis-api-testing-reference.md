@@ -3,7 +3,7 @@ package: Trellis.Testing
 namespaces: [Trellis.Testing]
 types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", TestActorProvider, TestActorScope, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when writing unit or handler tests for Result, Maybe, errors or mediator handlers: FluentAssertions extensions, unwrap helpers and fakes (Trellis.Testing)."
@@ -453,7 +453,7 @@ public class FakeRepository<TAggregate, TId>
 }
 ```
 
-> **Cancellation token observability.** All `*Async` methods on `FakeRepository<TAggregate, TId>` accept a `CancellationToken` parameter for source-compat with `RepositoryBase<TAggregate, TId>` but **do not observe it** — the fake completes synchronously. Tests that rely on cancellation behavior need a different test double; this fake intentionally trades cancellation-observability for the simpler synchronous semantics that DDD aggregate tests typically need.
+> **Cancellation token observability.** Repository-shaped `*Async` methods on `FakeRepository<TAggregate, TId>` accept a `CancellationToken` parameter for source-compat with `RepositoryBase<TAggregate, TId>` but **do not observe it** — the fake completes synchronously. The local `FindAsync` helper and both `WhereAsync` overloads have no token parameter. Tests that rely on cancellation behavior need a different test double; this fake intentionally trades cancellation-observability for the simpler synchronous semantics that DDD aggregate tests typically need.
 
 > **Null guards.** `Add`, `Remove`, `SaveAsync`, `WithUniqueConstraint`, `QueryAsync`, `ExistsAsync(Specification<TAggregate>)`, `CountAsync`, `FindAsync`, and `WhereAsync` all `ArgumentNullException.ThrowIfNull(...)` their reference-type parameters. `GetByIdAsync`, `FindByIdAsync`, `RemoveByIdAsync`, `DeleteAsync`, and `ExistsAsync(TId)` rely on the `TId : notnull` constraint at compile time.
 
@@ -563,13 +563,6 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Testing;
 
-public sealed record OrderId(Guid Value);
-
-public sealed class Order : Aggregate<OrderId>
-{
-    public Order(OrderId id) : base(id) { }
-}
-
 var repo = new FakeRepository<Order, OrderId>()
     .WithUniqueConstraint(order => order.Id);
 
@@ -579,4 +572,11 @@ await repo.SaveAsync(order).BeSuccessAsync();
 (await repo.GetByIdAsync(order.Id)).Should().BeSuccess().Which.Should().BeSameAs(order);
 repo.Exists(order.Id).Should().BeTrue();
 repo.Count.Should().Be(1);
+
+public sealed record OrderId(Guid Value);
+
+public sealed class Order : Aggregate<OrderId>
+{
+    public Order(OrderId id) : base(id) { }
+}
 ```

@@ -3,7 +3,7 @@ package: Trellis.Testing.Worker
 namespaces: [Trellis.Testing.Worker]
 types: [WorkerHarness`1, WorkerHarnessOptions, IWorkerTickSignal, WorkerHarnessTimeoutException]
 version: v3
-last_verified: 2026-06-03
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when testing a BackgroundService that publishes domain events: FakeTimeProvider control, waiting for events or ticks, and a deterministic system actor."

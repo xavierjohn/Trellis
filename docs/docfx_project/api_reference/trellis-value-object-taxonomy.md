@@ -3,7 +3,7 @@ package: Trellis.Core, Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
 types: [ValueObject, "ScalarValueObject<TSelf,T>", RequiredString<TSelf>, RequiredGuid<TSelf>, RequiredInt<TSelf>, RequiredLong<TSelf>, RequiredDecimal<TSelf>, RequiredBool<TSelf>, RequiredDateTime<TSelf>, RequiredDateTimeOffset<TSelf>, RequiredEnum<TSelf>, Maybe<T>]
 version: v3
-last_verified: 2026-10-02
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when choosing a value-object category (scalar, symbolic, structured, optional) or deciding between Trellis.Core bases and Trellis.Primitives types."

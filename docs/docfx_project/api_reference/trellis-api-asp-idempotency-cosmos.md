@@ -3,7 +3,7 @@ package: Trellis.Asp.Idempotency.Cosmos
 namespaces: [Trellis.Asp.Idempotency.Cosmos]
 types: [CosmosIdempotencyContainer, CosmosIdempotencyServiceCollectionExtensions, CosmosIdempotencyStore]
 version: v3
-last_verified: 2026-08-16
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when running Trellis idempotency on more than one replica with the Cosmos store: wiring, provisioning, or diagnosing duplicate execution and stuck reservations."
