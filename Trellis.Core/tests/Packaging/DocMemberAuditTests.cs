@@ -98,6 +98,7 @@ public class DocMemberAuditTests
     [InlineData("Use `\"Probe.ReasonCode\"` as a wire value.")]
     [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; removed member in historical guidance -->.")]
     [InlineData("No `GenericProbe<OtherProbe>.ReasonCode` <!-- doc-member-ok: GenericProbe.ReasonCode; deliberately absent API --> exists.")]
+    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; historical GenericProbe&lt;T&gt; member -->.")]
     public async Task Audit_InlineReference_ValidOwnerOrDeliberateBoundary_Passes(string markdown)
     {
         var result = await RunAuditAsync(markdown);
@@ -152,12 +153,15 @@ public class DocMemberAuditTests
     [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.Code; different member -->.")]
     [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; -->.")]
     [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode;   -->.")]
+    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; contains < in the reason -->.")]
+    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; contains > in the reason -->.")]
+    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; historical GenericProbe<T> member -->.")]
     [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode -->.")]
     [InlineData("Use `Probe.ReasonCode` <!-- v1-stale-ok: historical reference -->.")]
     [InlineData("<!-- doc-member-ok: Probe.ReasonCode; misplaced marker -->\nUse `Probe.ReasonCode`.")]
     [InlineData("Use `Probe.ReasonCode`.\n<!-- doc-member-ok: Probe.ReasonCode; marker on another line -->")]
     [InlineData("Use `Probe.ReasonCode` and this comment <!-- doc-member-ok: Probe.ReasonCode; not adjacent -->.")]
-    public async Task Audit_InlineException_MismatchedOrUnscopedMarker_DoesNotSuppressOwnership(string markdown)
+    public async Task Audit_InlineException_InvalidOrUnscopedMarker_DoesNotSuppressOwnership(string markdown)
     {
         var result = await RunAuditAsync(markdown);
 
@@ -281,9 +285,11 @@ public class DocMemberAuditTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Audit_DuplicateDependencyBuild_ExtensionResolution_UsesTheSelectedCurrentAssembly(bool wrongOwner)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Audit_DuplicateDependencyBuild_ExtensionResolution_UsesTheSelectedCurrentAssembly(bool wrongOwner, bool copiedIntoConsumer)
     {
         using var fixture = new DocumentationAuditFixture();
         fixture.WritePackage("Trellis.Dependency", """
@@ -304,6 +310,9 @@ public class DocMemberAuditTests
                 public static void OwnedExtension(this Probe probe) { }
             }
             """, "`ConsumerExtensions.OwnedExtension`", "Trellis.Dependency");
+
+        if (copiedIntoConsumer)
+            fixture.MoveBuildToPackage("Trellis.Dependency", "Debug", "Trellis.Consumer");
 
         var result = await fixture.RunAsync();
 

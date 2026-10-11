@@ -46,6 +46,10 @@ internal sealed class DocumentationAuditFixture : IDisposable
         result.Success.Should().BeTrue(string.Join(Environment.NewLine, result.Diagnostics));
     }
 
+    public void MoveBuildToPackage(string name, string configuration, string destinationPackage) =>
+        File.Move(AssemblyPath(name, configuration),
+            Path.Combine(Path.GetDirectoryName(AssemblyPath(destinationPackage, "Release"))!, name + ".dll"));
+
     public void WriteDocument(string name, string documentation) =>
         File.WriteAllText(Path.Combine(_docsDirectory, name), documentation, new UTF8Encoding(true));
 
