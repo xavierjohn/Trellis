@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Analyzers - semantic per-incident reason-code guard
+
+TRLS067 warns when a known fresh GUID-derived value reaches an error/violation
+reason code or FluentValidation `WithErrorCode`. Semantic type/parameter binding
+covers target-typed, multiline, named, and safely traceable local forms without
+flagging legitimate incident/resource IDs. Other dynamic application codes remain
+legal; TRLS064 keeps its separate literal-only vocabulary behavior.
+Framework CI enforces TRLS067 as an error instead of using a text grep, preserving
+existing standalone analyzer settings and bundled generator diagnostics.
+Runtime behavior and consumer analyzer opt-in are unchanged.
+
 ### Documentation - qualified inline ownership
 
 TRLDOC014 now checks standalone type-qualified inline member names through the

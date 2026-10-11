@@ -436,4 +436,19 @@ public static class DiagnosticDescriptors
                      "provably discarded: an operand of a Trellis Combine chain whose result feeds a lambda that discards that slot. Combine still accumulates every failure, so a form that reports " +
                      "all missing fields at once keeps doing so.",
         helpLinkUri: HelpLinkBase);
+
+    /// <summary>
+    /// TRLS067: A fresh GUID-derived identifier is emitted as a reason code.
+    /// </summary>
+    public static readonly DiagnosticDescriptor PerIncidentReasonCode = new(
+        id: TrellisDiagnosticIds.PerIncidentReasonCode,
+        title: "Per-incident identifier used as a reason code",
+        messageFormat: "Use a stable reason code; put the fresh GUID-derived identifier in FaultId or resource metadata instead",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Reason codes describe failure categories, not individual incidents. A fresh GUID in a reason-code " +
+                     "slot creates unbounded cardinality. This rule reports only proven GUID-derived values, not other " +
+                     "dynamic application codes, and does not choose a replacement code for the application.",
+        helpLinkUri: HelpLinkBase);
 }

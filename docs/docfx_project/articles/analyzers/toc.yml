@@ -38,3 +38,5 @@
   href: TRLS022.md
 - name: TRLS023 - CreatedAtRoute missing api-version
   href: TRLS023.md
+- name: TRLS067 - Fresh GUID-derived reason code
+  href: TRLS067.md

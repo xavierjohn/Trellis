@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Analyzers
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TrellisDiagnosticIds, EmptyReasonCodeOverride, ValidateAdditionalOverloadConflict, UnnamedValidateAdditionalFailure, MustWithoutErrorCode, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, MustWithoutErrorCodeAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS054, TRLS055, TRLS057, TRLS058, TRLS062, TRLS063, TRLS064, ReasonCodeVocabulary, ReasonCodeVocabularyAnalyzer, ReasonCodeVocabularyCodeFixProvider, TRLS065, ProducesClobbersProblemDetails, ProducesClobbersProblemDetailsAnalyzer, TRLS066, UseEnsureNotNullForNullable, UseEnsureNotNullForNullableAnalyzer, UseEnsureNotNullForNullableCodeFixProvider]
+types: [TrellisDiagnosticIds, EmptyReasonCodeOverride, ValidateAdditionalOverloadConflict, UnnamedValidateAdditionalFailure, MustWithoutErrorCode, DiagnosticDescriptors, ResultNotHandledAnalyzer, UseBindInsteadOfMapAnalyzer, UnsafeValueAccessAnalyzer, ResultDoubleWrappingAnalyzer, AsyncResultMisuseAnalyzer, MaybeDoubleWrappingAnalyzer, UseResultCombineAnalyzer, AsyncLambdaWithSyncMethodAnalyzer, ThrowInResultChainAnalyzer, UnsafeValueInLinqAnalyzer, CombineLimitAnalyzer, UseSaveChangesResultAnalyzer, HasIndexMaybePropertyAnalyzer, UnsafeResultDeconstructionAnalyzer, DefaultResultOrMaybeAnalyzer, CompositeValueObjectDtoConverterAnalyzer, RedundantEfConfigurationAnalyzer, OwnedEntityInitOnlyPropertyAnalyzer, MustWithoutErrorCodeAnalyzer, AddResultGuardCodeFixProvider, UseBindInsteadOfMapCodeFixProvider, UseAsyncMethodVariantCodeFixProvider, UseSaveChangesResultCodeFixProvider, TRLS043, TRLS044, TRLS045, TRLS054, TRLS055, TRLS057, TRLS058, TRLS062, TRLS063, TRLS064, ReasonCodeVocabulary, ReasonCodeVocabularyAnalyzer, ReasonCodeVocabularyCodeFixProvider, TRLS065, ProducesClobbersProblemDetails, ProducesClobbersProblemDetailsAnalyzer, TRLS066, UseEnsureNotNullForNullable, UseEnsureNotNullForNullableAnalyzer, UseEnsureNotNullForNullableCodeFixProvider, TRLS067, PerIncidentReasonCode, PerIncidentReasonCodeAnalyzer]
 version: v3
-last_verified: 2026-10-07
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when a TRLS diagnostic appears or when checking which analyzer rules apply: rule ids, severities and the Trellis.Analyzers opt-in."
@@ -53,6 +53,7 @@ The standalone analyzers ship as a **separate NuGet package, `Trellis.Analyzers`
 | Direct `SaveChangesAsync` in non-UoW repository code | Use `SaveChangesResultAsync` / `SaveChangesResultUnitAsync`, or let `AddTrellisUnitOfWork<TContext>()` own commits | `TRLS015` |
 | EF index points at a `Maybe<T>` CLR property | Use `HasTrellisIndex(...)` | `TRLS016` |
 | `[OwnedEntity]` has init-only properties | Use `{ get; private set; }` for EF-owned value objects | `TRLS022` |
+| A fresh GUID becomes an error or violation reason code | Keep the failure category stable; put incident/resource IDs in metadata | `TRLS067` |
 
 ## Suppression guidance
 
@@ -111,6 +112,7 @@ limitations and code-fix behavior; the short summary is not the complete specifi
 | `TRLS064` | Info | Use vocabulary constants; do not claim framework namespaces. | [Vocabulary scope](#reasoncodevocabularyanalyzer--trls064) |
 | `TRLS065` | Warning | Do not use `[Produces]` to force JSON media types. | [Formatter behavior](#producesclobbersproblemdetailsanalyzer--trls065) |
 | `TRLS066` | Info | Use value-returning nullable guards. | [Nullable guards](#useensurenotnullfornullableanalyzer--trls066) |
+| `TRLS067` | Warning | Do not emit fresh GUID-derived reason codes. | [Incident versus reason](#perincidentreasoncodeanalyzer--trls067) |
 
 ## Constants — `TrellisDiagnosticIds`
 
@@ -122,7 +124,7 @@ The public static class `Trellis.TrellisDiagnosticIds` (in the `Trellis.Analyzer
 public string GetCity(Maybe<Address> address) => address.Value.City;
 ```
 
-Import `System.Diagnostics.CodeAnalysis` for `SuppressMessageAttribute`. Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`, `TRLS060`–`TRLS062`), the LINQ-analyzer IDs (`TRLS054`–`TRLS055`), and `TRLS063`–`TRLS066` are also exposed as constants on the same class for tooling authors.
+Import `System.Diagnostics.CodeAnalysis` for `SuppressMessageAttribute`. Generator IDs (`TRLS031`–`TRLS045`, `TRLS056`–`TRLS058`, `TRLS060`–`TRLS062`), the LINQ-analyzer IDs (`TRLS054`–`TRLS055`), and `TRLS063`–`TRLS067` are also exposed as constants on the same class for tooling authors.
 
 ### Constant → diagnostic ID → emitter
 
@@ -174,6 +176,7 @@ Every `public const string` field on `TrellisDiagnosticIds`, the diagnostic ID i
 | `ReasonCodeVocabulary` | `TRLS064` | `ReasonCodeVocabularyAnalyzer` |
 | `ProducesClobbersProblemDetails` | `TRLS065` | `ProducesClobbersProblemDetailsAnalyzer` |
 | `UseEnsureNotNullForNullable` | `TRLS066` | `UseEnsureNotNullForNullableAnalyzer` |
+| `PerIncidentReasonCode` | `TRLS067` | `PerIncidentReasonCodeAnalyzer` |
 
 ## Descriptors — `DiagnosticDescriptors`
 
@@ -208,6 +211,7 @@ Every descriptor uses the single shared category `Trellis` (defined as `private 
 | `ReasonCodeVocabulary` | `TRLS064` | Info |
 | `ProducesClobbersProblemDetails` | `TRLS065` | Warning |
 | `UseEnsureNotNullForNullable` | `TRLS066` | Info |
+| `PerIncidentReasonCode` | `TRLS067` | Warning |
 
 > **Note:** The TRLS013 descriptor was originally exposed as `UnsafeValueInLinq`. The current canonical name is `UnsafeMaybeValueInLinq` (matching the `TrellisDiagnosticIds.UnsafeMaybeValueInLinq` constant); the old name is retained as an `[Obsolete]` alias pointing at the same `DiagnosticDescriptor` instance for backward compatibility. New code should reference `UnsafeMaybeValueInLinq`.
 
@@ -584,6 +588,35 @@ legal; raise `dotnet_diagnostic.TRLS062.severity` once failures are named.
 - The `validation.*` namespace is **not** reserved against applications, even though `validation.error` itself is reported. That namespace is a pre-vocabulary artifact rather than one the framework gave a meaning to.
 - **Assertions are not reported.** Because the match requires the parameter to be named `reasonCode`, `Code`, or `errorCode`, a test asserting a literal wire value — `ShouldHaveValidationErrorFor(...).WithErrorCode("value.not-null")`, whose parameter is `expectedErrorCode` — stays silent. That is deliberate: pinning the exact published string in a test is what catches a renamed constant, and a test that compares the constant to itself stays green through precisely that break.
 - **Only literal syntax is reported.** A constant reference carries a constant *value* too, so testing the value alone would flag `ForField(f, ValidationCodes.ValueNotNull)` — precisely the shape this rule tells authors to write. The consequence is that a code reached through an application's own `const string` indirection is invisible here; that is the accepted trade, not an oversight.
+
+#### `PerIncidentReasonCodeAnalyzer` — `TRLS067`
+
+Reports a reason expression with known fresh-GUID provenance. A per-incident identifier is not a failure category: it produces an unbounded set of wire codes and telemetry dimensions. Keep the category stable and put the identifier in `FaultId` or resource metadata. See the [WRONG/FIX shape](trellis-api-anti-patterns.md#trls067--fresh-guid-derived-reason-code).
+
+| Reason-code sink | Semantic match |
+| --- | --- |
+| `Error` case constructor or factory | Bound string parameter named `code` or `reasonCode`, case-insensitively, on `Error` or a derived error case |
+| `FieldViolation` / `RuleViolation` construction | Bound string argument for `FieldViolation.ReasonCode` or `RuleViolation.ReasonCode` |
+| Error or violation initializer, assignment, or `with` expression | String `Error.Code`, `FieldViolation.ReasonCode`, or `RuleViolation.ReasonCode` property |
+| FluentValidation `WithErrorCode(...)` | Bound string `errorCode` parameter on a method declared in `FluentValidation` or a child namespace; test-helper `expectedErrorCode` is not a sink |
+
+Explicit and target-typed `new`, positional/named/reordered arguments, and multiline calls use the resolved constructor or method, not text or argument position. Unrelated ID constructors and `Code` properties are not sinks; `FaultId` and resource `id` arguments remain legal even when they stringify a fresh GUID.
+
+Recognized sources are `System.Guid.NewGuid()` and `System.Guid.CreateVersion7(...)`. Provenance passes through built-in conversions, parentheses, GUID/object/string `ToString`, `Convert.ToString`, `string.Concat`, interpolation, and built-in string `+`. Conditional and coalescing expressions inspect possible value branches; a compile-time-known selector excludes an unchosen branch.
+
+Element-enumerating concatenation overloads inspect inline array or collection elements, including compiler-expanded `params ReadOnlySpan<T>` arguments and inline spreads without user-defined element conversions. They do not inspect nested array contents or arrays stringified as whole objects: those contribute their type name, not their GUID elements.
+
+String and GUID locals are followed only when their enclosing operation tree contains exactly one write and no reference escape. Reassignment, compound/deconstruction writes, captured writes, ref aliases/arguments, or taking the local's address abandon that proof. Mutable array/object locals are not followed. This is conservative scope-wide provenance, not control-flow or interprocedural analysis: even a later reassignment can make the local opaque.
+
+**Other dynamic application codes remain legal.** Literals, vocabulary/application constants, `nameof`, forwarded parameters, configuration/field/property values, opaque application helpers, `Guid.Empty`, and parsed fixed GUIDs are not reported. The rule neither requires a constant nor checks vocabulary membership. An opaque helper can still return a bad code; silence is not proof of stability. Generated code is excluded.
+
+Unsupported operations such as `Substring`, `ToUpper`, and `string.Format` are not traced. They can hide a fresh GUID; this rule detects proven provenance rather than every unstable code.
+
+Default severity is **Warning**, independently of TRLS064's unchanged literal-only Info rule. There is no code fix: only the author can choose the failure's category. Configure `dotnet_diagnostic.TRLS067.severity` or use a justified standard `#pragma warning disable TRLS067` for an intentional exception.
+
+The framework repository's CI builds the analyzer first, then enables `TrellisEnableReasonCodeGuard=true` for source projects under `src`, matched relative to the repository root rather than a clone's ancestor directories. This promotes TRLS067 to an error. Projects already loading `Trellis.Analyzers` keep their other rule settings; newly analyzed projects load only this rule's effective diagnostics through `build/reason-code-guard.globalconfig`, without suppressing bundled generator diagnostics.
+
+The guard expects the analyzer's required `netstandard2.0` output for the selected configuration. A missing-analyzer error includes the exact expected DLL path, configuration, and framework; missing guard configuration or disabled analysis also fail explicitly. Normal local builds and published-package analyzer opt-in are unchanged.
 
 ### Nullable guard rules
 

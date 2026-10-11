@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
-types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059, TRLS062, TRLS063, TRLS064, TRLS065, TRLS066]
+types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059, TRLS062, TRLS063, TRLS064, TRLS065, TRLS066, TRLS067]
 related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
 version: v4
 last_verified: 2026-08-18
@@ -53,6 +53,7 @@ Jump straight to the section named by your diagnostic ID. If you have a symptom 
 | Redeclaring `Id`, equality, or `TryCreate` that a base type already supplies | TRLS056 | [Required value object redeclares a generated member](#trls056--required-value-object-redeclares-a-generated-member) |
 | Post-commit failures disappear when combined with `Combine`/`Sequence` | *(no analyzer)* | [`Result.FailAfterCommit` with aggregating operators](#no-analyzer--resultfailaftercommit-composed-with-aggregating-operators) |
 | A domain event handler raises further domain events and they are lost or dispatched twice | *(no analyzer)* | [Domain event handler raises more domain events](#no-analyzer--domain-event-handler-raises-more-domain-events-during-dispatch) |
+| A fresh GUID becomes a reason code rather than an incident/resource ID | TRLS067 | [Fresh GUID-derived reason code](#trls067--fresh-guid-derived-reason-code) |
 
 ## TRLS001 — Result return value not handled
 
@@ -714,6 +715,26 @@ Result.EnsureNotNull(title, "title", "Title is required.")
 `EnsureNotNullAsync` extends `Task<T?>` and `ValueTask<T?>`; continue those chains with
 `CombineAsync` / `MapAsync`. Do not apply a null-only guard to one of the
 compound/type-testing conditions above.
+
+## TRLS067 — fresh GUID-derived reason code
+
+`Error.Code` names the failure category; `FaultId` identifies a particular incident. A new GUID in the reason slot gives every incident a different wire code, so consumers and telemetry cannot group the same failure.
+
+```csharp
+// WRONG — a fresh category per occurrence, including through a local
+Error.Unexpected failure = new(Code: Guid.NewGuid().ToString("N")); // TRLS067
+var code = $"fault-{Guid.NewGuid():N}";
+var anotherFailure = new Error.Unexpected(code);                  // TRLS067
+
+// FIX — one category, with the incident identifier in its own field
+Error.Unexpected namedFailure = new(
+    Code: FaultCodes.UnhandledException,
+    FaultId: Guid.NewGuid().ToString("N"));
+```
+
+Use `FaultCodes.UnhandledException` only for that failure category; choose a stable application code for a domain-specific cause. The same rule covers error factories, `FieldViolation.ReasonCode`, `RuleViolation.ReasonCode`, and FluentValidation's `WithErrorCode`. Resource IDs and unrelated target-typed ID constructors are not reason-code positions.
+
+> Severity: Warning. TRLS067 follows known fresh `Guid.NewGuid` / `Guid.CreateVersion7` provenance through supported formatting and single-write, non-escaped string/GUID locals. It does **not** require constant codes: configured or forwarded codes and opaque application helpers stay legal, as do fixed GUID values. TRLS064 keeps its separate literal-only vocabulary behavior. There is no automatic code fix; only the author knows the right category. See [the formal scope](trellis-api-analyzers.md#perincidentreasoncodeanalyzer--trls067) before treating silence as proof that an opaque value is stable.
 
 ## (No analyzer) — `Result.FailAfterCommit` composed with aggregating operators
 Not an analyzer-flagged rule (no diagnostic ID), but a recurring shape that the FailAfterCommit XML doc cautions against. `Result.FailAfterCommit<TValue>(error)` is a **leaf** worker-handler operation: it converts a single aggregate's transient external rejection into a persisted `permanently_failed` state and returns. Threading that result through `Combine` / `TraverseAll` / `SequenceAll` / `WhenAllAsync` OR-accumulates the `PersistOnFailure` flag onto the aggregated failure — `TransactionalCommandBehavior` then commits the staged permanent-failure mutation alongside whatever the other legs produced, which is almost never what the handler author intended.

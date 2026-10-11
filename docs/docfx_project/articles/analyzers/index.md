@@ -25,6 +25,7 @@ Trellis analyzers help you keep `Result<T>`, `Maybe<T>`, EF Core integration, an
 | TRLS021 | Warning | EF configuration duplicates Trellis conventions | [TRLS021](TRLS021.md) |
 | TRLS022 | Warning | [OwnedEntity] property uses init-only setter | [TRLS022](TRLS022.md) |
 | TRLS023 | Warning | CreatedAtRoute on a versioned controller is missing the api-version route value | [TRLS023](TRLS023.md) |
+| TRLS067 | Warning | A fresh GUID-derived identifier is used as a reason code | [TRLS067](TRLS067.md) |
 
 ## Code fixes at a glance
 
@@ -48,4 +49,3 @@ var name = maybeName.Value;
 
 > [!TIP]
 > Treat analyzer suppressions as documentation. If a rule is intentionally suppressed, leave a short reason nearby.
-

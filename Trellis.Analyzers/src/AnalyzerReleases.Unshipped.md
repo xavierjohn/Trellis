@@ -30,3 +30,4 @@ TRLS063  | Trellis  | Info     | FluentValidation Must/MustAsync rule has no Wit
 TRLS064  | Trellis  | Info     | Reason-code literal restates a frozen framework code, or claims a namespace the framework owns.
 TRLS065  | Trellis  | Warning  | [Produces] lists a JSON-family media type, which rewrites RFC 9457 problem responses; trim MvcOptions formatters instead.
 TRLS066  | Trellis  | Info     | Use Result.EnsureNotNull(value, error) instead of Result.Ensure(x is not null, error) for a nullable value.
+TRLS067  | Trellis  | Warning  | A fresh GUID-derived identifier is emitted as a reason code; use stable codes and separate incident or resource metadata.
