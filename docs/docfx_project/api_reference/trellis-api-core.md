@@ -123,7 +123,7 @@ public Task<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct) =
 
 | Surprise | What it actually is |
 |---|---|
-| `Result<T>.Value` getter does not exist (`CS1061`) | Removed from the current API because it was the primary cause of unsafe value access. Extract via `TryGetValue(out var v)`, `Match(...)`, deconstruction `var (ok, v, err) = result;`, or chain with `Bind`/`Map`. `Maybe<T>.Value` *does* exist but is hidden from IntelliSense and gated by analyzer `TRLS003` — guard with `HasValue`/`TryGetValue`/`Match`/`GetValueOrDefault`. The two types do not have symmetric value-access ergonomics. |
+| `Result<T>.Value` <!-- doc-member-ok: Result.Value; deliberately absent getter --> getter does not exist (`CS1061`) | Removed from the current API because it was the primary cause of unsafe value access. Extract via `TryGetValue(out var v)`, `Match(...)`, deconstruction `var (ok, v, err) = result;`, or chain with `Bind`/`Map`. `Maybe<T>.Value` *does* exist but is hidden from IntelliSense and gated by analyzer `TRLS003` — guard with `HasValue`/`TryGetValue`/`Match`/`GetValueOrDefault`. The two types do not have symmetric value-access ergonomics. |
 | Implicit `T → Result<T>` and `Error → Result<T>` were removed (`CS0029`) | Use the explicit factory: `return Result.Ok(value);` and `return Result.Fail<T>(error);`. The C# compiler flags every site with `CS0029: cannot implicitly convert type 'T' to 'Result<T>'`. |
 | `Aggregate<TId>` / `Entity<TId>` already provide `CreatedAt` and `LastModified` (`CS0108`) | Both are `DateTimeOffset` (not `DateTime`) and infrastructure-managed by Trellis EF Core. Defining your own `public DateTime CreatedAt { ... }` on the aggregate triggers `CS0108: 'X.CreatedAt' hides inherited member 'Entity<TId>.CreatedAt'`. If your spec calls for an audit timestamp, use the inherited base property instead of declaring a new one. |
 | `Result<T>` has `.Error` (nullable, never throws) but **not** `.Value` | `result.Error` returns `Error?` (null on success). `result.TryGetError(out var err)` is the safe Boolean form. Reading the success value still requires `TryGetValue`/`Match`/destructuring. |
@@ -2750,7 +2750,7 @@ public abstract class RequiredString<TSelf> : ScalarValueObject<TSelf, string>
 | Name | Type | Description |
 | --- | --- | --- |
 | `Value` | `string` | Inherited scalar value. |
-| `Length` | `int` | Convenience access to `Value.Length`. |
+| `Length` | `int` | Convenience access to `Value.Length` <!-- doc-member-ok: Value.Length; Value is the inherited string property, not a type -->. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |

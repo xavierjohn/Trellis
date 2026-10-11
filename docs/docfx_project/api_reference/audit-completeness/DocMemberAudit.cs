@@ -6,6 +6,9 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using Markdig;
+using Markdig.Syntax;
+using Markdig.Syntax.Inlines;
 using Trellis.Docs.Audit;
 
 /// <summary>
@@ -19,11 +22,18 @@ using Trellis.Docs.Audit;
 /// <c>Validation</c> member. TRLDOC008 also reads fenced code, but checks name presence,
 /// not whether that member belongs to its receiver.
 ///
-/// This gate resolves chains against the receiver: wherever a segment names a real type, the
-/// following segment must be a real member (or nested type) of that type.
+/// This gate resolves the head of C# fence chains and standalone inline qualified names:
+/// when the receiver names a real type, the next segment must belong to that type.
 /// </summary>
 internal static class DocMemberAudit
 {
+    private static readonly MarkdownPipeline s_pipeline = new MarkdownPipelineBuilder()
+        .UseYamlFrontMatter()
+        .UsePipeTables()
+        .UseAutoLinks()
+        .UsePreciseSourceLocation()
+        .Build();
+
     // A dotted chain of identifiers, where any identifier may carry a generic argument list.
     // Without the argument list a static access on a generic type is invisible to this gate --
     // Maybe<string>.None simply never matches -- and an invented static on a generic type is
@@ -40,6 +50,9 @@ internal static class DocMemberAudit
 
     private static readonly Regex s_csharpFence =
         new(@"^```\s*(?:csharp|c#|cs)\b(?<body>.*?)^```", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.Singleline);
+
+    private static readonly Regex s_inlineException =
+        new(@"\G[ \t]*<!--[ \t]*doc-member-ok:[ \t]*(?<pair>[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*)[ \t]*;(?<reason>[^<>\r\n]*?)-->", RegexOptions.Compiled);
 
     // Type declarations inside a fence. A document that defines its own example type owns that
     // name for the length of the document. `record` may be followed by `class` or `struct`, so
@@ -88,6 +101,7 @@ internal static class DocMemberAudit
         int checkedPairs = 0;
         int filesScanned = 0;
         int fencesScanned = 0;
+        int inlineSpansScanned = 0;
         var unusedAllowlist = new HashSet<string>(allowlist, StringComparer.Ordinal);
 
         foreach (var file in Directory.EnumerateFiles(docsDir, "*.md").OrderBy(p => p, StringComparer.Ordinal))
@@ -101,7 +115,9 @@ internal static class DocMemberAudit
             filesScanned++;
             var text = File.ReadAllText(file);
             var lineStarts = BuildLineStarts(text);
-            var regions = EnumerateCodeRegions(text, ref fencesScanned);
+            var codeRegions = EnumerateCodeRegions(text, ref fencesScanned);
+            var inlineRegions = EnumerateInlineRegions(text);
+            inlineSpansScanned += inlineRegions.Count;
 
             // Example types declared by this document shadow anything of the same simple name in
             // the assemblies. Without this, an illustrative `public enum DocumentState` is judged
@@ -110,11 +126,11 @@ internal static class DocMemberAudit
             // documentation is self-contained and correct.
             var localTypes = new HashSet<string>(StringComparer.Ordinal);
 
-            foreach (var region in regions)
+            foreach (var region in codeRegions)
                 foreach (Match decl in s_localTypeDecl.Matches(region.Text))
                     localTypes.Add(decl.Groups[1].Success ? decl.Groups[1].Value : decl.Groups[2].Value);
 
-            foreach (var region in regions)
+            foreach (var region in codeRegions.Concat(inlineRegions))
             {
                 foreach (Match chain in s_chain.Matches(region.Text))
                 {
@@ -157,7 +173,8 @@ internal static class DocMemberAudit
 
                     var key = $"{receiver}.{member}";
 
-                    if (members.Contains(member) || universalExtensions.Contains(member) || allowlist.Contains(key))
+                    if (members.Contains(member) || universalExtensions.Contains(member)
+                        || allowlist.Contains(key) || region.InlineException == key)
                     {
                         unusedAllowlist.Remove(key);
                         continue;
@@ -177,7 +194,7 @@ internal static class DocMemberAudit
         }
 
         Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
-            $"Types indexed: {index.Count}; files scanned: {filesScanned}; C# fences scanned: {fencesScanned}; receiver-qualified pairs checked: {checkedPairs}"));
+            $"Types indexed: {index.Count}; files scanned: {filesScanned}; C# fences scanned: {fencesScanned}; standalone inline spans scanned: {inlineSpansScanned}; receiver-qualified pairs checked: {checkedPairs}"));
 
         // Second vacuity guard. The index can be healthy while extraction silently matches
         // nothing -- a changed fence marker or a broken chain regex would do it -- and the gate
@@ -203,7 +220,7 @@ internal static class DocMemberAudit
             foreach (var finding in entries.OrderBy(e => e.Line))
             {
                 Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
-                    $"{Path.Combine(docsDir, file)}({finding.Line},1): error TRLDOC014: '{finding.Receiver}.{finding.Member}' does not resolve: '{finding.Receiver}' is a real type but has no member or nested type named '{finding.Member}'. Fix the name, or if '{finding.Receiver}' is an example type that shadows a framework name, add '{finding.Receiver}.{finding.Member}' to {Path.GetFileName(allowlistPath)}."));
+                    $"{Path.Combine(docsDir, file)}({finding.Line},1): error TRLDOC014: '{finding.Receiver}.{finding.Member}' does not resolve: '{finding.Receiver}' is a real type but has no member or nested type named '{finding.Member}'. Fix the owner/member. Shared legitimate exceptions belong in {Path.GetFileName(allowlistPath)}; a deliberate non-API inline reference needs an adjacent doc-member-ok comment naming this pair and its reason."));
             }
         }
 
@@ -214,14 +231,11 @@ internal static class DocMemberAudit
 
     private readonly record struct Finding(int Line, string Receiver, string Member);
 
-    private readonly record struct Region(string Text, int Offset);
+    private readonly record struct Region(string Text, int Offset, string? InlineException = null);
 
     /// <summary>
-    /// Yields the regions worth resolving: C# fence bodies only. Inline backticks are excluded
-    /// deliberately -- prose shorthand like <c>DbSet.Include</c> or <c>Value.Length</c> names a
-    /// member against the type a reader is thinking about rather than the type that declares it,
-    /// and that is legitimate writing, not drift. Fenced code has no such licence: it is meant to
-    /// compile. Backticked names remain covered by the documented-symbol audit (TRLDOC005).
+    /// C# fences retain their existing extraction and comment/literal blanking. Inline references
+    /// are extracted separately so their localized exceptions cannot waive compiled examples.
     /// </summary>
     private static IEnumerable<Region> EnumerateCodeRegions(string text, ref int fenceCount)
     {
@@ -235,6 +249,63 @@ internal static class DocMemberAudit
         }
 
         return regions;
+    }
+
+    private static List<Region> EnumerateInlineRegions(string text)
+    {
+        var regions = new List<Region>();
+        CollectInlineRegions(Markdown.Parse(text, s_pipeline), text, regions);
+        return regions;
+    }
+
+    private static void CollectInlineRegions(ContainerBlock blocks, string text, List<Region> regions)
+    {
+        foreach (var block in blocks)
+        {
+            switch (block)
+            {
+                case CodeBlock:
+                    break;
+                case ContainerBlock container:
+                    CollectInlineRegions(container, text, regions);
+                    break;
+                case LeafBlock leaf:
+                    CollectInlineRegions(leaf.Inline, text, regions);
+                    break;
+            }
+        }
+    }
+
+    private static void CollectInlineRegions(ContainerInline? inlines, string text, List<Region> regions)
+    {
+        if (inlines is null)
+            return;
+
+        for (var inline = inlines.FirstChild; inline is not null; inline = inline.NextSibling)
+        {
+            switch (inline)
+            {
+                case CodeInline code:
+                    var content = code.Content.Trim();
+                    var chain = s_chain.Match(content);
+                    if (!chain.Success || chain.Index != 0 || chain.Length != content.Length)
+                        break;
+
+                    var exception = s_inlineException.Match(text, code.Span.End + 1);
+                    var pair = exception.Success && exception.Groups["reason"].Value.Trim().Length > 0
+                        ? exception.Groups["pair"].Value
+                        : null;
+                    regions.Add(new Region(content, code.Span.Start, pair));
+                    break;
+                case LinkInline { IsImage: true }:
+                case LinkInline { IsAutoLink: true }:
+                case AutolinkInline:
+                    break;
+                case ContainerInline container:
+                    CollectInlineRegions(container, text, regions);
+                    break;
+            }
+        }
     }
 
     private static int[] BuildLineStarts(string text)

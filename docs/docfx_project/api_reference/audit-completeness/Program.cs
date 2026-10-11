@@ -39,13 +39,15 @@ string? FindDll(PackageInfo package) {
 }
 
 string runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-var refPaths = new HashSet<string>(Directory.GetFiles(runtimeDir, "*.dll"), StringComparer.OrdinalIgnoreCase);
+var runtimePaths = Directory.GetFiles(runtimeDir, "*.dll");
+var refPaths = new HashSet<string>(runtimePaths, StringComparer.OrdinalIgnoreCase);
 
-foreach (var package in packages) {
-    var d = FindDll(package);
-    if (d == null) continue;
-    refPaths.Add(d);
-    var dir = Path.GetDirectoryName(d)!;
+var selectedDlls = packages.Select(FindDll).OfType<string>().ToArray();
+refPaths.UnionWith(selectedDlls);
+
+foreach (var dll in selectedDlls)
+{
+    var dir = Path.GetDirectoryName(dll)!;
     foreach (var f in Directory.GetFiles(dir, "*.dll")) refPaths.Add(f);
 }
 // The ASP.NET shared framework sits beside Microsoft.NETCore.App, so derive it from the runtime
@@ -59,7 +61,10 @@ if (aspnet is not null && Directory.Exists(aspnet)) {
     if (ver != null) foreach (var f in Directory.GetFiles(ver, "*.dll")) refPaths.Add(f);
 }
 
-var resolver = new PathAssemblyResolver(refPaths);
+var preferredRefPaths = runtimePaths.Concat(selectedDlls).Concat(refPaths)
+    .DistinctBy(Path.GetFileNameWithoutExtension, StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+var resolver = new PathAssemblyResolver(preferredRefPaths);
 using var mlc = new MetadataLoadContext(resolver);
 
 // Symbols the docs legitimately name but that never reach a package bin folder: analyzer and
@@ -95,7 +100,12 @@ foreach (var dll in Directory.EnumerateFiles(fwRoot, "Trellis*.dll", SearchOptio
 foreach (var dll in ResolveCentrallyManagedPackageAssemblies(fwRoot))
     auditRefPaths.Add(dll);
 
-var auditResolver = new PathAssemblyResolver(auditRefPaths);
+// Conflicting builds with the same assembly identity break dependency binding in MetadataLoadContext.
+// Selected package outputs precede copies/other builds, so only their path may vouch for that name.
+var auditAssemblyPaths = preferredRefPaths.Concat(auditRefPaths)
+    .DistinctBy(Path.GetFileNameWithoutExtension, StringComparer.OrdinalIgnoreCase)
+    .ToArray();
+var auditResolver = new PathAssemblyResolver(auditAssemblyPaths);
 using var auditMlc = new MetadataLoadContext(auditResolver);
 
 string[] skipMembers = { "Equals","GetHashCode","ToString","GetType","MemberwiseClone","Finalize","Deconstruct","<Clone>$",
@@ -177,9 +187,9 @@ File.WriteAllText(outPath, "# API Reference Completeness Report\n" + sb.ToString
 Console.WriteLine();
 Console.WriteLine($"Report written: {outPath}");
 
-var symbolAuditExit = DocSymbolAudit.Run(docsDir, auditRefPaths, auditMlc);
-var memberAuditExit = DocMemberAudit.Run(docsDir, auditRefPaths, auditMlc);
-var attributionAuditExit = DocAttributionAudit.Run(docsDir, auditRefPaths, auditMlc);
+var symbolAuditExit = DocSymbolAudit.Run(docsDir, auditAssemblyPaths, auditMlc);
+var memberAuditExit = DocMemberAudit.Run(docsDir, auditAssemblyPaths, auditMlc);
+var attributionAuditExit = DocAttributionAudit.Run(docsDir, auditAssemblyPaths, auditMlc);
 
 if (memberAuditExit != 0)
     symbolAuditExit = memberAuditExit;

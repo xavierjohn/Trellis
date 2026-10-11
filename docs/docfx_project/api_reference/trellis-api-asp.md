@@ -1284,7 +1284,7 @@ public sealed class EntraActorOptions
 | `IdClaimType` | `string` | Claim type used for actor ID. Default: `"http://schemas.microsoft.com/identity/claims/objectidentifier"`. |
 | `MapPermissions` | `Func<IEnumerable<Claim>, IReadOnlySet<string>>` | Default returns the values of every `roles` / `ClaimTypes.Role` claim (case-insensitive type match). To flatten roles into granular permissions from an app-supplied map, assign [`RolePermissionProjection.ForRoleClaims(map)`](#rolepermissionprojection) instead of hand-rolling the mapping. |
 | `MapForbiddenPermissions` | `Func<IEnumerable<Claim>, IReadOnlySet<string>>` | Default returns an empty `HashSet<string>`. |
-| `MapAttributes` | `Func<IEnumerable<Claim>, HttpContext, IReadOnlyDictionary<string, string>>` | Default extracts `tid`, `preferred_username`, `azp`, `azpacr`, `acrs`, plus `ip_address` from `Connection.RemoteIpAddress` and `mfa = "true"|"false"` from the `amr` claim. |
+| `MapAttributes` | `Func<IEnumerable<Claim>, HttpContext, IReadOnlyDictionary<string, string>>` | Default extracts `tid`, `preferred_username`, `azp`, `azpacr`, `acrs`, plus `ip_address` from `HttpContext.Connection.RemoteIpAddress` and `mfa = "true"|"false"` from the `amr` claim. |
 
 ### `EntraActorProvider`
 

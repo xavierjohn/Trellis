@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation - qualified inline ownership
+
+TRLDOC014 now checks standalone type-qualified inline member names through the
+same receiver resolver as C# fences. A real member on another type no longer
+vouches for a wrong owner such as `Error.ReasonCode`. Calls, signatures, bare
+prose, and value-chain inference stay outside the new inline scope. Inherited
+members, extensions, document-owned examples, and deliberate shorthand retain
+their existing treatment; pair-specific adjacent comments preserve historical
+and negative-space references without exempting other claims or fenced code.
+Canonical assembly selection also prevents stale alternative builds from breaking
+valid cross-package extension resolution.
+Framework runtime behavior and public signatures are unchanged.
+
 ### Documentation - structured API completeness
 
 TRLDOC008 now requires exact-case identifier evidence in the owning package's

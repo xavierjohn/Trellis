@@ -1,11 +1,13 @@
 ﻿# Receiver-qualified member accesses (TRLDOC014) that are correct as written but cannot be
 # resolved without binding the snippet. One entry per line, in Receiver.Member form.
 #
-# TRLDOC014 resolves the head of a dotted chain in a C# fence against the type of the same
+# TRLDOC014 resolves the head of a C# fence chain or standalone inline name against the type of the same
 # simple name. That is exact for static access (Error.InvalidInput, ValidationCodes.ValueNotNull)
-# but has two blind spots, and both are represented below. Add an entry only when the snippet is
+# but cannot resolve the deliberate exceptions represented below. Add an entry only when the snippet is
 # genuinely correct; a name that is simply wrong belongs fixed in the doc, which is the whole
 # point of the gate.
+# Historical and negative-space inline references use adjacent, pair-specific doc-member-ok
+# comments instead of this global list, so they do not excuse current-API claims elsewhere.
 #
 # 1. An inherited PROPERTY whose name matches a type name. Inside a ControllerBase, HttpContext
 #    is the inherited property, not the type; inside a RepositoryBase, DbSet likewise. Only
@@ -18,3 +20,8 @@ DbSet.Include
 #    cases where the declaration is absent from the doc entirely.
 OrderLine.Reconstitute
 Settings.Defaults
+#
+# 3. A third-party C# extension property. Its compiler-generated accessor does not carry the
+#    classic method ExtensionAttribute, so the method index cannot attach it to HttpContext.
+#    Verified against Asp.Versioning.Http 10.2.0 and the compiled Trellis call sites.
+HttpContext.RequestedApiVersion
