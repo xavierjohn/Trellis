@@ -4,7 +4,7 @@ namespaces: [Trellis]
 types: [orientation, routing]
 related_docs: [trellis-api-cookbook.md, trellis-api-core.md, trellis-api-anti-patterns.md, trellis-api-analyzers.md]
 version: v3
-last_verified: 2026-10-10
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: required
 agent_description: "Routing head for every Trellis task: which reference to open, the recipe lookup and how to read the set. Read before writing or changing code that uses Trellis."
@@ -160,6 +160,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Connect an inbound message, domain outbox row, translated integration event, and W3C trace | [Recipe 36](trellis-api-cookbook.md#recipe-36--translating-a-domain-event-into-an-integration-event), then [`IntegrationMessageContext`](trellis-api-mediator.md#integrationmessagecontext) and [outbox lineage](trellis-api-efcore-outbox.md#outboxmessage) |
 | Show a validation failure in the user's language, or render your own message from a 422 instead of showing the server's English | [Recipe 39](trellis-api-cookbook.md#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args) |
 | Fix analyzer warnings | [Recipe 11](trellis-api-cookbook.md#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
+| Keep fresh GUIDs out of error/violation reason codes while retaining valid incident/resource IDs | [TRLS067 WRONG/FIX](trellis-api-anti-patterns.md#trls067--fresh-guid-derived-reason-code), then [semantic scope](trellis-api-analyzers.md#perincidentreasoncodeanalyzer--trls067) |
 | Wire the composition root | [Recipe 12](trellis-api-cookbook.md#recipe-12--di-wiring-playbook-addtrellis-composition-builder) |
 | Rehydrate an entity from a database row (fail-loud vs Result-track) | [Recipe 30](trellis-api-cookbook.md#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
 | Reconstitute an aggregate in a non-EF repository without re-running its factory (no re-validation, no events) | [Recipe 37](trellis-api-cookbook.md#recipe-37--reconstituting-an-aggregate-without-its-factory-non-ef-repositories) |
@@ -194,7 +195,7 @@ These rows route recurring LLM lab mistakes to the most relevant reference befor
 | [`trellis-api-cookbook.md`](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) | End-to-end recipes spanning packages. Open a recipe body when the lookup above sends you to one. |
 | [`trellis-api-core.md`](trellis-api-core.md#use-this-file-when) | `Result<T>`, `Maybe<T>`, `Error`, aggregates, entities, specifications, pagination. |
 | [`trellis-api-migration.md`](trellis-api-migration.md#use-this-file-when) | FunctionalDDD-to-Trellis package, namespace and API changes; open only when migrating a FunctionalDDD application. |
-| [`trellis-api-analyzers.md`](trellis-api-analyzers.md#use-this-file-when) | The analyzer and generator diagnostics, `TRLS001`-`TRLS066`, and `TrellisDiagnosticIds`. |
+| [`trellis-api-analyzers.md`](trellis-api-analyzers.md#use-this-file-when) | The analyzer and generator diagnostics, `TRLS001`-`TRLS067`, and `TrellisDiagnosticIds`. |
 | [`trellis-api-anti-patterns.md`](trellis-api-anti-patterns.md#trls001--result-return-value-not-handled) | Ready-to-apply WRONG/FIX shapes for the analyzer diagnostics (`TRLSxxx`). |
 | [`trellis-value-object-taxonomy.md`](trellis-value-object-taxonomy.md#patterns-index) | Choosing a value-object category: scalar, symbolic, structured, optional. |
 

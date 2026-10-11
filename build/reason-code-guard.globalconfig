@@ -1,0 +1,30 @@
+﻿is_global = true
+global_level = 100
+
+# Only silence the newly loaded standalone rules, not bundled generators or other analyzers.
+dotnet_diagnostic.TRLS001.severity = none
+dotnet_diagnostic.TRLS002.severity = none
+dotnet_diagnostic.TRLS003.severity = none
+dotnet_diagnostic.TRLS004.severity = none
+dotnet_diagnostic.TRLS005.severity = none
+dotnet_diagnostic.TRLS007.severity = none
+dotnet_diagnostic.TRLS008.severity = none
+dotnet_diagnostic.TRLS009.severity = none
+dotnet_diagnostic.TRLS010.severity = none
+dotnet_diagnostic.TRLS013.severity = none
+dotnet_diagnostic.TRLS014.severity = none
+dotnet_diagnostic.TRLS015.severity = none
+dotnet_diagnostic.TRLS016.severity = none
+dotnet_diagnostic.TRLS018.severity = none
+dotnet_diagnostic.TRLS019.severity = none
+dotnet_diagnostic.TRLS020.severity = none
+dotnet_diagnostic.TRLS021.severity = none
+dotnet_diagnostic.TRLS022.severity = none
+dotnet_diagnostic.TRLS023.severity = none
+dotnet_diagnostic.TRLS054.severity = none
+dotnet_diagnostic.TRLS055.severity = none
+dotnet_diagnostic.TRLS063.severity = none
+dotnet_diagnostic.TRLS064.severity = none
+dotnet_diagnostic.TRLS065.severity = none
+dotnet_diagnostic.TRLS066.severity = none
+dotnet_diagnostic.TRLS067.severity = error

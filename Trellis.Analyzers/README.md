@@ -43,8 +43,9 @@ var result = Parse("abc")
 - Catches unsafe `Result<T>` deconstruction reads, `default(Result/Maybe)` literals, and `[OwnedEntity]` init-only properties (TRLS018, TRLS019, TRLS022).
 - Flags composite value objects exposed through request/response DTOs without `CompositeValueObjectJsonConverter<T>` (TRLS020).
 - Flags redundant EF Core `HasConversion`, `OwnsOne`, and `Ignore` mappings for Trellis convention-owned properties (TRLS021).
+- Warns when a fresh GUID-derived value reaches an error/violation reason code or FluentValidation `WithErrorCode`, while allowing incident/resource IDs and other dynamic application codes (TRLS067).
 - Includes fixes for Trellis-specific issues such as `SaveChangesAsync` vs. `SaveChangesResultAsync`.
-- See the [API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html) for the full diagnostic list (TRLS001–TRLS022 + generator IDs TRLS031–TRLS039).
+- See the [API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html) for the full diagnostic list, including TRLS067 and the bundled generator diagnostics.
 
 ## Documentation
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/analyzers/index.html)
@@ -60,3 +61,12 @@ Run the analyzer tests from the repository root:
 ```powershell
 dotnet test Trellis.Analyzers\tests\Trellis.Analyzers.Tests.csproj -c Release
 ```
+
+Repository CI replaces the reason-code text grep with the semantic TRLS067 build guard. To run the same source guard locally, build its analyzer first:
+
+```powershell
+dotnet build Trellis.Analyzers\src\Trellis.Analyzers.csproj -c Release
+dotnet build -c Release -p:TrellisEnableReasonCodeGuard=true
+```
+
+The guard applies to source projects under `src` and promotes TRLS067 to an error. It leaves other rules unchanged in projects already using the analyzer suite; otherwise it suppresses only the newly loaded standalone rules, not bundled generators. Missing analyzer/configuration files or disabled analyzer execution fail explicitly. Normal builds and consumer opt-in are unchanged.
