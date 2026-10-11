@@ -1,10 +1,5 @@
 ﻿namespace Trellis.Core.Tests.Packaging;
 
-using System.Diagnostics;
-using System.Text;
-using System.Xml.Linq;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Trellis.Docs.Audit;
 
 public class ApiDocumentationEvidenceTests
@@ -175,85 +170,18 @@ public class ApiDocumentationEvidenceTests
 
     private static async Task<(int ExitCode, string Output)> RunAuditAsync(string documentation)
     {
-        var directory = Path.Combine(Path.GetTempPath(), $"Trellis doc evidence {Guid.NewGuid():N}");
-        Directory.CreateDirectory(directory);
-        try
-        {
-            var docsDirectory = Path.Combine(directory, "docs", "docfx_project", "api_reference");
-            Directory.CreateDirectory(Path.Combine(docsDirectory, "audit-completeness"));
-            File.WriteAllText(Path.Combine(docsDirectory, "audit-completeness", "ambiguous-members.txt"), "", new UTF8Encoding(true));
-            WritePackage(directory, "Primary", """
-                public sealed class Probe
-                {
-                    public int Id => 1;
-                }
-                public static class AuditSentinel
-                {
-                    public static void Ping() { }
-                }
-                """);
-            WritePackage(directory, "Neighbor", "public sealed class Neighbor { }");
-            File.WriteAllText(Path.Combine(docsDirectory, "trellis-api-primary.md"),
-                documentation + "\n\n```csharp\nAuditSentinel.Ping();\n```\n", new UTF8Encoding(true));
-            File.WriteAllText(Path.Combine(docsDirectory, "trellis-api-neighbor.md"),
-                "### Neighbor\n\n`Probe.Id`\n", new UTF8Encoding(true));
-
-            var testAssembly = typeof(ApiDocumentationEvidenceTests).Assembly.Location;
-            var startInfo = new ProcessStartInfo("dotnet")
+        using var fixture = new DocumentationAuditFixture();
+        fixture.WritePackage("Primary", """
+            public sealed class Probe
             {
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-            };
-            foreach (var argument in new[]
-            {
-                "exec",
-                "--runtimeconfig", Path.ChangeExtension(testAssembly, "runtimeconfig.json"),
-                "--depsfile", Path.ChangeExtension(testAssembly, "deps.json"),
-                typeof(ApiDocumentationEvidence).Assembly.Location,
-            })
-                startInfo.ArgumentList.Add(argument);
-            startInfo.Environment["TRELLIS_FW_ROOT"] = directory;
-            using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start the completeness audit.");
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(60));
-            var stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
-            var stderr = process.StandardError.ReadToEndAsync(timeout.Token);
-            try
-            {
-                await process.WaitForExitAsync(timeout.Token);
-                return (process.ExitCode, await stdout + await stderr);
+                public int Id => 1;
             }
-            finally
+            public static class AuditSentinel
             {
-                if (!process.HasExited)
-                {
-                    process.Kill(entireProcessTree: true);
-                    await process.WaitForExitAsync(CancellationToken.None);
-                }
+                public static void Ping() { }
             }
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    private static void WritePackage(string directory, string name, string source)
-    {
-        var projectDirectory = Path.Combine(directory, name, "src");
-        var assemblyDirectory = Path.Combine(projectDirectory, "bin", "Release", "net10.0");
-        Directory.CreateDirectory(assemblyDirectory);
-        new XDocument(new XElement("Project", new XElement("PropertyGroup",
-            new XElement("TrellisApiRefName", name.ToLowerInvariant()))))
-            .Save(Path.Combine(projectDirectory, name + ".csproj"));
-
-        var compilation = CSharpCompilation.Create(name,
-            [CSharpSyntaxTree.ParseText(source, cancellationToken: TestContext.Current.CancellationToken)],
-            [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-        using var stream = File.Create(Path.Combine(assemblyDirectory, name + ".dll"));
-        var result = compilation.Emit(stream, cancellationToken: TestContext.Current.CancellationToken);
-        result.Success.Should().BeTrue(string.Join(Environment.NewLine, result.Diagnostics));
+            """, documentation + "\n\n```csharp\nAuditSentinel.Ping();\n```\n");
+        fixture.WritePackage("Neighbor", "public sealed class Neighbor { }", "### Neighbor\n\n`Probe.Id`\n");
+        return await fixture.RunAsync();
     }
 }

@@ -55,7 +55,7 @@ Packages such as `Trellis.Mediator`, `Trellis.Authorization`, `Trellis.EntityFra
 | `Result.Failure<T>(error)` / `Result.Failure(error)` | `Result.Fail<T>(error)` / `Result.Fail(error)` | <!-- stale-doc-ok: FunctionalDDD factory comparison -->
 | Deferred `Result.Success(Func<T>)` / `Result.Failure<T>(Func<Error>)` | Invoke the factory explicitly: `Result.Ok(funcOk())` / `Result.Fail<T>(errorFactory())` | <!-- stale-doc-ok: FunctionalDDD factory comparison -->
 | `Result.SuccessIf(...)` / `Result.FailureIf(...)`, including tuple and async forms | Use a ternary with `Result.Ok` / `Result.Fail<T>`; await an async predicate before branching | <!-- stale-doc-ok: FunctionalDDD conditional-factory comparison -->
-| `Result.FromException` / `Result.FromException<T>` | Use `Result.Try` / `Result.TryAsync` around the operation, or log an already-caught exception and return an appropriate failure; never copy its message into public error detail |
+| `Result.FromException` <!-- doc-member-ok: Result.FromException; historical FunctionalDDD factory --> / `Result.FromException<T>` <!-- doc-member-ok: Result.FromException; historical FunctionalDDD factory --> | Use `Result.Try` / `Result.TryAsync` around the operation, or log an already-caught exception and return an appropriate failure; never copy its message into public error detail |
 | Implicit value/error conversion to `Result<T>` | Wrap explicitly with `Result.Ok(value)` / `Result.Fail<T>(error)` |
 | `value.ToResult(error)` on a nullable reference or struct | `Result.EnsureNotNull(value, error)`; Task/ValueTask receivers use `EnsureNotNullAsync(error)` |
 | Throwing `result.Value` getter | Use `TryGetValue`, `Match`, guarded deconstruction, or `Map` / `Bind` inside a chain | <!-- stale-doc-ok: FunctionalDDD accessor comparison -->
@@ -100,7 +100,7 @@ than recreating a custom subclass.
 | `new ForbiddenError(...)` | `Error.Forbidden.ForPolicy(code, detail: detail)` or a resource-qualified `For` factory | <!-- stale-doc-ok: FunctionalDDD error comparison -->
 | `UnexpectedError` | `new Error.Unexpected(code, faultId) { Detail = safeDetail }`; keep exception details in logs | <!-- stale-doc-ok: FunctionalDDD error comparison -->
 | `validationError.FieldErrors` with field names and detail lists | `Error.InvalidInput.Fields` / `.Rules` with input pointers, reason codes, arguments, and detail | <!-- stale-doc-ok: FunctionalDDD validation comparison -->
-| `Error.Instance` | ASP owns `ProblemDetails.Instance`; use `ResourceRef` for domain resource identity |
+| `Error.Instance` <!-- doc-member-ok: Error.Instance; historical FunctionalDDD member --> | ASP owns `ProblemDetails.Instance`; use `ResourceRef` for domain resource identity |
 | Base `Error` equality compares only `Code` | Trellis errors compare their typed value payload and detail; compare `Code` explicitly when only the reason matters |
 
 Case-scoped factories are **code-first**. Preserve application codes and details, but

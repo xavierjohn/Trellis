@@ -179,7 +179,7 @@ Strongly-typed wrapper around the raw principal id (typically the JWT `sub` or A
 | --- | --- | --- |
 | `public static ActorId Parse(string s, IFormatProvider? provider)` | `ActorId` | Generated `IParsable<ActorId>` entry point; applies the same trim/nonempty validation as `TryCreate` and throws `TrellisValidationFormatException` on failure. `provider` is unused for string-backed ids. Prefer `TryCreate` for expected invalid input. |
 
-Consumers that store the principal id at aggregate boundaries — audit-style fields like `Order.CreatedByActorId` or `Document.LastModifiedByActorId` — should reuse `ActorId` for those fields so cross-aggregate comparisons (`actor.IsOwner(order.CreatedByActorId)`) are type-checked end-to-end. Domain identifiers that are conceptually different from the principal id (a customer aggregate id, a tenant member id, a domain user aggregate's primary key) remain whatever VO the domain models and are resolved to / from the principal at the application service boundary.
+Consumers that store the principal id at aggregate boundaries — audit-style fields like `Order.CreatedByActorId` or `Document.LastModifiedByActorId` <!-- doc-member-ok: Document.LastModifiedByActorId; illustrative application-owned resource, not a framework type --> — should reuse `ActorId` for those fields so cross-aggregate comparisons (`actor.IsOwner(order.CreatedByActorId)`) are type-checked end-to-end. Domain identifiers that are conceptually different from the principal id (a customer aggregate id, a tenant member id, a domain user aggregate's primary key) remain whatever VO the domain models and are resolved to / from the principal at the application service boundary.
 
 ### `ActorAttributes`
 

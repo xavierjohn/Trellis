@@ -133,11 +133,14 @@ jobs:
       #     Catches new API shipping undocumented. These totals were printed but unenforced for
       #     a long time, which let 8 types and 33 members accumulate in a green build; the
       #     process exit code now covers both audits, not just TRLDOC005.
-      #   TRLDOC014 — every receiver-qualified member access in a C# fence resolves on the type
-      #     it is written against. TRLDOC005 validates each dotted segment independently and
+      #   TRLDOC014 — C# fence chains and standalone inline Type.Member names resolve on the
+      #     receiving type. Calls/signatures and unqualified prose stay outside inline ownership.
+      #     TRLDOC005 validates each dotted segment independently and
       #     only reads backticked prose, so Error.Validation.ForField passed it on the strength  # v1-stale-ok: cites a made-up API as the motivating defect
       #     of an unrelated Validation and a real ForField — inside a fence it never looked at
-      #     all. Fenced code is what readers copy, so it is held to binding-like resolution.
+      #     all. Inline Error.ReasonCode likewise passes flat-name/attribution checks despite
+      #     belonging only to FieldViolation/RuleViolation. Localized historical/negative-space
+      #     exceptions do not waive C# fences or another inline occurrence.
       #   TRLDOC015 — a member name listed in ambiguous-members.txt must name its receiver in
       #     prose. When Error lost ReasonCode but FieldViolation and RuleViolation kept theirs,
       #     ten "use its ReasonCode" references stayed green: the name still resolves for

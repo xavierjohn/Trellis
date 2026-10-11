@@ -269,7 +269,7 @@ When the guarded statements end the method with a `return`, the wrapped code no 
 
 `default!` is deliberately not emitted: it silences the compiler while planting a `null` the type system claims cannot exist.
 
-> **Result accessors:** The `UnsafeValueAccessAnalyzer` previously also covered `Result<T>.Value` and `Result<T>.Error`. Both branches were deleted because (a) `Result<T>.Value` no longer exists, and (b) `Result<T>.Error` is now `Error?`, so unsafe access is caught natively by C# nullable-reference-type analysis.
+> **Result accessors:** The `UnsafeValueAccessAnalyzer` previously also covered `Result<T>.Value` <!-- doc-member-ok: Result.Value; historical removed accessor, not current API --> and `Result<T>.Error`. Both branches were deleted because (a) `Result<T>.Value` <!-- doc-member-ok: Result.Value; deliberately absent accessor --> no longer exists, and (b) `Result<T>.Error` is now `Error?`, so unsafe access is caught natively by C# nullable-reference-type analysis.
 
 #### `ResultDoubleWrappingAnalyzer` — `TRLS004`
 - Flags declared or inferred `Result<Result<T>>` in:
@@ -336,7 +336,7 @@ When the guarded statements end the method with a `return`, the wrapped code no 
   - `OrderByDescending`
   - `ThenBy`
   - `ThenByDescending`
-- Reports only when `.Value` is accessed on a `Maybe<T>` lambda parameter. The Result-side branch was removed along with `Result<T>.Value`.
+- Reports only when `.Value` is accessed on a `Maybe<T>` lambda parameter. The Result-side branch was removed along with `Result<T>.Value` <!-- doc-member-ok: Result.Value; historical removed accessor, not current API -->.
 - Suppresses the diagnostic when an earlier `.Where(...)` clause **mentions** `HasValue` anywhere in its lambda body. This is **keyword-presence detection**, not predicate-shape verification: `.Where(x => !x.HasValue).Select(x => x.Value)` (filtering down to None elements before reading their value) silences the diagnostic but still throws at runtime. Tightening the suppression to only honor `Where(x => x.HasValue)`-shaped predicates is a known limitation tracked separately.
 - That suppression applies only to TRLS013. TRLS003 does not infer safety from a separate `Where` lambda; use `.Where(x => x.HasValue).Select(x => x.GetValueOrDefault(0))` for an in-memory `Maybe<int>` sequence to satisfy both rules without including `None` elements.
 - For EF Core IQueryable predicates over a `Maybe<T>` property, either register `AddTrellisInterceptors()` (which rewrites `.HasValue`/`.Value`/`GetValueOrDefault(d)` into `EF.Property`/null-checks/`COALESCE`) or use `Trellis.EntityFrameworkCore.MaybeQueryableExtensions` (`WhereHasValue`, including its typed-predicate overload, / `WhereNone` / `WhereEquals`) explicitly. Note: this analyzer only fires on Select-family methods today; coverage of `.Where`/`.Any`/`.First` etc. is tracked as a follow-up.
