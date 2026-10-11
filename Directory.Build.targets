@@ -5,11 +5,13 @@
   <PropertyGroup>
     <_TrellisOwnSourceDirectory>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory), $(MSBuildProjectName), src))</_TrellisOwnSourceDirectory>
     <TrellisPowerShellExecutable Condition="'$(TrellisPowerShellExecutable)' == ''">pwsh</TrellisPowerShellExecutable>
+    <_TrellisReasonCodeGuardProjectDirectory>$([MSBuild]::MakeRelative($(MSBuildThisFileDirectory), $(MSBuildProjectDirectory)))</_TrellisReasonCodeGuardProjectDirectory>
     <_TrellisReasonCodeGuardApplies Condition="'$(TrellisEnableReasonCodeGuard)' == 'true' AND
                                             '$(MSBuildProjectExtension)' == '.csproj' AND
                                             '$(MSBuildProjectName)' != 'Trellis.Analyzers' AND
                                             '$(IsTestProject)' != 'true' AND
-                                            $([System.Text.RegularExpressions.Regex]::IsMatch('$(MSBuildProjectDirectory)', '(^|[\\/])src([\\/]|$)'))">true</_TrellisReasonCodeGuardApplies>
+                                            !$([System.IO.Path]::IsPathRooted('$(_TrellisReasonCodeGuardProjectDirectory)')) AND
+                                            $([System.Text.RegularExpressions.Regex]::IsMatch('$(_TrellisReasonCodeGuardProjectDirectory)', '^(?!\.\.([\\/]|$))([^\\/]+[\\/])*src([\\/]|$)'))">true</_TrellisReasonCodeGuardApplies>
     <_TrellisReasonCodeGuardAnalyzer>$(MSBuildThisFileDirectory)Trellis.Analyzers\src\bin\$(Configuration)\netstandard2.0\Trellis.Analyzers.dll</_TrellisReasonCodeGuardAnalyzer>
     <_TrellisReasonCodeGuardConfiguration>$(MSBuildThisFileDirectory)build\reason-code-guard.globalconfig</_TrellisReasonCodeGuardConfiguration>
   </PropertyGroup>
@@ -17,7 +19,7 @@
   <Target Name="ValidateReasonCodeGuard" BeforeTargets="CoreCompile"
           Condition="'$(_TrellisReasonCodeGuardApplies)' == 'true'">
     <Error Condition="!Exists('$(_TrellisReasonCodeGuardAnalyzer)')"
-           Text="Build Trellis.Analyzers before enabling the reason-code guard (Configuration=$(Configuration))." />
+           Text="Build Trellis.Analyzers before enabling the reason-code guard. Expected analyzer: $(_TrellisReasonCodeGuardAnalyzer) (Configuration=$(Configuration), TargetFramework=netstandard2.0)." />
     <Error Condition="!Exists('$(_TrellisReasonCodeGuardConfiguration)')"
            Text="Reason-code guard configuration is missing: $(_TrellisReasonCodeGuardConfiguration)." />
     <Error Condition="'$(RunAnalyzers)' == 'false' OR '$(RunAnalyzersDuringBuild)' == 'false'"

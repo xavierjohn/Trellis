@@ -610,9 +610,13 @@ String and GUID locals are followed only when their enclosing operation tree con
 
 **Other dynamic application codes remain legal.** Literals, vocabulary/application constants, `nameof`, forwarded parameters, configuration/field/property values, opaque application helpers, `Guid.Empty`, and parsed fixed GUIDs are not reported. The rule neither requires a constant nor checks vocabulary membership. An opaque helper can still return a bad code; silence is not proof of stability. Generated code is excluded.
 
+Unsupported operations such as `Substring`, `ToUpper`, and `string.Format` are not traced. They can hide a fresh GUID; this rule detects proven provenance rather than every unstable code.
+
 Default severity is **Warning**, independently of TRLS064's unchanged literal-only Info rule. There is no code fix: only the author can choose the failure's category. Configure `dotnet_diagnostic.TRLS067.severity` or use a justified standard `#pragma warning disable TRLS067` for an intentional exception.
 
-The framework repository's CI builds the analyzer first, then enables `TrellisEnableReasonCodeGuard=true` for source projects under `src`. This promotes TRLS067 to an error. Projects already loading `Trellis.Analyzers` keep their other rule settings; newly analyzed projects load only this rule's effective diagnostics through `build/reason-code-guard.globalconfig`, without suppressing bundled generator diagnostics. Normal local builds and published-package analyzer opt-in are unchanged.
+The framework repository's CI builds the analyzer first, then enables `TrellisEnableReasonCodeGuard=true` for source projects under `src`, matched relative to the repository root rather than a clone's ancestor directories. This promotes TRLS067 to an error. Projects already loading `Trellis.Analyzers` keep their other rule settings; newly analyzed projects load only this rule's effective diagnostics through `build/reason-code-guard.globalconfig`, without suppressing bundled generator diagnostics.
+
+The guard expects the analyzer's required `netstandard2.0` output for the selected configuration. A missing-analyzer error includes the exact expected DLL path, configuration, and framework; missing guard configuration or disabled analysis also fail explicitly. Normal local builds and published-package analyzer opt-in are unchanged.
 
 ### Nullable guard rules
 

@@ -69,4 +69,6 @@ dotnet build Trellis.Analyzers\src\Trellis.Analyzers.csproj -c Release
 dotnet build -c Release -p:TrellisEnableReasonCodeGuard=true
 ```
 
-The guard applies to source projects under `src` and promotes TRLS067 to an error. It leaves other rules unchanged in projects already using the analyzer suite; otherwise it suppresses only the newly loaded standalone rules, not bundled generators. Missing analyzer/configuration files or disabled analyzer execution fail explicitly. Normal builds and consumer opt-in are unchanged.
+The guard matches `src` path segments relative to the repository root and promotes TRLS067 to an error; a clone's ancestor directory named `src` does not expand its scope. It leaves other rules unchanged in projects already using the analyzer suite; otherwise it suppresses only the newly loaded standalone rules, not bundled generators.
+
+The prebuilt analyzer is expected at `Trellis.Analyzers\src\bin\$(Configuration)\netstandard2.0\Trellis.Analyzers.dll`, matching its required Roslyn analyzer target. A missing-analyzer failure names that exact output path, configuration, and framework. Missing configuration or disabled analyzer execution also fail explicitly. Normal builds and consumer opt-in are unchanged.

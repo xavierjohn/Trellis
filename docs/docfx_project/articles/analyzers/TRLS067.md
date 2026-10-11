@@ -38,6 +38,8 @@ This is not a constant-only rule or a vocabulary-membership check. Configured or
 
 Provenance follows built-in conversions, parentheses, GUID/object/string `ToString`, `Convert.ToString`, `string.Concat`, interpolation, and string `+`. Concatenation inspects inline array/collection elements, compiler-expanded span parameters, and inline spreads without user-defined element conversions. Whole-object array stringification and nested array contents do not emit their GUID elements and remain silent. Known conditional/coalescing selectors exclude unchosen branches. Locals must have one write and no ref/address escape across their enclosing operation tree; mutable array/object locals are not followed. The analyzer does not infer opaque helper implementations or generated code. Silence is not proof that an unknown dynamic value is stable.
 
+Unsupported operations such as `Substring`, `ToUpper`, and `string.Format` are not traced. They can hide a fresh GUID; TRLS067 detects proven provenance, not every unstable reason code.
+
 ## Code fix available
 
 No. Only the author knows the right category and where the identifier belongs.

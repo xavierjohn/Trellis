@@ -41,6 +41,22 @@ public class ReasonCodeGuardBuildTests
         result.Output.Should().NotContain("TRLS019");
     }
 
+    [Theory]
+    [InlineData("generator", true)]
+    [InlineData("generator", false)]
+    [InlineData("samples", true)]
+    [InlineData("samples", false)]
+    [InlineData("src-adjacent", true)]
+    [InlineData("src-adjacent", false)]
+    public async Task Build_EnabledGuard_AncestorSrc_DoesNotGuardNonSourceProjects(string projectArea, bool includeInputs)
+    {
+        var result = await BuildAsync("_ = new Error.Unexpected(Guid.NewGuid().ToString(\"N\"));",
+            includeAnalyzer: includeInputs, includeConfiguration: includeInputs, projectArea: projectArea);
+
+        result.ExitCode.Should().Be(0, result.Output);
+        result.Output.Should().NotContain("TRLS067");
+    }
+
     [Fact]
     public async Task Build_EnabledGuard_SingleWriteLocalReasonFails()
     {
@@ -143,6 +159,9 @@ public class ReasonCodeGuardBuildTests
 
         result.ExitCode.Should().Be(1, result.Output);
         result.Output.Should().Contain("Build Trellis.Analyzers before enabling the reason-code guard");
+        result.Output.Should().Contain("Expected analyzer:");
+        result.Output.Should().Contain(Path.Combine("Trellis.Analyzers", "src", "bin", "Release", "netstandard2.0", "Trellis.Analyzers.dll"));
+        result.Output.Should().Contain("Configuration=Release, TargetFramework=netstandard2.0");
     }
 
     [Fact]
@@ -156,11 +175,12 @@ public class ReasonCodeGuardBuildTests
 
     private static async Task<(int ExitCode, string Output)> BuildAsync(
         string statements, bool includeAnalyzer = true, bool includeConfiguration = true,
-        bool alreadyLoaded = false, bool enableGuard = true, bool runAnalyzers = true)
+        bool alreadyLoaded = false, bool enableGuard = true, bool runAnalyzers = true, string projectArea = "src")
     {
         var repository = FindRepositoryRoot();
-        var directory = Path.Combine(Path.GetTempPath(), $"trellis reason guard {Guid.NewGuid():N}");
-        var projectDirectory = Path.Combine(directory, "Trellis.GuardProbe", "src");
+        var temporaryDirectory = Path.Combine(Path.GetTempPath(), $"trellis reason guard {Guid.NewGuid():N}");
+        var directory = Path.Combine(temporaryDirectory, "src", "Trellis");
+        var projectDirectory = Path.Combine(directory, "Trellis.GuardProbe", projectArea);
         var analyzerDirectory = Path.Combine(directory, "Trellis.Analyzers", "src", "bin", "Release", "netstandard2.0");
         Directory.CreateDirectory(projectDirectory);
         Directory.CreateDirectory(analyzerDirectory);
@@ -256,7 +276,7 @@ public class ReasonCodeGuardBuildTests
         }
         finally
         {
-            Directory.Delete(directory, recursive: true);
+            Directory.Delete(temporaryDirectory, recursive: true);
         }
     }
 
