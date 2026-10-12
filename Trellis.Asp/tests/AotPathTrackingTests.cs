@@ -82,6 +82,15 @@ public sealed class AotPathTrackingTests : IDisposable
             writer.WriteStringValue("primary");
     }
 
+    private sealed class LegacyThrowingEmailConverter(TrellisJsonValidationException exception) : JsonConverter<Email>
+    {
+        public override Email? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+            throw exception;
+
+        public override void Write(Utf8JsonWriter writer, Email value, JsonSerializerOptions options) =>
+            writer.WriteStringValue(value.Value);
+    }
+
     public sealed record AotAliasedMemberDto([property: JsonPropertyName("primary_email")] Email Contact);
 
     public sealed record AotAliasedTeamCommand(List<AotAliasedMemberDto> Members);
@@ -129,6 +138,41 @@ public sealed class AotPathTrackingTests : IDisposable
         ValidationErrorsContext.CurrentAncestorPointer().Should().Be(previousAncestor);
         ValidationErrorsContext.CurrentPropertyName.Should().Be("outside");
         ValidationErrorsContext.HasErrors.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Read_LegacyThrowingScalarConverter_EscapedNestedProperty_RebasesOnceAndRestoresContext()
+    {
+        var original = new TrellisJsonValidationException("Email is too long.")
+        {
+            InvalidInput = Error.InvalidInput.ForField(
+                "email.too-long", "email", ValidationArgs.Of("maxLength", 64), "Email is too long."),
+        };
+        var originalViolation = original.InvalidInput.Fields.Items.Should().ContainSingle().Subject;
+        var options = BuildOptions();
+        options.Converters.Clear();
+        options.Converters.Add(new LegacyThrowingEmailConverter(original));
+
+        using var scope = ValidationErrorsContext.BeginScope();
+        using var members = ValidationErrorsContext.PushPathSegment("members/~");
+        using var index = ValidationErrorsContext.PushPathSegment("1");
+        var previousAncestor = ValidationErrorsContext.CurrentAncestorPointer();
+        ValidationErrorsContext.CurrentPropertyName = "outside";
+
+        Action readScalar = () => ReadScalar<Email>("contact/type~", "\"oversized\""u8, options);
+        var exception = readScalar.Should().Throw<TrellisJsonValidationException>().Which;
+        var violation = exception.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
+
+        violation.Field.Should().Be(InputPointer.ForBody("/members~1~0/1/contact~1type~0"));
+        violation.ReasonCode.Should().Be(originalViolation.ReasonCode);
+        violation.Args.Should().BeEquivalentTo(originalViolation.Args);
+        violation.Detail.Should().Be(originalViolation.Detail);
+        exception.Message.Should().Be(original.Message);
+        exception.InnerException.Should().BeSameAs(original);
+        JsonValidationPathRebase.IsMarked(exception).Should().BeTrue();
+        ValidationErrorsContext.CurrentAncestorPointer().Should().Be(previousAncestor);
+        ValidationErrorsContext.CurrentPropertyName.Should().Be("outside");
+        ValidationErrorsContext.HasErrors.Should().BeFalse();
     }
 
     [Theory]

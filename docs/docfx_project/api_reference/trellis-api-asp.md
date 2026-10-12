@@ -1763,9 +1763,11 @@ validation failures with `TrellisJsonValidationException`, rather than returning
 **Shared-options compatibility:** JSON options configured by `AddScalarValueValidation` enforce
 missing/null required value-object inputs even outside the middleware, including manual
 `ReadFromJsonAsync`, routes that do not enter its scope, tests and persisted-payload reads.
-Missing required values previously went unchecked by this modifier without a scope; they now
-throw `TrellisJsonValidationException` before application callbacks. Use separate transport
-options or a DTO-to-domain adapter if that validation boundary is not wanted for those reads.
+Without an active validation scope, deserializing a payload that omits a required value object
+with these ASP-configured options now throws `TrellisJsonValidationException` before application
+callbacks, including outside `UseScalarValueValidation()`; previously, the modifier left those
+missing inputs unchecked. Use separate transport options or a
+DTO-to-domain adapter if that validation boundary is not wanted for those reads.
 Syntax, configuration, and implementation failures may still throw. This is not a claim that
 all JSON errors or ASP.NET binding operations are exception-free: a non-nullable root body can
 still trigger ASP.NET's required-body check in Development after a collected failure, and
