@@ -54,6 +54,15 @@ All three wiring steps are required: map the table, register `AddTrellisOutboxIn
 
 The alpha outbox schema includes nullable `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration or backfill is provided. Use `IntegrationMessageContext.BeginCorrelation("workflow-id")` to supply an application-owned business correlation id; one is never inferred from the trace.
 
+## Health Requirements
+
+**Not implemented:** no Trellis-specific outbox/inbox health checks or health registrations
+are shipped. The [staged readiness requirements](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#health-check-requirements)
+separate pending/parked summaries, local relay responsiveness, durable capture-age
+evidence, and optional consumer lag. The reference profile requires explicit selection
+and tuning; `OccurredAt` is not queue age, and publisher acceptance is not consumer success.
+Readiness probes must not mutate delivery state or trigger automatic restarts.
+
 ## Documentation
 
 - [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html)

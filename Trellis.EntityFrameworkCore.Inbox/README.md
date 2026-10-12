@@ -65,6 +65,12 @@ Controlled replay of consumed messages means an isolated rebuild: a separate, st
 payload from an application-owned durable log/archive. Live dedup history stays intact.
 See the [operational requirements and acceptance criteria](../docs/docfx_project/api_reference/trellis-api-efcore-inbox.md#operational-requirements-and-transport-boundary).
 
+**Health checks are not implemented.** Inbox receipts and checkpoint timestamps cannot
+establish source lag or consumer liveness. Optional lag requires explicitly enabled,
+fresh application/transport evidence scoped to storage, consumer, source, and partitions;
+unconfigured is disabled, not observed healthy. See the [consumer-lag requirements](../docs/docfx_project/api_reference/trellis-api-efcore-inbox.md#consumer-lag-health-requirements)
+and linked opt-in readiness profile.
+
 ## Documentation
 
 - [Package API reference](../docs/docfx_project/api_reference/trellis-api-efcore-inbox.md)
