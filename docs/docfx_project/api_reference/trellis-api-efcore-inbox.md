@@ -48,7 +48,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - **`AddTrellisInbox<TContext>()` only registers the service half.** Without `modelBuilder.AddTrellisInbox()` the `TrellisInboxMessages` table is unmapped, and without a transport adapter calling `IInboxDispatcher.DispatchAsync(...)` nothing is ever deduplicated. See [Wiring: two required calls](#wiring-two-required-calls).
 - **Inbox registration is not publisher routing.** `UseIntegrationEvents(...)` and `UseInbox<TContext>()` can share handler registrations, but the default in-process `IIntegrationEventPublisher` does not call the inbox. Its swallowed consumer failures still process integration outbox rows without retry. An adapter must actually call `IInboxDispatcher` with the stable message id and expose failures to a redelivering transport.
 - **The `MessageId` must be stable across redeliveries.** Dedup keys on `(ConsumerId, MessageId)`. If the transport assigns a *new* id on every delivery (instead of carrying the producer's `OutboxMessage.Id` verbatim), every redelivery looks new and is reprocessed. The envelope's lineage fields (`MessageSource`, `CausationId`, `CorrelationId`) are observability only and never participate in dedup.
-- **`ConsumerId` must be stable across deploys.** It is part of the dedup key, so renaming it resets dedup history and the consumer reprocesses everything still inside the transport's redelivery window. Each independent subscriber/consumer-group uses its own stable `ConsumerId`.
+- **`ConsumerId` must be stable across deploys.** It is part of the dedup key, so renaming it changes the dedup namespace. Records under the old id do not protect deliveries under the new id, so any redelivered or replayed message can run again. Each independent subscriber/consumer-group uses its own stable `ConsumerId`.
 - **The guarantee is local-side-effects-only.** The dedup row and the handlers' writes through the injected `TContext` commit in one `SaveChanges`. Effects that are *not* part of that save — sending an email, calling a downstream API, writing through a different `DbContext`/connection — are not covered and need their own idempotency. A handler that writes through a second context escapes the dedup unit of work.
 - **Handlers run before the save and must propagate failures.** Unlike the default `IIntegrationEventPublisher` (which logs and swallows handler exceptions), the inbox dispatcher is non-swallowing: a handler throw aborts the unit of work before anything is saved — no dedup row, no side effects — and propagates so the transport redelivers. Make handlers safe to re-run, and do not call `SaveChanges` inside a handler (it would break the single-save atomicity).
 - **Inbound trace context is optional.** Valid W3C `TraceParent` / `TraceState` continue the producer's trace; missing or malformed headers do not prevent processing. Correlation is an application-owned business identifier, not the W3C trace id. The dispatcher does not forward arbitrary baggage or authenticated actor identity.
@@ -440,6 +440,9 @@ live re-execution is **not** this replay policy. Corrective actions on live stat
 an independently designed application repair/idempotency policy.
 
 ### Acceptance boundary for future operations
+
+**Not implemented:** no inbox maintenance API is shipped. This table specifies
+acceptance criteria for future operational tooling.
 
 | Scenario | Required outcome |
 |---|---|

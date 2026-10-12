@@ -70,7 +70,7 @@ builder.Services.AddTrellis(trellis => trellis
     .UseInbox<AppDbContext>(o => o.ConsumerId = "orders-service"));
 ```
 
-`ConsumerId` identifies this subscriber. Two different services consuming the same message each keep their own dedup history under their own `ConsumerId`, so each processes it once. Keep the value stable across deploys — it is part of the dedup key, and renaming it makes the consumer reprocess everything still inside the transport's redelivery window.
+`ConsumerId` identifies this subscriber. Two different services consuming the same message each keep their own dedup history under their own `ConsumerId`, so each processes it once. Keep the value stable across deploys — it is part of the dedup key. Renaming it changes the dedup namespace: records under the old id do not protect deliveries under the new id, so any redelivered or replayed message can run again.
 
 **Registration is not routing.** `UseIntegrationEvents(...)` supplies handler bindings shared by the default publisher and the inbox. `UseInbox<TContext>()` does not reroute default publication: local fan-out still logs and swallows ordinary consumer failures and the integration outbox row is processed without retrying them. An adapter must actually call the non-swallowing `IInboxDispatcher` with the stable message id and expose failures to a transport that redelivers.
 
@@ -224,7 +224,9 @@ foreach (var msg in window.Where(m => todo.Contains(m.Id)))
 await checkpoints.SetAsync(consumerId, window.HighWaterMark, ct);     // advance the cursor
 ```
 
-The checkpoint is **performance, not correctness** — it is the *same* kind of cursor the anti-join frees you from depending on for gap-freedom. A high-water cursor can skip a row assigned a low position but committed late, so always scan a window that **overlaps** the checkpoint (rewind a visibility-lag margin) and let `FilterUnprocessedAsync` + the dedup row provide once-effective processing. Used that way the checkpoint can only widen or narrow a rescan, never skip a row. The `position` is opaque — encode whatever cursor your feed uses (a sequence number, a UUIDv7 high-water mark, a timestamp) as a string.
+The checkpoint is **performance, not correctness**. A high-water cursor can skip a row assigned a low position but committed late, so always scan a window that **overlaps** the checkpoint (rewind a visibility-lag margin), use `FilterUnprocessedAsync` plus the retained dedup row, and advance only past rows known to be processed.
+
+Losing or resetting the checkpoint can widen the rescan. Messages whose dedup rows are retained are still skipped; rewinding beyond that retention can reapply older messages. See the [retention policy](#retain-dedup-history-deliberately). The `position` is opaque — encode whatever cursor your feed uses (a sequence number, a UUIDv7 high-water mark, a timestamp) as a string.
 
 ## Operating the inbox
 

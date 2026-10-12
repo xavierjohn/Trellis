@@ -54,7 +54,7 @@ Your transport adapter passes each received event to `IInboxDispatcher.DispatchA
 The inbox stores committed dedup metadata, not payloads or failed-message history.
 Trellis ships no inbox maintenance facade, automatic expiry job, or replay coordinator.
 Inspection is application-owned and must be read-only, bounded, and scoped to the
-authorized storage and consumer; no retained row is not proof of no prior processing.
+authorized storage and consumer; a missing row is not proof that a message never ran.
 
 Retention is opt-in with no automatic expiry. Before pruning, bound every redelivery
 and replay source, including dead-letter/manual redrive and pull-feed rewind; removing
