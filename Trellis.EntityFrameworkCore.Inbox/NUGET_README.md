@@ -42,6 +42,19 @@ Your transport adapter passes each received event to `IInboxDispatcher.DispatchA
 
 Keep `ConsumerId` stable across deployments and carry the producer's outbox row ID unchanged as `MessageId`. External calls are outside the inbox transaction and require their own idempotency.
 
+## Operations
+
+The inbox retains committed metadata, not payloads or failed attempts. Trellis ships
+no inbox maintenance facade, automatic expiry job, or replay coordinator. Inspection
+is application-owned, bounded, and storage/consumer-scoped; a missing row is not proof
+that a message never ran.
+
+Pruning is opt-in only after bounding all redelivery/replay sources. Transport redrive
+keeps the original identity. Replaying consumed messages requires a separate stable
+`ConsumerId` and isolated rebuild storage/effects, with original message IDs and
+versioned payloads supplied by an application-owned durable log/archive; live dedup
+rows remain intact. See the [operational requirements](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-inbox.html#operational-requirements-and-transport-boundary).
+
 ## Documentation
 
 - [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-inbox.html)

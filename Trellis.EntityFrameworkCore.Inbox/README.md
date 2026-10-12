@@ -49,6 +49,22 @@ Your transport adapter passes each received event to `IInboxDispatcher.DispatchA
 - The checkpoint is a performance cursor, not a replacement for inbox deduplication.
 - Map the table with `modelBuilder.AddTrellisInbox()` and register a transport adapter that invokes the dispatcher.
 
+## Operations
+
+The inbox stores committed dedup metadata, not payloads or failed-message history.
+Trellis ships no inbox maintenance facade, automatic expiry job, or replay coordinator.
+Inspection is application-owned and must be read-only, bounded, and scoped to the
+authorized storage and consumer; no retained row is not proof of no prior processing.
+
+Retention is opt-in with no automatic expiry. Before pruning, bound every redelivery
+and replay source, including dead-letter/manual redrive and pull-feed rewind; removing
+a row removes its dedup protection. Transport redrive preserves the original identity.
+
+Controlled replay of consumed messages means an isolated rebuild: a separate, stable
+`ConsumerId`, isolated storage and effects, and the original `MessageId` and versioned
+payload from an application-owned durable log/archive. Live dedup history stays intact.
+See the [operational requirements and acceptance criteria](../docs/docfx_project/api_reference/trellis-api-efcore-inbox.md#operational-requirements-and-transport-boundary).
+
 ## Documentation
 
 - [Package API reference](../docs/docfx_project/api_reference/trellis-api-efcore-inbox.md)

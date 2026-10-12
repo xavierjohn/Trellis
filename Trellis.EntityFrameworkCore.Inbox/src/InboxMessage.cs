@@ -6,8 +6,9 @@
 /// handler's side effects run effectively once.
 /// </summary>
 /// <remarks>
-/// This is transient infrastructure, not a domain aggregate. Rows may be pruned once they are older than the
-/// transport's maximum redelivery window — delete sooner and a late redelivery would be reprocessed.
+/// This is transient infrastructure, not a domain aggregate. There is no automatic expiry. Any pruning
+/// policy must cover all redelivery and replay sources; deleting a row removes its dedup protection, so an
+/// older delivery can apply the message again.
 /// </remarks>
 public sealed class InboxMessage
 {
@@ -47,7 +48,7 @@ public sealed class InboxMessage
     /// <summary>When the business fact occurred (copied from the event's <c>OccurredAt</c>).</summary>
     public DateTimeOffset OccurredAt { get; private set; }
 
-    /// <summary>When this consumer processed the message.</summary>
+    /// <summary>The UTC timestamp assigned when the dedup row is staged, before handlers and the commit.</summary>
     public DateTimeOffset ProcessedAt { get; private set; }
 
     /// <summary>Optional lineage: the id of the message that directly caused this one.</summary>
