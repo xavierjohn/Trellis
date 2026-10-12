@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Asp.Tests;
 
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -17,6 +19,73 @@ using Trellis.Primitives;
 [Collection(nameof(AotPathTrackingTests))]
 public sealed class SemanticJsonBindingTests
 {
+    [Theory]
+    [InlineData("Development", "/application-bad-request")]
+    [InlineData("Production", "/application-bad-request")]
+    [InlineData("Development", "/application-bad-request-unfiltered")]
+    [InlineData("Production", "/application-bad-request-unfiltered")]
+    [InlineData("Development", "/application-bad-request-mvc")]
+    [InlineData("Production", "/application-bad-request-mvc")]
+    public async Task Bind_ApplicationOwnedBadRequest_WithoutStatusPages_PreservesTheEmptyResponse(
+        string environment, string route)
+    {
+        var calls = 0;
+        await using var app = await CreateAppAsync(
+            environment, false, () => calls++, formatBareResponses: false);
+        using var client = app.GetTestClient();
+
+        using var response = await client.GetAsync(route, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType.Should().BeNull();
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
+        calls.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("Development", "/application-bad-request")]
+    [InlineData("Production", "/application-bad-request")]
+    [InlineData("Development", "/application-bad-request-unfiltered")]
+    [InlineData("Production", "/application-bad-request-unfiltered")]
+    [InlineData("Development", "/application-bad-request-mvc")]
+    [InlineData("Production", "/application-bad-request-mvc")]
+    public async Task Bind_ApplicationOwnedBadRequest_WithStatusPages_UsesTheExplicitHostFormatter(
+        string environment, string route)
+    {
+        var calls = 0;
+        await using var app = await CreateAppAsync(environment, false, () => calls++);
+        using var client = app.GetTestClient();
+
+        using var response = await client.GetAsync(route, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        calls.Should().Be(1);
+        using var problem = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        problem.RootElement.GetProperty("code").GetString().Should().Be("error.unspecified");
+        problem.RootElement.GetProperty("kind").GetString().Should().Be("bad-request");
+    }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Production")]
+    public async Task Bind_MalformedJson_WithoutStatusPages_Preserves400WithoutExecutingTheHandler(
+        string environment)
+    {
+        var calls = 0;
+        await using var app = await CreateAppAsync(
+            environment, false, () => calls++, formatBareResponses: false);
+        using var client = app.GetTestClient();
+        using var content = new StringContent(
+            """{"state":"Unknown","quantity":""", Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync("/semantic", content, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        calls.Should().Be(0);
+    }
+
     [Theory]
     [InlineData("Development", false)]
     [InlineData("Production", false)]
@@ -337,12 +406,15 @@ public sealed class SemanticJsonBindingTests
     }
 
     [Theory]
-    [InlineData("Development")]
-    [InlineData("Production")]
-    public async Task Bind_OptionalRootSemanticFailure_InvalidQuery_Preserves400(string environment)
+    [InlineData("Development", false)]
+    [InlineData("Production", false)]
+    [InlineData("Development", true)]
+    [InlineData("Production", true)]
+    public async Task Bind_OptionalRootSemanticFailure_InvalidQuery_Preserves400(
+        string environment, bool generatedMetadata)
     {
         var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++);
+        await using var app = await CreateAppAsync(environment, true, () => calls++, generatedMetadata);
         using var client = app.GetTestClient();
         using var content = new StringContent(
             """{"amount":-1,"currency":"USD"}""", Encoding.UTF8, "application/json");
@@ -379,7 +451,8 @@ public sealed class SemanticJsonBindingTests
     }
 
     private static async Task<WebApplication> CreateAppAsync(
-        string environment, bool strictNullability, Action handler, bool generatedMetadata = false)
+        string environment, bool strictNullability, Action handler, bool generatedMetadata = false,
+        bool formatBareResponses = true)
     {
         ScalarValuePathTracking.RegisterScalar<DcInt, int>();
         ScalarValuePathTracking.RegisterProperty<DcInt>();
@@ -390,6 +463,16 @@ public sealed class SemanticJsonBindingTests
             builder.Services.ConfigureHttpJsonOptions(options =>
                 options.SerializerOptions.TypeInfoResolverChain.Insert(0, CallbackJsonContext.Default));
         builder.Services.AddTrellisAspWithScalarValidation();
+        builder.Services.AddSingleton(handler);
+        builder.Services.AddControllers()
+            .AddApplicationPart(typeof(SemanticBadRequestController).Assembly)
+            .ConfigureApplicationPartManager(manager =>
+            {
+                manager.FeatureProviders.Clear();
+                manager.FeatureProviders.Add(new SemanticControllerFeatureProvider());
+            });
+        if (formatBareResponses)
+            builder.Services.AddTrellisProblemDetails();
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
             options.SerializerOptions.RespectNullableAnnotations = strictNullability;
@@ -408,7 +491,20 @@ public sealed class SemanticJsonBindingTests
                 context.Response.StatusCode = exception.StatusCode;
             }
         });
+        if (formatBareResponses)
+            app.UseStatusCodePages();
         app.UseScalarValueValidation();
+        app.MapControllers();
+        app.MapGet("/application-bad-request", () =>
+        {
+            handler();
+            return Results.BadRequest();
+        }).WithScalarValueValidation();
+        app.MapGet("/application-bad-request-unfiltered", () =>
+        {
+            handler();
+            return Results.BadRequest();
+        });
         app.MapPost("/semantic", ([FromBody] SemanticRequest request) =>
         {
             handler();
@@ -461,6 +557,12 @@ public sealed class SemanticJsonBindingTests
         }).WithScalarValueValidation();
         await app.StartAsync(TestContext.Current.CancellationToken);
         return app;
+    }
+
+    private sealed class SemanticControllerFeatureProvider : ControllerFeatureProvider
+    {
+        protected override bool IsController(TypeInfo typeInfo) =>
+            typeInfo.AsType() == typeof(SemanticBadRequestController);
     }
 
     public sealed record SemanticRequest(DcOrderState State, DcInt Quantity, Money Amount);
@@ -530,3 +632,14 @@ public sealed class SemanticJsonBindingTests
 [JsonSerializable(typeof(SemanticJsonBindingTests.DerivedCallbackRequest))]
 [JsonSerializable(typeof(SemanticJsonBindingTests.ConstructorBoundRequest))]
 internal partial class CallbackJsonContext : JsonSerializerContext;
+
+[ApiController]
+public sealed class SemanticBadRequestController(Action handler) : ControllerBase
+{
+    [HttpGet("/application-bad-request-mvc")]
+    public Microsoft.AspNetCore.Http.IResult BadRequestResponse()
+    {
+        handler();
+        return Results.BadRequest();
+    }
+}

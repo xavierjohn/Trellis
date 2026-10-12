@@ -20,6 +20,10 @@ using Trellis.Asp.Validation;
 /// that might deserialize JSON request bodies.
 /// </para>
 /// <para>
+/// This middleware does not format bodyless error responses. Configure status-code pages
+/// explicitly when the host should turn those responses into Problem Details.
+/// </para>
+/// <para>
 /// For each request:
 /// <list type="bullet">
 /// <item>Creates a new validation error collection scope</item>
@@ -60,13 +64,6 @@ public sealed class ScalarValueValidationMiddleware
             try
             {
                 await _next(context).ConfigureAwait(false);
-                if (context.Response.StatusCode == StatusCodes.Status400BadRequest
-                    && !context.Response.HasStarted
-                    && context.Response.ContentType is null
-                    && context.Response.ContentLength is null or 0)
-                {
-                    await WriteGenericBadRequestAsync(context).ConfigureAwait(false);
-                }
             }
             catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status400BadRequest)
             {

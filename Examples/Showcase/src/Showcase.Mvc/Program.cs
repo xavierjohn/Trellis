@@ -20,6 +20,7 @@ using Trellis.Showcase.Domain.ValueObjects;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddTrellisAspWithScalarValidation();
+builder.Services.AddTrellisProblemDetails();
 
 builder.Services
     .AddControllers()
@@ -136,6 +137,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+app.UseStatusCodePages();
 app.UseScalarValueValidation();
 app.UseAuthorization();
 app.UseTrellisIdempotency();

@@ -282,6 +282,9 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
                     && current.TypeArguments.Length == 1
                     && SymbolEqualityComparer.Default.Equals(current.TypeArguments[0], type))
                 {
+                    if (!CanConstructConverter(converterType!))
+                        return;
+
                     ValidationRegistrations.Add(scalarPrimitive is not null && type.IsReferenceType
                         ? $"RegisterScalar<{type.ToDisplayString(FullyQualified)}, {scalarPrimitive.ToDisplayString(FullyQualified)}>(new {converterType!.ToDisplayString(FullyQualified)}())"
                         : $"RegisterResultConverter(new {converterType!.ToDisplayString(FullyQualified)}(), scalar: {(scalarPrimitive is not null ? "true" : "false")})");
@@ -302,6 +305,13 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
             ValidationRegistrations.Add(
                 $"RegisterScalar<{type.ToDisplayString(FullyQualified)}, {scalarPrimitive.ToDisplayString(FullyQualified)}>()");
         }
+
+        private bool CanConstructConverter(INamedTypeSymbol converterType) =>
+            !converterType.IsAbstract
+            && _compilation.IsSymbolAccessibleWithin(converterType, _compilation.Assembly)
+            && converterType.InstanceConstructors.Any(constructor =>
+                constructor.Parameters.Length == 0
+                && _compilation.IsSymbolAccessibleWithin(constructor, _compilation.Assembly));
 
         // Mirrors Type.GetProperties(BindingFlags.Public | BindingFlags.Instance) in the runtime
         // modifier, which includes properties inherited from base types.

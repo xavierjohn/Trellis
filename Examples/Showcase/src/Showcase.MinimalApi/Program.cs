@@ -36,6 +36,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, ShowcaseJsonSerializerContext.Default);
 });
 builder.Services.AddTrellisAspWithScalarValidation();
+builder.Services.AddTrellisProblemDetails();
 builder.Services.AddTrellisRouteConstraint<AccountId>();
 // AccountType, AccountStatus, and TransactionType are RequiredEnum<TSelf> value objects;
 // each carries its own [JsonConverter(typeof(RequiredEnumJsonConverter<T>))] attribute
@@ -123,6 +124,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+app.UseStatusCodePages();
 app.UseScalarValueValidation();
 app.UseAuthorization();
 app.UseTrellisIdempotency();

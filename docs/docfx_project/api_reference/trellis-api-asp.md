@@ -1709,7 +1709,7 @@ public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)` | `ValueTask<object?>` | For Minimal APIs, returns `Results.ValidationProblem(...)` with the configured `Error.InvalidInput` status (default `422`, see `MapError`) and MVC dot+bracket field keys when `ValidationErrorsContext` contains errors; otherwise invokes `next`. |
+| `public ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)` | `ValueTask<object?>` | For Minimal APIs, returns `Results.ValidationProblem(...)` with the configured `Error.InvalidInput` status (default `422`, see `MapError`) and MVC dot+bracket field keys when `ValidationErrorsContext` contains errors; otherwise invokes `next`. An already-set framework 400 delegates to the framework's terminal filter, which does not invoke the handler; rejected required root bodies retain their semantic response. |
 
 ### `ScalarValueValidationMiddleware`
 
@@ -1722,7 +1722,7 @@ public sealed class ScalarValueValidationMiddleware
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public ScalarValueValidationMiddleware(RequestDelegate next)` | — | Stores the next `RequestDelegate`. The scope itself is opened in `InvokeAsync`, which wraps each request in `ValidationErrorsContext.BeginScope()`. |
-| `public Task InvokeAsync(HttpContext context)` | `Task` | Begins a validation scope at the body root. JSON syntax failures remain 400; collected semantic errors are rejected by the endpoint filter. Also normalizes empty framework 400 responses and handles exception-based binding compatibility paths using endpoint metadata. |
+| `public Task InvokeAsync(HttpContext context)` | `Task` | Begins a validation scope at the body root. JSON syntax failures remain 400; collected semantic errors are rejected by the endpoint filter. Handles exception-based binding compatibility paths using endpoint metadata, without rewriting application-owned or other bodyless responses. |
 
 #### Minimal API semantic JSON validation
 
@@ -1750,10 +1750,22 @@ Rule-only failures retain their rule violations without inventing a missing-fiel
 Explicit property-level converters remain application-owned. Ordinary CLR
 property nullability, required-constructor presence, and JSON syntax retain framework semantics.
 Malformed JSON takes precedence over
-earlier collected validation failures and remains 400 Problem Details.
+earlier collected validation failures and remains 400.
+
+Bodyless responses are not formatted by scalar-validation middleware, including an application's
+own `Results.BadRequest()`. For a host that wants Problem Details for bare framework 400s, opt into
+`services.AddTrellisProblemDetails()` and `app.UseStatusCodePages()` before scalar validation and
+endpoints. This explicit status-code-pages policy also formats eligible application-owned
+bodyless responses; the host, not scalar validation, owns that choice.
 
 Standalone `JsonSerializer.Deserialize` has no ASP collection scope: the same readers reject
 validation failures with `TrellisJsonValidationException`, rather than returning a placeholder.
+**Shared-options compatibility:** JSON options configured by `AddScalarValueValidation` enforce
+missing/null required value-object inputs even outside the middleware, including manual
+`ReadFromJsonAsync`, routes that do not enter its scope, tests and persisted-payload reads.
+Missing required values previously went unchecked by this modifier without a scope; they now
+throw `TrellisJsonValidationException` before application callbacks. Use separate transport
+options or a DTO-to-domain adapter if that validation boundary is not wanted for those reads.
 Syntax, configuration, and implementation failures may still throw. This is not a claim that
 all JSON errors or ASP.NET binding operations are exception-free: a non-nullable root body can
 still trigger ASP.NET's required-body check in Development after a collected failure, and
@@ -1762,7 +1774,9 @@ That compatibility arm requires a recorded root failure, required-body metadata 
 framework's required-body diagnostic; unrelated binding/protocol 400s are not converted to 422.
 For a rejected required root followed by an invalid query parameter, the semantic body
 failure retains precedence in both environments. With a valid required root or an optional
-root, the framework's invalid-query 400 is preserved instead.
+root, the framework's invalid-query 400 is preserved instead. ASP.NET Core can invoke filters
+after a parameter-check failure, but its terminal delegate returns an empty result whenever
+the response status is already at least 400, rather than calling the handler.
 
 ### `ScalarValuePathTracking`
 
@@ -1788,6 +1802,14 @@ path. Reflection-enabled hosts can discover Result converter attributes dynamica
 disabled hosts require closed generated or explicit registrations instead.
 Class-only scalar registrations are not emitted for struct `IScalarValue` implementations;
 structs with a Result converter use the unconstrained `RegisterResultConverter` registration.
+The built-in optional scalar converters and `RegisterScalar` remain reference-type-only
+(`where TValue : class`): Core `Maybe<T>` can hold structs, but `Maybe<TStructScalar>` JSON
+transport requires an application-owned converter or a DTO adapter.
+Closed Result-converter construction is emitted only when the converter type is non-abstract
+and accessible from the generated registry and has an accessible parameterless constructor.
+Otherwise the generator leaves converter construction to the application, preserving the
+remaining graph registrations; an accessible startup hook can call `RegisterResultConverter`
+with an application-created instance when closed root registration is needed.
 
 | Signature | Returns | Description |
 | --- | --- | --- |

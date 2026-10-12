@@ -132,9 +132,12 @@ public class PathTrackingRegistryGeneratorTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void RegisterValidation_StructScalar_ReachableRoot_DoesNotEmitClassConstrainedCalls(bool resultConverter)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void RegisterValidation_StructScalar_ReachableShape_DoesNotEmitClassConstrainedCalls(
+        bool resultConverter, bool optional)
     {
         var attribute = resultConverter
             ? "[global::System.Text.Json.Serialization.JsonConverter(typeof(ManualScalarConverter))]"
@@ -153,6 +156,7 @@ public class PathTrackingRegistryGeneratorTests
               }
               """
             : string.Empty;
+        var root = optional ? "global::Trellis.Maybe<ManualScalar>" : "ManualScalar";
         var source = $$"""
             {{attribute}}
             public readonly record struct ManualScalar(int Value) : global::Trellis.IScalarValue<ManualScalar, int>
@@ -163,7 +167,7 @@ public class PathTrackingRegistryGeneratorTests
                     global::Trellis.Result.Ok(new ManualScalar(int.Parse(value!)));
             }
             {{converter}}
-            [global::System.Text.Json.Serialization.JsonSerializable(typeof(ManualScalar))]
+            [global::System.Text.Json.Serialization.JsonSerializable(typeof({{root}}))]
             public partial class AppContext : global::System.Text.Json.Serialization.JsonSerializerContext
             {
                 public AppContext() : base(null) { }
@@ -185,6 +189,32 @@ public class PathTrackingRegistryGeneratorTests
         {
             generated.Should().BeNull("plain struct scalar roots have no class-constrained validation registration");
         }
+    }
+
+    [Theory]
+    [InlineData("private", "public", "")]
+    [InlineData("public", "private", "")]
+    [InlineData("public", "public", "int unused")]
+    public void RegisterValidation_ResultConverter_NotConstructibleFromRegistry_PreservesConsumerCompilation(
+        string converterAccessibility, string constructorAccessibility, string parameters)
+    {
+        var source = CreateNestedConverterSource(converterAccessibility, constructorAccessibility, parameters);
+
+        RunGeneratorOrNull(source, checkCompilation: true).Should().BeNull(
+            "a closed registration cannot construct the application's inaccessible or parameterized converter");
+    }
+
+    [Theory]
+    [InlineData("public", "public")]
+    [InlineData("internal", "internal")]
+    [InlineData("protected internal", "public")]
+    public void RegisterValidation_ResultConverter_AccessibleParameterlessConstructor_RegistersTheConverter(
+        string converterAccessibility, string constructorAccessibility)
+    {
+        var source = CreateNestedConverterSource(converterAccessibility, constructorAccessibility, string.Empty);
+
+        RunGeneratorOrNull(source, checkCompilation: true).Should().Contain(
+            "RegisterScalar<global::Sample, int>(new global::Sample.Converter())");
     }
 
     [Fact]
@@ -626,6 +656,41 @@ public class PathTrackingRegistryGeneratorTests
         return generated!;
     }
 
+    private static string CreateNestedConverterSource(
+        string converterAccessibility, string constructorAccessibility, string parameters) => $$"""
+        [global::System.Text.Json.Serialization.JsonConverter(typeof(Sample.Converter))]
+        public class Sample : global::Trellis.ScalarValueObject<Sample, int>,
+            global::Trellis.IScalarValue<Sample, int>
+        {
+            private Sample(int value) : base(value) { }
+            public static global::Trellis.Result<Sample> TryCreate(int value, string? fieldName = null) =>
+                global::Trellis.Result.Ok(new Sample(value));
+            public static global::Trellis.Result<Sample> TryCreate(string? value, string? fieldName = null) =>
+                global::Trellis.Result.Ok(new Sample(int.Parse(value!)));
+
+            {{converterAccessibility}} sealed class Converter : global::Trellis.ResultJsonConverter<Sample>
+            {
+                {{constructorAccessibility}} Converter({{parameters}}) { }
+                public override global::Trellis.Result<Sample> TryRead(
+                    ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type type,
+                    global::System.Text.Json.JsonSerializerOptions options) =>
+                    Sample.TryCreate(reader.GetInt32());
+                public override void Write(global::System.Text.Json.Utf8JsonWriter writer, Sample value,
+                    global::System.Text.Json.JsonSerializerOptions options) =>
+                    writer.WriteNumberValue(value.Value);
+            }
+
+            [global::System.Text.Json.Serialization.JsonSerializable(typeof(Sample))]
+            public partial class AppContext : global::System.Text.Json.Serialization.JsonSerializerContext
+            {
+                public AppContext() : base(null) { }
+                protected override global::System.Text.Json.JsonSerializerOptions? GeneratedSerializerOptions => null;
+                public override global::System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(
+                    global::System.Type type) => null;
+            }
+        }
+        """;
+
     private static string? RunGeneratorOrNull(string source, bool checkCompilation = false)
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -644,7 +709,7 @@ public class PathTrackingRegistryGeneratorTests
             .Should().BeEmpty("the source generator should not produce errors");
         if (checkCompilation)
             updatedCompilation.GetDiagnostics(cancellationToken).Where(d => d.Severity == DiagnosticSeverity.Error)
-                .Should().BeEmpty("valid scalar structs must not acquire class-constrained generated calls");
+                .Should().BeEmpty("generated registrations must preserve valid consumer compilation");
 
         return driver.GetRunResult().Results
             .SelectMany(r => r.GeneratedSources)

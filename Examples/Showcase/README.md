@@ -137,6 +137,10 @@ then reject the request before executing the handler. The enum and composite con
 Result-returning parsers with their standalone serializer adapters; native registrations close
 the ASP collecting adapters at compile time. No `ThrowOnBadRequest` override is required.
 Malformed JSON still returns 400 even when an earlier field failed semantic validation.
+Both hosts explicitly register `AddTrellisProblemDetails()` and `UseStatusCodePages()`
+to format bare responses, including framework binding 400s and routing 404s, and share
+Trellis' friendly 500 detail customization. This host policy also formats eligible
+application-owned bare responses; scalar-validation middleware itself does not rewrite them.
 
 ### Replaying `api.http`
 
