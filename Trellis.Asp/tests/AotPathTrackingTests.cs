@@ -82,6 +82,15 @@ public sealed class AotPathTrackingTests : IDisposable
             writer.WriteStringValue("primary");
     }
 
+    private sealed class LegacyThrowingEmailConverter(TrellisJsonValidationException exception) : JsonConverter<Email>
+    {
+        public override Email? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
+            throw exception;
+
+        public override void Write(Utf8JsonWriter writer, Email value, JsonSerializerOptions options) =>
+            writer.WriteStringValue(value.Value);
+    }
+
     public sealed record AotAliasedMemberDto([property: JsonPropertyName("primary_email")] Email Contact);
 
     public sealed record AotAliasedTeamCommand(List<AotAliasedMemberDto> Members);
@@ -98,6 +107,144 @@ public sealed class AotPathTrackingTests : IDisposable
         services.AddScalarValueValidationForMinimalApi();
         var provider = services.BuildServiceProvider();
         return provider.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>().Value.SerializerOptions;
+    }
+
+    [Theory]
+    [InlineData("accountType", null, "/accountType")]
+    [InlineData("type", "type", "/type/type")]
+    [InlineData("product/type~", "members", "/members/product~1type~0")]
+    [InlineData("product/type~", "members/~", "/members~1~0/product~1type~0")]
+    public void Read_ResultScalarConverter_CollectsAtThePropertyPointerWithoutThrowing(
+        string propertyName,
+        string? ancestorName,
+        string expectedPath)
+    {
+        var options = BuildOptions();
+        options.Converters.Clear();
+
+        using var scope = ValidationErrorsContext.BeginScope();
+        using var ancestor = ancestorName is null ? null : ValidationErrorsContext.PushPathSegment(ancestorName);
+        var previousAncestor = ValidationErrorsContext.CurrentAncestorPointer();
+        ValidationErrorsContext.CurrentPropertyName = "outside";
+
+        ReadScalar<DcOrderState>(propertyName, "\"Unknown\""u8, options).Should().BeNull();
+        var violation = ValidationErrorsContext.GetUnprocessableContent()!
+            .Fields.Items.Should().ContainSingle().Subject;
+        violation.Field.Path.Should().Be(expectedPath);
+        violation.Field.In.Should().Be(InputLocation.Body);
+        violation.ReasonCode.Should().Be("enum.name-undefined");
+        violation.Args.Should().ContainKey("allowed");
+        violation.Detail.Should().NotBeNullOrWhiteSpace();
+        ValidationErrorsContext.CurrentAncestorPointer().Should().Be(previousAncestor);
+        ValidationErrorsContext.CurrentPropertyName.Should().Be("outside");
+        ValidationErrorsContext.HasErrors.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Read_LegacyThrowingScalarConverter_EscapedNestedProperty_RebasesOnceAndRestoresContext()
+    {
+        var original = new TrellisJsonValidationException("Email is too long.")
+        {
+            InvalidInput = Error.InvalidInput.ForField(
+                "email.too-long", "email", ValidationArgs.Of("maxLength", 64), "Email is too long."),
+        };
+        var originalViolation = original.InvalidInput.Fields.Items.Should().ContainSingle().Subject;
+        var options = BuildOptions();
+        options.Converters.Clear();
+        options.Converters.Add(new LegacyThrowingEmailConverter(original));
+
+        using var scope = ValidationErrorsContext.BeginScope();
+        using var members = ValidationErrorsContext.PushPathSegment("members/~");
+        using var index = ValidationErrorsContext.PushPathSegment("1");
+        var previousAncestor = ValidationErrorsContext.CurrentAncestorPointer();
+        ValidationErrorsContext.CurrentPropertyName = "outside";
+
+        Action readScalar = () => ReadScalar<Email>("contact/type~", "\"oversized\""u8, options);
+        var exception = readScalar.Should().Throw<TrellisJsonValidationException>().Which;
+        var violation = exception.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
+
+        violation.Field.Should().Be(InputPointer.ForBody("/members~1~0/1/contact~1type~0"));
+        violation.ReasonCode.Should().Be(originalViolation.ReasonCode);
+        violation.Args.Should().BeEquivalentTo(originalViolation.Args);
+        violation.Detail.Should().Be(originalViolation.Detail);
+        exception.Message.Should().Be(original.Message);
+        exception.InnerException.Should().BeSameAs(original);
+        JsonValidationPathRebase.IsMarked(exception).Should().BeTrue();
+        ValidationErrorsContext.CurrentAncestorPointer().Should().Be(previousAncestor);
+        ValidationErrorsContext.CurrentPropertyName.Should().Be("outside");
+        ValidationErrorsContext.HasErrors.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("dcInt", null, "/dcInt")]
+    [InlineData("quantity", null, "/quantity")]
+    [InlineData("quantity", "quantity", "/quantity/quantity")]
+    [InlineData("quantity/type~", "members/~", "/members~1~0/quantity~1type~0")]
+    public void Read_RegisteredScalarConverter_CollectsWithoutAThrowOrASyntheticLeaf(
+        string propertyName,
+        string? ancestorName,
+        string expectedPath)
+    {
+        var options = BuildOptions();
+        options.Converters.Clear();
+        ScalarValuePathTracking.RegisterScalar<DcInt, int>();
+        Action readScalar = () => JsonSerializer.Deserialize<DcInt>("0", options);
+        var original = readScalar.Should().Throw<TrellisJsonValidationException>()
+            .Which.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
+
+        using var scope = ValidationErrorsContext.BeginScope();
+        using var ancestor = ancestorName is null ? null : ValidationErrorsContext.PushPathSegment(ancestorName);
+        var previousAncestor = ValidationErrorsContext.CurrentAncestorPointer();
+        ValidationErrorsContext.CurrentPropertyName = "outside";
+
+        ReadScalar<DcInt>(propertyName, "0"u8, options).Should().BeNull();
+        var violation = ValidationErrorsContext.GetUnprocessableContent()!
+            .Fields.Items.Should().ContainSingle().Subject;
+
+        violation.Field.Should().Be(InputPointer.ForBody(expectedPath));
+        violation.ReasonCode.Should().Be(original.ReasonCode);
+        violation.Args.Should().BeEquivalentTo(original.Args);
+        violation.Detail.Should().NotBeNullOrWhiteSpace();
+        ValidationErrorsContext.CurrentAncestorPointer().Should().Be(previousAncestor);
+        ValidationErrorsContext.CurrentPropertyName.Should().Be("outside");
+        ValidationErrorsContext.HasErrors.Should().BeTrue();
+    }
+
+    private static T? ReadScalar<T>(string propertyName, ReadOnlySpan<byte> json, JsonSerializerOptions options)
+    {
+        var reader = new Utf8JsonReader(json);
+        reader.Read();
+        return new PathTrackingPropertyConverter<T>(propertyName)
+            .Read(ref reader, typeof(T), options);
+    }
+
+    [Theory]
+    [InlineData("\"Unknown\"", true)]
+    [InlineData("null", false)]
+    public void Read_RegisteredOptionalEnum_CollectsInvalidNamesAndPreservesOptionalNull(
+        string json, bool invalid)
+    {
+        ScalarValuePathTracking.ClearForTests();
+        ScalarValuePathTracking.RegisterScalar<DcOrderState, string>(new RequiredEnumJsonConverter<DcOrderState>());
+        ScalarValuePathTracking.RegisterProperty<Maybe<DcOrderState>>();
+        var options = BuildOptions();
+        options.Converters.Clear();
+        options.Converters.Add(new RegisteredValidationJsonConverterFactory());
+        using var aot = ServiceCollectionExtensions.SuppressDynamicPathConverterConstructionForTests();
+        using var scope = ValidationErrorsContext.BeginScope();
+
+        ReadScalar<Maybe<DcOrderState>>("state", System.Text.Encoding.UTF8.GetBytes(json), options)
+            .HasNoValue.Should().BeTrue();
+
+        ValidationErrorsContext.HasErrors.Should().Be(invalid);
+        if (invalid)
+        {
+            var violation = ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields.Items.Should().ContainSingle().Subject;
+            violation.Field.Should().Be(InputPointer.ForBody("/state"));
+            violation.ReasonCode.Should().Be(ValidationCodes.EnumNameUndefined);
+            violation.Args.Should().ContainKey("allowed");
+        }
     }
 
     [Fact]

@@ -5,6 +5,22 @@ using System.Text.Json.Serialization.Metadata;
 
 internal static class PathTrackingJsonReader
 {
+    internal static T? ReadValue<T>(ref Utf8JsonReader reader, JsonTypeInfo<T> typeInfo, bool scalar)
+    {
+        if (typeInfo.Converter is ResultJsonConverter<T> resultConverter)
+            return JsonValidationReader.Read(ref reader, resultConverter, typeof(T), typeInfo.Options, scalar);
+
+        if (ValidationErrorsContext.Current is not null
+            && typeInfo.Converter.GetType().IsGenericType
+            && typeInfo.Converter.GetType().GetGenericTypeDefinition() == typeof(ParsableJsonConverter<>)
+            && ScalarValuePathTracking.TryGetValidationConverter(typeof(T)) is System.Text.Json.Serialization.JsonConverter<T> validatingConverter)
+        {
+            return validatingConverter.Read(ref reader, typeof(T), typeInfo.Options);
+        }
+
+        return JsonSerializer.Deserialize(ref reader, typeInfo);
+    }
+
     internal static T? ReadContainerValue<T>(ref Utf8JsonReader reader, JsonTypeInfo<T?> typeInfo)
     {
         var previousPropertyName = ValidationErrorsContext.CurrentPropertyName;
@@ -15,7 +31,7 @@ internal static class PathTrackingJsonReader
 
         try
         {
-            return JsonSerializer.Deserialize(ref reader, typeInfo);
+            return ReadValue(ref reader, typeInfo, scalar: false);
         }
         finally
         {

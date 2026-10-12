@@ -3,7 +3,7 @@ package: Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
 types: [Age, CountryCode, CurrencyCode, EmailAddress, GeoBoundingBox, GeoBounds, GeoCoordinate, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, WeeklyPeriod, WeeklySchedule, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
 version: v3
-last_verified: 2026-10-10
+last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when using ready-made value objects such as EmailAddress, Money or GeoCoordinate, building geographic bounds, or choosing a built-in primitive versus a custom one."
@@ -484,7 +484,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
 ### `CompositeValueObjectJsonConverter<T>`
 
 ```csharp
-public sealed class CompositeValueObjectJsonConverter<T> : JsonConverter<T>
+public sealed class CompositeValueObjectJsonConverter<T> : ResultJsonConverter<T>
     where T : ValueObject
 ```
 
@@ -498,12 +498,19 @@ order the properties are declared.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Reads a JSON object, populates parameters by JSON property name (case-insensitive), invokes `TryCreate`, and throws `TrellisJsonValidationException` with the error display message on failure. When required properties are missing, throws a single `TrellisJsonValidationException` listing **all** missing names (e.g. `Required properties missing: 'amount', 'currency'.`) so multi-field violations surface in one round trip. |
+| `public override Result<T> TryRead(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `Result<T>` | Reads the complete object, populates parameters by JSON property name (case-insensitive), and returns accumulated token-format/null/missing-field violations before invoking `TryCreate`. Domain validation failures remain Result values. A missing-field-only failure lists **all** missing names (e.g. `Required properties missing: 'amount', 'currency'.`). |
 | `public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)` | `void` | Writes one JSON property per eligible property declared directly on `T`, in declaration order, using the underlying primitive value for `IScalarValue<,>` properties. Inherited properties, indexers, and properties with public setters are excluded. |
 
 Apply via `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on the value object type.
 Reflection is performed once per generic instantiation and cached (lazily, so a configuration error surfaces
 its own actionable message rather than being buried inside a `TypeInitializationException`).
+
+Inherited `Read` from [`ResultJsonConverter<T>`](trellis-api-core.md#resultjsonconvertert)
+rejects standalone serializer failures with `TrellisJsonValidationException`, preserving the
+structured `Error.InvalidInput`. ASP collecting adapters call `TryRead` directly instead, so
+ordinary client validation failures do not throw or depend on `ThrowOnBadRequest`. Invalid
+token values are fully consumed before collection continues; malformed JSON and unsupported
+configuration still throw. The parser and writer remain ASP-independent.
 
 **Native AOT / trimming.** The converter is AOT-usable, subject to two rooting requirements:
 

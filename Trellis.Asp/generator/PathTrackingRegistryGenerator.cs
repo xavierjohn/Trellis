@@ -78,7 +78,8 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
         if (walker.PropertyRegistrations.Count == 0
             && walker.ObjectRegistrations.Count == 0
             && walker.CollectionRegistrations.Count == 0
-            && walker.DictionaryRegistrations.Count == 0)
+            && walker.DictionaryRegistrations.Count == 0
+            && walker.ValidationRegistrations.Count == 0)
         {
             return;
         }
@@ -107,6 +108,9 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
         sb.AppendLine("    [ModuleInitializer]");
         sb.AppendLine("    internal static void Register()");
         sb.AppendLine("    {");
+
+        foreach (var registration in walker.ValidationRegistrations)
+            sb.AppendLine($"        ScalarValuePathTracking.{registration};");
 
         foreach (var type in walker.PropertyRegistrations)
             sb.AppendLine($"        ScalarValuePathTracking.RegisterProperty<{type}>();");
@@ -159,10 +163,23 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
 
         public SortedSet<CollectionRegistration> DictionaryRegistrations { get; } = new();
 
+        public SortedSet<string> ValidationRegistrations { get; } = new(System.StringComparer.Ordinal);
+
         public void Walk(ITypeSymbol type)
         {
             if (!_visited.Add(type))
                 return;
+
+            RegisterValidation(type);
+            if (IsScalarValue(type) || IsMaybeScalarValue(type) || IsConverterBackedValueObject(type))
+                return;
+
+            var dictionaryValue = GetWrappableDictionaryValueType(type);
+            if (dictionaryValue is not null)
+            {
+                Walk(dictionaryValue);
+                return;
+            }
 
             var element = GetEnumerableElementType(type);
             if (element is not null)
@@ -185,6 +202,7 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
                     if (IsAccessible(propertyType))
                         PropertyRegistrations.Add(propertyType.ToDisplayString(FullyQualified));
 
+                    RegisterValidation(propertyType);
                     continue;
                 }
 
@@ -230,11 +248,70 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
                 // would register converters the reflection pipeline never installs, which is the parity
                 // break in the other direction.
                 if (IsConverterBackedValueObject(propertyType))
+                {
+                    RegisterValidation(propertyType);
                     continue;
+                }
 
                 Walk(propertyType);
             }
         }
+
+        private void RegisterValidation(ITypeSymbol type)
+        {
+            if (IsMaybeScalarValue(type) && type is INamedTypeSymbol maybe)
+            {
+                RegisterValidation(maybe.TypeArguments[0]);
+                return;
+            }
+
+            if (!IsAccessible(type))
+                return;
+
+            var scalarPrimitive = GetScalarPrimitiveType(type);
+            var converterAttribute = type.GetAttributes().FirstOrDefault(a =>
+                a.AttributeClass?.ToDisplayString() == "System.Text.Json.Serialization.JsonConverterAttribute");
+            var converterType = converterAttribute is { ConstructorArguments.Length: > 0 }
+                ? converterAttribute.ConstructorArguments[0].Value as INamedTypeSymbol
+                : null;
+
+            for (var current = converterType?.BaseType; current is not null; current = current.BaseType)
+            {
+                if (current.Name == "ResultJsonConverter"
+                    && current.ContainingNamespace.ToDisplayString() == "Trellis"
+                    && current.TypeArguments.Length == 1
+                    && SymbolEqualityComparer.Default.Equals(current.TypeArguments[0], type))
+                {
+                    if (!CanConstructConverter(converterType!))
+                        return;
+
+                    ValidationRegistrations.Add(scalarPrimitive is not null && type.IsReferenceType
+                        ? $"RegisterScalar<{type.ToDisplayString(FullyQualified)}, {scalarPrimitive.ToDisplayString(FullyQualified)}>(new {converterType!.ToDisplayString(FullyQualified)}())"
+                        : $"RegisterResultConverter(new {converterType!.ToDisplayString(FullyQualified)}(), scalar: {(scalarPrimitive is not null ? "true" : "false")})");
+                    return;
+                }
+            }
+
+            if (scalarPrimitive is null || !type.IsReferenceType)
+                return;
+
+            if (converterType is not null
+                && (converterType.Name != "ParsableJsonConverter"
+                    || converterType.ContainingNamespace.ToDisplayString() != "Trellis"))
+            {
+                return;
+            }
+
+            ValidationRegistrations.Add(
+                $"RegisterScalar<{type.ToDisplayString(FullyQualified)}, {scalarPrimitive.ToDisplayString(FullyQualified)}>()");
+        }
+
+        private bool CanConstructConverter(INamedTypeSymbol converterType) =>
+            !converterType.IsAbstract
+            && _compilation.IsSymbolAccessibleWithin(converterType, _compilation.Assembly)
+            && converterType.InstanceConstructors.Any(constructor =>
+                constructor.Parameters.Length == 0
+                && _compilation.IsSymbolAccessibleWithin(constructor, _compilation.Assembly));
 
         // Mirrors Type.GetProperties(BindingFlags.Public | BindingFlags.Instance) in the runtime
         // modifier, which includes properties inherited from base types.
@@ -295,7 +372,38 @@ public sealed class PathTrackingRegistryGenerator : IIncrementalGenerator
 
         private bool IsScalarValue(ITypeSymbol type) =>
             _scalarValueInterface is not null
-            && type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, _scalarValueInterface));
+            && (type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, _scalarValueInterface))
+                || GetScalarPrimitiveType(type) is not null);
+
+        private ITypeSymbol? GetScalarPrimitiveType(ITypeSymbol type)
+        {
+            var implemented = type.AllInterfaces.FirstOrDefault(i =>
+                SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, _scalarValueInterface)
+                && SymbolEqualityComparer.Default.Equals(i.TypeArguments[0], type));
+            if (implemented is not null)
+                return implemented.TypeArguments[1];
+
+            // Core's generator adds the interface later; its Required base constraint already names the primitive.
+            for (var current = type.BaseType; current is not null; current = current.BaseType)
+            {
+                if (current.ContainingNamespace.ToDisplayString() != "Trellis"
+                    || current.TypeArguments.Length != 1
+                    || !SymbolEqualityComparer.Default.Equals(current.TypeArguments[0], type)
+                    || current.Name is not ("RequiredString" or "RequiredGuid" or "RequiredInt"
+                        or "RequiredLong" or "RequiredDecimal" or "RequiredBool"
+                        or "RequiredDateTime" or "RequiredDateTimeOffset" or "RequiredEnum"))
+                {
+                    continue;
+                }
+
+                return current.OriginalDefinition.TypeParameters[0].ConstraintTypes
+                    .OfType<INamedTypeSymbol>()
+                    .FirstOrDefault(i => SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, _scalarValueInterface))
+                    ?.TypeArguments[1];
+            }
+
+            return null;
+        }
 
         private bool IsMaybeScalarValue(ITypeSymbol type) =>
             _maybeType is not null

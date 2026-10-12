@@ -44,6 +44,9 @@ Default failure mappings include 401 for `AuthenticationRequired`, 403 for `Forb
 ## Important Setup
 
 - Minimal API scalar validation also requires `app.UseScalarValueValidation()` and `.WithScalarValueValidation()` on participating endpoints.
+- Scalar and composite JSON validation collects expected failures before the handler runs, without enabling `ThrowOnBadRequest`. Malformed JSON remains 400; semantic failures use the configured validation status (default 422).
+- Scalar-validation middleware leaves application-owned bare responses unchanged. To format bare framework 400s as Problem Details, explicitly pair `AddTrellisProblemDetails()` with `app.UseStatusCodePages()`; this host policy also formats eligible application-owned bare responses.
+- Configured scalar-validation JSON options reject missing/null required value-object inputs even outside the request scope (`JsonSerializer.Deserialize`, manual `ReadFromJsonAsync`, excluded routes or persisted payloads). Such reads throw `TrellisJsonValidationException` rather than returning invalid DTOs.
 - `AddTrellisProblemDetails()` pairs with `app.UseTrellisProblemDetails()`.
 - Inside `AddRateLimiter(...)`, call `options.UseTrellisRejectionHandler()` to let Trellis own `OnRejected`; use named endpoint policies without policy-level `OnRejected` callbacks. Inline `RequireRateLimiting(policy)` bypasses the options handler, even without a policy callback. Rate-limit policies and partitioning remain application-owned.
 - Idempotency requires `AddTrellisIdempotency(...)`, exactly one store registration, `app.UseTrellisIdempotency()`, and `[Idempotent]` on opted-in endpoints.

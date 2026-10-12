@@ -41,6 +41,16 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
     /// <inheritdoc />
     public override TResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
+        if (ValidationErrorsContext.Current is null)
+        {
+            using var scope = ValidationErrorsContext.BeginScope();
+            var value = Read(ref reader, typeToConvert, options);
+            if (ValidationErrorsContext.GetUnprocessableContent() is { } invalidInput)
+                throw new TrellisJsonValidationException(invalidInput.GetDisplayMessage()) { InvalidInput = invalidInput };
+
+            return value;
+        }
+
         if (reader.TokenType == JsonTokenType.Null)
         {
             var nullFieldName = ValidationErrorsContext.CurrentPropertyName ?? GetDefaultFieldName();
@@ -49,10 +59,17 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
 
         var fieldName = ValidationErrorsContext.CurrentPropertyName ?? GetDefaultFieldName();
         if (!TryReadPrimitiveValue(ref reader, fieldName, out var primitiveValue))
+        {
+            if (!reader.TrySkip())
+                throw new JsonException("Incomplete JSON value.");
+
+            ValidationErrorsContext.RecordReadFailure(fieldName);
             return OnValidationFailure();
+        }
 
         if (primitiveValue is null)
         {
+            ValidationErrorsContext.RecordReadFailure(fieldName);
             ValidationErrorsContext.AddBodyError(fieldName, ValidationCodes.ValueNotNull, $"Cannot deserialize null to {ResourceRef.FormatTypeName(typeof(TValue))}");
             return OnValidationFailure();
         }
@@ -61,6 +78,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
             onSuccess: WrapSuccess,
             onFailure: createError =>
             {
+                ValidationErrorsContext.RecordReadFailure(fieldName);
                 if (createError is Error.InvalidInput unprocessable)
                     ValidationErrorsContext.AddBodyError(unprocessable);
                 else
@@ -118,41 +136,33 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive> 
 
         if (reader.TokenType == JsonTokenType.Number)
         {
-            try
-            {
-                var enumValue = ReadNumericEnumValue(ref reader);
-                if (!IsValidEnumValue(enumValue))
-                {
-                    ValidationErrorsContext.AddBodyError(
-                        fieldName,
-                        ValidationCodes.EnumUndefined,
-                        $"'{enumValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.",
-                        ValidationArgs.Allowed(Enum.GetNames(typeof(TPrimitive))));
-                    return false;
-                }
-
-                primitiveValue = (TPrimitive)enumValue;
-                return true;
-            }
-            catch (Exception ex) when (ex is FormatException or InvalidOperationException)
+            var rawValue = reader.TryGetInt64(out var signedValue)
+                ? signedValue.ToString(CultureInfo.InvariantCulture)
+                : reader.TryGetUInt64(out var unsignedValue)
+                    ? unsignedValue.ToString(CultureInfo.InvariantCulture)
+                    : null;
+            if (rawValue is null || !Enum.TryParse(typeof(TPrimitive), rawValue, out var enumValue))
             {
                 ValidationErrorsContext.AddBodyError(fieldName, ValidationCodes.FormatInteger, $"JSON number is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
                 return false;
             }
+
+            if (!IsValidEnumValue(enumValue))
+            {
+                ValidationErrorsContext.AddBodyError(
+                    fieldName,
+                    ValidationCodes.EnumUndefined,
+                    $"'{enumValue}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.",
+                    ValidationArgs.Allowed(Enum.GetNames(typeof(TPrimitive))));
+                return false;
+            }
+
+            primitiveValue = (TPrimitive)enumValue;
+            return true;
         }
 
         ValidationErrorsContext.AddBodyError(fieldName, ValidationCodes.FormatConversion, $"JSON token '{reader.TokenType}' is not a valid {ResourceRef.FormatTypeName(typeof(TPrimitive))}.");
         return false;
-    }
-
-    private static object ReadNumericEnumValue(ref Utf8JsonReader reader)
-    {
-        var underlyingType = Enum.GetUnderlyingType(typeof(TPrimitive));
-        var rawValue = underlyingType == typeof(ulong)
-            ? reader.GetUInt64()
-            : Convert.ChangeType(reader.GetInt64(), underlyingType, CultureInfo.InvariantCulture);
-
-        return Enum.ToObject(typeof(TPrimitive), rawValue);
     }
 
     private static bool TryParseEnumValue(string? rawValue, out TPrimitive? primitiveValue)

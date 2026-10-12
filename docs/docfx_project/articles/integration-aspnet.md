@@ -610,6 +610,25 @@ Conformance suite for a custom store: [`trellis-api-testing-idempotency.md`](../
 | Minimal API | `services.AddScalarValueValidationForMinimalApi();` + `app.UseScalarValueValidation();` + `.WithScalarValueValidation()` per endpoint |
 | Either | `services.AddTrellisAspWithScalarValidation();` (registers `TrellisAspOptions` AND chains `AddScalarValueValidation()` for **both** MVC and Minimal API JSON pipelines in one call), or call `AddTrellisAsp()` + `AddScalarValueValidation()` explicitly when the split matters (e.g. a host that only needs error mapping). |
 
+Scalar and composite JSON failures are collected during binding and rejected before the
+handler runs, without enabling `ThrowOnBadRequest`. Enum and composite converters expose
+Result-returning parsers; ASP collecting adapters use them directly, while standalone
+serialization still rejects invalid values. Semantic failures retain their configured
+validation status (default 422). Malformed JSON takes precedence and remains 400
+even when an earlier field already failed validation.
+
+Scalar-validation middleware does not rewrite bodyless responses, including an application's
+own `Results.BadRequest()`. To format bare framework 400s as Problem Details, explicitly
+register `services.AddTrellisProblemDetails()` and add `app.UseStatusCodePages()` before
+scalar validation/endpoints. This status-code-pages policy also formats eligible
+application-owned bodyless responses.
+
+The configured JSON options enforce missing/null required value-object inputs outside the
+request scope too: standalone deserialization, manual `ReadFromJsonAsync`, excluded routes,
+tests and persisted-payload reads throw `TrellisJsonValidationException` instead of producing
+invalid DTOs. Keep separate transport options or use a DTO-to-domain adapter where that
+validation boundary is not intended.
+
 > [!IMPORTANT]
 > The `IServiceCollection`-receiver `AddScalarValueValidation()` only configures shared JSON support. For MVC apps you still need `AddControllers().AddScalarValueValidation()` so the `ScalarValueValidationFilter` and `ScalarValueModelBinderProvider` are registered.
 

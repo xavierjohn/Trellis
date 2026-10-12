@@ -38,8 +38,8 @@ using Trellis;
 /// </para>
 /// <para>
 /// On read, the converter populates a value array by JSON property name (case-insensitive), invokes
-/// <c>TryCreate</c>, and throws <see cref="TrellisJsonValidationException"/> with the result's display
-/// message on failure.
+/// <c>TryCreate</c>, and returns expected validation failures from <c>TryRead</c>. Inherited
+/// <c>Read</c> rejects failures with <see cref="TrellisJsonValidationException"/> for standalone serialization.
 /// </para>
 /// <para>
 /// This converter uses reflection at first use (results are cached). Native AOT apps must root the
@@ -51,7 +51,7 @@ using Trellis;
 /// </remarks>
 public sealed class CompositeValueObjectJsonConverter<
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.PublicProperties)]
-T> : JsonConverter<T>
+T> : ResultJsonConverter<T>
     where T : ValueObject
 {
     // Lazy rather than a static field initializer: a field initializer wraps every configuration
@@ -75,15 +75,21 @@ T> : JsonConverter<T>
     private const string ConversionFailureCode = ValidationCodes.FormatConversion;
 
     /// <inheritdoc />
-    public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override Result<T> TryRead(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType != JsonTokenType.StartObject)
-            throw Invalid(
+        {
+            if (!reader.TrySkip())
+                throw new JsonException("Incomplete JSON value.");
+
+            return Result.Fail<T>(Invalid(
                 $"Expected JSON object for {typeof(T).Name} value.",
-                InputPointer.Root);
+                InputPointer.Root));
+        }
 
         var values = new object?[Metadata.Properties.Count];
         var seen = new bool[Metadata.Properties.Count];
+        List<FieldViolation>? violations = null;
 
         while (reader.Read())
         {
@@ -94,18 +100,30 @@ T> : JsonConverter<T>
                 continue;
 
             var name = reader.GetString();
-            reader.Read();
+            if (!reader.Read())
+                throw new JsonException($"Incomplete JSON object for {typeof(T).Name} value.");
 
             if (name is not null && Metadata.IndexByJsonName.TryGetValue(name, out var idx))
             {
-                values[idx] = ReadPrimitive(ref reader, Metadata.Properties[idx].PrimitiveType, Metadata.Properties[idx].JsonName);
+                if (!TryReadPrimitive(ref reader, Metadata.Properties[idx].PrimitiveType,
+                    Metadata.Properties[idx].JsonName, out values[idx], out var violation))
+                {
+                    (violations ??= []).Add(violation);
+                    if (!reader.TrySkip())
+                        throw new JsonException("Incomplete JSON value.");
+                }
+
                 seen[idx] = true;
             }
             else
             {
-                reader.Skip();
+                if (!reader.TrySkip())
+                    throw new JsonException("Incomplete JSON value.");
             }
         }
+
+        if (reader.TokenType != JsonTokenType.EndObject)
+            throw new JsonException($"Incomplete JSON object for {typeof(T).Name} value.");
 
         List<string>? missing = null;
         for (var i = 0; i < Metadata.Properties.Count; i++)
@@ -120,36 +138,24 @@ T> : JsonConverter<T>
                 ? $"Required property '{missing[0]}' is missing."
                 : $"Required properties missing: {string.Join(", ", missing.Select(n => $"'{n}'"))}.";
 
-            // One violation per missing property, not one violation naming several. A client
-            // highlighting fields needs each pointer separately, and joining them into a
-            // sentence is exactly the flattening this work removes. The joined message is
-            // retained as the error-level detail so the existing rendering is unchanged.
-            throw new TrellisJsonValidationException(message)
-            {
-                InvalidInput = new Error.InvalidInput(EquatableArray.Create(
-                    missing.Select(name => new FieldViolation(
-                        InputPointer.ForProperty(name),
-                        NullValueCode,
-                        Detail: $"Required property '{name}' is missing.")).ToArray()))
+            var missingViolations = missing.Select(name => new FieldViolation(
+                InputPointer.ForProperty(name),
+                NullValueCode,
+                Detail: $"Required property '{name}' is missing."));
+
+            if (violations is null)
+                return Result.Fail<T>(new Error.InvalidInput(EquatableArray.Create(missingViolations.ToArray()))
                 {
                     Detail = message,
-                },
-            };
+                });
+
+            violations.AddRange(missingViolations);
         }
 
-        var result = Metadata.Invoke(values);
-        if (!result.TryGetValue(out var value, out var error))
-        {
-            // Surface the structured Error.InvalidInput on the thrown exception so
-            // downstream emitters (e.g. Trellis.Asp's ScalarValueValidationMiddleware) can
-            // render one wire entry per FieldViolation under <parent>.<leaf> keys.
-            throw new TrellisJsonValidationException(error.GetDisplayMessage())
-            {
-                InvalidInput = error as Error.InvalidInput,
-            };
-        }
+        if (violations is not null)
+            return Result.Fail<T>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())));
 
-        return value;
+        return Metadata.Invoke(values);
     }
 
     /// <inheritdoc />
@@ -168,113 +174,87 @@ T> : JsonConverter<T>
         writer.WriteEndObject();
     }
 
-    private static object? ReadPrimitive(ref Utf8JsonReader reader, Type primitiveType, string jsonName)
+    private static bool TryReadPrimitive(
+        ref Utf8JsonReader reader,
+        Type primitiveType,
+        string jsonName,
+        out object? value,
+        [NotNullWhen(false)] out FieldViolation? violation)
     {
-        // Captured before the try because the catch clauses need it and a Utf8JsonReader is a
-        // ref struct. Get* does not advance the reader, so this is still the offending token.
-        var tokenType = reader.TokenType;
+        value = null;
+        violation = null;
+        if (!IsSupportedPrimitive(primitiveType))
+            throw new TrellisJsonValidationException(
+                $"Composite value object '{typeof(T).Name}' uses unsupported primitive '{primitiveType.Name}' for property '{jsonName}'.");
 
-        // A blank string token is absence, not a shape the caller got wrong, so it must not reach a
-        // `format.*` code — the same rule every other producer applies before parsing. Captured here
-        // for the same reason as tokenType: the catch clauses below cannot touch the ref struct.
+        var expectedToken = primitiveType == typeof(string) || primitiveType == typeof(Guid)
+            || primitiveType == typeof(DateTime) || primitiveType == typeof(DateTimeOffset)
+            ? JsonTokenType.String
+            : primitiveType == typeof(bool) ? JsonTokenType.True : JsonTokenType.Number;
+        var hasExpectedToken = reader.TokenType == expectedToken
+            || (primitiveType == typeof(bool) && reader.TokenType == JsonTokenType.False);
         var isBlankString = primitiveType != typeof(string)
-            && tokenType == JsonTokenType.String
+            && reader.TokenType == JsonTokenType.String
             && string.IsNullOrWhiteSpace(reader.GetString());
 
-        try
+        if (!hasExpectedToken)
         {
-            if (primitiveType == typeof(string))
-            {
-                if (reader.TokenType == JsonTokenType.Null)
-                    throw Invalid(
-                        $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.",
-                        InputPointer.ForProperty(jsonName),
-                        NullValueCode);
-
-                return reader.GetString();
-            }
-
-            if (primitiveType == typeof(decimal))
-                return reader.GetDecimal();
-            if (primitiveType == typeof(int))
-                return reader.GetInt32();
-            if (primitiveType == typeof(long))
-                return reader.GetInt64();
-            if (primitiveType == typeof(short))
-                return reader.GetInt16();
-            if (primitiveType == typeof(byte))
-                return reader.GetByte();
-            if (primitiveType == typeof(double))
-                return reader.GetDouble();
-            if (primitiveType == typeof(float))
-                return reader.GetSingle();
-            if (primitiveType == typeof(bool))
-                return reader.GetBoolean();
-            if (primitiveType == typeof(Guid))
-                return reader.GetGuid();
-            if (primitiveType == typeof(DateTime))
-                return reader.GetDateTime();
-            if (primitiveType == typeof(DateTimeOffset))
-                return reader.GetDateTimeOffset();
-        }
-        catch (FormatException)
-        {
-            if (isBlankString)
-                throw Invalid(
-                    $"Property '{jsonName}' is required.",
-                    InputPointer.ForProperty(jsonName),
-                    ValidationCodes.ValueNotEmpty);
-
-            throw Invalid(
-                $"Property '{jsonName}' is not a valid {DescribePrimitive(primitiveType)}.",
-                InputPointer.ForProperty(jsonName),
-                FormatCodeFor(primitiveType),
-                FormatArgsFor(primitiveType));
-        }
-        catch (InvalidOperationException)
-        {
-            // `reader.GetInt32()` on a Null token throws the same InvalidOperationException as a
-            // genuinely wrong token type, so the two are separated here rather than downstream.
-            // A property explicitly present as `null` is a nullability failure, not a format
-            // failure — the same condition as the missing-property case above — and the two
-            // get different reason codes accordingly.
-            var message = $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.";
-
-            var reasonCode = tokenType switch
-            {
-                JsonTokenType.Null => NullValueCode,
-                _ when isBlankString => ValidationCodes.ValueNotEmpty,
-                _ => ConversionFailureCode,
-            };
-            throw Invalid(message, InputPointer.ForProperty(jsonName), reasonCode);
+            violation = new FieldViolation(InputPointer.ForProperty(jsonName),
+                reader.TokenType == JsonTokenType.Null ? NullValueCode
+                    : isBlankString ? ValidationCodes.ValueNotEmpty : ConversionFailureCode,
+                Detail: $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.");
+            return false;
         }
 
-        throw Invalid(
-            $"Composite value object '{typeof(T).Name}' uses unsupported primitive '{primitiveType.Name}' for property '{jsonName}'.",
-            InputPointer.ForProperty(jsonName));
+        if (primitiveType == typeof(string))
+            value = reader.GetString();
+        else if (primitiveType == typeof(decimal) && reader.TryGetDecimal(out var decimalValue))
+            value = decimalValue;
+        else if (primitiveType == typeof(int) && reader.TryGetInt32(out var intValue))
+            value = intValue;
+        else if (primitiveType == typeof(long) && reader.TryGetInt64(out var longValue))
+            value = longValue;
+        else if (primitiveType == typeof(short) && reader.TryGetInt16(out var shortValue))
+            value = shortValue;
+        else if (primitiveType == typeof(byte) && reader.TryGetByte(out var byteValue))
+            value = byteValue;
+        else if (primitiveType == typeof(double) && reader.TryGetDouble(out var doubleValue))
+            value = doubleValue;
+        else if (primitiveType == typeof(float) && reader.TryGetSingle(out var floatValue))
+            value = floatValue;
+        else if (primitiveType == typeof(bool))
+            value = reader.GetBoolean();
+        else if (primitiveType == typeof(Guid) && reader.TryGetGuid(out var guidValue))
+            value = guidValue;
+        else if (primitiveType == typeof(DateTime) && reader.TryGetDateTime(out var dateTimeValue))
+            value = dateTimeValue;
+        else if (primitiveType == typeof(DateTimeOffset) && reader.TryGetDateTimeOffset(out var dateTimeOffsetValue))
+            value = dateTimeOffsetValue;
+
+        if (value is not null)
+            return true;
+
+        violation = new FieldViolation(
+            InputPointer.ForProperty(jsonName),
+            isBlankString ? ValidationCodes.ValueNotEmpty : FormatCodeFor(primitiveType),
+            Args: isBlankString ? null : FormatArgsFor(primitiveType),
+            Detail: isBlankString ? $"Property '{jsonName}' is required."
+                : $"Property '{jsonName}' is not a valid {DescribePrimitive(primitiveType)}.");
+        return false;
     }
 
     /// <summary>
-    /// Builds a validation exception carrying a structured, composite-relative violation.
+    /// Builds a structured, composite-relative validation failure.
     /// </summary>
     /// <remarks>
     /// The pointer is relative to the composite value object, not to the request document. The
     /// converter has no idea where in the document it was invoked; the path-tracking wrapper that
     /// called it does, and re-roots the violation on the way out.
     /// </remarks>
-    private static TrellisJsonValidationException Invalid(string message, InputPointer pointer) =>
-        Invalid(message, pointer, ConversionFailureCode);
-
-    private static TrellisJsonValidationException Invalid(string message, InputPointer pointer, string reasonCode) =>
-        Invalid(message, pointer, reasonCode, null);
-
-    private static TrellisJsonValidationException Invalid(string message, InputPointer pointer, string reasonCode, ImmutableDictionary<string, ValidationArgValue>? args) =>
-        new(message)
+    private static Error.InvalidInput Invalid(string message, InputPointer pointer) =>
+        Error.InvalidInput.ForField(field: pointer, code: ConversionFailureCode, detail: message) with
         {
-            InvalidInput = Error.InvalidInput.ForField(field: pointer, code: reasonCode, args: args, detail: message) with
-            {
-                Detail = message,
-            },
+            Detail = message,
         };
 
     // A byte is the one integer whose bounds a client cannot infer from the code alone, and the
@@ -384,7 +364,7 @@ T> : JsonConverter<T>
     }
 
     /// <summary>
-    /// The closed set of primitive types <see cref="ReadPrimitive"/> and <see cref="WritePrimitive"/>
+    /// The closed set of primitive types <see cref="TryReadPrimitive"/> and <see cref="WritePrimitive"/>
     /// support directly. Shapes outside this set (any <see cref="Maybe{T}"/>, enums, arrays,
     /// nullable structs, <see cref="DateOnly"/> / <see cref="TimeOnly"/>, unsigned numerics,
     /// nested composite VOs) throw <see cref="TrellisJsonValidationException"/> on either direction.

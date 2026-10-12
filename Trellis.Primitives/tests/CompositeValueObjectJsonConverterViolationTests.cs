@@ -21,6 +21,26 @@ public sealed class CompositeValueObjectJsonConverterViolationTests
         Assert.Throws<TrellisJsonValidationException>(
             () => JsonSerializer.Deserialize<ViolationComposite>(json));
 
+    [Theory]
+    [InlineData("""{"name":"","count":1,"label":"l"}""", "/name")]
+    [InlineData("""{"name":"n","count":{"nested":[1,2]},"label":"l"}""", "/count")]
+    [InlineData("""{"name":"n","count":null,"label":"l"}""", "/count")]
+    [InlineData("""{"name":"n","count":"not-a-number","label":"l"}""", "/count")]
+    public void TryRead_InvalidValue_ReturnsFailureAndConsumesTheCompleteObject(string json, string expectedPath)
+    {
+        var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(json), isFinalBlock: false, state: default);
+        reader.Read();
+
+        var result = new CompositeValueObjectJsonConverter<ViolationComposite>()
+            .TryRead(ref reader, typeof(ViolationComposite), new JsonSerializerOptions());
+
+        result.IsFailure.Should().BeTrue();
+        var error = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        error.Fields.Items.Should().ContainSingle().Which.Field.Path.Should().Be(expectedPath);
+        reader.TokenType.Should().Be(JsonTokenType.EndObject);
+        reader.BytesConsumed.Should().Be(System.Text.Encoding.UTF8.GetByteCount(json));
+    }
+
     [Fact]
     public void A_non_object_token_reports_a_root_relative_violation()
     {

@@ -28,28 +28,30 @@ using System.Text.Json.Serialization;
 /// var state = JsonSerializer.Deserialize<OrderState>("\"Draft\"");
 /// ]]></code>
 /// </example>
-public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TRequiredEnum> : JsonConverter<TRequiredEnum>
+public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TRequiredEnum> : ResultJsonConverter<TRequiredEnum>
     where TRequiredEnum : RequiredEnum<TRequiredEnum>, IScalarValue<TRequiredEnum, string>
 {
     /// <inheritdoc />
     public override bool HandleNull => true;
 
     /// <inheritdoc />
-    public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override Result<TRequiredEnum> TryRead(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
-            throw Invalid(
+            return Result.Fail<TRequiredEnum>(Invalid(
                 ValidationCodes.ValueNotNull,
                 $"Cannot deserialize null into RequiredEnum<{typeof(TRequiredEnum).Name}>. " +
-                "A required enum value must be a non-null string.");
+                "A required enum value must be a non-null string."));
 
-        return reader.TokenType switch
-        {
-            JsonTokenType.String => ReadFromString(ref reader),
-            _ => throw Invalid(
-                ValidationCodes.FormatConversion,
-                $"Unexpected token type '{reader.TokenType}' when parsing {typeof(TRequiredEnum).Name}. Expected String.")
-        };
+        if (reader.TokenType == JsonTokenType.String)
+            return ReadFromString(ref reader);
+
+        var tokenType = reader.TokenType;
+        if (!reader.TrySkip())
+            throw new JsonException("Incomplete JSON value.");
+        return Result.Fail<TRequiredEnum>(Invalid(
+            ValidationCodes.FormatConversion,
+            $"Unexpected token type '{tokenType}' when parsing {typeof(TRequiredEnum).Name}. Expected String."));
     }
 
     /// <inheritdoc />
@@ -61,35 +63,26 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
             writer.WriteStringValue(value.Value);
     }
 
-    private static TRequiredEnum ReadFromString(ref Utf8JsonReader reader)
+    private static Result<TRequiredEnum> ReadFromString(ref Utf8JsonReader reader)
     {
         var name = reader.GetString();
-        return TRequiredEnum.TryCreate(name).Match(
-            onSuccess: value => value,
-            onFailure: error =>
-            {
-                var memberNames = RequiredEnum<TRequiredEnum>.GetAll()
-                    .Select(value => value.Value)
-                    .ToArray();
-                var validValues = EnumMemberProse.ListOrNull(memberNames);
+        var result = TRequiredEnum.TryCreate(name);
+        if (result.TryGetValue(out _, out var error))
+            return result;
 
-                // The message is this converter's, but the code is the producer's: TryCreate already
-                // separates absent from blank from not-a-member, and overwriting all three with
-                // `enum.name-undefined` would make the same blank value report a different code
-                // through JSON than through query binding or a direct TryCreate.
-                var reasonCode = ReasonCodeOf(error, ValidationCodes.EnumNameUndefined);
+        var memberNames = RequiredEnum<TRequiredEnum>.GetAll()
+            .Select(value => value.Value)
+            .ToArray();
+        var validValues = EnumMemberProse.ListOrNull(memberNames);
 
-                // For the same reason the permitted set rides only on the not-a-member code. A
-                // blank value reports `value.not-empty`, where `allowed` would degrade from
-                // "these are your options" into "an enum was involved somewhere".
-                throw Invalid(
-                    reasonCode,
-                    $"Invalid {typeof(TRequiredEnum).Name} value: '{SanitizeForExceptionMessage(name)}'." +
-                    (validValues is null ? string.Empty : $" Valid values are: {validValues}."),
-                    reasonCode == ValidationCodes.EnumNameUndefined
-                        ? ValidationArgs.Allowed(memberNames)
-                        : null);
-            });
+        var reasonCode = ReasonCodeOf(error, ValidationCodes.EnumNameUndefined);
+        return Result.Fail<TRequiredEnum>(Invalid(
+            reasonCode,
+            $"Invalid {typeof(TRequiredEnum).Name} value: '{SanitizeForExceptionMessage(name)}'." +
+            (validValues is null ? string.Empty : $" Valid values are: {validValues}."),
+            reasonCode == ValidationCodes.EnumNameUndefined
+                ? ValidationArgs.Allowed(memberNames)
+                : null));
     }
 
     private static string ReasonCodeOf(Error error, string fallback) =>
@@ -109,23 +102,14 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
     /// input — and propagating the producer's unsanitized detail in its place would silently
     /// remove that guarantee.
     /// </para>
-    /// <para>
-    /// This also moves these failures from 400 to 422. That is a correction: the boundary reserves
-    /// 400 for bytes that are not valid JSON, and an enum name that is not a member parsed
-    /// perfectly well and then failed semantic validation. The identical failure already returns
-    /// 422 through the composite converter, so the two producers now agree.
-    /// </para>
     /// </remarks>
-    private static TrellisJsonValidationException Invalid(
+    private static Error.InvalidInput Invalid(
         string reasonCode,
         string message,
         ImmutableDictionary<string, ValidationArgValue>? args = null) =>
-        new(message)
+        Error.InvalidInput.ForField(field: InputPointer.Root, code: reasonCode, args: args, detail: message) with
         {
-            InvalidInput = Error.InvalidInput.ForField(field: InputPointer.Root, code: reasonCode, args: args, detail: message) with
-            {
-                Detail = message,
-            },
+            Detail = message,
         };
 
     private static string SanitizeForExceptionMessage(string? value, int maxLength = 64)

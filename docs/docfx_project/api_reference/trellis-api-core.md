@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Core
 namespaces: [Trellis]
-types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, ICodedTransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, PageSizeLimitPolicy, PageRequest, "ICursorCodec<TState>", CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, InputLocation, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, TrellisValidationFormatException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
+types: [Result, "Result<T>", IResult, "IResult<TValue>", "IFailureFactory<TSelf>", IPersistOnFailure, "Maybe<T>", Maybe, MaybeInvariant, Error, ITransportFault, ICodedTransportFault, RetryAdvice, RetryClassification, ErrorRetryExtensions, Unit, "Page<T>", Page, Cursor, PageSize, PageSizeLimitPolicy, PageRequest, "ICursorCodec<TState>", CursorCodec, PageBuilder, "EquatableArray<T>", EquatableArray, ResourceRef, InputPointer, InputLocation, FieldViolation, RuleViolation, IAggregate, "Aggregate<TId>", IETagStampable, IReconstitutionStampable, IEntity, "Entity<TId>", IDomainEvent, IIntegrationEvent, IntegrationEventNameAttribute, ITrackedAggregateSource, ValueObject, "ScalarValueObject<TSelf,T>", "IScalarValue<TSelf,TPrimitive>", "IFormattableScalarValue<TSelf,TPrimitive>", "RequiredString<TSelf>", "RequiredInt<TSelf>", "RequiredLong<TSelf>", "RequiredDecimal<TSelf>", "RequiredBool<TSelf>", "RequiredGuid<TSelf>", "RequiredDateTime<TSelf>", "RequiredDateTimeOffset<TSelf>", "RequiredEnum<TSelf>", "ResultJsonConverter<T>", "RequiredEnumJsonConverter<T>", "ParsableJsonConverter<T>", ResultRequiresExplicitHttpMappingConverter, PrimitiveValueObjectTrace, "Specification<T>", TrellisJsonValidationException, TrellisValidationFormatException, RangeAttribute, StringLengthAttribute, NotDefaultAttribute, TrimAttribute, PositiveAttribute, NonNegativeAttribute, NegativeAttribute, NonPositiveAttribute, RailwayTrackAttribute, TrackBehavior, EnumValueAttribute, ResourceCollectionNameAttribute, ResultDebugSettings]
 version: v3
-last_verified: 2026-10-10
+last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when you need exact signatures for Result, Maybe, Error, Page, aggregates, entities, specifications or Required value-object bases, or the ROP operations Bind, Map and Ensure."
@@ -68,6 +68,7 @@ Use this table before searching the long type catalog.
 | Name an integration contract for the wire (cross-service) | `[IntegrationEventName]` | [`IntegrationEventNameAttribute`](#integrationeventnameattribute) |
 | Move reusable query predicates out of repositories | `Specification<T>` | [`Specification<T>`](#specificationt) |
 | Define custom required value objects | `partial class X : RequiredString<X>` / `RequiredGuid<X>` / other `Required*` bases | [`Primitive value object base classes`](#primitive-value-object-base-classes) |
+| Share validated JSON parsing between non-throwing ASP collection and standalone rejection | Derive from `ResultJsonConverter<T>` and implement `TryRead` | [`ResultJsonConverter<T>`](#resultjsonconvertert) |
 | Extract a success value or throw at a trust boundary (DTO → entity rehydration, JSON deserialization) | `result.GetValueOrThrow($"context message")` / `GetValueOrThrowAsync(...)` | [`GetValueOrThrowExtensions`](#extension-class-catalog-full-signatures) (entry in the extension catalog), [cookbook Recipe 30](trellis-api-cookbook.md#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
 
 ## Canonical async handler skeleton
@@ -2723,10 +2724,25 @@ public static class StringExtensions
 | `public static bool TryParseScalarValue<T>([NotNullWhen(true)] string? s, [MaybeNullWhen(false)] out T result) where T : class, IScalarValue<T, string>` | `bool` | Safe parsing helper based on `T.TryCreate`. |
 | `public static string ToCamelCase(this string? str)` | `string` | Lowercases the first character only. |
 
+### `ResultJsonConverter<T>`
+
+```csharp
+public abstract class ResultJsonConverter<T> : JsonConverter<T>
+```
+
+Shared JSON parsing contract for validated values. ASP adapters call `TryRead` directly and collect
+expected failures; standalone `JsonSerializer` calls inherited `Read`, which still rejects them.
+Both tracks consume the complete value. Malformed JSON and configuration defects still throw.
+
+| Signature | Returns | Description |
+| --- | --- | --- |
+| `public abstract Result<T> TryRead(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `Result<T>` | Returns a validated value or a structured error without throwing for expected validation failures. The reader must finish at the value's final token on either track. |
+| `public sealed override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `T?` | Calls `TryRead`; a failure becomes `TrellisJsonValidationException`, preserving `Error.InvalidInput` when supplied. No invalid placeholder escapes standalone serialization. |
+
 ### `RequiredEnumJsonConverter<TRequiredEnum>`
 
 ```csharp
-public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TRequiredEnum> : JsonConverter<TRequiredEnum>
+public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TRequiredEnum> : ResultJsonConverter<TRequiredEnum>
     where TRequiredEnum : RequiredEnum<TRequiredEnum>, IScalarValue<TRequiredEnum, string>
 ```
 
@@ -2737,7 +2753,7 @@ public sealed class RequiredEnumJsonConverter<[DynamicallyAccessedMembers(Dynami
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public override bool HandleNull` | `bool` | `true`; routes JSON `null` tokens through the converter so required enums can reject them explicitly. |
-| `public override TRequiredEnum? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `TRequiredEnum?` | Accepts only JSON `string`; string values are resolved through `TRequiredEnum.TryCreate(name)`, and `null` throws `JsonException`. |
+| `public override Result<TRequiredEnum> TryRead(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `Result<TRequiredEnum>` | Accepts only JSON `string`; resolves names through `TRequiredEnum.TryCreate`. Invalid names, nulls, and wrong token shapes return root-relative structured failures with sanitized, bounded detail and applicable `allowed` arguments. Inherited `Read` still throws on those failures. |
 | `public override void Write(Utf8JsonWriter writer, TRequiredEnum value, JsonSerializerOptions options)` | `void` | Writes `value.Value` as a JSON string. |
 
 ### `RequiredString<TSelf>`

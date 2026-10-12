@@ -238,22 +238,15 @@ public class ValidatingJsonConverterEdgeCasesTests
     #region Error Without Scope Tests
 
     [Fact]
-    public void Read_InvalidValueNoScope_ReturnsNullWithoutException()
+    public void Read_InvalidValueNoScope_ThrowsStructuredValidationException()
     {
-        // Arrange
         var converter = new ValidatingJsonConverter<Email, string>();
-        var json = "\"\""; // Invalid
-        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
-        reader.Read();
+        var options = new JsonSerializerOptions { Converters = { converter } };
+        Action deserialize = () => JsonSerializer.Deserialize<Email>("\"\"", options);
 
-        // No scope created!
-
-        // Act
-        var result = converter.Read(ref reader, typeof(Email), new JsonSerializerOptions());
-
-        // Assert
-        result.Should().BeNull("should return null even without scope");
-        // No exception should be thrown
+        deserialize.Should().Throw<TrellisJsonValidationException>()
+            .Which.InvalidInput!.Fields.Items.Should().ContainSingle();
+        ValidationErrorsContext.Current.Should().BeNull();
     }
 
     #endregion
@@ -383,11 +376,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         }
     }
 
-    /// <remarks>
-    /// The body converter is a distinct producer from query binding, and a client that reads
-    /// <c>allowed</c> must not have to know which one answered. Ordinal order, not the
-    /// declaration order <c>Unknown, Fast, Safe</c>.
-    /// </remarks>
+    // Ordinal order must match query binding, not the enum's declaration order.
     [Fact]
     public void Read_EnumNameUndefined_CarriesThePermittedMembersAsArgs()
     {
@@ -451,6 +440,26 @@ public class ValidatingJsonConverterEdgeCasesTests
                     v.Field.Path == "/mode"
                     && v.Detail == "JSON number is not a valid ProcessingMode.");
         }
+    }
+
+    [Theory]
+    [InlineData("2147483648")]
+    [InlineData("-2147483649")]
+    [InlineData("1.5")]
+    public void Read_EnumUnderlyingRangeFailure_CollectsIntegerFormatWithoutThrowing(string json)
+    {
+        var converter = new ValidatingJsonConverter<ProcessingModeVO, ProcessingMode>();
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        reader.Read();
+        using var scope = ValidationErrorsContext.BeginScope();
+        ValidationErrorsContext.CurrentPropertyName = "mode";
+
+        converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions()).Should().BeNull();
+
+        var violation = ValidationErrorsContext.GetUnprocessableContent()!
+            .Fields.Items.Should().ContainSingle().Subject;
+        violation.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
+        violation.Field.Should().Be(InputPointer.ForBody("/mode"));
     }
 
     [Fact]

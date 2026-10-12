@@ -3,7 +3,7 @@ package: Trellis.Asp
 namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.Idempotency, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
 types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpRequestPaginationExtensions, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, RateLimiterOptionsExtensions, UseTrellisRejectionHandler, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-10
+last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring ASP.NET Core endpoints that parse pagination input or return Trellis Result, WriteOutcome or Page: response mapping, Problem Details, ETags, actors and route binding."
@@ -46,6 +46,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) �
 | Resolve actors from requests | `AddClaimsActorProvider`, `AddNestedJsonPathClaimsActorProvider`, `AddEntraActorProvider`, or `AddDevelopmentActorProvider`. For microservices consuming gateway-minted internal JWTs, see [`Trellis.Microservices.AspNetCore`](https://github.com/xavierjohn/Trellis.Microservices) (the `TrellisInternalJwtActorProvider` types moved out of this repo in v3 cleanup). | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Compose a system actor for background workers | `AddTrellisWorkerActor` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Bind scalar value objects from routes/query/body | `AddTrellisAspWithScalarValidation()` (or `AddTrellisAsp()` + `AddScalarValueValidation()`), plus route constraints / validation middleware as needed | [`Trellis.Asp.ModelBinding`](#namespace-trellisaspmodelbinding), [`Trellis.Asp.Validation`](#namespace-trellisaspvalidation) |
+| Collect scalar/composite JSON failures without exception-driven binding, including Native AOT | Validation scope + endpoint filter; shared Result readers and closed registrations | [Semantic JSON validation](#minimal-api-semantic-json-validation), [`ScalarValuePathTracking`](#scalarvaluepathtracking) |
 | Add Trellis ProblemDetails recipe (trace id from `Activity.Current`, friendly 500 detail, `allow` extension on 405) | `services.AddTrellisProblemDetails()` plus `app.UseTrellisProblemDetails()` (or `options.UseProblemDetails()` via [`Trellis.ServiceDefaults`](trellis-api-servicedefaults.md#trellisservicebuilder)) | [`ServiceCollectionExtensions`](#servicecollectionextensions), [`ApplicationBuilderExtensions`](#applicationbuilderextensions) |
 | Render ASP.NET Core rate-limit rejections as Trellis Problem Details | Inside `services.AddRateLimiter(options => ...)`, call `options.UseTrellisRejectionHandler()`; keep algorithms, policies, and partition keys in application configuration. | [`RateLimiterOptionsExtensions`](#ratelimiteroptionsextensions) |
 | Add the IETF `Idempotency-Key` middleware to opted-in `POST` / `PATCH` endpoints | `services.AddTrellisIdempotency(...)` (or `options.UseIdempotency(...)`), `services.AddInMemoryIdempotencyStore()`, `app.UseTrellisIdempotency()`, and mark each opted-in endpoint with `[Idempotent]` | [`Trellis.Asp.Idempotency`](#namespace-trellisaspidempotency), Cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency) |
@@ -1580,7 +1581,7 @@ public abstract class ScalarValueJsonConverterBase<TResult, TValue, TPrimitive>
 | `protected abstract TResult OnNullToken(string fieldName)` | `TResult` | Returns the deserialization result for a JSON `null` token. |
 | `protected abstract TResult WrapSuccess(TValue value)` | `TResult` | Wraps a validated scalar value into the final converter result. |
 | `protected abstract TResult OnValidationFailure()` | `TResult` | Returns the failure result after a validation error has been collected into `ValidationErrorsContext`. |
-| `public override TResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `TResult` | Reads the primitive JSON value, calls `TValue.TryCreate`, collects errors into `ValidationErrorsContext`, and returns the derived-type wrapper. |
+| `public override TResult Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)` | `TResult` | Uses token checks and non-throwing primitive parsing, calls `TValue.TryCreate`, and collects expected failures in an active `ValidationErrorsContext` scope. Without a scope, validation failures throw `TrellisJsonValidationException` instead of escaping as invalid placeholders. |
 | `protected static string GetDefaultFieldName()` | `string` | Returns the camel-cased scalar type name used when no property name is available. |
 
 ### `ValidatingJsonConverter<TValue, TPrimitive>`
@@ -1708,7 +1709,7 @@ public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)` | `ValueTask<object?>` | For Minimal APIs, returns `Results.ValidationProblem(...)` with the configured `Error.InvalidInput` status (default `422`, see `MapError`) and MVC dot+bracket field keys when `ValidationErrorsContext` contains errors; otherwise invokes `next`. |
+| `public ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)` | `ValueTask<object?>` | For Minimal APIs, returns `Results.ValidationProblem(...)` with the configured `Error.InvalidInput` status (default `422`, see `MapError`) and MVC dot+bracket field keys when `ValidationErrorsContext` contains errors; otherwise invokes `next`. An already-set framework 400 delegates to the framework's terminal filter, which does not invoke the handler; rejected required root bodies retain their semantic response. |
 
 ### `ScalarValueValidationMiddleware`
 
@@ -1721,7 +1722,63 @@ public sealed class ScalarValueValidationMiddleware
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public ScalarValueValidationMiddleware(RequestDelegate next)` | — | Stores the next `RequestDelegate`. The scope itself is opened in `InvokeAsync`, which wraps each request in `ValidationErrorsContext.BeginScope()`. |
-| `public Task InvokeAsync(HttpContext context)` | `Task` | Begins a validation scope, invokes the next middleware, and converts scalar-value `BadHttpRequestException` binding failures into validation problem responses using endpoint parameter metadata plus route/query raw values. |
+| `public Task InvokeAsync(HttpContext context)` | `Task` | Begins a validation scope at the body root. JSON syntax failures remain 400; collected semantic errors are rejected by the endpoint filter. Handles exception-based binding compatibility paths using endpoint metadata, without rewriting application-owned or other bodyless responses. |
+
+#### Minimal API semantic JSON validation
+
+Pair `AddScalarValueValidation()` (or `AddTrellisAspWithScalarValidation()`) with
+`app.UseScalarValueValidation()` before endpoints and `.WithScalarValueValidation()` per endpoint.
+No `ThrowOnBadRequest` override is required.
+
+Expected scalar and composite failures are collected during deserialization, not thrown to
+signal client mistakes. The shared scalar reader validates token shape and uses `TryGet*` /
+`TryParse` before calling the domain factory. `ResultJsonConverter<T>` parsers such as
+`RequiredEnumJsonConverter<TEnum>` and `CompositeValueObjectJsonConverter<T>` return structured
+`Error.InvalidInput`; ASP adapters collect that Result and preserve the converter's write behavior.
+They consume the complete JSON value on both tracks so later fields can also be validated.
+
+The filter rejects collected failures before executing the handler, using the configured
+`Error.InvalidInput` status (default 422). Non-nullable JSON-settable or constructor-bound
+value-object inputs are checked for
+missing/null input after deserialization; temporary failed-read placeholders do not trigger
+`RespectNullableAnnotations` or `RespectRequiredConstructorParameters` before the filter can act.
+Standalone deserialization rejects missing required value objects instead of returning those
+placeholders. Required-value checks precede application deserialization callbacks; callbacks
+are skipped for objects with missing required values or failed reads in their subtree.
+Output-only value-object getters are not required inputs and can be initialized by those callbacks.
+Rule-only failures retain their rule violations without inventing a missing-field violation.
+Explicit property-level converters remain application-owned. Ordinary CLR
+property nullability, required-constructor presence, and JSON syntax retain framework semantics.
+Malformed JSON takes precedence over
+earlier collected validation failures and remains 400.
+
+Bodyless responses are not formatted by scalar-validation middleware, including an application's
+own `Results.BadRequest()`. For a host that wants Problem Details for bare framework 400s, opt into
+`services.AddTrellisProblemDetails()` and `app.UseStatusCodePages()` before scalar validation and
+endpoints. This explicit status-code-pages policy also formats eligible application-owned
+bodyless responses; the host, not scalar validation, owns that choice.
+
+Standalone `JsonSerializer.Deserialize` has no ASP collection scope: the same readers reject
+validation failures with `TrellisJsonValidationException`, rather than returning a placeholder.
+**Shared-options compatibility:** JSON options configured by `AddScalarValueValidation` enforce
+missing/null required value-object inputs even outside the middleware, including manual
+`ReadFromJsonAsync`, routes that do not enter its scope, tests and persisted-payload reads.
+Without an active validation scope, deserializing a payload that omits a required value object
+with these ASP-configured options now throws `TrellisJsonValidationException` before application
+callbacks, including outside `UseScalarValueValidation()`; previously, the modifier left those
+missing inputs unchecked. Use separate transport options or a
+DTO-to-domain adapter if that validation boundary is not wanted for those reads.
+Syntax, configuration, and implementation failures may still throw. This is not a claim that
+all JSON errors or ASP.NET binding operations are exception-free: a non-nullable root body can
+still trigger ASP.NET's required-body check in Development after a collected failure, and
+the middleware preserves the already-collected semantic response for that compatibility path.
+That compatibility arm requires a recorded root failure, required-body metadata and the
+framework's required-body diagnostic; unrelated binding/protocol 400s are not converted to 422.
+For a rejected required root followed by an invalid query parameter, the semantic body
+failure retains precedence in both environments. With a valid required root or an optional
+root, the framework's invalid-query 400 is preserved instead. ASP.NET Core can invoke filters
+after a parameter-check failure, but its terminal delegate returns an empty result whenever
+the response status is already at least 400, rather than calling the handler.
 
 ### `ScalarValuePathTracking`
 
@@ -1731,10 +1788,35 @@ public sealed class ScalarValueValidationMiddleware
 public static class ScalarValuePathTracking
 ```
 
-Registry of compile-time-closed path-tracking converter factories. Populated by a `[ModuleInitializer]` emitted by `PathTrackingRegistryGenerator`; consulted by the type-info modifier before the reflection fallback, which is how index-precise field paths work under Native AOT. Application code does not normally call these members directly — they exist so generated code (or a hand-written registration for a DTO the generator cannot see) can supply the closed generics the runtime cannot construct.
+Registry of compile-time-closed validation and path-tracking converter factories. Populated by
+a `[ModuleInitializer]` emitted by `PathTrackingRegistryGenerator` from `[JsonSerializable]`
+root graphs; the graph includes scalar, optional scalar, and converter-owned composite values.
+It recognizes local `Required*<TSelf>` declarations before Core's generator adds their
+`IScalarValue` interface. Application code normally needs no manual calls, but can register
+closed generics for graphs the generator cannot see.
+
+Scalar-property and composite wrappers preserve their Result parsers and existing collecting
+converters. They apply the live ancestor plus the effective JSON property name exactly once,
+preserving reason codes, args and curated detail. Unspecified scalar-factory field labels address
+the scalar property itself, not synthetic child properties; explicitly located violations retain
+their locations. Legacy throwing converters retain the marked exception-rebasing compatibility
+path. Reflection-enabled hosts can discover Result converter attributes dynamically; reflection-
+disabled hosts require closed generated or explicit registrations instead.
+Class-only scalar registrations are not emitted for struct `IScalarValue` implementations;
+structs with a Result converter use the unconstrained `RegisterResultConverter` registration.
+The built-in optional scalar converters and `RegisterScalar` remain reference-type-only
+(`where TValue : class`): Core `Maybe<T>` can hold structs, but `Maybe<TStructScalar>` JSON
+transport requires an application-owned converter or a DTO adapter.
+Closed Result-converter construction is emitted only when the converter type is non-abstract
+and accessible from the generated registry and has an accessible parameterless constructor.
+Otherwise the generator leaves converter construction to the application, preserving the
+remaining graph registrations; an accessible startup hook can call `RegisterResultConverter`
+with an application-created instance when closed root registration is needed.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
+| `public static void RegisterScalar<TValue, TPrimitive>(ResultJsonConverter<TValue>? converter = null) where TValue : class, IScalarValue<TValue, TPrimitive> where TPrimitive : IComparable` | `void` | Registers closed converters for both `TValue` and `Maybe<TValue>`. The optional Result converter preserves direct-value parsing and writing; optional values use the shared scalar reader, with JSON null remaining `Maybe.None`. |
+| `public static void RegisterResultConverter<T>(ResultJsonConverter<T> converter, bool scalar = false)` | `void` | Registers a closed collecting adapter for a Result converter. `scalar` identifies factory field labels as scalar-relative rather than child properties. |
 | `public static void RegisterProperty<T>()` | `void` | Registers a factory producing `PathTrackingPropertyConverter<T>` for a scalar or optional scalar property, so Native AOT validation uses the effective JSON property name supplied at runtime. The wrapper is applied only when the property has no explicit property-level converter. Idempotent. |
 | `public static void RegisterObject<T>()` | `void` | Registers a factory producing `PathTrackingObjectConverter<T>` for a nested user object whose graph transitively contains a scalar value object. Idempotent. |
 | `public static void RegisterCollection<TCollection, TElement>()` | `void` | Registers a factory producing `PathTrackingCollectionConverter<TCollection, TElement>` for a collection property, so element indexes appear in the reported path. A direct scalar element reports the indexed element pointer itself (for example `/allergens/0`); a scalar nested in an element object appends its JSON property name (for example `/members/0/email`). Idempotent. |
@@ -1750,7 +1832,7 @@ public static class ValidationErrorsContext
 | Name | Type | Description |
 | --- | --- | --- |
 | `HasErrors` | `bool` | `true` when the current async-local scope contains at least one collected validation error. |
-| `CurrentPropertyName` | `string?` (get/set) | Async-local property name for the property currently being deserialized. Set to the effective JSON name by `PropertyNameAwareConverter<T>` in reflection mode and `PathTrackingPropertyConverter<T>` under Native AOT. `PathTrackingCollectionConverter<,>` and `PathTrackingDictionaryConverter<,>` temporarily set it to the empty string for direct converter-backed elements/values; the empty string resolves to the current indexed or keyed ancestor. Read by both the reflection-mode `ScalarValueJsonConverterBase<,,>` and the AOT-generated converter, which falls back to a camel-cased type name only when this is `null`. |
+| `CurrentPropertyName` | `string?` (get/set) | Async-local property name for the property currently being deserialized. Set to the effective JSON name by `PropertyNameAwareConverter<T>` in reflection mode and `PathTrackingPropertyConverter<T>` under Native AOT. Middleware initializes it to the empty string for the body root; collection/dictionary wrappers also use that sentinel for direct elements/values. The empty string resolves to the current root, indexed, or keyed ancestor. The shared scalar reader falls back to a camel-cased type name only when this is `null`. |
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -1782,8 +1864,8 @@ public static class ValidationErrorsContext
 - **`HonorPrefer()` semantics on `WriteOutcome.Updated`.** `HonorPrefer()` is opt-in. Without it, `Prefer` request headers are ignored entirely: no `Vary: Prefer`, no `Preference-Applied`, and `return=minimal` does **not** suppress the body. When `HonorPrefer()` is configured, `Prefer: return=minimal` short-circuits to `204 No Content` and emits `Preference-Applied: return=minimal`; `return=representation` returns `200 OK` with the body and emits `Preference-Applied: return=representation`. `Vary: Prefer` is always emitted under `HonorPrefer()`, regardless of which preference was sent.
 - **`CreatedAtAction` is not AOT-safe.** It depends on MVC's `ControllerLinkGeneratorExtensions`. The builder method, the writer's `ResolveActionLocation` private, and the `LocationKind.Action` branch are annotated `[RequiresUnreferencedCode]` / `[RequiresDynamicCode]`. Use `CreatedAtRoute` with a named route for trim/AOT scenarios; `ResolveActionLocation` throws `NotSupportedException` when `RuntimeFeature.IsDynamicCodeSupported` is `false`.
 - **Pagination.** The `Result<Page<T>>` overload always emits the `PagedResponse<TBody>` envelope; the RFC 8288 `Link` header is added only when `Page.Next` and/or `Page.Previous` cursors are present. The direction-aware `urlBuilder(cursor, direction, appliedLimit)` distinguishes `PageDirection.Next` from `PageDirection.Previous`; the legacy `nextUrlBuilder(cursor, appliedLimit)` intentionally uses the same callback for both directions. Failure on the page result short-circuits through the standard error pipeline without invoking the URL builder or body projector. Conditional `304` / `412` responses also skip those callbacks. Each URL builder result is percent-encoded for the characters RFC 3986 excludes from a URI (controls, space, `<`, `>`, `"`, `\`, `^`, `` ` ``, `{`, `}`, `|`) before it is embedded between the `Link` field's angle brackets, so an opaque cursor token cannot terminate the `URI-Reference` early or forge extra link-params. The envelope retains the original URL; well-formed URLs pass through byte-identical.
-- **Validation collection scope.** `ScalarValueValidationMiddleware` opens a `ValidationErrorsContext` scope per request. Both `ValidatingJsonConverter<,>` and `MaybeScalarValueJsonConverter<,>` collect errors into this scope; `ScalarValueValidationFilter` (MVC) and `ScalarValueValidationEndpointFilter` (Minimal API) short-circuit with a validation problem when the scope is non-empty at action/handler entry.
-- **AOT-generated converters participate in the same scope.** The bundled source generator emits converters for supported scalar declarations in the current compilation, even without a `JsonSerializerContext` or `[GenerateScalarValueConverters]`. That attribute enables the missing-`[JsonSerializable]` context diagnostic (TRLS059), not converter registration. The emitted `JsonConverter<TValue>`s use the same validation contract as `ScalarValueJsonConverterBase<,,>` for the generator's supported primitives. They read `ValidationErrorsContext.CurrentPropertyName` (falling back to the camel-cased type name), report JSON null as `value.not-null`, report blank strings for non-string primitives as `value.not-empty`, and classify rejected primitive tokens with `ValidationCodes.FormatCodeFor`. They call `TryCreate(primitive, fieldName)` and forward structured failures through `ValidationErrorsContext.AddBodyError(Error.InvalidInput)`, preserving reason codes, args and explicit locations while rebasing unspecified/body pointers against the ambient body path. Other failures use the message-only `AddBodyError` overload. Parity assumes the same ambient property/path tracking; installing a scalar converter alone does not establish a nested DTO path. The factory `Trellis.Generated.GeneratedValueObjectConverterFactory` is emitted alongside the per-type converters; consumers add it to `JsonSerializerOptions.Converters` (e.g. inside `AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new GeneratedValueObjectConverterFactory()))`). It does not auto-register and does not register `Maybe<TValue>` converters. For optional scalars, the closed `MaybeScalarValueJsonConverter<TValue, TPrimitive>` uses the same non-null validation semantics but accepts JSON null as `Maybe.None` without a violation; register it explicitly when composing an AOT converter set.
+- **Validation collection scope.** `ScalarValueValidationMiddleware` opens a `ValidationErrorsContext` scope per request. Scalar converters and adapters for `ResultJsonConverter<T>` collect expected failures into this scope; MVC and Minimal API validation filters short-circuit before the action/handler. Without that scope, the same readers reject validation failures instead of returning invalid placeholders.
+- **AOT-generated converters use the shared reader.** The bundled source generator emits converters for supported scalar declarations in the current compilation, even without a `JsonSerializerContext` or `[GenerateScalarValueConverters]`. Their `Read` delegates to a closed `ValidatingJsonConverter<TValue, TPrimitive>` rather than duplicating parsing, field-name, or collection logic. JSON null reports `value.not-null`; blank strings for non-string primitives report `value.not-empty`; rejected primitive tokens use `ValidationCodes.FormatCodeFor`. Structured factory failures preserve reason codes, args and explicit locations. Standalone reads reject failure. The emitted `Trellis.Generated.GeneratedValueObjectConverterFactory` remains an explicit registration for per-type generated converters; it does not itself register optional shapes. Separately, `PathTrackingRegistryGenerator` emits module-initialized `RegisterScalar` / `RegisterResultConverter` calls for `[JsonSerializable]` root graphs. Those closed registrations include `Maybe<TValue>` for reachable scalars, including required enums; JSON null stays `Maybe.None`, while a present invalid value is collected. Manual closed registrations are needed only for types outside the graph. Ambient property/container wrappers are still required for nested path precision.
 - **`[GenerateScalarValueConverters]` cannot annotate your types for System.Text.Json.** Roslyn source generators all analyze the same original compilation and cannot observe one another's output, so any attribute Trellis emits is invisible to System.Text.Json's generator. Two attributes must therefore be written by hand:
   - The context needs at least one `[JsonSerializable]`. Without it STJ skips the context entirely and never emits the abstract members the base class requires, failing the build with two CS0534 errors that say nothing about the cause. Trellis reports **TRLS059** to explain it.
   - Every value object reachable from a serialized type needs `[JsonConverter]` on the value object itself, for example `[JsonConverter(typeof(ParsableJsonConverter<OrderId>))]`. Otherwise STJ reaches the type transitively, treats it as a POCO, and emits `ObjectCreator = () => new OrderId()` — a constructor that does not exist on a Trellis value object, failing with CS1729 inside STJ's own generated file. When you declare it, the Trellis primitive generator detects the attribute and steps aside rather than emitting a duplicate (which would be CS0579).
@@ -1793,7 +1875,7 @@ public static class ValidationErrorsContext
 - **Minimal API scalar binding failures are metadata-driven.** When ASP.NET Core throws a 400 while binding route/query parameters, `ScalarValueValidationMiddleware` no longer parses `BadHttpRequestException.Message` to discover a field name or invalid value. It inspects `IParameterBindingMetadata`, reads the matching route/query raw value, and re-runs Trellis scalar validation for `IScalarValue<,>` / `Maybe<TScalar>` parameters. Non-scalar endpoint binding failures are rethrown to ASP.NET Core.
 - **Binder/JSON validation status is configurable.** All three validation seams — `ScalarValueValidationMiddleware`, `ScalarValueValidationFilter` (MVC), and `ScalarValueValidationEndpointFilter` (Minimal API) — resolve the semantic-validation status from the ambient `TrellisAspOptions` `Error.InvalidInput` mapping (default `422`), the same map domain handlers use via `ResponseFailureWriter`. A single `MapError<Error.InvalidInput>(status)` therefore governs scalar/value-object validation failures uniformly across the binder, the JSON body, and handlers. Syntactically malformed JSON is not remapped — it stays `400` (RFC 9110 §15.5.1).
 - **`AddTrellisAsp` is error-mapping setup only.** It registers `TrellisAspOptions` and `ResourceCollectionNameRegistry`; it does **not** chain scalar-value validation. Call `AddTrellisAspWithScalarValidation()` for the combined setup, or call `AddTrellisAsp()` plus `AddScalarValueValidation()` explicitly. You still need `UseScalarValueValidation()` middleware in the request pipeline and `WithScalarValueValidation()` on each Minimal API endpoint that should short-circuit on validation errors.
-- **Composite value objects in request/response DTOs.** `AddTrellisAsp`/`AddScalarValueValidation` only wires the **scalar** VO converters. Composite VOs (multi-field `[OwnedEntity]` types like `ShippingAddress`, `Money`) bind through `CompositeValueObjectJsonConverter<T>` (in `Trellis.Primitives`), which is **opt-in per type** via `[JsonConverter(typeof(CompositeValueObjectJsonConverter<MyVo>))]` on the value object class itself. Without that attribute, model binding falls back to default construction and **silently bypasses `TryCreate`** — the inner-field validation never runs and an invalid payload propagates into the domain layer. See [Cookbook Recipe 13](trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership) for the full Domain + API JSON + EF pattern.
+- **Composite value objects in request/response DTOs.** Composite VOs (multi-field types like `ShippingAddress`, `Money`) still opt into `CompositeValueObjectJsonConverter<T>` (in `Trellis.Primitives`) via a type-level `[JsonConverter]`. `AddScalarValueValidation` adapts its Result parser for collection during ASP binding without an ASP dependency in Primitives. Without the attribute, default construction can bypass `TryCreate` and its inner-field validation. See [Cookbook Recipe 13](trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership).
 
 - **Responses are JSON-only, whatever output formatters you register.** Trellis always writes JSON, and both success and failure bypass content negotiation to get there — neither consults an output formatter, so registering one cannot change what a Trellis endpoint returns.
   - *Success* responses bypass negotiation because `ToHttpResponse(...)` produces an `IResult` that writes its own body. A request sending `Accept: application/xml` against a Trellis endpoint receives `application/json` even when an XML formatter is registered and the body type is XML-serializable. The same action returning a plain `Ok(dto)` would return `application/xml`.

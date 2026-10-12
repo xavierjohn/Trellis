@@ -59,6 +59,165 @@ public class PathTrackingRegistryGeneratorTests
         """;
 
     [Fact]
+    public void Scalar_root_registers_a_closed_collecting_converter()
+    {
+        var source = $$"""
+            {{ValueObject}}
+
+            [global::System.Text.Json.Serialization.JsonSerializable(typeof(Email))]
+            public partial class AppContext : global::System.Text.Json.Serialization.JsonSerializerContext { }
+            """;
+
+        RunGenerator(source).Should().Contain("RegisterScalar<global::Email, string>()");
+    }
+
+    [Fact]
+    public void Composite_root_registers_its_result_based_converter()
+    {
+        var source = $$"""
+            {{CompositeValueObject}}
+
+            [global::System.Text.Json.Serialization.JsonSerializable(typeof(Address))]
+            public partial class AppContext : global::System.Text.Json.Serialization.JsonSerializerContext { }
+            """;
+
+        RunGenerator(source).Should().Contain(
+            "RegisterResultConverter(new global::Trellis.Primitives.CompositeValueObjectJsonConverter<global::Address>(), scalar: false)");
+    }
+
+    [Fact]
+    public void Optional_enum_registers_both_collecting_scalar_shapes()
+    {
+        const string source = """
+            [global::System.Text.Json.Serialization.JsonConverter(typeof(global::Trellis.RequiredEnumJsonConverter<State>))]
+            public partial class State : global::Trellis.RequiredEnum<State>, global::Trellis.IScalarValue<State, string>
+            {
+                public static readonly State Draft = new();
+            }
+            public sealed record Command(global::Trellis.Maybe<State> State);
+            [global::System.Text.Json.Serialization.JsonSerializable(typeof(Command))]
+            public partial class AppContext : global::System.Text.Json.Serialization.JsonSerializerContext { }
+            """;
+
+        RunGenerator(source).Should().Contain(
+            "RegisterScalar<global::State, string>(new global::Trellis.RequiredEnumJsonConverter<global::State>())");
+    }
+
+    [Theory]
+    [InlineData("RequiredString", "string")]
+    [InlineData("RequiredGuid", "global::System.Guid")]
+    [InlineData("RequiredInt", "int")]
+    [InlineData("RequiredLong", "long")]
+    [InlineData("RequiredDecimal", "decimal")]
+    [InlineData("RequiredBool", "bool")]
+    [InlineData("RequiredDateTime", "global::System.DateTime")]
+    [InlineData("RequiredDateTimeOffset", "global::System.DateTimeOffset")]
+    [InlineData("RequiredEnum", "string")]
+    public void Local_required_scalar_registers_before_the_core_generator_adds_its_interface(
+        string baseType, string primitiveType)
+    {
+        var converter = baseType == "RequiredEnum" ? "RequiredEnumJsonConverter" : "ParsableJsonConverter";
+        var source = $$"""
+            [global::System.Text.Json.Serialization.JsonConverter(typeof(global::Trellis.{{converter}}<LocalValue>))]
+            public partial class LocalValue : global::Trellis.{{baseType}}<LocalValue> { }
+            public sealed record Command(LocalValue Value);
+            [global::System.Text.Json.Serialization.JsonSerializable(typeof(Command))]
+            public partial class AppContext : global::System.Text.Json.Serialization.JsonSerializerContext { }
+            """;
+
+        var generated = RunGenerator(source);
+
+        generated.Should().Contain("RegisterProperty<global::LocalValue>()");
+        generated.Should().Contain($"RegisterScalar<global::LocalValue, {primitiveType}>(");
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void RegisterValidation_StructScalar_ReachableShape_DoesNotEmitClassConstrainedCalls(
+        bool resultConverter, bool optional)
+    {
+        var attribute = resultConverter
+            ? "[global::System.Text.Json.Serialization.JsonConverter(typeof(ManualScalarConverter))]"
+            : string.Empty;
+        var converter = resultConverter
+            ? """
+              public sealed class ManualScalarConverter : global::Trellis.ResultJsonConverter<ManualScalar>
+              {
+                  public override global::Trellis.Result<ManualScalar> TryRead(
+                      ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type type,
+                      global::System.Text.Json.JsonSerializerOptions options) =>
+                      ManualScalar.TryCreate(reader.GetInt32());
+                  public override void Write(global::System.Text.Json.Utf8JsonWriter writer,
+                      ManualScalar value, global::System.Text.Json.JsonSerializerOptions options) =>
+                      writer.WriteNumberValue(value.Value);
+              }
+              """
+            : string.Empty;
+        var root = optional ? "global::Trellis.Maybe<ManualScalar>" : "ManualScalar";
+        var source = $$"""
+            {{attribute}}
+            public readonly record struct ManualScalar(int Value) : global::Trellis.IScalarValue<ManualScalar, int>
+            {
+                public static global::Trellis.Result<ManualScalar> TryCreate(int value, string? fieldName = null) =>
+                    global::Trellis.Result.Ok(new ManualScalar(value));
+                public static global::Trellis.Result<ManualScalar> TryCreate(string? value, string? fieldName = null) =>
+                    global::Trellis.Result.Ok(new ManualScalar(int.Parse(value!)));
+            }
+            {{converter}}
+            [global::System.Text.Json.Serialization.JsonSerializable(typeof({{root}}))]
+            public partial class AppContext : global::System.Text.Json.Serialization.JsonSerializerContext
+            {
+                public AppContext() : base(null) { }
+                protected override global::System.Text.Json.JsonSerializerOptions? GeneratedSerializerOptions => null;
+                public override global::System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(
+                    global::System.Type type) => null;
+            }
+            """;
+
+        var generated = RunGeneratorOrNull(source, checkCompilation: true);
+
+        if (resultConverter)
+        {
+            generated.Should().NotBeNull();
+            generated.Should().NotContain("RegisterScalar<global::ManualScalar");
+            generated.Should().Contain("RegisterResultConverter(new global::ManualScalarConverter(), scalar: true)");
+        }
+        else
+        {
+            generated.Should().BeNull("plain struct scalar roots have no class-constrained validation registration");
+        }
+    }
+
+    [Theory]
+    [InlineData("private", "public", "")]
+    [InlineData("public", "private", "")]
+    [InlineData("public", "public", "int unused")]
+    public void RegisterValidation_ResultConverter_NotConstructibleFromRegistry_PreservesConsumerCompilation(
+        string converterAccessibility, string constructorAccessibility, string parameters)
+    {
+        var source = CreateNestedConverterSource(converterAccessibility, constructorAccessibility, parameters);
+
+        RunGeneratorOrNull(source, checkCompilation: true).Should().BeNull(
+            "a closed registration cannot construct the application's inaccessible or parameterized converter");
+    }
+
+    [Theory]
+    [InlineData("public", "public")]
+    [InlineData("internal", "internal")]
+    [InlineData("protected internal", "public")]
+    public void RegisterValidation_ResultConverter_AccessibleParameterlessConstructor_RegistersTheConverter(
+        string converterAccessibility, string constructorAccessibility)
+    {
+        var source = CreateNestedConverterSource(converterAccessibility, constructorAccessibility, string.Empty);
+
+        RunGeneratorOrNull(source, checkCompilation: true).Should().Contain(
+            "RegisterScalar<global::Sample, int>(new global::Sample.Converter())");
+    }
+
+    [Fact]
     public void Collection_property_of_dtos_containing_a_value_object_is_registered()
     {
         var source = $$"""
@@ -251,7 +410,8 @@ public class PathTrackingRegistryGeneratorTests
 
     [Fact]
     public void Nested_object_property_containing_a_value_object_is_registered()
-    {        var source = $$"""
+    {
+        var source = $$"""
             {{ValueObject}}
 
             namespace TestNamespace
@@ -496,7 +656,42 @@ public class PathTrackingRegistryGeneratorTests
         return generated!;
     }
 
-    private static string? RunGeneratorOrNull(string source)
+    private static string CreateNestedConverterSource(
+        string converterAccessibility, string constructorAccessibility, string parameters) => $$"""
+        [global::System.Text.Json.Serialization.JsonConverter(typeof(Sample.Converter))]
+        public class Sample : global::Trellis.ScalarValueObject<Sample, int>,
+            global::Trellis.IScalarValue<Sample, int>
+        {
+            private Sample(int value) : base(value) { }
+            public static global::Trellis.Result<Sample> TryCreate(int value, string? fieldName = null) =>
+                global::Trellis.Result.Ok(new Sample(value));
+            public static global::Trellis.Result<Sample> TryCreate(string? value, string? fieldName = null) =>
+                global::Trellis.Result.Ok(new Sample(int.Parse(value!)));
+
+            {{converterAccessibility}} sealed class Converter : global::Trellis.ResultJsonConverter<Sample>
+            {
+                {{constructorAccessibility}} Converter({{parameters}}) { }
+                public override global::Trellis.Result<Sample> TryRead(
+                    ref global::System.Text.Json.Utf8JsonReader reader, global::System.Type type,
+                    global::System.Text.Json.JsonSerializerOptions options) =>
+                    Sample.TryCreate(reader.GetInt32());
+                public override void Write(global::System.Text.Json.Utf8JsonWriter writer, Sample value,
+                    global::System.Text.Json.JsonSerializerOptions options) =>
+                    writer.WriteNumberValue(value.Value);
+            }
+
+            [global::System.Text.Json.Serialization.JsonSerializable(typeof(Sample))]
+            public partial class AppContext : global::System.Text.Json.Serialization.JsonSerializerContext
+            {
+                public AppContext() : base(null) { }
+                protected override global::System.Text.Json.JsonSerializerOptions? GeneratedSerializerOptions => null;
+                public override global::System.Text.Json.Serialization.Metadata.JsonTypeInfo? GetTypeInfo(
+                    global::System.Type type) => null;
+            }
+        }
+        """;
+
+    private static string? RunGeneratorOrNull(string source, bool checkCompilation = false)
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
@@ -508,10 +703,13 @@ public class PathTrackingRegistryGeneratorTests
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         var driver = CSharpGeneratorDriver.Create(new PathTrackingRegistryGenerator())
-            .RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics, cancellationToken);
+            .RunGeneratorsAndUpdateCompilation(compilation, out var updatedCompilation, out var diagnostics, cancellationToken);
 
         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
             .Should().BeEmpty("the source generator should not produce errors");
+        if (checkCompilation)
+            updatedCompilation.GetDiagnostics(cancellationToken).Where(d => d.Severity == DiagnosticSeverity.Error)
+                .Should().BeEmpty("generated registrations must preserve valid consumer compilation");
 
         return driver.GetRunResult().Results
             .SelectMany(r => r.GeneratedSources)
@@ -527,6 +725,7 @@ public class PathTrackingRegistryGeneratorTests
             .Concat([
                 typeof(RequiredGuid<>).Assembly.Location,
                 typeof(ScalarValueObject<,>).Assembly.Location,
+                typeof(Trellis.Primitives.CompositeValueObjectJsonConverter<>).Assembly.Location,
                 typeof(Trellis.Asp.ValidationErrorsContext).Assembly.Location,
                 typeof(System.Text.Json.JsonSerializer).Assembly.Location,
             ])

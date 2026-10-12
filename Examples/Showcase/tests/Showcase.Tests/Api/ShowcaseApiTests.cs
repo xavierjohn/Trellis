@@ -186,7 +186,7 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task Open_account_with_missing_body_properties_returns_400_not_500()
+    public async Task OpenAccount_JsonBody_MissingRequiredValues_Returns422StructuredViolations()
     {
         var client = _factory.CreateClient();
         using var content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
@@ -196,7 +196,16 @@ public class ShowcaseApiTests : IClassFixture<WebApplicationFactory<Program>>
             content,
             Ct);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+        var violations = problem.RootElement.GetProperty("fieldViolations").EnumerateArray().ToArray();
+        violations.Select(v => v.GetProperty("location").GetProperty("pointer").GetString())
+            .Should().BeEquivalentTo([
+                "/customerId", "/accountType", "/initialDeposit", "/dailyWithdrawalLimit", "/overdraftLimit"]);
+        violations.Should().OnlyContain(v =>
+            v.GetProperty("code").GetString() == "value.not-null"
+            && v.GetProperty("location").GetProperty("in").GetString() == "body");
     }
 
     private sealed record PageEnvelope(

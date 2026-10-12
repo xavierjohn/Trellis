@@ -118,6 +118,14 @@ application-owned.
 - **Non-HTTP** — unwrap with `Match` / `TryGetValue` before serialization.
 - **Genuinely need raw JSON** (logging, IPC) — register a converter (or a `JsonConverterFactory`) in `JsonSerializerOptions.Converters`; option-registered converters take precedence over the type's `[JsonConverter]` attribute. **The override must match the declared static type:** `JsonConverter<Result<T>>` covers only `Result<T>`-declared values; `IResult<T>`-declared values need `JsonConverter<IResult<T>>`; `IResult`-declared values need `JsonConverter<IResult>`. Use a `JsonConverterFactory` to cover multiple shapes at once.
 
+## Validated JSON readers
+
+`ResultJsonConverter<T>` lets converters expose non-throwing `TryRead` validation while
+standalone `JsonSerializer.Deserialize` still rejects failures through inherited `Read`.
+`RequiredEnumJsonConverter<T>` uses this contract. ASP collecting adapters call the Result
+parser directly, so ordinary client validation does not require exception-driven binding.
+Malformed JSON and converter configuration defects still throw.
+
 ## Optional: API guidance for coding assistants
 
 Trellis packages include API references that assistants may not find in the NuGet cache.

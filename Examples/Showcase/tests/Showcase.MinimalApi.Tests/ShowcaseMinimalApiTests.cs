@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Trellis.Primitives;
 using Trellis.Showcase.Application;
@@ -12,8 +13,9 @@ using Trellis.Showcase.MinimalApi;
 
 /// <summary>
 /// Black-box integration tests over the Showcase Minimal API host. Mirrors
-/// <c>Trellis.Showcase.Tests.Api.ShowcaseApiTests</c> verbatim — proves that the same DTOs,
-/// repository, and <c>BankingWorkflow</c> produce identical HTTP behaviour across hosting styles.
+/// <c>Trellis.Showcase.Tests.Api.ShowcaseApiTests</c> for shared DTOs, repository, and
+/// <c>BankingWorkflow</c> semantics. Binding regressions also exercise Production,
+/// where ASP.NET Core does not throw request-binding exceptions by default.
 /// </summary>
 public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -139,7 +141,7 @@ public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task Open_account_with_missing_body_properties_returns_400_not_500()
+    public async Task OpenAccount_JsonBody_MissingRequiredValues_Returns422StructuredViolations()
     {
         var client = _factory.CreateClient();
         using var content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
@@ -149,17 +151,25 @@ public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Progr
             content,
             Ct);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+        var violations = problem.RootElement.GetProperty("fieldViolations").EnumerateArray().ToArray();
+        violations.Select(v => v.GetProperty("location").GetProperty("pointer").GetString())
+            .Should().BeEquivalentTo([
+                "/customerId", "/accountType", "/initialDeposit", "/dailyWithdrawalLimit", "/overdraftLimit"]);
+        violations.Should().OnlyContain(v =>
+            v.GetProperty("code").GetString() == "value.not-null"
+            && v.GetProperty("location").GetProperty("in").GetString() == "body");
     }
 
-    [Fact]
-    public async Task Open_account_with_negative_money_surfaces_validation_message()
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Production")]
+    public async Task OpenAccount_JsonBody_NegativeMoney_Returns422StructuredViolation(string environment)
     {
-        // Locks the framework fix: TrellisJsonValidationException thrown from MoneyJsonConverter
-        // (e.g. "Amount cannot be negative") MUST be surfaced in the Problem Details body so callers
-        // can see *why* their request was rejected. Previously Minimal API returned the generic
-        // "The request body contains invalid JSON." with no actionable info.
-        var client = _factory.CreateClient();
+        using var factory = _factory.WithWebHostBuilder(builder => builder.UseEnvironment(environment));
+        using var client = factory.CreateClient();
         var json = """
             {
               "customerId": "11111111-1111-1111-1111-111111111111",
@@ -171,16 +181,50 @@ public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Progr
             """;
         using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-        var response = await client.PostAsync(
+        using var response = await client.PostAsync(
             new Uri("/api/accounts", UriKind.Relative),
             content,
             Ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.Content.Headers.ContentType.Should().NotBeNull();
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         var body = await response.Content.ReadAsStringAsync(Ct);
         body.Should().NotContain("The request body contains invalid JSON",
-            "the framework should surface the curated TrellisJsonValidationException message instead of the generic placeholder");
+            "the framework should surface the curated validation detail instead of the generic placeholder");
         body.Should().Contain("negative", "the Money converter's curated message must reach the client");
+
+        using var problem = JsonDocument.Parse(body);
+        var violations = problem.RootElement.GetProperty("fieldViolations");
+        violations.GetArrayLength().Should().Be(1);
+        var violation = violations[0];
+        violation.GetProperty("code").GetString().Should().Be("value.greater-than-or-equal");
+        violation.GetProperty("location").GetProperty("in").GetString().Should().Be("body");
+        violation.GetProperty("location").GetProperty("pointer").GetString().Should().Be("/initialDeposit/amount");
+        violation.GetProperty("args").GetProperty("comparisonValue").GetInt32().Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Production")]
+    public async Task OpenAccount_JsonBody_MalformedJson_Returns400ProblemDetails(string environment)
+    {
+        using var factory = _factory.WithWebHostBuilder(builder => builder.UseEnvironment(environment));
+        using var client = factory.CreateClient();
+        using var content = new StringContent("{", System.Text.Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync(
+            new Uri("/api/accounts", UriKind.Relative),
+            content,
+            Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType.Should().NotBeNull();
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+        problem.RootElement.GetProperty("status").GetInt32().Should().Be(400);
+        problem.RootElement.GetProperty("code").GetString().Should().Be("error.unspecified");
+        problem.RootElement.GetProperty("kind").GetString().Should().Be("bad-request");
     }
 
     private sealed record PageEnvelope(

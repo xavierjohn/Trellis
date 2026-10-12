@@ -49,15 +49,12 @@ public sealed class CompositeValueObjectPathTrackingTests
 
         using (ValidationErrorsContext.BeginScope())
         {
-            var ex = Assert.Throws<TrellisJsonValidationException>(
-                () => JsonSerializer.Deserialize<CompositeOrderCommand>(json, options));
-
-            ex.InvalidInput.Should().NotBeNull();
-            ex.InvalidInput!.Fields[0].Field.Path.Should().Be(
+            JsonSerializer.Deserialize<CompositeOrderCommand>(json, options).Should().NotBeNull();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error.Should().NotBeNull();
+            error!.Fields[0].Field.Path.Should().Be(
                 "/shipTo/street",
                 "the composite converter emits the composite-relative '/street' and the ASP layer must re-root it");
-            JsonValidationPathRebase.IsMarked(ex).Should().BeTrue(
-                "a re-rooted exception must be marked so no outer wrapper prefixes it a second time");
         }
     }
 
@@ -69,15 +66,12 @@ public sealed class CompositeValueObjectPathTrackingTests
 
         using (ValidationErrorsContext.BeginScope())
         {
-            var ex = Assert.Throws<TrellisJsonValidationException>(
-                () => JsonSerializer.Deserialize<CompositeRouteCommand>(json, options));
-
-            ex.InvalidInput.Should().NotBeNull();
-            ex.InvalidInput!.Fields[0].Field.Path.Should().Be(
+            JsonSerializer.Deserialize<CompositeRouteCommand>(json, options).Should().NotBeNull();
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error.Should().NotBeNull();
+            error!.Fields[0].Field.Path.Should().Be(
                 "/stops/1/street",
                 "the element index is only knowable from the collection wrapper, never from the composite converter");
-            JsonValidationPathRebase.IsMarked(ex).Should().BeTrue(
-                "a re-rooted exception must be marked so no outer wrapper prefixes it a second time");
         }
     }
 
@@ -95,10 +89,8 @@ public sealed class CompositeValueObjectPathTrackingTests
 
         using (ValidationErrorsContext.BeginScope())
         {
-            var ex = Assert.Throws<TrellisJsonValidationException>(
-                () => JsonSerializer.Deserialize<CompositePriceCommand>(json, options));
-
-            ex.InvalidInput!.Fields[0].Field.Path.Should().Be(
+            JsonSerializer.Deserialize<CompositePriceCommand>(json, options).Should().NotBeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!.Fields[0].Field.Path.Should().Be(
                 "/prices/a~1b~0c/street",
                 "'/' escapes to '~1' and '~' to '~0', so the key stays one segment instead of splitting the pointer");
         }
@@ -112,10 +104,8 @@ public sealed class CompositeValueObjectPathTrackingTests
 
         using (ValidationErrorsContext.BeginScope())
         {
-            var ex = Assert.Throws<TrellisJsonValidationException>(
-                () => JsonSerializer.Deserialize<CompositePriceCommand>(json, options));
-
-            ex.InvalidInput!.Fields[0].Field.Path.Should().Be("/prices/EUR/street");
+            JsonSerializer.Deserialize<CompositePriceCommand>(json, options).Should().NotBeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!.Fields[0].Field.Path.Should().Be("/prices/EUR/street");
         }
     }
 

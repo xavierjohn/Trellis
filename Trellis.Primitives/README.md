@@ -40,6 +40,14 @@ public sealed partial class OrderId : RequiredGuid<OrderId>;
 - `GeoCoordinate` validates finite latitude/longitude and calculates approximate in-memory great-circle distances; `GeoBounds` builds conservative one- or two-box spherical radius prefilters.
 - `WeeklyPeriod` and `WeeklySchedule` model recurring local-clock availability in an IANA time zone.
 
+## Composite JSON validation
+
+`CompositeValueObjectJsonConverter<T>` exposes Result-returning `TryRead`, accumulating
+invalid tokens and missing required fields before invoking the domain factory. ASP collecting
+adapters consume those failures without throwing; standalone deserialization still rejects
+them through inherited `Read`. The converter remains ASP-independent and retains its existing
+JSON write shape. Malformed JSON and unsupported configuration still throw.
+
 ## Email and hostname validation
 
 `EmailAddress` supports a common dot-atom-style local part and multi-label domain, not

@@ -174,7 +174,9 @@ public class ApiHttpFileParityTests : IClassFixture<ApiHttpFileParityTests.Parit
     /// host takes the converter path and its prose does not. That divergence is precisely why
     /// this test asserts the machine-readable fields and only checks that <c>detail</c> is
     /// non-empty — asserting the sentence would pin one producer's wording and make the test
-    /// fail on a host it is supposed to cover.
+    /// depend on the test process's converter selection. This test does not run a standalone
+    /// or Native AOT host; the CI runtime smoke checks the same structured contract through
+    /// both actual Production hosts.
     /// </para>
     /// </summary>
     [Fact]

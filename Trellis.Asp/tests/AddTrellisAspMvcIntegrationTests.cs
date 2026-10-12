@@ -261,7 +261,8 @@ public sealed class AddTrellisAspMvcIntegrationTests
 
         var resp = await client.PostAsync("/composite-dto", content, TestContext.Current.CancellationToken);
 
-        resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity,
+            "the semantic rejection was {0}", await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var bodyText = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(bodyText);

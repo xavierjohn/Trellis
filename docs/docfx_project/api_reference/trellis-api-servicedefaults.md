@@ -3,7 +3,7 @@ package: Trellis.ServiceDefaults
 namespaces: [Trellis.ServiceDefaults]
 types: [TrellisServiceCollectionExtensions, TrellisServiceBuilder]
 version: v3
-last_verified: 2026-10-10
+last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring a composition root with AddTrellis(...) so Trellis modules apply in the canonical order, and what it deliberately does not register."
@@ -51,6 +51,8 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 - `UseInbox<TContext>()` registers only the inbound dispatcher, the EF dedup store, and `InboxOptions`; you must also call `AddTrellisInbox()` in `OnModelCreating` to map the `TrellisInboxMessages` table, and register the `IIntegrationEventHandler<TEvent>` implementations that consume the messages. `InboxOptions.ConsumerId` is required, so the `configure` callback that sets it is mandatory. Calling `UseInbox` more than once throws `InvalidOperationException` (one inbox per composition). It is order-independent versus `UseEntityFrameworkUnitOfWork<TContext>()` because the dispatcher is an inbound seam, not a pipeline behavior.
 - Every `UseIntegrationEvents(...)` overload wires the default **best-effort local** publisher when none is registered. Swallowed consumer failures make the integration row processed without a consumer retry. A broker adapter must await publication acceptance and propagate failures to the relay. `UseInbox<TContext>()` does not reroute default publication: an adapter must actually call `IInboxDispatcher.DispatchAsync` and expose failures for transport redelivery.
 - If you only need one module, direct package-specific registration remains valid; the builder is for composition-root clarity.
+- Minimal API hosts pair the registration with validation middleware and endpoint filters; scalar and composite JSON failures are collected without a `ThrowOnBadRequest` override. See [semantic JSON validation](trellis-api-asp.md#minimal-api-semantic-json-validation).
+- Formatting bare error responses is a separate host policy, not a scalar-validation side effect. For Problem Details on bare framework 400s, explicitly pair `AddTrellisProblemDetails()` with `app.UseStatusCodePages()`; status-code pages also format eligible application-owned bodyless responses.
 - Shared-loader adapters are fallbacks: when `UseResourceAuthorization(assemblies)` discovers a custom per-message loader, it replaces an adapter installed by an earlier direct `AddSharedResourceAuthorization` call. Scanning never replaces an application-provided implementation, factory, or instance registration, and leaves keyed registrations untouched.
 
 ## AOT compatibility
@@ -255,5 +257,6 @@ The complete, authoritative classification lives in `Trellis.ServiceDefaults/tes
 | `AddAzureServiceBusIntegrationEventPublisher` / `AddAzureServiceBusIntegrationEventConsumer` | `Trellis.Messaging.AzureServiceBus` | Vendor SDK. |
 
 The vendor-SDK rule is the important one: `Trellis.ServiceDefaults` references no cloud SDK, and a builder slot is a compile-time reference. Adding one would make every consumer of the meta-package carry the Azure SDK in order to use features that have nothing to do with Azure. Call these registrations directly on `IServiceCollection` alongside `AddTrellis(...)`. That same absence from the reference graph is what keeps the vendor packages outside the test's scan, so their "no slot" status needs no allowlist entry.
+
 
 `AddAzureServiceBusIntegrationEventPublisher` in particular is order-independent by construction: it *replaces* any existing `IIntegrationEventPublisher` registration rather than appending to it, so it can be called before or after `AddTrellis(options => options.UseIntegrationEvents(...))` with the same result.
