@@ -15,7 +15,7 @@ public static class CheckpointServiceCollectionExtensions
     /// <see cref="CheckpointModelBuilderExtensions.AddTrellisConsumerCheckpoints(ModelBuilder)"/> in the
     /// context's <c>OnModelCreating</c>. The store is a durable resume cursor — a performance optimization;
     /// once-effective processing stays with the inbox anti-join
-    /// (<see cref="IInboxStore.FilterUnprocessedAsync"/>) and dedup row, not the checkpoint.
+    /// (<see cref="IInboxStore.FilterUnprocessedAsync"/>) and retained dedup row, not the checkpoint.
     /// </summary>
     /// <typeparam name="TContext">The consumer's <see cref="DbContext"/> that owns the checkpoint table.</typeparam>
     /// <param name="services">The service collection.</param>

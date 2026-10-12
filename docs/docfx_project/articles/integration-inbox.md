@@ -3,7 +3,7 @@ title: Transactional Inbox Integration
 package: Trellis.EntityFrameworkCore.Inbox
 topics: [inbox, integration-events, idempotency, efcore, messaging, reliability]
 related_api_reference: [trellis-api-efcore-inbox.md, trellis-api-efcore-outbox.md, trellis-api-efcore.md, trellis-api-mediator.md]
-last_verified: 2026-10-10
+last_verified: 2026-10-12
 audience: [developer]
 ---
 # Transactional Inbox Integration
@@ -70,7 +70,7 @@ builder.Services.AddTrellis(trellis => trellis
     .UseInbox<AppDbContext>(o => o.ConsumerId = "orders-service"));
 ```
 
-`ConsumerId` identifies this subscriber. Two different services consuming the same message each keep their own dedup history under their own `ConsumerId`, so each processes it once. Keep the value stable across deploys — it is part of the dedup key, and renaming it makes the consumer reprocess everything still inside the transport's redelivery window.
+`ConsumerId` identifies this subscriber. Two different services consuming the same message each keep their own dedup history under their own `ConsumerId`, so each processes it once. Keep the value stable across deploys — it is part of the dedup key. Renaming it changes the dedup namespace: records under the old id do not protect deliveries under the new id, so any redelivered or replayed message can run again.
 
 **Registration is not routing.** `UseIntegrationEvents(...)` supplies handler bindings shared by the default publisher and the inbox. `UseInbox<TContext>()` does not reroute default publication: local fan-out still logs and swallows ordinary consumer failures and the integration outbox row is processed without retrying them. An adapter must actually call the non-swallowing `IInboxDispatcher` with the stable message id and expose failures to a transport that redelivers.
 
@@ -224,14 +224,80 @@ foreach (var msg in window.Where(m => todo.Contains(m.Id)))
 await checkpoints.SetAsync(consumerId, window.HighWaterMark, ct);     // advance the cursor
 ```
 
-The checkpoint is **performance, not correctness** — it is the *same* kind of cursor the anti-join frees you from depending on for gap-freedom. A high-water cursor can skip a row assigned a low position but committed late, so always scan a window that **overlaps** the checkpoint (rewind a visibility-lag margin) and let `FilterUnprocessedAsync` + the dedup row provide once-effective processing. Used that way the checkpoint can only widen or narrow a rescan, never skip a row. The `position` is opaque — encode whatever cursor your feed uses (a sequence number, a UUIDv7 high-water mark, a timestamp) as a string.
+The checkpoint is **performance, not correctness**. A high-water cursor can skip a row assigned a low position but committed late, so always scan a window that **overlaps** the checkpoint (rewind a visibility-lag margin), use `FilterUnprocessedAsync` plus the retained dedup row, and advance only past rows known to be processed.
+
+Losing or resetting the checkpoint can widen the rescan. Messages whose dedup rows are retained are still skipped; rewinding beyond that retention can reapply older messages. See the [retention policy](#retain-dedup-history-deliberately). The `position` is opaque — encode whatever cursor your feed uses (a sequence number, a UUIDv7 high-water mark, a timestamp) as a string.
 
 ## Operating the inbox
 
-- **Prune old rows.** `TrellisInboxMessages` grows by one row per processed message per consumer. Once a row is older than the transport's maximum redelivery window it can never be hit by a redelivery, so a periodic job can delete rows whose `ProcessedAt` is older than that window (the column is indexed for exactly this). Delete too eagerly and a late redelivery would reprocess.
-- **Keep `ConsumerId` stable.** Treat it like a schema decision. Changing it is equivalent to declaring a brand-new subscriber with empty dedup history.
-- **One inbox per composition.** `UseInbox<TContext>()` throws if called twice. A process that consumes for several logical subscribers models them as distinct handlers under one `ConsumerId`, or composes separate roots.
-- **Make handlers re-runnable.** Redelivery after a failure reprocesses from scratch, so a handler must tolerate being started, rolled back, and started again.
+Trellis currently ships **no inbox maintenance facade, automatic expiry job, payload
+archive, or replay coordinator**. The operations below are application-owned requirements,
+not newly available API calls. The [operational contract and acceptance criteria](../api_reference/trellis-api-efcore-inbox.md#operational-requirements-and-transport-boundary)
+are the source of truth for a future implementation.
+
+### Inspect the right evidence
+
+The inbox table contains committed dedup metadata, **not message bodies or failed
+attempts**. A handler failure before saving leaves neither its staged local writes nor
+a dedup row. Retry counts, dead-letter reasons, and recoverable payloads belong to the
+transport or an application-owned archive. Conversely, losing an acknowledgement after
+commit does not undo processing: the next delivery keeps the same identity and is skipped.
+
+| Operator question | Evidence |
+|---|---|
+| Is there retained processing evidence for this message? | Look up the authorized storage scope plus `(ConsumerId, MessageId)`. A missing row is not proof that it never ran; it may be in flight or pruned. |
+| Why is a delivery retrying or dead-lettered? | Transport attempts, settlement errors, dead-letter metadata, and application logs. The inbox has no failure queue to answer this. |
+| What payload/contract can be replayed? | The durable source log/archive retaining original identity, payload, and contract version, not the inbox's CLR `EventType` metadata. |
+
+Inspection must be read-only, consumer-scoped, bounded, and cancelable; query failures
+must not look like an empty result. Keep `ConsumerId` stable across deployments, but
+do not mistake it for an authorization or tenant boundary.
+
+### Retain dedup history deliberately
+
+**No automatic expiry is the default policy.** A pruning job requires explicit
+application approval of a horizon covering **all** possible old deliveries: ordinary
+broker retries, delayed messages, dead-letter/manual redrive, producer republication,
+archive replay, and pull-feed rewind. An unbounded replay source has no safe finite
+dedup horizon unless its use is restricted to an isolated rebuild or live reprocessing
+is explicitly accepted.
+
+Use a fixed UTC cutoff over `ProcessedAt`, not `OccurredAt`, and bounded, audited batches.
+`ProcessedAt` is assigned before handlers and the final save, so allow for dispatch
+duration, clock skew, and visibility lag; coordinate overlapping work if those bounds
+cannot prove safety. Report committed partial progress on cancellation/failure.
+Pruning does not implicitly reset checkpoints or remove archived payloads. Once a dedup
+row is deleted, a rewind or redelivery can apply that message again.
+
+### Redrive and rebuild are different operations
+
+For a failed delivery, fix the cause and redrive through the **transport**, preserving
+the original consumer and message identity. A retained committed pair returns
+`SkippedDuplicate`; that is correct, including after a lost acknowledgement. The
+[Service Bus settlement contract](../api_reference/trellis-api-messaging-azureservicebus.md#settlement)
+defines when its adapter completes or leaves a delivery for retry.
+
+For deliberately replaying **already-consumed** events, the approved policy is an
+**isolated rebuild**:
+
+1. Authorize and audit a run with a fixed source range, retained contract versions,
+   and an application-owned durable log/archive containing the original payloads.
+2. Compose a separate replay root with its own stable `ConsumerId` and isolated storage,
+   preserving each original `MessageId`. Resume that run with the same replay identity.
+3. Leave the live consumer's dedup rows and options untouched. One inbox per composition
+   still applies; a second consumer id is not a way to add a second inbox to the live root.
+4. Keep handler writes and replay dedup in the same rebuild context/save. Disable or
+   isolate external calls, emails, broker publishing, and any emitted outbox relay.
+   A different consumer id without target/effect isolation would just apply work twice.
+5. Retain replay dedup through the run and any allowed restart, keep checkpoint
+   overlap/anti-join correctness, and expose failures and partial progress. Complete
+   only after the selected source range is durably accounted for and the application
+   verifies the rebuild; promoting it is a separate application decision.
+
+Do not delete live dedup rows or invent fresh message ids to force live re-execution.
+Repairing live business state needs its own explicit application idempotency policy.
+Health-check thresholds and automatic remediation are separate work, not implied by
+these operational requirements.
 
 ## Inbox vs. outbox
 

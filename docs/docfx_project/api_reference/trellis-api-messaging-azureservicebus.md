@@ -187,6 +187,14 @@ Dead-letter reasons:
 
 The dead-letter description carries the specific diagnosis (the offending wire name, the JSON error, and so on).
 
+Delivery-attempt and dead-letter evidence belongs to Service Bus, not the inbox table.
+Redriving a usable message preserves its original identity and contract; a retained
+committed inbox pair is skipped even if the earlier acknowledgement failed. Controlled
+replay of consumed events instead uses an application-owned archive and isolated
+rebuild, not deletion of live dedup rows or fresh message ids. See the
+[inbox operational requirements](trellis-api-efcore-inbox.md#operational-requirements-and-transport-boundary).
+Neither this adapter nor the inbox ships an archive/redrive/rebuild coordinator.
+
 ## Publishing an unmapped event
 
 `ServiceBusIntegrationEventPublisher.PublishAsync` throws `InvalidOperationException` when the event type has no registered wire name. This is deliberately fatal to the publish rather than a skip: the event cannot be named on the wire, so no consumer could identify it. The outbox row stays unsent and the relay retries, surfacing a missing `[IntegrationEventName]` as a stuck message rather than as silently dropped traffic.

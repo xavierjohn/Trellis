@@ -5,8 +5,9 @@
 /// advanced past in its source feed.
 /// </summary>
 /// <remarks>
-/// Performance state, not a domain aggregate. Losing or resetting it only forces a wider rescan — the inbox
-/// anti-join still guarantees once-effective processing — never incorrect processing.
+/// Performance state, not a domain aggregate. Losing or resetting it forces a wider rescan. The inbox
+/// deduplicates identities whose rows are retained; rewinding beyond that retention can apply older messages
+/// again. The checkpoint is not the correctness boundary.
 /// </remarks>
 public sealed class ConsumerCheckpoint
 {
