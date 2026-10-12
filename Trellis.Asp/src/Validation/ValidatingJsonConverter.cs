@@ -28,7 +28,7 @@ using System.Text.Json.Serialization;
 /// </para>
 /// <para>
 /// After deserialization, use <see cref="ScalarValueValidationFilter"/> to check for errors
-/// and return appropriate 400 Bad Request responses.
+/// and return the configured semantic-validation response (422 by default).
 /// </para>
 /// </remarks>
 public sealed class ValidatingJsonConverter<TValue, TPrimitive> : ScalarValueJsonConverterBase<TValue?, TValue, TPrimitive>
@@ -38,6 +38,7 @@ public sealed class ValidatingJsonConverter<TValue, TPrimitive> : ScalarValueJso
     /// <inheritdoc />
     protected override TValue? OnNullToken(string fieldName)
     {
+        ValidationErrorsContext.RecordReadFailure(fieldName);
         ValidationErrorsContext.AddBodyError(fieldName, ValidationCodes.ValueNotNull, $"{ResourceRef.FormatTypeName(typeof(TValue))} cannot be null.");
         return null;
     }

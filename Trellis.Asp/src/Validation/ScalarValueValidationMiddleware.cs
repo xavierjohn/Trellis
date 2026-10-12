@@ -56,9 +56,17 @@ public sealed class ScalarValueValidationMiddleware
     {
         using (ValidationErrorsContext.BeginScope())
         {
+            ValidationErrorsContext.CurrentPropertyName = string.Empty;
             try
             {
                 await _next(context).ConfigureAwait(false);
+                if (context.Response.StatusCode == StatusCodes.Status400BadRequest
+                    && !context.Response.HasStarted
+                    && context.Response.ContentType is null
+                    && context.Response.ContentLength is null or 0)
+                {
+                    await WriteGenericBadRequestAsync(context).ConfigureAwait(false);
+                }
             }
             catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status400BadRequest)
             {
@@ -66,6 +74,12 @@ public sealed class ScalarValueValidationMiddleware
                 {
                     // Handle JSON body deserialization failures (e.g., missing required properties)
                     await WriteJsonDeserializationErrorAsync(context, ex).ConfigureAwait(false);
+                }
+                else if (IsRequiredRootBodyFailure(context, ex)
+                    && ValidationErrorsContext.GetUnprocessableContent() is { } validationError)
+                {
+                    await ScalarValueValidationEndpointFilter.CreateValidationProblem(context, validationError)
+                        .ExecuteAsync(context).ConfigureAwait(false);
                 }
                 else if (TryCreateScalarBindingErrors(context, out var errors))
                 {
@@ -85,6 +99,22 @@ public sealed class ScalarValueValidationMiddleware
             }
         }
     }
+
+    [UnconditionalSuppressMessage("Trimming", "IL2072",
+        Justification = "The body type comes from endpoint serialization metadata which preserves its scalar interfaces.")]
+    internal static bool HasRejectedRequiredRootBody(HttpContext context)
+    {
+        var accepts = context.GetEndpoint()?.Metadata.GetMetadata<IAcceptsMetadata>();
+        return accepts is { IsOptional: false, RequestType: { } bodyType }
+            && (typeof(ValueObject).IsAssignableFrom(bodyType) || ScalarValueTypeHelper.IsScalarValue(bodyType))
+            && ValidationErrorsContext.HasReadFailureForField(string.Empty);
+    }
+
+    private static bool IsRequiredRootBodyFailure(HttpContext context, BadHttpRequestException exception) =>
+        HasRejectedRequiredRootBody(context)
+        // ASP.NET exposes no structured binding reason on BadHttpRequestException.
+        && exception.Message.StartsWith("Required parameter \"", StringComparison.Ordinal)
+        && exception.Message.EndsWith("\" was not provided from body.", StringComparison.Ordinal);
 
     /// <summary>
     /// The envelope source for a rejected value the seam did not express as a populated error:

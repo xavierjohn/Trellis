@@ -1,7 +1,7 @@
 ﻿namespace Trellis.AspSourceGenerator.Tests;
 
-using System.Reflection;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -91,7 +91,40 @@ public sealed class ScalarValueConverterParityTests
         }
     }
 
-    private static (Error.InvalidInput? Errors, string? Json, bool RejectedShape) Read(Type type, JsonConverter converter, string json, string fieldName)
+    [Theory]
+    [InlineData("OrderId", "orderId")]
+    [InlineData("SKU", "sku")]
+    [InlineData("URLValue", "urlValue")]
+    [InlineData("IPAddress", "ipAddress")]
+    [InlineData("XMLDocument", "xmlDocument")]
+    public void Read_GeneratedConverterWithoutPropertyName_UsesTheCamelCasedTypeName(
+        string typeName, string expectedField)
+    {
+        var type = GeneratedAssembly.Value.GetType($"Parity.{typeName}", true)!;
+        var factory = (JsonConverterFactory)Activator.CreateInstance(
+            GeneratedAssembly.Value.GetType("Trellis.Generated.GeneratedValueObjectConverterFactory", true)!)!;
+
+        var actual = Read(type, factory, "\"invalid\"", null);
+
+        var violation = actual.Errors!.Fields.Items.Should().ContainSingle().Subject;
+        violation.Field.Should().Be(InputPointer.ForBody("/" + expectedField));
+        violation.ReasonCode.Should().Be("test.rejected");
+    }
+
+    [Fact]
+    public void Read_GeneratedConverterWithoutScope_RejectsInvalidInput()
+    {
+        var type = GeneratedAssembly.Value.GetType("Parity.Probe0", true)!;
+        var factory = (JsonConverterFactory)Activator.CreateInstance(
+            GeneratedAssembly.Value.GetType("Trellis.Generated.GeneratedValueObjectConverterFactory", true)!)!;
+        Action deserialize = () => JsonSerializer.Deserialize("\"invalid\"", type, OptionsFor(factory));
+
+        deserialize.Should().Throw<TrellisJsonValidationException>()
+            .Which.InvalidInput!.Fields.Items.Should().ContainSingle()
+            .Which.ReasonCode.Should().Be("test.rejected");
+    }
+
+    private static (Error.InvalidInput? Errors, string? Json, bool RejectedShape) Read(Type type, JsonConverter converter, string json, string? fieldName)
     {
         using var scope = ValidationErrorsContext.BeginScope();
         ValidationErrorsContext.CurrentPropertyName = fieldName;
@@ -140,6 +173,19 @@ public sealed class ScalarValueConverterParityTests
             if (primitive != "string")
                 source.Append(CultureInfo.InvariantCulture, $"public static Result<Probe{i}> TryCreate(string? value, string? fieldName = null) => throw new NotSupportedException();");
             source.Append('}');
+        }
+
+        foreach (var name in new[] { "OrderId", "SKU", "URLValue", "IPAddress", "XMLDocument" })
+        {
+            source.Append(CultureInfo.InvariantCulture, $$"""
+                public sealed class {{name}} : ScalarValueObject<{{name}}, string>, IScalarValue<{{name}}, string>
+                {
+                    private {{name}}(string value) : base(value) { }
+                    public static Result<{{name}}> TryCreate(string? value, string? fieldName = null) =>
+                        Result.Fail<{{name}}>(Error.InvalidInput.ForField(
+                            "test.rejected", InputPointer.ForProperty(fieldName ?? "value"), detail: "Rejected."));
+                }
+                """);
         }
 
         var references = AppDomain.CurrentDomain.GetAssemblies()

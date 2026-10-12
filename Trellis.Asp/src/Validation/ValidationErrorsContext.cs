@@ -312,6 +312,15 @@ public static class ValidationErrorsContext
     internal static bool HasErrorForField(string fieldName) =>
         s_current.Value?.HasErrorForPath(BuildPointer(fieldName)) ?? false;
 
+    internal static void RecordReadFailure(string fieldName) =>
+        s_current.Value?.RecordReadFailure(BuildPointer(fieldName));
+
+    internal static bool HasReadFailureForField(string fieldName) =>
+        s_current.Value?.HasReadFailureForPath(BuildPointer(fieldName)) ?? false;
+
+    internal static bool HasReadFailureWithinCurrentObject() =>
+        s_current.Value?.HasReadFailureWithinPath(AncestorPointer()) ?? false;
+
     /// <summary>
     /// Gets the aggregated <see cref="Error.InvalidInput"/> from the current scope, or null if no errors were collected.
     /// </summary>
@@ -362,6 +371,7 @@ public static class ValidationErrorsContext
         private readonly object _lock = new();
         private readonly Dictionary<string, List<FieldViolation>> _fieldErrors = new(StringComparer.Ordinal);
         private readonly List<RuleViolation> _ruleErrors = [];
+        private readonly HashSet<string> _failedReads = new(StringComparer.Ordinal);
 
         public bool HasErrors
         {
@@ -378,8 +388,28 @@ public static class ValidationErrorsContext
         {
             lock (_lock)
             {
-                return _fieldErrors.ContainsKey(path);
+                return _fieldErrors.ContainsKey(path)
+                    || _fieldErrors.Keys.Any(key => key.StartsWith(path + "/", StringComparison.Ordinal));
             }
+        }
+
+        public void RecordReadFailure(string path)
+        {
+            lock (_lock)
+                _failedReads.Add(path);
+        }
+
+        public bool HasReadFailureForPath(string path)
+        {
+            lock (_lock)
+                return _failedReads.Contains(path);
+        }
+
+        public bool HasReadFailureWithinPath(string path)
+        {
+            lock (_lock)
+                return _failedReads.Any(key =>
+                    key == path || key.StartsWith(path + "/", StringComparison.Ordinal));
         }
 
         public void AddFieldViolation(FieldViolation violation)

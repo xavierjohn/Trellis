@@ -4,7 +4,7 @@ namespaces: [Trellis]
 types: [orientation, routing]
 related_docs: [trellis-api-cookbook.md, trellis-api-core.md, trellis-api-anti-patterns.md, trellis-api-analyzers.md]
 version: v3
-last_verified: 2026-10-11
+last_verified: 2026-10-12
 audience: [llm]
 agent_usage: required
 agent_description: "Routing head for every Trellis task: which reference to open, the recipe lookup and how to read the set. Read before writing or changing code that uses Trellis."
@@ -149,6 +149,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Add a state transition | [Recipe 9](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
 | Write handler/domain tests | [Recipe 10](trellis-api-cookbook.md#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror) |
 | Replay service `.http` examples in CI, generate fresh GUIDs, or diagnose unresolved placeholders | [`.http` replay helpers](trellis-api-testing-aspnetcore.md#http-file-replay-helpers), then [replay variables and failure handling](trellis-api-testing-aspnetcore.md#replay-variables-and-failure-handling) |
+| Diagnose bare Production 400 responses or missing field pointers from Minimal API value-object binding | [ASP semantic JSON validation](trellis-api-asp.md#minimal-api-semantic-json-validation), then [scalar path tracking](trellis-api-asp.md#scalarvaluepathtracking); compare structured fields, not producer prose |
 | Write integration tests for a `BackgroundService` worker | [Recipe 26](trellis-api-cookbook.md#recipe-26--test-a-backgroundservice-with-workerharnesstworker) |
 | Insert a row idempotently on a unique constraint (de-duplicated worker outbox, "save unless exists") | [Recipe 27](trellis-api-cookbook.md#recipe-27--idempotent-inserts-on-a-unique-constraint-with-tryinsertuniqueasync) |
 | Match duplicate-key, foreign-key, or retry abort/exhaustion conflicts without copying wire strings | [`FaultCodes` vocabulary](trellis-api-core.md#validationcodes--the-reason-code-vocabulary), then [EF save helpers](trellis-api-efcore.md#dbcontextextensions) or [Recipe 27](trellis-api-cookbook.md#recipe-27--idempotent-inserts-on-a-unique-constraint-with-tryinsertuniqueasync) |

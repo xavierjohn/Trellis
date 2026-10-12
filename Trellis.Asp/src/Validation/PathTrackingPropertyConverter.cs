@@ -28,7 +28,13 @@ internal sealed class PathTrackingPropertyConverter<T> : JsonConverter<T?>
         ValidationErrorsContext.CurrentPropertyName = _propertyName;
         try
         {
-            return JsonSerializer.Deserialize(ref reader, TypeInfo(options));
+            return PathTrackingJsonReader.ReadValue(ref reader, TypeInfo(options), scalar: true);
+        }
+        catch (TrellisJsonValidationException ex) when (!JsonValidationPathRebase.IsMarked(ex))
+        {
+            // Collecting converters already use CurrentPropertyName; only throws need this extra path segment.
+            using var path = ValidationErrorsContext.PushPathSegment(_propertyName);
+            throw JsonValidationPathRebase.Rebase(ex, scalarProperty: true);
         }
         finally
         {

@@ -610,6 +610,13 @@ Conformance suite for a custom store: [`trellis-api-testing-idempotency.md`](../
 | Minimal API | `services.AddScalarValueValidationForMinimalApi();` + `app.UseScalarValueValidation();` + `.WithScalarValueValidation()` per endpoint |
 | Either | `services.AddTrellisAspWithScalarValidation();` (registers `TrellisAspOptions` AND chains `AddScalarValueValidation()` for **both** MVC and Minimal API JSON pipelines in one call), or call `AddTrellisAsp()` + `AddScalarValueValidation()` explicitly when the split matters (e.g. a host that only needs error mapping). |
 
+Scalar and composite JSON failures are collected during binding and rejected before the
+handler runs, without enabling `ThrowOnBadRequest`. Enum and composite converters expose
+Result-returning parsers; ASP collecting adapters use them directly, while standalone
+serialization still rejects invalid values. Semantic failures retain their configured
+validation status (default 422). Malformed JSON takes precedence and returns 400 Problem
+Details even when an earlier field already failed validation.
+
 > [!IMPORTANT]
 > The `IServiceCollection`-receiver `AddScalarValueValidation()` only configures shared JSON support. For MVC apps you still need `AddControllers().AddScalarValueValidation()` so the `ScalarValueValidationFilter` and `ScalarValueModelBinderProvider` are registered.
 

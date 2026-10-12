@@ -45,6 +45,11 @@ Result<string> email = Result.Ok("ada@example.com")
 
 Generated `Required*<TSelf>` types are lenient by default: use `[NotDefault]` to reject sentinel values and `[Trim]` to normalize strings.
 
+`ResultJsonConverter<T>` exposes Result-returning `TryRead` for validated JSON values.
+Required-enum readers use it; ASP adapters collect expected failures directly, while inherited
+`Read` still rejects invalid standalone deserialization. Malformed JSON and configuration
+defects remain exceptions.
+
 ## Error factories
 
 Core's `FaultCodes.DuplicateKey`, `ReferentialIntegrity`, `RetryAborted`, and `RetryExhausted`

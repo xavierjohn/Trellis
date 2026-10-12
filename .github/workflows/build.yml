@@ -179,14 +179,53 @@ jobs:
       # regressions that build/publish-time analysis cannot see — e.g., anonymous
       # types in ProblemDetails extensions, missing JsonSerializerContext entries,
       # reflection inside [UnconditionalSuppressMessage] blocks, MVC formatter
-      # misconfiguration. Exercises both a success path (JSON serialization) and
-      # a 4xx path (ResponseFailureWriter rules array) for each sample so a
-      # regression in either fails CI.
+      # misconfiguration. Also covers Production binding failures through the
+      # collecting enum/composite converters, not just handler-level failures.
       shell: bash
       run: |
         set -euo pipefail
 
-        # --- Reusable smoke probe: launch a sample, assert one happy + one failure path ---
+        assert_body_rejection() {
+          local LABEL=$1 PORT=$2 NAME=$3 PAYLOAD=$4 EXPECTED_STATUS=$5 CODE=$6 POINTER=$7 ARGS=$8
+          local BODY="${LABEL}-${NAME}.json" RESPONSE
+          RESPONSE=$(curl -sS --max-time 15 -o "$BODY" -w '%{http_code}|%{content_type}' \
+            -H 'content-type: application/json' -X POST --data "$PAYLOAD" \
+            "http://127.0.0.1:${PORT}/api/accounts")
+          python3 - "$BODY" "$RESPONSE" "$EXPECTED_STATUS" "$CODE" "$POINTER" "$ARGS" <<'PY'
+        import json
+        import sys
+
+        path, response, expected_status, code, pointer, args = sys.argv[1:]
+        status, content_type = response.split("|", 1)
+
+        def require(condition, message):
+            if not condition:
+                raise SystemExit(f"{path}: {message}")
+
+        require(status == expected_status, f"expected HTTP {expected_status}, got {status}")
+        require(content_type.split(";", 1)[0].strip().lower() == "application/problem+json",
+                f"expected Problem Details media type, got {content_type!r}")
+        with open(path, encoding="utf-8") as body:
+            problem = json.load(body)
+        require(problem["status"] == int(expected_status), "body status disagrees with HTTP")
+        require(problem["code"] == "error.unspecified", "unexpected envelope reason")
+        expected_kind = "bad-request" if expected_status == "400" else "unprocessable-content"
+        require(problem["kind"] == expected_kind, f"expected kind {expected_kind}")
+        if code:
+            violations = problem["fieldViolations"]
+            require(len(violations) == 1, "expected exactly one field violation")
+            violation = violations[0]
+            require(violation["code"] == code, f"expected field reason {code}")
+            require(violation["location"] == {"in": "body", "pointer": pointer},
+                    f"expected body pointer {pointer}")
+            require(violation["args"] == json.loads(args), "field renderer arguments changed")
+            require(isinstance(violation.get("detail"), str) and violation["detail"].strip(),
+                    "field detail must be non-empty, not identical across producers")
+        print(f"{path}: {status} Problem Details contract passed")
+        PY
+        }
+
+        # --- Reusable smoke probe: launch a sample and exercise its HTTP producers ---
         # Args: <label> <port> <log-file> <launch-command...>
         run_smoke() {
           local LABEL=$1 PORT=$2 LOG=$3
@@ -263,6 +302,14 @@ jobs:
             return 1
           fi
           echo "  ${FAIL_STATUS} OK; body head: $(head -c 300 ${LABEL}-fail.json)"
+
+          assert_body_rejection "$LABEL" "$PORT" "unknown-enum" \
+            '{"customerId":"11111111-1111-1111-1111-111111111111","accountType":"Platinum","initialDeposit":{"amount":250,"currency":"USD"},"dailyWithdrawalLimit":{"amount":500,"currency":"USD"},"overdraftLimit":{"amount":0,"currency":"USD"}}' \
+            422 "enum.name-undefined" "/accountType" '{"allowed":["Checking","MoneyMarket","Savings"]}'
+          assert_body_rejection "$LABEL" "$PORT" "negative-money" \
+            '{"customerId":"11111111-1111-1111-1111-111111111111","accountType":"Checking","initialDeposit":{"amount":-100,"currency":"USD"},"dailyWithdrawalLimit":{"amount":500,"currency":"USD"},"overdraftLimit":{"amount":0,"currency":"USD"}}' \
+            422 "value.greater-than-or-equal" "/initialDeposit/amount" '{"comparisonValue":0}'
+          assert_body_rejection "$LABEL" "$PORT" "malformed-json" '{' 400 "" "" '{}'
 
           kill "${APP_PID}" 2>/dev/null || true
           wait "${APP_PID}" 2>/dev/null || true

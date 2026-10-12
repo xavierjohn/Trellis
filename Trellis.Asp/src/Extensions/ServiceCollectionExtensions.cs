@@ -44,7 +44,7 @@ public static class ServiceCollectionExtensions
     /// <list type="bullet">
     /// <item>Collects ALL validation errors during JSON deserialization</item>
     /// <item>Uses property names (not JSON paths) in error messages</item>
-    /// <item>Returns comprehensive 400 Bad Request with all field errors</item>
+    /// <item>Returns the configured invalid-input status (default 422) with all field errors</item>
     /// <item>Integrates seamlessly with <c>[ApiController]</c> attribute</item>
     /// </list>
     /// </para>
@@ -129,11 +129,13 @@ public static class ServiceCollectionExtensions
             options.Converters.Add(new MaybeScalarValueJsonConverterFactory());
             options.Converters.Add(new MaybePrimitiveJsonConverterFactory());
         }
+
+        options.Converters.Add(new RegisteredValidationJsonConverterFactory());
     }
 
     /// <summary>
     /// Modifies type info to inject property names into ValidationErrorsContext before deserialization
-    /// and adds post-deserialization checks for missing non-nullable scalar value object properties.
+    /// and adds post-deserialization checks for missing non-nullable value object properties.
     /// </summary>
     [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyType comes from JSON serialization infrastructure which preserves type information")]
     private static void ModifyTypeInfo(JsonTypeInfo typeInfo)
@@ -141,16 +143,17 @@ public static class ServiceCollectionExtensions
         if (typeInfo.Kind != JsonTypeInfoKind.Object)
             return;
 
-        // Track non-nullable scalar VO properties for post-deserialization null checks.
-        // When a JSON property is missing entirely, STJ never invokes the converter —
-        // the property silently defaults to null. This is especially misleading for
-        // positional records where constructor parameters look required but are still
-        // nullable reference types at the CLR level.
-        List<(string Name, Func<object, object?> Get)>? requiredScalarProperties = null;
+        // Track non-nullable value properties because omitted JSON properties never invoke their converters.
+        List<(string Name, Func<object, object?> Get)>? requiredValueProperties = null;
+        var hasValidationProperties = false;
 
         foreach (var property in typeInfo.Properties)
         {
             var propertyType = property.PropertyType;
+            var requiredInputGetter = !property.IsGetNullable
+                && (property.Set is not null || property.AssociatedParameter is not null)
+                ? property.Get
+                : null;
 
             // Check for Maybe<TValue> where TValue : IScalarValue<TValue, TPrimitive>
             if (ScalarValueTypeHelper.IsMaybeScalarValue(propertyType))
@@ -162,6 +165,7 @@ public static class ServiceCollectionExtensions
                 if (registeredConverter is not null)
                 {
                     property.CustomConverter = registeredConverter;
+                    hasValidationProperties = true;
                     continue;
                 }
 
@@ -171,7 +175,10 @@ public static class ServiceCollectionExtensions
 
                 var wrappedConverter = CreatePropertyNameAwareConverter(innerConverter, property.Name, propertyType);
                 if (wrappedConverter is not null)
+                {
                     property.CustomConverter = wrappedConverter;
+                    hasValidationProperties = true;
+                }
 
                 continue;
             }
@@ -196,13 +203,18 @@ public static class ServiceCollectionExtensions
                         if (wrappedScalarConverter is not null)
                             property.CustomConverter = wrappedScalarConverter;
                     }
+
+                    // Invalid values remain placeholders only until the validation filter rejects the request.
+                    property.IsSetNullable = true;
+                    hasValidationProperties = true;
+                    if (requiredInputGetter is not null)
+                        property.IsRequired = false;
                 }
 
-                // Track non-nullable scalar VO properties for missing-property detection
-                if (!property.IsGetNullable && property.Get is not null)
+                if (requiredInputGetter is not null)
                 {
-                    requiredScalarProperties ??= [];
-                    requiredScalarProperties.Add((property.Name, property.Get));
+                    requiredValueProperties ??= [];
+                    requiredValueProperties.Add((property.Name, requiredInputGetter));
                 }
 
                 continue;
@@ -220,31 +232,51 @@ public static class ServiceCollectionExtensions
 
             var containerConverter = CreatePathTrackingContainerConverter(property);
             if (containerConverter is not null)
-                property.CustomConverter = containerConverter;
-        }
-
-        // Add post-deserialization callback to detect missing required scalar VO properties.
-        // Compose with any existing OnDeserialized callback to avoid overwriting consumer behavior.
-        if (requiredScalarProperties is not null)
-        {
-            var existingOnDeserialized = typeInfo.OnDeserialized;
-            typeInfo.OnDeserialized = obj =>
             {
-                existingOnDeserialized?.Invoke(obj);
-
-                foreach (var (name, get) in requiredScalarProperties)
+                property.CustomConverter = containerConverter;
+                hasValidationProperties = true;
+                if (IsConverterBackedValueObject(propertyType))
                 {
-                    if (get(obj) is not null)
-                        continue;
-
-                    // Only add an error if the converter didn't already report one
-                    // (explicit null tokens are handled by ValidatingJsonConverter)
-                    if (ValidationErrorsContext.Current is not null
-                        && !HasExistingErrorForField(name))
+                    property.IsSetNullable = true;
+                    if (requiredInputGetter is not null)
                     {
-                        ValidationErrorsContext.AddBodyError(name, ValidationCodes.ValueNotNull, $"'{name}' is required.");
+                        requiredValueProperties ??= [];
+                        requiredValueProperties.Add((property.Name, requiredInputGetter));
+                        property.IsRequired = false;
                     }
                 }
+            }
+        }
+
+        var existingOnDeserialized = typeInfo.OnDeserialized;
+        if (requiredValueProperties is not null || (hasValidationProperties && existingOnDeserialized is not null))
+        {
+            typeInfo.OnDeserialized = obj =>
+            {
+                var hasMissingRequiredValue = false;
+                if (requiredValueProperties is not null)
+                {
+                    foreach (var (name, get) in requiredValueProperties)
+                    {
+                        if (get(obj) is not null)
+                            continue;
+
+                        hasMissingRequiredValue = true;
+                        var detail = $"'{name}' is required.";
+                        if (ValidationErrorsContext.Current is null)
+                            throw new TrellisJsonValidationException(detail)
+                            {
+                                InvalidInput = Error.InvalidInput.Required(InputPointer.ForBody(name), detail),
+                            };
+
+                        if (!ValidationErrorsContext.HasReadFailureForField(name) && !HasExistingErrorForField(name))
+                            ValidationErrorsContext.AddBodyError(name, ValidationCodes.ValueNotNull, detail);
+                        ValidationErrorsContext.RecordReadFailure(name);
+                    }
+                }
+
+                if (!hasMissingRequiredValue && !ValidationErrorsContext.HasReadFailureWithinCurrentObject())
+                    existingOnDeserialized?.Invoke(obj);
             };
         }
     }
@@ -413,10 +445,7 @@ public static class ServiceCollectionExtensions
         if (ScalarValueTypeHelper.IsScalarValue(type) || ScalarValueTypeHelper.IsMaybeScalarValue(type))
             return true;
 
-        // A composite value object built entirely from primitives contains no IScalarValue, but its
-        // converter still throws composite-relative pointers that only an ancestor-aware wrapper can
-        // re-root. Keying on the converter attribute rather than the ValueObject base alone is what
-        // makes this expressible in the source generator, which sees symbols and not runtime types.
+        // Converter-owned composite interiors need the outer property path even without scalar properties.
         if (IsConverterBackedValueObject(type))
             return true;
 
@@ -531,8 +560,7 @@ public static class ServiceCollectionExtensions
         && type != typeof(object)
         && (type.Namespace is null || !type.Namespace.StartsWith("System", StringComparison.Ordinal));
 
-    // A composite value object whose JSON shape is owned by its own converter — the shape that throws
-    // composite-relative pointers. The converter attribute, not the ValueObject base, is the
+    // A composite value object whose JSON shape is owned by its own converter. The attribute is the
     // discriminator: a ValueObject with no converter is serialised as a plain object, so the modifier
     // walks into its properties normally and wrapping the whole thing would be over-installation.
     // Scalar values are excluded because the modifier's scalar branch returns before the container path

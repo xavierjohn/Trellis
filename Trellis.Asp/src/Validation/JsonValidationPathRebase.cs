@@ -5,8 +5,7 @@ using System.Collections.Immutable;
 using System.Linq;
 
 /// <summary>
-/// Re-roots the composite-relative pointers carried by a <see cref="TrellisJsonValidationException"/>
-/// onto the live ancestor path, exactly once.
+/// Re-roots value-relative validation pointers for JSON body collection and exception compatibility.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -76,12 +75,18 @@ internal static class JsonValidationPathRebase
     /// Re-roots <paramref name="exception"/> onto the live ancestor path and marks the result.
     /// </summary>
     /// <remarks>
+    /// For a scalar property, unspecified factory field names identify the scalar value itself,
+    /// not child properties of its JSON token. Explicitly located pointers keep their meaning.
+    /// <para>
     /// An exception carrying no <see cref="TrellisJsonValidationException.InvalidInput"/> has no
     /// pointers to rebase, but is still rewrapped so the live ancestor is recorded: it is the only
     /// remaining source of position once a wrapper has displaced
     /// <see cref="System.Text.Json.JsonException.Path"/>.
+    /// </para>
     /// </remarks>
-    internal static TrellisJsonValidationException Rebase(TrellisJsonValidationException exception)
+    internal static TrellisJsonValidationException Rebase(
+        TrellisJsonValidationException exception,
+        bool scalarProperty = false)
     {
         var ancestor = ValidationErrorsContext.CurrentAncestorPointer();
 
@@ -90,7 +95,7 @@ internal static class JsonValidationPathRebase
         var rebased = new TrellisJsonValidationException(exception.Message, exception)
         {
             InvalidInput = exception.InvalidInput is { } invalidInput
-                ? RebaseInvalidInput(invalidInput, ancestor)
+                ? RebaseTo(invalidInput, ancestor, scalarProperty)
                 : null,
         };
 
@@ -98,9 +103,6 @@ internal static class JsonValidationPathRebase
         rebased.Data[AbsolutePathKey] = ancestor;
         return rebased;
     }
-
-    private static Error.InvalidInput RebaseInvalidInput(Error.InvalidInput invalidInput, string ancestor) =>
-        RebaseTo(invalidInput, ancestor);
 
     /// <summary>
     /// Applies the body-context rebase rule to every pointer in <paramref name="invalidInput"/>
@@ -111,12 +113,18 @@ internal static class JsonValidationPathRebase
     /// <see cref="System.Text.Json.JsonException.Path"/> rather than from the live stack — the
     /// failure never passed a wrapper, so there is no live stack by the time it is caught.
     /// </remarks>
-    internal static Error.InvalidInput RebaseTo(Error.InvalidInput invalidInput, string ancestor)
+    internal static Error.InvalidInput RebaseTo(Error.InvalidInput invalidInput, string ancestor) =>
+        RebaseTo(invalidInput, ancestor, scalarProperty: false);
+
+    internal static Error.InvalidInput RebaseTo(
+        Error.InvalidInput invalidInput,
+        string ancestor,
+        bool scalarProperty)
     {
         var fields = invalidInput.Fields.Items
             .Select(violation =>
             {
-                var rebased = ValidationErrorsContext.RebaseToBody(violation.Field, ancestor);
+                var rebased = RebasePointerToBody(violation.Field, ancestor, scalarProperty);
                 return rebased == violation.Field ? violation : violation with { Field = rebased };
             })
             .ToImmutableArray();
@@ -127,11 +135,16 @@ internal static class JsonValidationPathRebase
                 : rule with
                 {
                     Fields = rule.Fields.Items
-                        .Select(pointer => ValidationErrorsContext.RebaseToBody(pointer, ancestor))
+                        .Select(pointer => RebasePointerToBody(pointer, ancestor, scalarProperty))
                         .ToImmutableArray(),
                 })
             .ToImmutableArray();
 
         return new Error.InvalidInput(fields, rules);
     }
+
+    private static InputPointer RebasePointerToBody(InputPointer pointer, string ancestor, bool scalarProperty) =>
+        ValidationErrorsContext.RebaseToBody(
+            scalarProperty && pointer.In == InputLocation.Unspecified ? InputPointer.Root : pointer,
+            ancestor);
 }

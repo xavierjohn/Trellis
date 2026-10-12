@@ -10,6 +10,41 @@ public sealed class RequiredEnumJsonConverterTests
         Converters = { new RequiredEnumJsonConverter<RequiredEnumJsonConverterTestState>() }
     };
 
+    [Theory]
+    [InlineData("\"unknown\"", ValidationCodes.EnumNameUndefined)]
+    [InlineData("null", ValidationCodes.ValueNotNull)]
+    [InlineData("42", ValidationCodes.FormatConversion)]
+    [InlineData("{\"nested\":[1,2]}", ValidationCodes.FormatConversion)]
+    public void TryRead_InvalidValue_ReturnsStructuredFailureAfterConsumingTheValue(string json, string code)
+    {
+        var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(json + " "), isFinalBlock: false, state: default);
+        reader.Read();
+
+        var result = new RequiredEnumJsonConverter<RequiredEnumJsonConverterTestState>()
+            .TryRead(ref reader, typeof(RequiredEnumJsonConverterTestState), _jsonOptions);
+
+        result.IsFailure.Should().BeTrue();
+        var error = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var violation = error.Fields.Items.Should().ContainSingle().Subject;
+        violation.ReasonCode.Should().Be(code);
+        violation.Field.Should().Be(InputPointer.Root);
+        violation.Detail.Should().NotBeNullOrWhiteSpace();
+        reader.BytesConsumed.Should().Be(System.Text.Encoding.UTF8.GetByteCount(json));
+    }
+
+    [Fact]
+    public void TryRead_ValidName_ReturnsTheDeclaredMember()
+    {
+        var reader = new Utf8JsonReader("\"Active\""u8);
+        reader.Read();
+
+        var result = new RequiredEnumJsonConverter<RequiredEnumJsonConverterTestState>()
+            .TryRead(ref reader, typeof(RequiredEnumJsonConverterTestState), _jsonOptions);
+
+        result.TryGetValue(out var value).Should().BeTrue();
+        value.Should().BeSameAs(RequiredEnumJsonConverterTestState.Active);
+    }
+
     [Fact]
     public void Read_NullToken_ThrowsJsonException()
     {

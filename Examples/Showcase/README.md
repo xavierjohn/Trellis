@@ -119,6 +119,25 @@ the Showcase AOT publish gate. Native correctness is only verified when that pub
 execution succeed for the current changes; a managed smoke pass or an older CI run is not
 native validation. The separate `AotConsoleProbe` deliberately remains ASP-free.
 
+### Validation producer coverage
+
+The in-process parity tests compare the machine-readable enum rejection (`code`, body pointer,
+and ordinally sorted `args.allowed`), not identical English. Both factories currently select
+the runtime scalar `TryCreate` producer in the reflection-enabled test process. The standalone
+Minimal API instead uses its reflection-disabled serializer configuration and the
+`RequiredEnumJsonConverter` producer; its wording legitimately differs.
+
+The existing CI HTTP smoke runs the native Minimal API and managed MVC host in **Production**.
+Besides successful JSON and a handler-level rejection, it checks unknown enum names and negative
+Money for 422 Problem Details with precise field locations and renderer args, plus malformed
+JSON for 400 Problem Details. The direct scalar smoke above does not exercise these HTTP paths.
+
+Both hosts collect ordinary scalar and composite validation failures during JSON binding,
+then reject the request before executing the handler. The enum and composite converters share
+Result-returning parsers with their standalone serializer adapters; native registrations close
+the ASP collecting adapters at compile time. No `ThrowOnBadRequest` override is required.
+Malformed JSON still returns 400 even when an earlier field failed semantic validation.
+
 ### Replaying `api.http`
 
 `api.http` states the status code each request should produce and names the error behind it.

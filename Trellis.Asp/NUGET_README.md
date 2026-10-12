@@ -41,6 +41,10 @@ app.MapGet("/widgets/{id}", (string id) =>
 
 Minimal API scalar validation also requires `app.UseScalarValueValidation()` and `.WithScalarValueValidation()` on participating endpoints. Common `PageUrl` builders live here; versioned hosts install `Trellis.Asp.ApiVersioning` and configure `AddTrellisAsp(o => o.UseVersionedPageUrls())` (or `UseAsp`) once. Typed pins and `WithVersionedRoute()` remain optional-package helpers.
 
+Scalar and composite JSON validation collects expected failures before the handler runs,
+without enabling `ThrowOnBadRequest`. Malformed JSON remains 400 Problem Details; semantic
+failures use the configured validation status (default 422).
+
 For ASP.NET Core rate limiting, keep policies and partitioning in the application and call
 `options.UseTrellisRejectionHandler()` inside `AddRateLimiter(...)`. The adapter owns
 `RateLimiterOptions.OnRejected` and writes the same Trellis Problem Details envelope as endpoint

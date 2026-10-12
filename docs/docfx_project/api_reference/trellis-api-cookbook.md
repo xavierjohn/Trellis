@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-10-11
+last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when the task lookup in trellis-start-here.md points to a recipe: compile-checked end-to-end patterns that cross Trellis packages."
@@ -985,6 +985,10 @@ public static class CompositionRoot
 
 **Still app-owned.** `AddTrellis(...)` does **not** call `AddDbContext`, `AddMediator`, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.
 
+Minimal API hosts add validation middleware and endpoint filters so collected scalar and
+composite JSON failures short-circuit before the handler. No `ThrowOnBadRequest` override is
+required. See [the ASP JSON preflight](trellis-api-asp.md#minimal-api-semantic-json-validation).
+
 For versioned pagination, install `Trellis.Asp.ApiVersioning`, register
 `Asp.Versioning` normally, and replace `.UseAsp()` with
 `.UseAsp(asp => asp.UseVersionedPageUrls())` (import `Trellis.Asp.ApiVersioning`).
@@ -1121,7 +1125,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
 - Null-only required-field guards create errors only for missing values. `EnsureNotNullOrWhiteSpace("name", "Name is required.")` reports `value.not-null` for null names and `value.not-empty` for empty/whitespace names, without creating violations on success or trimming valid text.
 - `[OwnedEntity]` + `partial` + `ValueObject` + private ctor is the contract. The three diagnostics (`TRLS036`/`037`/`038`) catch each violation at compile time.
-- `CompositeValueObjectJsonConverter<T>` makes JSON deserialization round-trip through `TryCreate`, so an API request body with an **invalid** `state` (one that fails the VO's rule) produces the same `Error.InvalidInput` shape the domain emits. A **missing** required inner field is caught earlier as a `TrellisJsonValidationException` ("required property missing") *before* `TryCreate` runs.
+- `CompositeValueObjectJsonConverter<T>` makes JSON deserialization round-trip through `TryCreate`, so an API request body with an **invalid** `state` (one that fails the VO's rule) produces the same `Error.InvalidInput` shape the domain emits. A **missing** required inner field produces a structured failure *before* `TryCreate` runs. ASP collects both kinds without throwing; standalone serialization rejects them with `TrellisJsonValidationException`.
 - `ApplyTrellisConventions` removes the boilerplate `OwnsOne` call. You only need `OwnsOne` when you want to **override** the convention (custom column names, table splitting, indexes on inner properties).
 
 **Storage shape.**
@@ -1137,7 +1141,7 @@ The `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` attribute on
 
 | C# property | JSON request/response shape |
 |---|---|
-| `ShippingAddress ShippingAddress { get; private set; }` (required composite VO) | `"shippingAddress": { "street": "1 Main St", "city": "Redmond", "state": "WA", "postalCode": "98052", "country": "US" }` — every field present; an **invalid** inner field (fails `TryCreate`) → `Error.InvalidInput` with field path `/shippingAddress/<field>`; a **missing** inner field → a "required property missing" `TrellisJsonValidationException`. |
+| `ShippingAddress ShippingAddress { get; private set; }` (required composite VO) | `"shippingAddress": { "street": "1 Main St", "city": "Redmond", "state": "WA", "postalCode": "98052", "country": "US" }` — every field present; an **invalid** inner field (fails `TryCreate`) or a **missing** inner field produces structured `Error.InvalidInput` with field path `/shippingAddress/<field>`. ASP collects it; standalone serialization rejects it. |
 | `partial Maybe<ShippingAddress> BillingAddress { get; set; }` (optional composite VO on a domain model — **not** used directly on a request DTO; see Recipe 14) | Domain model only. On the wire, request DTOs use a **nullable transport** (`ShippingAddress?`) and the controller adapts via `Maybe.From(...)`. Response DTOs project to `ShippingAddress?` for the same reason. |
 | `Money Total { get; private set; }` (required composite VO with scalar inner properties — `decimal Amount`, `Currency Currency`) | `"total": { "amount": 49.99, "currency": "USD" }` — the inner field casing is camelCase (the `CompositeValueObjectJsonConverter` emits camelCase property names). Inner scalar VOs (e.g., `Currency : RequiredString<Currency>`) serialize as their underlying primitive (`"USD"`, not `{"value":"USD"}`). |
 | Scalar VO (`OrderId : RequiredGuid<OrderId>`, `EmailAddress : RequiredString<EmailAddress>`) | Always serializes as the underlying primitive (`"550e8400-..."`, `"a@b.com"`). Never wrapped in `{ "value": ... }`. This is automatic via the source-generated `IScalarValue<T,P>` JSON converter. |

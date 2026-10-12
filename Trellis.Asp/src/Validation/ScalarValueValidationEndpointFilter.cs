@@ -39,23 +39,27 @@ public sealed class ScalarValueValidationEndpointFilter : IEndpointFilter
         var validationError = ValidationErrorsContext.GetUnprocessableContent();
         if (validationError is not null)
         {
-            var dictionary = validationError.Fields.Items
-                .GroupBy(fv => JsonPointerToMvc.Translate(fv.Field.Path))
-                .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
+            if (context.HttpContext.Response.StatusCode == StatusCodes.Status400BadRequest
+                && !ScalarValueValidationMiddleware.HasRejectedRequiredRootBody(context.HttpContext))
+                return await next(context).ConfigureAwait(false);
 
-            // Trellis-driven scalar VO validation rejection — semantic per RFC 9110 §15.5.21.
-            // The status honors the configured TrellisAspOptions Error.InvalidInput map (default
-            // 422), aligning with the status code emitted by the rest of the framework
-            // (ResponseFailureWriter for domain handler failures, ScalarValueValidationFilter
-            // and ScalarValueValidationMiddleware for the same condition on other code paths).
-            // instance: RFC 9457 §3.1 — server-relative path+query per ResponseFailureWriter convention.
-            return Results.ValidationProblem(
-                dictionary,
-                instance: context.HttpContext.Request.GetEncodedPathAndQuery(),
-                statusCode: ScalarValidationStatus.Resolve(context.HttpContext),
-                extensions: ViolationProjection.ToProblemExtensions(validationError));
+            return CreateValidationProblem(context.HttpContext, validationError);
         }
 
         return await next(context).ConfigureAwait(false);
+    }
+
+    internal static Microsoft.AspNetCore.Http.IResult CreateValidationProblem(
+        HttpContext context, Error.InvalidInput validationError)
+    {
+        var dictionary = validationError.Fields.Items
+            .GroupBy(fv => JsonPointerToMvc.Translate(fv.Field.Path))
+            .ToDictionary(g => g.Key, g => g.Select(fv => fv.Detail ?? fv.ReasonCode).ToArray());
+
+        return Results.ValidationProblem(
+            dictionary,
+            instance: context.Request.GetEncodedPathAndQuery(),
+            statusCode: ScalarValidationStatus.Resolve(context),
+            extensions: ViolationProjection.ToProblemExtensions(validationError));
     }
 }

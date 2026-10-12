@@ -36,12 +36,10 @@ internal static class PrimitiveJsonReader
             return false;
         }
 
-        try
-        {
-            if (TryReadKnownPrimitive(ref reader, out value))
-                return true;
-        }
-        catch (Exception ex) when (ex is FormatException or InvalidOperationException)
+        if (TryReadKnownPrimitive(ref reader, out value, out var supported))
+            return true;
+
+        if (supported)
         {
             // The same code a query-bound scalar of this type would report. A JSON body that said
             // `error.unspecified` here would make the wire answer depend on where the value arrived.
@@ -63,10 +61,32 @@ internal static class PrimitiveJsonReader
 
     private static bool TryReadKnownPrimitive<TPrimitive>(
         ref Utf8JsonReader reader,
-        out TPrimitive? value)
+        out TPrimitive? value,
+        out bool supported)
         where TPrimitive : IComparable
     {
+        value = default;
         var primitiveType = typeof(TPrimitive);
+        var stringToken = primitiveType == typeof(string) || primitiveType == typeof(Guid)
+            || primitiveType == typeof(DateTime) || primitiveType == typeof(DateTimeOffset)
+            || primitiveType == typeof(DateOnly) || primitiveType == typeof(TimeOnly)
+            || primitiveType == typeof(TimeSpan);
+        supported = stringToken || primitiveType == typeof(int) || primitiveType == typeof(long)
+            || primitiveType == typeof(short) || primitiveType == typeof(byte) || primitiveType == typeof(sbyte)
+            || primitiveType == typeof(ushort) || primitiveType == typeof(uint) || primitiveType == typeof(ulong)
+            || primitiveType == typeof(double) || primitiveType == typeof(float) || primitiveType == typeof(decimal)
+            || primitiveType == typeof(bool);
+        if (!supported)
+            return false;
+
+        var expectedToken = stringToken ? JsonTokenType.String
+            : primitiveType == typeof(bool) ? JsonTokenType.True : JsonTokenType.Number;
+        if (reader.TokenType != expectedToken
+            && !(primitiveType == typeof(bool) && reader.TokenType == JsonTokenType.False)
+            && !(primitiveType == typeof(string) && reader.TokenType == JsonTokenType.Null))
+        {
+            return false;
+        }
 
         if (primitiveType == typeof(string))
         {
@@ -75,141 +95,59 @@ internal static class PrimitiveJsonReader
         }
 
         if (primitiveType == typeof(Guid))
-        {
-            value = JitCast<Guid>(reader.GetGuid());
-            return true;
-        }
-
+            return reader.TryGetGuid(out var guidValue) && Set(guidValue, out value);
         if (primitiveType == typeof(int))
-        {
-            value = JitCast<int>(reader.GetInt32());
-            return true;
-        }
-
+            return reader.TryGetInt32(out var intValue) && Set(intValue, out value);
         if (primitiveType == typeof(long))
-        {
-            value = JitCast<long>(reader.GetInt64());
-            return true;
-        }
-
+            return reader.TryGetInt64(out var longValue) && Set(longValue, out value);
         if (primitiveType == typeof(short))
-        {
-            value = JitCast<short>(reader.GetInt16());
-            return true;
-        }
-
+            return reader.TryGetInt16(out var shortValue) && Set(shortValue, out value);
         if (primitiveType == typeof(byte))
-        {
-            value = JitCast<byte>(reader.GetByte());
-            return true;
-        }
-
+            return reader.TryGetByte(out var byteValue) && Set(byteValue, out value);
         if (primitiveType == typeof(sbyte))
-        {
-            value = JitCast<sbyte>(reader.GetSByte());
-            return true;
-        }
-
+            return reader.TryGetSByte(out var sbyteValue) && Set(sbyteValue, out value);
         if (primitiveType == typeof(ushort))
-        {
-            value = JitCast<ushort>(reader.GetUInt16());
-            return true;
-        }
-
+            return reader.TryGetUInt16(out var ushortValue) && Set(ushortValue, out value);
         if (primitiveType == typeof(uint))
-        {
-            value = JitCast<uint>(reader.GetUInt32());
-            return true;
-        }
-
+            return reader.TryGetUInt32(out var uintValue) && Set(uintValue, out value);
         if (primitiveType == typeof(ulong))
-        {
-            value = JitCast<ulong>(reader.GetUInt64());
-            return true;
-        }
-
+            return reader.TryGetUInt64(out var ulongValue) && Set(ulongValue, out value);
         if (primitiveType == typeof(double))
-        {
-            value = JitCast<double>(reader.GetDouble());
-            return true;
-        }
-
+            return reader.TryGetDouble(out var doubleValue) && Set(doubleValue, out value);
         if (primitiveType == typeof(float))
-        {
-            value = JitCast<float>(reader.GetSingle());
-            return true;
-        }
-
+            return reader.TryGetSingle(out var floatValue) && Set(floatValue, out value);
         if (primitiveType == typeof(decimal))
-        {
-            value = JitCast<decimal>(reader.GetDecimal());
-            return true;
-        }
+            return reader.TryGetDecimal(out var decimalValue) && Set(decimalValue, out value);
 
         if (primitiveType == typeof(bool))
-        {
-            value = JitCast<bool>(reader.GetBoolean());
-            return true;
-        }
+            return Set(reader.GetBoolean(), out value);
 
         if (primitiveType == typeof(DateTime))
-        {
-            value = JitCast<DateTime>(reader.GetDateTime());
-            return true;
-        }
+            return reader.TryGetDateTime(out var dateTimeValue) && Set(dateTimeValue, out value);
 
         if (primitiveType == typeof(DateTimeOffset))
-        {
-            value = JitCast<DateTimeOffset>(reader.GetDateTimeOffset());
-            return true;
-        }
+            return reader.TryGetDateTimeOffset(out var dateTimeOffsetValue) && Set(dateTimeOffsetValue, out value);
 
         if (primitiveType == typeof(DateOnly))
-        {
-            value = JitCast<DateOnly>(ReadDateOnly(ref reader));
-            return true;
-        }
+            return DateOnly.TryParse(reader.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnlyValue)
+                && Set(dateOnlyValue, out value);
 
         if (primitiveType == typeof(TimeOnly))
-        {
-            value = JitCast<TimeOnly>(ReadTimeOnly(ref reader));
-            return true;
-        }
+            return TimeOnly.TryParse(reader.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var timeOnlyValue)
+                && Set(timeOnlyValue, out value);
 
         if (primitiveType == typeof(TimeSpan))
-        {
-            value = JitCast<TimeSpan>(ReadTimeSpan(ref reader));
-            return true;
-        }
+            return TimeSpan.TryParse(reader.GetString(), CultureInfo.InvariantCulture, out var timeSpanValue)
+                && Set(timeSpanValue, out value);
 
         value = default;
         return false;
 
-        static TPrimitive JitCast<TActual>(TActual actual)
-            where TActual : IComparable => Unsafe.As<TActual, TPrimitive>(ref actual);
-    }
-
-    private static DateOnly ReadDateOnly(ref Utf8JsonReader reader)
-    {
-        var raw = reader.GetString();
-        return DateOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
-            ? date
-            : throw new FormatException();
-    }
-
-    private static TimeOnly ReadTimeOnly(ref Utf8JsonReader reader)
-    {
-        var raw = reader.GetString();
-        return TimeOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var time)
-            ? time
-            : throw new FormatException();
-    }
-
-    private static TimeSpan ReadTimeSpan(ref Utf8JsonReader reader)
-    {
-        var raw = reader.GetString();
-        return TimeSpan.TryParse(raw, CultureInfo.InvariantCulture, out var duration)
-            ? duration
-            : throw new FormatException();
+        static bool Set<TActual>(TActual actual, out TPrimitive? primitive)
+            where TActual : IComparable
+        {
+            primitive = Unsafe.As<TActual, TPrimitive>(ref actual);
+            return true;
+        }
     }
 }

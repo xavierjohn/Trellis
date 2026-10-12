@@ -127,18 +127,18 @@ public class ScalarValueJsonConverterGeneratorTests
     /// RequiredBool, RequiredDateTime, and RequiredDateTimeOffset with no converter and no TRLS039.
     /// </summary>
     [Theory]
-    [InlineData("RequiredLong", "Weight", "reader.GetInt64()")]
-    [InlineData("RequiredBool", "IsActive", "reader.GetBoolean()")]
-    [InlineData("RequiredDateTime", "OccurredAt", "reader.GetDateTime()")]
-    [InlineData("RequiredDateTimeOffset", "SubmittedAt", "reader.GetDateTimeOffset()")]
-    [InlineData("RequiredInt", "Quantity", "reader.GetInt32()")]
-    [InlineData("RequiredDecimal", "Price", "reader.GetDecimal()")]
-    [InlineData("RequiredGuid", "OrderId", "reader.GetGuid()")]
-    [InlineData("RequiredString", "FirstName", "reader.GetString()")]
-    public void Every_Required_Scalar_Base_Is_Discovered_And_Uses_Direct_Reader(
+    [InlineData("RequiredLong", "Weight", "long")]
+    [InlineData("RequiredBool", "IsActive", "bool")]
+    [InlineData("RequiredDateTime", "OccurredAt", "System.DateTime")]
+    [InlineData("RequiredDateTimeOffset", "SubmittedAt", "System.DateTimeOffset")]
+    [InlineData("RequiredInt", "Quantity", "int")]
+    [InlineData("RequiredDecimal", "Price", "decimal")]
+    [InlineData("RequiredGuid", "OrderId", "System.Guid")]
+    [InlineData("RequiredString", "FirstName", "string")]
+    public void Every_Required_Scalar_Base_Is_Discovered_And_Uses_A_Closed_Validating_Reader(
         string baseType,
         string typeName,
-        string expectedReaderCall)
+        string primitiveType)
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -155,8 +155,10 @@ public class ScalarValueJsonConverterGeneratorTests
         var generatedSources = RunGenerator(source, cancellationToken);
 
         generatedSources.Should().Contain(
-            s => s.Contains($"{typeName}JsonConverter") && s.Contains(expectedReaderCall),
-            $"the generator should discover {typeName} : {baseType}<{typeName}> and emit a converter using {expectedReaderCall}");
+            s => s.Contains($"{typeName}JsonConverter")
+                && s.Contains($"ValidatingJsonConverter<TestNamespace.{typeName}, {primitiveType}>")
+                && s.Contains("Inner.Read(ref reader, typeToConvert, options)"),
+            $"the generator should discover {typeName} and close the shared reader over its primitive");
     }
 
     /// <summary>
@@ -253,8 +255,8 @@ public class ScalarValueJsonConverterGeneratorTests
         var generatedSources = RunGenerator(source, cancellationToken);
         var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
 
-        converter.Should().Contain("ValidationErrorsContext.CurrentPropertyName",
-            "M-2: generated Read must consult ValidationErrorsContext for the property name to mirror reflection-mode behavior");
+        converter.Should().Contain("Inner.Read(ref reader, typeToConvert, options)",
+            "the shared reader resolves the live JSON property name");
     }
 
     [Fact]
@@ -277,8 +279,8 @@ public class ScalarValueJsonConverterGeneratorTests
 
         converter.Should().NotContain("TryCreate(primitiveValue, null)",
             "M-2: TryCreate must receive the resolved fieldName, not a literal null, so failures carry an actionable field reference");
-        converter.Should().Contain("TryCreate(primitiveValue, fieldName",
-            "M-2: TryCreate must receive the resolved fieldName so the resulting Error.InvalidInput points at the right property");
+        converter.Should().Contain("Inner.Read(ref reader, typeToConvert, options)",
+            "the shared reader supplies TryCreate with the resolved field name");
     }
 
     [Fact]
@@ -299,9 +301,8 @@ public class ScalarValueJsonConverterGeneratorTests
         var generatedSources = RunGenerator(source, cancellationToken);
         var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
 
-        converter.Should().Contain("ValidationErrorsContext.AddBodyError",
-            "M-2: validation failures must be reported via ValidationErrorsContext so the request middleware can surface a 422 response, "
-            + "and the body-asserting overload is what locates the violation at in: \"body\" rather than \"unknown\"");
+        converter.Should().Contain("Inner.Read(ref reader, typeToConvert, options)",
+            "the shared reader collects structured body failures rather than silently returning null");
     }
 
     [Fact]
@@ -325,8 +326,8 @@ public class ScalarValueJsonConverterGeneratorTests
         var generatedSources = RunGenerator(source, cancellationToken);
         var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
 
-        converter.Should().Contain("\"orderId\"",
-            "M-2: the generated default field name must be the camel-cased simple type name to match ScalarValueJsonConverterBase.GetDefaultFieldName()");
+        converter.Should().Contain("ValidatingJsonConverter<TestNamespace.OrderId, System.Guid>",
+            "the shared reader derives the default field name from the closed scalar type");
     }
 
     /// <summary>
@@ -361,9 +362,8 @@ public class ScalarValueJsonConverterGeneratorTests
         var generatedSources = RunGenerator(source, cancellationToken);
         var converter = generatedSources.Should().ContainSingle(s => s.Contains($"{typeName}JsonConverter")).Subject;
 
-        converter.Should().Contain($"\"{expectedCamelCase}\"",
-            $"M-2: the generated default field name for '{typeName}' must be '{expectedCamelCase}' " +
-            "(the JsonNamingPolicy.CamelCase.ConvertName output) to match reflection-mode behavior");
+        converter.Should().Contain($"ValidatingJsonConverter<TestNamespace.{typeName}, string>",
+            $"the shared reader must derive '{expectedCamelCase}' from the original scalar type name");
 
         var naive = char.ToLowerInvariant(typeName[0]) + typeName.Substring(1);
         if (!string.Equals(naive, expectedCamelCase, StringComparison.Ordinal))
@@ -376,15 +376,11 @@ public class ScalarValueJsonConverterGeneratorTests
 
     /// <summary>
     /// Regression guard for inspection finding M-2 (primitive read failure parity): when the JSON
-    /// token has the wrong shape for the wrapped primitive (e.g. a number for a string VO, or a
-    /// non-Guid string for a Guid VO), the typed <c>Utf8JsonReader</c> getters throw
-    /// <c>FormatException</c>/<c>InvalidOperationException</c>. Reflection mode catches both via
-    /// <c>PrimitiveJsonReader.TryRead</c> and records a 422 instead of letting the exception escape
-    /// as a <c>JsonException</c>. The AOT generator must do the same; otherwise AOT consumers see
-    /// a 400/500 from the deserializer instead of the same 422 reflection-mode produces.
+    /// token has the wrong shape for the wrapped primitive, both generated and reflection-mode
+    /// converters use the shared non-throwing primitive reader.
     /// </summary>
     [Fact]
-    public void Generated_Converter_Wraps_Primitive_Read_In_Try_Catch_For_FormatException_And_InvalidOperationException()
+    public void Generated_Converter_Uses_The_Shared_Reader_Without_Exception_Based_Primitive_Parsing()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -401,12 +397,9 @@ public class ScalarValueJsonConverterGeneratorTests
         var generatedSources = RunGenerator(source, cancellationToken);
         var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
 
-        converter.Should().Contain("FormatException",
-            "M-2: generated Read must catch FormatException so invalid tokens for the wrapped primitive surface as 422 instead of escaping as JsonException");
-        converter.Should().Contain("InvalidOperationException",
-            "M-2: generated Read must catch InvalidOperationException so invalid tokens for the wrapped primitive surface as 422 instead of escaping as JsonException");
-        converter.Should().Contain("is not a valid",
-            "M-2: generated Read must record the same 'is not a valid {Type}' error message that PrimitiveJsonReader.TryRead emits in reflection mode");
+        converter.Should().Contain("Inner.Read(ref reader, typeToConvert, options)");
+        converter.Should().NotContain("catch");
+        converter.Should().NotContain("reader.GetGuid()");
     }
 
     /// <summary>
@@ -481,8 +474,8 @@ public class ScalarValueJsonConverterGeneratorTests
         var generatedSources = RunGenerator(source, cancellationToken);
 
         var converterSource = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
-        converterSource.Should().Contain("reader.GetGuid()",
-            "supported Guid primitives must use the direct Utf8JsonReader API");
+        converterSource.Should().Contain("ValidatingJsonConverter<TestNamespace.OrderId, System.Guid>",
+            "the shared closed reader uses non-throwing typed primitive APIs without dynamic construction");
         converterSource.Should().NotContain("JsonSerializer.Deserialize",
             "supported primitives must never fall back to reflection-based JsonSerializer (issue #413)");
         converterSource.Should().NotContain("JsonSerializer.Serialize(writer",

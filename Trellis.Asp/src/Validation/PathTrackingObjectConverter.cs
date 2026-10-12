@@ -47,7 +47,7 @@ internal sealed class PathTrackingObjectConverter<T> : JsonConverter<T?>
             // JsonValidationPathRebase for why the marker, and not a prefix check, decides.
             try
             {
-                return JsonSerializer.Deserialize(ref reader, TypeInfo(options));
+                return PathTrackingJsonReader.ReadValue(ref reader, TypeInfo(options), scalar: false);
             }
             catch (TrellisJsonValidationException ex) when (!JsonValidationPathRebase.IsMarked(ex))
             {

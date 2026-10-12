@@ -102,6 +102,44 @@ public class ScalarValueValidationMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_UnrelatedProtocolFailureWithCollectedErrors_Preserves400()
+    {
+        var context = CreateHttpContextWithServices();
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+        {
+            ValidationErrorsContext.AddError("field", "Invalid field.");
+            throw new BadHttpRequestException("Protocol failure.", StatusCodes.Status400BadRequest);
+        });
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeAsync_ValidatedRoot_UnrelatedProtocolFailure_Preserves400(bool optionalBody)
+    {
+        var context = CreateHttpContextWithServices();
+        var accepts = new Mock<IAcceptsMetadata>();
+        accepts.Setup(m => m.RequestType).Returns(typeof(Trellis.Primitives.Money));
+        accepts.Setup(m => m.IsOptional).Returns(optionalBody);
+        context.SetEndpoint(new Endpoint(_ => Task.CompletedTask,
+            new EndpointMetadataCollection(accepts.Object), "Root value object"));
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+        {
+            ValidationErrorsContext.RecordReadFailure(string.Empty);
+            ValidationErrorsContext.AddBodyError("amount", ValidationCodes.ValueNotNull, "Invalid amount.");
+            throw new BadHttpRequestException("Protocol failure.", StatusCodes.Status400BadRequest);
+        });
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+    }
+
+    [Fact]
     public async Task InvokeAsync_MultipleSequentialRequests_IsolatedScopes()
     {
         // Arrange

@@ -100,6 +100,109 @@ public sealed class AotPathTrackingTests : IDisposable
         return provider.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>().Value.SerializerOptions;
     }
 
+    [Theory]
+    [InlineData("accountType", null, "/accountType")]
+    [InlineData("type", "type", "/type/type")]
+    [InlineData("product/type~", "members", "/members/product~1type~0")]
+    [InlineData("product/type~", "members/~", "/members~1~0/product~1type~0")]
+    public void Read_ResultScalarConverter_CollectsAtThePropertyPointerWithoutThrowing(
+        string propertyName,
+        string? ancestorName,
+        string expectedPath)
+    {
+        var options = BuildOptions();
+        options.Converters.Clear();
+
+        using var scope = ValidationErrorsContext.BeginScope();
+        using var ancestor = ancestorName is null ? null : ValidationErrorsContext.PushPathSegment(ancestorName);
+        var previousAncestor = ValidationErrorsContext.CurrentAncestorPointer();
+        ValidationErrorsContext.CurrentPropertyName = "outside";
+
+        ReadScalar<DcOrderState>(propertyName, "\"Unknown\""u8, options).Should().BeNull();
+        var violation = ValidationErrorsContext.GetUnprocessableContent()!
+            .Fields.Items.Should().ContainSingle().Subject;
+        violation.Field.Path.Should().Be(expectedPath);
+        violation.Field.In.Should().Be(InputLocation.Body);
+        violation.ReasonCode.Should().Be("enum.name-undefined");
+        violation.Args.Should().ContainKey("allowed");
+        violation.Detail.Should().NotBeNullOrWhiteSpace();
+        ValidationErrorsContext.CurrentAncestorPointer().Should().Be(previousAncestor);
+        ValidationErrorsContext.CurrentPropertyName.Should().Be("outside");
+        ValidationErrorsContext.HasErrors.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("dcInt", null, "/dcInt")]
+    [InlineData("quantity", null, "/quantity")]
+    [InlineData("quantity", "quantity", "/quantity/quantity")]
+    [InlineData("quantity/type~", "members/~", "/members~1~0/quantity~1type~0")]
+    public void Read_RegisteredScalarConverter_CollectsWithoutAThrowOrASyntheticLeaf(
+        string propertyName,
+        string? ancestorName,
+        string expectedPath)
+    {
+        var options = BuildOptions();
+        options.Converters.Clear();
+        ScalarValuePathTracking.RegisterScalar<DcInt, int>();
+        Action readScalar = () => JsonSerializer.Deserialize<DcInt>("0", options);
+        var original = readScalar.Should().Throw<TrellisJsonValidationException>()
+            .Which.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
+
+        using var scope = ValidationErrorsContext.BeginScope();
+        using var ancestor = ancestorName is null ? null : ValidationErrorsContext.PushPathSegment(ancestorName);
+        var previousAncestor = ValidationErrorsContext.CurrentAncestorPointer();
+        ValidationErrorsContext.CurrentPropertyName = "outside";
+
+        ReadScalar<DcInt>(propertyName, "0"u8, options).Should().BeNull();
+        var violation = ValidationErrorsContext.GetUnprocessableContent()!
+            .Fields.Items.Should().ContainSingle().Subject;
+
+        violation.Field.Should().Be(InputPointer.ForBody(expectedPath));
+        violation.ReasonCode.Should().Be(original.ReasonCode);
+        violation.Args.Should().BeEquivalentTo(original.Args);
+        violation.Detail.Should().NotBeNullOrWhiteSpace();
+        ValidationErrorsContext.CurrentAncestorPointer().Should().Be(previousAncestor);
+        ValidationErrorsContext.CurrentPropertyName.Should().Be("outside");
+        ValidationErrorsContext.HasErrors.Should().BeTrue();
+    }
+
+    private static T? ReadScalar<T>(string propertyName, ReadOnlySpan<byte> json, JsonSerializerOptions options)
+    {
+        var reader = new Utf8JsonReader(json);
+        reader.Read();
+        return new PathTrackingPropertyConverter<T>(propertyName)
+            .Read(ref reader, typeof(T), options);
+    }
+
+    [Theory]
+    [InlineData("\"Unknown\"", true)]
+    [InlineData("null", false)]
+    public void Read_RegisteredOptionalEnum_CollectsInvalidNamesAndPreservesOptionalNull(
+        string json, bool invalid)
+    {
+        ScalarValuePathTracking.ClearForTests();
+        ScalarValuePathTracking.RegisterScalar<DcOrderState, string>(new RequiredEnumJsonConverter<DcOrderState>());
+        ScalarValuePathTracking.RegisterProperty<Maybe<DcOrderState>>();
+        var options = BuildOptions();
+        options.Converters.Clear();
+        options.Converters.Add(new RegisteredValidationJsonConverterFactory());
+        using var aot = ServiceCollectionExtensions.SuppressDynamicPathConverterConstructionForTests();
+        using var scope = ValidationErrorsContext.BeginScope();
+
+        ReadScalar<Maybe<DcOrderState>>("state", System.Text.Encoding.UTF8.GetBytes(json), options)
+            .HasNoValue.Should().BeTrue();
+
+        ValidationErrorsContext.HasErrors.Should().Be(invalid);
+        if (invalid)
+        {
+            var violation = ValidationErrorsContext.GetUnprocessableContent()!
+                .Fields.Items.Should().ContainSingle().Subject;
+            violation.Field.Should().Be(InputPointer.ForBody("/state"));
+            violation.ReasonCode.Should().Be(ValidationCodes.EnumNameUndefined);
+            violation.Args.Should().ContainKey("allowed");
+        }
+    }
+
     [Fact]
     public void Without_generated_registrations_the_aot_path_reports_only_the_leaf_name()
     {

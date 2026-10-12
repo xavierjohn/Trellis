@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 /// <summary>
-/// Registry of compile-time-closed path-tracking converters, keyed by the property or container type
+/// Registry of compile-time-closed validation and path-tracking converters, keyed by the value or container type
 /// they wrap. It is the Native AOT counterpart to the reflection pipeline's runtime
 /// <c>Type.MakeGenericType</c> construction: AOT forbids building a closed generic at runtime, so the
 /// closed instantiations are created by the source generator at compile time and registered here.
@@ -33,6 +33,35 @@ public static class ScalarValuePathTracking
 {
     private static readonly ConcurrentDictionary<Type, Func<string, JsonConverter>> s_propertyFactories = new();
     private static readonly ConcurrentDictionary<Type, Func<string, JsonConverter>> s_containerFactories = new();
+    private static readonly ConcurrentDictionary<Type, JsonConverter> s_validationConverters = new();
+
+    /// <summary>
+    /// Registers compile-time-closed converters for direct and optional scalar request binding.
+    /// </summary>
+    /// <typeparam name="TValue">The scalar value object type.</typeparam>
+    /// <typeparam name="TPrimitive">The underlying primitive type.</typeparam>
+    /// <param name="converter">An optional result-based converter whose direct-value parsing and writing must be preserved.</param>
+    public static void RegisterScalar<TValue, TPrimitive>(ResultJsonConverter<TValue>? converter = null)
+        where TValue : class, IScalarValue<TValue, TPrimitive>
+        where TPrimitive : IComparable
+    {
+        s_validationConverters[typeof(TValue)] = converter is null
+            ? new ValidatingJsonConverter<TValue, TPrimitive>()
+            : new CollectingResultJsonConverter<TValue>(converter, scalar: true);
+        s_validationConverters[typeof(Maybe<TValue>)] = new MaybeScalarValueJsonConverter<TValue, TPrimitive>();
+    }
+
+    /// <summary>
+    /// Registers a result-based JSON converter whose failures are collected during request binding.
+    /// </summary>
+    /// <typeparam name="T">The validated value type.</typeparam>
+    /// <param name="converter">The compile-time-closed result-based converter.</param>
+    /// <param name="scalar">Whether unspecified field labels identify the scalar itself rather than its children.</param>
+    public static void RegisterResultConverter<T>(ResultJsonConverter<T> converter, bool scalar = false)
+    {
+        ArgumentNullException.ThrowIfNull(converter);
+        s_validationConverters[typeof(T)] = new CollectingResultJsonConverter<T>(converter, scalar);
+    }
 
     /// <summary>
     /// Registers a scalar property type so failures use its effective JSON property name under Native
@@ -96,6 +125,9 @@ public static class ScalarValuePathTracking
 
     internal static bool HasContainerRegistrations => !s_containerFactories.IsEmpty;
 
+    internal static JsonConverter? TryGetValidationConverter(Type valueType) =>
+        s_validationConverters.TryGetValue(valueType, out var converter) ? converter : null;
+
     /// <summary>
     /// Removes every registration. Test-only hook; the registry is process-wide startup state in
     /// production and is never cleared there.
@@ -104,6 +136,7 @@ public static class ScalarValuePathTracking
     {
         s_propertyFactories.Clear();
         s_containerFactories.Clear();
+        s_validationConverters.Clear();
     }
 
 }

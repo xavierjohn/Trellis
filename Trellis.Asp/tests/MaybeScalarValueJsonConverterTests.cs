@@ -602,21 +602,15 @@ public class MaybeScalarValueJsonConverterTests
     #region Error Handling Without Scope
 
     [Fact]
-    public void Read_InvalidValueWithoutScope_ReturnsDefault()
+    public void Read_InvalidValueWithoutScope_ThrowsStructuredValidationException()
     {
-        // Arrange
         var converter = new MaybeScalarValueJsonConverter<Email, string>();
-        var json = "\"invalid\"";
-        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
-        reader.Read();
+        var options = new JsonSerializerOptions { Converters = { converter } };
+        Action deserialize = () => JsonSerializer.Deserialize<Maybe<Email>>("\"invalid\"", options);
 
-        // No scope active
-
-        // Act
-        var result = converter.Read(ref reader, typeof(Maybe<Email>), new JsonSerializerOptions());
-
-        // Assert
-        result.HasNoValue.Should().BeTrue("returns default without throwing when no scope is active");
+        deserialize.Should().Throw<TrellisJsonValidationException>()
+            .Which.InvalidInput!.Fields.Items.Should().ContainSingle();
+        ValidationErrorsContext.Current.Should().BeNull();
     }
 
     [Fact]

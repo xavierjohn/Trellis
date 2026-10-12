@@ -168,6 +168,8 @@ Accept: application/json
 ### `allowed` are identical across both producers and both hosts, so a client can
 ### depend on them. The English cannot be depended on, and a client that scraped
 ### "Valid values: " out of `detail` would break on the other producer.
+### The dedicated in-process parity test checks these fields; the standalone
+### Production CI smoke checks them through the actual native Minimal API and MVC hosts.
 ###
 ### The names are sorted ordinally, not by declaration order, so a client may compare
 ### or cache the list across producers. Enums wider than 64 members send an
