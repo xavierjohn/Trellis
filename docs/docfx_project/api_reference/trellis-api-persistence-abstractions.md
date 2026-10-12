@@ -3,7 +3,7 @@ package: Trellis.Persistence.Abstractions
 namespaces: [Trellis]
 types: [IUnitOfWork, IUnitOfWorkScope, IInboxStore, IConsumerCheckpointStore, InboxRecord]
 version: v3
-last_verified: 2026-06-22
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when implementing IUnitOfWork, IInboxStore or IConsumerCheckpointStore for a non-EF store (Trellis.Persistence.Abstractions)."

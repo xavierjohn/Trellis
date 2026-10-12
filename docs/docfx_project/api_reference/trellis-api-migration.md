@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp]
 types: [migration]
 related_docs: [trellis-api-core.md, trellis-api-primitives.md, trellis-api-asp.md, trellis-start-here.md]
 version: v3
-last_verified: 2026-10-07
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when migrating a FunctionalDDD 2.x application to Trellis: package and namespace changes, Result/Error APIs, value objects and HTTP mapping."

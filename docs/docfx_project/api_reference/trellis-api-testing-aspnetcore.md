@@ -3,7 +3,7 @@ package: Trellis.Testing.AspNetCore
 namespaces: [Trellis.Testing.AspNetCore, Trellis.Testing.AspNetCore.Http]
 types: [WebApplicationFactoryExtensions, WebApplicationFactoryTimeExtensions, ServiceCollectionExtensions, ServiceCollectionDbProviderExtensions, MsalTestTokenProvider, MsalTestOptions, TestUserCredentials, HttpFileParser, HttpFileRunner, HttpFileAssertions, HttpFileTheoryData, HttpFileRequest, HttpFileResult, ExpectedOutcome, HttpFileAssertionException, ScenarioContext]
 version: v3
-last_verified: 2026-10-06
+last_verified: 2026-10-11
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when writing ASP.NET Core integration tests with WebApplicationFactory: replacing services, actors or time, and replaying .http files."
