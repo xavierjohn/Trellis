@@ -247,6 +247,13 @@ probe faults/timeouts are unhealthy, and caller cancellation propagates. These c
 must be read-only, not restart/replay/pruning triggers. With retries spanning hours at
 the defaults, a short delivery-age breach need not mean the worker is stuck.
 
+Under the reference profile, the relay signal is Degraded with no first positive
+observation, even during the 30-second grace: report warming up before 30 seconds,
+then missing evidence.
+At 5 minutes from host start it is Unhealthy; grace never masks other conditions.
+For coalesced cache refreshes, callers cancel only their own wait, not the shared probe;
+their cancellation must not be cached as a health result or fault.
+
 ## Outbox vs. event sourcing
 
 The outbox is **not** event sourcing. The `TrellisOutboxMessages` rows are a transient *messaging buffer*: they exist only until they are relayed and may be pruned afterward. Your aggregate tables remain the single source of truth, and you never rebuild state by replaying outbox rows. Event sourcing, by contrast, makes the event log itself the source of truth. Reach for the outbox when you want reliable delivery of notifications about state changes; reach for event sourcing when the events *are* the state.

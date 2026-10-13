@@ -349,15 +349,21 @@ apply, the highest severity wins.
 
 | Timing policy | Reference value | Requirement |
 |---|---|---|
-| Startup grace | 30 seconds | Allow initial relay observation to arrive; warming-up/missing evidence is explicit, not fabricated health. Do not hide probe faults or other unhealthy conditions. |
+| Startup grace | 30 seconds | A missing first relay observation is Degraded with a warming-up reason during grace. Grace never masks parked-row degradation, probe faults, or other unhealthy conditions. |
 | Probe budget | 2 seconds | Bound the complete database/provider probe, not each query independently. Its own timeout or a query/provider error is unhealthy. |
 | Cache interval | 10 seconds | Reuse bounded snapshots by storage/consumer/instance scope and effective configuration; avoid polling-request stampedes. |
 | Observation freshness | 30 seconds | Missing or stale **enabled** evidence degrades health, never silently becomes healthy. |
 
 Measure the relay gap from the last positive observation, or host start if none exists,
-with the startup grace above. Keep **sample freshness** separate from that gap: a fresh
-snapshot can accurately report an old last-positive instant. Reading or re-caching it
-must not renew the positive instant or an external provider's original sample time.
+without resetting it when startup grace ends. With no first observation, the relay signal
+is Degraded from host start: use a warming-up reason before 30 seconds and a missing-evidence
+reason from 30 seconds onward. It is therefore Degraded at 45 seconds, and Unhealthy at
+5 minutes without a positive observation. Grace changes the reason, not the status.
+Once a positive observation arrives, evaluate its actual gap and freshness normally.
+
+Keep **sample freshness** separate from that gap: a fresh snapshot can accurately report
+an old last-positive instant. Reading or re-caching it must not renew the positive instant
+or an external provider's original sample time.
 Missing/stale evidence is a condition mapped to Degraded, not a fourth health status.
 
 Tune depth for workload and capacity, age/lag for the delivery SLO, and relay deadlines
@@ -380,7 +386,10 @@ Validate configured bounds and timing relationships explicitly rather than clamp
   rather than promise an atomic cross-store snapshot. Cache refresh/failure must not
   erase an unhealthy condition without evidence of recovery.
 - Propagate caller cancellation. Distinguish it from the probe's own deadline, which
-  produces an unhealthy result. Expose query/provider failures with safe diagnostics;
+  produces an unhealthy result. For a shared/coalesced refresh, each caller cancels only
+  its own wait: its cancellation must not cancel the refresh or be cached as a health
+  result/fault. Other waiters keep their own tokens; the refresh retains its independent
+  probe budget. Expose query/provider failures with safe diagnostics;
   never return zero counts, an empty-success result, or an old healthy result as fresh.
 - The host owns endpoint authorization and readiness mapping. Restrict detailed results
   to the authorized storage/consumer scope; `ConsumerId` is not an authorization boundary.
@@ -397,6 +406,7 @@ Validate configured bounds and timing relationships explicitly rather than clamp
 
 | Scenario | Required outcome |
 |---|---|
+| No first relay observation inside or after startup grace | Under the reference profile: Degraded with a warming-up reason at 15 seconds; Degraded with a missing-evidence reason at 30 and 45 seconds; Unhealthy at 5 minutes from host start. Grace never masks parked rows or other unhealthy conditions. |
 | Empty queue with successful polls | Fresh local responsiveness without requiring a delivery; no inference from the absence of a drain log. |
 | Leased/backoff rows, or depth exactly at a threshold | Include all retryable pending rows; use inclusive thresholds and separate parked classification. |
 | Failed attempts saved, or repeated bookkeeping failures | Persisted failed attempts can prove responsiveness, not delivery; failed drain/catch paths do not renew positive worker evidence. |
@@ -405,6 +415,7 @@ Validate configured bounds and timing relationships explicitly rather than clamp
 | Publisher acceptance or swallowed local-consumer failure | No claim of downstream success; optional lag needs its own consumer/source evidence. |
 | Disabled lag versus missing/stale enabled lag | Disabled is explicit; unavailable enabled evidence degrades health. |
 | Probe timeout/fault versus caller cancellation | Timeout/fault is unhealthy with diagnostics; caller cancellation propagates. |
+| One caller cancels while others await a coalesced refresh | Cancellation propagates only to that caller; the bounded refresh and other waiters continue. Do not cache that cancellation as a result/fault; the refresh's own timeout/fault still follows the unhealthy policy. |
 | Repeated cached reads or several relay instances | Preserve evidence age and scope; another instance's activity cannot refresh local responsiveness. |
 | Any degraded signal plus an unhealthy breach | Unhealthy wins; degraded-only results remain ready with warning, without mutation or automatic restart. |
 
