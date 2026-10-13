@@ -2087,7 +2087,7 @@ public static class CursorCodec
 
 | Factory | Contract |
 | --- | --- |
-| `Scalar<T>()` | Invariant parsing/formatting. Requires `IParsable<T>` at compile time and `IFormattable` (or `string`) at factory creation; unsupported formatting throws `NotSupportedException` before a query runs. Generated scalar IDs satisfying both contracts work; otherwise project `.Value` or supply an explicit codec. |
+| `Scalar<T>()` | Invariant parsing/formatting. Requires `IParsable<T>` at compile time and `IFormattable` (or `string`) at factory creation; unsupported formatting throws `NotSupportedException` before a query runs. Generated scalar IDs satisfying both contracts work, including as an EF `SeekDefinition` key (the seek predicate compares the provider value); otherwise project `.Value` or supply an explicit codec. |
 | `Composite<TPrimary,TSecondary>()` | Uses scalar codecs for any supported primary/secondary types, not only timestamps and IDs. |
 | `Composite(primary, secondary)` | Composes arbitrary codecs, including nested composites. Each component is encoded by its own codec; length-prefix framing keeps delimiters inside strings unambiguous. |
 | `Create(schema, format, parse)` | Explicit serializer/parser, not an implicit JSON fallback. Schema must be 1–64 ASCII letters, digits, or hyphens. The parser validates domain bounds/context and returns field-specific invalid-input errors for bad client state. |

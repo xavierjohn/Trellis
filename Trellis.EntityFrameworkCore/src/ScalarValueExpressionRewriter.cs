@@ -114,7 +114,7 @@ internal sealed class ScalarValueExpressionRewriter : ExpressionVisitor
     /// Finds the implicit conversion operator from a ScalarValueObject type to the provider type
     /// by searching the type hierarchy.
     /// </summary>
-    private static MethodInfo? FindImplicitConversion(Type sourceType, Type targetType)
+    internal static MethodInfo? FindImplicitConversion(Type sourceType, Type targetType)
     {
         var current = sourceType;
         while (current is not null)

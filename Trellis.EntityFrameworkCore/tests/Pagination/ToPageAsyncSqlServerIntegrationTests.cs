@@ -122,6 +122,37 @@ public class ToPageAsyncSqlServerIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GeneratedIdKey_RoundTrips_AcrossPages_SqlServer()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        for (var i = 0; i < 7; i++)
+            _context.Customers.Add(new TestCustomer
+            {
+                Id = TestCustomerId.NewUniqueV4(),
+                Name = TestCustomerName.Create($"SqlId{i}"),
+                Email = EmailAddress.Create($"sqlid{i}@example.com"),
+                CreatedAt = DateTime.UtcNow.AddDays(i),
+            });
+        await _context.SaveChangesAsync(ct);
+        _context.ChangeTracker.Clear();
+        var expected = await _context.Customers.OrderBy(c => c.Id.Value).Select(c => c.Id.Value).ToListAsync(ct);
+        var seek = SeekDefinition.Ascending<TestCustomer, TestCustomerId>(c => c.Id);
+        var collected = new List<Guid>();
+        Cursor? cursor = null;
+        for (var safety = 0; safety < 10; safety++)
+        {
+            var page = (await _context.Customers.ToPageAsync(new PageSize(3, 3), cursor, seek,
+                cancellationToken: ct)).Unwrap();
+            collected.AddRange(page.Items.Select(c => c.Id.Value));
+            cursor = page.Next;
+            if (cursor is null)
+                break;
+        }
+
+        collected.Should().Equal(expected);
+    }
+
+    [Fact]
     public async Task GeoDistance_FilterAndComputedSeek_ExecutesOnSqlServer()
     {
         var ct = TestContext.Current.CancellationToken;
