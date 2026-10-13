@@ -241,8 +241,9 @@ timestamp exists yet. Successful empty polls can prove responsiveness without a 
 but "OutboxRelay.DrainCompleted" does not log those polls and its count includes persisted
 failed attempts. Neither that log nor publisher acceptance proves consumer success.
 
-The named reference profile requires explicit workload/SLO tuning. Degraded remains
-ready with a warning; unhealthy fails readiness. Missing/stale enabled evidence degrades,
+The named reference profile requires explicit workload/SLO tuning. When included in
+readiness, Degraded remains ready with a warning; unhealthy fails readiness.
+Missing/stale enabled evidence degrades,
 probe faults/timeouts are unhealthy, and caller cancellation propagates. These checks
 must be read-only, not restart/replay/pruning triggers. With retries spanning hours at
 the defaults, a short delivery-age breach need not mean the worker is stuck.
@@ -253,6 +254,11 @@ then missing evidence.
 At 5 minutes from host start it is Unhealthy; grace never masks other conditions.
 For coalesced cache refreshes, callers cancel only their own wait, not the shared probe;
 their cancellation must not be cached as a health result or fault.
+
+Shared-store depth/capture-age breaches can make every replica unhealthy during a
+broker outage. Hosts must deliberately decide whether those checks gate traffic
+readiness or are exposed for alerting only, without changing their reported severity.
+Parked-only degradation still remains ready with a warning.
 
 ## Outbox vs. event sourcing
 

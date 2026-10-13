@@ -3,7 +3,7 @@ package: Trellis.EntityFrameworkCore.Outbox
 namespaces: [Trellis.EntityFrameworkCore]
 types: [OutboxMessage, OutboxMessageConfiguration, OutboxMessageKind, OutboxOptions, OutboxServiceCollectionExtensions, OutboxModelBuilderExtensions]
 version: v1
-last_verified: 2026-10-10
+last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when configuring transactional outbox delivery, retry/parking, or defining readiness and capture-age requirements; no Trellis-specific health checks are shipped."
@@ -231,7 +231,7 @@ Tuning for the relay.
 - A domain message is marked processed only once **every** registered `IDomainEventHandler<TEvent>` has completed. A handler that throws leaves the message pending, and the retry re-invokes **only the handlers that failed** — `OutboxMessage.CompletedHandlers` records the ones that already succeeded. An unrelated sibling's failure therefore never re-runs a successful handler's side effect.
 - All drained integration events are staged on a failed attempt, including additions from successful handlers and additions made before a translator itself threw. There is no per-handler rollback of collector additions. Successful handlers are skipped on retry; failed translators can run again and produce logical duplicates under new row IDs.
 - Event-type resolution, deserialization, and publisher exceptions other than `OperationCanceledException` become per-message failed attempts when their bookkeeping save succeeds. An escaping `OperationCanceledException` aborts the drain instead of recording a failed attempt. A bookkeeping `SaveChanges` failure is also different: it escapes to the drain loop, which logs `DrainFailed` and waits `PollInterval`. That attempt/progress is not durable, the prior lease remains until expiry, and repeated bookkeeping failures need not ever reach `MaxAttempts`. Monitor drain failures as well as parked messages.
-- Failures retry on later polls with an **exponential backoff** (`RetryBackoff` doubling up to `MaxRetryBackoff`, minus a deterministic per-message jitter), up to `MaxAttempts`, after which the message is dead-lettered (parked): its `Attempts` reaches the cap and the scan skips it, so later messages are not blocked. `LastError` records the most recent failure. The backoff means a brief outage is ridden out by a later retry rather than burning every attempt in a tight loop. With the defaults, a permanently failing handler is retried 10 times over roughly 3 hours before parking.
+- Failures retry on later polls with an **exponential backoff** (`RetryBackoff` doubling up to `MaxRetryBackoff`, minus a deterministic per-message jitter), up to `MaxAttempts`, after which the message is dead-lettered (parked): its `Attempts` reaches the cap and the scan skips it, so later messages are not blocked. `LastError` records the most recent failure. The backoff means a brief outage is ridden out by a later retry rather than burning every attempt in a tight loop. With the defaults, parking follows 10 failed attempts; the nine intervening backoffs total roughly 1.5-3 hours with jitter (about 3.06 hours without jitter), excluding polling, publishing, and database time.
 - **Domain handlers must still be idempotent.** The progress record is only durable once the relay's bookkeeping `SaveChanges` lands, so a crash can repeat handlers whose successful progress was not saved. Per-handler tracking removes the routine duplicate (a failing sibling), not that crash window.
 - **Default local integration notification is best-effort.** An integration row is marked processed after `IIntegrationEventPublisher.PublishAsync` returns normally. The default publisher logs and swallows ordinary consumer failures and handler-resolution failures, so a newly staged row becomes processed with `Attempts == 0` and `LastError == null`. No per-consumer outcome is reported; `CompletedHandlers` stays empty, and later drains do not retry the processed row. A handler's `OperationCanceledException` propagates when the supplied token is canceled.
 - **Broker publication completes on acceptance, not consumption.** A broker adapter must await acceptance and propagate publication failures. An exposed non-cancellation failure leaves the row pending with an incremented `Attempts`, retained `LastError`, and scheduled backoff; retry uses the same row id and lineage. Successful publication clears `LastError` and the lease but retains the failure count. A crash before bookkeeping can publish that row again. Downstream consumers need their own processing/idempotency boundary, such as a transport adapter calling the non-swallowing inbox; merely registering an inbox is not routing.
@@ -283,8 +283,14 @@ stays deferred until its evidence exists; optional lag stays disabled when uncon
 Neither condition is a healthy observation of that signal.
 
 These are read-only readiness checks, **not liveness restart triggers or remediation**.
-Healthy and Degraded remain ready; Degraded carries a warning. Unhealthy fails readiness.
+When included in the host's readiness endpoint, Healthy and Degraded remain ready;
+Degraded carries a warning. Unhealthy fails readiness.
 Never replay, prune, dispatch, publish, change leases, or reset attempts from a probe.
+
+Shared-store depth/capture-age breaches can make every replica unhealthy during a
+broker outage. Hosts must deliberately choose whether these checks gate traffic
+readiness or are exposed for alerting only; this does not change their reported
+severity. Parked-only degradation still remains ready with a warning.
 
 ### Evidence and interpretation
 
@@ -367,9 +373,10 @@ or an external provider's original sample time.
 Missing/stale evidence is a condition mapped to Degraded, not a fourth health status.
 
 Tune depth for workload and capacity, age/lag for the delivery SLO, and relay deadlines
-for the actual loop timing. Default relay retries can span roughly three hours; a
-2/10-minute age breach can therefore be intentional SLO reporting while the worker is
-alive and retrying correctly. It must not be presented as proof that restarting it helps.
+for the actual loop timing. Default scheduled retry waits total roughly 1.5-3 hours
+with jitter (about 3.06 hours without it), before adding polling/processing time.
+A 2/10-minute age breach can therefore be intentional SLO reporting while the worker
+is alive and retrying correctly. It must not be presented as proof that restarting it helps.
 Validate configured bounds and timing relationships explicitly rather than clamp them.
 
 ### Probe and registration boundaries
@@ -397,7 +404,10 @@ Validate configured bounds and timing relationships explicitly rather than clamp
   in public health output or high-cardinality metric labels.
 - A later application-enabled health feature is a composition-root feature and needs
   matching builder coverage and registration classification. Query/observation stores
-  are leaves; vendor SDK lag adapters remain unslotted. See [future health registration
+  are leaves; vendor SDK lag adapters remain unslotted. The implementing PR must use
+  an `IServiceCollection` helper or extend registration discovery for its chosen
+  `IHealthChecksBuilder` receiver so the classification is actually enforced.
+  See [future health registration
   requirements](trellis-api-servicedefaults.md#future-health-registration-requirements).
 
 ### Acceptance boundary for future health checks

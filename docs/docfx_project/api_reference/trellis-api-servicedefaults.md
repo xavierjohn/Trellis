@@ -246,7 +246,7 @@ services.AddTrellis(options => options
 
 Not every `services.AddXxx()` Trellis ships has a matching `UseXxx()` slot, and the omissions are deliberate.
 
-The complete, authoritative classification lives in `Trellis.ServiceDefaults/tests/RegistrationSurfaceTests.cs`, which reflects over every registration helper reachable from `Trellis.ServiceDefaults` and fails the build if one is unclassified, if a classified helper no longer exists, if a named slot is missing from `TrellisServiceBuilder`, or if a helper classified as slotted is never actually referenced by `Trellis.ServiceDefaults`. The table below is the narrative summary of the cases worth explaining; treat the test as the source of truth if the two ever disagree.
+The complete, authoritative classification lives in `Trellis.ServiceDefaults/tests/RegistrationSurfaceTests.cs`, which reflects over public `IServiceCollection` registration extensions in `Trellis.ServiceDefaults` and the Trellis assemblies it directly references. It fails the build if one is unclassified, if a classified helper no longer exists, if a named slot is missing from `TrellisServiceBuilder`, or if a helper classified as slotted is never actually referenced by `Trellis.ServiceDefaults`. The table below is the narrative summary of the cases worth explaining; treat the test as the source of truth if the two ever disagree.
 
 | Registration | Package | Why no slot |
 |---|---|---|
@@ -270,7 +270,10 @@ Existing `UseOutbox` and `UseInbox` calls do not enable health checks.
 
 A later application-enabled health feature is a composition-root feature: its direct
 registration needs matching `TrellisServiceBuilder` coverage and an entry in
-`RegistrationSurfaceTests.Expected`. Leaf metadata-query/observation stores and
+`RegistrationSurfaceTests.Expected`. The implementing PR must use an `IServiceCollection`
+helper or extend the gate's discovery predicate for its chosen receiver, such as
+`IHealthChecksBuilder`; otherwise that classification is not mechanically enforced.
+Leaf metadata-query/observation stores and
 adapter-author extension points need no independent slot; record reachable leaves with
 a reason. Vendor SDK lag adapters remain outside this package's reference graph, with
 no new cloud SDK dependency or allowlist entry solely to record their unslotted status.
