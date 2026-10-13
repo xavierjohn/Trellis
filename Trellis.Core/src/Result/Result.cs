@@ -435,8 +435,8 @@ public static partial class Result
 
     /// <summary>
     /// Default mapper converting an exception into an <see cref="Error.Unexpected"/>.
-    /// Public detail stays generic; the exception itself is recorded on a <c>Try</c> span from the
-    /// <c>Trellis.Results</c> activity source, tagged <c>fault.id</c> with the same <c>FaultId</c>.
+    /// Public detail stays generic; when <c>"Trellis.Results"</c> instrumentation is enabled and the
+    /// activity is sampled, the exception is recorded on a <c>Try</c> span tagged <c>fault.id</c> with the same <c>FaultId</c>.
     /// </summary>
     private static Error.Unexpected DefaultExceptionMapper(Exception exception)
     {
