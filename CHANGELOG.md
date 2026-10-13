@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - identity-only actor resolution
+
+Optional `IActorIdentityProvider` resolves canonical `ActorId` without permissions,
+authorization attributes, or hidden full-actor fallback. Built-in ASP registrations
+provide exact-type identity adapters without changing legacy claims subclasses.
+`AddCachingActorProvider<T>()` and `UseCachingActorProvider<T>()` bind supported
+contracts to one scoped wrapper with independent lazy caches; worker composition
+preserves system identity without constructing the HTTP provider outside requests.
+Concurrent cache initialization now invokes full resolution once, as already promised.
+
+`ShouldHaveConsistentActorIdentityAsync` in `Trellis.Testing` asserts the agreement rule,
+and `TestActorProvider` exposes matching async-flow-scoped identity. Compiled Recipe 41
+shows shared synchronous normalization without prefetch, route-scoped async prefetch,
+network fallback and explicit limiter/authorization/idempotency ordering. Limiter
+algorithms, budgets, proxy trust and distributed quotas remain application-owned.
+Idempotency still resolves the full actor; retry estimates are unchanged.
+
 ### Added - opt-in outbox readiness (G3 stage one)
 
 `AddTrellisOutboxReadiness<TContext>(profile)` and the matching

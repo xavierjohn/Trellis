@@ -16,7 +16,7 @@ Before writing or changing code that uses Trellis APIs, read the relevant files 
 
 **`docs/docfx_project/api_reference/trellis-start-here.md` is the start file. Read all of it first and keep it resident for the whole session.**
 
-The full reference set is larger than a narrow task needs and is not meant to be held in context. The router is self-contained: its task-lookup table maps a task to the right recipe or API section, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. It is the one `required` document AgentDocs delivers to consumers. The 37 recipe bodies in `trellis-api-cookbook.md` are on demand, and a typical end-to-end task reads one to three of them.
+The full reference set is larger than a narrow task needs and is not meant to be held in context. The router is self-contained: its task-lookup table maps a task to the right recipe or API section, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. It is the one `required` document AgentDocs delivers to consumers. The 38 recipe bodies in `trellis-api-cookbook.md` are on demand, and a typical end-to-end task reads one to three of them.
 
 **So hold the router, and read recipe bodies on demand.** Do not spend context on bodies the task will not use. Read a body the moment the router sends you to one; do not work from a recipe's title. For a focused subtask, use the recipe's section routes and read their complete constraints and solution.
 

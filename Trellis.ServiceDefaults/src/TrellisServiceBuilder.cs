@@ -961,6 +961,8 @@ public sealed class TrellisServiceBuilder
     /// <c>IOptions&lt;TOptions&gt;</c> is configured before the caching wrap replaces the
     /// <see cref="IActorProvider"/> slot. Custom providers without Trellis-managed options can
     /// be cached without a prior <c>UseXxxActorProvider</c>.
+    /// Supported identity-only providers also bind <see cref="IActorIdentityProvider"/> to
+    /// the same scoped wrapper, with a separate lazy identity cache and no full actor fallback.
     /// </remarks>
     public TrellisServiceBuilder UseCachingActorProvider<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)] T>()
         where T : class, IActorProvider

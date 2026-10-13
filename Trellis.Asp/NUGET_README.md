@@ -35,6 +35,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Supplies endpoint-builder locations for `WriteOutcome.Created` when its optional location is absent; an explicit outcome location wins.
 - Validates scalar value objects during MVC and Minimal API binding and JSON deserialization.
 - Provides claims, Entra, Easy Auth, development, caching, and worker actor-provider composition.
+- Built-in registrations expose identity-only resolution. `AddCachingActorProvider<T>()` binds both supported interfaces to one scoped wrapper with separate lazy caches; custom providers/subclasses opt in explicitly. See [registration semantics](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-asp.html#identity-only-provider-registration).
 - Maps ASP.NET Core rate-limit middleware rejections to the standard Trellis 429 Problem Details envelope, with `Retry-After` when supplied by the rejected lease.
 - Adds opt-in `Idempotency-Key` middleware with pluggable stores.
 - Includes the AOT-friendly scalar JSON-converter source generator.
@@ -58,6 +59,11 @@ For ASP.NET Core rate limiting, keep policies and partitioning in the applicatio
 failures. Use named endpoint policies without policy-level `OnRejected` callbacks; ASP.NET Core
 gives those callbacks precedence and skips the options handler for inline
 `RequireRateLimiting(policy)` even when the policy callback is null.
+
+[Recipe 41](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-cookbook.html#recipe-41--actor-aware-rate-limiting-without-loading-permissions)
+shows actor-aware partitions through a shared synchronous normalizer (no prefetch) or
+route-scoped async identity prefetch, network fallback and middleware-order consequences.
+Idempotency continues resolving the full actor.
 
 On .NET 10, fixed-window and token-bucket limiters normally supply retry estimates;
 sliding-window and concurrency limiters do not. Queue eviction or limiter disposal can also

@@ -216,26 +216,9 @@ public class NestedJsonPathClaimsActorProvider : ClaimsActorProvider
 
         using (doc)
         {
-            string? actorId = !string.IsNullOrEmpty(Options.ActorIdPath)
-                ? TraverseToString(doc.RootElement, Options.ActorIdPath)
-                : null;
-
-            // ActorId fallback when the path resolved nothing: route through the base's
-            // short↔long fallback resolver so MapInboundClaims-remapped tokens (e.g.,
-            // configured "sub" but token carries ClaimTypes.NameIdentifier) still resolve.
-            // A literal identity.FindFirst(Options.ActorIdClaim) call here would skip the
-            // base's fallback and reintroduce the silent-401 footgun.
+            var actorId = ResolveActorId(identity, doc);
             if (actorId is null)
-            {
-                var fallbackActorId = ResolveClaimWithFallback(identity, Options.ActorIdClaim);
-                if (string.IsNullOrWhiteSpace(fallbackActorId))
-                {
-                    MaybeEmitUnresolvedActorIdDiagnostic(identity);
-                    return Task.FromResult(Maybe<Actor>.None);
-                }
-
-                actorId = fallbackActorId;
-            }
+                return Task.FromResult(Maybe<Actor>.None);
 
             var permissions = !string.IsNullOrEmpty(Options.PermissionsPath)
                 ? TraverseToStringSet(doc.RootElement, Options.PermissionsPath)
@@ -261,6 +244,50 @@ public class NestedJsonPathClaimsActorProvider : ClaimsActorProvider
 
             return Task.FromResult(Maybe.From(Actor.Create(actorId, permissions)));
         }
+    }
+
+    internal new ValueTask<Maybe<ActorId>> ResolveCurrentActorIdAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrEmpty(Options.ActorIdPath) && string.IsNullOrEmpty(Options.PermissionsPath))
+            return base.ResolveCurrentActorIdAsync(cancellationToken);
+
+        var context = HttpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException(
+                "No HttpContext available. Ensure this is called within an HTTP request scope.");
+        var identity = context.User.Identities.FirstOrDefault(i => i.IsAuthenticated) as ClaimsIdentity;
+        if (identity is null)
+            return ValueTask.FromResult(Maybe<ActorId>.None);
+
+        var json = identity.FindFirst(Options.ContainerClaim)?.Value;
+        if (string.IsNullOrWhiteSpace(json))
+            return base.ResolveCurrentActorIdAsync(cancellationToken);
+
+        if (!TryParseJsonDocument(json, out var doc))
+        {
+            if (Interlocked.CompareExchange(ref s_malformedJsonWarningFired, 1, 0) == 0 && _logger is not null)
+                LogMalformedJsonContainer(_logger, Options.ContainerClaim);
+            return base.ResolveCurrentActorIdAsync(cancellationToken);
+        }
+
+        using (doc)
+            return ValueTask.FromResult(Maybe.From(ResolveActorId(identity, doc)));
+    }
+
+    private ActorId? ResolveActorId(ClaimsIdentity identity, JsonDocument doc)
+    {
+        var id = string.IsNullOrEmpty(Options.ActorIdPath)
+            ? null
+            : TraverseToString(doc.RootElement, Options.ActorIdPath);
+        if (id is not null)
+            return ActorId.Create(id);
+
+        id = ResolveClaimWithFallback(identity, Options.ActorIdClaim);
+        if (!string.IsNullOrWhiteSpace(id))
+            return ActorId.Create(id);
+
+        MaybeEmitUnresolvedActorIdDiagnostic(identity);
+        return null;
     }
 
     private static bool TryParseJsonDocument(string json, out JsonDocument doc)

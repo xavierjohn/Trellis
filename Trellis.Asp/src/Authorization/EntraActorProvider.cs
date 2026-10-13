@@ -75,7 +75,7 @@ public sealed class EntraActorProvider : ClaimsActorProvider
         // can't be identified, treat as unauthenticated for the response. (Token-shape vs
         // server-side misconfig is indistinguishable here; same 401 outcome serves both.)
         var id = ResolveActorId(identity, _entraOptions);
-        if (string.IsNullOrWhiteSpace(id))
+        if (id is null)
             return Task.FromResult(Maybe<Actor>.None);
 
         var permissions = InvokeMapping(
@@ -94,15 +94,25 @@ public sealed class EntraActorProvider : ClaimsActorProvider
         return Task.FromResult(Maybe.From(actor));
     }
 
-    private static string? ResolveActorId(ClaimsIdentity identity, EntraActorOptions config)
+    internal new ValueTask<Maybe<ActorId>> ResolveCurrentActorIdAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var context = HttpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException(
+                "No HttpContext available. Ensure this is called within an HTTP request scope.");
+        var identity = context.User.Identities.FirstOrDefault(i => i.IsAuthenticated) as ClaimsIdentity;
+        return ValueTask.FromResult(identity is null
+            ? Maybe<ActorId>.None
+            : Maybe.From(ResolveActorId(identity, _entraOptions)));
+    }
+
+    private static ActorId? ResolveActorId(ClaimsIdentity identity, EntraActorOptions config)
     {
         var id = identity.FindFirst(config.IdClaimType)?.Value;
-        if (id is not null)
-            return id;
+        if (id is null && string.Equals(config.IdClaimType, DefaultOidClaimType, StringComparison.Ordinal))
+            id = identity.FindFirst(ShortOidClaimType)?.Value;
 
-        return string.Equals(config.IdClaimType, DefaultOidClaimType, StringComparison.Ordinal)
-            ? identity.FindFirst(ShortOidClaimType)?.Value
-            : null;
+        return string.IsNullOrWhiteSpace(id) ? null : ActorId.Create(id);
     }
 
     private static T InvokeMapping<T>(string mappingName, Func<T> mapping)

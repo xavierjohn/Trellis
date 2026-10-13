@@ -52,12 +52,7 @@ public sealed partial class DevelopmentActorProvider(
     /// <inheritdoc />
     public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!hostEnvironment.IsDevelopment())
-            throw new InvalidOperationException(
-                "DevelopmentActorProvider is not allowed outside Development environments. " +
-                "Use AddClaimsActorProvider or AddEntraActorProvider for production.");
+        ValidateEnvironment(cancellationToken);
 
         // DevelopmentActorProvider always yields a usable actor (default or parsed) — never
         // Maybe.None. That preserves the development convenience of running test requests
@@ -75,6 +70,58 @@ public sealed partial class DevelopmentActorProvider(
         return Task.FromResult(Maybe.From(ParseActorFromHeader(headerValue)));
     }
 
+    internal ValueTask<Maybe<ActorId>> ResolveCurrentActorIdAsync(CancellationToken cancellationToken)
+    {
+        ValidateEnvironment(cancellationToken);
+        var header = httpContextAccessor.HttpContext?.Request.Headers[HeaderName].FirstOrDefault();
+        if (string.IsNullOrEmpty(header))
+            return ValueTask.FromResult(Maybe.From(ActorId.Create(options.Value.DefaultActorId)));
+
+        try
+        {
+            if (JsonNode.Parse(header) is not JsonObject obj)
+                return ValueTask.FromResult(Maybe.From(MalformedIdentity("JSON parsed to null or is not an object")));
+
+            var id = ReadActorId(obj);
+            if (id is null)
+                return ValueTask.FromResult(Maybe.From(MalformedIdentity("Missing or empty 'Id' property")));
+
+            // Lenient full resolution also falls back for malformed authorization payloads.
+            if (!options.Value.ThrowOnMalformedHeader)
+                ValidateAuthorizationValueShapes(obj);
+
+            return ValueTask.FromResult(Maybe.From(id));
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            return ValueTask.FromResult(Maybe.From(MalformedIdentity(ex.Message)));
+        }
+    }
+
+    private void ValidateEnvironment(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!hostEnvironment.IsDevelopment())
+            throw new InvalidOperationException(
+                "DevelopmentActorProvider is not allowed outside Development environments. " +
+                "Use AddClaimsActorProvider or AddEntraActorProvider for production.");
+    }
+
+    private static ActorId? ReadActorId(JsonObject obj)
+    {
+        var id = GetPropertyCaseInsensitive(obj, "Id")?.GetValue<string>();
+        return string.IsNullOrWhiteSpace(id) ? null : ActorId.Create(id);
+    }
+
+    private ActorId MalformedIdentity(string reason)
+    {
+        if (options.Value.ThrowOnMalformedHeader)
+            throw new InvalidOperationException($"Malformed '{HeaderName}' header: {reason}.");
+
+        LogMalformedHeader(logger, HeaderName, reason, options.Value.DefaultActorId);
+        return ActorId.Create(options.Value.DefaultActorId);
+    }
+
     private Actor ParseActorFromHeader(string headerValue)
     {
         try
@@ -83,10 +130,11 @@ public sealed partial class DevelopmentActorProvider(
             if (json is not JsonObject obj)
                 return HandleMalformedHeader(headerValue, "JSON parsed to null or is not an object");
 
-            var id = GetPropertyCaseInsensitive(obj, "Id")?.GetValue<string>();
-            if (string.IsNullOrWhiteSpace(id))
+            var id = ReadActorId(obj);
+            if (id is null)
                 return HandleMalformedHeader(headerValue, "Missing or empty 'Id' property");
 
+            ValidateAuthorizationValueShapes(obj);
             var permissions = ParseStringArray(GetPropertyCaseInsensitive(obj, "Permissions"));
             var forbiddenPermissions = ParseStringArray(GetPropertyCaseInsensitive(obj, "ForbiddenPermissions"));
             var attributes = ParseStringDictionary(GetPropertyCaseInsensitive(obj, "Attributes"));
@@ -96,6 +144,23 @@ public sealed partial class DevelopmentActorProvider(
         catch (Exception ex) when (ex is JsonException or InvalidOperationException)
         {
             return HandleMalformedHeader(headerValue, ex.Message);
+        }
+    }
+
+    private static void ValidateAuthorizationValueShapes(JsonObject obj)
+    {
+        if (GetPropertyCaseInsensitive(obj, "Permissions") is JsonArray permissions)
+            ValidateStrings(permissions, "Permissions");
+        if (GetPropertyCaseInsensitive(obj, "ForbiddenPermissions") is JsonArray forbidden)
+            ValidateStrings(forbidden, "ForbiddenPermissions");
+        if (GetPropertyCaseInsensitive(obj, "Attributes") is JsonObject attributes)
+            ValidateStrings(attributes.Select(pair => pair.Value), "Attributes");
+
+        static void ValidateStrings(IEnumerable<JsonNode?> nodes, string property)
+        {
+            foreach (var node in nodes)
+                if (node is not null && node.GetValueKind() != JsonValueKind.String)
+                    throw new InvalidOperationException($"'{property}' values must be JSON strings or null.");
         }
     }
 

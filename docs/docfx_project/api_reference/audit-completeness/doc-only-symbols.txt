@@ -60,6 +60,11 @@ EnsureSuccess
 EnsureSuccessAsync
 Some
 
+# --- Recipe 41 application-owned prefetch/normalization, explicitly not Trellis APIs.
+UseIdentityPrefetch
+IdentitySnapshot
+CanonicalActorId
+
 # --- Example EF Core owned-entity column names (Owner_Property shape).
 BillingAddress_Street
 ShippingAddress_Street

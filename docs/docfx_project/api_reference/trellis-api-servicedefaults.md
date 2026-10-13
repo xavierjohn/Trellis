@@ -138,6 +138,17 @@ public sealed class TrellisServiceBuilder
 
 ## Behavior
 
+Actor-provider selectors also register the optional `IActorIdentityProvider` capability.
+`UseCachingActorProvider<T>()` has the same one-call dual-registration semantics as
+`AddCachingActorProvider<T>()`: a custom `T` explicitly implements the identity interface,
+or an exact built-in type is adapted; both services then share one scoped caching wrapper
+and inner instance with independent lazy caches. Unsupported legacy subclasses keep
+full actor behavior and do not acquire identity service registration. `UseWorkerActor`
+returns the system ID outside HTTP without resolving the inner provider and delegates
+inside HTTP only when supported. No new builder slot or Mediator stage is added.
+See [ASP identity registration](trellis-api-asp.md#identity-only-provider-registration)
+and [Recipe 41](trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions).
+
 Domain-event dispatch uses `IUnitOfWorkScope.IsOwner` to distinguish a real outer commit from a deferred inner success. Both dispatch slots suppress inner publication/clearing; response-shape mode retains nested aggregate responses even when the outer response is DTO/Unit. Failure/throw discards the batch without clearing events, while outbox capture still runs on a successful `FailAfterCommit` save. Manually owned external unit-of-work scopes require explicit post-commit dispatch instead of the automatic behaviors.
 
 `UseOutbox<TContext>()` validates `IReportingDomainEventPublisher` during host startup before the relay starts. When integration services are registered, it also validates `IIntegrationEventPublisher`; domain-only hosts do not need one. `UseIntegrationEvents()` registers a translator-only collector: `Add` throws outside the relay's active `BeginTranslation()` lease.

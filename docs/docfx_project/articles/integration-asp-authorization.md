@@ -186,6 +186,7 @@ See [Cache partitioning across actors (`VaryForActor()`)](#cache-partitioning-ac
 | Resolve actors from any flat-claim OIDC/JWT provider | `AddClaimsActorProvider(options?)` | [Generic claims provider](#generic-claims-provider) |
 | Inject a fake actor in Development / integration tests | `AddDevelopmentActorProvider(options?)` | [Development provider](#development-provider) |
 | Cache an async actor resolution per request | `AddCachingActorProvider<T>()` | [Caching wrapper](#caching-wrapper) |
+| Resolve canonical identity without permission loading | Optional `IActorIdentityProvider`; same registration when caching a supported provider | [Identity-only resolution](#identity-only-resolution) |
 | Resolve a system actor when there is no `HttpContext` (background workers) | `AddTrellisWorkerActor(systemActor)` | [Worker actor composition](#worker-actor-composition) |
 | Flatten roles into permissions / add ABAC attributes | `EntraActorOptions.MapPermissions` / `MapAttributes` | [Customizing claim mapping](#customizing-claim-mapping) |
 | Read well-known attributes safely | `Actor.GetAttribute(ActorAttributes.*)` | [ABAC attributes](#abac-attributes) |
@@ -218,7 +219,7 @@ See [Cache partitioning across actors (`VaryForActor()`)](#cache-partitioning-ac
 | `ClaimsActorProvider` | Class | Scoped, virtual `GetCurrentActorAsync` | Subclass for custom flat-claim providers. Permissions resolved via literal `FindAll(PermissionsClaim)` plus the well-known short↔long counterpart from the JWT inbound claim-name map; matches are merged into a deduplicated `FrozenSet<string>`. |
 | `EntraActorProvider` | Class | Scoped, sealed | Falls back to short `oid` when `IdClaimType` is the default; rewraps mapper exceptions in `InvalidOperationException`. |
 | `DevelopmentActorProvider` | Class | Scoped, sealed partial | Throws on a malformed header by default (`ThrowOnMalformedHeader = true`); set it to `false` to log a warning and fall back to the default actor. |
-| `CachingActorProvider` | Class | Scoped, sealed | Uses `LazyInitializer.EnsureInitialized` + `HttpContext.RequestAborted`; honors per-call `CancellationToken` via `Task.WaitAsync`. |
+| `CachingActorProvider` | Class | Scoped, sealed | Independent `Lazy<Task<...>>` actor/identity caches with single-invocation concurrent initialization + `HttpContext.RequestAborted`; honors per-call `CancellationToken` via `Task.WaitAsync`. |
 | `EntraActorOptions` / `ClaimsActorOptions` / `DevelopmentActorOptions` / `EasyAuthAuthenticationOptions` | Options | — | Mapping delegates / claim-type strings / dev defaults / Easy Auth scheme options. |
 
 Full signatures: [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md).
@@ -499,6 +500,35 @@ builder.Services.AddCachingActorProvider<DatabaseActorProvider>();
 ```
 
 `CachingActorProvider` issues the inner call with `HttpContext.RequestAborted` so the shared work is cancelled with the request, then forwards each caller's own `CancellationToken` via `Task.WaitAsync`.
+
+## Identity-only resolution
+
+`IActorIdentityProvider` (in `Trellis.Authorization`) returns
+`ValueTask<Maybe<ActorId>>` without loading permissions or authorization attributes.
+Identity can exist while full actor resolution returns `None`; it does not authorize
+the caller. Errors/cancellation propagate, and identity-only may still require I/O.
+
+Built-in provider registrations supply scoped identity adapters using the same canonical
+ID extraction/normalization as full resolution. Legacy non-sealed claims subclasses are
+not implicitly opted in: explicitly implement the interface and share your whole
+canonical normalizer with actor construction.
+`AddCachingActorProvider<T>()` registers both supported interfaces on the same scoped
+wrapper/inner instance, with separate lazy caches. Replacing it with an unsupported
+provider removes the unkeyed identity binding instead of retaining a stale provider.
+Worker composition supplies the system ID outside HTTP without constructing the inner
+provider, and delegates supported identity resolution inside HTTP.
+
+For actor-aware rate limiting, a claims-only custom provider and synchronous partitioner
+can call the **same application-owned normalization function directly**: no prefetch is
+needed. Async identity resolution needs route-scoped await-before-limiter plumbing and
+a private snapshot, not sync-over-async. [Compiled Recipe 41](../api_reference/trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions)
+shows both approaches, network fallback, middleware ordering and cost boundaries.
+Idempotency continues resolving the full actor, not the new identity contract.
+
+Provider tests can assert the agreement rule with one line from `Trellis.Testing`:
+`await actorProvider.ShouldHaveConsistentActorIdentityAsync(identityProvider, ct)`.
+See [identity registration](../api_reference/trellis-api-asp.md#identity-only-provider-registration)
+and [the assertion contract](../api_reference/trellis-api-testing-reference.md#actoridentityassertionsextensions).
 
 ## Worker actor composition
 

@@ -265,6 +265,12 @@ is guaranteed. Trellis does not invent a fallback delay. Clients should handle i
 with bounded backoff and jitter when the operation is safe to retry. See the
 [limiter comparison and adapter contract](../api_reference/trellis-api-asp.md#ratelimiteroptionsextensions).
 
+For actor-aware partitioning without loading permissions, use the optional canonical
+identity contract and [Recipe 41](../api_reference/trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions).
+It covers shared synchronous normalization without prefetch, route-scoped async prefetch,
+network fallback and limiter/authorization/idempotency ordering. The limiter must actually
+precede costly work to protect it; idempotency continues resolving the full actor.
+
 ### Wiring the canonical Trellis enrichment
 
 `Trellis.Asp` ships an opinionated ProblemDetails pipeline that adds a `traceId` extension (from `Activity.Current?.Id` falling back to `HttpContext.TraceIdentifier`), rewrites the 500 `detail` to a support-friendly message that does not leak exception internals, and projects the `Allow` header into a structured `extensions["allow"]` array on 405 responses. Wire it once at startup:
