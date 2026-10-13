@@ -57,22 +57,26 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
     private readonly TimeProvider _timeProvider;
     private readonly OutboxOptions _options;
     private readonly ILogger<OutboxRelay<TContext>> _logger;
+    private readonly OutboxRelayObservations<TContext>? _observations;
 
     public OutboxRelay(
         IServiceScopeFactory scopeFactory,
         TimeProvider timeProvider,
         OutboxOptions options,
-        ILogger<OutboxRelay<TContext>> logger)
+        ILogger<OutboxRelay<TContext>> logger,
+        OutboxRelayObservations<TContext>? observations = null)
     {
         _scopeFactory = scopeFactory;
         _timeProvider = timeProvider;
         _options = options;
         _logger = logger;
+        _observations = observations;
     }
 
     /// <inheritdoc />
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
+        _observations?.Start();
         var scope = _scopeFactory.CreateAsyncScope();
         await using (scope.ConfigureAwait(false))
         {
@@ -134,6 +138,13 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
     /// </summary>
     internal async Task<int> DrainAsync(CancellationToken cancellationToken)
     {
+        var (processed, delivered) = await DrainCoreAsync(cancellationToken).ConfigureAwait(false);
+        _observations?.RecordPositiveObservation(delivered);
+        return processed;
+    }
+
+    private async Task<(int Processed, int Delivered)> DrainCoreAsync(CancellationToken cancellationToken)
+    {
         var scope = _scopeFactory.CreateAsyncScope();
         await using var scopeLifetime = scope.ConfigureAwait(false);
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
@@ -156,7 +167,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             .ConfigureAwait(false);
 
         if (candidates.Count == 0)
-            return 0;
+            return (0, 0);
 
         // 2. Atomically claim them for this drain. Two relay instances running this UPDATE are serialized
         //    by row locks and each re-evaluates the guard, so every row is claimed by exactly one
@@ -181,7 +192,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             .ConfigureAwait(false);
 
         if (batch.Count == 0)
-            return 0;
+            return (0, 0);
 
         List<(OutboxMessage Message, Exception Error)>? failures = null;
         Dictionary<OutboxMessage, List<OutboxMessage>>? stagedBySource = null;
@@ -258,7 +269,9 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         var processed = batch.Count - (stolen?.Count ?? 0);
         OutboxRelayLog.DrainCompleted(_logger, processed);
 
-        return processed;
+        var delivered = _observations is null ? 0
+            : batch.Count(message => message.ProcessedAt is not null && stolen?.Contains(message) != true);
+        return (processed, delivered);
     }
 
     private static Activity? StartDeliveryActivity(OutboxMessage message)

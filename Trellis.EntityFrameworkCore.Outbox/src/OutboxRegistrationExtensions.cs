@@ -29,6 +29,7 @@ public static class OutboxServiceCollectionExtensions
         where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
+        OutboxReadinessRegistration.ValidateReadinessContext<TContext>(services);
 
         // Configure and validate a copy so a failed Validate() cannot leave the container holding a
         // half-applied options instance; the new state is committed only after it is known good.

@@ -225,12 +225,26 @@ Events are serialized and rehydrated with a Trellis-owned `System.Text.Json` opt
 
 ### Health-check requirements: staged, not shipped
 
-**Not implemented:** Trellis currently has no outbox/inbox health checks or health
-registration helpers. The [readiness contract and opt-in reference profile](../api_reference/trellis-api-efcore-outbox.md#health-check-requirements)
-define future acceptance criteria, not extra `OutboxOptions` settings.
+**Stage one is implemented:** explicitly select an immutable readiness profile and
+enable the named `trellis-outbox` .NET health check. Existing outbox calls do not enable it:
 
-The rollout separates bounded pending/parked summaries and local relay observations,
-durable row-capture age with migration/legacy-row handling, and optional
+```csharp
+var profile = OutboxReadinessOptions.CreateStagedOperationalProfile();
+builder.Services.AddTrellis(trellis => trellis
+    .UseDomainEvents()
+    .UseOutbox<AppDbContext>()
+    .UseOutboxReadiness<AppDbContext>(profile));
+```
+
+Direct registration is `services.AddTrellisOutboxReadiness<AppDbContext>(profile)`.
+Tune with `with`; the profile is not part of `OutboxOptions`.
+Read [readiness APIs and result diagnostics](../api_reference/trellis-api-efcore-outbox.md#outbox-readiness)
+for fixed-store scoping, validated timing relationships, and lower-bound counts.
+This slice changes no schema or delivery behavior and adds no endpoint or restart policy.
+**Not implemented:** durable capture-age evidence and optional consumer/source lag.
+
+The rollout separates the shipped bounded pending/parked summaries and local relay observations,
+future durable row-capture age with migration/legacy-row handling, and optional
 [consumer/source-lag evidence](integration-inbox.md#consumer-lag-health-requirements).
 Each stage is independently useful; separate implementation PRs are recommended,
 not a fixed count.

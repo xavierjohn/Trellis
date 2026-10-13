@@ -6,7 +6,7 @@ version: v1
 last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when wiring inbox dedup/transactions, inspecting retained processing evidence, or defining optional consumer/source-lag requirements; no Trellis health checks are shipped."
+agent_description: "Open when wiring inbox dedup/transactions, inspecting retained processing evidence, or defining optional consumer/source-lag requirements; no inbox health checks are shipped."
 ---
 # Trellis.EntityFrameworkCore.Inbox
 

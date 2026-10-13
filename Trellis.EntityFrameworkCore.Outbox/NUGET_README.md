@@ -54,14 +54,28 @@ All three wiring steps are required: map the table, register `AddTrellisOutboxIn
 
 The alpha outbox schema includes nullable `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration or backfill is provided. Use `IntegrationMessageContext.BeginCorrelation("workflow-id")` to supply an application-owned business correlation id; one is never inferred from the trace.
 
-## Health Requirements
+## Opt-in Outbox Readiness
 
-**Not implemented:** no Trellis-specific outbox/inbox health checks or health registrations
-are shipped. The [staged readiness requirements](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#health-check-requirements)
-separate pending/parked summaries, local relay responsiveness, durable capture-age
-evidence, and optional consumer lag. The reference profile requires explicit selection
-and tuning; `OccurredAt` is not queue age, and publisher acceptance is not consumer success.
-Readiness probes must not mutate delivery state or trigger automatic restarts.
+Stage one is implemented: explicitly select
+`OutboxReadinessOptions.CreateStagedOperationalProfile()` and register
+`services.AddTrellisOutboxReadiness<AppDbContext>(profile)` or
+`.UseOutboxReadiness<AppDbContext>(profile)` alongside the relay. Existing outbox calls
+do not enable the named `trellis-outbox` .NET health check.
+
+It reports bounded pending/parked metadata, local relay responsiveness, and separate
+durable row completions. Counts include leases/backoff and disclose lower bounds.
+Shared refreshes isolate caller cancellation; probe faults/timeouts are Unhealthy,
+and parked rows or missing initial relay evidence are Degraded. Tune the immutable
+profile with `with` for workload and relay timing.
+
+The host owns endpoint authorization and traffic-readiness versus alert-only exposure:
+shared-store breaches can affect every replica. Degraded remains ready; selected
+Unhealthy fails readiness. No schema change, endpoint, mutation, or restart policy is added.
+
+**Not implemented:** capture age and optional consumer/source lag. `OccurredAt` is not
+queue age, and publication is not downstream consumer success.
+See [readiness APIs and diagnostics](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#outbox-readiness)
+and the [remaining staged contract](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#health-check-requirements).
 
 ## Documentation
 

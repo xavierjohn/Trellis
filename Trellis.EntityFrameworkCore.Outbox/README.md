@@ -85,14 +85,35 @@ A broker adapter must await publication acceptance and propagate publication fai
 
 The package suppresses recursive domain-event generation while appending outbox rows, preventing outbox persistence from creating more domain events.
 
-## Health Requirements
+## Opt-in Outbox Readiness
 
-**Not implemented:** no Trellis-specific outbox/inbox health checks or health registrations
-are shipped. The [staged readiness requirements](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md#health-check-requirements)
-separate pending/parked summaries, local relay responsiveness, durable capture-age
-evidence, and optional consumer lag. The reference profile requires explicit selection
-and tuning; `OccurredAt` is not queue age, and publisher acceptance is not consumer success.
-Readiness probes must not mutate delivery state or trigger automatic restarts.
+Stage one is implemented: the named `trellis-outbox` .NET health check reports bounded
+pending/parked metadata and local relay responsiveness, with durable row completions
+reported separately. Existing outbox registration does not enable it:
+
+```csharp
+var profile = OutboxReadinessOptions.CreateStagedOperationalProfile();
+builder.Services.AddTrellis(trellis => trellis
+    .UseDomainEvents()
+    .UseOutbox<AppDbContext>()
+    .UseOutboxReadiness<AppDbContext>(profile));
+```
+
+Direct registration is `services.AddTrellisOutboxReadiness<AppDbContext>(profile)`.
+Tune the immutable profile with `with` for workload and poll/batch durations. Counts
+include leased/backoff pending rows and disclose lower bounds; probe faults/timeouts are
+Unhealthy, while parked rows or missing initial relay evidence are Degraded. Shared
+refreshes isolate caller cancellation and preserve original sample times.
+
+The host owns endpoint authorization and deliberately chooses traffic-readiness gating
+versus alert-only exposure, especially because shared-store breaches affect every replica.
+Degraded remains ready; Unhealthy fails readiness when selected for it. Probes are
+read-only and add no schema change, endpoint, or automatic restart/remediation.
+
+**Not implemented:** durable capture age and optional consumer/source lag.
+`OccurredAt` is not queue age, and publication is not downstream consumer success.
+See [readiness APIs and diagnostics](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md#outbox-readiness)
+and the [remaining staged contract](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md#health-check-requirements).
 
 ## Documentation
 

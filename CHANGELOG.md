@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - opt-in outbox readiness (G3 stage one)
+
+`AddTrellisOutboxReadiness<TContext>(profile)` and the matching
+`UseOutboxReadiness<TContext>(profile)` slot register the named `trellis-outbox`
+.NET health check only when explicitly selected. The immutable
+`OutboxReadinessOptions.CreateStagedOperationalProfile()` starting profile reports
+bounded pending/parked metadata and local relay responsiveness, with successful
+durable row completions reported separately. Shared refreshes isolate caller
+cancellation, have an independent provider budget, preserve original evidence times,
+and expose faults/timeouts as Unhealthy with redacted diagnostics.
+
+Existing outbox/inbox registrations, delivery/retry/lease/replay behavior, schema,
+Mediator ordering, and host-owned endpoint/liveness policy are unchanged. Capture-age
+evidence and optional consumer/source lag remain deferred.
+
 ### Analyzers - semantic per-incident reason-code guard
 
 TRLS067 warns when a known fresh GUID-derived value reaches an error/violation

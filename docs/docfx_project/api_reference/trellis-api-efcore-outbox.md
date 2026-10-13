@@ -1,12 +1,12 @@
 ﻿---
 package: Trellis.EntityFrameworkCore.Outbox
 namespaces: [Trellis.EntityFrameworkCore]
-types: [OutboxMessage, OutboxMessageConfiguration, OutboxMessageKind, OutboxOptions, OutboxServiceCollectionExtensions, OutboxModelBuilderExtensions]
+types: [OutboxMessage, OutboxMessageConfiguration, OutboxMessageKind, OutboxOptions, OutboxServiceCollectionExtensions, OutboxModelBuilderExtensions, OutboxReadinessOptions, OutboxReadinessServiceCollectionExtensions]
 version: v1
 last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when configuring transactional outbox delivery, retry/parking, or defining readiness and capture-age requirements; no Trellis-specific health checks are shipped."
+agent_description: "Open when configuring transactional outbox delivery, retry/parking, or opt-in readiness; capture-age and consumer-lag signals remain deferred."
 ---
 # Trellis.EntityFrameworkCore.Outbox
 
@@ -23,7 +23,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - You need domain events to survive a crash between the commit and the in-pipeline dispatch (the gap a plain `UseDomainEvents()` pipeline leaves open).
 - You are wiring `AddTrellisOutbox`, `AddTrellisOutboxInterceptor`, or the `UseOutbox<TContext>()` builder slot.
 - You are reasoning about the outbox's delivery guarantee, retry/parking behavior, or event-serialization constraints.
-- You are defining outbox readiness, capture-age evidence, or optional consumer/source lag; these health checks are not implemented.
+- You are enabling bounded outbox readiness or planning the deferred capture-age and consumer/source-lag stages.
 
 ## Patterns Index
 
@@ -37,7 +37,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 | Distinguish a throwing integration consumer from a throwing publisher | Default local consumer failures are swallowed and process the row; exposed publication failures keep it pending | [Delivery semantics](#delivery-semantics) |
 | Decide how to shape an event so it round-trips | Use attribute-driven value objects; `Maybe<T>` members are supported (present → value, absent → `null`) | [Serialization](#serialization) |
 | Publish a stable external contract instead of raw domain events | Translate a domain event into an `IIntegrationEvent` via `IIntegrationEventCollector`; the relay routes it to `IIntegrationEventPublisher` | [Integration events](#integration-events) |
-| Define readiness thresholds without confusing worker responsiveness, delivery progress, and consumer lag | Staged operational requirements and an explicitly selected reference profile; no health API is shipped | [Health-check requirements](#health-check-requirements) |
+| Enable readiness without confusing worker responsiveness, delivery progress, and consumer lag | `AddTrellisOutboxReadiness<TContext>(profile)` or `UseOutboxReadiness<TContext>(profile)`; capture age and lag remain deferred | [Outbox readiness](#outbox-readiness), [Health-check requirements](#health-check-requirements) |
 
 ## Common traps
 
@@ -259,12 +259,114 @@ Resolve `IOutboxMaintenance` (registered by `AddTrellisOutbox<TContext>`, scoped
 
 Replaying a dead-lettered row is race-free against a running relay because the relay never claims a row whose `Attempts >= MaxAttempts`. Note that the dead-letter set is defined relative to `MaxAttempts`, so lowering or raising that option also changes which rows are considered dead-lettered. `IOutboxMaintenance` targets the single outbox context registered in the container (like `OutboxOptions`); run one outbox per composition.
 
+## Outbox readiness
+
+**Stage one is implemented.** The named `trellis-outbox` .NET health check reports
+bounded queue metadata and local relay observations. `UseOutbox` and `AddTrellisOutbox`
+still do **not** enable health checks. There is no schema change, endpoint, liveness
+restart policy, or standalone public snapshot/query API; diagnostics are returned in
+`HealthCheckResult.Data`.
+
+### `OutboxReadinessServiceCollectionExtensions`
+
+```csharp
+public static IServiceCollection AddTrellisOutboxReadiness<TContext>(
+    this IServiceCollection services, OutboxReadinessOptions profile)
+    where TContext : DbContext;
+```
+
+Register the relay separately with `AddTrellisOutbox<TContext>` or `UseOutbox<TContext>`.
+The explicit profile is required. Equal profiles for the same context deduplicate direct
+and builder registration; conflicting profiles or relay/readiness contexts throw.
+Registration may precede or follow relay/unit-of-work registration without changing the
+Mediator pipeline. A relay that has not started is Degraded with `relay-not-started`;
+no start timestamp or positive observation is fabricated.
+
+The matching `TrellisServiceBuilder.UseOutboxReadiness<TContext>(profile)` slot is
+single-selection and applied after outbox registration. It is annotated non-AOT, like
+`UseOutbox`. The host selects `trellis-outbox` for readiness or alert-only exposure and
+authorizes detailed output. The registration's tags are `trellis` and `outbox`, not an
+automatic readiness/liveness endpoint policy.
+
+```csharp
+var profile = OutboxReadinessOptions.CreateStagedOperationalProfile();
+services.AddTrellis(trellis => trellis
+    .UseDomainEvents()
+    .UseOutbox<AppDbContext>()
+    .UseOutboxReadiness<AppDbContext>(profile));
+```
+
+Use one fixed outbox store per composition. The context is resolved in a fresh background
+scope without the initiating caller's ambient execution context, matching the relay's
+storage scope. A request-local tenant/connection selector is not a cache partition;
+use separate compositions for separate stores. Application-owned provider registration,
+table mapping, capture interception, and schema migrations remain unchanged.
+
+### `OutboxReadinessOptions`
+
+Immutable sealed record with no public constructor. Explicitly select
+`CreateStagedOperationalProfile()`; tune it with a `with` expression. Registration
+validates the complete profile before adding services.
+
+| Member | Reference value | Constraint / meaning |
+|---|---|---|
+| `CreateStagedOperationalProfile()` | New profile | Explicit selection; existing relay calls never select it. |
+| `PendingDegradedThreshold` | 1,000 | Positive, inclusive pending-depth degradation threshold. |
+| `PendingUnhealthyThreshold` | 10,000 | Greater than the degraded threshold; also the pending-count cap. |
+| `RelayDegradedAfter` | 1 minute | Positive, inclusive gap since a positive local observation. |
+| `RelayUnhealthyAfter` | 5 minutes | Greater than the degraded gap; missing initial evidence uses relay/host startup without resetting at grace expiry. |
+| `StartupGracePeriod` | 30 seconds | Nonnegative and shorter than the degraded gap; changes the missing-evidence reason, never its Degraded status. |
+| `ProbeTimeout` | 2 seconds | Positive, within the .NET timer range; bounds the entire provider probe, including scope creation/disposal and both queries. |
+| `CacheDuration` | 10 seconds | Positive and at least the probe timeout; elapsed-time-based completed metadata cache. |
+| `EvidenceMaxAge` | 30 seconds | Greater than cache duration; stale enabled metadata degrades. |
+
+Each pending count is a server-side count of at most `PendingUnhealthyThreshold`
+matching rows; reaching the cap is explicitly a lower bound, not an exact total.
+Parked presence is capped at one, also a lower bound when present. Neither probe
+materializes payloads or invokes maintenance/dispatch. The two metadata queries are
+sampled sequentially, not a promised atomic snapshot.
+Both original sample times are independently checked for stale or future-dated evidence.
+
+Concurrent callers share one refresh and cancel only their own waits. The refresh has
+its own budget. A provider that ignores cancellation cannot delay the health result past
+that budget or cause overlapping probes: subsequent refreshes remain Unhealthy until the
+old provider operation finishes and a new bounded probe supplies recovery evidence.
+Caller cancellation is never cached. Probe faults/timeouts are logged with redacted
+diagnostics, and result/log diagnostics do not include exception messages or objects.
+Failed refreshes retain any prior counts and their original sample times, explicitly
+marked unavailable, rather than inventing zero counts or fresh healthy evidence.
+
+### Health result data
+
+The named check returns standard `HealthStatus.Healthy`, `HealthStatus.Degraded`, or
+`HealthStatus.Unhealthy`; the highest severity wins. A fresh local sample can report an
+old last-positive instant. Cached metadata does not cache the evaluated status: each call
+reevaluates local relay gaps, startup reasons, and evidence age.
+
+| Data keys | Meaning |
+|---|---|
+| `profile`, `storageContext`, `maxAttempts`, `relayScope` | Named starting profile, fixed context scope, effective relay attempt cap, and `local-instance` evidence. Cache entries invalidate when the attempt cap changes. |
+| `metadataAvailable`, `pendingSampledAt`, `parkedSampledAt`, `sampling` | Probe success and original separately sampled metadata instants. Count/time keys are absent if no successful metadata evidence exists; old retained evidence is not marked available after a failed refresh. |
+| `pendingCount`, `pendingCountIsLowerBound`, `pendingCountCap` | Retryable pending rows, including leases/backoff, capped as above. |
+| `parkedCount`, `parkedCountIsLowerBound`, `parkedCountCap` | Zero or at least one parked row. Any parked row degrades, never causes parked-only Unhealthy. |
+| `relaySampledAt`, `relayStartedAt`, `lastPositiveRelayObservationAt`, `relayGap` | Fresh local sample and original local lifecycle/poll instants. Missing instants/gap keys are absent, not fabricated. |
+| `deliveredRows`, `lastDurableDeliveryAt` | Local lifetime row-completion count and last observation after successful bookkeeping. Failed attempts and lost-lease rows are excluded; no downstream consumer-success claim. A missing last delivery is not itself an unhealthy condition. |
+| `pendingDegradedThreshold`, `pendingUnhealthyThreshold`, `relayDegradedAfter`, `relayUnhealthyAfter`, `startupGracePeriod`, `probeTimeout`, `cacheDuration`, `evidenceMaxAge` | Actual selected bounds and timing, including consumer tuning. |
+| `captureAge`, `consumerLag` | Always `deferred` and `disabled`, respectively, in stage one; neither means observed healthy. |
+| `reasons`, `probeFaultType` | Stable reason codes and, only on a provider fault, its safe exception type name. No payload, raw `LastError`, connection string, message id, business/trace lineage, or raw exception is returned. |
+
+Reasons include `pending-depth-degraded`, `pending-depth-unhealthy`, `parked-messages`,
+`relay-not-started`, `relay-warming-up`, `relay-observation-missing`,
+`relay-observation-delayed`, `relay-observation-overdue`, `metadata-stale`,
+`metadata-clock-invalid`, `relay-clock-invalid`, `probe-timeout`, and `probe-failed`.
+
 ## Health-check requirements
 
-**Not implemented:** Trellis ships no outbox/inbox health checks, health snapshot API,
-health registration helper, or capture-age column. This section defines the acceptance
-contract for a later feature, not additional members of `OutboxOptions` or new builder
-slots. Existing delivery, retry, lease, replay, and retention behavior is unchanged.
+**Stage one is implemented:** [outbox readiness](#outbox-readiness) supplies the bounded
+metadata/local-relay slice. **Not implemented:** capture-age evidence and optional
+consumer/source-lag checks, an inbox health/lag-provider API, and a capture-age column.
+This section retains the staged acceptance contract; these are not new members of
+`OutboxOptions`. Delivery, retry, lease, replay, and retention behavior is unchanged.
 
 ### Scope and staged delivery
 
@@ -273,9 +375,9 @@ consumer lag**, delivered in stages:
 
 | Stage | Required capability |
 |---|---|
-| Metadata and relay observations | Bounded, read-only pending/parked summaries and truthful local relay responsiveness observations, with delivery progress reported separately. |
-| Durable capture age | Capture evidence for both domain and translated integration rows, with provider-compatible queries, a migration strategy, and explicit unknown age for legacy rows. |
-| Optional consumer/source lag | An explicitly enabled evidence provider with application-defined source/partition and durable accounting semantics; see [inbox lag requirements](trellis-api-efcore-inbox.md#consumer-lag-health-requirements). |
+| Metadata and relay observations | Implemented: bounded, read-only pending/parked summaries and truthful local relay responsiveness observations, with delivery progress reported separately. |
+| Durable capture age | Not implemented: capture evidence for both domain and translated integration rows, with provider-compatible queries, a migration strategy, and explicit unknown age for legacy rows. |
+| Optional consumer/source lag | Not implemented: an explicitly enabled evidence provider with application-defined source/partition and durable accounting semantics; see [inbox lag requirements](trellis-api-efcore-inbox.md#consumer-lag-health-requirements). |
 
 Each stage must be independently useful without claiming signals from a later stage.
 Separate implementation PRs are recommended, not a fixed PR count. Capture-age evaluation
@@ -308,11 +410,14 @@ multiple integration rows. An empty, successfully queried outbox has no pending-
 but does not establish relay responsiveness. A responsive worker can still be failing
 publication, and retries can honor their policy while breaching a delivery-age SLO.
 
-The current relay has logs and activities, but no health observations. Successful empty
-polls do not emit "OutboxRelay.DrainCompleted"; that log's nonempty-batch count includes
-persisted failed attempts and cannot be used as a successful-delivery counter. Whole-drain
-or bookkeeping failures need not increase `Attempts` or ever park a message. Future
-instrumentation must observe these paths without changing delivery behavior.
+When readiness is selected, the relay records a positive local observation only after
+a poll/drain completes successfully, including an empty poll. Its separately reported
+delivery count includes only processed rows whose bookkeeping persisted and whose leases
+were not lost. Persisted failures can prove responsiveness, not delivery; escaping drain
+or bookkeeping failures do not renew the observation. Existing logs remain separate:
+empty polls do not emit "OutboxRelay.DrainCompleted", and its nonempty count includes
+persisted failures. Whole-drain/bookkeeping failures need not increase `Attempts` or
+ever park a row. Opting into observation changes no delivery behavior.
 
 Scope local responsiveness to the current relay instance/host lifetime. Another instance's
 heartbeat cannot prove this worker is responsive; shared-store delivery progress is a
@@ -410,9 +515,10 @@ Validate configured bounds and timing relationships explicitly rather than clamp
   See [future health registration
   requirements](trellis-api-servicedefaults.md#future-health-registration-requirements).
 
-### Acceptance boundary for future health checks
+### Acceptance boundary for staged health checks
 
-**Not implemented:** future implementation tests must prove these outcomes.
+Stage-one tests cover metadata/local relay, cache, timeout/cancellation, and registration
+outcomes. **Not implemented:** capture-age and optional-lag acceptance cases stay deferred.
 
 | Scenario | Required outcome |
 |---|---|
