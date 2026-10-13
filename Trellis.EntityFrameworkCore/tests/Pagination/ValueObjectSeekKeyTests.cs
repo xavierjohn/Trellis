@@ -1,4 +1,4 @@
-namespace Trellis.EntityFrameworkCore.Tests.Pagination;
+﻿namespace Trellis.EntityFrameworkCore.Tests.Pagination;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
