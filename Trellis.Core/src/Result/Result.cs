@@ -435,9 +435,26 @@ public static partial class Result
 
     /// <summary>
     /// Default mapper converting an exception into an <see cref="Error.Unexpected"/>.
-    /// Public detail stays generic; exception diagnostics belong in call-site logging/telemetry
-    /// indexed by <c>FaultId</c>.
+    /// Public detail stays generic; when <c>"Trellis.Results"</c> instrumentation is enabled and the
+    /// activity is sampled, the exception is recorded on a <c>Try</c> span tagged <c>fault.id</c> with the same <c>FaultId</c>.
     /// </summary>
-    private static Error.Unexpected DefaultExceptionMapper(Exception _) =>
-        new(Code: FaultCodes.UnhandledException, FaultId: Guid.NewGuid().ToString("N")) { Detail = UnexpectedExceptionDetail };
+    private static Error.Unexpected DefaultExceptionMapper(Exception exception)
+    {
+        var faultId = Guid.NewGuid().ToString("N");
+        RecordFault(exception, faultId);
+        return new(Code: FaultCodes.UnhandledException, FaultId: faultId) { Detail = UnexpectedExceptionDetail };
+    }
+
+    // Error.Cause never holds an Exception and the mapper must not leak its text to callers, so the
+    // exception is recorded on a telemetry span instead; without it the FaultId matches nothing.
+    private static void RecordFault(Exception exception, string faultId)
+    {
+        using var activity = RopTrace.ActivitySource.StartActivity("Try");
+        if (activity is null)
+            return;
+
+        activity.SetTag("fault.id", faultId);
+        activity.AddException(exception);
+        activity.SetStatus(ActivityStatusCode.Error);
+    }
 }

@@ -70,4 +70,30 @@ public class TryTests
         r.IsFailure.Should().BeTrue();
         r.Error!.Should().Be(Error.InvalidInput.ForRule(code: "bad.request", detail: "Mapped"));
     }
+
+    [Fact]
+    public void Try_default_mapper_records_exception_on_activity_correlated_by_FaultId()
+    {
+        using var helper = new Trellis.Core.Tests.Helpers.ActivityTestHelper();
+
+        var r = Result.Try<int>(() => throw new InvalidOperationException("Boom"));
+
+        var faultId = r.Error.Should().BeOfType<Error.Unexpected>().Subject.FaultId;
+        var activity = helper.CapturedActivities.Should().ContainSingle(a => a.DisplayName == "Try").Subject;
+        activity.Tags.Should().Contain(t => t.Key == "fault.id" && t.Value == faultId);
+        var recorded = activity.Events.Should().ContainSingle(e => e.Name == "exception").Subject;
+        recorded.Tags.Should().Contain(t => t.Key == "exception.message" && (string?)t.Value == "Boom");
+    }
+
+    [Fact]
+    public async Task TryAsync_default_mapper_records_exception_on_activity_correlated_by_FaultId()
+    {
+        using var helper = new Trellis.Core.Tests.Helpers.ActivityTestHelper();
+
+        var r = await Result.TryAsync<int>(() => throw new InvalidOperationException("AsyncBoom"));
+
+        var faultId = r.Error.Should().BeOfType<Error.Unexpected>().Subject.FaultId;
+        var activity = helper.CapturedActivities.Should().ContainSingle(a => a.DisplayName == "Try").Subject;
+        activity.Tags.Should().Contain(t => t.Key == "fault.id" && t.Value == faultId);
+    }
 }

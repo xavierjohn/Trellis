@@ -177,7 +177,16 @@ where T : IComparable
     /// Returns a string representation of the wrapped value.
     /// </summary>
     /// <returns>The string representation of <see cref="Value"/>, or an empty string if null.</returns>
-    public override string ToString() => Value?.ToString() ?? string.Empty;
+    /// <remarks>
+    /// Formats with <see cref="System.Globalization.CultureInfo.InvariantCulture"/> so the text
+    /// does not depend on the current culture. The invariant form is what the generated
+    /// <c>Parse</c> and the JSON converter read back; a culture-formatted <c>1,5</c> would be
+    /// parsed as <c>15</c>. Use <see cref="ToString(string?, IFormatProvider?)"/> for display.
+    /// </remarks>
+    public override string ToString() =>
+        Value is IFormattable formattable
+            ? formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture)
+            : Value?.ToString() ?? string.Empty;
 
     /// <summary>
     /// Implicitly converts the scalar value object to its underlying type.

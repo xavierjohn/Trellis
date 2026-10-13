@@ -364,13 +364,12 @@ public readonly struct Result<TValue> : IResult<TValue>, IEquatable<Result<TValu
     /// no-payload result shape <c>Result&lt;Unit&gt;</c>. For default-initialized failures
     /// the returned result is constructed via <see cref="Result.Fail(Error)"/> with
     /// the shared sentinel — never returns a default-initialized <c>Result&lt;Unit&gt;</c>.
-    /// </remarks>
-    /// <returns>A <see cref="Result{Unit}"/> mirroring this result's success/failure state.</returns>
-    /// <remarks>
+    ///
     /// If the source is a persist-on-failure outcome (created via
     /// <see cref="Result.FailAfterCommit{T}(Error)"/>), the returned <see cref="Result{Unit}"/>
     /// preserves that intent — the commit signal must not be lost when discarding the success value.
     /// </remarks>
+    /// <returns>A <see cref="Result{Unit}"/> mirroring this result's success/failure state.</returns>
     public Result<Unit> AsUnit()
     {
         if (_isOk) return Result.Ok();

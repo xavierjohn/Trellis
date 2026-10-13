@@ -427,6 +427,11 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
             return typeComparison;
         }
 
+        // string.CompareTo is culture-sensitive, which would disagree with the ordinal Equals above
+        // (two unequal strings could compare as 0) and make ordering vary by machine.
+        if (object1 is string text1)
+            return string.CompareOrdinal(text1, (string)object2);
+
         return object1.CompareTo(object2);
     }
 
