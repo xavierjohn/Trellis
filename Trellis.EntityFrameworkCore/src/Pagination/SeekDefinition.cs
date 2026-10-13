@@ -147,8 +147,18 @@ public static class SeekDefinition
         where TKey : IComparable<TKey>
     {
         var left = Replace(key, parameter);
-        var right = Parameterize(value);
+        Expression right = Parameterize(value);
         var type = typeof(TKey);
+        if (TrellisTypeScanner.FindValueObject(type) is { } valueObject
+            && ScalarValueExpressionRewriter.FindImplicitConversion(type, valueObject.ProviderType) is { } toProvider)
+        {
+            // The database orders and compares the provider value, and no provider translates
+            // CompareTo(object) on it, so compare the converted provider values instead.
+            left = Expression.Convert(left, valueObject.ProviderType, toProvider);
+            right = Expression.Convert(right, valueObject.ProviderType, toProvider);
+            type = valueObject.ProviderType;
+        }
+
         if (type == typeof(int) || type == typeof(long) || type == typeof(decimal) || type == typeof(double)
             || type == typeof(short) || type == typeof(float) || type == typeof(byte) || type == typeof(uint)
             || type == typeof(ulong) || type == typeof(ushort) || type == typeof(sbyte) || type == typeof(DateTime)

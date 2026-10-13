@@ -306,6 +306,8 @@ public static class SeekDefinition
 
 Factories start a definition with a scalar or explicit codec. Custom codecs remove the `IParsable<TKey>` requirement, not the need for provider-translatable comparisons. The helpers require no DI registration.
 
+A key may be a scalar value object directly (`SeekDefinition.Ascending<Dish, DishId>(d => d.Id)`) or its provider value (`d => d.Id.Value`); both page identically, and `.Value` remains the documented spelling in the cookbook. For a scalar value object or `RequiredEnum` key, the seek predicate converts both sides to the provider value (for example `Guid` or `string`) through the type's implicit conversion before comparing, because the database orders the provider value and no provider translates `CompareTo(object)`. A `RequiredEnum` key therefore seeks by its stored string, which matches the database order but not its declaration-order `CompareTo`.
+
 ### `SeekDefinition<T, TState>`
 
 ```csharp
@@ -1079,7 +1081,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
 The same pattern applies to other CLR-type / provider mismatches — for example `decimal` on a provider that only supports `double`, or a value object on a document store that cannot project nested types. Identify a sortable/comparable scalar that preserves the value, register the converter in the Acl, and keep the repository query server-side rather than falling back to `ToListAsync()` + in-memory ordering.
 
-The same Acl boundary applies to [`PaginationQueryableExtensions.ToPageAsync`](#paginationqueryableextensions). [`SeekDefinition`](#seekdefinition) emits relational comparisons for supported numeric/date-like keys and `CompareTo` expressions for other comparable keys such as `Guid` and `string`. The application must verify translation and agreement between ordering, equality, and comparison semantics for its provider. There is no automatic client-side fallback, and a `ValueConverter` alone does not make an unsupported `CompareTo` shape translatable. Use a verified sortable projection/provider mapping or an explicitly bounded caller-owned algorithm instead.
+The same Acl boundary applies to [`PaginationQueryableExtensions.ToPageAsync`](#paginationqueryableextensions). [`SeekDefinition`](#seekdefinition) emits relational comparisons for supported numeric/date-like keys and `CompareTo` expressions for other comparable keys such as `Guid` and `string`, applied to the provider value when the key is a scalar value object. The application must verify translation and agreement between ordering, equality, and comparison semantics for its provider. There is no automatic client-side fallback, and a `ValueConverter` alone does not make an unsupported `CompareTo` shape translatable. Use a verified sortable projection/provider mapping or an explicitly bounded caller-owned algorithm instead.
 
 ### Provider-specific behavior: owned collections on SQLite
 
