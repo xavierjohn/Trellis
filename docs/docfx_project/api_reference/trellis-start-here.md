@@ -12,21 +12,16 @@ agent_description: "Routing head for every Trellis task: which reference to open
 
 # Trellis — start here
 
-You are looking at versioned Trellis API reference files, installed from the `Trellis.Core` package by the optional
-Trellis.AgentDocs local tool (`agentdocs`; approve `Trellis.Core` in `.agentdocs/policy.json`). This file is the **routing head**
-for the whole set: it tells you which reference to open for a task and which recipe to read. It is self-contained on
-purpose, so it is the only file you must read before writing Trellis code. The other files sit beside it, so every link
-below is relative.
+These versioned references ship with `Trellis.Core`. The optional Trellis.AgentDocs local tool
+(`agentdocs`) installs them after approving `Trellis.Core` in `.agentdocs/policy.json`. This self-contained
+**routing head** is the only always-required read before Trellis work; it selects the references
+and recipes for each task. Other files sit beside it, so links are relative.
 
 ## Read the references yourself — do not delegate them to a sub-agent
 
-A sub-agent hands back a summary, so the exact signatures never reach your context and you end up
-writing code against a paraphrase. That is how invented APIs and wrong overloads get produced, and
-it is the specific failure these references exist to prevent.
-
-Sub-agents are fine for work whose output is a *verdict* rather than knowledge you must write code
-against: running builds and tests, searching for a file, auditing something for accuracy. The rule
-is narrow — if the answer determines the code you are about to write, read it yourself.
+Read code-shaping references yourself: a sub-agent's summary omits exact signatures and invites
+invented APIs or wrong overloads. Delegate *verdicts*, not reference learning: builds, tests,
+file searches and accuracy audits are fine. If the answer determines your code, read it yourself.
 
 ## Do not guess
 
@@ -38,11 +33,10 @@ compile error to redeclare — the cookbook's Recipe 1 lists that inherited surf
 
 ## How to read these recipes
 
-**Hold this file resident; read recipe bodies on demand.** This file is the routing head for the whole set
-and routes every task. The 37 recipe bodies in `trellis-api-cookbook.md` are on demand, and a typical task needs
-one to three of them — so open a body when the [task lookup table](#task---recipe-lookup) sends you to one, rather than
-loading all of them up front. Every live recipe is reachable from that table (enforced by the repository's TRLDOC007 lint
-gate), so if a task is not listed there, no recipe covers it. Never write code from a recipe's title alone.
+**Hold this file resident; read recipe bodies on demand.** The 37 recipe bodies in `trellis-api-cookbook.md`
+cover the routed tasks; a typical task needs one to three. Open each body when the
+[task lookup table](#task---recipe-lookup) routes you there; never work from its title alone.
+TRLDOC007 enforces that every live recipe is reachable, so an unlisted task has no recipe.
 
 Every recipe follows the same shape:
 
@@ -73,13 +67,11 @@ documented trade-off fits the task, and state why:
 
 ## LLM preflight: load the smallest correct reference set
 
-Before writing Trellis code, choose the task in the lookup table below, then open the
-required package references at their **Patterns Index**. Read the complete selected
-API section, its constraints and linked behavioral/preflight sections; do not load an
-unrelated full catalog. Expand when the task uses another surface, inherited members,
-or cross-package ordering. Section-first reading does not remove any required package
-or safety contract. The cookbook supplies end-to-end composition; a direct API route
-is enough for a small guard or conversion task.
+Before coding, choose the task below and open required references at their **Patterns Index**.
+Read complete selected API sections, constraints and linked behavioral/preflight sections,
+not unrelated catalogs. Expand for other surfaces, inherited members or cross-package ordering;
+section-first reading waives no required package or safety contract. Recipes cover end-to-end
+composition; a direct API route suffices for a small guard or conversion.
 
 | If you are changing... | Load these references before coding | Why |
 |---|---|---|
