@@ -144,8 +144,11 @@ Actor-provider selectors also register the optional `IActorIdentityProvider` cap
 or an exact built-in type is adapted; both services then share one scoped caching wrapper
 and inner instance with independent lazy caches. Unsupported legacy subclasses keep
 full actor behavior and do not acquire identity service registration. `UseWorkerActor`
-returns the system ID outside HTTP without resolving the inner provider and delegates
-inside HTTP only when supported. No new builder slot or Mediator stage is added.
+advertises identity for supported known inner types/instances, or for factories whose
+result type cannot be checked without invoking them. Known unsupported providers do
+not register identity. When registered, identity returns the system ID outside HTTP
+without resolving the inner provider and delegates inside HTTP only when supported;
+an unsupported factory result fails explicitly. No new builder slot or Mediator stage is added.
 See [ASP identity registration](trellis-api-asp.md#identity-only-provider-registration)
 and [Recipe 41](trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions).
 

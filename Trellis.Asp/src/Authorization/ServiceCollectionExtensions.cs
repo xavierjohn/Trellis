@@ -326,6 +326,7 @@ public static class ServiceCollectionExtensions
     /// supported built-in provider, the same call binds that interface to the same scoped
     /// caching wrapper. Identity and actor resolution remain independently lazy. Unsupported
     /// replacements remove the unkeyed identity binding; legacy subclasses must opt in explicitly.
+    /// Any existing unkeyed identity registration, including an application-provided one, is replaced.
     /// </para>
     /// <para>
     /// <b>Inner-provider dependencies are NOT auto-registered.</b> This helper only adds
@@ -419,6 +420,13 @@ public static class ServiceCollectionExtensions
     /// <b>Single-registration contract.</b> Calling <c>AddTrellisWorkerActor</c> twice
     /// throws — wrapping a wrapper would mean a worker scope returns the inner wrapper's
     /// system actor instead of the outer's, which is never the intended composition.
+    /// </para>
+    /// <para>
+    /// <b>Identity capability.</b> Known implementation types and instances advertise
+    /// <see cref="IActorIdentityProvider"/> only when supported by the inner provider.
+    /// Factories retain identity registration without being invoked at composition time;
+    /// an unsupported factory result throws on HTTP identity resolution. Outside HTTP,
+    /// registered identity resolution returns the system ID without constructing the inner.
     /// </para>
     /// <para>
     /// <b>Lifetime.</b> The wrapper is registered as scoped (matching the other built-in
@@ -563,6 +571,7 @@ public static class ServiceCollectionExtensions
         // are not disposed.
         var innerFactory = BuildInnerFactory(innerDescriptor);
         var ownsInner = innerDescriptor.ImplementationInstance is null;
+        var innerType = innerDescriptor.ImplementationType ?? innerDescriptor.ImplementationInstance?.GetType();
 
         // Remove the exact captured descriptor (preserves any keyed IActorProvider
         // registrations untouched) and append the wrapper.
@@ -575,7 +584,7 @@ public static class ServiceCollectionExtensions
         }));
 
         services.AddSingleton<WorkerActorRegistrationMarker>();
-        RegisterActorIdentity(services, supported: true);
+        RegisterActorIdentity(services, innerType is null || ActorIdentityProviderResolver.Supports(innerType));
 
         // Hosted-service validator catches "AddXxxActorProvider called AFTER AddTrellisWorkerActor"
         // at host start, before any HTTP request or worker tick observes the broken composition.

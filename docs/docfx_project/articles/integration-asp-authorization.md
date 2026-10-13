@@ -515,8 +515,12 @@ canonical normalizer with actor construction.
 `AddCachingActorProvider<T>()` registers both supported interfaces on the same scoped
 wrapper/inner instance, with separate lazy caches. Replacing it with an unsupported
 provider removes the unkeyed identity binding instead of retaining a stale provider.
-Worker composition supplies the system ID outside HTTP without constructing the inner
-provider, and delegates supported identity resolution inside HTTP.
+Any existing unkeyed identity registration, including an application-provided one, is
+replaced. Worker composition registers identity only for supported known inner
+types/instances or factory descriptors whose result type is not known at registration.
+When registered, identity supplies the system ID outside HTTP without constructing the
+inner provider and delegates supported identity resolution inside HTTP. An unsupported
+factory result fails explicitly on HTTP identity resolution.
 
 For actor-aware rate limiting, a claims-only custom provider and synchronous partitioner
 can call the **same application-owned normalization function directly**: no prefetch is

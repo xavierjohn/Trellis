@@ -196,6 +196,93 @@ public class ActorIdentityProviderTests
         scope.ServiceProvider.GetRequiredService<DualProvider>().ActorCalls.Should().Be(0);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddTrellisWorkerActor_KnownUnsupportedProvider_DoesNotRegisterIdentity(bool useInstance)
+    {
+        var services = new ServiceCollection();
+        if (useInstance)
+            services.AddSingleton<IActorProvider>(new LegacyClaimsProvider());
+        else
+            services.AddScoped<IActorProvider, LegacyClaimsProvider>();
+        services.AddScoped<IActorIdentityProvider, DualProvider>();
+        var keyed = new DualProvider();
+        services.AddKeyedSingleton<IActorIdentityProvider>("other", keyed);
+        services.AddTrellisWorkerActor(Actor.Create("system", new HashSet<string>()));
+        using var root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using var scope = root.CreateScope();
+
+        scope.ServiceProvider.GetService<IActorIdentityProvider>().Should().BeNull();
+        scope.ServiceProvider.GetRequiredKeyedService<IActorIdentityProvider>("other").Should().BeSameAs(keyed);
+        var actor = scope.ServiceProvider.GetRequiredService<IActorProvider>();
+        (await actor.GetCurrentActorAsync(Token)).Unwrap().Id.Value.Should().Be("system");
+        root.GetRequiredService<IHttpContextAccessor>().HttpContext = Context();
+        (await actor.GetCurrentActorAsync(Token)).Unwrap().Id.Value.Should().Be("custom:identity");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddTrellisWorkerActor_KnownSupportedProvider_RegistersSharedIdentity(bool useInstance)
+    {
+        var services = new ServiceCollection();
+        if (useInstance)
+            services.AddSingleton<IActorProvider>(new DualProvider());
+        else
+            services.AddScoped<IActorProvider, DualProvider>();
+        services.AddTrellisWorkerActor(Actor.Create("system", new HashSet<string>()));
+        using var root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using var scope = root.CreateScope();
+        var identity = scope.ServiceProvider.GetRequiredService<IActorIdentityProvider>();
+
+        identity.Should().BeSameAs(scope.ServiceProvider.GetRequiredService<IActorProvider>());
+        (await identity.GetCurrentActorIdAsync(Token)).Unwrap().Value.Should().Be("system");
+        root.GetRequiredService<IHttpContextAccessor>().HttpContext = Context();
+        (await identity.GetCurrentActorIdAsync(Token)).Unwrap().Value.Should().Be("canonical:user");
+    }
+
+    [Fact]
+    public async Task AddTrellisWorkerActor_BuiltInProvider_RegistersIdentityAdapter()
+    {
+        var services = new ServiceCollection();
+        services.AddClaimsActorProvider();
+        services.AddTrellisWorkerActor(Actor.Create("system", new HashSet<string>()));
+        using var root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        root.GetRequiredService<IHttpContextAccessor>().HttpContext = Context(new Claim("sub", "user"));
+        using var scope = root.CreateScope();
+
+        (await scope.ServiceProvider.GetRequiredService<IActorIdentityProvider>()
+            .GetCurrentActorIdAsync(Token)).Unwrap().Value.Should().Be("user");
+    }
+
+    [Fact]
+    public async Task AddTrellisWorkerActor_UnknownFactory_KeepsLazyIdentityAndRejectsUnsupportedHttpProvider()
+    {
+        var factoryCalls = 0;
+        var services = new ServiceCollection();
+        services.AddScoped<IActorProvider>(_ =>
+        {
+            factoryCalls++;
+            return new LegacyClaimsProvider();
+        });
+        services.AddTrellisWorkerActor(Actor.Create("system", new HashSet<string>()));
+        factoryCalls.Should().Be(0);
+        using var root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using var scope = root.CreateScope();
+        var identity = scope.ServiceProvider.GetRequiredService<IActorIdentityProvider>();
+
+        (await identity.GetCurrentActorIdAsync(Token)).Unwrap().Value.Should().Be("system");
+        factoryCalls.Should().Be(0);
+        root.GetRequiredService<IHttpContextAccessor>().HttpContext = Context();
+        var act = async () => await identity.GetCurrentActorIdAsync(Token);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*LegacyClaimsProvider*IActorIdentityProvider*");
+        factoryCalls.Should().Be(1);
+        (await scope.ServiceProvider.GetRequiredService<IActorProvider>()
+            .GetCurrentActorAsync(Token)).Unwrap().Id.Value.Should().Be("custom:identity");
+    }
+
     private static DefaultHttpContext Context(params Claim[] claims) => new()
     {
         User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")),

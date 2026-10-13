@@ -1259,16 +1259,21 @@ implements the capability or is an exact supported built-in type. Both resolve t
 **same scoped `CachingActorProvider`**, wrapping the same DI-resolved `T`. Identity and
 actor caches are separate and lazy; identity resolution does not load permissions.
 Repeating/replacing the helper keeps one unkeyed identity binding and removes it when
-the new provider is unsupported. Keyed identity registrations are untouched. The binding
+the new provider is unsupported. Any existing unkeyed identity registration, including
+an application-provided one, is replaced. Keyed identity registrations are untouched. The binding
 follows the selected `IActorProvider`, never a previously selected concrete provider;
 a subsequent unsupported direct replacement fails explicitly rather than falling back
 to full resolution or serving stale identity.
 
-`AddTrellisWorkerActor` preserves this capability on its scoped wrapper. Outside HTTP,
-identity is the system actor's ID without constructing the HTTP provider. Inside HTTP,
-it delegates to the supported inner identity capability and throws an actionable
-configuration error for an unsupported inner provider; it never loads a full actor as
-an identity fallback. Existing disposal and worker-registration validation are unchanged.
+`AddTrellisWorkerActor` registers identity on its scoped wrapper only when a known inner
+implementation type or instance supports the capability; known unsupported providers
+remove the unkeyed identity binding without changing full-actor worker composition.
+Factory descriptors retain identity registration because determining support would
+require invoking the factory at composition time. When identity is registered, outside
+HTTP it returns the system actor's ID without constructing the HTTP provider. Inside HTTP,
+it delegates to the supported inner identity capability; an unsupported factory result
+throws an actionable configuration error. It never loads a full actor as an identity
+fallback. Existing disposal and worker-registration validation are unchanged.
 The matching ServiceDefaults actor/cache/worker slots inherit these semantics.
 
 ### `ClaimsActorOptions`
