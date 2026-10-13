@@ -70,7 +70,11 @@ public sealed class RateLimiterOptionsExtensionsTests
         response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
         if (hasRetryAfter)
-            response.Headers.GetValues("Retry-After").Should().Equal("30");
+            response.Headers.GetValues("Retry-After").Should().Equal(
+                ["30"],
+                "this test pins {0}'s .NET 10 BCL estimate to one configured 30-second period; "
+                + "a runtime change may require updating this characterization",
+                limiterName);
         else
             response.Headers.Contains("Retry-After").Should().BeFalse();
 

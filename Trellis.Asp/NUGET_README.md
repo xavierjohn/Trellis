@@ -63,6 +63,8 @@ On .NET 10, fixed-window and token-bucket limiters normally supply retry estimat
 sliding-window and concurrency limiters do not. Queue eviction or limiter disposal can also
 omit retry advice. Choose fixed window or token bucket when the header matters, but clients
 must still handle a 429 without it; Trellis does not invent a fallback delay.
+See [client retry guidance](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-asp.html#ratelimiteroptionsextensions)
+for bounded backoff, jitter and retry-safety considerations.
 
 ## Documentation
 
