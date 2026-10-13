@@ -150,4 +150,32 @@ public class RequiredStringTests
 
         public void Dispose() => CultureInfo.CurrentCulture = this.original;
     }
+
+    [Fact]
+    public void CompareTo_StringsDifferingByIgnorableCharacter_IsConsistentWithEquals()
+    {
+        var plain = ComparableString.Create("ab");
+        var softHyphen = ComparableString.Create("a­b");
+
+        plain.Equals(softHyphen).Should().BeFalse();
+        plain.CompareTo(softHyphen).Should().NotBe(0);
+    }
+
+    [Fact]
+    public void CompareTo_UnderCulturesWithDifferentCollation_OrdersOrdinally()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("en-US");
+            var lower = ComparableString.Create("a");
+            var upper = ComparableString.Create("B");
+
+            lower.CompareTo(upper).Should().BePositive("ordinal order places 'B' (66) before 'a' (97)");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
 }

@@ -83,6 +83,26 @@ public class ScalarValueObjectTests
 
     #endregion
 
+    #region Culture Tests
+
+    [Fact]
+    public void ToString_DecimalValue_UnderGermanCulture_UsesInvariantFormatting()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+
+            ((object)new MoneySimple(1.5m)).ToString().Should().Be("1.5");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    #endregion
+
     #region Equality Tests
 
     [Fact]

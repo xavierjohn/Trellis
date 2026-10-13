@@ -42,6 +42,7 @@ public static class CombineErrorExtensions
                 new EquatableArray<RuleViolation>(a.Rules.Items.AddRange(b.Rules.Items)))
             {
                 Detail = mergedDetail,
+                Cause = a.Cause ?? b.Cause,
             };
         }
 

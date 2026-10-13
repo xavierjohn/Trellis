@@ -118,6 +118,7 @@ public Task<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct) =
 - Do not use throwing value access in production code. Prefer `TryGetValue`, `Match`, `Bind`, `Map`, or deconstruction guarded by the success flag.
 - Do not use `default(Result<T>)` as success. The default state is a typed `new Error.Unexpected("default-initialized")` failure.
 - For no-payload success, use `Result.Ok()` (which returns `Result<Unit>`). The `Trellis.Unit` type is the canonical "no value" payload — it is a public `readonly record struct` with a single value (`Unit.Default`).
+- If a later `ParallelAsync` factory throws synchronously, tasks started by earlier factories keep running unobserved; keep factories exception-free.
 - Use `ParallelAsync` only for independent work. If operation B depends on operation A, compose with `Bind`/`BindAsync` instead.
 
 ### First-30-minutes surprises
@@ -242,7 +243,7 @@ Qualify it when importing both Trellis and Mediator, which also declares a `Unit
 | `public static Result<T> EnsureNotNull<T>(T? value, Error error) where T : struct` | Unwraps `Nullable<T>`; null produces the supplied failure. |
 | `public static Result<T> EnsureNotNull<T>(T? value, Func<Error> errorFactory) where T : struct` | Nullable-struct guard with lazy error creation. |
 | `public static Result<T> EnsureNotNull<T>(T? value, string? fieldName, string? detail = null) where T : struct` | Nullable-struct guard; creates `Error.InvalidInput.Required(fieldName, detail)` only when null. |
-| `public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)` | Converts thrown exceptions to failures |
+| `public static Result<T> Try<T>(Func<T> func, Func<Exception, Error>? map = null)` | Converts thrown exceptions to failures. With the default mapper the exception is recorded on a `Try` span (`Trellis.Results` source; `exception` event plus a `fault.id` tag equal to `Error.Unexpected.FaultId`) because `Error.Cause` never holds an exception. `OperationCanceledException` is rethrown. |
 | `public static Task<Result<T>> TryAsync<T>(Func<Task<T>> func, Func<Exception, Error>? map = null)` | Async exception capture |
 | `public static Result<Unit> Try(Action work, Func<Exception, Error>? map = null)` | No-payload exception capture (returns `Result<Unit>`) |
 | `public static Task<Result<Unit>> TryAsync(Func<Task> work, Func<Exception, Error>? map = null)` | Async no-payload exception capture |
@@ -1515,7 +1516,7 @@ Task<Result<Settings>> Load(UserId id) =>
 
 #### Ensure family — `EnsureExtensions`, `EnsureExtensionsAsync`, `EnsureAllExtensions`, `EnsureAllExtensionsAsync`
 
-Predicate-based validation. `Ensure` short-circuits on the first failed predicate; `EnsureAll` accumulates every failure via `Error.Combine` (homogeneous `Error.InvalidInput` failures merge into a single `Error.InvalidInput`; heterogeneous failures fold into `Error.Aggregate`) for applicative-style validation.
+Predicate-based validation. `Ensure` short-circuits on the first failed predicate; `EnsureAll` accumulates every failure via `Error.Combine` (homogeneous `Error.InvalidInput` failures merge into a single `Error.InvalidInput` that keeps the first non-null `Cause`; heterogeneous failures fold into `Error.Aggregate`) for applicative-style validation.
 
 **Static guards need no receiver.** `Result.Ensure(condition, errorFactory)` returns
 `Result<Unit>` and invokes the factory only on failure. Construct a fresh error inside
@@ -1852,7 +1853,7 @@ Conditional execution and async fan-in.
 | `public static Result<T> Unless<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Result<T>> operation)` | `Result<T>` | Inverse of `When`. |
 | `public static Task<Result<T>> WhenAsync<T>(this Result<T> result, Func<T, bool> predicate, Func<T, Task<Result<T>>> operation)` | `Task<Result<T>>` | `WhenExtensionsAsync` covers Task/ValueTask × predicate-/no-predicate × Result/Task-Result combinations for both `WhenAsync` and `UnlessAsync`. |
 | `public static Task<Result<T>> UnlessAsync<T>(this Task<Result<T>> resultTask, Func<T, bool> predicate, Func<T, Task<Result<T>>> operation)` | `Task<Result<T>>` | Async inverse-`When` (a `bool condition` overload also exists). |
-| `public static Task<Result<(T1, T2)>> WhenAllAsync<T1, T2>(this (Task<Result<T1>> t1, Task<Result<T2>> t2) tasks)` | `Task<Result<(T1, T2)>>` | `WhenAllExtensionsAsync` runs tasks concurrently via `Task.WhenAll` and folds the results. Tuple arities 2–9 are generated. |
+| `public static Task<Result<(T1, T2)>> WhenAllAsync<T1, T2>(this (Task<Result<T1>> t1, Task<Result<T2>> t2) tasks)` | `Task<Result<(T1, T2)>>` | `WhenAllExtensionsAsync` runs tasks concurrently via `Task.WhenAll` and folds the results. Tuple arities 2–9 are generated. A faulted or canceled task rethrows only its first exception, and only after every task has completed. |
 
 ```csharp
 Task<Result<(Profile, Preferences)>> bundle =
@@ -2386,7 +2387,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 | `public override bool Equals(object? obj)` | `bool` | Delegates to `Equals(ValueObject? other)`. |
 | `public bool Equals(ValueObject? other)` | `bool` | Structural equality check against the same runtime type. |
 | `public override int GetHashCode()` | `int` | Computes and caches a hash code from the equality components. |
-| `public virtual int CompareTo(ValueObject? other)` | `int` | Compares equality components in order. Null sorts before non-null (`value.CompareTo(null) > 0`). Throws `ArgumentException` for a non-null value object of a different runtime type. |
+| `public virtual int CompareTo(ValueObject? other)` | `int` | Compares equality components in order; `string` components compare ordinally, consistent with `Equals`, so ordering does not vary by culture or machine. Null sorts before non-null (`value.CompareTo(null) > 0`). Throws `ArgumentException` for a non-null value object of a different runtime type. |
 | `public static bool operator ==(ValueObject? a, ValueObject? b)` | `bool` | Structural equality operator. |
 | `public static bool operator !=(ValueObject? a, ValueObject? b)` | `bool` | Structural inequality operator. |
 | `public static bool operator <(ValueObject? left, ValueObject? right)` | `bool` | Ordering operator based on `CompareTo(ValueObject?)`: null sorts first; different non-null runtime types throw `ArgumentException`. |
@@ -2452,7 +2453,7 @@ where T : IComparable
 | --- | --- | --- |
 | `protected ScalarValueObject(T value)` | — | Stores the wrapped scalar value. |
 | `protected override void GetEqualityComponents(ref EqualityComponents components)` | `void` | Default scalar equality uses only `Value`. |
-| `public override string ToString()` | `string` | Returns `Value?.ToString() ?? string.Empty`. |
+| `public override string ToString()` | `string` | Formats `Value` with `CultureInfo.InvariantCulture` when it is `IFormattable`, otherwise `Value?.ToString() ?? string.Empty`, so the text is culture-independent and round-trips through `Parse` and the JSON converter. Use `ToString(string?, IFormatProvider?)` for display. |
 | `public static implicit operator T(ScalarValueObject<TSelf, T> valueObject)` | `T` | Unwraps the scalar value object to its primitive value. |
 | `public static TSelf Create(T value)` | `TSelf` | Calls `TSelf.TryCreate(value)` and throws `InvalidOperationException` on failure. This is the **concrete-type dispatch** entry point — invoked when the call site names a derived class (e.g. `EmailAddress.Create("…")`). The `IScalarValue<TSelf, TPrimitive>.Create(TPrimitive)` static-virtual member on the interface is the **generic-constraint dispatch** entry point used from generic code (`T.Create(value)` where `T : IScalarValue<T, P>`); the two methods coexist because C# does not route concrete-type calls through interface static-virtual defaults. |
 | `public TypeCode GetTypeCode()` | `TypeCode` | Returns `Type.GetTypeCode(typeof(T))`. |

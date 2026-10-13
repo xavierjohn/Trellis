@@ -49,7 +49,7 @@ public static partial class Result
     /// </para>
     /// <para>
     /// Any tasks that are created successfully can execute concurrently once started by their factories.
-    /// If a factory throws synchronously, the exception escapes immediately and later factories are not invoked.
+    /// If a factory throws synchronously, the exception escapes immediately and later factories are not invoked. Tasks already started by earlier factories keep running and are not awaited, canceled or observed, so make each factory exception-free or give its task its own cancellation.
     /// </para>
     /// <para>
     /// ParallelAsync builds the tuple structure without awaiting any tasks.

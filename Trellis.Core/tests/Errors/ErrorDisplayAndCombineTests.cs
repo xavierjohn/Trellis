@@ -86,4 +86,15 @@ public class ErrorDisplayAndCombineTests
 
         combined.Detail.Should().Be("Same");
     }
+
+    [Fact]
+    public void Combine_two_InvalidInput_preserves_first_non_null_Cause()
+    {
+        var cause = new Error.NotFound(new ResourceRef("Order", "1"));
+        var a = new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("a"), "c"))) { Cause = cause };
+        var b = Error.InvalidInput.ForField("c", "b");
+
+        ((Error?)a).Combine(b).Cause.Should().Be(cause);
+        ((Error?)b).Combine(a).Cause.Should().Be(cause);
+    }
 }

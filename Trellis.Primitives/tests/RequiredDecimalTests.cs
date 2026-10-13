@@ -270,4 +270,25 @@ public class RequiredDecimalTests
         var validation = (Error.InvalidInput)result.UnwrapError();
         validation.Fields[0].Field.Path.Should().Be("/myField");
     }
+
+    [Fact]
+    public void Json_round_trip_under_german_culture_preserves_value()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+            var price = UnitPrice.Create(1.5m);
+
+            var json = JsonSerializer.Serialize(price);
+            var roundTripped = JsonSerializer.Deserialize<UnitPrice>(json);
+
+            json.Should().Be("1.5");
+            roundTripped!.Value.Should().Be(1.5m);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
 }
