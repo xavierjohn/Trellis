@@ -46,6 +46,13 @@ public static class RateLimiterOptionsExtensions
     /// supplies the metadata.
     /// </para>
     /// <para>
+    /// On .NET 10, <see cref="FixedWindowRateLimiter"/> and
+    /// <see cref="TokenBucketRateLimiter"/> normally supply retry estimates for immediate
+    /// capacity rejections; <see cref="SlidingWindowRateLimiter"/> and
+    /// <see cref="ConcurrencyLimiter"/> do not. Queue eviction or limiter disposal can also
+    /// reject a queued request without metadata. No delay is invented when metadata is absent.
+    /// </para>
+    /// <para>
     /// This method owns <see cref="RateLimiterOptions.OnRejected"/> and does not compose with an
     /// existing handler because that handler may already write a response. Pass logging or metrics
     /// work through <paramref name="observer"/> instead. Applications that need a different writer

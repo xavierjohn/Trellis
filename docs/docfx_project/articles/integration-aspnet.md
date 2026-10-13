@@ -214,7 +214,7 @@ Trellis.Core.Error is transport-neutral. The ASP boundary translates domain fail
 | `Error.Gone` | `410` | `gone` | — |
 | `Error.AuthenticationRequired` | `401` | `unauthorized` | `WWW-Authenticate` |
 | `Error.Unavailable` | `503` | `service-unavailable` | `Retry-After` |
-| `Error.RateLimited` | `429` | `too-many-requests` | `Retry-After` |
+| `Error.RateLimited` | `429` | `too-many-requests` | `Retry-After` when retry advice is supplied |
 | `Error.Unexpected` (`Code == FaultCodes.NotImplemented`) | `501` | `not-implemented` | — |
 | `Error.Unexpected` | `500` | `internal-server-error` | `faultId` when set |
 | `Error.Aggregate` | worst child | `multi` | per-child |
@@ -246,6 +246,24 @@ Resolution order: `WithErrorMapping(Func<Error,int>)` → `WithErrorMapping<TErr
 ## Problem Details output
 
 Failures are emitted as `application/problem+json`. `Error.InvalidInput` with field violations uses `Results.ValidationProblem(...)`; everything else uses `Results.Problem(...)`. Companion headers are synthesized automatically from the error payload: `Allow` for `HttpError.MethodNotAllowed`, `Content-Range` for `HttpError.RangeNotSatisfiable`, `Retry-After` from `RetryAdvice` on `Error.RateLimited` / `Error.Unavailable`, and `WWW-Authenticate` from `Error.AuthenticationRequired.Scheme` or the registered `IAuthenticationSchemeProvider` fallback.
+
+### Rate-limit rejections and retry advice
+
+Inside the application's `AddRateLimiter(...)` callback, install
+`options.UseTrellisRejectionHandler()` to render middleware rejections as the standard
+Trellis 429 Problem Details response. Use named endpoint policies without policy-level
+rejection handlers; inline policies bypass this adapter.
+
+`Retry-After` is optional: the adapter only emits it when the rejected lease supplies
+retry metadata. On .NET 10, fixed-window and token-bucket limiters normally supply estimates
+for immediate capacity rejections, while sliding-window and concurrency limiters do not.
+Queued requests rejected by eviction or limiter disposal can omit metadata even with
+fixed-window or token-bucket policies.
+
+Choose fixed window or token bucket when retry advice matters, without assuming the header
+is guaranteed. Trellis does not invent a fallback delay. Clients should handle its absence
+with bounded backoff and jitter when the operation is safe to retry. See the
+[limiter comparison and adapter contract](../api_reference/trellis-api-asp.md#ratelimiteroptionsextensions).
 
 ### Wiring the canonical Trellis enrichment
 

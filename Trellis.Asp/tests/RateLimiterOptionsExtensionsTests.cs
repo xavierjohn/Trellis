@@ -50,6 +50,64 @@ public sealed class RateLimiterOptionsExtensionsTests
         problem.RootElement.GetProperty("code").GetString().Should().Be(FaultCodes.RateLimitExceeded);
     }
 
+    [Theory]
+    [InlineData(nameof(FixedWindowRateLimiter), true)]
+    [InlineData(nameof(TokenBucketRateLimiter), true)]
+    [InlineData(nameof(SlidingWindowRateLimiter), false)]
+    [InlineData(nameof(ConcurrencyLimiter), false)]
+    public async Task UseTrellisRejectionHandler_BuiltInLimiter_Exhausted_UsesAvailableRetryMetadata(
+        string limiterName,
+        bool hasRetryAfter)
+    {
+        using var limiter = CreateBuiltInLimiter(limiterName);
+        using var host = CreateHost(rateLimiter: limiter);
+        using var acquired = limiter.AttemptAcquire();
+        acquired.IsAcquired.Should().BeTrue();
+
+        using var client = host.GetTestClient();
+        using var response = await client.GetAsync("/limited", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        if (hasRetryAfter)
+            response.Headers.GetValues("Retry-After").Should().Equal(
+                ["30"],
+                "this test pins {0}'s .NET 10 BCL estimate to one configured 30-second period; "
+                + "a runtime change may require updating this characterization",
+                limiterName);
+        else
+            response.Headers.Contains("Retry-After").Should().BeFalse();
+
+        using var problem = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        problem.RootElement.GetProperty("code").GetString().Should().Be(FaultCodes.RateLimitExceeded);
+        problem.RootElement.GetProperty("kind").GetString().Should().Be("too-many-requests");
+    }
+
+    [Theory]
+    [InlineData(nameof(FixedWindowRateLimiter))]
+    [InlineData(nameof(TokenBucketRateLimiter))]
+    public async Task BuiltInLimiter_QueuedRequests_EvictedOrDisposed_OmitsRetryMetadata(string limiterName)
+    {
+        using var limiter = CreateBuiltInLimiter(limiterName, queueLimit: 1);
+        using var acquired = limiter.AttemptAcquire();
+        acquired.IsAcquired.Should().BeTrue();
+
+        var oldest = limiter.AcquireAsync(cancellationToken: TestContext.Current.CancellationToken);
+        oldest.IsCompleted.Should().BeFalse();
+        var newest = limiter.AcquireAsync(cancellationToken: TestContext.Current.CancellationToken);
+        newest.IsCompleted.Should().BeFalse();
+
+        using var evicted = await oldest;
+        evicted.IsAcquired.Should().BeFalse();
+        evicted.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan _).Should().BeFalse();
+
+        limiter.Dispose();
+        using var disposed = await newest;
+        disposed.IsAcquired.Should().BeFalse();
+        disposed.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan _).Should().BeFalse();
+    }
+
     [Fact]
     public async Task UseTrellisRejectionHandler_ObserverConfigured_RunsBeforeTrellisWriter()
     {
@@ -276,7 +334,8 @@ public sealed class RateLimiterOptionsExtensionsTests
         Func<OnRejectedContext, CancellationToken, ValueTask>? observer = null,
         IRateLimiterPolicy<string>? namedPolicy = null,
         bool inlinePolicy = false,
-        bool addOuterOnStarting = false) =>
+        bool addOuterOnStarting = false,
+        RateLimiter? rateLimiter = null) =>
         Host.CreateDefaultBuilder()
             .ConfigureWebHostDefaults(web => web
                 .UseTestServer()
@@ -291,7 +350,7 @@ public sealed class RateLimiterOptionsExtensionsTests
                             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
                                 _ => RateLimitPartition.Get(
                                     "all-requests",
-                                    _ => new RejectingRateLimiter(retryAfter)));
+                                    _ => rateLimiter ?? new RejectingRateLimiter(retryAfter)));
                         else if (!inlinePolicy)
                             options.AddPolicy("write", namedPolicy);
 
@@ -329,6 +388,42 @@ public sealed class RateLimiterOptionsExtensionsTests
                         });
                 }))
             .Start();
+
+    private static RateLimiter CreateBuiltInLimiter(string limiterName, int queueLimit = 0) =>
+        limiterName switch
+        {
+            nameof(FixedWindowRateLimiter) => new FixedWindowRateLimiter(new()
+            {
+                PermitLimit = 1,
+                Window = TimeSpan.FromSeconds(30),
+                QueueLimit = queueLimit,
+                QueueProcessingOrder = QueueProcessingOrder.NewestFirst,
+                AutoReplenishment = false,
+            }),
+            nameof(TokenBucketRateLimiter) => new TokenBucketRateLimiter(new()
+            {
+                TokenLimit = 1,
+                TokensPerPeriod = 1,
+                ReplenishmentPeriod = TimeSpan.FromSeconds(30),
+                QueueLimit = queueLimit,
+                QueueProcessingOrder = QueueProcessingOrder.NewestFirst,
+                AutoReplenishment = false,
+            }),
+            nameof(SlidingWindowRateLimiter) => new SlidingWindowRateLimiter(new()
+            {
+                PermitLimit = 1,
+                Window = TimeSpan.FromSeconds(30),
+                SegmentsPerWindow = 3,
+                QueueLimit = queueLimit,
+                AutoReplenishment = false,
+            }),
+            nameof(ConcurrencyLimiter) => new ConcurrencyLimiter(new()
+            {
+                PermitLimit = 1,
+                QueueLimit = queueLimit,
+            }),
+            _ => throw new ArgumentOutOfRangeException(nameof(limiterName), limiterName, "Unknown built-in limiter."),
+        };
 
     private sealed class RejectingPolicy(TimeSpan? retryAfter, bool ownsResponse) : IRateLimiterPolicy<string>
     {
