@@ -35,7 +35,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Supplies endpoint-builder locations for `WriteOutcome.Created` when its optional location is absent; an explicit outcome location wins.
 - Validates scalar value objects during MVC and Minimal API binding and JSON deserialization.
 - Provides claims, nested-JSON claims, Entra, Easy Auth, development, caching, and worker actor-provider composition.
-- Maps ASP.NET Core rate-limit middleware rejections to the standard Trellis 429 Problem Details envelope and `Retry-After`.
+- Maps ASP.NET Core rate-limit middleware rejections to the standard Trellis 429 Problem Details envelope, with `Retry-After` when supplied by the rejected lease.
 - Adds opt-in `Idempotency-Key` middleware with in-memory and pluggable distributed stores.
 - Includes the AOT-friendly scalar JSON-converter source generator.
 
@@ -49,6 +49,7 @@ Default failure mappings include 401 for `AuthenticationRequired`, 403 for `Forb
 - Configured scalar-validation JSON options reject missing/null required value-object inputs even outside the request scope (`JsonSerializer.Deserialize`, manual `ReadFromJsonAsync`, excluded routes or persisted payloads). Such reads throw `TrellisJsonValidationException` rather than returning invalid DTOs.
 - `AddTrellisProblemDetails()` pairs with `app.UseTrellisProblemDetails()`.
 - Inside `AddRateLimiter(...)`, call `options.UseTrellisRejectionHandler()` to let Trellis own `OnRejected`; use named endpoint policies without policy-level `OnRejected` callbacks. Inline `RequireRateLimiting(policy)` bypasses the options handler, even without a policy callback. Rate-limit policies and partitioning remain application-owned.
+- On .NET 10, fixed-window and token-bucket limiters normally supply retry estimates; sliding-window and concurrency limiters do not. Queue eviction or limiter disposal can also omit retry advice. Choose fixed window or token bucket when the header matters, but clients must still handle a 429 without it; Trellis does not invent a fallback delay.
 - Idempotency requires `AddTrellisIdempotency(...)`, exactly one store registration, `app.UseTrellisIdempotency()`, and `[Idempotent]` on opted-in endpoints.
 - `PageUrl` is part of this package. Versioned hosts add `Trellis.Asp.ApiVersioning` and enable `AddTrellisAsp(o => o.UseVersionedPageUrls())` (or the existing `UseAsp` callback) once. Typed pins and `WithVersionedRoute()` remain optional-package helpers.
 

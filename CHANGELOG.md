@@ -28,6 +28,13 @@ Existing outbox/inbox registrations, delivery/retry/lease/replay behavior, schem
 Mediator ordering, and host-owned endpoint/liveness policy are unchanged. Capture-age
 evidence and optional consumer/source lag remain deferred.
 
+### Documentation - rate-limit retry advice
+
+Clarifies which .NET 10 built-in rate limiters supply `Retry-After` estimates and when
+fixed-window/token-bucket queue rejections can omit them. Real-limiter coverage pins these
+contracts; `UseTrellisRejectionHandler()` still emits advice only from the rejected lease,
+without inventing a fallback delay. Runtime behavior and public signatures are unchanged.
+
 ### Analyzers - semantic per-incident reason-code guard
 
 TRLS067 warns when a known fresh GUID-derived value reaches an error/violation
