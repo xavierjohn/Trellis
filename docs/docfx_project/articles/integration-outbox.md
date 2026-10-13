@@ -223,6 +223,43 @@ Events are serialized and rehydrated with a Trellis-owned `System.Text.Json` opt
 - **Run as many relay instances as you need.** Each drain atomically claims a batch with a lease (`LockedBy` + `LockedUntil`), and `LockedBy` is an optimistic concurrency token, so concurrent instances never both own a row's lease at once, and a drain that outlived its lease abandons its bookkeeping write — logging `OutboxRelay.LeaseLost` — rather than clobber the instance that reclaimed the row. No leader election or distributed lock is needed. Delivery is still at-least-once — a crash between publish and the relay's `SaveChanges`, or a batch that outlives its lease, can re-deliver — so keep handlers idempotent. Set `LeaseDuration` comfortably above the worst-case batch publish time and keep node clocks reasonably in sync, since the lease is compared against each relay's wall clock.
 - **One outbox per composition.** `UseOutbox<TContext>()` throws if called twice. Multiple relays in one process are not supported by the builder slot today.
 
+### Health-check requirements: staged, not shipped
+
+**Not implemented:** Trellis currently has no outbox/inbox health checks or health
+registration helpers. The [readiness contract and opt-in reference profile](../api_reference/trellis-api-efcore-outbox.md#health-check-requirements)
+define future acceptance criteria, not extra `OutboxOptions` settings.
+
+The rollout separates bounded pending/parked summaries and local relay observations,
+durable row-capture age with migration/legacy-row handling, and optional
+[consumer/source-lag evidence](integration-inbox.md#consumer-lag-health-requirements).
+Each stage is independently useful; separate implementation PRs are recommended,
+not a fixed count.
+
+Count retryable pending rows even while leased or in backoff, and report parked rows
+separately. `OccurredAt` is business-event time, **not queue age**; no dedicated capture
+timestamp exists yet. Successful empty polls can prove responsiveness without a delivery,
+but "OutboxRelay.DrainCompleted" does not log those polls and its count includes persisted
+failed attempts. Neither that log nor publisher acceptance proves consumer success.
+
+The named reference profile requires explicit workload/SLO tuning. When included in
+readiness, Degraded remains ready with a warning; unhealthy fails readiness.
+Missing/stale enabled evidence degrades,
+probe faults/timeouts are unhealthy, and caller cancellation propagates. These checks
+must be read-only, not restart/replay/pruning triggers. With retries spanning hours at
+the defaults, a short delivery-age breach need not mean the worker is stuck.
+
+Under the reference profile, the relay signal is Degraded with no first positive
+observation, even during the 30-second grace: report warming up before 30 seconds,
+then missing evidence.
+At 5 minutes from host start it is Unhealthy; grace never masks other conditions.
+For coalesced cache refreshes, callers cancel only their own wait, not the shared probe;
+their cancellation must not be cached as a health result or fault.
+
+Shared-store depth/capture-age breaches can make every replica unhealthy during a
+broker outage. Hosts must deliberately decide whether those checks gate traffic
+readiness or are exposed for alerting only, without changing their reported severity.
+Parked-only degradation still remains ready with a warning.
+
 ## Outbox vs. event sourcing
 
 The outbox is **not** event sourcing. The `TrellisOutboxMessages` rows are a transient *messaging buffer*: they exist only until they are relayed and may be pruned afterward. Your aggregate tables remain the single source of truth, and you never rebuild state by replaying outbox rows. Event sourcing, by contrast, makes the event log itself the source of truth. Reach for the outbox when you want reliable delivery of notifications about state changes; reach for event sourcing when the events *are* the state.

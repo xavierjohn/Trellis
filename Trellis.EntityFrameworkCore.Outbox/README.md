@@ -85,6 +85,15 @@ A broker adapter must await publication acceptance and propagate publication fai
 
 The package suppresses recursive domain-event generation while appending outbox rows, preventing outbox persistence from creating more domain events.
 
+## Health Requirements
+
+**Not implemented:** no Trellis-specific outbox/inbox health checks or health registrations
+are shipped. The [staged readiness requirements](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md#health-check-requirements)
+separate pending/parked summaries, local relay responsiveness, durable capture-age
+evidence, and optional consumer lag. The reference profile requires explicit selection
+and tuning; `OccurredAt` is not queue age, and publisher acceptance is not consumer success.
+Readiness probes must not mutate delivery state or trigger automatic restarts.
+
 ## Documentation
 
 - [Package API reference](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md)

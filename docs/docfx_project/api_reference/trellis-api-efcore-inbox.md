@@ -6,7 +6,7 @@ version: v1
 last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when processing broker integration events effectively once with the Trellis inbox: AddTrellisInbox, its transaction boundary and the (ConsumerId, MessageId) key."
+agent_description: "Open when wiring inbox dedup/transactions, inspecting retained processing evidence, or defining optional consumer/source-lag requirements; no Trellis health checks are shipped."
 ---
 # Trellis.EntityFrameworkCore.Inbox
 
@@ -27,6 +27,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - You are wiring `AddTrellisInbox`, `modelBuilder.AddTrellisInbox()`, or the `UseInbox<TContext>()` builder slot.
 - You are reasoning about the inbox's idempotency guarantee, its transaction boundary, or what `(ConsumerId, MessageId)` must be.
 - You are defining metadata inspection, safe dedup retention, transport redrive, or controlled replay into an isolated rebuild target.
+- You need to define meaningful consumer/source-lag evidence without treating inbox receipts as a queue; health checks are not implemented.
 
 ## Patterns Index
 
@@ -42,6 +43,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 | Understand why a failed handler reprocesses | The dispatcher is **non-swallowing**: a handler throw rolls back and rethrows, so the transport redelivers | [Processing semantics](#processing-semantics) |
 | Connect a producer's outbox to a consumer's inbox | Carry the outbox `OutboxMessage.Id` verbatim as the envelope `MessageId` | [Relationship to the outbox](#relationship-to-the-outbox) |
 | Inspect processing evidence, retain dedup history safely, or rebuild from archived events | Application-owned operations; metadata-only inspection, opt-in retention, and isolated replay | [Operational requirements and transport boundary](#operational-requirements-and-transport-boundary) |
+| Define optional consumer/source-lag health checks | Explicitly enabled application/transport evidence; no inbox health API is shipped | [Consumer-lag health requirements](#consumer-lag-health-requirements) |
 
 ## Common traps
 
@@ -456,9 +458,50 @@ acceptance criteria for future operational tooling.
 
 No registration API or builder slot is added here. Any later application-facing
 maintenance/replay feature requires its own approval, registration classification,
-and behavioral tests. Health thresholds and degraded/unhealthy policies are a separate
-design task; table size, a checkpoint timestamp, or an empty inbox alone does not establish
-transport lag, relay liveness, or consumer health.
+and behavioral tests. Health checks have their own [requirements](#consumer-lag-health-requirements);
+table size, a checkpoint timestamp, or an empty inbox alone does not establish transport
+lag, relay liveness, or consumer health.
+
+## Consumer-lag health requirements
+
+**Not implemented:** no inbox health check or lag-provider API is shipped. Consumer/source
+lag is the optional final stage of the [outbox/inbox readiness contract](trellis-api-efcore-outbox.md#health-check-requirements),
+which defines the opt-in reference profile, readiness mapping, budgets, and freshness.
+These requirements do not add fields to `InboxMessage` or methods to the checkpoint store.
+
+Inbox rows are retained committed receipts, not source queue state. `ProcessedAt` is
+assigned when staging before handlers/save, not at commit. Table size, the newest/oldest
+receipt, an empty inbox, or a checkpoint's update time cannot establish consumer liveness
+or pending work. `ConsumerCheckpoint.Position` is opaque; never subtract arbitrary cursor
+strings or assume a high-water mark proves gap-free accounting.
+
+An application/transport-owned evidence provider must define:
+
+- The authorized storage/composition, stable `ConsumerId`, source/subscription, and
+  partition scope, including which partitions must be covered.
+- The measured quantity and unit: age of the oldest unaccounted source message and/or
+  number of unaccounted events, with a UTC sample time and explicit freshness/coverage.
+  Source business-event age and last-message inactivity are different quantities.
+- How messages become durably accounted for, including `Processed` and
+  `SkippedDuplicate` outcomes, gaps/out-of-order commits, redeliveries, and retention.
+  A broker offset or queue-depth metric is not automatically proof of inbox completion.
+- How partition evidence is combined: expose missing coverage, compare configured
+  age/count thresholds, and do not average away a lagging partition. Declare any
+  estimates/lower bounds rather than label them exact totals.
+
+Lag is explicitly disabled when unconfigured, not observed healthy. Once enabled,
+missing/stale evidence degrades health; provider errors/timeouts are unhealthy and caller
+cancellation propagates. Support the provider's declared units without inventing absent
+measurements; at least one configured lag measure must be available. Keep source sample
+time distinct from cache refresh time. Live and isolated-rebuild consumers must not share
+evidence or cache entries merely because they read the same source.
+
+Do not dispatch, settle messages, advance/reset checkpoints, prune dedup rows, or trigger
+replay to test health. The application owns the provider and endpoint authorization;
+vendor SDK adapters stay outside `Trellis.ServiceDefaults`. A future feature must prove
+quiet-source zero lag with authoritative evidence, missing/stale partition coverage,
+out-of-order accounting, disabled versus unavailable signals, and timeout/cancellation
+behavior without changing the dispatch or retention contract.
 
 ## Relationship to the outbox
 

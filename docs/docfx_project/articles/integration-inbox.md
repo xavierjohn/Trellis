@@ -296,8 +296,30 @@ For deliberately replaying **already-consumed** events, the approved policy is a
 
 Do not delete live dedup rows or invent fresh message ids to force live re-execution.
 Repairing live business state needs its own explicit application idempotency policy.
-Health-check thresholds and automatic remediation are separate work, not implied by
-these operational requirements.
+Health checks remain a separate, read-only feature; the requirements below do not
+authorize automatic remediation.
+
+### Consumer-lag health requirements
+
+**Not implemented:** Trellis ships no inbox health check or lag-provider API. Optional
+consumer/source lag is the final stage of the [readiness requirements](../api_reference/trellis-api-efcore-outbox.md#health-check-requirements),
+not a measurement the inbox table already supplies.
+
+An empty inbox, old/new `ProcessedAt`, or a checkpoint timestamp says nothing definitive
+about source backlog or consumer liveness. `ProcessedAt` precedes the handlers/save,
+and checkpoint positions are opaque performance cursors. Do not subtract cursor strings
+or mistake a high-water mark for gap-free durable processing.
+
+The application/transport must supply fresh evidence scoped to the authorized storage,
+`ConsumerId`, source/subscription, and partitions. Define unaccounted-event count and/or
+oldest-unaccounted-message age, durable accounting, and missing-partition handling.
+A quiet source can have zero lag without recent messages only when that evidence proves
+it. Keep live and rebuild consumer evidence separate.
+
+Unconfigured lag is explicitly disabled, not observed healthy. Missing/stale enabled
+evidence degrades health; provider faults/timeouts are unhealthy and caller cancellation
+propagates. A probe must not dispatch, settle deliveries, advance checkpoints, prune, or
+replay. See the [complete lag evidence contract](../api_reference/trellis-api-efcore-inbox.md#consumer-lag-health-requirements).
 
 ## Inbox vs. outbox
 

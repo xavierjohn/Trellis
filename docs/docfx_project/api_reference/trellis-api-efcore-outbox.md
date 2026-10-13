@@ -3,10 +3,10 @@ package: Trellis.EntityFrameworkCore.Outbox
 namespaces: [Trellis.EntityFrameworkCore]
 types: [OutboxMessage, OutboxMessageConfiguration, OutboxMessageKind, OutboxOptions, OutboxServiceCollectionExtensions, OutboxModelBuilderExtensions]
 version: v1
-last_verified: 2026-10-10
+last_verified: 2026-10-12
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when domain events must survive a crash between commit and dispatch: AddTrellisOutbox, delivery guarantees, retry and parking behavior."
+agent_description: "Open when configuring transactional outbox delivery, retry/parking, or defining readiness and capture-age requirements; no Trellis-specific health checks are shipped."
 ---
 # Trellis.EntityFrameworkCore.Outbox
 
@@ -23,6 +23,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - You need domain events to survive a crash between the commit and the in-pipeline dispatch (the gap a plain `UseDomainEvents()` pipeline leaves open).
 - You are wiring `AddTrellisOutbox`, `AddTrellisOutboxInterceptor`, or the `UseOutbox<TContext>()` builder slot.
 - You are reasoning about the outbox's delivery guarantee, retry/parking behavior, or event-serialization constraints.
+- You are defining outbox readiness, capture-age evidence, or optional consumer/source lag; these health checks are not implemented.
 
 ## Patterns Index
 
@@ -36,6 +37,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 | Distinguish a throwing integration consumer from a throwing publisher | Default local consumer failures are swallowed and process the row; exposed publication failures keep it pending | [Delivery semantics](#delivery-semantics) |
 | Decide how to shape an event so it round-trips | Use attribute-driven value objects; `Maybe<T>` members are supported (present → value, absent → `null`) | [Serialization](#serialization) |
 | Publish a stable external contract instead of raw domain events | Translate a domain event into an `IIntegrationEvent` via `IIntegrationEventCollector`; the relay routes it to `IIntegrationEventPublisher` | [Integration events](#integration-events) |
+| Define readiness thresholds without confusing worker responsiveness, delivery progress, and consumer lag | Staged operational requirements and an explicitly selected reference profile; no health API is shipped | [Health-check requirements](#health-check-requirements) |
 
 ## Common traps
 
@@ -229,7 +231,7 @@ Tuning for the relay.
 - A domain message is marked processed only once **every** registered `IDomainEventHandler<TEvent>` has completed. A handler that throws leaves the message pending, and the retry re-invokes **only the handlers that failed** — `OutboxMessage.CompletedHandlers` records the ones that already succeeded. An unrelated sibling's failure therefore never re-runs a successful handler's side effect.
 - All drained integration events are staged on a failed attempt, including additions from successful handlers and additions made before a translator itself threw. There is no per-handler rollback of collector additions. Successful handlers are skipped on retry; failed translators can run again and produce logical duplicates under new row IDs.
 - Event-type resolution, deserialization, and publisher exceptions other than `OperationCanceledException` become per-message failed attempts when their bookkeeping save succeeds. An escaping `OperationCanceledException` aborts the drain instead of recording a failed attempt. A bookkeeping `SaveChanges` failure is also different: it escapes to the drain loop, which logs `DrainFailed` and waits `PollInterval`. That attempt/progress is not durable, the prior lease remains until expiry, and repeated bookkeeping failures need not ever reach `MaxAttempts`. Monitor drain failures as well as parked messages.
-- Failures retry on later polls with an **exponential backoff** (`RetryBackoff` doubling up to `MaxRetryBackoff`, minus a deterministic per-message jitter), up to `MaxAttempts`, after which the message is dead-lettered (parked): its `Attempts` reaches the cap and the scan skips it, so later messages are not blocked. `LastError` records the most recent failure. The backoff means a brief outage is ridden out by a later retry rather than burning every attempt in a tight loop. With the defaults, a permanently failing handler is retried 10 times over roughly 3 hours before parking.
+- Failures retry on later polls with an **exponential backoff** (`RetryBackoff` doubling up to `MaxRetryBackoff`, minus a deterministic per-message jitter), up to `MaxAttempts`, after which the message is dead-lettered (parked): its `Attempts` reaches the cap and the scan skips it, so later messages are not blocked. `LastError` records the most recent failure. The backoff means a brief outage is ridden out by a later retry rather than burning every attempt in a tight loop. With the defaults, parking follows 10 failed attempts; the nine intervening backoffs total roughly 1.5-3 hours with jitter (about 3.06 hours without jitter), excluding polling, publishing, and database time.
 - **Domain handlers must still be idempotent.** The progress record is only durable once the relay's bookkeeping `SaveChanges` lands, so a crash can repeat handlers whose successful progress was not saved. Per-handler tracking removes the routine duplicate (a failing sibling), not that crash window.
 - **Default local integration notification is best-effort.** An integration row is marked processed after `IIntegrationEventPublisher.PublishAsync` returns normally. The default publisher logs and swallows ordinary consumer failures and handler-resolution failures, so a newly staged row becomes processed with `Attempts == 0` and `LastError == null`. No per-consumer outcome is reported; `CompletedHandlers` stays empty, and later drains do not retry the processed row. A handler's `OperationCanceledException` propagates when the supplied token is canceled.
 - **Broker publication completes on acceptance, not consumption.** A broker adapter must await acceptance and propagate publication failures. An exposed non-cancellation failure leaves the row pending with an incremented `Attempts`, retained `LastError`, and scheduled backoff; retry uses the same row id and lineage. Successful publication clears `LastError` and the lease but retains the failure count. A crash before bookkeeping can publish that row again. Downstream consumers need their own processing/idempotency boundary, such as a transport adapter calling the non-swallowing inbox; merely registering an inbox is not routing.
@@ -256,6 +258,176 @@ Resolve `IOutboxMaintenance` (registered by `AddTrellisOutbox<TContext>`, scoped
 | `ReplayAllAsync(ct)` | Replays every currently dead-lettered message and returns the count. The set is a snapshot taken when the statement runs — messages that dead-letter afterward are not included. |
 
 Replaying a dead-lettered row is race-free against a running relay because the relay never claims a row whose `Attempts >= MaxAttempts`. Note that the dead-letter set is defined relative to `MaxAttempts`, so lowering or raising that option also changes which rows are considered dead-lettered. `IOutboxMaintenance` targets the single outbox context registered in the container (like `OutboxOptions`); run one outbox per composition.
+
+## Health-check requirements
+
+**Not implemented:** Trellis ships no outbox/inbox health checks, health snapshot API,
+health registration helper, or capture-age column. This section defines the acceptance
+contract for a later feature, not additional members of `OutboxOptions` or new builder
+slots. Existing delivery, retry, lease, replay, and retention behavior is unchanged.
+
+### Scope and staged delivery
+
+The selected design is **outbox readiness plus optional application/transport-provided
+consumer lag**, delivered in stages:
+
+| Stage | Required capability |
+|---|---|
+| Metadata and relay observations | Bounded, read-only pending/parked summaries and truthful local relay responsiveness observations, with delivery progress reported separately. |
+| Durable capture age | Capture evidence for both domain and translated integration rows, with provider-compatible queries, a migration strategy, and explicit unknown age for legacy rows. |
+| Optional consumer/source lag | An explicitly enabled evidence provider with application-defined source/partition and durable accounting semantics; see [inbox lag requirements](trellis-api-efcore-inbox.md#consumer-lag-health-requirements). |
+
+Each stage must be independently useful without claiming signals from a later stage.
+Separate implementation PRs are recommended, not a fixed PR count. Capture-age evaluation
+stays deferred until its evidence exists; optional lag stays disabled when unconfigured.
+Neither condition is a healthy observation of that signal.
+
+These are read-only readiness checks, **not liveness restart triggers or remediation**.
+When included in the host's readiness endpoint, Healthy and Degraded remain ready;
+Degraded carries a warning. Unhealthy fails readiness.
+Never replay, prune, dispatch, publish, change leases, or reset attempts from a probe.
+
+Shared-store depth/capture-age breaches can make every replica unhealthy during a
+broker outage. Hosts must deliberately choose whether these checks gate traffic
+readiness or are exposed for alerting only; this does not change their reported
+severity. Parked-only degradation still remains ready with a warning.
+
+### Evidence and interpretation
+
+| Signal | Required interpretation |
+|---|---|
+| Pending depth | Count rows with `ProcessedAt == null` and `Attempts < MaxAttempts`, using the relay's effective options. Include leased and retry-backoff rows, not just rows claimable now. |
+| Parked rows | Separately report rows with `ProcessedAt == null` and `Attempts >= MaxAttempts`, matching [maintenance](#dead-letter-and-replay). Any parked row degrades health. Changing `MaxAttempts` changes this classification. |
+| Capture age | Age of the oldest retryable pending row with authoritative capture evidence, including leased/backoff rows. Report unknown-age pending rows separately; do not substitute `OccurredAt`, UUIDv7 time, `Sequence`, or `LockedUntil`. |
+| Worker responsiveness | Time since a positive local relay poll/drain observation, including successful empty polls. A timer tick, startup log, or caught drain failure is not a positive observation. |
+| Durable delivery progress | Successful domain completion or normal integration publisher completion whose bookkeeping persisted, excluding lost-lease rows. Persisting a failed attempt is not successful delivery. |
+| Consumer/source lag | Fresh, scoped application/transport evidence of unaccounted work, not inference from inbox table size or a checkpoint. Publisher acceptance does not prove consumer processing. |
+
+Depth counts infrastructure **rows**, not unique business events: a domain row can produce
+multiple integration rows. An empty, successfully queried outbox has no pending-age breach,
+but does not establish relay responsiveness. A responsive worker can still be failing
+publication, and retries can honor their policy while breaching a delivery-age SLO.
+
+The current relay has logs and activities, but no health observations. Successful empty
+polls do not emit "OutboxRelay.DrainCompleted"; that log's nonempty-batch count includes
+persisted failed attempts and cannot be used as a successful-delivery counter. Whole-drain
+or bookkeeping failures need not increase `Attempts` or ever park a message. Future
+instrumentation must observe these paths without changing delivery behavior.
+
+Scope local responsiveness to the current relay instance/host lifetime. Another instance's
+heartbeat cannot prove this worker is responsive; shared-store delivery progress is a
+separate observation. Lack of new delivery on a quiet or backoff-only queue is not itself
+a stuck-worker diagnosis. Tune responsiveness deadlines for legitimate poll intervals,
+batch/handler durations, and operation timeouts.
+
+### Durable capture-age boundary
+
+Future capture evidence must record when **that row** was first captured/staged and persist
+with it, for both capture-interceptor domain rows and relay-created integration rows.
+Preserve it across retries and parked-row replay; a translated row has its own capture
+instant, not its source domain row's age. Capture/staging time precedes the save and is
+**not an exact commit timestamp** or exact post-commit queue-residence measurement.
+
+Define the UTC clock, skew tolerance, and provider-translatable storage/comparison before
+enabling age checks. Existing rows without authoritative evidence remain unknown; neither
+migration time nor business-event time is a valid backfill. Report the known oldest age
+and unknown-row coverage. Enabled age evaluation with unknown coverage degrades health;
+a known unhealthy breach still takes precedence. Do not silently turn missing/invalid
+timestamps into zero age.
+
+The application owns its EF schema migration. The feature must specify deployment order,
+legacy-row handling, and query/index costs before rollout; no migration is shipped here.
+
+### Explicit opt-in reference profile
+
+The **Staged operational readiness reference profile** is a named starting point for
+explicit consumer selection and tuning, **not automatic or universal defaults**. No
+existing registration selects it. Thresholds are inclusive; when several conditions
+apply, the highest severity wins.
+
+| Signal | Degraded | Unhealthy |
+|---|---|---|
+| Retryable pending depth | At least 1,000 rows | At least 10,000 rows |
+| Oldest pending capture age, once supported and enabled | At least 2 minutes | At least 10 minutes |
+| Gap since positive local relay observation | At least 1 minute | At least 5 minutes |
+| Optional source lag, when enabled | At least 2 minutes **or** 1,000 unaccounted events | At least 10 minutes **or** 10,000 unaccounted events |
+| Parked messages | Any parked row | No parked-count-only unhealthy threshold in this profile |
+
+| Timing policy | Reference value | Requirement |
+|---|---|---|
+| Startup grace | 30 seconds | A missing first relay observation is Degraded with a warming-up reason during grace. Grace never masks parked-row degradation, probe faults, or other unhealthy conditions. |
+| Probe budget | 2 seconds | Bound the complete database/provider probe, not each query independently. Its own timeout or a query/provider error is unhealthy. |
+| Cache interval | 10 seconds | Reuse bounded snapshots by storage/consumer/instance scope and effective configuration; avoid polling-request stampedes. |
+| Observation freshness | 30 seconds | Missing or stale **enabled** evidence degrades health, never silently becomes healthy. |
+
+Measure the relay gap from the last positive observation, or host start if none exists,
+without resetting it when startup grace ends. With no first observation, the relay signal
+is Degraded from host start: use a warming-up reason before 30 seconds and a missing-evidence
+reason from 30 seconds onward. It is therefore Degraded at 45 seconds, and Unhealthy at
+5 minutes without a positive observation. Grace changes the reason, not the status.
+Once a positive observation arrives, evaluate its actual gap and freshness normally.
+
+Keep **sample freshness** separate from that gap: a fresh snapshot can accurately report
+an old last-positive instant. Reading or re-caching it must not renew the positive instant
+or an external provider's original sample time.
+Missing/stale evidence is a condition mapped to Degraded, not a fourth health status.
+
+Tune depth for workload and capacity, age/lag for the delivery SLO, and relay deadlines
+for the actual loop timing. Default scheduled retry waits total roughly 1.5-3 hours
+with jitter (about 3.06 hours without it), before adding polling/processing time.
+A 2/10-minute age breach can therefore be intentional SLO reporting while the worker
+is alive and retrying correctly. It must not be presented as proof that restarting it helps.
+Validate configured bounds and timing relationships explicitly rather than clamp them.
+
+### Probe and registration boundaries
+
+- Use a fresh read scope/context, independent of command, dispatch, and relay bookkeeping
+  contexts. Use metadata-only server-side summaries; do not materialize payloads or
+  deserialize events. `GetDeadLetteredAsync` returns full entities, not a health summary.
+- Reuse the maintenance/relay classification semantics, not replay methods. Bound query
+  work and result size with suitable provider-supported aggregates or threshold-capped
+  reads. A capped count is a lower bound, not an exact total. Do not scan/materialize an
+  entire history or introduce coordination locks that serialize normal delivery.
+- Preserve original sample times, scope, enabled/deferred/disabled signals, evidence
+  coverage, thresholds, and reasons in the result. Disclose separately sampled evidence
+  rather than promise an atomic cross-store snapshot. Cache refresh/failure must not
+  erase an unhealthy condition without evidence of recovery.
+- Propagate caller cancellation. Distinguish it from the probe's own deadline, which
+  produces an unhealthy result. For a shared/coalesced refresh, each caller cancels only
+  its own wait: its cancellation must not cancel the refresh or be cached as a health
+  result/fault. Other waiters keep their own tokens; the refresh retains its independent
+  probe budget. Expose query/provider failures with safe diagnostics;
+  never return zero counts, an empty-success result, or an old healthy result as fresh.
+- The host owns endpoint authorization and readiness mapping. Restrict detailed results
+  to the authorized storage/consumer scope; `ConsumerId` is not an authorization boundary.
+  Do not expose bodies, connection strings, raw `LastError`, or business/trace identifiers
+  in public health output or high-cardinality metric labels.
+- A later application-enabled health feature is a composition-root feature and needs
+  matching builder coverage and registration classification. Query/observation stores
+  are leaves; vendor SDK lag adapters remain unslotted. The implementing PR must use
+  an `IServiceCollection` helper or extend registration discovery for its chosen
+  `IHealthChecksBuilder` receiver so the classification is actually enforced.
+  See [future health registration
+  requirements](trellis-api-servicedefaults.md#future-health-registration-requirements).
+
+### Acceptance boundary for future health checks
+
+**Not implemented:** future implementation tests must prove these outcomes.
+
+| Scenario | Required outcome |
+|---|---|
+| No first relay observation inside or after startup grace | Under the reference profile: Degraded with a warming-up reason at 15 seconds; Degraded with a missing-evidence reason at 30 and 45 seconds; Unhealthy at 5 minutes from host start. Grace never masks parked rows or other unhealthy conditions. |
+| Empty queue with successful polls | Fresh local responsiveness without requiring a delivery; no inference from the absence of a drain log. |
+| Leased/backoff rows, or depth exactly at a threshold | Include all retryable pending rows; use inclusive thresholds and separate parked classification. |
+| Failed attempts saved, or repeated bookkeeping failures | Persisted failed attempts can prove responsiveness, not delivery; failed drain/catch paths do not renew positive worker evidence. |
+| Legitimate slow batch/retry policy | Apply the tuned responsiveness budget; report age SLO breaches separately from a stuck-worker claim. |
+| Legacy rows or old business events | Unknown capture age stays visible; `OccurredAt` is not queue age, and migrations do not fabricate capture time. |
+| Publisher acceptance or swallowed local-consumer failure | No claim of downstream success; optional lag needs its own consumer/source evidence. |
+| Disabled lag versus missing/stale enabled lag | Disabled is explicit; unavailable enabled evidence degrades health. |
+| Probe timeout/fault versus caller cancellation | Timeout/fault is unhealthy with diagnostics; caller cancellation propagates. |
+| One caller cancels while others await a coalesced refresh | Cancellation propagates only to that caller; the bounded refresh and other waiters continue. Do not cache that cancellation as a result/fault; the refresh's own timeout/fault still follows the unhealthy policy. |
+| Repeated cached reads or several relay instances | Preserve evidence age and scope; another instance's activity cannot refresh local responsiveness. |
+| Any degraded signal plus an unhealthy breach | Unhealthy wins; degraded-only results remain ready with warning, without mutation or automatic restart. |
 
 ## Serialization
 

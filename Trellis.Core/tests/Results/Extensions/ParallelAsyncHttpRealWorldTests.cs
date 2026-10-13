@@ -1,6 +1,5 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions;
 
-using System.Diagnostics;
 using System.Net;
 using Trellis.Testing;
 
@@ -27,6 +26,23 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
     // Checkout DTO
     private record CheckoutRequest(string UserId, string ProductId, string PaymentMethodId, string ShippingAddress);
     private record CheckoutResult(UserResponse User, InventoryResponse Inventory, PaymentResponse Payment, ShippingResponse Shipping);
+
+    private sealed class ConcurrentStartGate(int operationCount)
+    {
+        private readonly TaskCompletionSource _allStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _started;
+
+        public int Started => Volatile.Read(ref _started);
+
+        public async Task<Result<T>> RunAsync<T>(Func<Task<Result<T>>> operation)
+        {
+            if (Interlocked.Increment(ref _started) == operationCount)
+                _allStarted.SetResult();
+
+            await _allStarted.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            return await operation();
+        }
+    }
 
     #endregion
 
@@ -278,27 +294,16 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
 
     #endregion
 
-    #region Performance & Timing
+    #region Concurrent Execution
 
     [Fact]
     public async Task ParallelAsync_HttpCalls_ExecutesInParallel_NotSequentially()
     {
-        // Arrange - track when each task starts to prove parallel execution
-        var startTimes = new List<long>();
-        var stopwatch = Stopwatch.StartNew();
+        var startGate = new ConcurrentStartGate(4);
 
-        async Task<Result<string>> TrackedTask(string name)
-        {
-            lock (startTimes)
-            {
-                startTimes.Add(stopwatch.ElapsedMilliseconds);
-            }
+        Task<Result<string>> TrackedTask(string name) =>
+            startGate.RunAsync(() => Task.FromResult(Result.Ok(name)));
 
-            await Task.Delay(50);
-            return Result.Ok(name);
-        }
-
-        // Act - 4 tasks should all start at approximately the same time
         var result = await Result.ParallelAsync(
             () => TrackedTask("user"),
             () => TrackedTask("inventory"),
@@ -306,21 +311,9 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             () => TrackedTask("shipping")
         ).WhenAllAsync();
 
-        // Assert - verify tasks started concurrently, not sequentially
         result.Should().BeSuccess();
-        startTimes.Should().HaveCount(4);
-
-        // If sequential: start times would be ~0, ~50, ~100, ~150
-        // If parallel: all start times should be close together (within 50ms of each other)
-        var maxStartTime = startTimes.Max();
-        var minStartTime = startTimes.Min();
-        var startTimeSpread = maxStartTime - minStartTime;
-
-        // All tasks should start within 50ms of each other (parallel)
-        // Sequential would have ~50ms gaps × 3 = ~150ms+ spread
-        // Using a generous threshold to avoid flakiness on resource-constrained CI runners
-        startTimeSpread.Should().BeLessThan(50,
-            "all tasks should start concurrently in parallel execution");
+        result.Unwrap().Should().Be(("user", "inventory", "payment", "shipping"));
+        startGate.Started.Should().Be(4);
     }
 
     #endregion
@@ -493,52 +486,28 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
     }
 
     [Fact]
-    public async Task ParallelAsync_MultiStage_Performance_ComparedToSequential()
+    public async Task ParallelAsync_MultiStage_IndependentOperations_OverlapWithinEachStage()
     {
-        Task<Result<(FraudCheckResponse FraudCheck, ShippingResponse Shipping)>> RunSequentialAsync() =>
-            FetchUserAsync("user-123")
-                .BindAsync(user => CheckInventoryAsync("prod-456")
-                    .BindAsync(inventory => ValidatePaymentAsync("pm-789")
-                        .BindAsync(payment => RunFraudDetectionAsync(user, payment, inventory)
-                            .BindAsync(fraudCheck => CalculateShippingWithWeightAsync("123 Main St", inventory)
-                                .BindAsync(shipping => Result.Ok((fraudCheck, shipping)))))));
+        var fetchGate = new ConcurrentStartGate(3);
+        var processGate = new ConcurrentStartGate(2);
 
-        static Task<Result<(FraudCheckResponse FraudCheck, ShippingResponse Shipping)>> RunParallelAsync() =>
+        var result = await Result.ParallelAsync(
+            () => fetchGate.RunAsync(() => FetchUserAsync("user-123")),
+            () => fetchGate.RunAsync(() => CheckInventoryAsync("prod-456")),
+            () => fetchGate.RunAsync(() => ValidatePaymentAsync("pm-789"))
+        )
+        .WhenAllAsync()
+        .BindAsync((user, inventory, payment) =>
             Result.ParallelAsync(
-                () => FetchUserAsync("user-123"),
-                () => CheckInventoryAsync("prod-456"),
-                () => ValidatePaymentAsync("pm-789")
-            )
-            .WhenAllAsync()
-            .BindAsync((user, inventory, payment) =>
-                Result.ParallelAsync(
-                    () => RunFraudDetectionAsync(user, payment, inventory),
-                    () => CalculateShippingWithWeightAsync("123 Main St", inventory)
-                )
-                .WhenAllAsync()
-            );
+                () => processGate.RunAsync(() => RunFraudDetectionAsync(user, payment, inventory)),
+                () => processGate.RunAsync(() => CalculateShippingWithWeightAsync("123 Main St", inventory))
+            ).WhenAllAsync()
+        );
 
-        // Measure sequential and parallel versions of the same workflow on the same machine.
-        var sequentialStopwatch = Stopwatch.StartNew();
-        var sequentialResult = await RunSequentialAsync();
-        sequentialStopwatch.Stop();
-
-        var parallelStopwatch = Stopwatch.StartNew();
-        var parallelResult = await RunParallelAsync();
-        parallelStopwatch.Stop();
-
-        // Assert
-        sequentialResult.Should().BeSuccess();
-        parallelResult.Should().BeSuccess();
-
-        var sequentialElapsed = sequentialStopwatch.ElapsedMilliseconds;
-        var parallelElapsed = parallelStopwatch.ElapsedMilliseconds;
-
-        parallelElapsed.Should().BeLessThan(sequentialElapsed,
-            "the same workflow should complete faster when independent operations run in parallel");
-
-        parallelElapsed.Should().BeLessThan(sequentialElapsed - 40,
-            "the parallel version should save at least one network-sized delay over the sequential pipeline");
+        result.Should().BeSuccess();
+        result.Unwrap().Should().Be((new FraudCheckResponse(true, "Low"), new ShippingResponse("USPS", 12.99m)));
+        fetchGate.Started.Should().Be(3);
+        processGate.Started.Should().Be(2);
     }
 
     #endregion

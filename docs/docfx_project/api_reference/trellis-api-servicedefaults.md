@@ -41,6 +41,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 | Publish a translated external contract (integration events) via the outbox | `.UseIntegrationEvents(typeof(MyHandler).Assembly)` or `.UseIntegrationEvents()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Outbox integration events](trellis-api-efcore-outbox.md#integration-events) |
 | Consume integration events idempotently (deduplicate transport redeliveries) | `.UseInbox<TContext>(o => o.ConsumerId = "orders")` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Inbox reference](trellis-api-efcore-inbox.md#useinbox-builder-slot) |
 | Auto-dispatch domain events from every tracked aggregate (outcome-DTO commands) | `.UseTrackedAggregateDomainEvents(typeof(MyHandler).Assembly)` or `.UseTrackedAggregateDomainEvents()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator tracked dispatch](trellis-api-mediator.md#trackedaggregatedomaineventdispatchbehavior) |
+| Classify a future outbox/inbox health registration | Requirements only; no health helper or builder slot is shipped | [Future health registration requirements](#future-health-registration-requirements) |
 
 ## Common traps
 
@@ -245,7 +246,7 @@ services.AddTrellis(options => options
 
 Not every `services.AddXxx()` Trellis ships has a matching `UseXxx()` slot, and the omissions are deliberate.
 
-The complete, authoritative classification lives in `Trellis.ServiceDefaults/tests/RegistrationSurfaceTests.cs`, which reflects over every registration helper reachable from `Trellis.ServiceDefaults` and fails the build if one is unclassified, if a classified helper no longer exists, if a named slot is missing from `TrellisServiceBuilder`, or if a helper classified as slotted is never actually referenced by `Trellis.ServiceDefaults`. The table below is the narrative summary of the cases worth explaining; treat the test as the source of truth if the two ever disagree.
+The complete, authoritative classification lives in `Trellis.ServiceDefaults/tests/RegistrationSurfaceTests.cs`, which reflects over public `IServiceCollection` registration extensions in `Trellis.ServiceDefaults` and the Trellis assemblies it directly references. It fails the build if one is unclassified, if a classified helper no longer exists, if a named slot is missing from `TrellisServiceBuilder`, or if a helper classified as slotted is never actually referenced by `Trellis.ServiceDefaults`. The table below is the narrative summary of the cases worth explaining; treat the test as the source of truth if the two ever disagree.
 
 | Registration | Package | Why no slot |
 |---|---|---|
@@ -260,3 +261,24 @@ The vendor-SDK rule is the important one: `Trellis.ServiceDefaults` references n
 
 
 `AddAzureServiceBusIntegrationEventPublisher` in particular is order-independent by construction: it *replaces* any existing `IIntegrationEventPublisher` registration rather than appending to it, so it can be called before or after `AddTrellis(options => options.UseIntegrationEvents(...))` with the same result.
+
+## Future health registration requirements
+
+**Not implemented:** the [outbox/inbox health contract](trellis-api-efcore-outbox.md#health-check-requirements)
+does not add a registration helper, builder slot, or automatic readiness/liveness policy.
+Existing `UseOutbox` and `UseInbox` calls do not enable health checks.
+
+A later application-enabled health feature is a composition-root feature: its direct
+registration needs matching `TrellisServiceBuilder` coverage and an entry in
+`RegistrationSurfaceTests.Expected`. The implementing PR must use an `IServiceCollection`
+helper or extend the gate's discovery predicate for its chosen receiver, such as
+`IHealthChecksBuilder`; otherwise that classification is not mechanically enforced.
+Leaf metadata-query/observation stores and
+adapter-author extension points need no independent slot; record reachable leaves with
+a reason. Vendor SDK lag adapters remain outside this package's reference graph, with
+no new cloud SDK dependency or allowlist entry solely to record their unslotted status.
+
+Prove direct/builder idempotence and order-independence before and after
+`AddTrellisUnitOfWork<TContext>()`, without moving the innermost transaction behavior
+or adding probe work to the command/dispatch pipeline. The host explicitly selects
+the tuned health profile, optional lag evidence, and endpoint/readiness mapping.
