@@ -16,7 +16,7 @@ using Trellis.Mediator;
 
 #pragma warning disable CA1707
 
-public sealed class OutboxReadinessTests
+public sealed partial class OutboxReadinessTests
 {
     private static readonly DateTimeOffset Start = new(2026, 10, 12, 0, 0, 0, TimeSpan.Zero);
     private static CancellationToken Cancellation => TestContext.Current.CancellationToken;
@@ -49,7 +49,48 @@ public sealed class OutboxReadinessTests
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { CacheDuration = TimeSpan.Zero },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { CacheDuration = TimeSpan.FromSeconds(30) },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { EvidenceMaxAge = TimeSpan.Zero },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with { EvidenceMaxAge = TimeSpan.MinValue },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with { EvidenceMaxAge = TimeSpan.FromSeconds(12) },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with { EvidenceMaxAge = TimeSpan.FromSeconds(12) - TimeSpan.FromTicks(1) },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with
+        {
+            CacheDuration = TimeSpan.FromSeconds(20),
+            ProbeTimeout = TimeSpan.FromSeconds(10),
+            EvidenceMaxAge = TimeSpan.FromSeconds(21),
+        },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with
+        {
+            CacheDuration = TimeSpan.MaxValue,
+            EvidenceMaxAge = TimeSpan.MaxValue,
+        },
     };
+
+    [Fact]
+    public void AddTrellisOutboxReadiness_FreshnessAboveCombinedBudget_AcceptsOneTickMargin()
+    {
+        var profile = OutboxReadinessOptions.CreateStagedOperationalProfile() with
+        {
+            EvidenceMaxAge = TimeSpan.FromSeconds(12) + TimeSpan.FromTicks(1),
+        };
+
+        var act = () => new ServiceCollection().AddTrellisOutboxReadiness<OutboxTestDbContext>(profile);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void AddTrellisOutboxReadiness_ExtremeFreshnessAndCache_RejectsWithoutOverflow()
+    {
+        var profile = OutboxReadinessOptions.CreateStagedOperationalProfile() with
+        {
+            CacheDuration = TimeSpan.MaxValue - TimeSpan.FromSeconds(1),
+            EvidenceMaxAge = TimeSpan.MaxValue,
+        };
+
+        var act = () => new ServiceCollection().AddTrellisOutboxReadiness<OutboxTestDbContext>(profile);
+
+        act.Should().Throw<ArgumentOutOfRangeException>().WithParameterName("EvidenceMaxAge");
+    }
 
     [Theory]
     [MemberData(nameof(InvalidProfiles))]
@@ -326,10 +367,13 @@ public sealed class OutboxReadinessTests
         applicationContext.ChangeTracker.Entries<OutboxMessage>().Should().ContainSingle();
     }
 
-    [Fact]
-    public async Task CheckHealthAsync_ConcurrentCallersWithOneCancellation_KeepSharedRefreshAndOtherWaitersAlive()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CheckHealthAsync_ConcurrentCallersWithOneCancellation_KeepSharedRefreshAndOtherWaitersAlive(
+        bool metadataOnly)
     {
-        await using var fixture = await Fixture.CreateAsync();
+        await using var fixture = await Fixture.CreateAsync(SelectProfile(metadataOnly));
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         fixture.Probe.BeforeRead = async (number, token) =>
@@ -636,7 +680,8 @@ public sealed class OutboxReadinessTests
             Provider.GetServices<IHostedService>().OfType<OutboxRelay<OutboxTestDbContext>>().Single();
 
         public static async Task<Fixture> CreateAsync(OutboxReadinessOptions? profile = null,
-            bool observeRelay = true, int maxAttempts = 10, Action<IServiceCollection>? configure = null)
+            bool observeRelay = true, int maxAttempts = 10, Action<IServiceCollection>? configure = null,
+            bool startRelay = true)
         {
             var connection = new SqliteConnection("DataSource=:memory:");
             await connection.OpenAsync(Cancellation);
@@ -647,19 +692,27 @@ public sealed class OutboxReadinessTests
             services.AddLogging();
             services.AddSingleton<TimeProvider>(time);
             services.AddDbContext<OutboxTestDbContext>(o => o.UseSqlite(connection).AddInterceptors(probe, save));
-            services.AddDomainEventDispatch();
-            services.AddTrellisOutbox<OutboxTestDbContext>(o => o.MaxAttempts = maxAttempts);
-            services.AddTrellisOutboxReadiness<OutboxTestDbContext>(
-                profile ?? OutboxReadinessOptions.CreateStagedOperationalProfile());
+            var selectedProfile = profile ?? OutboxReadinessOptions.CreateStagedOperationalProfile();
+            if (selectedProfile.RelayMonitoring == OutboxRelayMonitoring.LocalRelay)
+            {
+                services.AddDomainEventDispatch();
+                services.AddTrellisOutbox<OutboxTestDbContext>(o => o.MaxAttempts = maxAttempts);
+            }
+
+            services.AddTrellisOutboxReadiness<OutboxTestDbContext>(selectedProfile);
             configure?.Invoke(services);
             var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
             await using (var scope = provider.CreateAsyncScope())
                 await scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>().Database.EnsureCreatedAsync(Cancellation);
             probe.Reset();
-            var observations = provider.GetRequiredService<OutboxRelayObservations<OutboxTestDbContext>>();
-            observations.Start();
-            if (observeRelay)
-                observations.RecordPositiveObservation(0);
+            if (selectedProfile.RelayMonitoring == OutboxRelayMonitoring.LocalRelay && startRelay)
+            {
+                var observations = provider.GetRequiredService<OutboxRelayObservations<OutboxTestDbContext>>();
+                observations.Start();
+                if (observeRelay)
+                    observations.RecordPositiveObservation(0);
+            }
+
             return new Fixture(connection, provider, time, probe, save);
         }
 
@@ -750,9 +803,11 @@ public sealed class OutboxReadinessTests
     private sealed class MetadataSampleTimeProvider(TimeProvider clock) : TimeProvider
     {
         public DateTimeOffset? NextSampleUtcNow { get; set; }
+        public int UtcNowReads { get; private set; }
 
         public override DateTimeOffset GetUtcNow()
         {
+            UtcNowReads++;
             var sample = NextSampleUtcNow;
             NextSampleUtcNow = null;
             return sample ?? clock.GetUtcNow();

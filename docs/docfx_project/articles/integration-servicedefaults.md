@@ -76,13 +76,21 @@ check reports bounded metadata and local relay evidence; capture age and consume
 remain deferred. The host owns authorization and traffic-readiness versus alert-only
 exposure, and no endpoint or liveness policy is added. See [outbox readiness](../api_reference/trellis-api-efcore-outbox.md#outbox-readiness).
 
+For split API/worker deployment, the API can select
+`OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` through the same
+slot without `UseOutbox`. Match `WorkerMaxAttempts` to the worker's retry policy using
+one configuration key; incidental local options are ignored without comparison or warning.
+Metadata-only cannot detect a dead low-volume worker. Generic Host lifecycle startup
+validates local-mode relay configuration before hosted services start; bare providers
+do not run this validation.
+
 | Slot | Single-selection rule |
 |---|---|
 | Actor provider | At most one of `UseClaimsActorProvider`, `UseEntraActorProvider`, `UseDevelopmentActorProvider`. Throws `InvalidOperationException` on duplicate (same kind or different). |
 | Caching actor wrap | At most one `UseCachingActorProvider<T>()`. Throws `InvalidOperationException` on duplicate. |
 | Worker actor wrap | At most one `UseWorkerActor(systemActor)`. Throws `InvalidOperationException` on duplicate. The underlying `AddTrellisWorkerActor(...)` also rejects singleton `IActorProvider` registered via type or factory (silent lifetime conversion) and transient `IActorProvider` (silent upgrade to scoped); singleton via `ImplementationInstance` is supported. |
 | Unit of work | At most one `UseEntityFrameworkUnitOfWork<TContext>()` per composition. Throws `InvalidOperationException` on duplicate (same `TContext` or different). Read/write context splits should run as separate composition roots or use a multi-tenant `DbContext`. |
-| Outbox readiness | At most one `UseOutboxReadiness<TContext>(profile)` selection. Direct/builder calls with equal context/profile deduplicate; conflicts throw. Register the relay separately for the same fixed store. |
+| Outbox readiness | At most one `UseOutboxReadiness<TContext>(profile)` selection. Direct/builder calls with equal context/profile deduplicate; conflicts throw. Local mode requires the matching relay; metadata-only requires the explicit worker retry limit and may coexist with a different-context relay. |
 
 ## Per-request actor caching
 

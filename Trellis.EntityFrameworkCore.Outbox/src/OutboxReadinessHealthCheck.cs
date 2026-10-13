@@ -8,9 +8,9 @@ using Microsoft.Extensions.Logging;
 internal sealed class OutboxReadinessHealthCheck<TContext>(
     IServiceScopeFactory scopeFactory,
     TimeProvider timeProvider,
-    OutboxOptions outboxOptions,
+    OutboxOptions? outboxOptions,
     OutboxReadinessOptions profile,
-    OutboxRelayObservations<TContext> observations,
+    OutboxRelayObservations<TContext>? observations,
     ILogger<OutboxReadinessHealthCheck<TContext>> logger) : IHealthCheck
     where TContext : DbContext
 {
@@ -26,9 +26,16 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
     {
         ArgumentNullException.ThrowIfNull(context);
         cancellationToken.ThrowIfCancellationRequested();
-        var maxAttempts = outboxOptions.MaxAttempts;
+        var maxAttempts = profile.RelayMonitoring switch
+        {
+            OutboxRelayMonitoring.LocalRelay => outboxOptions?.MaxAttempts
+                ?? throw new InvalidOperationException("Local outbox readiness requires OutboxOptions."),
+            OutboxRelayMonitoring.Disabled => profile.WorkerMaxAttempts
+                ?? throw new InvalidOperationException("Metadata-only readiness requires WorkerMaxAttempts."),
+            _ => throw new InvalidOperationException("The outbox relay monitoring mode is invalid."),
+        };
         if (maxAttempts <= 0)
-            throw new InvalidOperationException("OutboxOptions.MaxAttempts must be greater than zero.");
+            throw new InvalidOperationException("The effective outbox retry limit must be greater than zero.");
 
         ProbeResult probe;
         do
@@ -49,7 +56,10 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
         while (probe.MaxAttempts != maxAttempts);
 
         cancellationToken.ThrowIfCancellationRequested();
-        return Evaluate(probe, observations.Read());
+        var relay = profile.RelayMonitoring == OutboxRelayMonitoring.LocalRelay
+            ? observations?.Read() ?? throw new InvalidOperationException("Local outbox readiness requires relay observations.")
+            : null;
+        return Evaluate(probe, relay);
     }
 
     private async Task<ProbeResult> RefreshAsync(int maxAttempts)
@@ -135,32 +145,29 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
         }
     }
 
-    private HealthCheckResult Evaluate(ProbeResult probe, OutboxRelayEvidence relay)
+    private HealthCheckResult Evaluate(ProbeResult probe, OutboxRelayEvidence? relay)
     {
+        var evaluatedAt = relay?.SampledAt ?? timeProvider.GetUtcNow();
         var status = HealthStatus.Healthy;
         var reasons = new List<string>();
         var data = new Dictionary<string, object>(StringComparer.Ordinal)
         {
-            ["profile"] = "staged-operational-reference",
+            ["profile"] = relay is null ? "metadata-only-reference" : "staged-operational-reference",
             ["storageContext"] = typeof(TContext).Name,
             ["maxAttempts"] = probe.MaxAttempts,
+            ["maxAttemptsSource"] = relay is null ? "profile" : "outbox-options",
+            ["relayMonitoring"] = relay is null ? "disabled" : "local-relay",
             ["metadataAvailable"] = probe.FailureReason is null,
             ["pendingCountCap"] = profile.PendingUnhealthyThreshold,
             ["parkedCountCap"] = 1,
             ["pendingDegradedThreshold"] = profile.PendingDegradedThreshold,
             ["pendingUnhealthyThreshold"] = profile.PendingUnhealthyThreshold,
-            ["relayDegradedAfter"] = profile.RelayDegradedAfter,
-            ["relayUnhealthyAfter"] = profile.RelayUnhealthyAfter,
-            ["startupGracePeriod"] = profile.StartupGracePeriod,
             ["probeTimeout"] = profile.ProbeTimeout,
             ["cacheDuration"] = profile.CacheDuration,
             ["evidenceMaxAge"] = profile.EvidenceMaxAge,
-            ["relayScope"] = "local-instance",
-            ["relaySampledAt"] = relay.SampledAt,
-            ["deliveredRows"] = relay.DeliveredRows,
             ["captureAge"] = "deferred",
             ["consumerLag"] = "disabled",
-            ["sampling"] = "separate-metadata-queries-and-local-relay",
+            ["sampling"] = relay is null ? "separate-metadata-queries" : "separate-metadata-queries-and-local-relay",
         };
         if (probe.FailureReason is not null)
             AddCondition(HealthStatus.Unhealthy, probe.FailureReason);
@@ -174,8 +181,8 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
             data["parkedCountIsLowerBound"] = evidence.ParkedCount > 0;
             data["pendingSampledAt"] = evidence.PendingSampledAt;
             data["parkedSampledAt"] = evidence.ParkedSampledAt;
-            var pendingSampleAge = relay.SampledAt - evidence.PendingSampledAt;
-            var parkedSampleAge = relay.SampledAt - evidence.ParkedSampledAt;
+            var pendingSampleAge = evaluatedAt - evidence.PendingSampledAt;
+            var parkedSampleAge = evaluatedAt - evidence.ParkedSampledAt;
             if (pendingSampleAge < TimeSpan.Zero || parkedSampleAge < TimeSpan.Zero)
                 AddCondition(HealthStatus.Degraded, "metadata-clock-invalid");
             if (pendingSampleAge >= profile.EvidenceMaxAge || parkedSampleAge >= profile.EvidenceMaxAge)
@@ -188,31 +195,41 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
                 AddCondition(HealthStatus.Degraded, "parked-messages");
         }
 
-        if (relay.StartedAt is { } startedAt)
-            data["relayStartedAt"] = startedAt;
-        if (relay.LastDeliveryAt is { } deliveredAt)
-            data["lastDurableDeliveryAt"] = deliveredAt;
-        if (relay.LastPositiveAt is { } positiveAt)
-            data["lastPositiveRelayObservationAt"] = positiveAt;
-        if ((relay.LastPositiveAt ?? relay.StartedAt) is { } gapStart)
+        if (relay is not null)
         {
-            var gap = relay.SampledAt - gapStart;
-            data["relayGap"] = gap;
-            if (gap < TimeSpan.Zero)
-                AddCondition(HealthStatus.Degraded, "relay-clock-invalid");
-            else if (gap >= profile.RelayUnhealthyAfter)
-                AddCondition(HealthStatus.Unhealthy, "relay-observation-overdue");
-            else if (relay.LastPositiveAt is null)
-                AddCondition(HealthStatus.Degraded,
-                    gap < profile.StartupGracePeriod ? "relay-warming-up" : "relay-observation-missing");
-            else if (gap >= profile.RelayDegradedAfter)
-                AddCondition(HealthStatus.Degraded, "relay-observation-delayed");
+            data["relayDegradedAfter"] = profile.RelayDegradedAfter;
+            data["relayUnhealthyAfter"] = profile.RelayUnhealthyAfter;
+            data["startupGracePeriod"] = profile.StartupGracePeriod;
+            data["relayScope"] = "local-instance";
+            data["relaySampledAt"] = relay.SampledAt;
+            data["deliveredRows"] = relay.DeliveredRows;
+            if (relay.StartedAt is { } startedAt)
+                data["relayStartedAt"] = startedAt;
+            if (relay.LastDeliveryAt is { } deliveredAt)
+                data["lastDurableDeliveryAt"] = deliveredAt;
+            if (relay.LastPositiveAt is { } positiveAt)
+                data["lastPositiveRelayObservationAt"] = positiveAt;
+            if ((relay.LastPositiveAt ?? relay.StartedAt) is { } gapStart)
+            {
+                var gap = evaluatedAt - gapStart;
+                data["relayGap"] = gap;
+                if (gap < TimeSpan.Zero)
+                    AddCondition(HealthStatus.Degraded, "relay-clock-invalid");
+                else if (gap >= profile.RelayUnhealthyAfter)
+                    AddCondition(HealthStatus.Unhealthy, "relay-observation-overdue");
+                else if (relay.LastPositiveAt is null)
+                    AddCondition(HealthStatus.Degraded,
+                        gap < profile.StartupGracePeriod ? "relay-warming-up" : "relay-observation-missing");
+                else if (gap >= profile.RelayDegradedAfter)
+                    AddCondition(HealthStatus.Degraded, "relay-observation-delayed");
+            }
+            else
+                AddCondition(HealthStatus.Degraded, "relay-not-started");
         }
-        else
-            AddCondition(HealthStatus.Degraded, "relay-not-started");
 
         data["reasons"] = reasons.ToArray();
-        return new(status, reasons.Count == 0 ? "Outbox readiness is healthy." : string.Join(", ", reasons), data: data);
+        var healthyDescription = relay is null ? "Outbox metadata is healthy." : "Outbox readiness is healthy.";
+        return new(status, reasons.Count == 0 ? healthyDescription : string.Join(", ", reasons), data: data);
 
         void AddCondition(HealthStatus severity, string reason)
         {

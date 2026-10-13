@@ -105,6 +105,28 @@ include leased/backoff pending rows and disclose lower bounds; probe faults/time
 Unhealthy, while parked rows or missing initial relay evidence are Degraded. Shared
 refreshes isolate caller cancellation and preserve original sample times.
 
+For a split API/worker deployment, keep that local-relay profile in the worker and
+select metadata-only in the API, without registering a relay:
+
+```csharp
+const int workerMaxAttempts = 10; // Share the same configuration value with the worker.
+var profile = OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts);
+builder.Services.AddTrellis(trellis => trellis.UseOutboxReadiness<AppDbContext>(profile));
+```
+
+`WorkerMaxAttempts` must match the worker's `OutboxOptions.MaxAttempts`. Incidental
+local options are ignored without comparison or warning; derive both values from one
+configuration key or constant. Relay monitoring is explicitly disabled, not observed
+healthy. **Metadata-only cannot detect a dead worker on a low-volume queue:** with
+healthy database evidence and the reference thresholds, worker inactivity alone raises
+no signal until pending depth reaches 1,000 or a row is parked. Probe faults and
+stale/invalid evidence remain independent health conditions.
+
+Local mode requires an actual matching relay instance at Generic Host lifecycle startup,
+before any hosted service starts; wrappers hiding that instance are unsupported.
+Both modes check context registration without constructing it when the container exposes
+registration probing. Bare providers do not run this startup validation.
+
 The host owns endpoint authorization and deliberately chooses traffic-readiness gating
 versus alert-only exposure, especially because shared-store breaches affect every replica.
 Degraded remains ready; Unhealthy fails readiness when selected for it. Probes are

@@ -47,6 +47,14 @@ explicitly enables the named `trellis-outbox` read-only health check alongside
 authorization and traffic-readiness versus alerting remain host-owned; capture age and
 consumer lag remain deferred. See [outbox readiness](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#outbox-readiness).
 
+For a separate worker, pass
+`OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` to the same slot
+in the API, without `UseOutbox`. Match `WorkerMaxAttempts` to the worker's retry policy
+using one configuration key. Local options are ignored without comparison or warning.
+Metadata-only cannot detect a dead low-volume worker; capture age remains deferred.
+Generic Host lifecycle startup validates local-mode relay configuration before services
+start; bare service providers do not run that validation.
+
 Common `HttpContext.PageUrl(...)` builders require no versioning SDK. Versioned hosts
 install `Trellis.Asp.ApiVersioning` and configure the existing
 `UseAsp(asp => asp.UseVersionedPageUrls())` callback alongside normal API-versioning

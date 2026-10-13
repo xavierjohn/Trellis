@@ -50,6 +50,14 @@ Mediator pipeline. Existing outbox/inbox slots do not enable health checks. The 
 owns endpoint authorization and readiness-versus-alerting exposure; capture age and
 consumer lag remain deferred. See [outbox readiness](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md#outbox-readiness).
 
+Split API/worker hosts can use the same slot with
+`OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` in the API,
+without `UseOutbox`. The explicit `WorkerMaxAttempts` must match the worker's policy,
+ideally from one shared configuration key. Local options are ignored without comparison
+or warning. Metadata-only cannot detect a dead low-volume worker; capture age remains
+deferred. Local-mode configuration is validated before services start under Generic Host
+lifecycle startup, not when building a bare service provider.
+
 ## Key Features
 - Domain-event slots preserve owning-commit dispatch: deferred inner commands do not publish or clear events, including when the outer response is a DTO/Unit. `UseOutbox<TContext>()` validates the reporting publisher at host startup, and validates the integration publisher only when integration features are registered.
 - `UseWorkerActor(systemActor)` can wrap a compatible pre-existing unkeyed `IActorProvider`; selecting a builder actor-provider slot is not required.

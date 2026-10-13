@@ -70,5 +70,36 @@ public sealed class OutboxReadinessBuilderTests
         act.Should().Throw<InvalidOperationException>().WithMessage("*readiness*");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void UseOutboxReadiness_MetadataOnlyDirectAndBuilder_DeduplicateWithoutRelay(bool directFirst)
+    {
+        var services = new ServiceCollection();
+        var profile = OutboxReadinessOptions.CreateMetadataOnlyProfile(3);
+        if (directFirst)
+            services.AddTrellisOutboxReadiness<ReadinessDbContext>(profile);
+        services.AddTrellis(b => b.UseOutboxReadiness<ReadinessDbContext>(profile with { }));
+        if (!directFirst)
+            services.AddTrellisOutboxReadiness<ReadinessDbContext>(profile);
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations
+            .Should().ContainSingle(r => r.Name == "trellis-outbox");
+        services.Should().NotContain(d => d.ServiceType == typeof(OutboxOptions));
+    }
+
+    [Fact]
+    public void UseOutboxReadiness_ConflictingWorkerMaxAttempts_RejectsDirectAndBuilderCombination()
+    {
+        var services = new ServiceCollection();
+        services.AddTrellisOutboxReadiness<ReadinessDbContext>(OutboxReadinessOptions.CreateMetadataOnlyProfile(3));
+
+        var act = () => services.AddTrellis(b =>
+            b.UseOutboxReadiness<ReadinessDbContext>(OutboxReadinessOptions.CreateMetadataOnlyProfile(4)));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*profile*");
+    }
+
     private sealed class ReadinessDbContext(DbContextOptions<ReadinessDbContext> options) : DbContext(options);
 }

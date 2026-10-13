@@ -631,7 +631,8 @@ public sealed class TrellisServiceBuilder
     /// Enables the named <c>trellis-outbox</c> readiness check using an explicitly selected profile.
     /// </summary>
     /// <remarks>
-    /// Register the relay separately with <see cref="UseOutbox{TContext}"/> or its direct helper.
+    /// Local-relay profiles require the matching <see cref="UseOutbox{TContext}"/> or direct registration.
+    /// Metadata-only profiles explicitly disable relay monitoring and require the worker's retry limit.
     /// The check adds no endpoint or liveness policy and does not evaluate capture age or consumer lag.
     /// Applied after outbox registration, independent of fluent call order. Repeated selection throws.
     /// </remarks>

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 /// <summary>Registers explicitly selected, read-only outbox readiness.</summary>
 public static class OutboxReadinessServiceCollectionExtensions
@@ -14,8 +15,12 @@ public static class OutboxReadinessServiceCollectionExtensions
     /// The host owns endpoint authorization, selection, and readiness versus alert-only exposure.
     /// </summary>
     /// <remarks>
-    /// Register <c>AddTrellisOutbox&lt;TContext&gt;</c> separately. Repeating this call with the same
-    /// context and equal profile is idempotent; conflicting contexts or profiles throw.
+    /// Local-relay profiles require <c>AddTrellisOutbox&lt;TContext&gt;</c> separately; metadata-only
+    /// profiles require no relay. Repeating this call with the same context and equal profile is
+    /// idempotent; conflicting readiness contexts or profiles throw.
+    /// Generic Host lifecycle startup validates configuration before hosted services start;
+    /// bare providers do not run that validation. Context registration is checked without
+    /// constructing it when the container exposes <c>IServiceProviderIsService</c>.
     /// The context must resolve the same fixed store from background scopes, not request-local tenancy.
     /// No capture-age column, endpoint, liveness policy, or consumer-lag provider is added.
     /// </remarks>
@@ -30,7 +35,8 @@ public static class OutboxReadinessServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(profile);
         profile.Validate();
-        OutboxReadinessRegistration.ValidateRelayContext<TContext>(services);
+        if (profile.RelayMonitoring == OutboxRelayMonitoring.LocalRelay)
+            OutboxReadinessRegistration.ValidateRelayContext<TContext>(services);
 
         var existing = services.FirstOrDefault(d =>
             d.ServiceType == typeof(OutboxReadinessRegistration) && !d.IsKeyedService)?.ImplementationInstance;
@@ -45,8 +51,18 @@ public static class OutboxReadinessServiceCollectionExtensions
         services.AddSingleton(new OutboxReadinessRegistration(typeof(TContext), profile));
         services.AddSingleton(profile);
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<OutboxRelayObservations<TContext>>();
-        services.TryAddSingleton<OutboxReadinessHealthCheck<TContext>>();
+        if (profile.RelayMonitoring == OutboxRelayMonitoring.LocalRelay)
+            services.TryAddSingleton<OutboxRelayObservations<TContext>>();
+        services.TryAddSingleton(provider => new OutboxReadinessHealthCheck<TContext>(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            provider.GetRequiredService<TimeProvider>(),
+            profile.RelayMonitoring == OutboxRelayMonitoring.LocalRelay
+                ? provider.GetRequiredService<OutboxOptions>() : null,
+            profile,
+            profile.RelayMonitoring == OutboxRelayMonitoring.LocalRelay
+                ? provider.GetRequiredService<OutboxRelayObservations<TContext>>() : null,
+            provider.GetRequiredService<ILogger<OutboxReadinessHealthCheck<TContext>>>()));
+        services.AddHostedService<OutboxReadinessRegistrationValidator<TContext>>();
         services.AddHealthChecks().Add(new HealthCheckRegistration(
             "trellis-outbox",
             provider => provider.GetRequiredService<OutboxReadinessHealthCheck<TContext>>(),
@@ -75,7 +91,9 @@ internal sealed record OutboxReadinessRegistration(Type ContextType, OutboxReadi
     {
         var registration = services.FirstOrDefault(d =>
             d.ServiceType == typeof(OutboxReadinessRegistration) && !d.IsKeyedService)?.ImplementationInstance;
-        if (registration is OutboxReadinessRegistration readiness && readiness.ContextType != typeof(TContext))
+        if (registration is OutboxReadinessRegistration readiness
+            && readiness.Profile.RelayMonitoring == OutboxRelayMonitoring.LocalRelay
+            && readiness.ContextType != typeof(TContext))
             throw new InvalidOperationException("Outbox readiness must observe the registered relay's context.");
     }
 }

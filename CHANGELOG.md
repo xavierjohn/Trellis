@@ -16,7 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 bounded pending/parked metadata and local relay responsiveness, with successful
 durable row completions reported separately. Shared refreshes isolate caller
 cancellation, have an independent provider budget, preserve original evidence times,
-and expose faults/timeouts as Unhealthy with redacted diagnostics.
+and expose faults/timeouts as Unhealthy with redacted diagnostics. Split API/worker
+hosts can explicitly select `CreateMetadataOnlyProfile(workerMaxAttempts)` to check
+the same store without local relay monitoring; `WorkerMaxAttempts` must match the
+worker's retry policy. Local mode validates the matching relay during Generic Host
+lifecycle startup, before hosted services start, while checking context registration
+without constructing it when the container supports registration probing. Freshness
+validation reserves a margin beyond the complete probe budget plus cache duration.
 
 Existing outbox/inbox registrations, delivery/retry/lease/replay behavior, schema,
 Mediator ordering, and host-owned endpoint/liveness policy are unchanged. Capture-age

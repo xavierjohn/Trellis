@@ -68,6 +68,21 @@ Shared refreshes isolate caller cancellation; probe faults/timeouts are Unhealth
 and parked rows or missing initial relay evidence are Degraded. Tune the immutable
 profile with `with` for workload and relay timing.
 
+For split API/worker hosts, keep local monitoring in the worker and select
+`OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` in the API,
+using the same registration method without a relay. `WorkerMaxAttempts` must equal
+the worker's `OutboxOptions.MaxAttempts`; derive both from one configuration key or
+constant. Incidental local options are never resolved or compared, so mismatches
+generate no warning. Relay monitoring is disabled, not observed healthy.
+Metadata-only cannot detect a dead worker on a low-volume queue: with healthy database
+evidence and the reference thresholds, inactivity alone raises no signal until pending
+depth reaches 1,000 or a row is parked. Probe faults and stale/invalid evidence still apply.
+
+Generic Host lifecycle startup validates the actual matching relay in local mode,
+before hosted services start; decorators hiding the instance are unsupported.
+Context registration is checked without construction when supported by the container.
+Bare service providers do not run this startup validation.
+
 The host owns endpoint authorization and traffic-readiness versus alert-only exposure:
 shared-store breaches can affect every replica. Degraded remains ready; selected
 Unhealthy fails readiness. No schema change, endpoint, mutation, or restart policy is added.
