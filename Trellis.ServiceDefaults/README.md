@@ -43,6 +43,21 @@ registration. ServiceDefaults itself does not take a dependency on the versionin
 
 Every `UseIntegrationEvents(...)` overload wires the default **best-effort local** publisher when none is registered. It logs and swallows ordinary consumer failures, so processed integration outbox rows do not retry those consumers. For reliable broker handoff, replace the publisher with an adapter that awaits acceptance and propagates publication failures; acceptance is not consumer success. `UseInbox<TContext>()` supplies a separate non-swallowing consumption seam, not automatic routing: an adapter must call `IInboxDispatcher.DispatchAsync` with the stable message id and expose failures for redelivery.
 
+`UseOutboxReadiness<TContext>(OutboxReadinessOptions.CreateStagedOperationalProfile())`
+explicitly enables the named `trellis-outbox` read-only health check alongside
+`UseOutbox<TContext>()`. It is applied after relay registration without changing the
+Mediator pipeline. Existing outbox/inbox slots do not enable health checks. The host
+owns endpoint authorization and readiness-versus-alerting exposure; capture age and
+consumer lag remain deferred. See [outbox readiness](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md#outbox-readiness).
+
+Split API/worker hosts can use the same slot with
+`OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` in the API,
+without `UseOutbox`. The explicit `WorkerMaxAttempts` must match the worker's policy,
+ideally from one shared configuration key. Local options are ignored without comparison
+or warning. Metadata-only cannot detect a dead low-volume worker; capture age remains
+deferred. Local-mode configuration is validated before services start under Generic Host
+lifecycle startup, not when building a bare service provider.
+
 ## Key Features
 - Domain-event slots preserve owning-commit dispatch: deferred inner commands do not publish or clear events, including when the outer response is a DTO/Unit. `UseOutbox<TContext>()` validates the reporting publisher at host startup, and validates the integration publisher only when integration features are registered.
 - `UseWorkerActor(systemActor)` can wrap a compatible pre-existing unkeyed `IActorProvider`; selecting a builder actor-provider slot is not required.

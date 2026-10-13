@@ -223,14 +223,51 @@ Events are serialized and rehydrated with a Trellis-owned `System.Text.Json` opt
 - **Run as many relay instances as you need.** Each drain atomically claims a batch with a lease (`LockedBy` + `LockedUntil`), and `LockedBy` is an optimistic concurrency token, so concurrent instances never both own a row's lease at once, and a drain that outlived its lease abandons its bookkeeping write — logging `OutboxRelay.LeaseLost` — rather than clobber the instance that reclaimed the row. No leader election or distributed lock is needed. Delivery is still at-least-once — a crash between publish and the relay's `SaveChanges`, or a batch that outlives its lease, can re-deliver — so keep handlers idempotent. Set `LeaseDuration` comfortably above the worst-case batch publish time and keep node clocks reasonably in sync, since the lease is compared against each relay's wall clock.
 - **One outbox per composition.** `UseOutbox<TContext>()` throws if called twice. Multiple relays in one process are not supported by the builder slot today.
 
-### Health-check requirements: staged, not shipped
+### Opt-in readiness and remaining staged requirements
 
-**Not implemented:** Trellis currently has no outbox/inbox health checks or health
-registration helpers. The [readiness contract and opt-in reference profile](../api_reference/trellis-api-efcore-outbox.md#health-check-requirements)
-define future acceptance criteria, not extra `OutboxOptions` settings.
+**Stage one is implemented:** explicitly select an immutable readiness profile and
+enable the named `trellis-outbox` .NET health check. Existing outbox calls do not enable it:
 
-The rollout separates bounded pending/parked summaries and local relay observations,
-durable row-capture age with migration/legacy-row handling, and optional
+```csharp
+var profile = OutboxReadinessOptions.CreateStagedOperationalProfile();
+builder.Services.AddTrellis(trellis => trellis
+    .UseDomainEvents()
+    .UseOutbox<AppDbContext>()
+    .UseOutboxReadiness<AppDbContext>(profile));
+```
+
+Direct registration is `services.AddTrellisOutboxReadiness<AppDbContext>(profile)`.
+Tune with `with`; the profile is not part of `OutboxOptions`.
+Read [readiness APIs and result diagnostics](../api_reference/trellis-api-efcore-outbox.md#outbox-readiness)
+for fixed-store scoping, validated timing relationships, and lower-bound counts.
+This slice changes no schema or delivery behavior and adds no endpoint or restart policy.
+**Not implemented:** durable capture-age evidence and optional consumer/source lag.
+
+For a separate worker, keep the local-relay profile in that worker and select metadata-only
+in the API against the same fixed store:
+
+```csharp
+const int workerMaxAttempts = 10; // Share the same configuration value with the worker.
+var profile = OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts);
+builder.Services.AddTrellis(trellis => trellis.UseOutboxReadiness<AppDbContext>(profile));
+```
+
+No API-host relay or publisher is required. `WorkerMaxAttempts` must match the worker's
+`OutboxOptions.MaxAttempts`; incidental local options are never resolved or compared,
+so a mismatch produces no warning. Derive both values from one configuration key.
+Metadata-only reports disabled relay monitoring and omits relay observation/delivery
+fields. It cannot detect a dead worker on a low-volume queue: with healthy database
+evidence and the reference thresholds, worker inactivity alone raises no signal until
+pending depth reaches 1,000 or a row is parked. Probe failures and stale/invalid metadata
+remain independent health conditions.
+
+Generic Host lifecycle startup requires the actual matching hosted relay in local mode,
+before any service starts; a decorator hiding its instance does not satisfy validation.
+Both modes check context registration without constructing it when the container supports
+registration probing. Bare providers do not invoke the lifecycle validator.
+
+The rollout separates the shipped bounded pending/parked summaries and local relay observations,
+future durable row-capture age with migration/legacy-row handling, and optional
 [consumer/source-lag evidence](integration-inbox.md#consumer-lag-health-requirements).
 Each stage is independently useful; separate implementation PRs are recommended,
 not a fixed count.

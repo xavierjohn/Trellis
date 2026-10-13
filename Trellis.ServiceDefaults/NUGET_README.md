@@ -41,6 +41,20 @@ For most applications, use the builder instead of mixing standalone `AddTrellis*
 
 Every `UseIntegrationEvents(...)` overload wires the default **best-effort local** publisher when none is registered. It logs and swallows ordinary consumer failures, so processed integration outbox rows do not retry those consumers. For reliable broker handoff, replace the publisher with an adapter that awaits acceptance and propagates publication failures; acceptance is not consumer success. `UseInbox<TContext>()` supplies a separate non-swallowing consumption seam, not automatic routing: an adapter must call `IInboxDispatcher.DispatchAsync` with the stable message id and expose failures for redelivery.
 
+`UseOutboxReadiness<TContext>(OutboxReadinessOptions.CreateStagedOperationalProfile())`
+explicitly enables the named `trellis-outbox` read-only health check alongside
+`UseOutbox<TContext>()`. Existing outbox/inbox slots do not enable it. Endpoint
+authorization and traffic-readiness versus alerting remain host-owned; capture age and
+consumer lag remain deferred. See [outbox readiness](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#outbox-readiness).
+
+For a separate worker, pass
+`OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` to the same slot
+in the API, without `UseOutbox`. Match `WorkerMaxAttempts` to the worker's retry policy
+using one configuration key. Local options are ignored without comparison or warning.
+Metadata-only cannot detect a dead low-volume worker; capture age remains deferred.
+Generic Host lifecycle startup validates local-mode relay configuration before services
+start; bare service providers do not run that validation.
+
 Common `HttpContext.PageUrl(...)` builders require no versioning SDK. Versioned hosts
 install `Trellis.Asp.ApiVersioning` and configure the existing
 `UseAsp(asp => asp.UseVersionedPageUrls())` callback alongside normal API-versioning

@@ -982,6 +982,7 @@ public static class CompositionRoot
 | `UseDomainEvents(...)` | `AddDomainEventDispatch(...)` | Implies `UseMediator()`. Response-shape dispatch uses strict snapshot validation; handlers must be side-effect-only. Mutually exclusive with tracked dispatch. |
 | `UseTrackedAggregateDomainEvents(...)` | `AddTrackedAggregateDomainEventDispatch(...)` | Implies `UseMediator()`. Dispatches committed aggregate snapshots for outcome-DTO commands and throws on same-aggregate or cross-aggregate cascade. Mutually exclusive with response-shape dispatch. |
 | `UseEntityFrameworkUnitOfWork<TContext>()` | `AddTrellisUnitOfWork<TContext>()` | Implies `UseMediator()` and is always applied last. |
+| `UseOutboxReadiness<TContext>(profile)` | `AddTrellisOutboxReadiness<TContext>(profile)` | Explicitly selected bounded metadata with optional local-relay monitoring, applied after selected outbox registration without changing Mediator order. Local mode requires a matching relay; metadata-only requires the worker retry limit. Endpoint authorization/selection remains separate. |
 
 **Still app-owned.** `AddTrellis(...)` does **not** call `AddDbContext`, `AddMediator`, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.
 
@@ -3285,6 +3286,31 @@ Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.G
 - Capture persists the current W3C trace context with each domain row; the alpha outbox schema includes nullable lineage and trace columns. See the outbox reference for the column names.
 
 See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#how-the-outbox-works) for the full contract, options, and operational guidance.
+
+**Optional readiness.** Existing outbox calls do not enable health checks. Explicitly
+select `OutboxReadinessOptions.CreateStagedOperationalProfile()` and add
+`.UseOutboxReadiness<AppDbContext>(profile)` alongside `.UseOutbox<AppDbContext>()`.
+The named `trellis-outbox` check reports bounded pending/parked rows, local relay
+responsiveness, and separately counted durable row completions. Capture age and
+consumer/source lag remain deferred, not observed healthy. The host owns endpoint
+authorization and whether shared-store breaches gate traffic or only alert.
+See [outbox readiness](trellis-api-efcore-outbox.md#outbox-readiness).
+
+**Split API/worker hosts.** Keep the existing local-relay profile in the worker. The API
+can select `OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` and
+`.UseOutboxReadiness<AppDbContext>(profile)` without `.UseOutbox<AppDbContext>()`.
+`WorkerMaxAttempts` must equal the worker's `OutboxOptions.MaxAttempts`; derive both
+from one configuration key or constant. Incidental local options are never resolved or
+compared, so a mismatch generates no warning.
+
+Metadata-only reports `relayMonitoring = "disabled"` and omits relay observations.
+It cannot detect a dead worker on a low-volume queue: capture age is deferred, so with
+healthy database evidence and the reference thresholds, worker inactivity alone raises
+no signal until pending depth reaches 1,000 or a row is parked. Probe faults and
+stale/invalid evidence still report failures independently.
+Generic Host lifecycle startup validates required local-relay configuration and, when
+the container supports registration probing, context registration without constructing
+the context. Bare providers do not run this startup validation.
 
 ## Recipe 36 — Translating a domain event into an integration event
 

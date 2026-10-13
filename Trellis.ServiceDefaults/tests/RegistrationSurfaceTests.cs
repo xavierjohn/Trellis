@@ -73,6 +73,7 @@ public class RegistrationSurfaceTests
         ["Trellis.Mediator.FluentValidation::AddTrellisFluentValidation"] = new("UseFluentValidation", "Validation behavior."),
         ["Trellis.EntityFrameworkCore::AddTrellisUnitOfWork"] = new("UseEntityFrameworkUnitOfWork", "Unit of work plus transactional behavior."),
         ["Trellis.EntityFrameworkCore.Outbox::AddTrellisOutbox"] = new("UseOutbox", "Transactional outbox relay."),
+        ["Trellis.EntityFrameworkCore.Outbox::AddTrellisOutboxReadiness"] = new("UseOutboxReadiness", "Explicitly selected outbox readiness health check."),
         ["Trellis.EntityFrameworkCore.Inbox::AddTrellisInbox"] = new("UseInbox", "Idempotent consumption."),
 
         // ---- Leaf / store / adapter-author registrations: no slot by design. ----

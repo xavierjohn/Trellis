@@ -47,6 +47,7 @@ public sealed class TrellisServiceBuilder
     private Action<IServiceCollection>? _workerActorWrap;
     private Action<IServiceCollection>? _unitOfWorkRegistration;
     private Action<IServiceCollection>? _outboxRegistration;
+    private Action<IServiceCollection>? _outboxReadinessRegistration;
     private Action<IServiceCollection>? _inboxRegistration;
     private bool _useAsp;
     private bool _useScalarValueValidation;
@@ -627,6 +628,30 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
+    /// Enables the named <c>trellis-outbox</c> readiness check using an explicitly selected profile.
+    /// </summary>
+    /// <remarks>
+    /// Local-relay profiles require the matching <see cref="UseOutbox{TContext}"/> or direct registration.
+    /// Metadata-only profiles explicitly disable relay monitoring and require the worker's retry limit.
+    /// The check adds no endpoint or liveness policy and does not evaluate capture age or consumer lag.
+    /// Applied after outbox registration, independent of fluent call order. Repeated selection throws.
+    /// </remarks>
+    /// <typeparam name="TContext">The application's context that owns the outbox table.</typeparam>
+    /// <param name="profile">An explicitly selected and optionally tuned readiness profile.</param>
+    /// <returns>The same builder.</returns>
+    [RequiresUnreferencedCode("Trellis.EntityFrameworkCore is not AOT- or trim-compatible.")]
+    [RequiresDynamicCode("Trellis.EntityFrameworkCore is not AOT-compatible.")]
+    public TrellisServiceBuilder UseOutboxReadiness<TContext>(OutboxReadinessOptions profile)
+        where TContext : DbContext
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        if (_outboxReadinessRegistration is not null)
+            throw new InvalidOperationException("Only one outbox readiness profile can be configured per composition.");
+        _outboxReadinessRegistration = services => services.AddTrellisOutboxReadiness<TContext>(profile);
+        return this;
+    }
+
+    /// <summary>
     /// Registers the transactional inbox for <typeparamref name="TContext"/> so an application-owned
     /// transport adapter can hand each received integration message to the inbox for
     /// exactly-once-per-consumer local processing.
@@ -1075,6 +1100,7 @@ public sealed class TrellisServiceBuilder
 
         _unitOfWorkRegistration?.Invoke(_services);
         _outboxRegistration?.Invoke(_services);
+        _outboxReadinessRegistration?.Invoke(_services);
         _inboxRegistration?.Invoke(_services);
     }
 
