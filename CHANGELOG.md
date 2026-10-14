@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - published package compatibility baseline
+
+All 23 packable packages now validate against the published `3.0.0-alpha.574`
+baseline. Mediator and ASP API versioning inherit that shared baseline instead of
+older package-specific overrides. Retired all 17 obsolete baseline suppressions
+for Core conversions, guarded actor-handler entry points, and common pagination
+builders; the deliberate-break rationales remain below. No runtime or public API
+behavior changes.
+
 ### Added - identity-only actor resolution
 
 Optional `IActorIdentityProvider` resolves canonical `ActorId` without permissions,
@@ -171,8 +180,9 @@ they can silently suppress pagination query values such as the cursor.
 All six `Trellis.Mediator` actor/resource handler bases now expose only the public
 two-argument `Handle(message, cancellationToken)` entry. Handler authors override
 protected `Handle(message, actor[, resource/leaf], cancellationToken)` for business logic.
-The previous business hook is renamed and the public explicit-argument test overloads
-are removed together as one deliberate source- and binary-breaking alpha change.
+The previous protected `HandleCore` business hook is renamed and the public
+explicit-argument test overloads are removed together as one deliberate source-
+and binary-breaking alpha change.
 Rebuild derived handlers and test them through Mediator with `TestActorProvider` and
 fake dependencies; no replacement bypass seam is added.
 
@@ -193,9 +203,10 @@ Recipe 13 uses the one-line field/detail guard instead of repeating a custom err
 
 ### Removed — ambiguous universal and nullable `ToResult` conversions (TFR-22)
 
-Removed Core's unconstrained no-argument `ToResult` lift and all twelve nullable
-`ToResult` / `ToResultAsync` overloads. Omitted errors can no longer silently wrap a
-`Maybe<T>` or nullable value as success. Use `Result.Ok(value)` for deliberate
+Removed Core's unconstrained no-argument `MaybeExtensions.ToResult<T>(T)` lift and all
+twelve nullable `ToResult` / `ToResultAsync` overloads, including their containing
+`NullableExtensions` and `NullableExtensionsAsync` classes. Omitted errors can no
+longer silently wrap a `Maybe<T>` or nullable value as success. Use `Result.Ok(value)` for deliberate
 success wrapping, `Result.EnsureNotNull(value, error/factory)` for required nullables,
 and `EnsureNotNullAsync` for nullable Task/ValueTask sources. `Result.Ensure` remains
 the no-payload boolean guard; `Maybe<T>` conversions and HTTP/FluentValidation

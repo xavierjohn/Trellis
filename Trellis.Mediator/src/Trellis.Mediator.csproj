@@ -5,8 +5,6 @@
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TrellisApiRefName>mediator</TrellisApiRefName>
-    <!-- The shared baseline predates these handler bases; compare their deliberate break with the shipped surface. -->
-    <PackageValidationBaselineVersion>3.0.0-alpha.553</PackageValidationBaselineVersion>
   </PropertyGroup>
   <ItemGroup>
   </ItemGroup>
