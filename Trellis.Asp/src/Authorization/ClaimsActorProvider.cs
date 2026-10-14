@@ -411,12 +411,9 @@ public class ClaimsActorProvider : IActorProvider, IProvideActorVaryHeaders
         // (e.g., "sub" ↔ ClaimTypes.NameIdentifier), also try its counterpart. This is the
         // robustness measure for ASP.NET Core's JwtBearerOptions.MapInboundClaims = true
         // default, which silently remaps RFC 7519 short names onto WS-* long-form URNs.
-        var actorId = ResolveClaimWithFallback(identity, Options.ActorIdClaim);
-        if (string.IsNullOrWhiteSpace(actorId))
-        {
-            MaybeEmitUnresolvedActorIdDiagnostic(identity);
+        var actorId = ResolveActorId(identity);
+        if (actorId is null)
             return Task.FromResult(Maybe<Actor>.None);
-        }
 
         var permissions = ResolveAllClaimsWithFallback(identity, Options.PermissionsClaim)
             .Select(c => c.Value)
@@ -426,6 +423,28 @@ public class ClaimsActorProvider : IActorProvider, IProvideActorVaryHeaders
 
         var actor = Actor.Create(actorId, permissions);
         return Task.FromResult(Maybe.From(actor));
+    }
+
+    internal ValueTask<Maybe<ActorId>> ResolveCurrentActorIdAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var context = HttpContextAccessor.HttpContext
+            ?? throw new InvalidOperationException(
+                "No HttpContext available. Ensure this is called within an HTTP request scope.");
+        var identity = context.User.Identities.FirstOrDefault(i => i.IsAuthenticated) as ClaimsIdentity;
+        return ValueTask.FromResult(identity is null
+            ? Maybe<ActorId>.None
+            : Maybe.From(ResolveActorId(identity)));
+    }
+
+    private ActorId? ResolveActorId(ClaimsIdentity identity)
+    {
+        var id = ResolveClaimWithFallback(identity, Options.ActorIdClaim);
+        if (!string.IsNullOrWhiteSpace(id))
+            return ActorId.Create(id);
+
+        MaybeEmitUnresolvedActorIdDiagnostic(identity);
+        return null;
     }
 
     /// <summary>

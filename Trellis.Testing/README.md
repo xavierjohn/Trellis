@@ -29,7 +29,8 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 - **Error.InvalidInput assertions** — `HaveFieldError()`, `HaveFieldErrorWithDetail()`, `HaveFieldCount()`
 - **Unwrap helpers** — `Unwrap()` for extracting values in test code without analyzer warnings
 - **FakeRepository** — In-memory aggregate store with domain event tracking and unique constraints
-- **TestActorProvider** — Mutable `IActorProvider` with `AsyncLocal` scoping for authorization tests
+- **TestActorProvider** — Mutable actor/identity provider with shared `AsyncLocal` scoping for authorization tests
+- **Identity agreement** — `await actorProvider.ShouldHaveConsistentActorIdentityAsync(identityProvider, ct)` asserts the full actor's ID matches identity-only resolution, sequentially and with provider-specific diagnostics
 - **AggregateTestMutator** — Reflection helpers for setting `Maybe<T>` backing fields in tests
 
 ## ASP.NET Core Integration Tests

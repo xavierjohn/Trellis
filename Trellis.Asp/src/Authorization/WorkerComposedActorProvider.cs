@@ -63,7 +63,7 @@ using Trellis.Authorization;
 /// for app-lifetime use.
 /// </para>
 /// </remarks>
-internal sealed class WorkerComposedActorProvider : IActorProvider, IProvideActorVaryHeaders, IDecoratingActorProvider, IAsyncDisposable, IDisposable
+internal sealed class WorkerComposedActorProvider : IActorProvider, IActorIdentityProvider, IProvideActorVaryHeaders, IDecoratingActorProvider, IAsyncDisposable, IDisposable
 {
     private static readonly ConcurrentDictionary<Type, byte> _loggedAsyncOnlyTypes = new();
 
@@ -105,6 +105,14 @@ internal sealed class WorkerComposedActorProvider : IActorProvider, IProvideActo
         return _httpContextAccessor.HttpContext is null
             ? Task.FromResult(Maybe.From(_systemActor))
             : Inner.GetCurrentActorAsync(cancellationToken);
+    }
+
+    public ValueTask<Maybe<ActorId>> GetCurrentActorIdAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return _httpContextAccessor.HttpContext is null
+            ? ValueTask.FromResult(Maybe.From(_systemActor.Id))
+            : ActorIdentityProviderResolver.Resolve(Inner).GetCurrentActorIdAsync(cancellationToken);
     }
 
     /// <inheritdoc />

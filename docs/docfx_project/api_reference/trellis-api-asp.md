@@ -49,6 +49,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) �
 | Collect scalar/composite JSON failures without exception-driven binding, including Native AOT | Validation scope + endpoint filter; shared Result readers and closed registrations | [Semantic JSON validation](#minimal-api-semantic-json-validation), [`ScalarValuePathTracking`](#scalarvaluepathtracking) |
 | Add Trellis ProblemDetails recipe (trace id from `Activity.Current`, friendly 500 detail, `allow` extension on 405) | `services.AddTrellisProblemDetails()` plus `app.UseTrellisProblemDetails()` (or `options.UseProblemDetails()` via [`Trellis.ServiceDefaults`](trellis-api-servicedefaults.md#trellisservicebuilder)) | [`ServiceCollectionExtensions`](#servicecollectionextensions), [`ApplicationBuilderExtensions`](#applicationbuilderextensions) |
 | Render ASP.NET Core rate-limit rejections as Trellis Problem Details | Inside `services.AddRateLimiter(options => ...)`, call `options.UseTrellisRejectionHandler()`; keep algorithms, policies, and partition keys in application configuration. | [`RateLimiterOptionsExtensions`](#ratelimiteroptionsextensions) |
+| Partition rate limits by canonical identity without a permission lookup | Resolve `IActorIdentityProvider`, or call the custom provider's shared synchronous normalizer | [Identity registration](#identity-only-provider-registration), [Recipe 41](trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions) |
 | Add the IETF `Idempotency-Key` middleware to opted-in `POST` / `PATCH` endpoints | `services.AddTrellisIdempotency(...)` (or `options.UseIdempotency(...)`), `services.AddInMemoryIdempotencyStore()`, `app.UseTrellisIdempotency()`, and mark each opted-in endpoint with `[Idempotent]` | [`Trellis.Asp.Idempotency`](#namespace-trellisaspidempotency), Cookbook [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency) |
 
 ## Endpoint checklist for generated APIs
@@ -962,6 +963,11 @@ Opt-in `Idempotency-Key` middleware for `POST` / `PATCH` retry safety, using the
 
 **Request identity and scope.** The store key is `(scope, parsed Idempotency-Key)`, not `(scope, key, fingerprint)`. `DefaultIdempotencyScopeResolver` uses the current actor's id; when no `IActorProvider` is registered or no actor resolves, it uses the **shared anonymous scope**. A custom `IIdempotencyScopeResolver` can supply a different isolation boundary, such as tenant plus actor. The default scope is not route-specific: all of an actor's opted-in endpoints sharing the store share one client key namespace.
 
+`DefaultIdempotencyScopeResolver` and `ActorIdempotencyScopeResolver` still resolve the
+**full** `IActorProvider`. Registering `IActorIdentityProvider` does not change idempotency
+scope, actor eligibility, or permission loading. A limiter before `UseTrellisIdempotency`
+charges replay requests too; see [Recipe 41's ordering](trellis-api-cookbook.md#middleware-order-and-cost).
+
 **Request fingerprint.** `IdempotencyFingerprint.Compute` computes SHA-256 over the HTTP method, `PathBase + Path`, canonicalized query, `Content-Type`, `Content-Encoding`, headers configured in `AdditionalFingerprintHeaders`, and the body bytes. Query keys are sorted ordinally; repeated values for a key retain their order. The body is hashed as bytes, not normalized JSON. The fingerprint is stored with the entry and compared on retry; it does not create a separate entry for each URL or body.
 
 For an existing reservation or an unexpired completed snapshot, reusing the same scope and key with a different fingerprint returns `BodyHashMismatch`, mapped to `MismatchStatusCode` (default `422`), **not a replay and not a new execution**. Despite its name, `BodyHashMismatch` is not limited to body changes. For example, the same actor, key, and body sent first to `POST /restaurants/A/import` and then to `POST /restaurants/B/import` have different paths and therefore different fingerprints: the second request is rejected, not replayed. Use a distinct key for each intended operation and reuse that key only for retries of the same request.
@@ -1225,6 +1231,51 @@ public static class ServiceCollectionExtensions
 > resolution semantics (single resolve picks the last; enumeration exposes
 > both).
 
+### Identity-only provider registration
+
+The five built-in `AddXxxActorProvider` helpers above also register scoped
+`IActorIdentityProvider` (from `Trellis.Authorization`). Flat claims and Easy Auth use the
+same authenticated-identity selection, claim-name fallbacks and `ActorId` normalization
+as full resolution. Nested JSON uses the same container/ID traversal and flat fallback
+without traversing permissions; malformed-container diagnostics and invalid nested-ID
+behavior are preserved. Entra invokes none of `MapPermissions`, `MapForbiddenPermissions`
+or `MapAttributes`. Development reuses ID parsing, fallback/malformed policy and the
+Development-only guard, without constructing permission sets or attributes. Never parse
+raw `X-Test-Actor` independently in the limiter.
+
+In lenient Development mode, identity also checks JSON token shapes (not permission or
+attribute hydration) so a malformed authorization payload chooses the same default ID
+as full resolution. Strict identity can still resolve an ID when a later full actor's
+permission/attribute parsing would fail; identity presence does not promise a full actor.
+
+Resolve this interface from DI, not by casting a built-in concrete provider. The non-sealed
+`ClaimsActorProvider` and `NestedJsonPathClaimsActorProvider` deliberately retain their
+existing contracts: exact built-in types receive internal adapters; a custom subclass
+must explicitly implement `IActorIdentityProvider` so an overridden full actor mapping
+cannot silently inherit a different identity mapping.
+
+**One registration:** `AddCachingActorProvider<T>()` registers both interfaces when `T`
+implements the capability or is an exact supported built-in type. Both resolve to the
+**same scoped `CachingActorProvider`**, wrapping the same DI-resolved `T`. Identity and
+actor caches are separate and lazy; identity resolution does not load permissions.
+Repeating/replacing the helper keeps one unkeyed identity binding and removes it when
+the new provider is unsupported. Any existing unkeyed identity registration, including
+an application-provided one, is replaced. Keyed identity registrations are untouched. The binding
+follows the selected `IActorProvider`, never a previously selected concrete provider;
+a subsequent unsupported direct replacement fails explicitly rather than falling back
+to full resolution or serving stale identity.
+
+`AddTrellisWorkerActor` registers identity on its scoped wrapper only when a known inner
+implementation type or instance supports the capability; known unsupported providers
+remove the unkeyed identity binding without changing full-actor worker composition.
+Factory descriptors retain identity registration because determining support would
+require invoking the factory at composition time. When identity is registered, outside
+HTTP it returns the system actor's ID without constructing the HTTP provider. Inside HTTP,
+it delegates to the supported inner identity capability; an unsupported factory result
+throws an actionable configuration error. It never loads a full actor as an identity
+fallback. Existing disposal and worker-registration validation are unchanged.
+The matching ServiceDefaults actor/cache/worker slots inherit these semantics.
+
 ### `ClaimsActorOptions`
 
 **Declaration**
@@ -1433,10 +1484,15 @@ Reads the `X-Test-Actor` header (JSON: `{ "Id": ..., "Permissions": [...], "Forb
 **Declaration**
 
 ```csharp
-public sealed class CachingActorProvider : IActorProvider, IProvideActorVaryHeaders
+public sealed class CachingActorProvider : IActorProvider, IActorIdentityProvider, IProvideActorVaryHeaders
 ```
 
-Decorator that caches the inner provider's resolution task per request scope using `LazyInitializer.EnsureInitialized`. The shared task uses `HttpContext.RequestAborted` so expensive work (DB lookups) is canceled with the request, but individual callers' tokens only cancel their own awaits.
+Decorator that independently caches actor and identity resolution tasks per scope using
+`Lazy<Task<...>>` with `ExecutionAndPublication`. Concurrent callers share one invocation,
+including synchronous initialization. Each identity `ValueTask` is converted to a task
+once rather than consumed repeatedly. The shared work uses `HttpContext.RequestAborted`;
+individual callers' tokens only cancel their own awaits. Results, `None`, provider faults
+and request cancellation stay cached for the scope; no retry or full-actor fallback occurs.
 
 When a handler uses `RequireActorAsync` from `Trellis.Authorization` after authorization,
 both lookups must use this same scoped wrapper (or a provider with an explicit stability
@@ -1447,6 +1503,7 @@ not preserve the actor identity or permission snapshot previously checked by aut
 | --- | --- | --- |
 | `public CachingActorProvider(IActorProvider inner, IHttpContextAccessor httpContextAccessor)` | — | `inner` cannot be null. |
 | `public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Returns the cached task — including a cached `Maybe<Actor>.None` when the inner provider resolved no authenticated actor — so the inner provider runs once per request scope. If `cancellationToken` is cancelable (`CanBeCanceled`) **and** differs from `RequestAborted`, applies it to the await via `Task.WaitAsync`; otherwise the cached task is returned as-is. |
+| `public ValueTask<Maybe<ActorId>> GetCurrentActorIdAsync(CancellationToken cancellationToken = default)` | `ValueTask<Maybe<ActorId>>` | Independently caches identity with the same shared/caller cancellation semantics. Throws an actionable `InvalidOperationException` when the inner provider does not support identity-only resolution. Registration advertises the service only for supported providers; implementing the interface on the wrapper does not make an unsupported inner provider capable. |
 
 ### Namespace `Trellis.Asp.ModelBinding`
 

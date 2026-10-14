@@ -63,6 +63,7 @@ public static class ServiceCollectionExtensions
         // slot. Without Replace, calling two helpers leaves two descriptors and
         // GetServices<IActorProvider>() returns both — order-dependent and surprising.
         services.Replace(ServiceDescriptor.Scoped<IActorProvider, ClaimsActorProvider>());
+        RegisterActorIdentity(services, supported: true);
 
         return services;
     }
@@ -121,6 +122,7 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<NestedJsonPathClaimsActorOptions>, NestedJsonPathClaimsActorOptionsValidator>());
 
         services.Replace(ServiceDescriptor.Scoped<IActorProvider, NestedJsonPathClaimsActorProvider>());
+        RegisterActorIdentity(services, supported: true);
 
         return services;
     }
@@ -171,6 +173,7 @@ public static class ServiceCollectionExtensions
             services.Configure<EntraActorOptions>(_ => { });
 
         services.Replace(ServiceDescriptor.Scoped<IActorProvider, EntraActorProvider>());
+        RegisterActorIdentity(services, supported: true);
 
         return services;
     }
@@ -231,6 +234,7 @@ public static class ServiceCollectionExtensions
             services.Configure<ClaimsActorOptions>(_ => { });
 
         services.Replace(ServiceDescriptor.Scoped<IActorProvider, EasyAuthClaimsActorProvider>());
+        RegisterActorIdentity(services, supported: true);
 
         // Fail fast at host start if the Easy Auth authentication scheme is missing: the provider
         // maps HttpContext.User but does not authenticate, so an absent scheme would otherwise
@@ -298,6 +302,7 @@ public static class ServiceCollectionExtensions
             services.Configure<DevelopmentActorOptions>(_ => { });
 
         services.Replace(ServiceDescriptor.Scoped<IActorProvider, DevelopmentActorProvider>());
+        RegisterActorIdentity(services, supported: true);
 
         return services;
     }
@@ -315,6 +320,13 @@ public static class ServiceCollectionExtensions
     /// <b>Replaces</b> the <see cref="IActorProvider"/> slot with the caching wrapper. The inner
     /// type <typeparamref name="T"/> is registered via <c>TryAddScoped&lt;T&gt;()</c>, so repeated
     /// calls do not accumulate inner-provider descriptors.
+    /// </para>
+    /// <para>
+    /// When the inner type implements <see cref="IActorIdentityProvider"/> or is an exact
+    /// supported built-in provider, the same call binds that interface to the same scoped
+    /// caching wrapper. Identity and actor resolution remain independently lazy. Unsupported
+    /// replacements remove the unkeyed identity binding; legacy subclasses must opt in explicitly.
+    /// Any existing unkeyed identity registration, including an application-provided one, is replaced.
     /// </para>
     /// <para>
     /// <b>Inner-provider dependencies are NOT auto-registered.</b> This helper only adds
@@ -356,6 +368,7 @@ public static class ServiceCollectionExtensions
             new CachingActorProvider(
                 sp.GetRequiredService<T>(),
                 sp.GetRequiredService<Microsoft.AspNetCore.Http.IHttpContextAccessor>())));
+        RegisterActorIdentity(services, ActorIdentityProviderResolver.Supports(typeof(T)));
 
         return services;
     }
@@ -407,6 +420,13 @@ public static class ServiceCollectionExtensions
     /// <b>Single-registration contract.</b> Calling <c>AddTrellisWorkerActor</c> twice
     /// throws — wrapping a wrapper would mean a worker scope returns the inner wrapper's
     /// system actor instead of the outer's, which is never the intended composition.
+    /// </para>
+    /// <para>
+    /// <b>Identity capability.</b> Known implementation types and instances advertise
+    /// <see cref="IActorIdentityProvider"/> only when supported by the inner provider.
+    /// Factories retain identity registration without being invoked at composition time;
+    /// an unsupported factory result throws on HTTP identity resolution. Outside HTTP,
+    /// registered identity resolution returns the system ID without constructing the inner.
     /// </para>
     /// <para>
     /// <b>Lifetime.</b> The wrapper is registered as scoped (matching the other built-in
@@ -551,6 +571,7 @@ public static class ServiceCollectionExtensions
         // are not disposed.
         var innerFactory = BuildInnerFactory(innerDescriptor);
         var ownsInner = innerDescriptor.ImplementationInstance is null;
+        var innerType = innerDescriptor.ImplementationType ?? innerDescriptor.ImplementationInstance?.GetType();
 
         // Remove the exact captured descriptor (preserves any keyed IActorProvider
         // registrations untouched) and append the wrapper.
@@ -563,6 +584,7 @@ public static class ServiceCollectionExtensions
         }));
 
         services.AddSingleton<WorkerActorRegistrationMarker>();
+        RegisterActorIdentity(services, innerType is null || ActorIdentityProviderResolver.Supports(innerType));
 
         // Hosted-service validator catches "AddXxxActorProvider called AFTER AddTrellisWorkerActor"
         // at host start, before any HTTP request or worker tick observes the broken composition.
@@ -571,6 +593,17 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, WorkerActorRegistrationValidator>());
 
         return services;
+    }
+
+    private static void RegisterActorIdentity(IServiceCollection services, bool supported)
+    {
+        foreach (var descriptor in services.Where(d => !d.IsKeyedService
+            && d.ServiceType == typeof(IActorIdentityProvider)).ToArray())
+            services.Remove(descriptor);
+
+        if (supported)
+            services.AddScoped<IActorIdentityProvider>(sp =>
+                ActorIdentityProviderResolver.Resolve(sp.GetRequiredService<IActorProvider>()));
     }
 
     private static Func<IServiceProvider, IActorProvider> BuildInnerFactory(ServiceDescriptor descriptor)

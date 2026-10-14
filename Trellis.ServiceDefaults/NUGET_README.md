@@ -35,6 +35,7 @@ Call `AddTrellis(...)` once. If omitted, the composition features are intentiona
 - Keeps feature selection explicit and discoverable at the application composition root.
 - Provides slots for ASP.NET Core, authorization, FluentValidation, EF Core unit of work, outbox, inbox, idempotency, and events.
 - Preserves package-specific options through focused `UseXxx(...)` methods.
+- Existing actor/cache/worker slots preserve identity-only resolution. Supported `UseCachingActorProvider<T>()` binds both contracts to one scoped wrapper with independent lazy caches; custom providers/subclasses opt in explicitly.
 - Leaves vendor stores and transport adapters in their owning packages, avoiding unnecessary SDK dependencies.
 
 For most applications, use the builder instead of mixing standalone `AddTrellis*` calls. Provider-specific stores and adapters remain separate registrations by design.

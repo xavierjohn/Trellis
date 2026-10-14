@@ -1,12 +1,12 @@
 ﻿---
 package: Trellis.Authorization
 namespaces: [Trellis.Authorization]
-types: [Actor, ActorAttributes, ActorId, ActorProviderExtensions, IActorProvider, IAuthorizationMessage, IResourceAuthorizationMessage, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
+types: [Actor, ActorAttributes, ActorId, ActorProviderExtensions, IActorProvider, IActorIdentityProvider, IAuthorizationMessage, IResourceAuthorizationMessage, IAuthorize, "IAuthorizeResource<TResource>", "IAuthorizeResourceVia<TOwner>", "IIdentifyResource<TResource,TId>", "IIdentifyRelatedResource<TRelated,TId>", "IIdentifyRelatedResources<TRelated,TId>", "IResourceLoader<TMessage,TResource>", "ResourceLoaderById<TMessage,TResource,TId>", "SharedResourceLoaderById<TResource,TId>"]
 version: v3
-last_verified: 2026-10-10
+last_verified: 2026-10-13
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when modeling actors and permissions, or implementing IAuthorize and resource-based authorization (Trellis.Authorization)."
+agent_description: "Open when modeling actors, canonical identity-only resolution and permissions, or implementing IAuthorize and resource authorization (Trellis.Authorization)."
 ---
 # Trellis.Authorization — API Reference
 
@@ -74,6 +74,7 @@ For multi-hop authorization (the resource the actor must own is reached via one 
 | Represent the current user/service | `Actor` | [`Actor`](#actor) |
 | Check granted permissions with explicit deny override | `actor.HasPermission(...)`, `HasAllPermissions(...)`, `HasAnyPermission(...)` | [`Actor`](#actor) |
 | Resolve actor for a request/message | `IActorProvider.GetCurrentActorAsync(...)` | [`IActorProvider`](#iactorprovider) |
+| Resolve canonical identity without permissions or attributes | Optional `IActorIdentityProvider.GetCurrentActorIdAsync(...)` | [`IActorIdentityProvider`](#iactoridentityprovider), [Recipe 41](trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions) |
 | Receive the actor actually checked by this dispatch without another provider lookup | `ActorCommandHandler`, `ActorQueryHandler`, or the direct/via resource variants in `Trellis.Mediator` | [Mediator handler bases](trellis-api-mediator.md#actor-aware-handler-bases) |
 | Read a required actor through a stable or explicitly cached provider after authorization | `actorProvider.RequireActorAsync(cancellationToken)` | [`ActorProviderExtensions`](#actorproviderextensions) |
 | Require static permissions on a message | Implement `IAuthorize.RequiredPermissions` | [`IAuthorize`](#iauthorize) |
@@ -218,6 +219,36 @@ public interface IActorProvider
 **401 vs 500 contract.** `Maybe<Actor>.None` means the framework cannot identify an actor for the request — typically the request lacks credentials, the auth middleware did not produce an authenticated identity, or the configured actor-id claim is missing from an otherwise authenticated identity. All three are classes of client error and the mediator pipeline emits HTTP 401. A thrown `InvalidOperationException` means the provider itself cannot operate (no `HttpContext`, malformed configuration, mapping delegate failure) — that's a server bug and surfaces as HTTP 500.
 
 > **`WWW-Authenticate` header on the 401.** RFC 9110 §11.6.1 requires `WWW-Authenticate` on 401 responses. `Error.AuthenticationRequired` stays transport-neutral, so `ResponseFailureWriter` emits the optional `Scheme` string verbatim when the error provides one; otherwise it synthesizes a scheme-level challenge from the registered default-challenge scheme via `IAuthenticationSchemeProvider` when no other middleware has already written the header. The synthesized header uses the scheme NAME registered with `AddAuthentication` (so `AddJwtBearer("ApiJwt", ...)` produces `WWW-Authenticate: ApiJwt`). If no authentication is registered at all, the writer emits no synthesized header — synthesizing "Bearer" for a service that does not use Bearer would mislead clients. Applications that need a parameterized challenge can return `new Error.AuthenticationRequired("Bearer realm=\"api\"")` or write `WWW-Authenticate` before Trellis renders the failure.
+
+### `IActorIdentityProvider`
+
+```csharp
+public interface IActorIdentityProvider
+{
+    ValueTask<Maybe<ActorId>> GetCurrentActorIdAsync(CancellationToken cancellationToken = default);
+}
+```
+
+An optional, scoped capability alongside the unchanged `IActorProvider`. Returns
+`Maybe.From(id)` when a usable canonical identity exists, or `Maybe<ActorId>.None` for
+ordinary absence. Infrastructure/configuration failures and cancellation propagate.
+**Identity-only means no permission/authorization-attribute loading and no fallback to
+`GetCurrentActorAsync`; it does not promise zero I/O.**
+
+**Agreement rule:** whenever full resolution returns an actor, identity-only resolution
+for that same principal/operation must return the same `ActorId` as `Actor.Id`. Share one
+application-owned canonical normalizer rather than duplicating subject extraction,
+issuer/provider labels, or trimming. Identity can be present while full actor resolution
+returns `None` (for example, an identified principal is ineligible); identity is not
+authorization and is not a replacement for full actor resolution.
+
+The ASP built-in registrations supply this capability through exact-type adapters.
+Legacy subclasses of the non-sealed claims providers do not acquire an inherited identity
+mapping: a custom provider or subclass explicitly implements this interface. See
+[ASP registration and caching](trellis-api-asp.md#identity-only-provider-registration).
+Provider tests can assert the rule in one line with
+[`ShouldHaveConsistentActorIdentityAsync`](trellis-api-testing-reference.md#actoridentityassertionsextensions).
+Recipe 41 shows synchronous shared-normalizer and asynchronous prefetch paths.
 
 ### `ActorProviderExtensions`
 

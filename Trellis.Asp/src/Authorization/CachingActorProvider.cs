@@ -10,6 +10,11 @@ using Trellis.Authorization;
 /// </summary>
 /// <remarks>
 /// <para>
+/// Identity-only resolution has its own lazy task and never resolves permissions through
+/// the full actor method. The identity capability must be supported by the inner provider;
+/// otherwise identity resolution throws a configuration error.
+/// </para>
+/// <para>
 /// The cached value is a <see cref="Task{TResult}"/>, so concurrent calls within
 /// the same scope will share the same in-flight task. Register as scoped via
 /// <see cref="ServiceCollectionExtensions.AddCachingActorProvider{T}"/>.
@@ -21,11 +26,12 @@ using Trellis.Authorization;
 /// database round-trips) that have already failed within the current request.
 /// </para>
 /// </remarks>
-public sealed class CachingActorProvider : IActorProvider, IProvideActorVaryHeaders, IDecoratingActorProvider
+public sealed class CachingActorProvider : IActorProvider, IActorIdentityProvider, IProvideActorVaryHeaders, IDecoratingActorProvider
 {
     private readonly IActorProvider _inner;
     private readonly CancellationToken _requestAborted;
-    private Task<Maybe<Actor>>? _cachedTask;
+    private readonly Lazy<Task<Maybe<Actor>>> _cachedTask;
+    private readonly Lazy<Task<Maybe<ActorId>>> _cachedIdentityTask;
 
     /// <inheritdoc />
     /// <remarks>
@@ -53,43 +59,42 @@ public sealed class CachingActorProvider : IActorProvider, IProvideActorVaryHead
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _requestAborted = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+        _cachedTask = new(() => CaptureResolution(() => _inner.GetCurrentActorAsync(_requestAborted)),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+        _cachedIdentityTask = new(() => CaptureResolution(() =>
+            ActorIdentityProviderResolver.Resolve(_inner).GetCurrentActorIdAsync(_requestAborted).AsTask()),
+            LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     /// <inheritdoc />
-    public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)
-    {
-        // The shared resolution uses HttpContext.RequestAborted so expensive work
-        // (e.g., DB queries) is canceled when the HTTP request ends, but individual
-        // callers' tokens don't cancel the shared task for other callers.
-        //
-        // LazyInitializer.EnsureInitialized leaves _cachedTask unset when the factory throws
-        // synchronously (e.g., the inner provider throws InvalidOperationException before
-        // returning a Task — typical of providers that validate prerequisites synchronously).
-        // Without the try/catch wrapper the next call would retry the inner provider, which
-        // breaks the documented "failure cached for the remainder of the request" contract
-        // and re-runs expensive synchronous prerequisites for every behavior in the pipeline.
-        // Wrapping converts synchronous throws into a faulted Task that gets cached.
-        var task = LazyInitializer.EnsureInitialized(
-            ref _cachedTask,
-            () =>
-            {
-                try
-                {
-                    return _inner.GetCurrentActorAsync(_requestAborted);
-                }
-                catch (Exception ex)
-                {
-                    return Task.FromException<Maybe<Actor>>(ex);
-                }
-            });
+    public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default) =>
+        ForCaller(_cachedTask.Value, cancellationToken);
 
-        // If the caller's token differs and is cancelable, apply it to the await only.
-        return cancellationToken.CanBeCanceled && cancellationToken != _requestAborted
-            ? WaitWithCancellation(task!, cancellationToken)
-            : task!;
+    /// <summary>
+    /// Resolves and caches identity independently of full actor resolution. Throws an actionable
+    /// configuration error when the inner provider does not support identity-only resolution.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels this caller's await, not other callers' shared work.</param>
+    /// <returns>The request-cached canonical identity, without loading the full actor.</returns>
+    public ValueTask<Maybe<ActorId>> GetCurrentActorIdAsync(CancellationToken cancellationToken = default) =>
+        new(ForCaller(_cachedIdentityTask.Value, cancellationToken));
+
+    private Task<Maybe<T>> ForCaller<T>(Task<Maybe<T>> task, CancellationToken token) where T : notnull =>
+        token.CanBeCanceled && token != _requestAborted ? WaitWithCancellation(task, token) : task;
+
+    private static Task<Maybe<T>> CaptureResolution<T>(Func<Task<Maybe<T>>> resolve) where T : notnull
+    {
+        try
+        {
+            return resolve();
+        }
+        catch (Exception ex)
+        {
+            return Task.FromException<Maybe<T>>(ex);
+        }
     }
 
-    private static async Task<Maybe<Actor>> WaitWithCancellation(Task<Maybe<Actor>> task, CancellationToken ct)
+    private static async Task<Maybe<T>> WaitWithCancellation<T>(Task<Maybe<T>> task, CancellationToken ct) where T : notnull
     {
         ct.ThrowIfCancellationRequested();
         return await task.WaitAsync(ct).ConfigureAwait(false);

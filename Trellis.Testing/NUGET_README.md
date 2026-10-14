@@ -28,7 +28,8 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 - **Error/Error.InvalidInput assertions** — `HaveCode()`, `HaveFieldError()`
 - **Unwrap helpers** — Extract values in test code without analyzer warnings
 - **FakeRepository** — In-memory aggregate store with domain event tracking
-- **TestActorProvider** — Mutable `IActorProvider` for authorization tests
+- **TestActorProvider** — Mutable actor/identity provider with shared async-flow scoping
+- **Identity agreement** — `await actorProvider.ShouldHaveConsistentActorIdentityAsync(identityProvider, ct)` compares sequential resolutions with provider-specific diagnostics
 
 For ASP.NET Core integration test helpers (WebApplicationFactory, DI replacement), see [Trellis.Testing.AspNetCore](https://www.nuget.org/packages/Trellis.Testing.AspNetCore).
 

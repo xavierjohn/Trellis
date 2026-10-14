@@ -33,7 +33,7 @@ compile error to redeclare — the cookbook's Recipe 1 lists that inherited surf
 
 ## How to read these recipes
 
-**Hold this file resident; read recipe bodies on demand.** The 37 recipe bodies in `trellis-api-cookbook.md`
+**Hold this file resident; read recipe bodies on demand.** The 38 recipe bodies in `trellis-api-cookbook.md`
 cover the routed tasks; a typical task needs one to three. Open each body when the
 [task lookup table](#task---recipe-lookup) routes you there; never work from its title alone.
 TRLDOC007 enforces that every live recipe is reachable, so an unlisted task has no recipe.
@@ -147,6 +147,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Match duplicate-key, foreign-key, or retry abort/exhaustion conflicts without copying wire strings | [`FaultCodes` vocabulary](trellis-api-core.md#validationcodes--the-reason-code-vocabulary), then [EF save helpers](trellis-api-efcore.md#dbcontextextensions) or [Recipe 27](trellis-api-cookbook.md#recipe-27--idempotent-inserts-on-a-unique-constraint-with-tryinsertuniqueasync) |
 | Make POST / PATCH safe under client retries with a quoted RFC 9651 `Idempotency-Key` String | [Recipe 29](trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency) |
 | Render ASP.NET Core rate-limit rejections as Trellis 429 Problem Details with optional `Retry-After` | [`RateLimiterOptionsExtensions` in the ASP reference](trellis-api-asp.md#ratelimiteroptionsextensions) |
+| Partition ASP.NET rate limits by canonical identity without permission loads | [Recipe 41](trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions) |
 | Define domain events | [Recipe 17](trellis-api-cookbook.md#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp) |
 | Make domain events survive a crash (transactional outbox) | [Recipe 35](trellis-api-cookbook.md#recipe-35--transactional-outbox-for-crash-safe-domain-events) |
 | Publish a stable external contract (integration events) translated from domain events | [Recipe 36](trellis-api-cookbook.md#recipe-36--translating-a-domain-event-into-an-integration-event), then [publisher completion boundaries](trellis-api-mediator.md#iintegrationeventpublisher) for best-effort local notification vs. broker acceptance and inbox consumption |
