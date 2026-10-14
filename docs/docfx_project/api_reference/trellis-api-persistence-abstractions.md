@@ -3,7 +3,7 @@ package: Trellis.Persistence.Abstractions
 namespaces: [Trellis]
 types: [IUnitOfWork, IUnitOfWorkScope, IInboxStore, IConsumerCheckpointStore, InboxRecord]
 version: v3
-last_verified: 2026-10-11
+last_verified: 2026-10-14
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when implementing IUnitOfWork, IInboxStore or IConsumerCheckpointStore for a non-EF store (Trellis.Persistence.Abstractions)."
@@ -80,6 +80,7 @@ public interface IInboxStore
 - `InboxRecord` is persistence-native: it carries the dedup identity (`MessageId`) plus optional lineage / observability metadata, and names no messaging type, so the store contract depends only on `Trellis.Core`. A dispatcher maps its transport envelope to an `InboxRecord`.
 - `TryRecordAsync` returns `true` if the message was newly recorded, or `false` if the `(ConsumerId, MessageId)` pair was already processed — a duplicate the caller should skip. An implementation preserves all-or-nothing atomicity only by enrolling the dedup record in the same unit of work the dispatcher commits.
 - `FilterUnprocessedAsync` powers the gap-free anti-join pull model: it returns the subset of candidate ids with no dedup row yet, preserving input order. It is a pure read and stages nothing.
+- A custom store is only half of the integration: pair it with an `IInboxDispatcher` that commits its receipt and handler effects in one unit of work. The shipped EF dispatcher requires its matching EF store and rejects arbitrary replacements; a store on another connection or transaction cannot preserve its atomicity guarantee.
 
 ## `IConsumerCheckpointStore`
 

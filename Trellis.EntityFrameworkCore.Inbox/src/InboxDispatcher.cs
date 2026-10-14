@@ -89,6 +89,11 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher, IDisposable
         var provider = scope.ServiceProvider;
         var context = provider.GetRequiredService<TContext>();
         var store = provider.GetRequiredService<IInboxStore>();
+        if (store is not EfInboxStore<TContext>)
+            throw new InvalidOperationException(
+                $"The built-in EF inbox dispatcher for '{typeof(TContext).Name}' requires its EfInboxStore " +
+                "so the dedup record and handler writes share the same unit of work. A custom IInboxStore " +
+                "must be paired with a custom IInboxDispatcher.");
 
         // Fast path: the dedup row already exists, so this is a redelivery we have processed. Nothing is
         // staged, so there is nothing to save.
@@ -159,9 +164,18 @@ internal sealed class InboxDispatcher<TContext> : IInboxDispatcher, IDisposable
     private static async Task InvokeHandlersAsync(IServiceProvider provider, IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
     {
         var invoker = s_invokerCache.GetOrAdd(integrationEvent.GetType(), CreateInvoker);
+        var hasHandler = false;
 
         foreach (var handler in invoker.ResolveHandlers(provider))
+        {
+            hasHandler = true;
             await invoker.InvokeAsync(handler, integrationEvent, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!hasHandler)
+            throw new InvalidOperationException(
+                $"Integration event '{integrationEvent.GetType().FullName}' has no registered " +
+                $"IIntegrationEventHandler<{integrationEvent.GetType().Name}> handler.");
     }
 
     private static HandlerInvoker CreateInvoker(Type eventType)

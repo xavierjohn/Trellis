@@ -55,3 +55,15 @@ public sealed class InboxOptions
                 $"InboxOptions.ConsumerId must be at most {MaxConsumerIdLength} characters; it is stored in a fixed-width key column.");
     }
 }
+
+internal static class InboxConsumerId
+{
+    public static void Validate(string consumerId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(consumerId);
+        if (consumerId.Length > InboxOptions.MaxConsumerIdLength)
+            throw new ArgumentException(
+                $"consumerId must be at most {InboxOptions.MaxConsumerIdLength} characters; it is stored in a fixed-width key column.",
+                nameof(consumerId));
+    }
+}

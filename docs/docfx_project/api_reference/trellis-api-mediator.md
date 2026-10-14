@@ -3,7 +3,7 @@ package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
 types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationContextBehavior<TMessage,TResponse>", "ActorCommandHandler<TCommand,TResponse>", "ActorQueryHandler<TQuery,TResponse>", "ActorResourceCommandHandler<TCommand,TResource,TResponse>", "ActorResourceQueryHandler<TQuery,TResource,TResponse>", "ActorResourceViaCommandHandler<TCommand,TLeaf,TOwner,TResponse>", "ActorResourceViaQueryHandler<TQuery,TLeaf,TOwner,TResponse>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", MediatorTraceProviderBuilderExtensions, TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-10
+last_verified: 2026-10-14
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring Trellis behaviors into the Mediator pipeline: command and query interfaces, validation, authorization, tracing, logging and unit-of-work behavior."
@@ -758,7 +758,7 @@ Handles an `IIntegrationEvent`. The same DI registrations can be invoked by the 
 
 Default local fan-out is **best-effort**: ordinary handler failures are logged and swallowed so the remaining handlers still run. A handler's `OperationCanceledException` propagates when the supplied token is canceled. A swallowed failure makes the integration outbox row processed without a failed attempt or a consumer retry.
 
-Transactional inbox dispatch is **non-swallowing**: a handler failure propagates before the dedup row and handler writes through the inbox's `TContext` are saved, allowing transport redelivery. Stage writes for the dispatcher to commit; do not call `SaveChanges` inside a handler. External calls and writes through another context are outside that atomic boundary.
+Transactional inbox dispatch is **non-swallowing**: a handler failure propagates before the dedup row and handler writes through the inbox's `TContext` are saved, allowing transport redelivery. Resolving no handler is also a configuration failure rather than a successful no-op: the EF dispatcher throws without committing its staged dedup row. Stage writes for the dispatcher to commit; do not call `SaveChanges` inside a handler. External calls and writes through another context are outside that atomic boundary.
 
 Handlers must be safe to re-run because crashes before outbox bookkeeping and transport redeliveries can repeat invocations. Inbox deduplication requires an adapter to call `IInboxDispatcher` with the stable message id; enabling `UseInbox` does not alter default local fan-out.
 
@@ -1166,6 +1166,8 @@ Task<InboxDispatchOutcome> DispatchAsync(IntegrationEnvelope envelope, Cancellat
 ```
 
 A transport adapter — a broker consumer or the in-process path — builds an `IntegrationEnvelope` and calls `DispatchAsync`. The dispatcher deduplicates on `(ConsumerId, MessageId)` so the integration-event handlers' side effects commit **effectively once**, atomically with the dedup record.
+
+A new message with no registered handler is not durably accounted for: the shipped dispatcher throws before committing its dedup row so redelivery can succeed after configuration is corrected. Use an explicit no-op handler when acknowledgment without local work is intentional.
 
 | `InboxDispatchOutcome` | Meaning |
 |---|---|

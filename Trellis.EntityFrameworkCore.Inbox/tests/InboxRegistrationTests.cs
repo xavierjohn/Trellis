@@ -33,6 +33,44 @@ public sealed class InboxRegistrationTests
     }
 
     [Fact]
+    public void AddTrellisInbox_for_a_different_context_throws_instead_of_silently_retaining_the_first()
+    {
+        var services = new ServiceCollection();
+        services.AddTrellisInbox<InboxRegistrationDbContext>(o => o.ConsumerId = "first");
+
+        var act = () => services.AddTrellisInbox<SecondInboxRegistrationDbContext>(o => o.ConsumerId = "second");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*different DbContext*");
+        services.BuildServiceProvider().GetRequiredService<InboxOptions>()
+            .ConsumerId.Should().Be("first", "the rejected registration must not alter the active inbox");
+    }
+
+    [Fact]
+    public void AddTrellisInbox_rejects_a_pre_registered_custom_store()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<IInboxStore, IndependentInboxStore>();
+
+        var act = () => services.AddTrellisInbox<InboxRegistrationDbContext>(o => o.ConsumerId = "billing");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*IInboxStore*custom dispatcher*");
+    }
+
+    [Fact]
+    public void AddTrellisInbox_rejects_a_custom_store_added_between_repeated_calls()
+    {
+        var services = new ServiceCollection();
+        services.AddTrellisInbox<InboxRegistrationDbContext>(o => o.ConsumerId = "first");
+        services.AddScoped<IInboxStore, IndependentInboxStore>();
+
+        var act = () => services.AddTrellisInbox<InboxRegistrationDbContext>(o => o.ConsumerId = "second");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*IInboxStore*custom dispatcher*");
+        services.BuildServiceProvider().GetRequiredService<InboxOptions>()
+            .ConsumerId.Should().Be("first", "the rejected registration must not alter the active inbox");
+    }
+
+    [Fact]
     public void AddTrellisInbox_validates_the_accumulated_options()
     {
         var services = new ServiceCollection();
@@ -119,5 +157,8 @@ public sealed class InboxRegistrationTests
     }
 
     private sealed class InboxRegistrationDbContext(DbContextOptions<InboxRegistrationDbContext> options)
+        : DbContext(options);
+
+    private sealed class SecondInboxRegistrationDbContext(DbContextOptions<SecondInboxRegistrationDbContext> options)
         : DbContext(options);
 }

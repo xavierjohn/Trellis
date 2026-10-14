@@ -36,11 +36,12 @@ Your transport adapter passes each received event to `IInboxDispatcher.DispatchA
 - Commits the deduplication row and handler writes atomically in one `DbContext`.
 - Returns `Processed` or `SkippedDuplicate` so transports can settle both outcomes.
 - Propagates handler failures so the transaction rolls back and the transport redelivers.
+- Rejects new messages with no registered handler without committing their dedup row.
 - Restores inbound business correlation and W3C trace context during handlers and their atomic commit.
 - Uses a composite `(ConsumerId, MessageId)` key as the concurrency guard.
 - Supports anti-join filtering and optional pull-consumer checkpoints.
 
-Keep `ConsumerId` stable across deployments and carry the producer's outbox row ID unchanged as `MessageId`. External calls are outside the inbox transaction and require their own idempotency.
+Keep `ConsumerId` stable across deployments and carry the producer's outbox row ID unchanged as `MessageId`. External calls are outside the inbox transaction and require their own idempotency. The built-in EF dispatcher requires its matching EF store; pair a custom `IInboxStore` with a custom dispatcher that owns the same unit of work.
 
 ## Operations
 

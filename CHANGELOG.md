@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - inbox and outbox fail-safe delivery
+
+The EF inbox now treats a missing integration-event handler as a configuration
+failure without recording the message, so transport redelivery can succeed after
+registration is corrected. Its registration rejects mixed `DbContext` types and
+incompatible store overrides on every call, while the dispatcher retains a runtime
+guard for overrides added afterward. Consumer IDs longer than the persisted
+256-character limit now fail consistently in inbox and checkpoint operations.
+
+The outbox relay now records publisher-internal cancellation as a failed attempt
+with normal retry and backoff while preserving immediate propagation of actual relay
+shutdown. Unsupported polling intervals fail during registration using the same
+whole-millisecond boundary as the underlying .NET timer.
+
 ### Changed - published package compatibility baseline
 
 All 23 packable packages now validate against the published `3.0.0-alpha.574`

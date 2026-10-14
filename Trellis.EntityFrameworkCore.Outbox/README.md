@@ -71,7 +71,7 @@ public sealed class OrderPlacedTranslator(
 
 **Domain rows** use reporting dispatch: failed domain handlers are retried while saved completed-handler progress is skipped. **Integration rows** have one publisher handoff, not per-consumer retry progress. The default in-process publisher is best-effort: ordinary consumer failures are logged and swallowed, so a new row is processed with `Attempts == 0` and no relay `LastError`; later drains do not retry it.
 
-A broker adapter must await publication acceptance and propagate publication failures. An exposed non-cancellation failure keeps the row pending, increments its persisted failure count, retains the error, and schedules retry under the same message id. Broker acceptance is not downstream consumer success. Transactional consumption requires an adapter to call the non-swallowing inbox and expose failures for transport redelivery; registering an inbox does not reroute default local publication.
+A broker adapter must await publication acceptance and propagate publication failures. An exposed failure keeps the row pending, increments its persisted failure count, retains the error, and schedules retry under the same message id. `OperationCanceledException` aborts the drain only when the relay token is canceled; an internal publisher timeout is recorded like any other failure. Broker acceptance is not downstream consumer success. Transactional consumption requires an adapter to call the non-swallowing inbox and expose failures for transport redelivery; registering an inbox does not reroute default local publication.
 
 ## Important Setup
 

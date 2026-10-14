@@ -21,6 +21,10 @@ public static class InboxServiceCollectionExtensions
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Inbox configuration; <see cref="InboxOptions.ConsumerId"/> is required.</param>
     /// <returns>The same service collection for chaining.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a different inbox context or an incompatible <see cref="IInboxStore"/> is registered,
+    /// or when the resulting options are invalid.
+    /// </exception>
     public static IServiceCollection AddTrellisInbox<TContext>(
         this IServiceCollection services,
         Action<InboxOptions> configure)
@@ -28,6 +32,26 @@ public static class InboxServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
+
+        var registration = services
+            .Where(d => d.ServiceType == typeof(InboxRegistration) && !d.IsKeyedService)
+            .Select(d => d.ImplementationInstance)
+            .OfType<InboxRegistration>()
+            .LastOrDefault();
+        if (registration is not null && registration.ContextType != typeof(TContext))
+            throw new InvalidOperationException(
+                $"AddTrellisInbox is already registered for DbContext '{registration.ContextType.Name}' " +
+                $"and cannot also register the different DbContext '{typeof(TContext).Name}'. " +
+                "Only one inbox is supported per service collection.");
+
+        var storeDescriptor = services.LastOrDefault(
+            d => d.ServiceType == typeof(IInboxStore) && !d.IsKeyedService);
+        if (storeDescriptor is not null
+            && storeDescriptor.ImplementationType != typeof(EfInboxStore<TContext>))
+            throw new InvalidOperationException(
+                "IInboxStore is already registered. The built-in EF inbox dispatcher requires its own " +
+                "store so the dedup record and handler writes share one unit of work. Pair a custom " +
+                "IInboxStore with a custom dispatcher instead of calling AddTrellisInbox.");
 
         // Configure and validate a copy so a failed Validate() cannot leave the container holding a
         // half-applied options instance; the new state is committed only after it is known good.
@@ -55,6 +79,8 @@ public static class InboxServiceCollectionExtensions
         else
             services[existingIndex] = ServiceDescriptor.Singleton(options);
 
+        if (registration is null)
+            services.AddSingleton(new InboxRegistration(typeof(TContext)));
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<IInboxStore, EfInboxStore<TContext>>();
         services.TryAddSingleton<IInboxDispatcher, InboxDispatcher<TContext>>();
@@ -79,6 +105,8 @@ public static class InboxServiceCollectionExtensions
 
         return -1;
     }
+
+    private sealed record InboxRegistration(Type ContextType);
 }
 
 /// <summary>

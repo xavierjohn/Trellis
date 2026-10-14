@@ -48,6 +48,46 @@ public sealed class OutboxRelayBackoffTests
     }
 
     [Fact]
+    public async Task Relay_records_a_publisher_cancellation_when_the_relay_token_is_not_cancelled()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var time = new FakeTimeProvider(Start);
+        await using var provider = BuildPublisherProvider<InternallyCancelledPublisher>(connection, time);
+        await SeedIntegrationAsync(provider, ct);
+
+        (await Relay(provider).DrainAsync(ct)).Should().Be(1);
+
+        var row = await SingleRowAsync(provider, ct);
+        row.Attempts.Should().Be(1);
+        row.LastError.Should().Be("publisher timeout");
+        row.LockedUntil.Should().Be(Start.UtcDateTime.AddSeconds(30));
+    }
+
+    [Fact]
+    public async Task Relay_propagates_publisher_cancellation_when_the_relay_token_is_cancelled()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+        using var relayCancellation = new CancellationTokenSource();
+
+        var time = new FakeTimeProvider(Start);
+        await using var provider = BuildPublisherProvider<RelayCancellingPublisher>(
+            connection, time, services => services.AddSingleton(relayCancellation));
+        await SeedIntegrationAsync(provider, ct);
+
+        var act = async () => await Relay(provider).DrainAsync(relayCancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        var row = await SingleRowAsync(provider, ct);
+        row.Attempts.Should().Be(0, "relay shutdown is not a delivery failure");
+        row.ProcessedAt.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Relay_grows_the_backoff_exponentially_and_caps_it()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -296,6 +336,47 @@ public sealed class OutboxRelayBackoffTests
         return services.BuildServiceProvider();
     }
 
+    private static ServiceProvider BuildPublisherProvider<TPublisher>(
+        SqliteConnection connection,
+        FakeTimeProvider time,
+        Action<IServiceCollection>? configureServices = null)
+        where TPublisher : class, IIntegrationEventPublisher
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<TimeProvider>(time);
+        services.AddDbContext<OutboxTestDbContext>(o => o
+            .UseSqlite(connection)
+            .AddTrellisInterceptors()
+            .AddTrellisOutboxInterceptor());
+        services.AddDomainEventDispatch();
+        configureServices?.Invoke(services);
+        services.AddScoped<IIntegrationEventPublisher, TPublisher>();
+        services.AddTrellisOutbox<OutboxTestDbContext>(o =>
+        {
+            o.RetryBackoff = TimeSpan.FromSeconds(30);
+            o.RetryBackoffJitter = 0;
+        });
+        return services.BuildServiceProvider();
+    }
+
+    private static async Task SeedIntegrationAsync(IServiceProvider provider, CancellationToken ct)
+    {
+        await using var scope = provider.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+        await context.Database.EnsureCreatedAsync(ct);
+        var integrationEvent = new ThingCreatedIntegrationEvent(
+            Guid.CreateVersion7(), "cancelled-publish", DateTimeOffset.UnixEpoch);
+        context.Set<OutboxMessage>().Add(OutboxMessage.Create(
+            Guid.CreateVersion7(),
+            integrationEvent.OccurredAt,
+            integrationEvent.GetType().AssemblyQualifiedName!,
+            System.Text.Json.JsonSerializer.Serialize(
+                integrationEvent, integrationEvent.GetType(), OutboxEventSerialization.Options),
+            OutboxMessageKind.Integration));
+        await context.SaveChangesAsync(ct);
+    }
+
     private static async Task SeedPoisonAsync(IServiceProvider provider, CancellationToken ct, int count = 1)
     {
         await using var scope = provider.CreateAsyncScope();
@@ -354,5 +435,21 @@ internal sealed class StealAndTranslateHandler(IIntegrationEventCollector collec
             await context.Set<OutboxMessage>()
                 .Where(m => m.ProcessedAt == null && m.Payload.Contains("steal-me"))
                 .ExecuteUpdateAsync(s => s.SetProperty(m => m.LockedBy, ThiefToken), cancellationToken);
+    }
+}
+
+internal sealed class InternallyCancelledPublisher : IIntegrationEventPublisher
+{
+    public ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken) =>
+        throw new OperationCanceledException("publisher timeout");
+}
+
+internal sealed class RelayCancellingPublisher(CancellationTokenSource cancellation) : IIntegrationEventPublisher
+{
+    public ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)
+    {
+        cancellation.Cancel();
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.CompletedTask;
     }
 }
