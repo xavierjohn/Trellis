@@ -5,7 +5,11 @@
 /// </summary>
 public sealed class OutboxOptions
 {
-    /// <summary>How long the relay waits before polling again when the outbox is empty. Default: 5 seconds. Must be greater than zero.</summary>
+    /// <summary>
+    /// How long the relay waits before polling again when the outbox is empty. Default: 5 seconds. Must be
+    /// greater than zero and have a truncated whole-millisecond value no greater than
+    /// <c>uint.MaxValue - 1</c>, matching the timer-supported range.
+    /// </summary>
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>Maximum messages drained per poll. Default: 100. Must be greater than zero.</summary>
@@ -75,8 +79,10 @@ public sealed class OutboxOptions
     /// </summary>
     internal void Validate()
     {
-        if (PollInterval <= TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(PollInterval), PollInterval, "OutboxOptions.PollInterval must be greater than zero.");
+        if (PollInterval <= TimeSpan.Zero || (long)PollInterval.TotalMilliseconds > uint.MaxValue - 1)
+            throw new ArgumentOutOfRangeException(
+                nameof(PollInterval), PollInterval,
+                $"OutboxOptions.PollInterval must be greater than zero and have a truncated whole-millisecond value no greater than {uint.MaxValue - 1}.");
         if (BatchSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(BatchSize), BatchSize, "OutboxOptions.BatchSize must be greater than zero.");
         if (MaxAttempts <= 0)

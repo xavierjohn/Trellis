@@ -22,6 +22,7 @@ internal sealed class EfInboxStore<TContext> : IInboxStore
     /// <inheritdoc />
     public async Task<bool> TryRecordAsync(string consumerId, InboxRecord record, CancellationToken cancellationToken)
     {
+        InboxConsumerId.Validate(consumerId);
         ArgumentNullException.ThrowIfNull(record);
 
         var alreadyProcessed = await _context.Set<InboxMessage>()
@@ -41,7 +42,7 @@ internal sealed class EfInboxStore<TContext> : IInboxStore
     public async Task<IReadOnlyList<Guid>> FilterUnprocessedAsync(
         string consumerId, IReadOnlyCollection<Guid> messageIds, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(consumerId);
+        InboxConsumerId.Validate(consumerId);
         ArgumentNullException.ThrowIfNull(messageIds);
         if (messageIds.Count == 0)
             return [];

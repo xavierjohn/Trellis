@@ -32,7 +32,9 @@ using Trellis.Mediator;
 /// returns normally, not when every downstream consumer succeeds. The default in-process publisher
 /// logs and swallows ordinary consumer failures, so the relay records no failed attempt and cannot
 /// retry those consumers. A broker adapter must await publication acceptance and propagate publication
-/// failures to keep the row retryable; acceptance is not proof of downstream processing.
+/// failures to keep the row retryable; acceptance is not proof of downstream processing. An
+/// <see cref="OperationCanceledException"/> aborts the drain only when the relay token is canceled;
+/// publisher-internal cancellation is recorded as an ordinary failed attempt.
 /// </para>
 /// <para>
 /// Persisted message failures retry up to
@@ -240,7 +242,11 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
 
                 message.MarkProcessed(_timeProvider.GetUtcNow());
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
             {
                 RecordFailure(message, ex, ref failures);
             }

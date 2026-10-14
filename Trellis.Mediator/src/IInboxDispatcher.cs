@@ -14,6 +14,11 @@ public interface IInboxDispatcher
     /// <c>(ConsumerId, MessageId)</c> pair was already processed — in which case it commits nothing. The
     /// handlers' side effects and the dedup record commit atomically.
     /// </summary>
+    /// <remarks>
+    /// A new message with no registered handler is a configuration failure, not successful processing:
+    /// implementations throw without committing a dedup record so the transport can redeliver after the
+    /// registration is corrected.
+    /// </remarks>
     /// <param name="envelope">The message envelope to dispatch.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>

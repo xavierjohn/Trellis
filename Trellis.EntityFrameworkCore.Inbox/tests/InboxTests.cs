@@ -75,6 +75,73 @@ public sealed class InboxTests
     }
 
     [Fact]
+    public async Task Dispatch_without_a_registered_handler_throws_without_recording_the_message()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProviderWithoutHandlers(connection, "billing");
+        await EnsureCreatedAsync(provider, ct);
+        var envelope = Envelope();
+
+        var act = async () => await provider.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*no registered*handler*");
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<InboxTestDbContext>();
+            (await db.Set<InboxMessage>().CountAsync(ct)).Should().Be(0, "an unhandled message must remain eligible for redelivery");
+        }
+
+        await using var configuredProvider = BuildProvider(connection, "billing");
+        (await configuredProvider.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct))
+            .Should().Be(InboxDispatchOutcome.Processed, "redelivery succeeds after the missing handler is registered");
+    }
+
+    [Fact]
+    public async Task Dispatch_duplicate_skips_even_when_the_original_handler_is_no_longer_registered()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+        var envelope = Envelope();
+
+        await using (var provider = BuildProvider(connection, "billing"))
+        {
+            await EnsureCreatedAsync(provider, ct);
+            (await provider.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct))
+                .Should().Be(InboxDispatchOutcome.Processed);
+        }
+
+        await using var providerWithoutHandlers = BuildProviderWithoutHandlers(connection, "billing");
+        (await providerWithoutHandlers.GetRequiredService<IInboxDispatcher>().DispatchAsync(envelope, ct))
+            .Should().Be(InboxDispatchOutcome.SkippedDuplicate);
+    }
+
+    [Fact]
+    public async Task Dispatch_rejects_an_inbox_store_override_that_cannot_share_its_EF_unit_of_work()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<InboxTestDbContext>(o => o.UseSqlite(connection));
+        services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, ReceiptHandler>();
+        services.AddTrellisInbox<InboxTestDbContext>(o => o.ConsumerId = "billing");
+        services.AddScoped<IInboxStore, IndependentInboxStore>();
+        await using var provider = services.BuildServiceProvider();
+        await EnsureCreatedAsync(provider, ct);
+
+        var act = async () => await provider.GetRequiredService<IInboxDispatcher>().DispatchAsync(Envelope(), ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*same unit of work*IInboxStore*");
+    }
+
+    [Fact]
     public async Task A_failed_message_is_reprocessed_on_redelivery()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -273,6 +340,46 @@ public sealed class InboxTests
         var act = async () => await store.FilterUnprocessedAsync(" ", new[] { Guid.CreateVersion7() }, ct);
 
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task TryRecordAsync_requires_a_consumerId()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection, "billing");
+        await EnsureCreatedAsync(provider, ct);
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var record = new InboxRecord(Guid.CreateVersion7(), "event", DateTimeOffset.UnixEpoch);
+        var act = async () => await store.TryRecordAsync(" ", record, ct);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Inbox_store_rejects_a_consumerId_longer_than_the_key_column()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync(ct);
+
+        await using var provider = BuildProvider(connection, "billing");
+        await EnsureCreatedAsync(provider, ct);
+
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var tooLong = new string('x', InboxOptions.MaxConsumerIdLength + 1);
+        var record = new InboxRecord(Guid.CreateVersion7(), "event", DateTimeOffset.UnixEpoch);
+
+        var recordAct = async () => await store.TryRecordAsync(tooLong, record, ct);
+        var filterAct = async () => await store.FilterUnprocessedAsync(tooLong, [record.MessageId], ct);
+
+        await recordAct.Should().ThrowAsync<ArgumentException>().WithMessage($"*{InboxOptions.MaxConsumerIdLength}*");
+        await filterAct.Should().ThrowAsync<ArgumentException>().WithMessage($"*{InboxOptions.MaxConsumerIdLength}*");
     }
 
     [Fact]
@@ -521,6 +628,15 @@ public sealed class InboxTests
         });
         return services.BuildServiceProvider();
     }
+
+    private static ServiceProvider BuildProviderWithoutHandlers(SqliteConnection connection, string consumerId)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<InboxTestDbContext>(o => o.UseSqlite(connection));
+        services.AddTrellisInbox<InboxTestDbContext>(o => o.ConsumerId = consumerId);
+        return services.BuildServiceProvider();
+    }
 }
 
 // ── Test model ──────────────────────────────────────────────────────────────────
@@ -556,6 +672,16 @@ internal sealed class ThrowingReceiptHandler(InboxTestDbContext context) : IInte
 internal sealed class FailFirstGate
 {
     public int Calls;
+}
+
+internal sealed class IndependentInboxStore : IInboxStore
+{
+    public Task<bool> TryRecordAsync(string consumerId, InboxRecord record, CancellationToken cancellationToken) =>
+        Task.FromResult(true);
+
+    public Task<IReadOnlyList<Guid>> FilterUnprocessedAsync(
+        string consumerId, IReadOnlyCollection<Guid> messageIds, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Guid>>([.. messageIds]);
 }
 
 internal sealed record ProcessingSnapshot(

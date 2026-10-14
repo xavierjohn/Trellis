@@ -238,6 +238,29 @@ public sealed class OutboxRegistrationTests
     }
 
     [Fact]
+    public void AddTrellisOutbox_rejects_a_poll_interval_larger_than_the_timer_supports()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddTrellisOutbox<OutboxTestDbContext>(
+            o => o.PollInterval = TimeSpan.FromMilliseconds(uint.MaxValue));
+
+        act.Should().Throw<ArgumentOutOfRangeException>().WithMessage("*PollInterval*");
+    }
+
+    [Fact]
+    public void AddTrellisOutbox_accepts_a_poll_interval_whose_truncated_value_is_the_timer_maximum()
+    {
+        var services = new ServiceCollection();
+        var boundary = TimeSpan.FromMilliseconds(uint.MaxValue - 0.5);
+
+        services.AddTrellisOutbox<OutboxTestDbContext>(o => o.PollInterval = boundary);
+
+        services.BuildServiceProvider().GetRequiredService<OutboxOptions>()
+            .PollInterval.Should().Be(boundary);
+    }
+
+    [Fact]
     public void AddTrellisOutbox_failed_second_configure_leaves_earlier_options_intact()
     {
         var services = new ServiceCollection();

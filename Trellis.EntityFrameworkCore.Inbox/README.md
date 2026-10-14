@@ -36,6 +36,7 @@ Your transport adapter passes each received event to `IInboxDispatcher.DispatchA
 - Commits the deduplication row and handler writes atomically in one `DbContext`.
 - Returns `Processed` or `SkippedDuplicate` so transports can settle both outcomes.
 - Propagates handler failures so the transaction rolls back and the transport redelivers.
+- Rejects new messages with no registered handler without committing their dedup row.
 - Restores inbound business correlation and starts a consumer activity from valid W3C trace context while handlers and their atomic commit run.
 - Uses a composite `(ConsumerId, MessageId)` key as the concurrency guard.
 - Exposes a store-neutral `IInboxStore` contract and an EF Core implementation.
@@ -46,6 +47,7 @@ Your transport adapter passes each received event to `IInboxDispatcher.DispatchA
 - Keep `ConsumerId` stable across deployments.
 - Carry the producer's outbox row ID unchanged as `MessageId`.
 - The guarantee covers writes through the inbox's `DbContext`; external calls need their own idempotency.
+- The built-in EF dispatcher requires its matching EF store. Pair a custom `IInboxStore` with a custom dispatcher that owns the same unit of work.
 - The checkpoint is a performance cursor, not a replacement for inbox deduplication.
 - Map the table with `modelBuilder.AddTrellisInbox()` and register a transport adapter that invokes the dispatcher.
 

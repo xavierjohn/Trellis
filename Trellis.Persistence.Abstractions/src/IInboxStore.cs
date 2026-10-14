@@ -4,9 +4,10 @@
 /// Store seam for inbox deduplication — a service-provider interface (SPI) for the dedup record. The shipped
 /// EF Core implementation records that a <c>(ConsumerId, MessageId)</c> pair has been processed by enrolling
 /// the row in the consumer's unit of work, so it commits in the dispatcher's single transaction together with
-/// the handler side effects (or not at all). An alternative store may replace it, but it can preserve that
-/// all-or-nothing atomicity only by enrolling the dedup record in the same unit of work the dispatcher
-/// commits; a store on a separate connection/transaction reduces the guarantee to best-effort.
+/// the handler side effects (or not at all). An alternative store can preserve that all-or-nothing atomicity
+/// only when paired with a dispatcher that commits the store's dedup record and handler effects in one unit
+/// of work; a store on a separate connection/transaction reduces the guarantee to best-effort. The shipped
+/// EF dispatcher therefore requires its matching EF store rather than accepting an arbitrary replacement.
 /// </summary>
 public interface IInboxStore
 {

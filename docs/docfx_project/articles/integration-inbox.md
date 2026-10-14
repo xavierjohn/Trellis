@@ -93,7 +93,7 @@ public sealed class OrdersBrokerConsumer(IInboxDispatcher inbox)
 }
 ```
 
-Trellis ships an optional [Azure Service Bus adapter](../api_reference/trellis-api-messaging-azureservicebus.md#wire-format). For other transports the inbox gives you the `IInboxDispatcher` seam to call and the `IInboxStore` seam to re-back with a non-EF store; the few lines that read your broker are yours.
+Trellis ships an optional [Azure Service Bus adapter](../api_reference/trellis-api-messaging-azureservicebus.md#wire-format). For other transports the inbox gives you the `IInboxDispatcher` seam to call; the few lines that read your broker are yours. A non-EF adapter implements `IInboxStore` together with a coordinated dispatcher that commits the receipt and handler effects in one unit of work—the shipped EF dispatcher requires its matching EF store.
 
 > Prefer raw DI over the builder? Call `services.AddTrellisInbox<AppDbContext>(o => o.ConsumerId = "orders-service")` directly instead of `.UseInbox<AppDbContext>()`. The table wiring (step 1) is identical; the `UseInbox` slot simply also fails fast if you configure the inbox twice.
 
