@@ -7,17 +7,19 @@ using Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// EF Core options extension that marks a <see cref="Microsoft.EntityFrameworkCore.DbContextOptionsBuilder"/>
 /// as already carrying the outbox capture interceptor, so repeated
-/// <c>AddTrellisOutboxInterceptor</c> calls are idempotent. Without this guard a second
-/// registration of the same interceptor instance would make EF invoke it twice per
+/// <c>AddTrellisOutboxInterceptor</c> calls with the same clock are idempotent. Without this guard a second
+/// registration would make EF invoke the interceptor twice per
 /// <c>SaveChanges</c>, capturing every domain event into two <see cref="OutboxMessage"/> rows.
 /// </summary>
 /// <remarks>
-/// The extension has no runtime behavior beyond presence tracking, mirroring
+/// The extension has no runtime behavior beyond presence and clock tracking, mirroring
 /// <see cref="TrellisInterceptorsMarkerExtension"/>.
 /// </remarks>
-internal sealed class OutboxInterceptorMarkerExtension : IDbContextOptionsExtension
+internal sealed class OutboxInterceptorMarkerExtension(TimeProvider timeProvider) : IDbContextOptionsExtension
 {
     private DbContextOptionsExtensionInfo? _info;
+
+    public TimeProvider TimeProvider { get; } = timeProvider;
 
     public DbContextOptionsExtensionInfo Info => _info ??= new ExtensionInfo(this);
 

@@ -93,8 +93,6 @@ public static class OutboxServiceCollectionExtensions
 /// </summary>
 public static class OutboxModelBuilderExtensions
 {
-    private static readonly OutboxCaptureInterceptor s_captureInterceptor = new();
-
     /// <summary>
     /// Maps the <see cref="OutboxMessage"/> table onto the model. Call from <c>OnModelCreating</c>.
     /// </summary>
@@ -114,10 +112,23 @@ public static class OutboxModelBuilderExtensions
     /// <param name="optionsBuilder">The options builder.</param>
     /// <returns>The same options builder for chaining.</returns>
     public static DbContextOptionsBuilder AddTrellisOutboxInterceptor(this DbContextOptionsBuilder optionsBuilder)
+        => AddTrellisOutboxInterceptor(optionsBuilder, TimeProvider.System);
+
+    /// <summary>
+    /// Adds the outbox capture interceptor with the clock used to record each domain row's durable
+    /// capture instant. Repeated calls on one builder must supply the same clock instance.
+    /// </summary>
+    /// <param name="optionsBuilder">The options builder.</param>
+    /// <param name="timeProvider">The UTC clock used for capture evidence.</param>
+    /// <returns>The same options builder for chaining.</returns>
+    public static DbContextOptionsBuilder AddTrellisOutboxInterceptor(
+        this DbContextOptionsBuilder optionsBuilder,
+        TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
-        if (TryMarkOutboxInterceptor(optionsBuilder))
-            optionsBuilder.AddInterceptors(s_captureInterceptor);
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        if (TryMarkOutboxInterceptor(optionsBuilder, timeProvider))
+            optionsBuilder.AddInterceptors(new OutboxCaptureInterceptor(timeProvider));
         return optionsBuilder;
     }
 
@@ -126,23 +137,40 @@ public static class OutboxModelBuilderExtensions
     public static DbContextOptionsBuilder<TContext> AddTrellisOutboxInterceptor<TContext>(
         this DbContextOptionsBuilder<TContext> optionsBuilder)
         where TContext : DbContext
+        => AddTrellisOutboxInterceptor(optionsBuilder, TimeProvider.System);
+
+    /// <inheritdoc cref="AddTrellisOutboxInterceptor(DbContextOptionsBuilder, TimeProvider)"/>
+    /// <typeparam name="TContext">The <see cref="DbContext"/> type.</typeparam>
+    public static DbContextOptionsBuilder<TContext> AddTrellisOutboxInterceptor<TContext>(
+        this DbContextOptionsBuilder<TContext> optionsBuilder,
+        TimeProvider timeProvider)
+        where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(optionsBuilder);
-        if (TryMarkOutboxInterceptor(optionsBuilder))
-            optionsBuilder.AddInterceptors(s_captureInterceptor);
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        if (TryMarkOutboxInterceptor(optionsBuilder, timeProvider))
+            optionsBuilder.AddInterceptors(new OutboxCaptureInterceptor(timeProvider));
         return optionsBuilder;
     }
 
     // Records a marker on the builder the first time the interceptor is added so repeat calls are
-    // idempotent. EF does not de-duplicate the same interceptor instance, and the interceptor only
-    // clears aggregate events in SavedChanges, so a double registration would capture each event twice.
-    private static bool TryMarkOutboxInterceptor(DbContextOptionsBuilder optionsBuilder)
+    // idempotent. EF does not de-duplicate interceptors, and the interceptor only clears aggregate
+    // events in SavedChanges, so a double registration would capture each event twice.
+    private static bool TryMarkOutboxInterceptor(
+        DbContextOptionsBuilder optionsBuilder,
+        TimeProvider timeProvider)
     {
-        if (optionsBuilder.Options.FindExtension<OutboxInterceptorMarkerExtension>() is not null)
+        if (optionsBuilder.Options.FindExtension<OutboxInterceptorMarkerExtension>() is { } marker)
+        {
+            if (!ReferenceEquals(marker.TimeProvider, timeProvider))
+                throw new InvalidOperationException(
+                    "AddTrellisOutboxInterceptor was already called with a different TimeProvider. " +
+                    "Repeated calls on the same options builder must use the same clock instance.");
             return false;
+        }
 
         ((IDbContextOptionsBuilderInfrastructure)optionsBuilder)
-            .AddOrUpdateExtension(new OutboxInterceptorMarkerExtension());
+            .AddOrUpdateExtension(new OutboxInterceptorMarkerExtension(timeProvider));
         return true;
     }
 }

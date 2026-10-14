@@ -402,7 +402,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             .ConfigureAwait(false);
     }
 
-    private static OutboxMessage CreateIntegrationRow(IIntegrationEvent integrationEvent, OutboxMessage source)
+    private OutboxMessage CreateIntegrationRow(IIntegrationEvent integrationEvent, OutboxMessage source)
     {
         var type = integrationEvent.GetType();
         var eventType = type.AssemblyQualifiedName
@@ -419,7 +419,8 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             source.Id,
             source.CorrelationId,
             source.TraceParent,
-            source.TraceState);
+            source.TraceState,
+            _timeProvider.GetUtcNow().UtcDateTime);
     }
 
     private static T Deserialize<T>(OutboxMessage message)

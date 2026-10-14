@@ -3284,6 +3284,9 @@ Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.G
 - `Maybe<T>` event members are supported — a present value serializes as the underlying value, an absent one as JSON `null`. Members that depend on a caller-registered (non-attribute) `JsonSerializerOptions` converter still need a nullable transport, since the outbox serializer only honors `[JsonConverter]`-attributed types.
 - This is an outbox, not an event store: rows are a transient delivery buffer and may be pruned once `ProcessedAt` is set.
 - Capture persists the current W3C trace context with each domain row; the alpha outbox schema includes nullable lineage and trace columns. See the outbox reference for the column names.
+- Every new domain row also receives its own UTC `CapturedAt` from the interceptor's
+  `TimeProvider`. Add the nullable column/index migration before deploying the writer;
+  legacy nulls remain unknown and `OccurredAt` is never a queue-age substitute.
 
 See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#how-the-outbox-works) for the full contract, options, and operational guidance.
 
@@ -3291,8 +3294,10 @@ See [trellis-api-efcore-outbox.md](trellis-api-efcore-outbox.md#how-the-outbox-w
 select `OutboxReadinessOptions.CreateStagedOperationalProfile()` and add
 `.UseOutboxReadiness<AppDbContext>(profile)` alongside `.UseOutbox<AppDbContext>()`.
 The named `trellis-outbox` check reports bounded pending/parked rows, local relay
-responsiveness, and separately counted durable row completions. Capture age and
-consumer/source lag remain deferred, not observed healthy. The host owns endpoint
+responsiveness, and separately counted durable row completions. After the nullable
+`CapturedAt` migration and writer rollout, opt into the 2/10-minute reference age SLO
+with `profile with { CaptureAgeEnabled = true }`; legacy unknown pending rows degrade.
+Consumer/source lag remains disabled, not observed healthy. The host owns endpoint
 authorization and whether shared-store breaches gate traffic or only alert.
 See [outbox readiness](trellis-api-efcore-outbox.md#outbox-readiness).
 
@@ -3304,9 +3309,9 @@ from one configuration key or constant. Incidental local options are never resol
 compared, so a mismatch generates no warning.
 
 Metadata-only reports `relayMonitoring = "disabled"` and omits relay observations.
-It cannot detect a dead worker on a low-volume queue: capture age is deferred, so with
-healthy database evidence and the reference thresholds, worker inactivity alone raises
-no signal until pending depth reaches 1,000 or a row is parked. Probe faults and
+With capture age disabled, worker inactivity alone raises no signal until pending depth
+reaches 1,000 or a row is parked. Enabling capture age can report an aging row but still
+does not prove the remote worker is dead; it may be alive and retrying. Probe faults and
 stale/invalid evidence still report failures independently.
 Generic Host lifecycle startup validates required local-relay configuration and, when
 the container supports registration probing, context registration without constructing
@@ -3351,6 +3356,9 @@ services.AddTrellis(trellis => trellis
 **Semantics to remember.**
 
 - The integration event is enrolled **only after** its source domain event is durably committed and dispatched by the relay — never for state that rolled back. The relay stages drained collector events as `OutboxMessageKind.Integration` rows atomically with the source row's saved handler progress (or overall completion), then publishes them on a later drain. There is no per-handler collector rollback: an event added by a translator that subsequently throws can still be enrolled, as can output from a successful translator whose sibling fails. The source row can remain pending while those integration rows are already eligible for publication; integration publication is not proof that the translator or every local handler completed.
+- Each translated integration row receives its own UTC `CapturedAt` when the relay stages
+  it. It does not inherit the source domain row's capture age; retries and replay preserve
+  each row's original evidence.
 - The default `IIntegrationEventPublisher` is **best-effort local notification**: it fans out to `IIntegrationEventHandler<T>`, logs and swallows ordinary consumer failures, and returns normally. The relay then processes the integration row without a failed attempt (`Attempts == 0` on a new row) or a consumer retry. This is suitable for modular monoliths and tests only when that tradeoff is acceptable.
 - A **broker publisher** must await publication acceptance and propagate publication failures so the relay can retry the pending row under the same message id. Acceptance does not mean downstream consumer success. The default domain publisher's post-commit/no-retry rationale does not apply here: the integration relay owns retries, but sees only exposed failures.
 - **Transactional inbox consumption** is separate. An inbound adapter must call `IInboxDispatcher` with the stable message id and expose failures for transport redelivery. Handler writes through the inbox's context and the dedup row commit together; external calls do not. A new message with no registered integration-event handler throws without writing its dedup row, so correct the registration or use an explicit no-op handler. The built-in EF dispatcher requires its matching EF store; a custom store needs a coordinated custom dispatcher. Enabling `UseInbox` does not reroute the default local publisher through it.

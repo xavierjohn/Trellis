@@ -52,6 +52,12 @@ public sealed class OutboxMessage
     /// <summary>When the event occurred, copied from the event's <c>OccurredAt</c>.</summary>
     public DateTimeOffset OccurredAt { get; private set; }
 
+    /// <summary>
+    /// The UTC instant when this row was first captured or staged; <c>null</c> for legacy rows
+    /// created before durable capture-age evidence was deployed.
+    /// </summary>
+    public DateTime? CapturedAt { get; private set; }
+
     /// <summary>The assembly-qualified name of the concrete event type, used to rehydrate the payload.</summary>
     public string EventType { get; private set; }
 
@@ -117,9 +123,10 @@ public sealed class OutboxMessage
     internal static OutboxMessage Create(
         Guid id, DateTimeOffset occurredAt, string eventType, string payload, OutboxMessageKind kind,
         string? messageSource = null, Guid? causationId = null, string? correlationId = null,
-        string? traceParent = null, string? traceState = null) =>
+        string? traceParent = null, string? traceState = null, DateTime? capturedAt = null) =>
         new(id, occurredAt, eventType, payload, kind)
         {
+            CapturedAt = capturedAt,
             MessageSource = messageSource,
             CausationId = causationId,
             CorrelationId = correlationId,

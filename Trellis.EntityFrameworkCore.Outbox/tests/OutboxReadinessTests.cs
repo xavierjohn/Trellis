@@ -28,6 +28,9 @@ public sealed partial class OutboxReadinessTests
 
         profile.PendingDegradedThreshold.Should().Be(1_000);
         profile.PendingUnhealthyThreshold.Should().Be(10_000);
+        profile.CaptureAgeEnabled.Should().BeFalse();
+        profile.CaptureAgeDegradedAfter.Should().Be(TimeSpan.FromMinutes(2));
+        profile.CaptureAgeUnhealthyAfter.Should().Be(TimeSpan.FromMinutes(10));
         profile.RelayDegradedAfter.Should().Be(TimeSpan.FromMinutes(1));
         profile.RelayUnhealthyAfter.Should().Be(TimeSpan.FromMinutes(5));
         profile.StartupGracePeriod.Should().Be(TimeSpan.FromSeconds(30));
@@ -40,6 +43,8 @@ public sealed partial class OutboxReadinessTests
     {
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { PendingDegradedThreshold = 0 },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { PendingUnhealthyThreshold = 1_000 },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with { CaptureAgeDegradedAfter = TimeSpan.Zero },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with { CaptureAgeUnhealthyAfter = TimeSpan.FromMinutes(2) },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { RelayDegradedAfter = TimeSpan.Zero },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { RelayUnhealthyAfter = TimeSpan.FromMinutes(1) },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { StartupGracePeriod = TimeSpan.FromSeconds(-1) },
@@ -207,7 +212,7 @@ public sealed partial class OutboxReadinessTests
         result.Data["pendingCount"].Should().Be(Math.Min(count, 10_000));
         result.Data["pendingCountIsLowerBound"].Should().Be(lowerBound);
         result.Data["parkedCount"].Should().Be(0);
-        result.Data["captureAge"].Should().Be("deferred");
+        result.Data["captureAge"].Should().Be("disabled");
         result.Data["consumerLag"].Should().Be("disabled");
         fixture.Probe.Commands.Should().HaveCount(2);
         fixture.Probe.Commands.Should().OnlyContain(c =>

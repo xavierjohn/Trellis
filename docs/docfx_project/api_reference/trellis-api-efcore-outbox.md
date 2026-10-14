@@ -6,7 +6,7 @@ version: v1
 last_verified: 2026-10-14
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when configuring transactional outbox delivery, retry/parking, or opt-in readiness; capture-age and consumer-lag signals remain deferred."
+agent_description: "Open when configuring transactional outbox delivery, retry/parking, durable capture age, or opt-in readiness; consumer lag remains deferred."
 ---
 # Trellis.EntityFrameworkCore.Outbox
 
@@ -23,7 +23,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - You need domain events to survive a crash between the commit and the in-pipeline dispatch (the gap a plain `UseDomainEvents()` pipeline leaves open).
 - You are wiring `AddTrellisOutbox`, `AddTrellisOutboxInterceptor`, or the `UseOutbox<TContext>()` builder slot.
 - You are reasoning about the outbox's delivery guarantee, retry/parking behavior, or event-serialization constraints.
-- You are enabling bounded outbox readiness or planning the deferred capture-age and consumer/source-lag stages.
+- You are enabling bounded outbox readiness or durable capture age, or planning the deferred consumer/source-lag stage.
 
 ## Patterns Index
 
@@ -37,7 +37,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 | Distinguish a throwing integration consumer from a throwing publisher | Default local consumer failures are swallowed and process the row; exposed publication failures keep it pending | [Delivery semantics](#delivery-semantics) |
 | Decide how to shape an event so it round-trips | Use attribute-driven value objects; `Maybe<T>` members are supported (present → value, absent → `null`) | [Serialization](#serialization) |
 | Publish a stable external contract instead of raw domain events | Translate a domain event into an `IIntegrationEvent` via `IIntegrationEventCollector`; the relay routes it to `IIntegrationEventPublisher` | [Integration events](#integration-events) |
-| Enable readiness without confusing worker responsiveness, delivery progress, and consumer lag | `AddTrellisOutboxReadiness<TContext>(profile)` or `UseOutboxReadiness<TContext>(profile)`; capture age and lag remain deferred | [Outbox readiness](#outbox-readiness), [Health-check requirements](#health-check-requirements) |
+| Enable readiness without confusing queue age, worker responsiveness, delivery progress, and consumer lag | `AddTrellisOutboxReadiness<TContext>(profile)` or `UseOutboxReadiness<TContext>(profile)`; durable capture age is an explicit profile opt-in and lag remains deferred | [Outbox readiness](#outbox-readiness), [Durable capture age and rollout](#durable-capture-age-and-rollout) |
 | Monitor outbox metadata in an API host whose relay runs in a separate worker | `OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)`; no relay monitoring or retry-limit fallback | [Split API/worker hosts](#split-apiworker-hosts) |
 
 ## Common traps
@@ -148,13 +148,22 @@ public static ModelBuilder AddTrellisOutbox(this ModelBuilder modelBuilder);
 public static DbContextOptionsBuilder AddTrellisOutboxInterceptor(
     this DbContextOptionsBuilder optionsBuilder);
 
+public static DbContextOptionsBuilder AddTrellisOutboxInterceptor(
+    this DbContextOptionsBuilder optionsBuilder,
+    TimeProvider timeProvider);
+
 public static DbContextOptionsBuilder<TContext> AddTrellisOutboxInterceptor<TContext>(
     this DbContextOptionsBuilder<TContext> optionsBuilder)
+    where TContext : DbContext;
+
+public static DbContextOptionsBuilder<TContext> AddTrellisOutboxInterceptor<TContext>(
+    this DbContextOptionsBuilder<TContext> optionsBuilder,
+    TimeProvider timeProvider)
     where TContext : DbContext;
 ```
 
 - `AddTrellisOutbox(ModelBuilder)` — applies `OutboxMessageConfiguration`, mapping the `TrellisOutboxMessages` table. Call from `OnModelCreating`.
-- `AddTrellisOutboxInterceptor(...)` — adds the shared, stateless `OutboxCaptureInterceptor`. The generic overload preserves the `DbContextOptionsBuilder<TContext>` fluent type so it chains after `AddTrellisInterceptors<TContext>()`. The interceptor is a singleton; registering it on multiple contexts is safe.
+- `AddTrellisOutboxInterceptor(...)` — adds the capture interceptor. The no-clock overload uses `TimeProvider.System`; the clock overload records deterministic UTC capture evidence and rejects a repeated call on the same builder with a different clock instance. Same-clock repeated calls are idempotent. The generic overload preserves the `DbContextOptionsBuilder<TContext>` fluent type so it chains after `AddTrellisInterceptors<TContext>()`.
 
 ## UseOutbox builder slot
 
@@ -176,6 +185,7 @@ A persisted event awaiting relay — one row per captured domain event or transl
 | `Id` | `Guid` | UUIDv7. Stable message identity for consumer-side idempotency / de-duplication. |
 | `Kind` | `OutboxMessageKind` | `Domain` (captured from an aggregate) or `Integration` (translated). Routes the relay to the correct publisher. Stored as a string column. |
 | `OccurredAt` | `DateTimeOffset` | Copied from the event's `OccurredAt`. |
+| `CapturedAt` | `DateTime?` | UTC instant when this row was first captured/staged. Nullable for rollout/legacy rows written before capture-aware writers were fully deployed; never inferred from `OccurredAt`. |
 | `EventType` | `string` | Assembly-qualified name of the concrete event type, used to rehydrate the payload. |
 | `Payload` | `string` | The JSON-serialized event. |
 | `MessageSource` | `string?` | Optional producing-service name from `IntegrationMessageContext.BeginCorrelation`. |
@@ -190,7 +200,7 @@ A persisted event awaiting relay — one row per captured domain event or transl
 | `LockedBy` | `Guid?` | Claim token of the relay drain that currently holds the row; `null` when unclaimed. |
 | `CompletedHandlers` | `IReadOnlyList<string>` | For domain rows, the identity of every handler that has already completed for this event (see `DomainEventDispatchReport.HandlerIdentity`). A retry skips them, so a successful handler is never re-run because a sibling failed. Deliberately **not** cleared by `ReplayAsync` — replaying means "finish the work that did not happen". Empty for integration rows. |
 
-The `OutboxMessageConfiguration` maps the table `TrellisOutboxMessages`, the `Sequence` primary key (`ValueGeneratedOnAdd`), a unique index on `Id`, the `Kind` discriminator (string, max length 32), a covering index on `{ ProcessedAt, LockedUntil, Sequence }` for the relay's claimable-rows scan, and an index on `LockedBy` for loading a drain's just-claimed batch.
+The `OutboxMessageConfiguration` maps the table `TrellisOutboxMessages`, the `Sequence` primary key (`ValueGeneratedOnAdd`), a unique index on `Id`, the `Kind` discriminator (string, max length 32), a covering index on `{ ProcessedAt, LockedUntil, Sequence }` for the relay's claimable-rows scan, `{ ProcessedAt, CapturedAt, Sequence }` for capture-age evidence, and an index on `LockedBy` for loading a drain's just-claimed batch.
 
 > **Schema migration.** Row-claiming added the nullable `LockedUntil` and `LockedBy` columns. An existing outbox table needs a migration to add them; both are nullable, so in-flight rows default to unclaimed and are picked up normally.
 
@@ -200,6 +210,11 @@ The `OutboxMessageConfiguration` maps the table `TrellisOutboxMessages`, the `Se
 > never synthesizing lineage from a relay's ambient activity. The relay starts activities
 > from valid persisted W3C context under the `Trellis.EntityFrameworkCore.Outbox` source; opt in with
 > `AddSource("Trellis.EntityFrameworkCore.Outbox")` on the application's tracer provider.
+
+> **Capture-age schema change.** Add nullable UTC `CapturedAt` plus the
+> `{ ProcessedAt, CapturedAt, Sequence }` index in an application-owned migration.
+> Existing rows deliberately remain null (unknown age). Do not backfill from `OccurredAt`,
+> UUIDv7, `Sequence`, `LockedUntil`, or migration time.
 
 `OutboxMessage` is an infrastructure record, not a domain aggregate. The rows are transient and may be pruned once `ProcessedAt` is set — deleting processed rows loses no source-of-truth state. This is an outbox, **not** an event store.
 
@@ -262,11 +277,11 @@ Replaying a dead-lettered row is race-free against a running relay because the r
 
 ## Outbox readiness
 
-**Stage one is implemented.** The named `trellis-outbox` .NET health check reports
-bounded queue metadata and explicitly selected local relay observations. `UseOutbox` and `AddTrellisOutbox`
-still do **not** enable health checks. There is no schema change, endpoint, liveness
-restart policy, or standalone public snapshot/query API; diagnostics are returned in
-`HealthCheckResult.Data`.
+**Stages one and two are implemented.** The named `trellis-outbox` .NET health check
+reports bounded queue metadata, optional durable capture age, and explicitly selected
+local relay observations. `UseOutbox` and `AddTrellisOutbox` still do **not** enable
+health checks. There is no endpoint, liveness restart policy, or standalone public
+snapshot/query API; diagnostics are returned in `HealthCheckResult.Data`.
 
 ### `OutboxReadinessServiceCollectionExtensions`
 
@@ -314,6 +329,17 @@ services.AddTrellis(trellis => trellis
     .UseOutboxReadiness<AppDbContext>(profile));
 ```
 
+Capture age is deliberately disabled in both factories so the schema can roll out first.
+After applying the nullable `CapturedAt` migration to every queried store, enable it in
+either local or metadata-only mode:
+
+```csharp
+var profile = OutboxReadinessOptions.CreateStagedOperationalProfile() with
+{
+    CaptureAgeEnabled = true,
+};
+```
+
 Use one fixed outbox store per composition. The context is resolved in a fresh background
 scope without the initiating caller's ambient execution context, matching the relay's
 storage scope. A request-local tenant/connection selector is not a cache partition;
@@ -341,10 +367,11 @@ factory, so such mismatches produce no warning.
 Metadata-only registers no relay observation store; an explicitly registered store is
 left intact and is not resolved or read by the health check.
 
-**Weaker guarantee:** metadata-only cannot detect a dead remote worker on a low-volume
-queue. Capture age is deferred: with healthy database evidence and the reference
-thresholds, worker inactivity alone raises no signal until pending depth reaches 1,000
-or a row is parked. Probe failures, stale evidence, and invalid clocks remain independent
+**Weaker guarantee:** metadata-only does not observe remote worker responsiveness.
+With capture age disabled, worker inactivity alone raises no signal until pending depth
+reaches 1,000 or a row is parked. With capture age enabled, an aging pending row can
+breach the queue-age SLO, but that is not proof the worker is dead: it can be alive and
+retrying correctly. Probe failures, stale evidence, and invalid clocks remain independent
 health conditions. `relayMonitoring = "disabled"` is configuration, not a healthy relay
 observation; a Healthy description says "Outbox metadata is healthy."
 
@@ -363,11 +390,14 @@ profile, including unused relay timing values in metadata-only mode, before addi
 | `RelayMonitoring` | `OutboxRelayMonitoring.LocalRelay` or `OutboxRelayMonitoring.Disabled` | Get-only mode chosen by the factory. Local mode reads the local options; disabled mode reads only the explicit worker retry limit. |
 | `WorkerMaxAttempts` | `null` in local mode; explicit positive `int?` in metadata-only | Get-only. Must equal the worker's `OutboxOptions.MaxAttempts`; local mode requires null and does not use it. Included in record equality and registration conflict detection. |
 | `PendingDegradedThreshold` | 1,000 | Positive, inclusive pending-depth degradation threshold. |
-| `PendingUnhealthyThreshold` | 10,000 | Greater than the degraded threshold; also the pending-count cap. |
+| `PendingUnhealthyThreshold` | 10,000 | Greater than the degraded threshold; also the pending and unknown-capture-age count cap. |
+| `CaptureAgeEnabled` | `false` | Explicit migration-first rollout switch. When false, no capture-age query or claim is made. Included in record equality and registration conflict detection. |
+| `CaptureAgeDegradedAfter` | 2 minutes | Positive, inclusive oldest-known capture-age degradation threshold. Validated even while disabled. |
+| `CaptureAgeUnhealthyAfter` | 10 minutes | Greater than the degraded age; inclusive oldest-known capture-age unhealthy threshold. Validated even while disabled. |
 | `RelayDegradedAfter` | 1 minute | Positive, inclusive gap since a positive local observation. |
 | `RelayUnhealthyAfter` | 5 minutes | Greater than the degraded gap; missing initial evidence uses relay/host startup without resetting at grace expiry. |
 | `StartupGracePeriod` | 30 seconds | Nonnegative and shorter than the degraded gap; changes the missing-evidence reason, never its Degraded status. |
-| `ProbeTimeout` | 2 seconds | Positive, within the .NET timer range; bounds the entire provider probe, including scope creation/disposal and both queries. |
+| `ProbeTimeout` | 2 seconds | Positive, within the .NET timer range; bounds the entire provider probe, including scope creation/disposal and every enabled query. |
 | `CacheDuration` | 10 seconds | Positive and at least the probe timeout; elapsed-time-based completed metadata cache. |
 | `EvidenceMaxAge` | 30 seconds | Strictly greater than cache duration plus probe timeout; stale enabled metadata degrades. Rejecting equality conservatively reserves a margin for evaluation latency and clock granularity. |
 
@@ -378,12 +408,13 @@ profile, including unused relay timing values in metadata-only mode, before addi
 | `LocalRelay` | Require and monitor the relay in this process; another instance cannot supply its evidence. |
 | `Disabled` | Evaluate metadata only; neither a local nor a remote relay is observed healthy. |
 
-Each pending count is a server-side count of at most `PendingUnhealthyThreshold`
-matching rows; reaching the cap is explicitly a lower bound, not an exact total.
-Parked presence is capped at one, also a lower bound when present. Neither probe
-materializes payloads or invokes maintenance/dispatch. The two metadata queries are
-sampled sequentially, not a promised atomic snapshot.
-Both original sample times are independently checked for stale or future-dated evidence.
+Each pending or unknown-age count is a server-side count of at most
+`PendingUnhealthyThreshold` matching rows; reaching the cap is explicitly a lower bound,
+not an exact total. Parked presence is capped at one, also a lower bound when present.
+With capture age enabled, a provider-translatable UTC `DateTime` ordering returns only
+the oldest known capture instant; the probe does not materialize rows or payloads.
+The metadata queries are sampled sequentially, not a promised atomic snapshot.
+Every original sample time is independently checked for stale or future-dated evidence.
 
 Concurrent callers share one refresh and cancel only their own waits. The refresh has
 its own budget. A provider that ignores cancellation cannot delay the health result past
@@ -406,30 +437,36 @@ clock read in metadata-only mode. Both modes share metadata clock/freshness eval
 | Data keys | Meaning |
 |---|---|
 | `profile`, `storageContext`, `maxAttempts`, `maxAttemptsSource`, `relayMonitoring` | `staged-operational-reference` / `metadata-only-reference`, fixed context scope, effective retry limit, `outbox-options` / `profile` source, and `local-relay` / `disabled` selection. Cache entries invalidate when the local attempt cap changes. |
-| `metadataAvailable`, `pendingSampledAt`, `parkedSampledAt`, `sampling` | Probe success and original separately sampled metadata instants. Count/time keys are absent if no successful metadata evidence exists; old retained evidence is not marked available after a failed refresh. |
+| `metadataAvailable`, `pendingSampledAt`, `parkedSampledAt`, `captureAgeSampledAt`, `sampling` | Probe success and original separately sampled metadata/capture-age instants. Capture-age keys are emitted only when enabled. Count/time keys are absent if no successful evidence exists; old retained evidence is not marked available after a failed refresh. |
 | `pendingCount`, `pendingCountIsLowerBound`, `pendingCountCap` | Retryable pending rows, including leases/backoff, capped as above. |
 | `parkedCount`, `parkedCountIsLowerBound`, `parkedCountCap` | Zero or at least one parked row. Any parked row degrades, never causes parked-only Unhealthy. |
+| `oldestPendingCapturedAt`, `oldestPendingCaptureAge` | Oldest known UTC capture instant and its age among retryable pending rows, including leases/backoff. Absent when no known row exists. A future instant is reported and degrades with `capture-age-clock-invalid`; it is not clamped to zero. |
+| `unknownCaptureAgeCount`, `unknownCaptureAgeCountIsLowerBound`, `unknownCaptureAgeCountCap` | Enabled mode only: legacy retryable pending rows with no authoritative capture evidence. Any nonzero value degrades with `capture-age-unknown`. |
 | `relayScope`, `relaySampledAt`, `relayStartedAt`, `lastPositiveRelayObservationAt`, `relayGap` | Local mode only: `local-instance`, fresh local sample and original local lifecycle/poll instants. Missing instants/gap keys are absent, not fabricated. |
 | `deliveredRows`, `lastDurableDeliveryAt` | Local mode only: lifetime row-completion count and last observation after successful bookkeeping. Failed attempts and lost-lease rows are excluded; no downstream consumer-success claim. A missing last delivery is not itself an unhealthy condition. |
-| `pendingDegradedThreshold`, `pendingUnhealthyThreshold`, `probeTimeout`, `cacheDuration`, `evidenceMaxAge` | Actual selected metadata bounds and timing, including consumer tuning. |
+| `pendingDegradedThreshold`, `pendingUnhealthyThreshold`, `captureAgeDegradedAfter`, `captureAgeUnhealthyAfter`, `probeTimeout`, `cacheDuration`, `evidenceMaxAge` | Actual selected metadata/capture-age bounds and timing. Capture-age thresholds are emitted only when enabled. |
 | `relayDegradedAfter`, `relayUnhealthyAfter`, `startupGracePeriod` | Local mode only: selected relay timing. Omitted when relay monitoring is disabled, not zero-valued observations. |
-| `captureAge`, `consumerLag` | Always `deferred` and `disabled`, respectively, in stage one; neither means observed healthy. |
+| `captureAge`, `consumerLag` | `captureAge` is `disabled` or `enabled` according to the explicit profile switch. `consumerLag` remains `disabled`; disabled never means observed healthy. |
 | `reasons`, `probeFaultType` | Stable reason codes and, only on a provider fault, its safe exception type name. No payload, raw `LastError`, connection string, message id, business/trace lineage, or raw exception is returned. |
 
 Reasons include `pending-depth-degraded`, `pending-depth-unhealthy`, `parked-messages`,
+`capture-age-degraded`, `capture-age-unhealthy`, `capture-age-unknown`,
+`capture-age-clock-invalid`,
 `relay-not-started`, `relay-warming-up`, `relay-observation-missing`,
 `relay-observation-delayed`, `relay-observation-overdue`, `metadata-stale`,
 `metadata-clock-invalid`, `relay-clock-invalid`, `probe-timeout`, and `probe-failed`.
-Metadata-only emits no relay reasons or observation/delivery keys. Its `sampling` is
-`separate-metadata-queries`; local mode retains `separate-metadata-queries-and-local-relay`.
+Metadata-only emits no relay reasons or observation/delivery keys. With capture age
+disabled, `sampling` is `separate-metadata-queries` or
+`separate-metadata-queries-and-local-relay`; enabled profiles use
+`separate-metadata-and-capture-age-queries` with the optional `-and-local-relay` suffix.
 
 ## Health-check requirements
 
-**Stage one is implemented:** [outbox readiness](#outbox-readiness) supplies the bounded
-metadata/local-relay slice. **Not implemented:** capture-age evidence and optional
-consumer/source-lag checks, an inbox health/lag-provider API, and a capture-age column.
-This section retains the staged acceptance contract; these are not new members of
-`OutboxOptions`. Delivery, retry, lease, replay, and retention behavior is unchanged.
+**Stages one and two are implemented:** [outbox readiness](#outbox-readiness) supplies
+bounded metadata/local-relay evidence plus explicitly enabled durable capture age.
+**Not implemented:** optional consumer/source-lag checks and an inbox health/lag-provider
+API. Readiness settings are not members of `OutboxOptions`. Delivery, retry, lease,
+replay, and retention behavior is unchanged.
 
 ### Scope and staged delivery
 
@@ -439,13 +476,13 @@ consumer lag**, delivered in stages:
 | Stage | Required capability |
 |---|---|
 | Metadata and relay observations | Implemented: bounded, read-only pending/parked summaries and truthful local relay responsiveness observations, with delivery progress reported separately. |
-| Durable capture age | Not implemented: capture evidence for both domain and translated integration rows, with provider-compatible queries, a migration strategy, and explicit unknown age for legacy rows. |
+| Durable capture age | Implemented: nullable UTC evidence for both domain and translated integration rows, provider-compatible bounded queries, application-owned migration rollout, and explicit unknown age for legacy rows. |
 | Optional consumer/source lag | Not implemented: an explicitly enabled evidence provider with application-defined source/partition and durable accounting semantics; see [inbox lag requirements](trellis-api-efcore-inbox.md#consumer-lag-health-requirements). |
 
 Each stage must be independently useful without claiming signals from a later stage.
-Separate implementation PRs are recommended, not a fixed PR count. Capture-age evaluation
-stays deferred until its evidence exists; optional lag stays disabled when unconfigured.
-Neither condition is a healthy observation of that signal.
+Capture-age evaluation stays disabled until the selected immutable profile sets
+`CaptureAgeEnabled = true`; optional lag stays disabled because no provider API exists.
+Neither disabled condition is a healthy observation of that signal.
 
 These are read-only readiness checks, **not liveness restart triggers or remediation**.
 When included in the host's readiness endpoint, Healthy and Degraded remain ready;
@@ -488,23 +525,38 @@ separate observation. Lack of new delivery on a quiet or backoff-only queue is n
 a stuck-worker diagnosis. Tune responsiveness deadlines for legitimate poll intervals,
 batch/handler durations, and operation timeouts.
 
-### Durable capture-age boundary
+### Durable capture age and rollout
 
-Future capture evidence must record when **that row** was first captured/staged and persist
+`OutboxMessage.CapturedAt` records when **that row** was first captured/staged and persists
 with it, for both capture-interceptor domain rows and relay-created integration rows.
 Preserve it across retries and parked-row replay; a translated row has its own capture
 instant, not its source domain row's age. Capture/staging time precedes the save and is
 **not an exact commit timestamp** or exact post-commit queue-residence measurement.
 
-Define the UTC clock, skew tolerance, and provider-translatable storage/comparison before
-enabling age checks. Existing rows without authoritative evidence remain unknown; neither
-migration time nor business-event time is a valid backfill. Report the known oldest age
-and unknown-row coverage. Enabled age evaluation with unknown coverage degrades health;
-a known unhealthy breach still takes precedence. Do not silently turn missing/invalid
-timestamps into zero age.
+The interceptor's no-argument overload uses `TimeProvider.System`; its explicit
+`TimeProvider` overload supports deterministic capture and must use the same instance on
+repeated builder calls. The relay uses its DI `TimeProvider`. Both persist
+`GetUtcNow().UtcDateTime` as provider-orderable UTC `DateTime`; the health check interprets
+materialized values as UTC. Existing rows without authoritative evidence remain unknown;
+neither migration time nor business-event time is a valid backfill. The result reports
+the known oldest age and capped unknown-row coverage. Enabled age evaluation with unknown
+coverage degrades health; a known unhealthy breach still takes precedence. Future
+capture evidence degrades with `capture-age-clock-invalid`, without clamping to zero.
 
-The application owns its EF schema migration. The feature must specify deployment order,
-legacy-row handling, and query/index costs before rollout; no migration is shipped here.
+The application owns its EF schema migration; Trellis ships no migration. Roll out in
+this order:
+
+1. Add nullable UTC `CapturedAt` and the `{ ProcessedAt, CapturedAt, Sequence }` index to
+   every queried outbox store.
+2. Deploy writers/relays using the new mapping so every new domain and translated row
+   receives its own capture instant. Leave legacy values null.
+3. Enable `CaptureAgeEnabled` only after all health-check hosts query the migrated schema.
+   Unknown retryable legacy rows then make readiness Degraded until processed, parked,
+   or deliberately handled by an application-owned data policy.
+
+Enabling against an unmigrated table is a provider fault and therefore Unhealthy. Do not
+backfill `CapturedAt` from `OccurredAt`, UUIDv7 time, `Sequence`, `LockedUntil`, or the
+migration instant.
 
 ### Explicit opt-in reference profile
 
@@ -556,7 +608,7 @@ Validate configured bounds and timing relationships explicitly rather than clamp
   work and result size with suitable provider-supported aggregates or threshold-capped
   reads. A capped count is a lower bound, not an exact total. Do not scan/materialize an
   entire history or introduce coordination locks that serialize normal delivery.
-- Preserve original sample times, scope, enabled/deferred/disabled signals, evidence
+- Preserve original sample times, scope, enabled/disabled/deferred signals, evidence
   coverage, thresholds, and reasons in the result. Disclose separately sampled evidence
   rather than promise an atomic cross-store snapshot. Cache refresh/failure must not
   erase an unhealthy condition without evidence of recovery.
@@ -580,8 +632,8 @@ Validate configured bounds and timing relationships explicitly rather than clamp
 
 ### Acceptance boundary for staged health checks
 
-Stage-one tests cover metadata/local relay, cache, timeout/cancellation, and registration
-outcomes. **Not implemented:** capture-age and optional-lag acceptance cases stay deferred.
+Tests cover metadata/local relay, durable capture age, cache, timeout/cancellation, and
+registration outcomes. Optional-lag acceptance cases remain deferred.
 
 | Scenario | Required outcome |
 |---|---|

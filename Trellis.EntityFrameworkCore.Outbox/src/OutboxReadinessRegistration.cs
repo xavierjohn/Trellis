@@ -22,7 +22,8 @@ public static class OutboxReadinessServiceCollectionExtensions
     /// bare providers do not run that validation. Context registration is checked without
     /// constructing it when the container exposes <c>IServiceProviderIsService</c>.
     /// The context must resolve the same fixed store from background scopes, not request-local tenancy.
-    /// No capture-age column, endpoint, liveness policy, or consumer-lag provider is added.
+    /// Capture-age evaluation remains disabled unless the profile enables it after schema rollout.
+    /// No endpoint, liveness policy, or consumer-lag provider is added.
     /// </remarks>
     /// <typeparam name="TContext">The application's context that owns the outbox table.</typeparam>
     /// <param name="services">The service collection.</param>

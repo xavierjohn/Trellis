@@ -553,6 +553,17 @@ public sealed class OutboxTests
     }
 
     [Fact]
+    public void AddTrellisOutboxInterceptor_WithConflictingTimeProviders_Throws()
+    {
+        var options = new DbContextOptionsBuilder<OutboxTestDbContext>();
+        options.AddTrellisOutboxInterceptor(new FakeTimeProvider());
+
+        var act = () => options.AddTrellisOutboxInterceptor(new FakeTimeProvider());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*TimeProvider*");
+    }
+
+    [Fact]
     public async Task Relay_does_not_persist_handler_mutations_to_its_bookkeeping_context()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -804,14 +815,16 @@ public sealed class OutboxTests
         using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync(ct);
 
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 10, 14, 12, 0, 0, TimeSpan.Zero));
         var publishedIntegration = new List<ThingCreatedIntegrationEvent>();
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<TimeProvider>(time);
         services.AddSingleton(publishedIntegration);
         services.AddDbContext<OutboxTestDbContext>(o => o
             .UseSqlite(connection)
             .AddTrellisInterceptors()
-            .AddTrellisOutboxInterceptor());
+            .AddTrellisOutboxInterceptor(time));
         services.AddDomainEventDispatch();
         // The translator is a domain-event handler that emits an integration event into the collector.
         services.AddDomainEventHandler<ThingCreated, ThingCreatedTranslator>();
@@ -829,6 +842,7 @@ public sealed class OutboxTests
             await context.SaveChangesAsync(ct);
         }
 
+        time.Advance(TimeSpan.FromMinutes(1));
         var relay = provider.GetServices<IHostedService>()
             .OfType<OutboxRelay<OutboxTestDbContext>>()
             .Single();
@@ -846,7 +860,9 @@ public sealed class OutboxTests
             var domain = rows.Single(r => r.Kind == OutboxMessageKind.Domain);
             var integration = rows.Single(r => r.Kind == OutboxMessageKind.Integration);
             domain.ProcessedAt.Should().NotBeNull("the domain event was dispatched");
+            domain.CapturedAt.Should().Be(new DateTime(2026, 10, 14, 12, 0, 0, DateTimeKind.Utc));
             integration.ProcessedAt.Should().BeNull("the integration event is staged but not yet relayed");
+            integration.CapturedAt.Should().Be(new DateTime(2026, 10, 14, 12, 1, 0, DateTimeKind.Utc));
             integration.EventType.Should().Contain(nameof(ThingCreatedIntegrationEvent));
         }
 
