@@ -165,12 +165,14 @@ public sealed class OutboxRelayBackoffTests
         await ParkAsync(relay, time, ct);
 
         Guid id;
+        DateTime? capturedAt;
         await using (var scope = provider.CreateAsyncScope())
         {
             var maintenance = scope.ServiceProvider.GetRequiredService<IOutboxMaintenance>();
             var deadLettered = await maintenance.GetDeadLetteredAsync(cancellationToken: ct);
             deadLettered.Should().ContainSingle("the poison exhausted MaxAttempts and is dead-lettered");
             id = deadLettered[0].Id;
+            capturedAt = (await SingleRowAsync(provider, ct)).CapturedAt;
 
             (await maintenance.ReplayAsync(id, ct)).Should().Be(1);
         }
@@ -180,6 +182,7 @@ public sealed class OutboxRelayBackoffTests
         replayed.LockedUntil.Should().BeNull("replay cleared the lease so the scan re-picks it");
         replayed.LastError.Should().BeNull();
         replayed.ProcessedAt.Should().BeNull();
+        replayed.CapturedAt.Should().Be(capturedAt, "replay preserves the row's original capture evidence");
 
         // The relay drains the replayed row again (and it fails again -> attempt 1).
         (await relay.DrainAsync(ct)).Should().Be(1, "the replayed message is eligible again");
@@ -385,7 +388,8 @@ public sealed class OutboxRelayBackoffTests
         for (var i = 0; i < count; i++)
             context.Set<OutboxMessage>().Add(OutboxMessage.Create(
                 Guid.NewGuid(), DateTimeOffset.UnixEpoch,
-                "Nonexistent.Type, Nonexistent.Assembly", "{}", OutboxMessageKind.Domain));
+                "Nonexistent.Type, Nonexistent.Assembly", "{}", OutboxMessageKind.Domain,
+                capturedAt: Start.UtcDateTime));
         await context.SaveChangesAsync(ct);
     }
 

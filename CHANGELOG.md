@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - durable outbox capture-age readiness (G3 stage two)
+
+Outbox domain rows now persist the UTC instant at which the capture interceptor first
+staged them, while translated integration rows receive their own relay staging instant.
+The nullable `CapturedAt` column preserves explicit unknown age for legacy rows and is
+unchanged by retries, parking, and replay. An application-owned migration must add it
+and the `{ ProcessedAt, CapturedAt, Sequence }` index; Trellis does not fabricate a
+backfill from business-event time or migration time. Upgrading the package requires this
+migration even when capture-age readiness remains disabled, because normal row queries
+and inserts use the mapped column.
+
+`OutboxReadinessOptions` now exposes an explicit migration-first `CaptureAgeEnabled`
+switch plus inclusive 2/10-minute reference thresholds. Enabled probes report the
+oldest known retryable pending age and a bounded count of unknown legacy rows, include
+leased/backoff rows, and degrade future/unknown evidence instead of treating it as zero.
+The setting works in local-relay and metadata-only profiles; it remains disabled by
+default, and optional consumer/source lag remains deferred.
+
 ### Fixed - inbox and outbox fail-safe delivery
 
 The EF inbox now treats a missing integration-event handler as a configuration
@@ -65,8 +83,8 @@ without constructing it when the container supports registration probing. Freshn
 validation reserves a margin beyond the complete probe budget plus cache duration.
 
 Existing outbox/inbox registrations, delivery/retry/lease/replay behavior, schema,
-Mediator ordering, and host-owned endpoint/liveness policy are unchanged. Capture-age
-evidence and optional consumer/source lag remain deferred.
+Mediator ordering, and host-owned endpoint/liveness policy were unchanged by stage one.
+Durable capture age is added separately above; optional consumer/source lag remains deferred.
 
 ### Documentation - rate-limit retry advice
 

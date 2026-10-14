@@ -44,6 +44,11 @@ using Trellis.Mediator;
 /// </remarks>
 internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
 {
+    private readonly TimeProvider _timeProvider;
+
+    public OutboxCaptureInterceptor(TimeProvider? timeProvider = null) =>
+        _timeProvider = timeProvider ?? TimeProvider.System;
+
     /// <inheritdoc />
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData,
@@ -119,7 +124,7 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
         return base.SaveChangesCanceledAsync(eventData, cancellationToken);
     }
 
-    private static void Capture(DbContext? context)
+    private void Capture(DbContext? context)
     {
         if (context is null)
             return;
@@ -143,6 +148,7 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
                 (traceParent, traceState) = ResolveTrace();
             }
 
+            var capturedAt = _timeProvider.GetUtcNow().UtcDateTime;
             foreach (var domainEvent in events)
             {
                 var type = domainEvent.GetType();
@@ -159,7 +165,8 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
                     IntegrationMessageContext.CurrentMessageId,
                     IntegrationMessageContext.CorrelationId,
                     traceParent,
-                    traceState));
+                    traceState,
+                    capturedAt));
             }
         }
 

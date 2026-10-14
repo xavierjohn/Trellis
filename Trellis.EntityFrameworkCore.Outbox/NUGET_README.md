@@ -37,6 +37,7 @@ Translate domain events into integration events by adding them to `IIntegrationE
 ## Key Features
 
 - Captures domain-event rows in the same transaction as aggregate changes.
+- Records provider-orderable UTC capture evidence for domain and translated integration rows.
 - Persists optional W3C trace context and business lineage on domain rows and translated integration rows.
 - Dispatches domain events only after a successful commit.
 - Publishes pending integration events through a resilient background service.
@@ -52,21 +53,27 @@ Broker adapters must await publication acceptance and propagate publication fail
 
 All three wiring steps are required: map the table, register `AddTrellisOutboxInterceptor()` for capture, and register the relay. Let the unit-of-work pipeline own `SaveChangesAsync()`. Carry `OutboundIntegrationMessage.MessageId` unchanged as the transport message ID so inbox consumers can deduplicate end to end.
 
-The alpha outbox schema includes nullable `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration or backfill is provided. Use `IntegrationMessageContext.BeginCorrelation("workflow-id")` to supply an application-owned business correlation id; one is never inferred from the trace.
+The alpha outbox schema includes nullable `CapturedAt`, `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration or backfill is provided. New domain and translated rows receive their own UTC `CapturedAt`; legacy nulls remain unknown. Use `IntegrationMessageContext.BeginCorrelation("workflow-id")` to supply an application-owned business correlation id; one is never inferred from the trace.
 
 ## Opt-in Outbox Readiness
 
-Stage one is implemented: explicitly select
+Explicitly select
 `OutboxReadinessOptions.CreateStagedOperationalProfile()` and register
 `services.AddTrellisOutboxReadiness<AppDbContext>(profile)` or
 `.UseOutboxReadiness<AppDbContext>(profile)` alongside the relay. Existing outbox calls
 do not enable the named `trellis-outbox` .NET health check.
 
-It reports bounded pending/parked metadata, local relay responsiveness, and separate
-durable row completions. Counts include leases/backoff and disclose lower bounds.
+It reports bounded pending/parked metadata, optional durable capture age, local relay
+responsiveness, and separate durable row completions. Counts include leases/backoff and disclose lower bounds.
 Shared refreshes isolate caller cancellation; probe faults/timeouts are Unhealthy,
 and parked rows or missing initial relay evidence are Degraded. Tune the immutable
 profile with `with` for workload and relay timing.
+
+Capture age defaults off for migration-first rollout. Add nullable UTC `CapturedAt` and
+the `{ ProcessedAt, CapturedAt, Sequence }` index, deploy writers, then set
+`CaptureAgeEnabled = true` with a `with` expression. The inclusive reference thresholds
+are 2/10 minutes. Unknown legacy pending rows degrade and are counted separately; never
+backfill them from `OccurredAt` or migration time.
 
 For split API/worker hosts, keep local monitoring in the worker and select
 `OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` in the API,
@@ -74,9 +81,10 @@ using the same registration method without a relay. `WorkerMaxAttempts` must equ
 the worker's `OutboxOptions.MaxAttempts`; derive both from one configuration key or
 constant. Incidental local options are never resolved or compared, so mismatches
 generate no warning. Relay monitoring is disabled, not observed healthy.
-Metadata-only cannot detect a dead worker on a low-volume queue: with healthy database
-evidence and the reference thresholds, inactivity alone raises no signal until pending
-depth reaches 1,000 or a row is parked. Probe faults and stale/invalid evidence still apply.
+Metadata-only does not observe remote worker responsiveness. With capture age disabled,
+inactivity alone raises no signal until pending depth reaches 1,000 or a row is parked.
+Enabled age can detect an aging pending row, but does not prove the worker is dead.
+Probe faults and stale/invalid evidence still apply.
 
 Generic Host lifecycle startup validates the actual matching relay in local mode,
 before hosted services start; decorators hiding the instance are unsupported.
@@ -85,10 +93,10 @@ Bare service providers do not run this startup validation.
 
 The host owns endpoint authorization and traffic-readiness versus alert-only exposure:
 shared-store breaches can affect every replica. Degraded remains ready; selected
-Unhealthy fails readiness. No schema change, endpoint, mutation, or restart policy is added.
+Unhealthy fails readiness. No endpoint, mutation, or restart policy is added.
 
-**Not implemented:** capture age and optional consumer/source lag. `OccurredAt` is not
-queue age, and publication is not downstream consumer success.
+**Not implemented:** optional consumer/source lag. `OccurredAt` is not queue age, and
+publication is not downstream consumer success.
 See [readiness APIs and diagnostics](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#outbox-readiness)
 and the [remaining staged contract](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#health-check-requirements).
 

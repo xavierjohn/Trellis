@@ -107,7 +107,7 @@ public sealed partial class OutboxReadinessTests
         result.Data["relayMonitoring"].Should().Be("disabled");
         result.Data["maxAttempts"].Should().Be(3);
         result.Data["maxAttemptsSource"].Should().Be("profile");
-        result.Data["captureAge"].Should().Be("deferred");
+        result.Data["captureAge"].Should().Be("disabled");
         result.Data["consumerLag"].Should().Be("disabled");
         result.Data.Keys.Should().NotContain(key =>
             (key.StartsWith("relay", StringComparison.Ordinal) && key != "relayMonitoring")

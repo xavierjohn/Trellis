@@ -45,14 +45,15 @@ Every `UseIntegrationEvents(...)` overload wires the default **best-effort local
 `UseOutboxReadiness<TContext>(OutboxReadinessOptions.CreateStagedOperationalProfile())`
 explicitly enables the named `trellis-outbox` read-only health check alongside
 `UseOutbox<TContext>()`. Existing outbox/inbox slots do not enable it. Endpoint
-authorization and traffic-readiness versus alerting remain host-owned; capture age and
-consumer lag remain deferred. See [outbox readiness](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#outbox-readiness).
+authorization and traffic-readiness versus alerting remain host-owned. Durable capture
+age is enabled on the same immutable profile after its nullable schema migration;
+consumer lag remains deferred. See [outbox readiness](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#outbox-readiness).
 
 For a separate worker, pass
 `OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` to the same slot
 in the API, without `UseOutbox`. Match `WorkerMaxAttempts` to the worker's retry policy
 using one configuration key. Local options are ignored without comparison or warning.
-Metadata-only cannot detect a dead low-volume worker; capture age remains deferred.
+Metadata-only can evaluate enabled capture age but does not observe remote worker responsiveness.
 Generic Host lifecycle startup validates local-mode relay configuration before services
 start; bare service providers do not run that validation.
 

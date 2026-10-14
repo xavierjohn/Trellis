@@ -3,7 +3,7 @@ title: Transactional Outbox Integration
 package: Trellis.EntityFrameworkCore.Outbox
 topics: [outbox, domain-events, reliability, efcore, messaging]
 related_api_reference: [trellis-api-efcore-outbox.md, trellis-api-efcore.md, trellis-api-mediator.md]
-last_verified: 2026-10-10
+last_verified: 2026-10-14
 audience: [developer]
 ---
 # Transactional Outbox Integration
@@ -74,13 +74,13 @@ public sealed record OrderPlaced(OrderId OrderId, DateTimeOffset OccurredAt) : I
 The capture is a `SaveChangesInterceptor` with a deliberate three-phase lifecycle so a failed save never loses or double-captures events:
 
 1. **`SavingChanges`** — scan the change tracker for aggregates with uncommitted events, serialize each event, and add one `OutboxMessage` row per event to the **current** `SaveChanges`. The rows enrol in the same transaction as the aggregate. The aggregate's in-memory events are *not* cleared yet.
-   Capture also persists the current W3C trace context and any explicit application-owned business correlation. When a handler is running under the inbox dispatcher, the inbound message id is stored as the domain row's direct cause.
+   Capture also persists a UTC `CapturedAt`, the current W3C trace context, and any explicit application-owned business correlation. When a handler is running under the inbox dispatcher, the inbound message id is stored as the domain row's direct cause.
 2. **`SavedChanges`** (commit succeeded) — call each aggregate's `AcceptChanges()` to clear its events. Because this happens only after a successful commit, the in-pipeline `DomainEventDispatchBehavior` that runs next sees an empty event list and dispatches nothing — the relay is now the single dispatcher.
 3. **`SaveChangesFailed`** — detach the outbox rows the interceptor staged. The aggregate keeps its events, so a retry re-captures cleanly without leaving orphaned rows.
 
 The relay (`OutboxRelay<TContext>`) is a hosted `BackgroundService`. Each poll it opens a bookkeeping scope, reads pending rows ordered by `Sequence`, and rehydrates each event from its stored type name. Domain rows use `IReportingDomainEventPublisher` to report per-handler outcomes; integration rows use `IIntegrationEventPublisher` for one publication handoff. Each publisher runs **in its own per-message scope**, so handlers receive a fresh context, not the bookkeeping context, and their tracked changes never ride the relay's save. The relay persists completion, failures, handler progress, and translated rows on its bookkeeping context.
 
-**Alpha schema change:** The `TrellisOutboxMessages` mapping includes nullable `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration or backfill is provided. Rows with null metadata remain valid. To collect the relay's child spans, add `Trellis.EntityFrameworkCore.Outbox` to your tracer provider's sources.
+**Alpha schema change:** The `TrellisOutboxMessages` mapping includes nullable `CapturedAt`, `MessageSource`, `CausationId`, `CorrelationId`, `TraceParent`, and `TraceState` columns; no migration or backfill is provided. New domain rows receive capture time from the interceptor clock; each translated integration row gets its own later staging time from the relay clock. Rows with null capture evidence remain valid but have unknown queue age. To collect the relay's child spans, add `Trellis.EntityFrameworkCore.Outbox` to your tracer provider's sources.
 
 ## Delivery semantics
 
@@ -223,10 +223,10 @@ Events are serialized and rehydrated with a Trellis-owned `System.Text.Json` opt
 - **Run as many relay instances as you need.** Each drain atomically claims a batch with a lease (`LockedBy` + `LockedUntil`), and `LockedBy` is an optimistic concurrency token, so concurrent instances never both own a row's lease at once, and a drain that outlived its lease abandons its bookkeeping write — logging `OutboxRelay.LeaseLost` — rather than clobber the instance that reclaimed the row. No leader election or distributed lock is needed. Delivery is still at-least-once — a crash between publish and the relay's `SaveChanges`, or a batch that outlives its lease, can re-deliver — so keep handlers idempotent. Set `LeaseDuration` comfortably above the worst-case batch publish time and keep node clocks reasonably in sync, since the lease is compared against each relay's wall clock.
 - **One outbox per composition.** `UseOutbox<TContext>()` throws if called twice. Multiple relays in one process are not supported by the builder slot today.
 
-### Opt-in readiness and remaining staged requirements
+### Opt-in readiness and capture age
 
-**Stage one is implemented:** explicitly select an immutable readiness profile and
-enable the named `trellis-outbox` .NET health check. Existing outbox calls do not enable it:
+Explicitly select an immutable readiness profile and enable the named `trellis-outbox`
+.NET health check. Existing outbox calls do not enable it:
 
 ```csharp
 var profile = OutboxReadinessOptions.CreateStagedOperationalProfile();
@@ -240,8 +240,22 @@ Direct registration is `services.AddTrellisOutboxReadiness<AppDbContext>(profile
 Tune with `with`; the profile is not part of `OutboxOptions`.
 Read [readiness APIs and result diagnostics](../api_reference/trellis-api-efcore-outbox.md#outbox-readiness)
 for fixed-store scoping, validated timing relationships, and lower-bound counts.
-This slice changes no schema or delivery behavior and adds no endpoint or restart policy.
-**Not implemented:** durable capture-age evidence and optional consumer/source lag.
+The check adds no endpoint or restart policy.
+
+Capture age defaults off so rollout can be migration-first:
+
+1. Add nullable UTC `CapturedAt` and the
+   `{ ProcessedAt, CapturedAt, Sequence }` index to the application-owned migration.
+2. Deploy the updated writer and relay. New domain and translated integration rows each
+   receive their own staging instant; retries and parked-row replay preserve it.
+3. After every queried store is migrated, use
+   `profile = profile with { CaptureAgeEnabled = true };`.
+
+The inclusive reference thresholds are 2 minutes Degraded and 10 minutes Unhealthy.
+Leased/backoff rows remain pending evidence; processed and parked rows do not. Legacy
+nulls are counted separately and degrade until they leave the retryable set. Never
+fabricate old-row age from `OccurredAt`, UUIDv7, sequence, lease time, or migration time.
+**Not implemented:** optional consumer/source lag.
 
 For a separate worker, keep the local-relay profile in that worker and select metadata-only
 in the API against the same fixed store:
@@ -256,25 +270,24 @@ No API-host relay or publisher is required. `WorkerMaxAttempts` must match the w
 `OutboxOptions.MaxAttempts`; incidental local options are never resolved or compared,
 so a mismatch produces no warning. Derive both values from one configuration key.
 Metadata-only reports disabled relay monitoring and omits relay observation/delivery
-fields. It cannot detect a dead worker on a low-volume queue: with healthy database
-evidence and the reference thresholds, worker inactivity alone raises no signal until
-pending depth reaches 1,000 or a row is parked. Probe failures and stale/invalid metadata
-remain independent health conditions.
+fields. It can evaluate capture age but does not observe remote worker responsiveness.
+With age disabled, worker inactivity alone raises no signal until pending depth reaches
+1,000 or a row is parked. An age breach does not prove the worker is dead; it may be
+alive and retrying. Probe failures and stale/invalid metadata remain independent.
 
 Generic Host lifecycle startup requires the actual matching hosted relay in local mode,
 before any service starts; a decorator hiding its instance does not satisfy validation.
 Both modes check context registration without constructing it when the container supports
 registration probing. Bare providers do not invoke the lifecycle validator.
 
-The rollout separates the shipped bounded pending/parked summaries and local relay observations,
-future durable row-capture age with migration/legacy-row handling, and optional
+The rollout separates shipped bounded pending/parked summaries, optional durable
+row-capture age, local relay observations, and future
 [consumer/source-lag evidence](integration-inbox.md#consumer-lag-health-requirements).
-Each stage is independently useful; separate implementation PRs are recommended,
-not a fixed count.
+Each signal is independently useful.
 
 Count retryable pending rows even while leased or in backoff, and report parked rows
-separately. `OccurredAt` is business-event time, **not queue age**; no dedicated capture
-timestamp exists yet. Successful empty polls can prove responsiveness without a delivery,
+separately. `CapturedAt` is queue evidence; `OccurredAt` remains business-event time and
+must never substitute for it. Successful empty polls can prove responsiveness without a delivery,
 but "OutboxRelay.DrainCompleted" does not log those polls and its count includes persisted
 failed attempts. Neither that log nor publisher acceptance proves consumer success.
 

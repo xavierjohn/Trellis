@@ -122,10 +122,42 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
                         .Take(profile.PendingUnhealthyThreshold)
                         .CountAsync(deadline.Token).ConfigureAwait(false);
                     var pendingSampledAt = timeProvider.GetUtcNow();
+                    DateTime? oldestCapturedAt = null;
+                    var unknownCaptureAgeCount = 0;
+                    DateTimeOffset? captureAgeSampledAt = null;
+                    if (profile.CaptureAgeEnabled)
+                    {
+                        oldestCapturedAt = await rows
+                            .Where(m => m.ProcessedAt == null
+                                && m.Attempts < maxAttempts
+                                && m.CapturedAt != null)
+                            .OrderBy(m => m.CapturedAt)
+                            .ThenBy(m => m.Sequence)
+                            .Select(m => m.CapturedAt)
+                            .FirstOrDefaultAsync(deadline.Token).ConfigureAwait(false);
+                        unknownCaptureAgeCount = await rows
+                            .Where(m => m.ProcessedAt == null
+                                && m.Attempts < maxAttempts
+                                && m.CapturedAt == null)
+                            .OrderBy(m => m.Sequence)
+                            .Select(m => m.Sequence)
+                            .Take(profile.PendingUnhealthyThreshold)
+                            .CountAsync(deadline.Token).ConfigureAwait(false);
+                        captureAgeSampledAt = timeProvider.GetUtcNow();
+                    }
+
                     var parked = await rows
                         .AnyAsync(m => m.ProcessedAt == null && m.Attempts >= maxAttempts, deadline.Token)
                         .ConfigureAwait(false);
-                    evidence = new(maxAttempts, pending, parked ? 1 : 0, pendingSampledAt, timeProvider.GetUtcNow());
+                    evidence = new(
+                        maxAttempts,
+                        pending,
+                        parked ? 1 : 0,
+                        pendingSampledAt,
+                        timeProvider.GetUtcNow(),
+                        oldestCapturedAt,
+                        unknownCaptureAgeCount,
+                        captureAgeSampledAt);
                 }
 
                 return deadline.IsCancellationRequested
@@ -165,9 +197,15 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
             ["probeTimeout"] = profile.ProbeTimeout,
             ["cacheDuration"] = profile.CacheDuration,
             ["evidenceMaxAge"] = profile.EvidenceMaxAge,
-            ["captureAge"] = "deferred",
+            ["captureAge"] = profile.CaptureAgeEnabled ? "enabled" : "disabled",
             ["consumerLag"] = "disabled",
-            ["sampling"] = relay is null ? "separate-metadata-queries" : "separate-metadata-queries-and-local-relay",
+            ["sampling"] = profile.CaptureAgeEnabled
+                ? relay is null
+                    ? "separate-metadata-and-capture-age-queries"
+                    : "separate-metadata-and-capture-age-queries-and-local-relay"
+                : relay is null
+                    ? "separate-metadata-queries"
+                    : "separate-metadata-queries-and-local-relay",
         };
         if (probe.FailureReason is not null)
             AddCondition(HealthStatus.Unhealthy, probe.FailureReason);
@@ -183,9 +221,16 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
             data["parkedSampledAt"] = evidence.ParkedSampledAt;
             var pendingSampleAge = evaluatedAt - evidence.PendingSampledAt;
             var parkedSampleAge = evaluatedAt - evidence.ParkedSampledAt;
-            if (pendingSampleAge < TimeSpan.Zero || parkedSampleAge < TimeSpan.Zero)
+            var captureAgeSampleAge = evidence.CaptureAgeSampledAt is { } captureAgeSampledAt
+                ? evaluatedAt - captureAgeSampledAt
+                : (TimeSpan?)null;
+            if (pendingSampleAge < TimeSpan.Zero
+                || parkedSampleAge < TimeSpan.Zero
+                || captureAgeSampleAge < TimeSpan.Zero)
                 AddCondition(HealthStatus.Degraded, "metadata-clock-invalid");
-            if (pendingSampleAge >= profile.EvidenceMaxAge || parkedSampleAge >= profile.EvidenceMaxAge)
+            if (pendingSampleAge >= profile.EvidenceMaxAge
+                || parkedSampleAge >= profile.EvidenceMaxAge
+                || captureAgeSampleAge >= profile.EvidenceMaxAge)
                 AddCondition(HealthStatus.Degraded, "metadata-stale");
             if (evidence.PendingCount >= profile.PendingUnhealthyThreshold)
                 AddCondition(HealthStatus.Unhealthy, "pending-depth-unhealthy");
@@ -193,6 +238,34 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
                 AddCondition(HealthStatus.Degraded, "pending-depth-degraded");
             if (evidence.ParkedCount > 0)
                 AddCondition(HealthStatus.Degraded, "parked-messages");
+            if (profile.CaptureAgeEnabled)
+            {
+                data["captureAgeDegradedAfter"] = profile.CaptureAgeDegradedAfter;
+                data["captureAgeUnhealthyAfter"] = profile.CaptureAgeUnhealthyAfter;
+                data["unknownCaptureAgeCountCap"] = profile.PendingUnhealthyThreshold;
+                data["unknownCaptureAgeCount"] = evidence.UnknownCaptureAgeCount;
+                data["unknownCaptureAgeCountIsLowerBound"] =
+                    evidence.UnknownCaptureAgeCount == profile.PendingUnhealthyThreshold;
+                if (evidence.CaptureAgeSampledAt is { } sampledAt)
+                    data["captureAgeSampledAt"] = sampledAt;
+                if (evidence.OldestCapturedAt is { } storedCapturedAt)
+                {
+                    var capturedAt = new DateTimeOffset(
+                        DateTime.SpecifyKind(storedCapturedAt, DateTimeKind.Utc));
+                    var captureAge = evaluatedAt - capturedAt;
+                    data["oldestPendingCapturedAt"] = capturedAt;
+                    data["oldestPendingCaptureAge"] = captureAge;
+                    if (captureAge < TimeSpan.Zero)
+                        AddCondition(HealthStatus.Degraded, "capture-age-clock-invalid");
+                    else if (captureAge >= profile.CaptureAgeUnhealthyAfter)
+                        AddCondition(HealthStatus.Unhealthy, "capture-age-unhealthy");
+                    else if (captureAge >= profile.CaptureAgeDegradedAfter)
+                        AddCondition(HealthStatus.Degraded, "capture-age-degraded");
+                }
+
+                if (evidence.UnknownCaptureAgeCount > 0)
+                    AddCondition(HealthStatus.Degraded, "capture-age-unknown");
+            }
         }
 
         if (relay is not null)
@@ -241,7 +314,8 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
 
     private sealed record QueueEvidence(
         int MaxAttempts, int PendingCount, int ParkedCount,
-        DateTimeOffset PendingSampledAt, DateTimeOffset ParkedSampledAt);
+        DateTimeOffset PendingSampledAt, DateTimeOffset ParkedSampledAt,
+        DateTime? OldestCapturedAt, int UnknownCaptureAgeCount, DateTimeOffset? CaptureAgeSampledAt);
 
     private sealed record ProbeResult(
         int MaxAttempts, QueueEvidence? Evidence, string? FailureReason, string? FaultType);

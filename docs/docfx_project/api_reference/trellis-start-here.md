@@ -4,7 +4,7 @@ namespaces: [Trellis]
 types: [orientation, routing]
 related_docs: [trellis-api-cookbook.md, trellis-api-core.md, trellis-api-anti-patterns.md, trellis-api-analyzers.md]
 version: v3
-last_verified: 2026-10-13
+last_verified: 2026-10-14
 audience: [llm]
 agent_usage: required
 agent_description: "Routing head for every Trellis task: which reference to open, the recipe lookup and how to read the set. Read before writing or changing code that uses Trellis."
@@ -153,7 +153,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Publish a stable external contract (integration events) translated from domain events | [Recipe 36](trellis-api-cookbook.md#recipe-36--translating-a-domain-event-into-an-integration-event), then [publisher completion boundaries](trellis-api-mediator.md#iintegrationeventpublisher) for best-effort local notification vs. broker acceptance and inbox consumption |
 | Connect an inbound message, domain outbox row, translated integration event, and W3C trace | [Recipe 36](trellis-api-cookbook.md#recipe-36--translating-a-domain-event-into-an-integration-event), then [`IntegrationMessageContext`](trellis-api-mediator.md#integrationmessagecontext) and [outbox lineage](trellis-api-efcore-outbox.md#outboxmessage) |
 | Inspect inbox processing evidence, choose safe dedup retention, or replay consumed events into an isolated rebuild | [Inbox operational requirements](trellis-api-efcore-inbox.md#operational-requirements-and-transport-boundary); transport redrive and application-owned rebuild replay are different operations, and no inbox maintenance API is shipped |
-| Enable outbox readiness, monitor metadata in a split API/worker host, tune its explicitly selected profile, or plan capture-age/consumer-lag evidence | [Outbox readiness](trellis-api-efcore-outbox.md#outbox-readiness), including [split-host selection](trellis-api-efcore-outbox.md#split-apiworker-hosts), then [staged requirements](trellis-api-efcore-outbox.md#health-check-requirements) and [inbox lag evidence](trellis-api-efcore-inbox.md#consumer-lag-health-requirements); bounded metadata with optional local-relay monitoring is shipped |
+| Enable outbox readiness or durable capture-age evidence, monitor metadata in a split API/worker host, tune its explicitly selected profile, or plan consumer-lag evidence | [Outbox readiness](trellis-api-efcore-outbox.md#outbox-readiness), including [capture-age rollout](trellis-api-efcore-outbox.md#durable-capture-age-and-rollout), [split-host selection](trellis-api-efcore-outbox.md#split-apiworker-hosts), and [inbox lag evidence](trellis-api-efcore-inbox.md#consumer-lag-health-requirements); bounded metadata, optional capture age, and optional local-relay monitoring are shipped |
 | Show a validation failure in the user's language, or render your own message from a 422 instead of showing the server's English | [Recipe 39](trellis-api-cookbook.md#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args) |
 | Fix analyzer warnings | [Recipe 11](trellis-api-cookbook.md#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action) |
 | Keep fresh GUIDs out of error/violation reason codes while retaining valid incident/resource IDs | [TRLS067 WRONG/FIX](trellis-api-anti-patterns.md#trls067--fresh-guid-derived-reason-code), then [semantic scope](trellis-api-analyzers.md#perincidentreasoncodeanalyzer--trls067) |
