@@ -80,9 +80,18 @@ protected override void OnModelCreating(ModelBuilder modelBuilder) =>
 // 2. Register the dispatcher + store + options, and the handlers that consume the messages.
 services.AddTrellis(trellis => trellis
     .UseIntegrationEvents(typeof(Program).Assembly)   // the IIntegrationEventHandler<T> consumers
-    .UseEntityFrameworkUnitOfWork<AppDbContext>()
+    .UseEntityFrameworkUnitOfWork<AppDbContext>()     // only for this process's Mediator commands
     .UseInbox<AppDbContext>(o => o.ConsumerId = "orders-service"));
 ```
+
+`UseEntityFrameworkUnitOfWork<TContext>()` is not required by inbox dispatch; the
+dispatcher owns its single `SaveChangesAsync`. Select that slot only when this process
+also handles transactional Mediator commands. An inbox handler must stage writes on its
+scoped context and return. Do not dispatch a command through
+`TransactionalCommandBehavior` from the handler: that command commits the already-staged
+dedup row and prior handler writes early. If that handler or a later handler then fails,
+redelivery sees the committed dedup row and skips the message, silently losing the
+remaining work.
 
 Then a transport adapter (app-owned) feeds received messages in:
 

@@ -22,7 +22,10 @@ services.AddAzureServiceBusIntegrationEventConsumer(
     options => options.Subscribe("orders.order-placed.v1", "billing"));
 ```
 
-Register a `ServiceBusClient` separately. Consumers also require an `IInboxDispatcher`, normally from `AddTrellisInbox<TContext>()`.
+Register one shared `ServiceBusClient` as a factory-created singleton
+(`services.AddSingleton(_ => new ServiceBusClient(...))`) so DI owns and disposes it.
+Consumers also require an `IInboxDispatcher`, normally from
+`AddTrellisInbox<TContext>()`.
 
 ## Key Features
 

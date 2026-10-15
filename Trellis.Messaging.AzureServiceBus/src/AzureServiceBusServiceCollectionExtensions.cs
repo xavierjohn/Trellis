@@ -60,9 +60,9 @@ public static class AzureServiceBusServiceCollectionExtensions
     /// </summary>
     /// <remarks>
     /// Requires an <see cref="IInboxDispatcher"/> registration (<c>AddTrellisInbox&lt;TContext&gt;()</c>) —
-    /// consuming without one would run handlers without deduplication, which is the failure the inbox exists
-    /// to prevent. The dispatcher is resolved per message from a fresh scope, so it is not required to be
-    /// registered before this call.
+    /// the dispatcher is resolved per message from a fresh scope, so it is not required to be registered before
+    /// this call. Omitting it does not fail registration or startup; each delivery fails resolution before handler
+    /// dispatch, is abandoned, and eventually follows the broker's dead-letter policy.
     /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <param name="nameMap">Resolves a received message's wire name to its local event type.</param>
