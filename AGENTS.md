@@ -230,16 +230,20 @@ DocFX artifact checklist for package or public API changes:
 
 ## File encoding and PowerShell
 
-All repository files must be UTF-8 with BOM.
+All tracked text files must be valid UTF-8. C# files containing non-ASCII
+characters must use UTF-8 with BOM so tools cannot reinterpret those source
+bytes using a legacy encoding. ASCII files and non-C# UTF-8 files may omit the
+BOM. Run `build\verify-encoding.ps1` to check the policy.
 
-When using PowerShell for file writes, preserve the BOM:
+When using PowerShell for a file that requires or already has a BOM, preserve it:
 
 ```powershell
 $utf8Bom = New-Object System.Text.UTF8Encoding $true
 [System.IO.File]::WriteAllText($path, $content, $utf8Bom)
 ```
 
-Avoid `Set-Content` for repository files because it can change encoding.
+Avoid `Set-Content` for repository files because it can change their encoding
+or existing BOM status.
 
 `[System.IO.File]` resolves relative paths against the *process* working directory, not PowerShell's current location, so always pass an absolute path — e.g. `$path = Join-Path (Get-Location) 'Trellis.Core\src\Foo.cs'` or `Resolve-Path`. A bare relative path silently writes somewhere unexpected.
 

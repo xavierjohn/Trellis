@@ -18,6 +18,25 @@ permissions:
   pull-requests: write
 
 jobs:
+  encoding-policy:
+    name: Encoding policy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Test encoding policy
+      shell: pwsh
+      run: ./build/test-encoding-policy.ps1
+
+    - name: Verify tracked-file encodings
+      shell: pwsh
+      run: ./build/verify-encoding.ps1
+
   build:
     runs-on: ubuntu-latest
 
