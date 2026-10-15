@@ -2,6 +2,97 @@
   href: trellis-start-here.md
 - name: Cookbook
   href: trellis-api-cookbook.md
+  items:
+    - name: Domain modeling & persistence
+      items:
+        - name: 1. CRUD aggregate
+          href: trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract
+        - name: 8. Optional EF Core value objects
+          href: trellis-api-cookbook.md#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects
+        - name: 9. State transitions
+          href: trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult
+        - name: 13. Composite value objects
+          href: trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership
+        - name: 16. Unit-of-work saves
+          href: trellis-api-cookbook.md#recipe-16--unit-of-work-in-handlers-add-staging-vs-immediate-saveasync
+        - name: 27. Idempotent inserts
+          href: trellis-api-cookbook.md#recipe-27--idempotent-inserts-on-a-unique-constraint-with-tryinsertuniqueasync
+        - name: 30. Rehydrate persisted entities
+          href: trellis-api-cookbook.md#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track
+        - name: 37. Reconstitute aggregates
+          href: trellis-api-cookbook.md#recipe-37--reconstituting-an-aggregate-without-its-factory-non-ef-repositories
+    - name: Handlers & orchestration
+      items:
+        - name: 2. Command, validation & persistence
+          href: trellis-api-cookbook.md#recipe-2--command--handler--fluentvalidation--ef-persistence
+        - name: 20. Fail-fast or accumulating validation
+          href: trellis-api-cookbook.md#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall
+        - name: 21. Parallel independent loads
+          href: trellis-api-cookbook.md#recipe-21--parallel-independent-loads-in-handlers-resultparallelasync--whenallasync
+        - name: 22. Multi-aggregate orchestration
+          href: trellis-api-cookbook.md#recipe-22--multi-aggregate-orchestration-fail-loud-on-missing-related-aggregates
+        - name: 25. Validate before mutating
+          href: trellis-api-cookbook.md#recipe-25--two-pass-validate-then-mutate-over-a-collection-of-related-aggregates
+    - name: Queries & input
+      items:
+        - name: 3. Cursor pagination
+          href: trellis-api-cookbook.md#recipe-3--query-handler-returning-paget-paginated-list-with-cursor
+        - name: 14. Optional request fields
+          href: trellis-api-cookbook.md#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport
+        - name: 18. DTOs to value-object commands
+          href: trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap
+        - name: 39. Localized validation messages
+          href: trellis-api-cookbook.md#recipe-39--rendering-a-validation-failure-in-the-callers-language-code--args
+        - name: 40. Computed pagination
+          href: trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state
+    - name: HTTP endpoints & clients
+      items:
+        - name: 4. Minimal API endpoints
+          href: trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse
+        - name: 5. MVC controllers
+          href: trellis-api-cookbook.md#recipe-5--mvc-controller-using-asactionresult
+        - name: 6. Conditional GET
+          href: trellis-api-cookbook.md#recipe-6--conditional-get-with-entitytagvalue
+        - name: 19. HTTP client results & optional reads
+          href: trellis-api-cookbook.md#recipe-19--http-client-result-safety-and-optional-reads
+        - name: 23. Optimistic concurrency
+          href: trellis-api-cookbook.md#recipe-23--concurrency-control-on-aggregate-mutating-endpoints-when-to-require-if-match
+        - name: 28. Problem Details resource links
+          href: trellis-api-cookbook.md#recipe-28--synthesise-problemdetailsinstance-from-a-resourceref
+        - name: 29. Idempotent POST & PATCH
+          href: trellis-api-cookbook.md#recipe-29--ietf-idempotency-key-middleware-on-post--patch-with-usetrellisidempotency
+        - name: 41. Actor-aware rate limiting
+          href: trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions
+    - name: Authorization & tenancy
+      items:
+        - name: 7. Actor & resource authorization
+          href: trellis-api-cookbook.md#recipe-7--authorization-iactorprovider--iauthorize--resource-based-auth
+        - name: 24. Multi-hop authorization
+          href: trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization
+        - name: 31. Reuse the authorized resource
+          href: trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource
+        - name: 32. Hide resource existence
+          href: trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound
+        - name: 38. Tenant-scoped authorization
+          href: trellis-api-cookbook.md#recipe-38--tenant-scoped-resource-authorization-with-a-typed-actor-attribute
+    - name: Events & messaging
+      items:
+        - name: 17. Define domain events
+          href: trellis-api-cookbook.md#recipe-17--defining-custom-domain-events-occurredat-is-the-only-timestamp
+        - name: 35. Transactional outbox
+          href: trellis-api-cookbook.md#recipe-35--transactional-outbox-for-crash-safe-domain-events
+        - name: 36. Translate integration events
+          href: trellis-api-cookbook.md#recipe-36--translating-a-domain-event-into-an-integration-event
+    - name: Composition, testing & diagnostics
+      items:
+        - name: 10. Handler tests
+          href: trellis-api-cookbook.md#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror
+        - name: 11. Analyzer fixes
+          href: trellis-api-cookbook.md#recipe-11--anti-pattern--fix-gallery-the-analyzers-in-action
+        - name: 12. Composition-root wiring
+          href: trellis-api-cookbook.md#recipe-12--di-wiring-playbook-addtrellis-composition-builder
+        - name: 26. Background worker tests
+          href: trellis-api-cookbook.md#recipe-26--test-a-backgroundservice-with-workerharnesstworker
 - name: Anti-pattern gallery
   href: trellis-api-anti-patterns.md
 - name: Per-package reference

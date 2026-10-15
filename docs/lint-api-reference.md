@@ -32,9 +32,20 @@ Both CI workflows pin DocFX to 2.80.1, whose Roslyn host runs the Trellis source
 dotnet tool update -g docfx --version 2.80.1
 dotnet build Trellis.slnx -c Release
 docfx docs/docfx_project/docfx.json --warningsAsErrors
+pwsh docs/test-cookbook-navigation.ps1
 ```
 
 Do not include saved generator output as ordinary compilation inputs for metadata extraction. The old `TrellisDocfxMetadataBuild` workaround did that for `ActorId` when older DocFX versions could not load the generator; with the current tool it causes duplicate partial declarations. `Trellis.Authorization` excludes any stale `Generated/**/*.cs` files left in existing checkouts, and generated members such as `ActorId.TryCreate` are still included in the API metadata.
+
+Human recipe navigation lives in `docs/docfx_project/api_reference/toc.yml`; the
+agent-facing cookbook remains one canonical Markdown file. Keep every live recipe
+in exactly one topic group, using its existing heading anchor. The navigation check
+compares the live source recipes with the rendered cookbook and both DocFX TOCs,
+so missing recipes, duplicate links and stale anchors fail Documentation CI. Each
+label must start with its recipe number followed by `. `, and the HTML and JSON
+TOCs must expose the same cookbook anchor targets in both directions.
+Retired and moved sections retain their existing anchors but are not advertised as
+live recipes.
 
 ## Rules
 
