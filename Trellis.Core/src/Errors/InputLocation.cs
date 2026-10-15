@@ -1,4 +1,4 @@
-namespace Trellis;
+﻿namespace Trellis;
 
 /// <summary>
 /// Identifies which part of an input an offending value came from.
