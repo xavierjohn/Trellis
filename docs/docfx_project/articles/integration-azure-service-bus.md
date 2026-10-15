@@ -40,7 +40,7 @@ Both sides build an `IntegrationEventNameMap` and resolve the name in whichever 
 ## Producing
 
 ```csharp
-builder.Services.AddSingleton(new ServiceBusClient(connectionString));
+builder.Services.AddSingleton(_ => new ServiceBusClient(connectionString));
 
 builder.Services.AddAzureServiceBusIntegrationEventPublisher(
     IntegrationEventNameMap.FromAssemblies(typeof(OrderPlaced).Assembly),
@@ -56,7 +56,7 @@ By default each contract gets its own topic, named after its wire name. Subscrib
 ## Consuming
 
 ```csharp
-builder.Services.AddSingleton(new ServiceBusClient(connectionString));
+builder.Services.AddSingleton(_ => new ServiceBusClient(connectionString));
 
 builder.Services.AddTrellisInbox<BillingDbContext>(o => o.ConsumerId = "billing");
 

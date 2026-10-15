@@ -3,7 +3,7 @@ title: Transactional Inbox Integration
 package: Trellis.EntityFrameworkCore.Inbox
 topics: [inbox, integration-events, idempotency, efcore, messaging, reliability]
 related_api_reference: [trellis-api-efcore-inbox.md, trellis-api-efcore-outbox.md, trellis-api-efcore.md, trellis-api-mediator.md]
-last_verified: 2026-10-12
+last_verified: 2026-10-14
 audience: [developer]
 ---
 # Transactional Inbox Integration
@@ -66,9 +66,16 @@ public sealed class AppDbContext : DbContext
 // 2. Register the dispatcher, store, and options — plus the handlers that consume the events.
 builder.Services.AddTrellis(trellis => trellis
     .UseIntegrationEvents(typeof(Program).Assembly)   // your IIntegrationEventHandler<T> consumers
-    .UseEntityFrameworkUnitOfWork<AppDbContext>()
+    .UseEntityFrameworkUnitOfWork<AppDbContext>()     // only for this process's Mediator commands
     .UseInbox<AppDbContext>(o => o.ConsumerId = "orders-service"));
 ```
+
+The unit-of-work slot is not required by inbox dispatch; the dispatcher performs its own
+single save. Select it only for this process's Mediator commands. Inbox handlers stage
+writes on the scoped context and return—they must not dispatch a command through the
+transactional behavior. That command commits the already-staged dedup row and prior
+handler writes early; if that handler or a later handler then fails, redelivery skips
+the message as processed and silently loses the remaining work.
 
 `ConsumerId` identifies this subscriber. Two different services consuming the same message each keep their own dedup history under their own `ConsumerId`, so each processes it once. Keep the value stable across deploys — it is part of the dedup key. Renaming it changes the dedup namespace: records under the old id do not protect deliveries under the new id, so any redelivered or replayed message can run again.
 

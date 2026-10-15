@@ -6,7 +6,7 @@ version: v3
 last_verified: 2026-10-14
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when wiring a composition root with AddTrellis(...) so Trellis modules apply in the canonical order, and what it deliberately does not register."
+agent_description: "Open when wiring AddTrellis(...) in canonical order, including reliable outbox/inbox/transport composition and registrations deliberately kept outside the builder."
 ---
 # Trellis.ServiceDefaults API Reference
 
@@ -20,6 +20,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 
 - You are wiring a composition root and want Trellis modules applied in the canonical order.
 - You want one fluent builder for ASP, Mediator, FluentValidation, resource authorization, actor provider, and EF unit-of-work registration.
+- You are composing domain events, an outbox, broker publication, inbox consumption, and transport adapters without confusing their boundaries.
 - You need to know what `AddTrellis(...)` deliberately does not register.
 
 ## Patterns Index
@@ -42,6 +43,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 | Dispatch domain events from successful commands | `.UseDomainEvents(typeof(MyHandler).Assembly)` or `.UseDomainEvents()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator domain events](trellis-api-mediator.md#domaineventdispatchbehavior) |
 | Publish a translated external contract (integration events) via the outbox | `.UseIntegrationEvents(typeof(MyHandler).Assembly)` or `.UseIntegrationEvents()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Outbox integration events](trellis-api-efcore-outbox.md#integration-events) |
 | Consume integration events idempotently (deduplicate transport redeliveries) | `.UseInbox<TContext>(o => o.ConsumerId = "orders")` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Inbox reference](trellis-api-efcore-inbox.md#useinbox-builder-slot) |
+| Wire reliable integration messaging by producer/consumer role | Builder slots for Trellis behavior and persistence; direct transport registration for vendor adapters | [Messaging setup by deployment role](#messaging-setup-by-deployment-role) |
 | Auto-dispatch domain events from every tracked aggregate (outcome-DTO commands) | `.UseTrackedAggregateDomainEvents(typeof(MyHandler).Assembly)` or `.UseTrackedAggregateDomainEvents()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator tracked dispatch](trellis-api-mediator.md#trackedaggregatedomaineventdispatchbehavior) |
 | Classify health features versus metadata/adapter leaves | Outbox readiness is slotted; capture age and consumer lag are options on that existing feature, while application/vendor lag providers are direct leaf adapters | [Health registration classification](#health-registration-classification) |
 
@@ -57,6 +59,92 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 - Minimal API hosts pair the registration with validation middleware and endpoint filters; scalar and composite JSON failures are collected without a `ThrowOnBadRequest` override. See [semantic JSON validation](trellis-api-asp.md#minimal-api-semantic-json-validation).
 - Formatting bare error responses is a separate host policy, not a scalar-validation side effect. For Problem Details on bare framework 400s, explicitly pair `AddTrellisProblemDetails()` with `app.UseStatusCodePages()`; status-code pages also format eligible application-owned bodyless responses.
 - Shared-loader adapters are fallbacks: when `UseResourceAuthorization(assemblies)` discovers a custom per-message loader, it replaces an adapter installed by an earlier direct `AddSharedResourceAuthorization` call. Scanning never replaces an application-provided implementation, factory, or instance registration, and leaves keyed registrations untouched.
+
+## Messaging setup by deployment role
+
+Reliable messaging is a composition of separate layers. Select the rows that belong to
+the process being configured; no single registration silently supplies the others.
+
+| Role | Trellis builder/model setup | Direct application or transport setup |
+|---|---|---|
+| Produce domain changes and translate contracts | `UseDomainEvents(...)`, `UseIntegrationEvents(...)`, `UseEntityFrameworkUnitOfWork<TContext>()`, `UseOutbox<TContext>()`; `AddTrellisOutbox()` in the model and `AddTrellisOutboxInterceptor()` on context options | Register the `DbContext`, migrations, translators, and stable `[IntegrationEventName]` contracts. |
+| Publish outside the process | Keep `UseIntegrationEvents(...)` and `UseOutbox<TContext>()` | Register one broker `IIntegrationEventPublisher`, such as `AddAzureServiceBusIntegrationEventPublisher(...)`. It replaces the default best-effort publisher and must preserve `OutboundIntegrationMessage.MessageId`. Register one shared singleton `ServiceBusClient` for Azure publication and consumption. |
+| Consume with transactional deduplication | `UseIntegrationEvents(...)`, `UseInbox<TContext>(...)`; `AddTrellisInbox()` in the model | Register the `DbContext`, migrations, and `IIntegrationEventHandler<TEvent>` implementations. `UseEntityFrameworkUnitOfWork<TContext>()` is for this process's Mediator commands; inbox dispatch owns its own single save. |
+| Feed the inbox from a broker | The inbox slot supplies `IInboxDispatcher`; registration alone does not route messages | Use the shared singleton `ServiceBusClient` and register `AddAzureServiceBusIntegrationEventConsumer(...)`, or call `IInboxDispatcher.DispatchAsync(...)` from an application adapter. Complete `Processed` and `SkippedDuplicate`; expose failures for redelivery. |
+
+The producer and consumer may be different services. Each builds an
+`IntegrationEventNameMap` over its local contract assembly. The publisher carries the
+outbox row id as the transport message id; the consumer passes that same id to the inbox.
+Broker acceptance completes publication, not downstream processing. The default
+publisher is best-effort local fan-out and is not an implicit loopback through the inbox.
+
+### Producer: outbox + Azure Service Bus
+
+```csharp
+var names = IntegrationEventNameMap.FromAssemblies(
+    typeof(OrderPlacedIntegrationEvent).Assembly);
+
+builder.Services.AddSingleton(_ => new ServiceBusClient(serviceBusConnectionString));
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(databaseConnectionString)
+        .AddTrellisOutboxInterceptor());
+
+builder.Services.AddTrellis(trellis => trellis
+    .UseDomainEvents(typeof(Program).Assembly)
+    .UseIntegrationEvents(typeof(Program).Assembly)
+    .UseEntityFrameworkUnitOfWork<AppDbContext>()
+    .UseOutbox<AppDbContext>());
+
+builder.Services.AddAzureServiceBusIntegrationEventPublisher(
+    names,
+    options => options.MessageSource = "orders-service");
+```
+
+Map `modelBuilder.AddTrellisOutbox()` and apply the application-owned migration.
+Publisher registration is order-independent with `AddTrellis(...)`: the Azure adapter
+replaces the default local publisher whether called before or after the builder.
+
+### Consumer: Azure Service Bus + inbox
+
+```csharp
+var names = IntegrationEventNameMap.FromAssemblies(
+    typeof(OrderPlacedIntegrationEvent).Assembly);
+
+builder.Services.AddSingleton(_ => new ServiceBusClient(serviceBusConnectionString));
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(databaseConnectionString));
+
+builder.Services.AddTrellis(trellis => trellis
+    .UseIntegrationEvents(typeof(Program).Assembly)
+    .UseInbox<AppDbContext>(options => options.ConsumerId = "billing-service"));
+
+builder.Services.AddAzureServiceBusIntegrationEventConsumer(
+    names,
+    options => options.Subscribe("orders.order-placed.v1", "billing"));
+```
+
+Map `modelBuilder.AddTrellisInbox()` and apply the migration. The subscription name is
+broker topology; `InboxOptions.ConsumerId` is the stable dedup namespace. The assembly
+passed to `UseIntegrationEvents(...)` must contain the matching
+`IIntegrationEventHandler<TEvent>` implementations. A missing handler or missing inbox
+registration is discovered on delivery, not at startup: the message is redelivered and
+eventually dead-lettered under the broker policy. The adapter resolves
+`IInboxDispatcher` per message, completes both successful outcomes, abandons a handler
+failure for redelivery, and dead-letters unusable bytes with a reason. For another
+broker, preserve the same settlement and stable-id rules in the application adapter.
+
+When the consuming process also mutates aggregates and publishes onward, use one
+`TContext`: add the outbox interceptor, map both `AddTrellisInbox()` and
+`AddTrellisOutbox()`, and compose `UseDomainEvents(...)`, one
+`UseIntegrationEvents(...)`, `UseEntityFrameworkUnitOfWork<TContext>()`,
+`UseInbox<TContext>(...)`, and `UseOutbox<TContext>()`. The inbox handler still stages
+writes and returns; it does not dispatch a committing command.
+
+`Trellis.Messaging.AzureServiceBus` remains a direct registration because a builder slot
+would force every `Trellis.ServiceDefaults` consumer to reference the Azure SDK. See the
+[transport registration](trellis-api-messaging-azureservicebus.md#registration),
+[wire format](trellis-api-messaging-azureservicebus.md#wire-format), and
+[settlement rules](trellis-api-messaging-azureservicebus.md#settlement).
 
 ## AOT compatibility
 

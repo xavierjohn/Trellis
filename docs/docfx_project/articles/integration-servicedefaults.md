@@ -1,9 +1,9 @@
 ﻿---
 title: Service Defaults (Composition Root)
 package: Trellis.ServiceDefaults
-topics: [composition-root, service-collection, di-wiring, builder, pipeline-ordering]
-related_api_reference: [trellis-api-servicedefaults.md, trellis-api-mediator.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-fluentvalidation.md, trellis-api-cookbook.md]
-last_verified: 2026-10-10
+topics: [composition-root, service-collection, di-wiring, builder, pipeline-ordering, messaging]
+related_api_reference: [trellis-api-servicedefaults.md, trellis-api-mediator.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-efcore-inbox.md, trellis-api-efcore-outbox.md, trellis-api-messaging-azureservicebus.md, trellis-api-fluentvalidation.md, trellis-api-cookbook.md]
+last_verified: 2026-10-14
 audience: [developer]
 ---
 # Service Defaults (Composition Root)
@@ -65,6 +65,24 @@ standard pipeline.
 All `UseIntegrationEvents(...)` overloads wire the default **best-effort local** publisher when none is registered. It logs and swallows ordinary consumer failures, so the relay processes an integration row without retrying those consumers. For reliable broker handoff, replace the publisher with an adapter that awaits acceptance and propagates publication failures; acceptance is not downstream consumer success.
 
 `UseInbox<TContext>()` registers a separate non-swallowing consumption seam: handler writes through its context and the dedup row commit atomically. It does not reroute default local publication. An adapter must actually call `IInboxDispatcher.DispatchAsync` with the stable message id and expose failures for transport redelivery. See [outbox delivery semantics](integration-outbox.md#delivery-semantics) and [inbox wiring](integration-inbox.md#the-wiring).
+
+### Messaging setup by deployment role
+
+Do not treat messaging as one switch. The producer selects domain/integration events,
+the unit of work, and outbox; a broker publisher is registered directly. The consumer
+selects integration handlers and inbox; a broker consumer is registered directly.
+
+| Process responsibility | Select here | Complete outside the builder |
+|---|---|---|
+| Produce crash-safe external events | `UseDomainEvents`, `UseIntegrationEvents`, `UseEntityFrameworkUnitOfWork`, `UseOutbox` | Context interceptor, outbox model/migration, translators, stable wire-name contracts |
+| Publish to Azure Service Bus | No vendor slot | One shared singleton `ServiceBusClient` + `AddAzureServiceBusIntegrationEventPublisher` |
+| Consume idempotently | `UseIntegrationEvents`, `UseInbox` | Inbox model/migration and integration-event handlers |
+| Receive from Azure Service Bus | No vendor slot | The shared singleton `ServiceBusClient` + `AddAzureServiceBusIntegrationEventConsumer` |
+
+See the canonical [producer and consumer compositions](../api_reference/trellis-api-servicedefaults.md#messaging-setup-by-deployment-role)
+for complete registration examples. The direct transport calls are deliberate: they
+keep the Azure SDK out of `Trellis.ServiceDefaults`. The inbox registration is not
+routing, and broker acceptance is not downstream consumer success.
 
 ## Mutually-exclusive slots
 

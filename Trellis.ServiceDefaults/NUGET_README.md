@@ -42,6 +42,9 @@ For most applications, use the builder instead of mixing standalone `AddTrellis*
 
 Every `UseIntegrationEvents(...)` overload wires the default **best-effort local** publisher when none is registered. It logs and swallows ordinary consumer failures, so processed integration outbox rows do not retry those consumers. For reliable broker handoff, replace the publisher with an adapter that awaits acceptance and propagates publication failures; acceptance is not consumer success. `UseInbox<TContext>()` supplies a separate non-swallowing consumption seam, not automatic routing: an adapter must call `IInboxDispatcher.DispatchAsync` with the stable message id and expose failures for redelivery.
 
+See the [complete producer/consumer compositions](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-servicedefaults.html#messaging-setup-by-deployment-role).
+Transport registrations stay direct so ServiceDefaults does not acquire a vendor SDK.
+
 `UseOutboxReadiness<TContext>(OutboxReadinessOptions.CreateStagedOperationalProfile())`
 explicitly enables the named `trellis-outbox` read-only health check alongside
 `UseOutbox<TContext>()`. Existing outbox/inbox slots do not enable it. Endpoint

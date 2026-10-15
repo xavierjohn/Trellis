@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation - messaging composition and discovery
+
+Added direct start-router tasks for transactional inbox consumption, Azure Service Bus
+publication/consumption, and choosing local versus broker integration-event delivery.
+ServiceDefaults guidance now consolidates the producer, transport, and consumer layers
+into one deployment-role map with complete Azure Service Bus registration examples.
+No runtime API, registration behavior, or package dependency changed.
+
 ### Added - optional consumer/source lag readiness (G3 stage three)
 
 The named outbox readiness check can now evaluate explicitly selected consumer/source
