@@ -46,8 +46,10 @@ Every `UseIntegrationEvents(...)` overload wires the default **best-effort local
 explicitly enables the named `trellis-outbox` read-only health check alongside
 `UseOutbox<TContext>()`. Existing outbox/inbox slots do not enable it. Endpoint
 authorization and traffic-readiness versus alerting remain host-owned. Durable capture
-age is enabled on the same immutable profile after its nullable schema migration;
-consumer lag remains deferred. See [outbox readiness](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#outbox-readiness).
+age is enabled on the same immutable profile after its nullable schema migration.
+Optional consumer lag uses the same slot: register an application-owned
+`IConsumerLagProvider` directly and select `ConsumerLagMeasures.Age`, `Count`, or both.
+The provider is a leaf adapter, not another builder feature. See [outbox readiness](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#outbox-readiness).
 
 For a separate worker, pass
 `OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` to the same slot

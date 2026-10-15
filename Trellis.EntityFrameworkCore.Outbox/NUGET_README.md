@@ -63,8 +63,9 @@ Explicitly select
 `.UseOutboxReadiness<AppDbContext>(profile)` alongside the relay. Existing outbox calls
 do not enable the named `trellis-outbox` .NET health check.
 
-It reports bounded pending/parked metadata, optional durable capture age, local relay
-responsiveness, and separate durable row completions. Counts include leases/backoff and disclose lower bounds.
+It reports bounded pending/parked metadata, optional durable capture age, optional
+application-provided consumer lag, local relay responsiveness, and separate durable row
+completions. Counts include leases/backoff and disclose lower bounds.
 Shared refreshes isolate caller cancellation; probe faults/timeouts are Unhealthy,
 and parked rows or missing initial relay evidence are Degraded. Tune the immutable
 profile with `with` for workload and relay timing.
@@ -74,6 +75,16 @@ the `{ ProcessedAt, CapturedAt, Sequence }` index, deploy writers, then set
 `CaptureAgeEnabled = true` with a `with` expression. The inclusive reference thresholds
 are 2/10 minutes. Unknown legacy pending rows degrade and are counted separately; never
 backfill them from `OccurredAt` or migration time.
+
+For consumer/source lag, register an application-owned `IConsumerLagProvider` and select
+`ConsumerLagMeasures.Age`, `Count`, or both on the same profile. Its aggregated
+`ConsumerLagEvidence` must conservatively report original sample time, complete partition
+coverage, oldest durably unaccounted source time and/or summed unaccounted count.
+Trellis applies inclusive 2/10-minute and 1,000/10,000 reference thresholds; missing,
+stale or future evidence and a lower-bound count below 1,000 degrade, while provider
+faults/shared-budget timeouts are Unhealthy. Fresh queue metadata sampled before a
+lag-provider timeout remains available. Inbox receipts and opaque checkpoints are never
+treated as lag.
 
 For split API/worker hosts, keep local monitoring in the worker and select
 `OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` in the API,
@@ -95,10 +106,9 @@ The host owns endpoint authorization and traffic-readiness versus alert-only exp
 shared-store breaches can affect every replica. Degraded remains ready; selected
 Unhealthy fails readiness. No endpoint, mutation, or restart policy is added.
 
-**Not implemented:** optional consumer/source lag. `OccurredAt` is not queue age, and
-publication is not downstream consumer success.
+`OccurredAt` is not queue age, and publication is not downstream consumer success.
 See [readiness APIs and diagnostics](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#outbox-readiness)
-and the [remaining staged contract](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-outbox.html#health-check-requirements).
+and the [consumer-lag contract](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-inbox.html#consumer-lag-health-requirements).
 
 ## Documentation
 

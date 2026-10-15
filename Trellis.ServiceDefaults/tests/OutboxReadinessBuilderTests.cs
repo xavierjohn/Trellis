@@ -101,5 +101,28 @@ public sealed class OutboxReadinessBuilderTests
         act.Should().Throw<InvalidOperationException>().WithMessage("*profile*");
     }
 
+    [Fact]
+    public void UseOutboxReadiness_ConsumerLagProfile_PreservesCanonicalRegistration()
+    {
+        var services = new ServiceCollection();
+        var profile = OutboxReadinessOptions.CreateMetadataOnlyProfile(3) with
+        {
+            ConsumerLagMeasures = ConsumerLagMeasures.Age | ConsumerLagMeasures.Count,
+        };
+        services.AddScoped<IConsumerLagProvider, BuilderLagProvider>();
+
+        services.AddTrellis(builder => builder.UseOutboxReadiness<ReadinessDbContext>(profile));
+
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IConsumerLagProvider));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(OutboxReadinessOptions)
+            && ReferenceEquals(d.ImplementationInstance, profile));
+    }
+
     private sealed class ReadinessDbContext(DbContextOptions<ReadinessDbContext> options) : DbContext(options);
+
+    private sealed class BuilderLagProvider : IConsumerLagProvider
+    {
+        public ValueTask<ConsumerLagEvidence> GetLagAsync(CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+    }
 }

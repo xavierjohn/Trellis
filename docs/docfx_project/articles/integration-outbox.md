@@ -255,7 +255,26 @@ The inclusive reference thresholds are 2 minutes Degraded and 10 minutes Unhealt
 Leased/backoff rows remain pending evidence; processed and parked rows do not. Legacy
 nulls are counted separately and degrade until they leave the retryable set. Never
 fabricate old-row age from `OccurredAt`, UUIDv7, sequence, lease time, or migration time.
-**Not implemented:** optional consumer/source lag.
+
+Consumer/source lag is also opt-in and application-provided:
+
+```csharp
+builder.Services.AddScoped<IConsumerLagProvider, OrdersConsumerLagProvider>();
+profile = profile with
+{
+    ConsumerLagMeasures = ConsumerLagMeasures.Age | ConsumerLagMeasures.Count,
+};
+```
+
+The adapter returns one conservative `ConsumerLagEvidence` snapshot with its original
+sample time, stable consumer/source/authorized scope, required and covered partition
+counts, and age and/or count evidence. It owns gap-aware durable accounting across
+out-of-order processing, redeliveries, and retention; Trellis never infers lag from inbox
+rows or opaque checkpoint positions. Missing coverage/measurements and stale/future
+evidence degrade. Inclusive 2/10-minute or 1,000/10,000 breaches degrade or make unhealthy,
+while a lower-bound count below 1,000 degrades because it cannot prove healthy. Provider
+faults and the shared probe timeout are Unhealthy; fresh queue evidence already sampled
+before a lag-provider timeout remains available.
 
 For a separate worker, keep the local-relay profile in that worker and select metadata-only
 in the API against the same fixed store:
@@ -280,8 +299,8 @@ before any service starts; a decorator hiding its instance does not satisfy vali
 Both modes check context registration without constructing it when the container supports
 registration probing. Bare providers do not invoke the lifecycle validator.
 
-The rollout separates shipped bounded pending/parked summaries, optional durable
-row-capture age, local relay observations, and future
+The rollout separates bounded pending/parked summaries, optional durable row-capture
+age, local relay observations, and optional application-provided
 [consumer/source-lag evidence](integration-inbox.md#consumer-lag-health-requirements).
 Each signal is independently useful.
 

@@ -19,6 +19,7 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
     private Task<ProbeResult>? _databaseProbe;
     private ProbeResult? _cached;
     private QueueEvidence? _lastEvidence;
+    private ConsumerLagEvidence? _lastConsumerLagEvidence;
     private long _cachedAt;
 
     public async Task<HealthCheckResult> CheckHealthAsync(
@@ -66,14 +67,15 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
     {
         ProbeResult result;
         if (_databaseProbe is { IsCompleted: false })
-            result = new(maxAttempts, null, "probe-timeout", null);
+            result = new(maxAttempts, null, false, "probe-timeout", null, null, null, null);
         else
         {
             var started = timeProvider.GetTimestamp();
             var deadline = new CancellationTokenSource(profile.ProbeTimeout, timeProvider);
+            var progress = new ProbeProgress();
             // A probe has the relay's background scope, not the initiating request's ambient tenancy.
             using (ExecutionContext.SuppressFlow())
-                _databaseProbe = Task.Run(() => ReadMetadataAsync(maxAttempts, deadline));
+                _databaseProbe = Task.Run(() => ReadMetadataAsync(maxAttempts, deadline, progress));
             var remaining = profile.ProbeTimeout - timeProvider.GetElapsedTime(started);
             try
             {
@@ -83,7 +85,9 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
             }
             catch (TimeoutException)
             {
-                result = new(maxAttempts, null, "probe-timeout", null);
+                var evidence = Volatile.Read(ref progress.Evidence);
+                result = new(maxAttempts, evidence, evidence is not null,
+                    "probe-timeout", null, null, null, null);
             }
         }
 
@@ -91,10 +95,15 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
             OutboxReadinessLog.ProbeTimedOut(logger, typeof(TContext).Name);
         lock (_gate)
         {
-            if (result.Evidence is not null)
+            if (result is { MetadataAvailable: true, Evidence: not null })
                 _lastEvidence = result.Evidence;
             else if (_lastEvidence?.MaxAttempts == maxAttempts)
                 result = result with { Evidence = _lastEvidence };
+            if (result.ConsumerLagEvidence is not null)
+                _lastConsumerLagEvidence = result.ConsumerLagEvidence;
+            else if (profile.ConsumerLagMeasures != ConsumerLagMeasures.None
+                && _lastConsumerLagEvidence is not null)
+                result = result with { ConsumerLagEvidence = _lastConsumerLagEvidence };
             _cached = result;
             _cachedAt = timeProvider.GetTimestamp();
         }
@@ -102,7 +111,8 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
         return result;
     }
 
-    private async Task<ProbeResult> ReadMetadataAsync(int maxAttempts, CancellationTokenSource deadline)
+    private async Task<ProbeResult> ReadMetadataAsync(
+        int maxAttempts, CancellationTokenSource deadline, ProbeProgress progress)
     {
         using (deadline)
         {
@@ -110,6 +120,9 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
             {
                 deadline.Token.ThrowIfCancellationRequested();
                 QueueEvidence evidence;
+                ConsumerLagEvidence? consumerLagEvidence = null;
+                string? consumerLagFailureReason = null;
+                string? consumerLagFaultType = null;
                 var scope = scopeFactory.CreateAsyncScope();
                 await using (scope.ConfigureAwait(false))
                 {
@@ -158,21 +171,54 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
                         oldestCapturedAt,
                         unknownCaptureAgeCount,
                         captureAgeSampledAt);
+                    Volatile.Write(ref progress.Evidence, evidence);
+
+                    if (profile.ConsumerLagMeasures != ConsumerLagMeasures.None)
+                    {
+                        try
+                        {
+                            consumerLagEvidence = await scope.ServiceProvider
+                                .GetRequiredService<IConsumerLagProvider>()
+                                .GetLagAsync(deadline.Token)
+                                .ConfigureAwait(false);
+                            if (consumerLagEvidence is null)
+                            {
+                                consumerLagFailureReason = "consumer-lag-provider-failed";
+                                consumerLagFaultType = "NullEvidence";
+                                OutboxReadinessLog.ConsumerLagProbeFailed(
+                                    logger, typeof(TContext).Name, consumerLagFaultType);
+                            }
+                        }
+                        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+                        {
+                            throw;
+                        }
+                        catch (Exception exception)
+                        {
+                            consumerLagFailureReason = "consumer-lag-provider-failed";
+                            consumerLagFaultType = exception.GetType().Name;
+                            OutboxReadinessLog.ConsumerLagProbeFailed(
+                                logger, typeof(TContext).Name, consumerLagFaultType);
+                        }
+                    }
                 }
 
                 return deadline.IsCancellationRequested
-                    ? new(maxAttempts, null, "probe-timeout", null)
-                    : new(maxAttempts, evidence, null, null);
+                    ? new(maxAttempts, evidence, true, "probe-timeout", null, null, null, null)
+                    : new(maxAttempts, evidence, true, null, null, consumerLagEvidence,
+                        consumerLagFailureReason, consumerLagFaultType);
             }
             catch (OperationCanceledException) when (deadline.IsCancellationRequested)
             {
-                return new(maxAttempts, null, "probe-timeout", null);
+                var evidence = Volatile.Read(ref progress.Evidence);
+                return new(maxAttempts, evidence, evidence is not null,
+                    "probe-timeout", null, null, null, null);
             }
             catch (Exception exception)
             {
                 var faultType = exception.GetType().Name;
                 OutboxReadinessLog.ProbeFailed(logger, typeof(TContext).Name, faultType);
-                return new(maxAttempts, null, "probe-failed", faultType);
+                return new(maxAttempts, null, false, "probe-failed", faultType, null, null, null);
             }
         }
     }
@@ -189,7 +235,7 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
             ["maxAttempts"] = probe.MaxAttempts,
             ["maxAttemptsSource"] = relay is null ? "profile" : "outbox-options",
             ["relayMonitoring"] = relay is null ? "disabled" : "local-relay",
-            ["metadataAvailable"] = probe.FailureReason is null,
+            ["metadataAvailable"] = probe.MetadataAvailable,
             ["pendingCountCap"] = profile.PendingUnhealthyThreshold,
             ["parkedCountCap"] = 1,
             ["pendingDegradedThreshold"] = profile.PendingDegradedThreshold,
@@ -198,19 +244,39 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
             ["cacheDuration"] = profile.CacheDuration,
             ["evidenceMaxAge"] = profile.EvidenceMaxAge,
             ["captureAge"] = profile.CaptureAgeEnabled ? "enabled" : "disabled",
-            ["consumerLag"] = "disabled",
-            ["sampling"] = profile.CaptureAgeEnabled
-                ? relay is null
-                    ? "separate-metadata-and-capture-age-queries"
-                    : "separate-metadata-and-capture-age-queries-and-local-relay"
-                : relay is null
-                    ? "separate-metadata-queries"
-                    : "separate-metadata-queries-and-local-relay",
+            ["consumerLag"] = profile.ConsumerLagMeasures == ConsumerLagMeasures.None ? "disabled" : "enabled",
+            ["sampling"] = SamplingDescription(relay is not null),
         };
         if (probe.FailureReason is not null)
             AddCondition(HealthStatus.Unhealthy, probe.FailureReason);
         if (probe.FaultType is not null)
             data["probeFaultType"] = probe.FaultType;
+        if (profile.ConsumerLagMeasures != ConsumerLagMeasures.None)
+        {
+            data["consumerLagAvailable"] = probe.FailureReason is null
+                && probe.ConsumerLagFailureReason is null
+                && probe.ConsumerLagEvidence is not null;
+            data["consumerLagMeasures"] = MeasureNames(profile.ConsumerLagMeasures);
+            if (profile.ConsumerLagMeasures.HasFlag(ConsumerLagMeasures.Age))
+            {
+                data["consumerLagAgeDegradedAfter"] = profile.ConsumerLagAgeDegradedAfter;
+                data["consumerLagAgeUnhealthyAfter"] = profile.ConsumerLagAgeUnhealthyAfter;
+            }
+
+            if (profile.ConsumerLagMeasures.HasFlag(ConsumerLagMeasures.Count))
+            {
+                data["consumerLagCountDegradedThreshold"] = profile.ConsumerLagCountDegradedThreshold;
+                data["consumerLagCountUnhealthyThreshold"] = profile.ConsumerLagCountUnhealthyThreshold;
+            }
+
+            if (probe.ConsumerLagFailureReason is not null)
+                AddCondition(HealthStatus.Unhealthy, probe.ConsumerLagFailureReason);
+            if (probe.ConsumerLagFaultType is not null)
+                data["consumerLagFaultType"] = probe.ConsumerLagFaultType;
+            if (probe.ConsumerLagEvidence is { } consumerLag)
+                EvaluateConsumerLag(consumerLag);
+        }
+
         if (probe.Evidence is { } evidence)
         {
             data["pendingCount"] = evidence.PendingCount;
@@ -301,14 +367,80 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
         }
 
         data["reasons"] = reasons.ToArray();
-        var healthyDescription = relay is null ? "Outbox metadata is healthy." : "Outbox readiness is healthy.";
+        var healthyDescription = relay is null && profile.ConsumerLagMeasures == ConsumerLagMeasures.None
+            ? "Outbox metadata is healthy."
+            : "Outbox readiness is healthy.";
         return new(status, reasons.Count == 0 ? healthyDescription : string.Join(", ", reasons), data: data);
+
+        void EvaluateConsumerLag(ConsumerLagEvidence evidence)
+        {
+            data["consumerLagEvidenceMeasures"] = MeasureNames(evidence.Measures);
+            data["consumerLagConsumerId"] = evidence.ConsumerId;
+            data["consumerLagSource"] = evidence.Source;
+            data["consumerLagScope"] = evidence.Scope;
+            data["consumerLagSampledAt"] = evidence.SampledAt;
+            data["consumerLagRequiredPartitionCount"] = evidence.RequiredPartitionCount;
+            data["consumerLagCoveredPartitionCount"] = evidence.CoveredPartitionCount;
+
+            if ((evidence.Measures & profile.ConsumerLagMeasures) != profile.ConsumerLagMeasures)
+                AddCondition(HealthStatus.Degraded, "consumer-lag-evidence-missing");
+            if (evidence.CoveredPartitionCount < evidence.RequiredPartitionCount)
+                AddCondition(HealthStatus.Degraded, "consumer-lag-coverage-missing");
+
+            var sampleAge = evaluatedAt - evidence.SampledAt;
+            if (sampleAge < TimeSpan.Zero)
+                AddCondition(HealthStatus.Degraded, "consumer-lag-clock-invalid");
+            else if (sampleAge >= profile.EvidenceMaxAge)
+                AddCondition(HealthStatus.Degraded, "consumer-lag-stale");
+
+            if (profile.ConsumerLagMeasures.HasFlag(ConsumerLagMeasures.Age)
+                && evidence.Measures.HasFlag(ConsumerLagMeasures.Age)
+                && evidence.OldestUnaccountedAt is { } oldestUnaccountedAt)
+            {
+                var age = evaluatedAt - oldestUnaccountedAt;
+                data["consumerLagOldestUnaccountedAt"] = oldestUnaccountedAt;
+                data["consumerLagOldestUnaccountedAge"] = age;
+                if (age < TimeSpan.Zero)
+                    AddCondition(HealthStatus.Degraded, "consumer-lag-clock-invalid");
+                else if (age >= profile.ConsumerLagAgeUnhealthyAfter)
+                    AddCondition(HealthStatus.Unhealthy, "consumer-lag-age-unhealthy");
+                else if (age >= profile.ConsumerLagAgeDegradedAfter)
+                    AddCondition(HealthStatus.Degraded, "consumer-lag-age-degraded");
+            }
+
+            if (profile.ConsumerLagMeasures.HasFlag(ConsumerLagMeasures.Count)
+                && evidence.Measures.HasFlag(ConsumerLagMeasures.Count)
+                && evidence.UnaccountedCount is { } unaccountedCount)
+            {
+                data["consumerLagUnaccountedCount"] = unaccountedCount;
+                data["consumerLagUnaccountedCountIsLowerBound"] = evidence.UnaccountedCountIsLowerBound;
+                if (unaccountedCount >= profile.ConsumerLagCountUnhealthyThreshold)
+                    AddCondition(HealthStatus.Unhealthy, "consumer-lag-count-unhealthy");
+                else if (unaccountedCount >= profile.ConsumerLagCountDegradedThreshold)
+                    AddCondition(HealthStatus.Degraded, "consumer-lag-count-degraded");
+                else if (evidence.UnaccountedCountIsLowerBound)
+                    AddCondition(HealthStatus.Degraded, "consumer-lag-count-lower-bound");
+            }
+        }
+
+        string SamplingDescription(bool hasRelay)
+        {
+            var sampling = profile.CaptureAgeEnabled
+                ? "separate-metadata-and-capture-age-queries"
+                : "separate-metadata-queries";
+            if (profile.ConsumerLagMeasures != ConsumerLagMeasures.None)
+                sampling += "-and-consumer-lag";
+            if (hasRelay)
+                sampling += "-and-local-relay";
+            return sampling;
+        }
 
         void AddCondition(HealthStatus severity, string reason)
         {
             if (severity < status)
                 status = severity;
-            reasons.Add(reason);
+            if (!reasons.Contains(reason))
+                reasons.Add(reason);
         }
     }
 
@@ -317,8 +449,25 @@ internal sealed class OutboxReadinessHealthCheck<TContext>(
         DateTimeOffset PendingSampledAt, DateTimeOffset ParkedSampledAt,
         DateTime? OldestCapturedAt, int UnknownCaptureAgeCount, DateTimeOffset? CaptureAgeSampledAt);
 
+    private sealed class ProbeProgress
+    {
+        public QueueEvidence? Evidence;
+    }
+
     private sealed record ProbeResult(
-        int MaxAttempts, QueueEvidence? Evidence, string? FailureReason, string? FaultType);
+        int MaxAttempts,
+        QueueEvidence? Evidence,
+        bool MetadataAvailable,
+        string? FailureReason,
+        string? FaultType,
+        ConsumerLagEvidence? ConsumerLagEvidence,
+        string? ConsumerLagFailureReason,
+        string? ConsumerLagFaultType);
+
+    private static string[] MeasureNames(ConsumerLagMeasures measures) =>
+        measures == (ConsumerLagMeasures.Age | ConsumerLagMeasures.Count)
+            ? ["age", "count"]
+            : measures == ConsumerLagMeasures.Age ? ["age"] : ["count"];
 }
 
 internal static class OutboxReadinessLog
@@ -329,9 +478,17 @@ internal static class OutboxReadinessLog
     private static readonly Action<ILogger, string, Exception?> s_probeTimedOut =
         LoggerMessage.Define<string>(LogLevel.Error, new EventId(2, "OutboxReadiness.ProbeTimedOut"),
             "Outbox readiness probe for {ContextType} exceeded its budget.");
+    private static readonly Action<ILogger, string, string, Exception?> s_consumerLagProbeFailed =
+        LoggerMessage.Define<string, string>(LogLevel.Error,
+            new EventId(3, "OutboxReadiness.ConsumerLagProbeFailed"),
+            "Consumer lag probe for {ContextType} failed with {FaultType}; exception details are redacted.");
 
     public static void ProbeFailed(ILogger logger, string contextType, string faultType) =>
         s_probeFailed(logger, contextType, faultType, null);
 
     public static void ProbeTimedOut(ILogger logger, string contextType) => s_probeTimedOut(logger, contextType, null);
+
+    public static void ConsumerLagProbeFailed(ILogger logger, string contextType, string faultType) =>
+        s_consumerLagProbeFailed(logger, contextType, faultType, null);
+
 }

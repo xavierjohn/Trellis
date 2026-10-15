@@ -1,12 +1,12 @@
 ﻿---
 package: Trellis.EntityFrameworkCore.Outbox
 namespaces: [Trellis.EntityFrameworkCore]
-types: [OutboxMessage, OutboxMessageConfiguration, OutboxMessageKind, OutboxOptions, OutboxServiceCollectionExtensions, OutboxModelBuilderExtensions, OutboxReadinessOptions, OutboxRelayMonitoring, OutboxReadinessServiceCollectionExtensions]
+types: [OutboxMessage, OutboxMessageConfiguration, OutboxMessageKind, OutboxOptions, OutboxServiceCollectionExtensions, OutboxModelBuilderExtensions, OutboxReadinessOptions, OutboxRelayMonitoring, ConsumerLagMeasures, ConsumerLagEvidence, IConsumerLagProvider, OutboxReadinessServiceCollectionExtensions]
 version: v1
 last_verified: 2026-10-14
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when configuring transactional outbox delivery, retry/parking, durable capture age, or opt-in readiness; consumer lag remains deferred."
+agent_description: "Open when configuring transactional outbox delivery, retry/parking, durable capture age, application-provided consumer lag, or opt-in readiness."
 ---
 # Trellis.EntityFrameworkCore.Outbox
 
@@ -23,7 +23,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - You need domain events to survive a crash between the commit and the in-pipeline dispatch (the gap a plain `UseDomainEvents()` pipeline leaves open).
 - You are wiring `AddTrellisOutbox`, `AddTrellisOutboxInterceptor`, or the `UseOutbox<TContext>()` builder slot.
 - You are reasoning about the outbox's delivery guarantee, retry/parking behavior, or event-serialization constraints.
-- You are enabling bounded outbox readiness or durable capture age, or planning the deferred consumer/source-lag stage.
+- You are enabling bounded outbox readiness, durable capture age, or application-provided consumer/source lag.
 
 ## Patterns Index
 
@@ -37,7 +37,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 | Distinguish a throwing integration consumer from a throwing publisher | Default local consumer failures are swallowed and process the row; exposed publication failures keep it pending | [Delivery semantics](#delivery-semantics) |
 | Decide how to shape an event so it round-trips | Use attribute-driven value objects; `Maybe<T>` members are supported (present → value, absent → `null`) | [Serialization](#serialization) |
 | Publish a stable external contract instead of raw domain events | Translate a domain event into an `IIntegrationEvent` via `IIntegrationEventCollector`; the relay routes it to `IIntegrationEventPublisher` | [Integration events](#integration-events) |
-| Enable readiness without confusing queue age, worker responsiveness, delivery progress, and consumer lag | `AddTrellisOutboxReadiness<TContext>(profile)` or `UseOutboxReadiness<TContext>(profile)`; durable capture age is an explicit profile opt-in and lag remains deferred | [Outbox readiness](#outbox-readiness), [Durable capture age and rollout](#durable-capture-age-and-rollout) |
+| Enable readiness without confusing queue age, worker responsiveness, delivery progress, and consumer lag | `AddTrellisOutboxReadiness<TContext>(profile)` or `UseOutboxReadiness<TContext>(profile)`; durable capture age and provider-backed lag are separate profile opt-ins | [Outbox readiness](#outbox-readiness), [Durable capture age and rollout](#durable-capture-age-and-rollout), [`IConsumerLagProvider`](#iconsumerlagprovider-and-consumerlagevidence) |
 | Monitor outbox metadata in an API host whose relay runs in a separate worker | `OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)`; no relay monitoring or retry-limit fallback | [Split API/worker hosts](#split-apiworker-hosts) |
 
 ## Common traps
@@ -277,11 +277,12 @@ Replaying a dead-lettered row is race-free against a running relay because the r
 
 ## Outbox readiness
 
-**Stages one and two are implemented.** The named `trellis-outbox` .NET health check
-reports bounded queue metadata, optional durable capture age, and explicitly selected
-local relay observations. `UseOutbox` and `AddTrellisOutbox` still do **not** enable
-health checks. There is no endpoint, liveness restart policy, or standalone public
-snapshot/query API; diagnostics are returned in `HealthCheckResult.Data`.
+**All three staged signals are implemented.** The named `trellis-outbox` .NET health
+check reports bounded queue metadata, optional durable capture age, explicitly selected
+local relay observations, and optional application-provided consumer/source lag.
+`UseOutbox` and `AddTrellisOutbox` still do **not** enable health checks. There is no
+endpoint, liveness restart policy, or standalone public snapshot/query API; diagnostics
+are returned in `HealthCheckResult.Data`.
 
 ### `OutboxReadinessServiceCollectionExtensions`
 
@@ -306,9 +307,11 @@ matching relay instance among the hosted services and resolvable local options/o
 Removing the relay, or decorating it so its actual instance is hidden, fails startup with
 an actionable exception; a marker or unrelated relay does not satisfy this requirement.
 Both modes check context registration through `IServiceProviderIsService`, without
-constructing the context or querying the database. Containers without this capability
-skip only the context-registration precheck, without a warning or construction fallback;
-missing dependencies still fail when the health check runs.
+constructing the context or querying the database. A lag-enabled profile also requires
+an `IConsumerLagProvider` descriptor; startup checks only registration presence and does
+not construct it. Containers without registration-probing capability skip only these
+prechecks, without a warning or construction fallback; missing dependencies still fail
+when the health check runs.
 
 Bare service providers and hosts that do not invoke lifecycle hooks do not get this
 startup validation. A resolvable check with an unstarted local relay is Degraded with
@@ -337,6 +340,17 @@ either local or metadata-only mode:
 var profile = OutboxReadinessOptions.CreateStagedOperationalProfile() with
 {
     CaptureAgeEnabled = true,
+};
+```
+
+Consumer lag is independently disabled by default. Register an application/transport
+adapter directly and select age, count, or both:
+
+```csharp
+services.AddScoped<IConsumerLagProvider, OrdersConsumerLagProvider>();
+var profile = OutboxReadinessOptions.CreateStagedOperationalProfile() with
+{
+    ConsumerLagMeasures = ConsumerLagMeasures.Age | ConsumerLagMeasures.Count,
 };
 ```
 
@@ -375,6 +389,67 @@ retrying correctly. Probe failures, stale evidence, and invalid clocks remain in
 health conditions. `relayMonitoring = "disabled"` is configuration, not a healthy relay
 observation; a Healthy description says "Outbox metadata is healthy."
 
+### `ConsumerLagMeasures`
+
+`[Flags] public enum ConsumerLagMeasures`
+
+| Value | Meaning |
+|---|---|
+| `None` | Consumer/source lag is disabled. The health result reports `"disabled"` and does not resolve a provider. |
+| `Age` | Require authoritative oldest-unaccounted source-time evidence. A null oldest timestamp means authoritative quiet-source zero lag. |
+| `Count` | Require an authoritative nonnegative unaccounted count. The provider can mark it as a conservative lower bound; a lower bound below the degraded threshold cannot prove healthy and therefore degrades. |
+
+`Age | Count` requires both measurements. Unknown enum bits are invalid.
+
+### `IConsumerLagProvider` and `ConsumerLagEvidence`
+
+`public interface IConsumerLagProvider`
+
+| Member | Meaning |
+|---|---|
+| `ValueTask<ConsumerLagEvidence> GetLagAsync(CancellationToken cancellationToken)` | Reads one non-mutating, conservative lag snapshot. The provider must honor cancellation and preserve its source sample time. |
+
+`public sealed record ConsumerLagEvidence`
+
+```csharp
+public ConsumerLagEvidence(
+    string consumerId,
+    string source,
+    string scope,
+    DateTimeOffset sampledAt,
+    ConsumerLagMeasures measures,
+    int requiredPartitionCount,
+    int coveredPartitionCount,
+    DateTimeOffset? oldestUnaccountedAt,
+    long? unaccountedCount,
+    bool unaccountedCountIsLowerBound = false);
+```
+
+| Property | Meaning |
+|---|---|
+| `ConsumerId` | Stable logical consumer identity. Do not put secrets here because it is exposed in health data. |
+| `Source` | Stable source/subscription identity. Do not put secrets here because it is exposed in health data. |
+| `Scope` | Authorized storage/tenant/environment scope. Do not put secrets here because it is exposed in health data. |
+| `SampledAt` | Original source sample time. Cache refresh never renews it. |
+| `Measures` | Measurements the provider declares authoritative for this snapshot. |
+| `RequiredPartitionCount` | Positive count of partitions/shards required for complete evidence. |
+| `CoveredPartitionCount` | Number represented in the snapshot, between zero and the required count. |
+| `OldestUnaccountedAt` | Oldest durably unaccounted source timestamp for `Age`; null is authoritative zero lag, not unknown. |
+| `UnaccountedCount` | Nonnegative aggregate for `Count`. |
+| `UnaccountedCountIsLowerBound` | Whether the count is known only as a conservative lower bound. Requires `UnaccountedCount`. A value below the degraded threshold produces `consumer-lag-count-lower-bound`; a lower bound that crosses a threshold uses the ordinary count reason at that severity. |
+
+The constructor rejects null/blank identities, non-UTC timestamps, `None` or unknown
+measurement flags, invalid coverage, missing selected count data, unselected measurement
+data, negative counts, and a lower-bound flag without a count.
+
+This contract is deliberately aggregated rather than per-partition. The adapter owns
+partition enumeration, source-specific positions, gap-aware durable accounting across
+out-of-order work and redelivery, and safe retention. It reports the oldest unaccounted
+timestamp across covered partitions, sums counts conservatively, keeps the lower-bound
+marker if any contribution is incomplete, uses the oldest source sample time, and
+reports explicit required/covered counts. Trellis applies freshness and threshold policy
+without taking a vendor SDK dependency.
+
 ### `OutboxReadinessOptions`
 
 Immutable sealed record with no public constructor. Explicitly select
@@ -394,6 +469,11 @@ profile, including unused relay timing values in metadata-only mode, before addi
 | `CaptureAgeEnabled` | `false` | Explicit migration-first rollout switch. When false, no capture-age query or claim is made. Included in record equality and registration conflict detection. |
 | `CaptureAgeDegradedAfter` | 2 minutes | Positive, inclusive oldest-known capture-age degradation threshold. Validated even while disabled. |
 | `CaptureAgeUnhealthyAfter` | 10 minutes | Greater than the degraded age; inclusive oldest-known capture-age unhealthy threshold. Validated even while disabled. |
+| `ConsumerLagMeasures` | `ConsumerLagMeasures.None` | Selects disabled, age, count, or both. Any enabled selection requires an `IConsumerLagProvider`. Included in record equality and registration conflict detection. |
+| `ConsumerLagAgeDegradedAfter` | 2 minutes | Positive, inclusive oldest-unaccounted-age degradation threshold. Validated even while disabled. |
+| `ConsumerLagAgeUnhealthyAfter` | 10 minutes | Greater than the degraded age; inclusive oldest-unaccounted-age unhealthy threshold. Validated even while disabled. |
+| `ConsumerLagCountDegradedThreshold` | 1,000 | Positive, inclusive unaccounted-count degradation threshold. Validated even while disabled. |
+| `ConsumerLagCountUnhealthyThreshold` | 10,000 | Greater than the degraded count; inclusive unaccounted-count unhealthy threshold. Validated even while disabled. |
 | `RelayDegradedAfter` | 1 minute | Positive, inclusive gap since a positive local observation. |
 | `RelayUnhealthyAfter` | 5 minutes | Greater than the degraded gap; missing initial evidence uses relay/host startup without resetting at grace expiry. |
 | `StartupGracePeriod` | 30 seconds | Nonnegative and shorter than the degraded gap; changes the missing-evidence reason, never its Degraded status. |
@@ -417,9 +497,10 @@ The metadata queries are sampled sequentially, not a promised atomic snapshot.
 Every original sample time is independently checked for stale or future-dated evidence.
 
 Concurrent callers share one refresh and cancel only their own waits. The refresh has
-its own budget. A provider that ignores cancellation cannot delay the health result past
-that budget or cause overlapping probes: subsequent refreshes remain Unhealthy until the
-old provider operation finishes and a new bounded probe supplies recovery evidence.
+its own budget. Context queries and an enabled consumer-lag provider share that complete
+budget. A provider that ignores cancellation cannot delay the health result past that
+budget or cause overlapping probes: subsequent refreshes remain Unhealthy until the old
+provider operation finishes and a new bounded probe supplies recovery evidence.
 Caller cancellation is never cached. Probe faults/timeouts are logged with redacted
 diagnostics, and result/log diagnostics do not include exception messages or objects.
 Failed refreshes retain any prior counts and their original sample times, explicitly
@@ -437,36 +518,49 @@ clock read in metadata-only mode. Both modes share metadata clock/freshness eval
 | Data keys | Meaning |
 |---|---|
 | `profile`, `storageContext`, `maxAttempts`, `maxAttemptsSource`, `relayMonitoring` | `staged-operational-reference` / `metadata-only-reference`, fixed context scope, effective retry limit, `outbox-options` / `profile` source, and `local-relay` / `disabled` selection. Cache entries invalidate when the local attempt cap changes. |
-| `metadataAvailable`, `pendingSampledAt`, `parkedSampledAt`, `captureAgeSampledAt`, `sampling` | Probe success and original separately sampled metadata/capture-age instants. Capture-age keys are emitted only when enabled. Count/time keys are absent if no successful evidence exists; old retained evidence is not marked available after a failed refresh. |
+| `metadataAvailable`, `pendingSampledAt`, `parkedSampledAt`, `captureAgeSampledAt`, `sampling` | Whether the current refresh completed queue metadata, plus its original separately sampled metadata/capture-age instants. Capture-age keys are emitted only when enabled. A lag provider can consume the remaining shared deadline after queue evidence completes: the result is still Unhealthy with `probe-timeout`, but fresh queue evidence remains available. Count/time keys are absent if no successful evidence exists; old retained evidence is not marked available after a database failure or timeout before queue sampling completed. |
 | `pendingCount`, `pendingCountIsLowerBound`, `pendingCountCap` | Retryable pending rows, including leases/backoff, capped as above. |
 | `parkedCount`, `parkedCountIsLowerBound`, `parkedCountCap` | Zero or at least one parked row. Any parked row degrades, never causes parked-only Unhealthy. |
 | `oldestPendingCapturedAt`, `oldestPendingCaptureAge` | Oldest known UTC capture instant and its age among retryable pending rows, including leases/backoff. Absent when no known row exists. A future instant is reported and degrades with `capture-age-clock-invalid`; it is not clamped to zero. |
 | `unknownCaptureAgeCount`, `unknownCaptureAgeCountIsLowerBound`, `unknownCaptureAgeCountCap` | Enabled mode only: legacy retryable pending rows with no authoritative capture evidence. Any nonzero value degrades with `capture-age-unknown`. |
+| `consumerLag`, `consumerLagAvailable`, `consumerLagMeasures`, `consumerLagEvidenceMeasures` | `consumerLag` is `disabled` or `enabled`; disabled is configuration, not observed health. Enabled results report availability plus the selected and supplied measure flags. |
+| `consumerLagConsumerId`, `consumerLagSource`, `consumerLagScope`, `consumerLagSampledAt` | Enabled mode only: the provider's stable scope identities and original source sample time. Retained evidence never gets a newer sample time from cache reuse. |
+| `consumerLagRequiredPartitionCount`, `consumerLagCoveredPartitionCount` | Required and represented partition counts. Incomplete coverage degrades with `consumer-lag-coverage-missing`. |
+| `consumerLagOldestUnaccountedAt`, `consumerLagOldestUnaccountedAge` | `Age` evidence. A null timestamp is authoritative quiet-source zero lag and omits both keys; a future timestamp remains visible and degrades rather than being clamped. |
+| `consumerLagUnaccountedCount`, `consumerLagUnaccountedCountIsLowerBound` | `Count` evidence and whether it is conservative lower-bound data. A lower bound below the degraded threshold degrades because it cannot prove the true count is healthy. |
 | `relayScope`, `relaySampledAt`, `relayStartedAt`, `lastPositiveRelayObservationAt`, `relayGap` | Local mode only: `local-instance`, fresh local sample and original local lifecycle/poll instants. Missing instants/gap keys are absent, not fabricated. |
 | `deliveredRows`, `lastDurableDeliveryAt` | Local mode only: lifetime row-completion count and last observation after successful bookkeeping. Failed attempts and lost-lease rows are excluded; no downstream consumer-success claim. A missing last delivery is not itself an unhealthy condition. |
 | `pendingDegradedThreshold`, `pendingUnhealthyThreshold`, `captureAgeDegradedAfter`, `captureAgeUnhealthyAfter`, `probeTimeout`, `cacheDuration`, `evidenceMaxAge` | Actual selected metadata/capture-age bounds and timing. Capture-age thresholds are emitted only when enabled. |
+| `consumerLagAgeDegradedAfter`, `consumerLagAgeUnhealthyAfter`, `consumerLagCountDegradedThreshold`, `consumerLagCountUnhealthyThreshold` | Selected consumer-lag bounds. Age or count thresholds are emitted only when that measure is selected. |
 | `relayDegradedAfter`, `relayUnhealthyAfter`, `startupGracePeriod` | Local mode only: selected relay timing. Omitted when relay monitoring is disabled, not zero-valued observations. |
-| `captureAge`, `consumerLag` | `captureAge` is `disabled` or `enabled` according to the explicit profile switch. `consumerLag` remains `disabled`; disabled never means observed healthy. |
-| `reasons`, `probeFaultType` | Stable reason codes and, only on a provider fault, its safe exception type name. No payload, raw `LastError`, connection string, message id, business/trace lineage, or raw exception is returned. |
+| `captureAge` | `disabled` or `enabled` according to the explicit profile switch. Disabled never means observed healthy. |
+| `reasons`, `probeFaultType`, `consumerLagFaultType` | Stable reason codes and safe fault categories. Exception failures use their type name; a provider that violates its non-null contract uses "NullEvidence". No exception message/object, payload, raw `LastError`, connection string, message id, or business/trace lineage is returned. |
 
 Reasons include `pending-depth-degraded`, `pending-depth-unhealthy`, `parked-messages`,
 `capture-age-degraded`, `capture-age-unhealthy`, `capture-age-unknown`,
 `capture-age-clock-invalid`,
 `relay-not-started`, `relay-warming-up`, `relay-observation-missing`,
 `relay-observation-delayed`, `relay-observation-overdue`, `metadata-stale`,
-`metadata-clock-invalid`, `relay-clock-invalid`, `probe-timeout`, and `probe-failed`.
+`metadata-clock-invalid`, `relay-clock-invalid`, `consumer-lag-age-degraded`,
+`consumer-lag-age-unhealthy`, `consumer-lag-count-degraded`,
+`consumer-lag-count-unhealthy`, `consumer-lag-count-lower-bound`,
+`consumer-lag-coverage-missing`,
+`consumer-lag-evidence-missing`, `consumer-lag-stale`,
+`consumer-lag-clock-invalid`, `consumer-lag-provider-failed`, `probe-timeout`, and
+`probe-failed`.
 Metadata-only emits no relay reasons or observation/delivery keys. With capture age
 disabled, `sampling` is `separate-metadata-queries` or
 `separate-metadata-queries-and-local-relay`; enabled profiles use
 `separate-metadata-and-capture-age-queries` with the optional `-and-local-relay` suffix.
+An enabled lag provider adds a `-and-consumer-lag` sampling component.
 
 ## Health-check requirements
 
-**Stages one and two are implemented:** [outbox readiness](#outbox-readiness) supplies
-bounded metadata/local-relay evidence plus explicitly enabled durable capture age.
-**Not implemented:** optional consumer/source-lag checks and an inbox health/lag-provider
-API. Readiness settings are not members of `OutboxOptions`. Delivery, retry, lease,
-replay, and retention behavior is unchanged.
+**All three stages are implemented:** [outbox readiness](#outbox-readiness) supplies
+bounded metadata/local-relay evidence plus explicitly enabled durable capture age and
+application-provided consumer/source lag. No inbox-table health inference is shipped.
+Readiness settings are not members of `OutboxOptions`. Delivery, retry, lease, replay,
+and retention behavior is unchanged.
 
 ### Scope and staged delivery
 
@@ -477,12 +571,13 @@ consumer lag**, delivered in stages:
 |---|---|
 | Metadata and relay observations | Implemented: bounded, read-only pending/parked summaries and truthful local relay responsiveness observations, with delivery progress reported separately. |
 | Durable capture age | Implemented: nullable UTC evidence for both domain and translated integration rows, provider-compatible bounded queries, application-owned migration rollout, and explicit unknown age for legacy rows. |
-| Optional consumer/source lag | Not implemented: an explicitly enabled evidence provider with application-defined source/partition and durable accounting semantics; see [inbox lag requirements](trellis-api-efcore-inbox.md#consumer-lag-health-requirements). |
+| Optional consumer/source lag | Implemented: explicitly selected age/count evidence from an application-owned `IConsumerLagProvider`, with conservative partition coverage, durable accounting, freshness and bounded execution; see [inbox lag requirements](trellis-api-efcore-inbox.md#consumer-lag-health-requirements). |
 
 Each stage must be independently useful without claiming signals from a later stage.
 Capture-age evaluation stays disabled until the selected immutable profile sets
-`CaptureAgeEnabled = true`; optional lag stays disabled because no provider API exists.
-Neither disabled condition is a healthy observation of that signal.
+`CaptureAgeEnabled = true`; optional lag stays disabled until `ConsumerLagMeasures`
+selects age, count, or both and a provider is registered. Neither disabled condition is a
+healthy observation of that signal.
 
 These are read-only readiness checks, **not liveness restart triggers or remediation**.
 When included in the host's readiness endpoint, Healthy and Degraded remain ready;
@@ -503,7 +598,7 @@ severity. Parked-only degradation still remains ready with a warning.
 | Capture age | Age of the oldest retryable pending row with authoritative capture evidence, including leased/backoff rows. Report unknown-age pending rows separately; do not substitute `OccurredAt`, UUIDv7 time, `Sequence`, or `LockedUntil`. |
 | Worker responsiveness | Time since a positive local relay poll/drain observation, including successful empty polls. A timer tick, startup log, or caught drain failure is not a positive observation. |
 | Durable delivery progress | Successful domain completion or normal integration publisher completion whose bookkeeping persisted, excluding lost-lease rows. Persisting a failed attempt is not successful delivery. |
-| Consumer/source lag | Fresh, scoped application/transport evidence of unaccounted work, not inference from inbox table size or a checkpoint. Publisher acceptance does not prove consumer processing. |
+| Consumer/source lag | Fresh, scoped `ConsumerLagEvidence` selected as age, count, or both. Require complete partition coverage and the selected measurements. Age is the oldest durably unaccounted source time; count is the conservative sum and can be marked a lower bound. A lower bound below the degraded threshold degrades because it cannot establish a healthy upper bound. Null age means authoritative quiet-source zero lag. Never infer lag from inbox table size or an opaque checkpoint; publisher acceptance does not prove consumer processing. |
 
 Depth counts infrastructure **rows**, not unique business events: a domain row can produce
 multiple integration rows. An empty, successfully queried outbox has no pending-age breach,
@@ -608,7 +703,7 @@ Validate configured bounds and timing relationships explicitly rather than clamp
   work and result size with suitable provider-supported aggregates or threshold-capped
   reads. A capped count is a lower bound, not an exact total. Do not scan/materialize an
   entire history or introduce coordination locks that serialize normal delivery.
-- Preserve original sample times, scope, enabled/disabled/deferred signals, evidence
+- Preserve original sample times, scope, enabled/disabled/unavailable signals, evidence
   coverage, thresholds, and reasons in the result. Disclose separately sampled evidence
   rather than promise an atomic cross-store snapshot. Cache refresh/failure must not
   erase an unhealthy condition without evidence of recovery.
@@ -622,18 +717,16 @@ Validate configured bounds and timing relationships explicitly rather than clamp
   to the authorized storage/consumer scope; `ConsumerId` is not an authorization boundary.
   Do not expose bodies, connection strings, raw `LastError`, or business/trace identifiers
   in public health output or high-cardinality metric labels.
-- A later application-enabled health feature is a composition-root feature and needs
-  matching builder coverage and registration classification. Query/observation stores
-  are leaves; vendor SDK lag adapters remain unslotted. The implementing PR must use
-  an `IServiceCollection` helper or extend registration discovery for its chosen
-  `IHealthChecksBuilder` receiver so the classification is actually enforced.
-  See [future health registration
-  requirements](trellis-api-servicedefaults.md#future-health-registration-requirements).
+- Outbox readiness is the composition-root feature and already has matching direct and
+  builder registration. `IConsumerLagProvider` implementations and vendor SDK adapters
+  are leaves registered directly by the application; they remain unslotted and add no
+  cloud SDK dependency to `Trellis.ServiceDefaults`. See [health registration
+  classification](trellis-api-servicedefaults.md#health-registration-classification).
 
 ### Acceptance boundary for staged health checks
 
-Tests cover metadata/local relay, durable capture age, cache, timeout/cancellation, and
-registration outcomes. Optional-lag acceptance cases remain deferred.
+Tests cover metadata/local relay, durable capture age, consumer lag, cache,
+timeout/cancellation, and registration outcomes.
 
 | Scenario | Required outcome |
 |---|---|
@@ -644,7 +737,9 @@ registration outcomes. Optional-lag acceptance cases remain deferred.
 | Legitimate slow batch/retry policy | Apply the tuned responsiveness budget; report age SLO breaches separately from a stuck-worker claim. |
 | Legacy rows or old business events | Unknown capture age stays visible; `OccurredAt` is not queue age, and migrations do not fabricate capture time. |
 | Publisher acceptance or swallowed local-consumer failure | No claim of downstream success; optional lag needs its own consumer/source evidence. |
-| Disabled lag versus missing/stale enabled lag | Disabled is explicit; unavailable enabled evidence degrades health. |
+| Quiet source, disabled lag, or missing/stale/incomplete enabled lag | Null oldest time plus zero count with complete authoritative coverage is healthy; disabled is explicit; unavailable, incomplete, stale, future, or missing selected evidence degrades. |
+| Age/count exactly at a lag threshold | Apply inclusive 2/10-minute and 1,000/10,000 reference boundaries; the highest severity wins. |
+| Provider fault, null evidence, or provider consuming the shared deadline | Preserve successful queue metadata, expose only a safe fault category ("NullEvidence" for a null contract violation), and return Unhealthy with `consumer-lag-provider-failed` or the stable overall `probe-timeout` reason. |
 | Probe timeout/fault versus caller cancellation | Timeout/fault is unhealthy with diagnostics; caller cancellation propagates. |
 | One caller cancels while others await a coalesced refresh | Cancellation propagates only to that caller; the bounded refresh and other waiters continue. Do not cache that cancellation as a result/fault; the refresh's own timeout/fault still follows the unhealthy policy. |
 | Repeated cached reads or several relay instances | Preserve evidence age and scope; another instance's activity cannot refresh local responsiveness. |

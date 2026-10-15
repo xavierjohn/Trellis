@@ -301,18 +301,19 @@ authorize automatic remediation.
 
 ### Consumer-lag health requirements
 
-**Not implemented:** Trellis ships no inbox health check or lag-provider API. Optional
-consumer/source lag is the final stage of the [readiness requirements](../api_reference/trellis-api-efcore-outbox.md#health-check-requirements),
-not a measurement the inbox table already supplies.
+Trellis ships no inbox-table health check. Optional consumer/source lag is evaluated by
+the outbox package's named readiness check through an application-owned
+`IConsumerLagProvider`; it is not a measurement the inbox table already supplies.
 
 An empty inbox, old/new `ProcessedAt`, or a checkpoint timestamp says nothing definitive
 about source backlog or consumer liveness. `ProcessedAt` precedes the handlers/save,
 and checkpoint positions are opaque performance cursors. Do not subtract cursor strings
 or mistake a high-water mark for gap-free durable processing.
 
-The application/transport must supply fresh evidence scoped to the authorized storage,
-`ConsumerId`, source/subscription, and partitions. Define unaccounted-event count and/or
-oldest-unaccounted-message age, durable accounting, and missing-partition handling.
+The application/transport provider supplies one conservative `ConsumerLagEvidence`
+snapshot scoped to the authorized storage, stable `ConsumerId`, source/subscription, and
+required partitions. It defines unaccounted-event count and/or oldest-unaccounted-message
+age, durable accounting, lower-bound status, and missing-partition coverage.
 A quiet source can have zero lag without recent messages only when that evidence proves
 it. Keep live and rebuild consumer evidence separate.
 
