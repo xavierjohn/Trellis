@@ -145,6 +145,10 @@ jobs:
         fi
         echo "Documentation build successful"
 
+    - name: Verify cookbook navigation
+      shell: pwsh
+      run: ./docs/test-cookbook-navigation.ps1
+
     - name: Upload documentation site
       # Production docs follow explicitly published NuGet releases, not every merge to main.
       if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish == true
