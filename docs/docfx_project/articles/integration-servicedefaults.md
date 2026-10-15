@@ -72,8 +72,10 @@ Enable outbox readiness only by explicitly selecting
 `OutboxReadinessOptions.CreateStagedOperationalProfile()` and adding
 `.UseOutboxReadiness<AppDbContext>(profile)` alongside `.UseOutbox<AppDbContext>()`.
 The profile is immutable and can be tuned with `with`. The named `trellis-outbox`
-check reports bounded metadata and local relay evidence; capture age and consumer lag
-remain deferred. The host owns authorization and traffic-readiness versus alert-only
+check reports bounded metadata and local relay evidence. Capture age and
+application-provided consumer lag are separately enabled on that profile; register
+`IConsumerLagProvider` directly because it is a leaf adapter, not another builder slot.
+The host owns authorization and traffic-readiness versus alert-only
 exposure, and no endpoint or liveness policy is added. See [outbox readiness](../api_reference/trellis-api-efcore-outbox.md#outbox-readiness).
 
 For split API/worker deployment, the API can select

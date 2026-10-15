@@ -27,7 +27,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 - You are wiring `AddTrellisInbox`, `modelBuilder.AddTrellisInbox()`, or the `UseInbox<TContext>()` builder slot.
 - You are reasoning about the inbox's idempotency guarantee, its transaction boundary, or what `(ConsumerId, MessageId)` must be.
 - You are defining metadata inspection, safe dedup retention, transport redrive, or controlled replay into an isolated rebuild target.
-- You need to define meaningful consumer/source-lag evidence without treating inbox receipts as a queue; health checks are not implemented.
+- You need to define meaningful consumer/source-lag evidence without treating inbox receipts as a queue; no inbox-table health inference is implemented.
 
 ## Patterns Index
 
@@ -43,7 +43,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-packag
 | Understand why a failed handler reprocesses | The dispatcher is **non-swallowing**: a handler throw rolls back and rethrows, so the transport redelivers | [Processing semantics](#processing-semantics) |
 | Connect a producer's outbox to a consumer's inbox | Carry the outbox `OutboxMessage.Id` verbatim as the envelope `MessageId` | [Relationship to the outbox](#relationship-to-the-outbox) |
 | Inspect processing evidence, retain dedup history safely, or rebuild from archived events | Application-owned operations; metadata-only inspection, opt-in retention, and isolated replay | [Operational requirements and transport boundary](#operational-requirements-and-transport-boundary) |
-| Define optional consumer/source-lag health checks | Explicitly enabled application/transport evidence; no inbox health API is shipped | [Consumer-lag health requirements](#consumer-lag-health-requirements) |
+| Supply optional consumer/source-lag evidence | Implement the outbox package's `IConsumerLagProvider`; no inbox-table health inference is shipped | [Consumer-lag health requirements](#consumer-lag-health-requirements) |
 
 ## Common traps
 
@@ -469,10 +469,10 @@ lag, relay liveness, or consumer health.
 
 ## Consumer-lag health requirements
 
-**Not implemented:** no inbox health check or lag-provider API is shipped. Consumer/source
-lag is the optional final stage of the [outbox/inbox readiness contract](trellis-api-efcore-outbox.md#health-check-requirements),
-which defines the opt-in reference profile, readiness mapping, budgets, and freshness.
-These requirements do not add fields to `InboxMessage` or methods to the checkpoint store.
+No inbox-table health check is shipped. Consumer/source lag is evaluated by the outbox
+package's named readiness check through an application-owned
+[`IConsumerLagProvider`](trellis-api-efcore-outbox.md#iconsumerlagprovider-and-consumerlagevidence).
+These requirements add no fields to `InboxMessage` and no methods to the checkpoint store.
 
 Inbox rows are retained committed receipts, not source queue state. `ProcessedAt` is
 assigned when staging before handlers/save, not at commit. Table size, the newest/oldest
@@ -480,7 +480,8 @@ receipt, an empty inbox, or a checkpoint's update time cannot establish consumer
 or pending work. `ConsumerCheckpoint.Position` is opaque; never subtract arbitrary cursor
 strings or assume a high-water mark proves gap-free accounting.
 
-An application/transport-owned evidence provider must define:
+An application/transport-owned provider returns one conservative aggregated
+`ConsumerLagEvidence` snapshot and must define:
 
 - The authorized storage/composition, stable `ConsumerId`, source/subscription, and
   partition scope, including which partitions must be covered.
@@ -492,19 +493,22 @@ An application/transport-owned evidence provider must define:
   A broker offset or queue-depth metric is not automatically proof of inbox completion.
 - How partition evidence is combined: expose missing coverage, compare configured
   age/count thresholds, and do not average away a lagging partition. Declare any
-  estimates/lower bounds rather than label them exact totals.
+  estimates/lower bounds rather than label them exact totals. A lower-bound count below
+  the degraded threshold cannot establish a healthy upper bound and degrades readiness.
 
-Lag is explicitly disabled when unconfigured, not observed healthy. Once enabled,
-missing/stale evidence degrades health; provider errors/timeouts are unhealthy and caller
-cancellation propagates. Support the provider's declared units without inventing absent
-measurements; at least one configured lag measure must be available. Keep source sample
-time distinct from cache refresh time. Live and isolated-rebuild consumers must not share
-evidence or cache entries merely because they read the same source.
+Lag is explicitly disabled when `ConsumerLagMeasures.None` is selected, not observed
+healthy. Once age, count, or both are selected, missing coverage/measurements and
+stale/future evidence degrade health; provider errors and the shared probe timeout are
+unhealthy, and caller cancellation propagates only to that caller's wait. The provider
+reports its actual measures, required/covered partition counts, original source sample
+time, oldest durably unaccounted source timestamp and/or conservative summed count.
+Live and isolated-rebuild consumers must not share evidence or cache entries merely
+because they read the same source.
 
 Do not dispatch, settle messages, advance/reset checkpoints, prune dedup rows, or trigger
-replay to test health. The application owns the provider and endpoint authorization;
-vendor SDK adapters stay outside `Trellis.ServiceDefaults`. A future feature must prove
-quiet-source zero lag with authoritative evidence, missing/stale partition coverage,
+replay to test health. The application owns the provider and endpoint authorization; vendor SDK adapters stay
+outside `Trellis.ServiceDefaults`. Implementations must prove quiet-source zero lag with
+authoritative evidence, missing/stale partition coverage,
 out-of-order accounting, disabled versus unavailable signals, and timeout/cancellation
 behavior without changing the dispatch or retention contract.
 

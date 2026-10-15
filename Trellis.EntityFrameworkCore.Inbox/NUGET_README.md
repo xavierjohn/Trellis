@@ -56,11 +56,12 @@ keeps the original identity. Replaying consumed messages requires a separate sta
 versioned payloads supplied by an application-owned durable log/archive; live dedup
 rows remain intact. See the [operational requirements](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-inbox.html#operational-requirements-and-transport-boundary).
 
-**Health checks are not implemented.** Inbox receipts and checkpoint timestamps cannot
-establish source lag or consumer liveness. Optional lag requires explicitly enabled,
-fresh application/transport evidence scoped to storage, consumer, source, and partitions;
-unconfigured is disabled, not observed healthy. See the [consumer-lag requirements](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-inbox.html#consumer-lag-health-requirements)
-and linked opt-in readiness profile.
+No inbox-table health check is shipped: receipts and checkpoint timestamps cannot
+establish source lag or consumer liveness. The outbox package's optional readiness stage
+accepts explicitly enabled, fresh `IConsumerLagProvider` evidence scoped to storage,
+consumer, source, and required partitions; unconfigured is disabled, not observed
+healthy. See the [consumer-lag requirements](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-inbox.html#consumer-lag-health-requirements)
+and linked opt-in readiness API.
 
 ## Documentation
 

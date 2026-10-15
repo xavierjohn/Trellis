@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - optional consumer/source lag readiness (G3 stage three)
+
+The named outbox readiness check can now evaluate explicitly selected consumer/source
+lag from an application-owned `IConsumerLagProvider`. Its aggregated
+`ConsumerLagEvidence` carries stable consumer/source/authorized scope, original sample
+time, required and covered partition counts, the oldest durably unaccounted source
+timestamp, and/or a conservative unaccounted count with lower-bound status. Adapters own
+gap-aware accounting across out-of-order work, redeliveries and retention; Trellis does
+not infer lag from inbox receipts or opaque checkpoints.
+
+`OutboxReadinessOptions.ConsumerLagMeasures` defaults to disabled and can select age,
+count, or both. Inclusive reference thresholds are 2/10 minutes and 1,000/10,000 events.
+Missing coverage or a selected measurement, stale/future evidence, and future oldest
+timestamps degrade readiness. A lower-bound count below the degraded threshold also
+degrades because it cannot prove the true count is healthy. Threshold breaches use the
+highest severity; provider failures and the existing shared probe timeout are Unhealthy.
+Fresh queue evidence remains available when only the lag provider consumes that timeout.
+Cached evidence preserves
+its original sample and is reevaluated on every check. The provider runs in a fresh
+scope, shares the complete two-second probe budget, and receives its cancellation token.
+The existing direct registration and `UseOutboxReadiness<TContext>` builder slot are
+unchanged; provider adapters remain direct leaf registrations.
+
 ### Added - durable outbox capture-age readiness (G3 stage two)
 
 Outbox domain rows now persist the UTC instant at which the capture interceptor first
@@ -22,8 +45,8 @@ and inserts use the mapped column.
 switch plus inclusive 2/10-minute reference thresholds. Enabled probes report the
 oldest known retryable pending age and a bounded count of unknown legacy rows, include
 leased/backoff rows, and degrade future/unknown evidence instead of treating it as zero.
-The setting works in local-relay and metadata-only profiles; it remains disabled by
-default, and optional consumer/source lag remains deferred.
+The setting works in local-relay and metadata-only profiles and remains disabled by
+default. Optional consumer/source lag is added separately above.
 
 ### Fixed - inbox and outbox fail-safe delivery
 
@@ -84,7 +107,7 @@ validation reserves a margin beyond the complete probe budget plus cache duratio
 
 Existing outbox/inbox registrations, delivery/retry/lease/replay behavior, schema,
 Mediator ordering, and host-owned endpoint/liveness policy were unchanged by stage one.
-Durable capture age is added separately above; optional consumer/source lag remains deferred.
+Durable capture age and optional consumer/source lag are added separately above.
 
 ### Documentation - rate-limit retry advice
 

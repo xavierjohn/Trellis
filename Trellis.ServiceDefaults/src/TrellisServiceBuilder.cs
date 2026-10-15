@@ -633,7 +633,9 @@ public sealed class TrellisServiceBuilder
     /// <remarks>
     /// Local-relay profiles require the matching <see cref="UseOutbox{TContext}"/> or direct registration.
     /// Metadata-only profiles explicitly disable relay monitoring and require the worker's retry limit.
-    /// Capture age remains disabled unless the selected profile enables it; consumer lag is not evaluated.
+    /// Capture age remains disabled unless the selected profile enables it. Consumer lag remains disabled
+    /// unless the profile selects one or both lag measures and the application registers an
+    /// <see cref="IConsumerLagProvider"/>.
     /// The check adds no endpoint or liveness policy.
     /// Applied after outbox registration, independent of fluent call order. Repeated selection throws.
     /// </remarks>

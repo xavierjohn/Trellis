@@ -2,12 +2,14 @@
 
 /// <summary>
 /// An explicitly selected, immutable readiness profile for outbox metadata, optional durable capture age,
-/// and optional local relay evidence.
+/// optional local relay evidence, and optional application-provided consumer lag.
 /// </summary>
 /// <remarks>
 /// Select <see cref="CreateStagedOperationalProfile"/> or <see cref="CreateMetadataOnlyProfile"/>
 /// and use a <c>with</c> expression to enable capture age and tune thresholds and timings,
-/// not the relay monitoring mode. Consumer/source lag is not implemented by this profile.
+/// not the relay monitoring mode. Consumer/source lag remains disabled until
+/// <see cref="ConsumerLagMeasures"/> selects at least one measure and an
+/// <see cref="IConsumerLagProvider"/> is registered.
 /// </remarks>
 public sealed record OutboxReadinessOptions
 {
@@ -44,6 +46,27 @@ public sealed record OutboxReadinessOptions
 
     /// <summary>The inclusive oldest-known capture age that makes readiness unhealthy. Default: 10 minutes.</summary>
     public TimeSpan CaptureAgeUnhealthyAfter { get; init; } = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// Consumer/source lag measures to evaluate. Defaults to
+    /// <see cref="Trellis.EntityFrameworkCore.ConsumerLagMeasures.None"/>.
+    /// </summary>
+    public ConsumerLagMeasures ConsumerLagMeasures { get; init; }
+
+    /// <summary>The inclusive oldest-unaccounted age that degrades readiness. Default: 2 minutes.</summary>
+    public TimeSpan ConsumerLagAgeDegradedAfter { get; init; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>The inclusive oldest-unaccounted age that makes readiness unhealthy. Default: 10 minutes.</summary>
+    public TimeSpan ConsumerLagAgeUnhealthyAfter { get; init; } = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// The inclusive unaccounted-event count that degrades readiness. Default: 1,000.
+    /// A lower-bound count below this threshold also degrades because it cannot prove a healthy upper bound.
+    /// </summary>
+    public long ConsumerLagCountDegradedThreshold { get; init; } = 1_000;
+
+    /// <summary>The inclusive unaccounted-event count that makes readiness unhealthy. Default: 10,000.</summary>
+    public long ConsumerLagCountUnhealthyThreshold { get; init; } = 10_000;
 
     /// <summary>The inclusive gap since a positive local relay observation that degrades readiness.</summary>
     public TimeSpan RelayDegradedAfter { get; init; } = TimeSpan.FromMinutes(1);
@@ -102,6 +125,17 @@ public sealed record OutboxReadinessOptions
         if (CaptureAgeUnhealthyAfter <= CaptureAgeDegradedAfter)
             throw new ArgumentOutOfRangeException(nameof(CaptureAgeUnhealthyAfter),
                 "The unhealthy capture age must exceed the degraded capture age.");
+        if ((int)ConsumerLagMeasures is < 0 or > 3)
+            throw new ArgumentOutOfRangeException(nameof(ConsumerLagMeasures));
+        if (ConsumerLagAgeDegradedAfter <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(ConsumerLagAgeDegradedAfter));
+        if (ConsumerLagAgeUnhealthyAfter <= ConsumerLagAgeDegradedAfter)
+            throw new ArgumentOutOfRangeException(nameof(ConsumerLagAgeUnhealthyAfter),
+                "The unhealthy consumer lag age must exceed the degraded age.");
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(ConsumerLagCountDegradedThreshold);
+        if (ConsumerLagCountUnhealthyThreshold <= ConsumerLagCountDegradedThreshold)
+            throw new ArgumentOutOfRangeException(nameof(ConsumerLagCountUnhealthyThreshold),
+                "The unhealthy consumer lag count threshold must exceed the degraded threshold.");
         if (RelayDegradedAfter <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(RelayDegradedAfter));
         if (RelayUnhealthyAfter <= RelayDegradedAfter)

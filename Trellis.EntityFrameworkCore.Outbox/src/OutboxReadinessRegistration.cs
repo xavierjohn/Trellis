@@ -23,7 +23,9 @@ public static class OutboxReadinessServiceCollectionExtensions
     /// constructing it when the container exposes <c>IServiceProviderIsService</c>.
     /// The context must resolve the same fixed store from background scopes, not request-local tenancy.
     /// Capture-age evaluation remains disabled unless the profile enables it after schema rollout.
-    /// No endpoint, liveness policy, or consumer-lag provider is added.
+    /// Consumer lag remains disabled unless the profile selects measures; enabled lag requires
+    /// an application-owned <see cref="IConsumerLagProvider"/> registration. No endpoint,
+    /// liveness policy, or provider adapter is added.
     /// </remarks>
     /// <typeparam name="TContext">The application's context that owns the outbox table.</typeparam>
     /// <param name="services">The service collection.</param>

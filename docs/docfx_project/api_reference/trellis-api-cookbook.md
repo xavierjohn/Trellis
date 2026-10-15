@@ -3297,8 +3297,11 @@ The named `trellis-outbox` check reports bounded pending/parked rows, local rela
 responsiveness, and separately counted durable row completions. After the nullable
 `CapturedAt` migration and writer rollout, opt into the 2/10-minute reference age SLO
 with `profile with { CaptureAgeEnabled = true }`; legacy unknown pending rows degrade.
-Consumer/source lag remains disabled, not observed healthy. The host owns endpoint
-authorization and whether shared-store breaches gate traffic or only alert.
+Consumer/source lag also remains disabled until the profile selects
+`ConsumerLagMeasures.Age`, `Count`, or both and the application registers an
+`IConsumerLagProvider`; the provider owns conservative gap-aware source evidence.
+The host owns endpoint authorization and whether shared-store breaches gate traffic
+or only alert.
 See [outbox readiness](trellis-api-efcore-outbox.md#outbox-readiness).
 
 **Split API/worker hosts.** Keep the existing local-relay profile in the worker. The API

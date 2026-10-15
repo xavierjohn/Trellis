@@ -15,6 +15,13 @@ internal sealed class OutboxReadinessRegistrationValidator<TContext>(
             throw new InvalidOperationException(
                 $"Outbox readiness requires a registered {typeof(TContext).Name}. Register the context before host startup.");
 
+        if (profile.ConsumerLagMeasures != ConsumerLagMeasures.None
+            && registrations is not null
+            && !registrations.IsService(typeof(IConsumerLagProvider)))
+            throw new InvalidOperationException(
+                "Enabled consumer lag requires an IConsumerLagProvider registration. " +
+                "Register the application or transport adapter before host startup.");
+
         if (profile.RelayMonitoring == OutboxRelayMonitoring.LocalRelay)
         {
             if (!services.GetServices<IHostedService>().Any(service => service is OutboxRelay<TContext>))

@@ -48,8 +48,10 @@ explicitly enables the named `trellis-outbox` read-only health check alongside
 `UseOutbox<TContext>()`. It is applied after relay registration without changing the
 Mediator pipeline. Existing outbox/inbox slots do not enable health checks. The host
 owns endpoint authorization and readiness-versus-alerting exposure. Durable capture age
-is enabled on the same immutable profile after its nullable schema migration; consumer
-lag remains deferred. See [outbox readiness](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md#outbox-readiness).
+is enabled on the same immutable profile after its nullable schema migration. Optional
+consumer lag uses that slot too: register an application-owned `IConsumerLagProvider`
+directly and select `ConsumerLagMeasures.Age`, `Count`, or both on the profile. The
+provider is a leaf adapter, not another builder feature. See [outbox readiness](../docs/docfx_project/api_reference/trellis-api-efcore-outbox.md#outbox-readiness).
 
 Split API/worker hosts can use the same slot with
 `OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts)` in the API,

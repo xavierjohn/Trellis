@@ -31,6 +31,11 @@ public sealed partial class OutboxReadinessTests
         profile.CaptureAgeEnabled.Should().BeFalse();
         profile.CaptureAgeDegradedAfter.Should().Be(TimeSpan.FromMinutes(2));
         profile.CaptureAgeUnhealthyAfter.Should().Be(TimeSpan.FromMinutes(10));
+        profile.ConsumerLagMeasures.Should().Be(ConsumerLagMeasures.None);
+        profile.ConsumerLagAgeDegradedAfter.Should().Be(TimeSpan.FromMinutes(2));
+        profile.ConsumerLagAgeUnhealthyAfter.Should().Be(TimeSpan.FromMinutes(10));
+        profile.ConsumerLagCountDegradedThreshold.Should().Be(1_000);
+        profile.ConsumerLagCountUnhealthyThreshold.Should().Be(10_000);
         profile.RelayDegradedAfter.Should().Be(TimeSpan.FromMinutes(1));
         profile.RelayUnhealthyAfter.Should().Be(TimeSpan.FromMinutes(5));
         profile.StartupGracePeriod.Should().Be(TimeSpan.FromSeconds(30));
@@ -45,6 +50,26 @@ public sealed partial class OutboxReadinessTests
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { PendingUnhealthyThreshold = 1_000 },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { CaptureAgeDegradedAfter = TimeSpan.Zero },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { CaptureAgeUnhealthyAfter = TimeSpan.FromMinutes(2) },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with
+        {
+            ConsumerLagMeasures = (ConsumerLagMeasures)4,
+        },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with
+        {
+            ConsumerLagAgeDegradedAfter = TimeSpan.Zero,
+        },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with
+        {
+            ConsumerLagAgeUnhealthyAfter = TimeSpan.FromMinutes(2),
+        },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with
+        {
+            ConsumerLagCountDegradedThreshold = 0,
+        },
+        OutboxReadinessOptions.CreateStagedOperationalProfile() with
+        {
+            ConsumerLagCountUnhealthyThreshold = 1_000,
+        },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { RelayDegradedAfter = TimeSpan.Zero },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { RelayUnhealthyAfter = TimeSpan.FromMinutes(1) },
         OutboxReadinessOptions.CreateStagedOperationalProfile() with { StartupGracePeriod = TimeSpan.FromSeconds(-1) },

@@ -43,7 +43,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 | Publish a translated external contract (integration events) via the outbox | `.UseIntegrationEvents(typeof(MyHandler).Assembly)` or `.UseIntegrationEvents()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Outbox integration events](trellis-api-efcore-outbox.md#integration-events) |
 | Consume integration events idempotently (deduplicate transport redeliveries) | `.UseInbox<TContext>(o => o.ConsumerId = "orders")` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Inbox reference](trellis-api-efcore-inbox.md#useinbox-builder-slot) |
 | Auto-dispatch domain events from every tracked aggregate (outcome-DTO commands) | `.UseTrackedAggregateDomainEvents(typeof(MyHandler).Assembly)` or `.UseTrackedAggregateDomainEvents()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator tracked dispatch](trellis-api-mediator.md#trackedaggregatedomaineventdispatchbehavior) |
-| Classify health features versus metadata/adapter leaves | Outbox readiness is slotted; capture age is an option on that existing feature, while optional consumer lag remains deferred | [Future health registration requirements](#future-health-registration-requirements) |
+| Classify health features versus metadata/adapter leaves | Outbox readiness is slotted; capture age and consumer lag are options on that existing feature, while application/vendor lag providers are direct leaf adapters | [Health registration classification](#health-registration-classification) |
 
 ## Common traps
 
@@ -130,7 +130,7 @@ public sealed class TrellisServiceBuilder
 | `public TrellisServiceBuilder UseTrackedAggregateDomainEvents<TEvent, THandler>() where TEvent : IDomainEvent where THandler : class, IDomainEventHandler<TEvent>` | `TrellisServiceBuilder` | **AOT-safe.** Registers `THandler` for `TEvent` and wires the tracked dispatch behavior. Implies `UseMediator()`. Mutually exclusive with `UseDomainEvents(...)`. |
 | `[RequiresUnreferencedCode] [RequiresDynamicCode] public TrellisServiceBuilder UseTrackedAggregateDomainEvents(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Scans assemblies for `IDomainEventHandler<TEvent>` implementations (non-AOT). Implies `UseMediator()`. Mutually exclusive with `UseDomainEvents(...)`. |
 | `[RequiresUnreferencedCode] [RequiresDynamicCode] public TrellisServiceBuilder UseOutbox<TContext>(Action<OutboxOptions>? configure = null) where TContext : DbContext` | `TrellisServiceBuilder` | Registers the transactional-outbox relay via `AddTrellisOutbox<TContext>()`. Order-independent versus `UseEntityFrameworkUnitOfWork` (the relay is a hosted service, not a pipeline behavior). Throws `InvalidOperationException` if called more than once. The capture interceptor and table mapping are wired separately on the `DbContext`. Annotated non-AOT. See [Trellis.EntityFrameworkCore.Outbox](trellis-api-efcore-outbox.md#useoutbox-builder-slot). |
-| `[RequiresUnreferencedCode] [RequiresDynamicCode] public TrellisServiceBuilder UseOutboxReadiness<TContext>(OutboxReadinessOptions profile) where TContext : DbContext` | `TrellisServiceBuilder` | Explicitly selects the named `trellis-outbox` read-only health check via `AddTrellisOutboxReadiness<TContext>(profile)`, applied after selected relay registration. Local mode requires the matching relay; metadata-only requires no relay and explicitly supplies the worker retry limit. Durable capture age is disabled unless `profile.CaptureAgeEnabled` is true. Generic Host lifecycle startup validates configuration, without constructing the context. Throws on null/invalid profile, repeated builder selection, or conflicting direct/builder readiness context/profile; equal direct/builder profiles deduplicate. Metadata-only may coexist with a relay for another context. Adds no endpoint, liveness policy, or consumer lag. Annotated non-AOT. See [outbox readiness](trellis-api-efcore-outbox.md#outbox-readiness). |
+| `[RequiresUnreferencedCode] [RequiresDynamicCode] public TrellisServiceBuilder UseOutboxReadiness<TContext>(OutboxReadinessOptions profile) where TContext : DbContext` | `TrellisServiceBuilder` | Explicitly selects the named `trellis-outbox` read-only health check via `AddTrellisOutboxReadiness<TContext>(profile)`, applied after selected relay registration. Local mode requires the matching relay; metadata-only requires no relay and explicitly supplies the worker retry limit. Durable capture age and consumer lag are disabled unless their profile selectors enable them; enabled lag requires a direct application-owned `IConsumerLagProvider` registration. Generic Host lifecycle startup validates configuration without constructing the context or provider. Throws on null/invalid profile, repeated builder selection, or conflicting direct/builder readiness context/profile; equal direct/builder profiles deduplicate. Metadata-only may coexist with a relay for another context. Adds no endpoint, liveness policy, or provider adapter. Annotated non-AOT. See [outbox readiness](trellis-api-efcore-outbox.md#outbox-readiness). |
 | `[RequiresUnreferencedCode] [RequiresDynamicCode] public TrellisServiceBuilder UseInbox<TContext>(Action<InboxOptions> configure) where TContext : DbContext` | `TrellisServiceBuilder` | Registers the transactional inbox via `AddTrellisInbox<TContext>()`: the `IInboxDispatcher`, the EF `IInboxStore`, and `InboxOptions` (whose `ConsumerId` is required, so `configure` is mandatory). Order-independent versus `UseEntityFrameworkUnitOfWork` (the dispatcher is an inbound seam, not a pipeline behavior). Throws `InvalidOperationException` if called more than once. The `TrellisInboxMessages` table mapping is wired separately with `modelBuilder.AddTrellisInbox()`. Annotated non-AOT. See [Trellis.EntityFrameworkCore.Inbox](trellis-api-efcore-inbox.md#useinbox-builder-slot). |
 | `public TrellisServiceBuilder UseIntegrationEvents()` | `TrellisServiceBuilder` | **AOT-safe.** Registers the default best-effort in-process `IIntegrationEventPublisher` and scoped `IIntegrationEventCollector` when absent (no scanning). Pair with `UseDomainEvents()` (for translators) and `UseOutbox<TContext>()` (for publication). Swallowed consumer failures are not retried; this is not inbox routing. |
 | `public TrellisServiceBuilder UseIntegrationEvents<TEvent, THandler>() where TEvent : IIntegrationEvent where THandler : class, IIntegrationEventHandler<TEvent>` | `TrellisServiceBuilder` | **AOT-safe.** Registers `THandler` for `TEvent` and wires the default best-effort publisher and collector. The same handler binding is available to a non-swallowing inbox, but an adapter must invoke it through `IInboxDispatcher`. |
@@ -280,17 +280,20 @@ The vendor-SDK rule is the important one: `Trellis.ServiceDefaults` references n
 
 `AddAzureServiceBusIntegrationEventPublisher` in particular is order-independent by construction: it *replaces* any existing `IIntegrationEventPublisher` registration rather than appending to it, so it can be called before or after `AddTrellis(options => options.UseIntegrationEvents(...))` with the same result.
 
-## Future health registration requirements
+## Health registration classification
 
-**Outbox readiness and opt-in durable capture age are implemented:**
+**Outbox readiness, opt-in durable capture age, and opt-in consumer lag are implemented:**
 `UseOutboxReadiness<TContext>(profile)`
 surfaces the `IServiceCollection` helper `AddTrellisOutboxReadiness<TContext>(profile)`
 and is classified in `RegistrationSurfaceTests.Expected`. Direct/builder registration
 deduplicates equal context/profile selections and leaves the transaction behavior
 innermost, before or after unit-of-work registration. Existing `UseOutbox` and `UseInbox`
 calls still do not enable health checks; endpoint selection and readiness/liveness policy
-remain host-owned. Capture age uses the same existing builder slot and is disabled until
-the immutable profile enables it after migration. **Not implemented:** consumer/source lag.
+remain host-owned. Capture age and consumer lag use the same existing builder slot and
+stay disabled until the immutable profile enables them. Consumer-lag implementations are
+application/transport `IConsumerLagProvider` registrations, not a second composition-root
+feature. Register providers directly; vendor adapters remain outside this package's
+reference graph.
 
 A later application-enabled health feature is a composition-root feature: its direct
 registration needs matching `TrellisServiceBuilder` coverage and an entry in
@@ -304,5 +307,5 @@ no new cloud SDK dependency or allowlist entry solely to record their unslotted 
 
 Prove direct/builder idempotence and order-independence before and after
 `AddTrellisUnitOfWork<TContext>()`, without moving the innermost transaction behavior
-or adding probe work to the command/dispatch pipeline. The host explicitly selects
-the tuned health profile, optional lag evidence, and endpoint/readiness mapping.
+or adding probe work to the command/dispatch pipeline. The host explicitly selects the tuned health profile, optional lag evidence, and
+endpoint/readiness mapping.
