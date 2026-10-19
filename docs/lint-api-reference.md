@@ -71,7 +71,7 @@ The generic publisher and `init`/`sync`/`check`/`remove` lifecycle probes live i
 independent `Trellis.AgentDocs.Packaging` repository alongside the internal reader and
 the separately versioned `Trellis.AgentDocs` local tool (`agentdocs` command).
 Core packs its NuGet README verbatim; its AgentDocs tool pin is independently
-versioned as `0.1.0-preview.20` rather than using Core's `PackageVersion`.
+versioned as `1.0.2` rather than using Core's `PackageVersion`.
 
 - **TRLDOC010**: The recipe count quoted to agents ("The *n* recipe bodies in `trellis-api-cookbook.md`" in `trellis-start-here.md`) must equal the number of live recipes in the cookbook, excluding `*(retired)*` headings. The routing head tells agents the Patterns Index is exhaustive and uses the count to justify a token budget, so a stale number quietly undermines both claims. Every file that quotes the count belongs in the rule's claim list: the count used to be quoted in the cookbook as well, and the unguarded copy duly drifted out of date while the guarded one stayed correct. The routing head now lives in the router (`trellis-start-here.md`); the count is also quoted in `AGENTS.md`, and both copies are checked.
 
@@ -107,7 +107,7 @@ Two separable concerns, deliberately kept apart in `Directory.Build.targets`:
 
 Because Core now ships references for packages the consumer may not have, **file presence no longer implies a package reference**. `trellis-start-here.md` says so explicitly and tells agents to confirm the reference in the `.csproj`; do not reintroduce wording that invites the opposite inference.
 
-Core uses a private `Trellis.AgentDocs.Packaging` `0.1.0-preview.20` build dependency,
+Core uses a private `Trellis.AgentDocs.Packaging` `1.0.2` build dependency,
 the same generic publisher helper used by satellites. `Directory.Build.targets`
 declares all shipped Markdown files as `PackageGuidanceItem` entries under `trellis/`.
 The thin `build/Trellis.Guidance.Metadata.targets` adapter reads roles and descriptions
@@ -167,7 +167,7 @@ discovers the manifest without executing package targets, and the AgentDocs CLI
 rejects older copy-target packages. Run
 `pwsh build/test-satellite-guidance.ps1` in this repository to test a Trellis
 satellite payload and consumer restore/build without CLI execution. By default it
-downloads the pinned `0.1.0-preview.20` helper from NuGet.org; pass
+downloads the pinned `1.0.2` helper from NuGet.org; pass
 `-HelperPackagePath` to test an explicitly supplied local nupkg instead. The
 generic publisher and full CLI probe live in the separate repository. Its optional
 `-WorkDirectory` leaves sample projects available for inspection. The root first-party manifest target runs

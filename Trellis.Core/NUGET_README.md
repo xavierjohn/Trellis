@@ -100,7 +100,7 @@ and adds small pointers to `AGENTS.md` and `.github/copilot-instructions.md`, so
 routing guide instead of guessing API signatures. Confirm a project references a package before using its
 API. **Trellis works normally without it.** Restore and build never create `.agentdocs/` or edit your
 instructions; you choose whether to install the guidance.
-`Trellis.AgentDocs` is independently versioned from Core; `0.1.0-preview.20` is available from NuGet.org.
+`Trellis.AgentDocs` is independently versioned from Core; `1.0.2` is available from NuGet.org.
 Core's private `Trellis.AgentDocs.Packaging` build dependency publishes the complete reference
 set; it is not a dependency of your application, and feature packages do not duplicate the guides.
 
@@ -109,7 +109,7 @@ if the solution is in a subdirectory):
 
 ```bash
 dotnet new tool-manifest --output .config
-dotnet tool install Trellis.AgentDocs --version 0.1.0-preview.20 --tool-manifest .config/dotnet-tools.json
+dotnet tool install Trellis.AgentDocs --version 1.0.2 --tool-manifest .config/dotnet-tools.json
 dotnet restore <solution-or-project>
 dotnet tool run agentdocs init <solution-or-project>
 ```
