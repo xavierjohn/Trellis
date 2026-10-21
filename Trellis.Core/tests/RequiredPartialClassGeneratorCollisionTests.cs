@@ -87,6 +87,70 @@ public class RequiredPartialClassGeneratorCollisionTests
         GeneratedSource(run).Should().Contain("public static bool TryParse(");
     }
 
+    [Theory]
+    [InlineData("params (string Name, string? Value)[] fields")]
+    [InlineData("string[] fields")]
+    [InlineData("string[,] fields")]
+    [InlineData("string[][] fields")]
+    [InlineData("int?[] fields")]
+    [InlineData("(string Name, string? Value) fields")]
+    [InlineData("System.Collections.Generic.List<(string Name, string? Value)> fields")]
+    [InlineData("dynamic fields")]
+    [InlineData("int* fields")]
+    [InlineData("delegate*<int, void> fields")]
+    public void Generate_HelperParameters_ValidTypes_PreservesAllValueObjects(string parameter)
+    {
+        var source = $$"""
+            using Trellis;
+
+            namespace Demo;
+
+            [NotDefault, StringLength(2000)]
+            public sealed partial class AuditFields : RequiredString<AuditFields>
+            {
+                public static unsafe int Probe({{parameter}}) => 0;
+            }
+
+            public sealed partial class SiblingId : RequiredGuid<SiblingId>;
+            """;
+
+        var run = RunGenerator(source, TestContext.Current.CancellationToken);
+
+        run.RunResult.Results.Should().ContainSingle().Which.Exception.Should().BeNull();
+        run.RunResult.Diagnostics.Should().BeEmpty();
+        CompilationDiagnostics(run).Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
+        run.RunResult.GeneratedTrees.Should().HaveCount(2);
+    }
+
+    [Theory]
+    [InlineData("string[]")]
+    [InlineData("(string Name, string? Value)")]
+    [InlineData("System.Collections.Generic.List<string>")]
+    public void TryParse_HelperOverload_DistinctParameterType_DoesNotCollide(string parameterType)
+    {
+        var source = $$"""
+            using System;
+            using Trellis;
+
+            namespace Demo;
+
+            public sealed partial class HelperOverload : RequiredString<HelperOverload>
+            {
+                public static bool TryParse({{parameterType}} value, IFormatProvider? provider, out HelperOverload result)
+                {
+                    result = default!;
+                    return false;
+                }
+            }
+            """;
+
+        var run = RunGenerator(source, TestContext.Current.CancellationToken);
+
+        run.RunResult.Diagnostics.Should().BeEmpty();
+        CompilationDiagnostics(run).Where(d => d.Severity == DiagnosticSeverity.Error).Should().BeEmpty();
+        GeneratedSource(run).Should().Contain("public static bool TryParse(");
+    }
+
     [Fact]
     public void Generate_GenericMethodOverload_DoesNotCollideWithNonGenericGenerated()
     {
@@ -240,7 +304,7 @@ public class RequiredPartialClassGeneratorCollisionTests
             "RequiredPartialClassGeneratorCollisionTests",
             [syntaxTree],
             _references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true, nullableContextOptions: NullableContextOptions.Enable));
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             generators: ImmutableArray.Create<ISourceGenerator>(new RequiredPartialClassGenerator().AsSourceGenerator()),

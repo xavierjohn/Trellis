@@ -138,6 +138,11 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 {
     private const string HelpLinkBase = "https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html";
 
+    private static readonly SymbolDisplayFormat s_signatureTypeDisplayFormat = new(
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameOnly,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
     /// <summary>
     /// Canonical IDs for diagnostics emitted by this generator. See
     /// <c>Trellis.TrellisDiagnosticIds</c> in <c>Trellis.Analyzers</c> for the
@@ -2463,25 +2468,11 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
         };
     }
 
-    private static string FormatTypeForSignature(ITypeSymbol type, INamedTypeSymbol containingType)
-    {
-        if (SymbolEqualityComparer.Default.Equals(type, containingType))
-            return containingType.Name;
+    private static string FormatTypeForSignature(ITypeSymbol type, INamedTypeSymbol containingType) =>
+        SymbolEqualityComparer.Default.Equals(type, containingType)
+            ? containingType.Name
+            : type.ToDisplayString(s_signatureTypeDisplayFormat);
 
-        if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullableType
-            && nullableType.TypeArguments.Length == 1)
-            return FormatTypeForSignature(nullableType.TypeArguments[0], containingType) + "?";
-
-        return type.SpecialType switch
-        {
-            SpecialType.System_String => "string",
-            SpecialType.System_Int32 => "int",
-            SpecialType.System_Int64 => "long",
-            SpecialType.System_Decimal => "decimal",
-            SpecialType.System_Boolean => "bool",
-            _ => type.ContainingNamespace.ToDisplayString() == "System" ? type.Name : type.Name
-        };
-    }
     private static string[] GetNestingParents(INamedTypeSymbol classSymbol)
     {
         var nestingParents = new List<string>();
