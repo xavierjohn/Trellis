@@ -844,6 +844,7 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `RateLimitExceeded` | `rate-limit.exceeded` | ASP.NET Core rate-limiting middleware rejected the request before endpoint execution. Carried by `Error.RateLimited`; emitted by `Trellis.Asp`'s `UseTrellisRejectionHandler`. |
 | `DefaultInitialized` | `default-initialized` | A `Result` was default-initialized and never assigned. |
 | `UnhandledException` | `unhandled-exception` | An exception escaped to a boundary that converts it into a failed `Result`. |
+| `UnitOfWorkUncommittable` | `unit-of-work.uncommittable` | A pre-commit hook threw or observed cancellation. The command pipeline records this safe `Error.Unexpected` reason on the unit of work before propagating the original exception; every later commit is refused until that instance is discarded. Explicit hook vetoes retain their own error instead. |
 | `NotImplemented` | `not-implemented` | A boundary reached a path the framework does not implement. Carried by `Error.Unexpected`; surfaces as HTTP 501. |
 | `ConcurrentModification` | `concurrent-modification` | A write lost a race — the row changed between read and save. Carried by `Error.Conflict`; surfaces as 412 when the request carried `If-Match`, otherwise 409. |
 | `DuplicateKey` | `duplicate.key` | A write violates a unique constraint, including losing a concurrent unique-index insert race. Carried by `Error.Conflict`; default HTTP status 409. Emitted by EF save/idempotent-insert helpers and `FakeRepository.SaveAsync`. |

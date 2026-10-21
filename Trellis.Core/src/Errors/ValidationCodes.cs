@@ -377,6 +377,12 @@ public static class FaultCodes
     public const string UnhandledException = "unhandled-exception";
 
     /// <summary>
+    /// A pre-commit hook aborted and made the unit of work unusable for further commits.
+    /// Carried by <see cref="Error.Unexpected"/>; discard the unit of work and its store/context.
+    /// </summary>
+    public const string UnitOfWorkUncommittable = "unit-of-work.uncommittable";
+
+    /// <summary>
     /// A boundary reached a path the framework does not implement. Carried by
     /// <c>Error.Unexpected</c> and surfaced as HTTP 501.
     /// </summary>

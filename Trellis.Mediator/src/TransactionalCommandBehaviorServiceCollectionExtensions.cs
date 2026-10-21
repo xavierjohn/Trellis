@@ -2,6 +2,7 @@
 
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 /// <summary>
 /// Registration for the <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> pipeline behavior,
@@ -17,8 +18,9 @@ public static class TransactionalCommandBehaviorServiceCollectionExtensions
     /// innermost (closest to the handler). If no behaviors are registered yet, appends at the end.
     /// </summary>
     /// <remarks>
-    /// <para>Idempotent for the open-generic case: a second call is a no-op when the open-generic
-    /// <c>TransactionalCommandBehavior&lt;,&gt;</c> is already registered.</para>
+    /// <para>Idempotent for the open-generic case: does not duplicate an existing
+    /// <c>TransactionalCommandBehavior&lt;,&gt;</c>. Always ensures the singleton
+    /// <see cref="CommandDispatchState"/> accessor is registered.</para>
     /// <para>Throws <see cref="InvalidOperationException"/> when a closed-generic
     /// <c>TransactionalCommandBehavior&lt;TMessage,TResponse&gt;</c> is already registered. The
     /// open generic added here would resolve alongside the closed registration on matching
@@ -69,6 +71,8 @@ public static class TransactionalCommandBehaviorServiceCollectionExtensions
                 $"generic that covers every command, or skip AddTransactionalCommandBehavior() to " +
                 $"keep the explicit closed registrations.");
         }
+
+        services.TryAddSingleton<CommandDispatchState>();
 
         if (openTransactionalAlreadyRegistered)
             return services;

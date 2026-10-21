@@ -76,18 +76,25 @@ public sealed class AuditEntry : Aggregate<AuditEntryId>
     }
 }
 
-public sealed record AuditedOrderOutcome(OrderId OrderId, IReadOnlyList<AuditEntry> AuditEntries);
-
-public sealed record CreateAuditedOrderCommand(Money Total) : ICommand<Result<AuditedOrderOutcome>>;
-
-public sealed class CreateAuditedOrderHandler(IOrderRepository orders, TimeProvider clock)
-    : ICommandHandler<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>>
+public sealed class PendingOrderAudits
 {
-    public ValueTask<Result<AuditedOrderOutcome>> Handle(
+    public List<AuditEntry> Entries { get; } = [];
+}
+
+public interface IAuditedCommand;
+
+public sealed record CreateAuditedOrderCommand(Money Total) : ICommand<Result<Order>>, IAuditedCommand;
+
+public sealed class CreateAuditedOrderHandler(
+    IOrderRepository orders, CommandDispatchState state, TimeProvider clock)
+    : ICommandHandler<CreateAuditedOrderCommand, Result<Order>>
+{
+    public ValueTask<Result<Order>> Handle(
         CreateAuditedOrderCommand command, CancellationToken cancellationToken) =>
         Order.TryCreate(command.Total)
             .Tap(orders.Add)
-            .Map(order => new AuditedOrderOutcome(order.Id, [AuditEntry.ForOrderCreated(order.Id, clock)]))
+            .Tap(order => state.GetOrAdd(static () => new PendingOrderAudits())
+                .Entries.Add(AuditEntry.ForOrderCreated(order.Id, clock)))
             .AsValueTask();
 }
 
@@ -99,20 +106,19 @@ public interface IAuditEntryRepository
 public sealed class EfAuditEntryRepository(DbContext context)
     : RepositoryBase<AuditEntry, AuditEntryId>(context), IAuditEntryRepository;
 
-public sealed partial class CreateOrderAuditHook(
-    IAuditEntryRepository audits, ILogger<CreateOrderAuditHook> logger)
-    : ICommandPreCommitHook<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>>
+public sealed partial class RequiredAuditHook<TMessage, TResponse>(
+    CommandDispatchState state, IAuditEntryRepository audits, ILogger<RequiredAuditHook<TMessage, TResponse>> logger)
+    : ICommandPreCommitHook<TMessage, TResponse>
+    where TMessage : ICommand<TResponse>, IAuditedCommand
+    where TResponse : IResult
 {
     public ValueTask<Result<Trellis.Unit>> BeforeCommitAsync(
-        CreateAuditedOrderCommand message,
-        Result<AuditedOrderOutcome> response,
+        TMessage message,
+        TResponse response,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!response.TryGetValue(out var outcome, out var error))
-            return Result.Fail(error).AsValueTask();
-
-        if (outcome.AuditEntries.Count == 0)
+        if (!state.TryGet<PendingOrderAudits>(out var pending) || pending.Entries.Count == 0)
         {
             var faultId = Guid.NewGuid().ToString("N");
             LogMissingAudit(logger, faultId);
@@ -122,9 +128,10 @@ public sealed partial class CreateOrderAuditHook(
             }).AsValueTask();
         }
 
-        foreach (var entry in outcome.AuditEntries)
+        foreach (var entry in pending.Entries)
             audits.Add(entry);
 
+        state.Remove<PendingOrderAudits>();
         return Result.Ok().AsValueTask();
     }
 
@@ -173,10 +180,10 @@ internal static class Recipe16Demonstrator
             new EfOrderRepository(provider.GetRequiredService<Recipe16DbContext>()));
         services.AddScoped<IAuditEntryRepository>(provider =>
             new EfAuditEntryRepository(provider.GetRequiredService<Recipe16DbContext>()));
-        services.AddScoped<ICommandHandler<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>>,
+        services.AddScoped<ICommandHandler<CreateAuditedOrderCommand, Result<Order>>,
             CreateAuditedOrderHandler>();
         return services.AddTrellis(options => options
-            .UseCommandPreCommitHook<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>, CreateOrderAuditHook>()
+            .UseCommandPreCommitHook(typeof(RequiredAuditHook<,>))
             .UseEntityFrameworkUnitOfWork<Recipe16DbContext>());
     }
 

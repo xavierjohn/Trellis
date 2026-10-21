@@ -64,6 +64,33 @@ public class CommandPreCommitHookRegistrationTests
     }
 
     [Fact]
+    public void AddTransactionalCommandBehavior_ExistingOpenBehavior_StillRegistersStateAccessor()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
+
+        services.AddTransactionalCommandBehavior();
+
+        services.Where(descriptor => descriptor.ServiceType == typeof(CommandDispatchState))
+            .Should().ContainSingle().Which.Lifetime.Should().Be(ServiceLifetime.Singleton);
+        services.Where(descriptor => descriptor.ImplementationType == typeof(TransactionalCommandBehavior<,>))
+            .Should().ContainSingle();
+    }
+
+    [Fact]
+    public void AddCommandPreCommitHook_TypedBinding_RegistersSharedStateAccessor()
+    {
+        var services = new ServiceCollection();
+        services.AddCommandPreCommitHook<Command, Result<string>, FirstHook>();
+        using var provider = services.BuildServiceProvider();
+        using var first = provider.CreateScope();
+        using var second = provider.CreateScope();
+
+        first.ServiceProvider.GetRequiredService<CommandDispatchState>().Should()
+            .BeSameAs(second.ServiceProvider.GetRequiredService<CommandDispatchState>());
+    }
+
+    [Fact]
     public async Task AddCommandPreCommitHook_UnregisteredCommand_PreservesCommitWithoutHooks()
     {
         var calls = new List<string>();
@@ -104,7 +131,75 @@ public class CommandPreCommitHookRegistrationTests
                 .MakeGenericType(typeof(Query), typeof(Result<string>)))
             .Should().Throw<ArgumentException>();
 
-    private sealed record Command : ICommand<Result<string>>;
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AddCommandPreCommitHook_OpenHook_NullArgument_Throws(bool nullServices)
+    {
+        var act = () => CommandPreCommitHookServiceCollectionExtensions.AddCommandPreCommitHook(
+            nullServices ? null! : new ServiceCollection(),
+            nullServices ? typeof(OpenFirstHook<,>) : null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName(nullServices ? "services" : "hookType");
+    }
+
+    [Theory]
+    [InlineData(typeof(FirstHook))]
+    [InlineData(typeof(OpenFirstHook<Command, Result<string>>))]
+    [InlineData(typeof(ICommandPreCommitHook<,>))]
+    [InlineData(typeof(AbstractOpenHook<,>))]
+    [InlineData(typeof(WrongArityHook<,,>))]
+    [InlineData(typeof(ReversedHook<,>))]
+    [InlineData(typeof(Dictionary<,>))]
+    public void AddCommandPreCommitHook_InvalidOpenType_ThrowsWithoutChangingRegistrations(Type hookType)
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddCommandPreCommitHook(hookType);
+
+        act.Should().Throw<ArgumentException>().WithParameterName(nameof(hookType));
+        services.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AddCommandPreCommitHook_OpenHooks_FiltersConstraintsDeduplicatesAndPreservesOrder()
+    {
+        var calls = new List<string>();
+        var services = new ServiceCollection();
+        services.AddSingleton(calls);
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddCommandPreCommitHook(typeof(OpenFirstHook<,>));
+        services.AddCommandPreCommitHook(typeof(OpenSecondHook<,>));
+        services.AddCommandPreCommitHook(typeof(OpenFirstHook<,>));
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        });
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.GetServices<ICommandPreCommitHook<OtherCommand, Result<string>>>()
+            .Should().BeEmpty();
+        var hooks = scope.ServiceProvider.GetServices<ICommandPreCommitHook<Command, Result<string>>>().ToArray();
+        hooks.Should().HaveCount(2);
+        hooks[0].Should().BeOfType<OpenFirstHook<Command, Result<string>>>();
+        hooks[1].Should().BeOfType<OpenSecondHook<Command, Result<string>>>();
+        scope.ServiceProvider.GetServices<ICommandPreCommitHook<Command, Result<string>>>().First()
+            .Should().BeSameAs(hooks[0]);
+        using var otherScope = provider.CreateScope();
+        otherScope.ServiceProvider.GetServices<ICommandPreCommitHook<Command, Result<string>>>().First()
+            .Should().NotBeSameAs(hooks[0]);
+        var behavior = scope.ServiceProvider.GetRequiredService<IPipelineBehavior<Command, Result<string>>>();
+
+        var result = await behavior.Handle(new Command(),
+            (_, _) => Result.Ok("done").AsValueTask(), TestContext.Current.CancellationToken);
+
+        result.Should().HaveValue("done");
+        calls.Should().Equal(["open-first", "open-second", "commit"]);
+    }
+
+    private interface IAuditedCommand;
+    private sealed record Command : ICommand<Result<string>>, IAuditedCommand;
     private sealed record OtherCommand : ICommand<Result<string>>;
     private sealed record Query : IQuery<Result<string>>;
 
@@ -128,12 +223,70 @@ public class CommandPreCommitHookRegistrationTests
         }
     }
 
+    private abstract class AbstractOpenHook<TMessage, TResponse> : ICommandPreCommitHook<TMessage, TResponse>
+        where TMessage : ICommand<TResponse>, IAuditedCommand
+        where TResponse : IResult
+    {
+        public abstract ValueTask<Result<Unit>> BeforeCommitAsync(
+            TMessage message, TResponse response, CancellationToken cancellationToken);
+    }
+
+    private sealed class OpenFirstHook<TMessage, TResponse>(List<string> calls) : AbstractOpenHook<TMessage, TResponse>
+        where TMessage : ICommand<TResponse>, IAuditedCommand
+        where TResponse : IResult
+    {
+        public override ValueTask<Result<Unit>> BeforeCommitAsync(
+            TMessage message, TResponse response, CancellationToken cancellationToken)
+        {
+            calls.Add("open-first");
+            return Result.Ok().AsValueTask();
+        }
+    }
+
+    private sealed class OpenSecondHook<TMessage, TResponse>(List<string> calls) : AbstractOpenHook<TMessage, TResponse>
+        where TMessage : ICommand<TResponse>, IAuditedCommand
+        where TResponse : IResult
+    {
+        public override ValueTask<Result<Unit>> BeforeCommitAsync(
+            TMessage message, TResponse response, CancellationToken cancellationToken)
+        {
+            calls.Add("open-second");
+            return Result.Ok().AsValueTask();
+        }
+    }
+
+    private sealed class WrongArityHook<TMessage, TResponse, TExtra> : AbstractOpenHook<TMessage, TResponse>
+        where TMessage : ICommand<TResponse>, IAuditedCommand
+        where TResponse : IResult
+    {
+        public override ValueTask<Result<Unit>> BeforeCommitAsync(
+            TMessage message, TResponse response, CancellationToken cancellationToken) => Result.Ok().AsValueTask();
+    }
+
+    private sealed class ReversedHook<TResponse, TMessage> : AbstractOpenHook<TMessage, TResponse>
+        where TMessage : ICommand<TResponse>, IAuditedCommand
+        where TResponse : IResult
+    {
+        public override ValueTask<Result<Unit>> BeforeCommitAsync(
+            TMessage message, TResponse response, CancellationToken cancellationToken) => Result.Ok().AsValueTask();
+    }
+
     private sealed class UnitOfWork(List<string> calls) : IUnitOfWork
     {
+        private Error? _rejection;
+
         public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
         {
+            if (_rejection is { } rejection)
+                return Result.Fail(rejection).AsTask();
             calls.Add("commit");
             return Result.Ok().AsTask();
+        }
+
+        public void MarkUncommittable(Error reason)
+        {
+            ArgumentNullException.ThrowIfNull(reason);
+            _rejection ??= reason;
         }
 
         public IUnitOfWorkScope BeginScope() => new Scope();

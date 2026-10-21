@@ -34,14 +34,19 @@ using global::Mediator;
 /// <c>IMediator</c>, the inner command flows through the same pipeline and the inner
 /// <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> opens a nested
 /// <see cref="IUnitOfWork.BeginScope"/>. The inner <see cref="IUnitOfWork.CommitAsync"/> defers
-/// (returns success without touching the store) until the outermost scope unwinds. This
+/// (returns success without touching the store) until the owning command commits. This
 /// prevents a successful inner command from committing a partially-completed outer command's
-/// staged changes. <b>Caveat:</b> if the inner command returns a failure but the outer handler
+/// staged changes. <b>Caveat:</b> if the inner handler returns an ordinary failure but the outer handler
 /// ignores it and returns success, the outer's commit will persist any changes the inner staged
 /// before failing — handlers that need to discard inner failures' staged work must detach the
-/// affected entities themselves. Every <see cref="IUnitOfWork"/> implementation must implement
-/// <see cref="IUnitOfWork.BeginScope"/> with depth-aware semantics; the shipped EF Core unit of
-/// work does this with an internal depth counter.
+/// affected entities themselves. A hook veto, exception, or cancellation instead calls
+/// <see cref="IUnitOfWork.MarkUncommittable"/> and permanently blocks the owner's commit.
+/// Every <see cref="IUnitOfWork"/> implementation must preserve depth-aware scopes and this
+/// first-rejection invalidation contract.
+/// </para>
+/// <para>
+/// A fresh <see cref="CommandDispatchState"/> frame surrounds each handler, its hooks, and commit.
+/// Every exit closes the frame, drops its remaining entries, and restores the parent dispatch.
 /// </para>
 /// </summary>
 /// <typeparam name="TMessage">The command type.</typeparam>
@@ -97,17 +102,36 @@ public sealed class TransactionalCommandBehavior<TMessage, TResponse>
         CancellationToken cancellationToken)
     {
         using var scope = _unitOfWork.BeginScope();
+        using var state = CommandDispatchState.Begin();
         var dispatch = DomainEventDispatchScope.ObserveTransaction(_unitOfWork, scope.IsOwner);
 
         var result = await next(message, cancellationToken).ConfigureAwait(false);
 
         if (result.IsSuccess || result is IPersistOnFailure { PersistOnFailure: true })
         {
-            foreach (var hook in _preCommitHooks)
+            var hooksCompleted = false;
+            try
             {
-                var hookResult = await hook.BeforeCommitAsync(message, result, cancellationToken).ConfigureAwait(false);
-                if (hookResult.TryGetError(out var hookError))
-                    return TResponse.CreateFailure(hookError);
+                foreach (var hook in _preCommitHooks)
+                {
+                    var hookResult = await hook.BeforeCommitAsync(message, result, cancellationToken).ConfigureAwait(false);
+                    if (hookResult.TryGetError(out var hookError))
+                    {
+                        _unitOfWork.MarkUncommittable(hookError);
+                        hooksCompleted = true;
+                        return TResponse.CreateFailure(hookError);
+                    }
+                }
+
+                hooksCompleted = true;
+            }
+            finally
+            {
+                if (!hooksCompleted)
+                    _unitOfWork.MarkUncommittable(new Error.Unexpected(FaultCodes.UnitOfWorkUncommittable)
+                    {
+                        Detail = "An unexpected error occurred while processing the request.",
+                    });
             }
 
             var commitResult = await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);

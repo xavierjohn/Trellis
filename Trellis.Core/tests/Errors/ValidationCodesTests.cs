@@ -66,6 +66,7 @@ public class ValidationCodesTests
     [Theory]
     [InlineData(nameof(FaultCodes.DefaultInitialized), FaultCodes.DefaultInitialized, "default-initialized")]
     [InlineData(nameof(FaultCodes.UnhandledException), FaultCodes.UnhandledException, "unhandled-exception")]
+    [InlineData(nameof(FaultCodes.UnitOfWorkUncommittable), FaultCodes.UnitOfWorkUncommittable, "unit-of-work.uncommittable")]
     [InlineData(nameof(FaultCodes.NotImplemented), FaultCodes.NotImplemented, "not-implemented")]
     [InlineData(nameof(FaultCodes.ConcurrentModification), FaultCodes.ConcurrentModification, "concurrent-modification")]
     [InlineData(nameof(FaultCodes.DuplicateKey), FaultCodes.DuplicateKey, "duplicate.key")]
@@ -100,6 +101,7 @@ public class ValidationCodesTests
     [Theory]
     [InlineData(nameof(FaultCodes.DuplicateKey))]
     [InlineData(nameof(FaultCodes.ReferentialIntegrity))]
+    [InlineData(nameof(FaultCodes.UnitOfWorkUncommittable))]
     [InlineData(nameof(FaultCodes.RetryAborted))]
     [InlineData(nameof(FaultCodes.RetryExhausted))]
     public void FaultCodes_PersistenceFailures_ExposeCompileTimeConstants(string name)

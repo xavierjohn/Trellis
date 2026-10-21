@@ -64,6 +64,21 @@ public class EfUnitOfWorkTrackedAggregateSourceTests : IDisposable
     }
 
     [Fact]
+    public async Task CommittedAggregates_BlockedCommit_ClearsPreviousSnapshot()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var item = TestItem.Create(TestItemId.Create(Guid.NewGuid()), TestItemName.Create("First commit"));
+        _context.Items.Add(item);
+        (await _unitOfWork.CommitAsync(ct)).Should().BeSuccess();
+        TrackedSource().CommittedAggregates.Should().ContainSingle();
+        _unitOfWork.MarkUncommittable(new Error.Conflict("audit.rejected"));
+
+        (await _unitOfWork.CommitAsync(ct)).Should().HaveErrorCode("audit.rejected");
+
+        TrackedSource().CommittedAggregates.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task CommittedAggregates_empty_after_failed_commit()
     {
         // Arrange — stage a duplicate-key insert: persist once, clear the tracker,
@@ -268,8 +283,15 @@ public class EfUnitOfWorkTrackedAggregateSourceTests : IDisposable
 
     private sealed class CustomUnitOfWorkWithoutTrackedSource : IUnitOfWork
     {
+        private Error? _rejection;
         public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(Result.Ok());
+            Task.FromResult(_rejection is { } rejection ? Result.Fail(rejection) : Result.Ok());
+
+        public void MarkUncommittable(Error reason)
+        {
+            ArgumentNullException.ThrowIfNull(reason);
+            _rejection ??= reason;
+        }
 
         public IUnitOfWorkScope BeginScope() => new NullScope();
 

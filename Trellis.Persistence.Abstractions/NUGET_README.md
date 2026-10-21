@@ -27,6 +27,7 @@ static async Task<Result<Unit>> CommitAsync(
 ## Key Features
 
 - `IUnitOfWork` and `IUnitOfWorkScope` define a nested, ownership-aware commit boundary.
+- `IUnitOfWork.MarkUncommittable(Error reason)` permanently blocks commits after a hook veto, exception, or cancellation. Adapters must reject null, preserve the first reason, and return it before nested deferral or store access; scopes never reset it. This required interface member is an adapter contract change, not an optional no-op. Discard the unit of work and backing context; invalidation does not roll back tracked state.
 - `IInboxStore` and `InboxRecord` define transactional message deduplication without selecting a database.
 - `IConsumerCheckpointStore` stores an optional pull-consumer resume position.
 - All contracts live in the `Trellis` namespace and depend only on `Trellis.Core`.

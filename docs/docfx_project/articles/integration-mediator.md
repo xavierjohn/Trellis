@@ -52,6 +52,8 @@ audience: [developer]
 | `IMessageValidator<TMessage>` | Interface | DI-resolved async validator; aggregated by `ValidationBehavior`. |
 | `ICommandPreCommitHook<TMessage,TResponse>.BeforeCommitAsync(...)` | Interface method | Post-handler validation/staging inside `TransactionalCommandBehavior`, before persistence. |
 | `AddCommandPreCommitHook<TMessage,TResponse,THook>()` | DI extension | Registers a scoped typed hook and the open transaction behavior; the application supplies `IUnitOfWork`. |
+| `AddCommandPreCommitHook(Type hookType)` | DI extension | Registers a constrained open hook for all matching command/response pairs, without per-command registration. |
+| `CommandDispatchState` | Accessor | Typed handler/hook entries in an automatically opened/closed transactional-command frame, independent of response or message identity. |
 | `TrellisMediatorTelemetryOptions.IncludeErrorDetail` | Property | Opt-in to include `Error.Detail` in logs/traces (default `false`). |
 | `TracingBehavior<,>.ActivitySourceName` | `const string` | `"Trellis.Mediator"` — add this to your OpenTelemetry config. |
 | `ServiceCollectionExtensions.PipelineBehaviors` | Property | Ordered inspection list; source-generator configuration must use literal `typeof(...)` entries. |
@@ -154,7 +156,7 @@ transaction has already committed; registration order is not a reliable audit se
 
 ```csharp
 services.AddTrellisBehaviors();
-services.AddCommandPreCommitHook<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>, CreateOrderAuditHook>();
+services.AddCommandPreCommitHook(typeof(RequiredAuditHook<,>));
 services.AddTrellisUnitOfWork<AppDbContext>();
 ```
 
@@ -163,20 +165,35 @@ The hook's `BeforeCommitAsync(message, response, token)` returns
 success and explicit persist-on-failure outcomes. The first rejection replaces the
 response and vetoes persistence, even if it returns `FailAfterCommit`. Ordinary failed
 or throwing handlers skip hooks. Exceptions and cancellation propagate through the
-normal pipeline.
+normal pipeline. Any hook veto, exception, or cancellation permanently marks the unit
+of work uncommittable. Explicit vetoes retain their error; exceptions/cancellation record
+`FaultCodes.UnitOfWorkUncommittable` while propagating the original exception.
+
+The open hook's constraints select applicable commands, such as an application-owned
+audit marker; newly added matching commands need no individual registration. The typed
+`AddCommandPreCommitHook<TMessage,TResponse,THook>()` overload remains available.
 
 Stage through repositories sharing the command's unit of work; do not save, publish, or
 perform external effects in a hook. Nested commands run their own hooks before deferred
-commits. A veto does not roll back staging or prevent an outer command from ignoring the
-failure: propagate failures and discard the failed context. Pending records must be
-dispatch-specific because scoped hooks can be reused and never see ordinary failed
-handlers. The [same-commit audit recipe](../api_reference/trellis-api-cookbook.md#same-commit-audit-staging)
-uses an internal outcome carrier and demonstrates tracked events and outbox compatibility.
+commits. An ignored inner hook failure still blocks the owning commit and every later
+commit: first reason wins, scope disposal/new scopes never reset it. This is not rollback;
+discard the unit of work and context, and never bypass it with direct store writes.
+Ordinary handler failures/exceptions keep their existing staging semantics.
 
-The matching builder slot is `UseCommandPreCommitHook<TMessage,TResponse,THook>()`.
+Inject `CommandDispatchState` in handlers/hooks. Its `GetOrAdd<TState>`, `TryGet<TState>`,
+and `Remove<TState>` use a fresh frame opened before the handler and always closed after
+hooks/commit or on failure. Each hook owns a distinct entry type, reads it, then removes it.
+Nested frames hide and restore the parent's entries; reusing a message instance does not
+share state. Failed handlers skip hooks but still drop pending entries; outside/expired
+access throws. The [same-commit audit recipe](../api_reference/trellis-api-cookbook.md#same-commit-audit-staging)
+returns a domain entity directly and demonstrates tracked events and outbox compatibility.
+
+The matching builder slots are `UseCommandPreCommitHook<TMessage,TResponse,THook>()`
+and `UseCommandPreCommitHook(typeof(RequiredAuditHook<,>))`.
 Neither registration provides the store. Explicitly closed/generated pipelines bind
 `ICommandPreCommitHook<Command,Response>` directly instead of installing an open
-transaction behavior; see the [exact registration contract](../api_reference/trellis-api-mediator.md#commandprecommithookservicecollectionextensions).
+transaction behavior, and register `CommandDispatchState` directly when needed; see the
+[exact registration contract](../api_reference/trellis-api-mediator.md#commandprecommithookservicecollectionextensions).
 
 ## Permission authorization
 

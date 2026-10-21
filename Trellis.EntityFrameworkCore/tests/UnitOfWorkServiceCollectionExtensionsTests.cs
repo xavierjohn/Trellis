@@ -116,8 +116,15 @@ public class UnitOfWorkServiceCollectionExtensionsTests
 
     private sealed class NoopUnitOfWork : IUnitOfWork
     {
+        private Error? _rejection;
         public Task<global::Trellis.Result<global::Trellis.Unit>> CommitAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(global::Trellis.Result.Ok());
+            Task.FromResult(_rejection is { } rejection ? Result.Fail(rejection) : Result.Ok());
+
+        public void MarkUncommittable(Error reason)
+        {
+            ArgumentNullException.ThrowIfNull(reason);
+            _rejection ??= reason;
+        }
 
         public IUnitOfWorkScope BeginScope() => new NoopScope();
 

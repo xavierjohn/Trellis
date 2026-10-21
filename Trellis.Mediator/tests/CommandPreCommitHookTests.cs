@@ -114,6 +114,7 @@ public class CommandPreCommitHookTests
         result.Equals(expected).Should().BeTrue();
         unitOfWork.CommitCalls.Should().Be(0);
         unitOfWork.ScopeDepth.Should().Be(0);
+        (await unitOfWork.CommitAsync(Token)).Should().BeSuccess();
     }
 
     [Fact]
@@ -206,6 +207,62 @@ public class CommandPreCommitHookTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Handler failed.");
         unitOfWork.CommitCalls.Should().Be(0);
         unitOfWork.ScopeDepth.Should().Be(0);
+        (await unitOfWork.CommitAsync(Token)).Should().BeSuccess();
+    }
+
+    [Theory]
+    [InlineData("veto", false)]
+    [InlineData("veto", true)]
+    [InlineData("throw", false)]
+    [InlineData("throw", true)]
+    [InlineData("cancel", false)]
+    [InlineData("cancel", true)]
+    public async Task Handle_IgnoredNestedHookFailure_BlocksOwningAndLaterCommits(
+        string failure, bool persistOuterFailure)
+    {
+        var unitOfWork = new UnitOfWork();
+        var hook = new CallbackHook((message, _, token) =>
+        {
+            if (message.Name != "inner")
+                return Result.Ok().AsValueTask();
+            return failure switch
+            {
+                "veto" => Result.FailAfterCommit(new Error.Conflict("audit.rejected")).AsValueTask(),
+                "throw" => throw new InvalidOperationException("Hook failed."),
+                "cancel" => throw new OperationCanceledException(token),
+                _ => throw new ArgumentOutOfRangeException(nameof(failure)),
+            };
+        });
+        var behavior = new TransactionalCommandBehavior<Command, Result<string>>(unitOfWork, [hook]);
+
+        var result = await behavior.Handle(new Command("outer"), async (_, token) =>
+        {
+            ValueTask<Result<string>> Inner() => behavior.Handle(new Command("inner"),
+                (_, _) => Result.Ok("inner").AsValueTask(), token);
+            if (failure == "veto")
+                (await Inner()).Should().HaveErrorCode("audit.rejected");
+            else
+            {
+                var act = async () => await Inner();
+                if (failure == "throw")
+                    await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Hook failed.");
+                else
+                    await act.Should().ThrowAsync<OperationCanceledException>();
+            }
+
+            return persistOuterFailure
+                ? Result.FailAfterCommit<string>(new Error.Conflict("outer.failed"))
+                : Result.Ok("outer");
+        }, Token);
+
+        var expectedCode = failure == "veto" ? "audit.rejected" : FaultCodes.UnitOfWorkUncommittable;
+        result.Should().HaveErrorCode(expectedCode);
+        ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
+        (await unitOfWork.CommitAsync(Token)).Should().HaveErrorCode(expectedCode);
+        using (unitOfWork.BeginScope())
+            (await unitOfWork.CommitAsync(Token)).Should().HaveErrorCode(expectedCode);
+        unitOfWork.SaveAttempts.Should().Be(0);
+        unitOfWork.ScopeDepth.Should().Be(0);
     }
 
     [Theory]
@@ -275,6 +332,7 @@ public class CommandPreCommitHookTests
 
     private sealed class UnitOfWork(List<string>? calls = null) : IUnitOfWork
     {
+        private Error? _rejection;
         public int ScopeDepth { get; private set; }
         public int CommitCalls { get; private set; }
         public int SaveAttempts { get; private set; }
@@ -283,12 +341,20 @@ public class CommandPreCommitHookTests
         public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
         {
             CommitCalls++;
+            if (_rejection is { } rejection)
+                return Result.Fail(rejection).AsTask();
             if (ScopeDepth > 1)
                 return Result.Ok().AsTask();
 
             SaveAttempts++;
             calls?.Add("commit");
             return CommitResult.AsTask();
+        }
+
+        public void MarkUncommittable(Error reason)
+        {
+            ArgumentNullException.ThrowIfNull(reason);
+            _rejection ??= reason;
         }
 
         public IUnitOfWorkScope BeginScope()

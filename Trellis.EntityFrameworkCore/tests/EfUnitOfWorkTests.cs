@@ -33,6 +33,52 @@ public class EfUnitOfWorkTests : IDisposable
     }
 
     [Fact]
+    public void MarkUncommittable_NullReason_Throws() =>
+        FluentActions.Invoking(() => _unitOfWork.MarkUncommittable(null!))
+            .Should().Throw<ArgumentNullException>().WithParameterName("reason");
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task MarkUncommittable_AnyScopeDepth_PreservesFirstReasonAndNeverWrites(int depth)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var item = TestItem.Create(TestItemId.Create(Guid.NewGuid()), TestItemName.Create("Must not commit"));
+        _context.Items.Add(item);
+        var rejection = new Error.Conflict("audit.rejected");
+
+        using (var owner = depth > 0 ? _unitOfWork.BeginScope() : null)
+        using (var nested = depth > 1 ? _unitOfWork.BeginScope() : null)
+        {
+            _unitOfWork.MarkUncommittable(rejection);
+            _unitOfWork.MarkUncommittable(new Error.Unexpected(FaultCodes.UnitOfWorkUncommittable));
+            (await _unitOfWork.CommitAsync(ct)).Should().BeFailure().Which.Should().BeSameAs(rejection);
+        }
+
+        (await _unitOfWork.CommitAsync(ct)).Should().BeFailure().Which.Should().BeSameAs(rejection);
+        using (_unitOfWork.BeginScope())
+            (await _unitOfWork.CommitAsync(ct)).Should().BeFailure().Which.Should().BeSameAs(rejection);
+        _context.Entry(item).State.Should().Be(EntityState.Added);
+        (await _context.Items.CountAsync(ct)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MarkUncommittable_FreshContextAndUnitOfWork_AreNotRejected()
+    {
+        _unitOfWork.MarkUncommittable(new Error.Conflict("audit.rejected"));
+        var options = new DbContextOptionsBuilder<RepoTestDbContext>()
+            .UseSqlite(_connection).IgnoreManyServiceProvidersCreatedWarning().Options;
+        await using var freshContext = new RepoTestDbContext(options);
+        var freshUnitOfWork = new EfUnitOfWork<RepoTestDbContext>(freshContext);
+        freshContext.Items.Add(TestItem.Create(TestItemId.Create(Guid.NewGuid()), TestItemName.Create("Fresh unit")));
+
+        (await freshUnitOfWork.CommitAsync(TestContext.Current.CancellationToken)).Should().BeSuccess();
+
+        (await _unitOfWork.CommitAsync(TestContext.Current.CancellationToken)).Should().HaveErrorCode("audit.rejected");
+    }
+
+    [Fact]
     public async Task CommitAsync_persists_staged_additions()
     {
         // Arrange

@@ -70,6 +70,11 @@ pagination across requests. These expressions require no DI or interceptor regis
 
 Register `AddTrellisInterceptors()` when queries or updates rely on Trellis `Maybe<T>`, scalar-value, timestamp, or ETag behavior. Under `AddTrellisUnitOfWork<TContext>()`, repositories stage changes and the pipeline owns the commit.
 
+A pre-commit hook veto, exception, or cancellation permanently invalidates
+`EfUnitOfWork<TContext>` through `MarkUncommittable`. Every later commit returns the
+first rejection without saving, even in new scopes. Discard it and its context; do not
+bypass the guard with direct `SaveChanges`. Ordinary handler failures do not invalidate it.
+
 ## Documentation
 
 - [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore.html)

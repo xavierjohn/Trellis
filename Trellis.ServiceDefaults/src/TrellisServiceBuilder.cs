@@ -38,7 +38,7 @@ public sealed class TrellisServiceBuilder
     private readonly List<Action<IServiceCollection>> _typedResourceAuthorizationRegistrations = [];
     private readonly List<Action<Trellis.Mediator.ResourceAuthorizationOptions>> _resourceAuthorizationConfigures = [];
     private readonly List<Action<IServiceCollection>> _typedDomainEventHandlerRegistrations = [];
-    private readonly List<Action<IServiceCollection>> _typedCommandPreCommitHookRegistrations = [];
+    private readonly List<Action<IServiceCollection>> _commandPreCommitHookRegistrations = [];
     private readonly List<Assembly> _integrationEventAssemblies = [];
     private readonly List<Action<IServiceCollection>> _typedIntegrationEventHandlerRegistrations = [];
     private Action<TrellisAspOptions>? _configureAsp;
@@ -214,8 +214,31 @@ public sealed class TrellisServiceBuilder
         where THook : class, ICommandPreCommitHook<TMessage, TResponse>
     {
         _useMediator = true;
-        _typedCommandPreCommitHookRegistrations.Add(static services =>
+        _commandPreCommitHookRegistrations.Add(static services =>
             services.AddCommandPreCommitHook<TMessage, TResponse, THook>());
+        return this;
+    }
+
+    /// <summary>
+    /// Registers an open-generic scoped pre-commit hook for matching commands.
+    /// Implies <see cref="UseMediator"/>.
+    /// </summary>
+    /// <remarks>
+    /// Constraints select matching commands without per-command registration. The implementation
+    /// maps its first/second parameters to message/response in that order. Registrations are applied
+    /// in selection order in the canonical hook stage; register the unit of work separately.
+    /// </remarks>
+    /// <param name="hookType">A concrete open hook with message and response parameters, in that order.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="hookType"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when registrations are applied and the type is not a supported open hook.</exception>
+    public TrellisServiceBuilder UseCommandPreCommitHook(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.Interfaces)]
+        Type hookType)
+    {
+        ArgumentNullException.ThrowIfNull(hookType);
+        _useMediator = true;
+        _commandPreCommitHookRegistrations.Add(services => services.AddCommandPreCommitHook(hookType));
         return this;
     }
 
@@ -1131,7 +1154,7 @@ public sealed class TrellisServiceBuilder
         foreach (var register in _typedIntegrationEventHandlerRegistrations)
             register(_services);
 
-        foreach (var register in _typedCommandPreCommitHookRegistrations)
+        foreach (var register in _commandPreCommitHookRegistrations)
             register(_services);
 
         _unitOfWorkRegistration?.Invoke(_services);

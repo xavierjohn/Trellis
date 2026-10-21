@@ -434,8 +434,9 @@ Abstraction over the commit boundary for staged changes. Repositories stage chan
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `Task<Result<Unit>> CommitAsync(CancellationToken ct = default)` | `Task<Result<Unit>>` | Persists all staged changes. Surfaces concurrency, duplicate-key, and FK errors as `Error` instead of exceptions. Implementations must defer (return success without persisting) when called inside a nested `BeginScope` scope so a successful inner command does not commit a partially-completed outer command's staged changes. |
-| `IUnitOfWorkScope BeginScope()` | `IUnitOfWorkScope` | Begins a depth-aware scope; `IsOwner` is true only for the outermost scope, whose `CommitAsync` actually persists. Custom adapters must implement this ownership contract so deferred nested commits cannot release event dispatch. **Caveat:** if an inner failure is ignored, an outer success still persists its staged changes; scopes do not provide rollback. |
+| `Task<Result<Unit>> CommitAsync(CancellationToken ct = default)` | `Task<Result<Unit>>` | If invalidated, returns the first rejection without writing, before nested deferral. Otherwise persists staged changes, or defers at depth > 1. Surfaces concurrency, duplicate-key, and FK errors as `Error`. |
+| `void MarkUncommittable(Error reason)` | `void` | Rejects null and permanently invalidates this instance. First reason wins; all later commits fail, including after scope disposal or in new scopes. Discard the unit of work and backing context. |
+| `IUnitOfWorkScope BeginScope()` | `IUnitOfWorkScope` | Begins a depth-aware scope; `IsOwner` is true only for the outermost scope, whose accepted `CommitAsync` persists. Custom adapters must preserve ownership and permanent invalidation. An ignored ordinary handler failure can still persist staged changes; scopes do not provide rollback. |
 
 ### `EfUnitOfWork<TContext>`
 
@@ -444,16 +445,17 @@ public class EfUnitOfWork<TContext> : IUnitOfWork, ITrackedAggregateSource
     where TContext : DbContext
 ```
 
-EF Core implementation of `IUnitOfWork`. Delegates to `DbContextExtensions.SaveChangesResultUnitAsync` which maps `DbUpdateConcurrencyException` → `new Error.Conflict(Resource: null, Code: FaultCodes.ConcurrentModification)`, duplicate-key → `new Error.Conflict(Resource: null, Code: FaultCodes.DuplicateKey)`, and FK violations → `new Error.Conflict(Resource: null, Code: FaultCodes.ReferentialIntegrity)`. Tracks scope depth via an internal counter; `CommitAsync` defers (returns success without persisting) when depth > 1.
+EF Core implementation of `IUnitOfWork`. Delegates to `DbContextExtensions.SaveChangesResultUnitAsync` which maps `DbUpdateConcurrencyException` → `new Error.Conflict(Resource: null, Code: FaultCodes.ConcurrentModification)`, duplicate-key → `new Error.Conflict(Resource: null, Code: FaultCodes.DuplicateKey)`, and FK violations → `new Error.Conflict(Resource: null, Code: FaultCodes.ReferentialIntegrity)`. Tracks scope depth via an internal counter; while committable, `CommitAsync` defers when depth > 1. Permanent invalidation takes precedence at every depth.
 
-Also implements [`ITrackedAggregateSource`](trellis-api-core.md#itrackedaggregatesource): captures the `IAggregate` instances tracked by the `ChangeTracker` immediately before each `SaveChangesAsync` call. The snapshot is cleared before save and only assigned on success, so `CommittedAggregates` is empty before any commit, empty after a failed or thrown commit, unchanged during deferred nested commits, and replaced on the next successful outer commit. Consumed by `Trellis.Mediator.TrackedAggregateDomainEventDispatchBehavior<,>`.
+Also implements [`ITrackedAggregateSource`](trellis-api-core.md#itrackedaggregatesource): captures the `IAggregate` instances tracked by the `ChangeTracker` immediately before each `SaveChangesAsync` call. The snapshot is cleared before save and only assigned on success, so `CommittedAggregates` is empty before any commit, empty after a failed, blocked, or thrown commit, unchanged during accepted deferred nested commits, and replaced on the next successful outer commit. Consumed by `Trellis.Mediator.TrackedAggregateDomainEventDispatchBehavior<,>`.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public EfUnitOfWork(TContext context)` | — | Captures the resolved `TContext` instance. Throws `ArgumentNullException` when `context` is null. Registered as scoped by `AddTrellisUnitOfWork<TContext>()`. |
-| `public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | At depth 0/1, clears the tracked-aggregate snapshot, snapshots all `IAggregate` change-tracker entries, calls `context.SaveChangesResultUnitAsync(cancellationToken)`, and (only on success) assigns the snapshot to `CommittedAggregates`. At depth > 1 (inside a nested scope), returns `Result.Ok()` without touching the database or the snapshot. |
+| `public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)` | `Task<Result<Unit>>` | First checks permanent invalidation: a blocked attempt clears the snapshot and returns the first reason without store access. Otherwise, at depth 0/1 snapshots tracked aggregates and assigns that snapshot only after a successful save; at depth > 1 returns `Result.Ok()` without changing the snapshot or database. |
+| `public void MarkUncommittable(Error reason)` | `void` | Rejects null and atomically preserves the first rejection. Never resets on scope disposal/new scopes; does not detach entities or undo writes. |
 | `public IUnitOfWorkScope BeginScope()` | `IUnitOfWorkScope` | Increments the scope-depth counter and captures `IsOwner` (true only at depth 1); `Dispose()` decrements the counter without committing. Counter operations use `Interlocked`, but concurrent commands sharing the context/unit of work remain unsupported. |
-| `IReadOnlyList<IAggregate> ITrackedAggregateSource.CommittedAggregates { get; }` | `IReadOnlyList<IAggregate>` | Snapshot of aggregates the most recent successful commit persisted. Empty by default. |
+| `public IReadOnlyList<IAggregate> CommittedAggregates { get; }` | `IReadOnlyList<IAggregate>` | Snapshot of aggregates the most recent successful commit persisted. Empty by default. |
 
 ### `TransactionalCommandBehavior<TMessage, TResponse>`
 
@@ -475,8 +477,12 @@ Pipeline behavior that auto-commits staged changes after a successful command ha
 Hooks execute sequentially inside this behavior, before even a deferred nested
 `CommitAsync`. Hook-added aggregates therefore participate in `EfUnitOfWork`'s pre-save
 snapshot and any outbox capture. They must stage through the same scoped context, not
-save or publish independently. A veto is not rollback; propagate nested failures and
-discard the failed context. See the owning package's
+save or publish independently. A hook veto, exception, or cancellation calls
+`MarkUncommittable`, so ignoring an inner hook failure cannot make the owner commit.
+This is not rollback: discard the unit of work and context. Direct `SaveChanges`
+bypasses the guard and must not be used by these handlers/hooks. `CommandDispatchState`
+provides typed pending state even when a handler returns an entity; the behavior closes
+each frame on every exit. See the owning package's
 [complete contract](trellis-api-mediator.md#icommandprecommithooktmessage-tresponse).
 
 > **Important:** This behavior is **not** registered by `Trellis.Mediator.ServiceCollectionExtensions.AddTrellisBehaviors()`. Consumers of `Trellis.EntityFrameworkCore` must register it explicitly via `AddTrellisUnitOfWork<TContext>()` (see below). Ordering is independent versus `AddTrellisBehaviors()` and domain-event dispatch helpers: the transaction behavior is rehomed innermost — closest to the handler — so commit failures remain visible to outer logging/tracing/exception behaviors.
@@ -492,7 +498,7 @@ authorization-before-commit order.
 | --- | --- | --- |
 | `public TransactionalCommandBehavior(IUnitOfWork unitOfWork)` | — | Captures the scoped `IUnitOfWork` resolved alongside the handler. Throws `ArgumentNullException` when `unitOfWork` is null. |
 | `public TransactionalCommandBehavior(IUnitOfWork unitOfWork, IEnumerable<ICommandPreCommitHook<TMessage,TResponse>> preCommitHooks)` | — | Hook-aware constructor selected by DI; the original one-argument constructor runs without hooks. Throws `ArgumentNullException` for either null argument. |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Opens `BeginScope` so nested commits defer to the owner. On success or explicit persist-on-failure, awaits hooks in registration order, then calls `CommitAsync` only if all accept. Returns `TResponse.CreateFailure(error)` for the first hook or commit error. Ordinary failures skip hooks and commit. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Opens `BeginScope` and a command-state frame. On success or explicit persist-on-failure, awaits hooks, then commits only if all accept. Hook failures invalidate the unit of work. Ordinary handler failures skip hooks/commit; every exit closes the frame. |
 
 ### `UnitOfWorkServiceCollectionExtensions`
 
@@ -511,7 +517,7 @@ public static class UnitOfWorkServiceCollectionExtensions
 
 | Situation | Result |
 |---|---|
-| An open-generic `TransactionalCommandBehavior<,>` is already registered | No-op — the helper is idempotent |
+| An open-generic `TransactionalCommandBehavior<,>` is already registered | Does not duplicate the behavior; ensures the singleton `CommandDispatchState` accessor is registered |
 | Called before or after `AddTrellisBehaviors()` or the domain-event dispatch helpers | Same canonical order either way: those helpers relocate pre-existing transaction descriptors, keeping commit failures visible to outer behaviors such as logging and tracing |
 | A **closed**-generic `IPipelineBehavior<TMessage,TResponse> → TransactionalCommandBehavior<TMessage,TResponse>` is already registered (with or without an open-generic registration) | Throws `InvalidOperationException` — installing the open generic alongside would resolve both descriptors for matching commands and commit twice per command |
 

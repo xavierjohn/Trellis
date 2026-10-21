@@ -107,6 +107,59 @@ public class CommandPreCommitHookBuilderTests
                 typeof(TransactionalCommandBehavior<,>),
             ]);
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UseCommandPreCommitHook_OpenHook_PreservesOrderAndDeduplicatesDirectBindings(bool unitOfWorkFirst)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        if (unitOfWorkFirst)
+        {
+            services.AddTrellisUnitOfWork<TestDbContext>();
+            services.AddCommandPreCommitHook(typeof(OpenHook<,>));
+        }
+
+        services.AddTrellis(options => options
+            .UseCommandPreCommitHook(typeof(OpenHook<,>))
+            .UseCommandPreCommitHook(typeof(OpenHook<,>))
+            .UseDomainEvents());
+        if (!unitOfWorkFirst)
+        {
+            services.AddTrellisUnitOfWork<TestDbContext>();
+            services.AddCommandPreCommitHook(typeof(OpenHook<,>));
+        }
+
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        AssertCanonicalOrder(services);
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var hooks = scope.ServiceProvider.GetServices<ICommandPreCommitHook<Command, Result<string>>>().ToArray();
+        hooks.Should().ContainSingle();
+        var hook = hooks[0].Should().BeOfType<OpenHook<Command, Result<string>>>().Which;
+        var transaction = scope.ServiceProvider.GetServices<IPipelineBehavior<Command, Result<string>>>()
+            .OfType<TransactionalCommandBehavior<Command, Result<string>>>().Single();
+
+        var result = await transaction.Handle(new Command(),
+            (_, _) => Result.Ok("done").AsValueTask(), TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        hook.Calls.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(typeof(string))]
+    public void UseCommandPreCommitHook_InvalidOpenHook_Throws(Type? hookType)
+    {
+        var act = () => new ServiceCollection().AddTrellis(options => options.UseCommandPreCommitHook(hookType!));
+
+        if (hookType is null)
+            act.Should().Throw<ArgumentNullException>().WithParameterName(nameof(hookType));
+        else
+            act.Should().Throw<ArgumentException>().WithParameterName(nameof(hookType));
+    }
+
     private sealed record Command : ICommand<Result<string>>;
 
     private sealed class Hook : ICommandPreCommitHook<Command, Result<string>>
@@ -121,11 +174,32 @@ public class CommandPreCommitHookBuilderTests
         }
     }
 
+    private sealed class OpenHook<TMessage, TResponse> : ICommandPreCommitHook<TMessage, TResponse>
+        where TMessage : ICommand<TResponse>
+        where TResponse : IResult
+    {
+        public int Calls { get; private set; }
+
+        public ValueTask<Result<Unit>> BeforeCommitAsync(
+            TMessage message, TResponse response, CancellationToken cancellationToken)
+        {
+            Calls++;
+            return Result.Ok().AsValueTask();
+        }
+    }
+
     private sealed class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options);
 
     private sealed class UnitOfWork : IUnitOfWork
     {
-        public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default) => Result.Ok().AsTask();
+        private Error? _rejection;
+        public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default) =>
+            (_rejection is { } rejection ? Result.Fail(rejection) : Result.Ok()).AsTask();
+        public void MarkUncommittable(Error reason)
+        {
+            ArgumentNullException.ThrowIfNull(reason);
+            _rejection ??= reason;
+        }
         public IUnitOfWorkScope BeginScope() => new Scope();
 
         private sealed class Scope : IUnitOfWorkScope

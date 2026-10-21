@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
-types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "ICommandPreCommitHook<TMessage,TResponse>", CommandPreCommitHookServiceCollectionExtensions, "TransactionalCommandBehavior<TMessage,TResponse>", "AuthorizationContextBehavior<TMessage,TResponse>", "ActorCommandHandler<TCommand,TResponse>", "ActorQueryHandler<TQuery,TResponse>", "ActorResourceCommandHandler<TCommand,TResource,TResponse>", "ActorResourceQueryHandler<TQuery,TResource,TResponse>", "ActorResourceViaCommandHandler<TCommand,TLeaf,TOwner,TResponse>", "ActorResourceViaQueryHandler<TQuery,TLeaf,TOwner,TResponse>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", MediatorTraceProviderBuilderExtensions, TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
+types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "ICommandPreCommitHook<TMessage,TResponse>", CommandDispatchState, CommandPreCommitHookServiceCollectionExtensions, "TransactionalCommandBehavior<TMessage,TResponse>", "AuthorizationContextBehavior<TMessage,TResponse>", "ActorCommandHandler<TCommand,TResponse>", "ActorQueryHandler<TQuery,TResponse>", "ActorResourceCommandHandler<TCommand,TResource,TResponse>", "ActorResourceQueryHandler<TQuery,TResource,TResponse>", "ActorResourceViaCommandHandler<TCommand,TLeaf,TOwner,TResponse>", "ActorResourceViaQueryHandler<TQuery,TLeaf,TOwner,TResponse>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", MediatorTraceProviderBuilderExtensions, TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
 last_verified: 2026-10-20
 audience: [llm]
@@ -39,6 +39,8 @@ See also: [trellis-start-here.md](trellis-start-here.md#patterns-index) — reci
 | Register EF unit-of-work behavior | `services.AddTrellisUnitOfWork<TContext>()` | [`Canonical pipeline order`](#canonical-pipeline-order) |
 | Keep commits inside the pipeline | Repositories stage changes; `TransactionalCommandBehavior` commits on success | [`Behavioral notes`](#behavioral-notes) |
 | Validate an outcome or stage audit rows before the command commits | `ICommandPreCommitHook<TMessage,TResponse>` + `AddCommandPreCommitHook<TMessage,TResponse,THook>()` | [Pre-commit hooks](#icommandprecommithooktmessage-tresponse), [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging) |
+| Apply a hook to every command satisfying a marker/constraint | `AddCommandPreCommitHook(typeof(RequiredAuditHook<,>))` | [Hook registration](#commandprecommithookservicecollectionextensions) |
+| Share dispatch-local handler/hook state without changing an entity response | Inject `CommandDispatchState`; use owner-specific typed entries | [Command state](#commanddispatchstate), [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging) |
 | Dispatch domain events on a successful command (assembly scan) | `services.AddDomainEventDispatch(typeof(MyHandler).Assembly)` | [`DomainEventDispatchServiceCollectionExtensions`](#domaineventdispatchservicecollectionextensions) |
 | Dispatch domain events with explicit (AOT-friendly) handler registration | `services.AddDomainEventHandler<TEvent, THandler>()` | [`DomainEventDispatchServiceCollectionExtensions`](#domaineventdispatchservicecollectionextensions) |
 | Auto-dispatch domain events from every tracked aggregate (regardless of response shape) | `services.AddTrackedAggregateDomainEventDispatch()` | [`TrackedAggregateDomainEventDispatchServiceCollectionExtensions`](#trackedaggregatedomaineventdispatchservicecollectionextensions) |
@@ -957,8 +959,8 @@ original command, original handler response, and request cancellation token. Ret
 | Success | Await every hook sequentially in registration order, then commit. |
 | `IPersistOnFailure { PersistOnFailure: true }` | The same hook sequence runs with the original failed response. Commit only if every hook accepts; on success return the original failure and its persistence intent. |
 | Ordinary failure or thrown handler | Skip all hooks and the commit. |
-| Hook failure | Stop immediately, skip remaining hooks and commit, and return `TResponse.CreateFailure(hookError)`. Even `Result.FailAfterCommit(...)` returned **by a hook** vetoes persistence. |
-| Hook throws or observes cancellation | Propagate through the enclosing pipeline; no commit is attempted. Standard exception handling still applies, while cancellation propagates. |
+| Hook failure | Mark the unit of work uncommittable with the hook error, skip remaining hooks and this commit, and return `TResponse.CreateFailure(hookError)` without persistence intent. Even `Result.FailAfterCommit(...)` returned **by a hook** vetoes persistence. |
+| Hook throws or observes cancellation | Mark the unit of work uncommittable with `new Error.Unexpected(FaultCodes.UnitOfWorkUncommittable)`, then propagate the original exception/cancellation unchanged. Standard exception handling still applies. |
 
 Hooks run for **each dispatch**, including nested commands before their deferred commit.
 Stage through repositories sharing the command's unit of work. With EF, hook-added
@@ -969,14 +971,62 @@ response-shape dispatch still only discovers aggregate responses, not arbitrary 
 Hooks must not call `CommitAsync`/`SaveChanges`, open an owning scope, publish events,
 or perform external side effects. They are scoped and can be reused by nested and
 sequential commands: pending records must be dispatch-specific, not an undifferentiated
-scoped buffer. Ordinary handler failures never invoke the hook, so it cannot be used
-as a universal recorder-cleanup callback. [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging)
-carries pending audit entries on an internal outcome instead.
+scoped buffer. Use [`CommandDispatchState`](#commanddispatchstate) to carry pending
+records independently of the response shape; each hook reads and removes its own entry.
+Ordinary handler failures skip hooks, but the frame still closes and drops remaining
+entries. [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging) demonstrates an
+entity-returning handler and a constrained open hook.
 
-A veto prevents this dispatch's commit; it does **not** undo earlier hooks' staging or
-poison an owning outer scope. Propagate nested failures and discard the failed unit of
-work/context. Ignoring an inner failure can still let a successful outer command save
-its tracked changes. Concurrent commands sharing one unit of work remain unsupported.
+**Uncommittable until discarded.** Any hook veto, exception, or cancellation permanently
+invalidates that `IUnitOfWork` instance. Its first rejection wins; every later
+`CommitAsync`, including deferred nested commits and commits after scope disposal or
+in a new scope, returns that rejection without writing. An outer handler cannot bypass
+this by ignoring an inner hook failure or returning `FailAfterCommit`. This is **not**
+rollback or tracker cleanup: discard both the unit of work and its backing context.
+Direct store writes/`SaveChanges` bypass the contract and must not be used to evade it.
+Ordinary handler failures/exceptions do not invalidate the unit of work; their existing
+nested staging semantics remain unchanged. Concurrent commands sharing one unit of work
+remain unsupported.
+
+The interface remains contravariant for CLR assignments. Microsoft DI nevertheless
+resolves exact closed hook contracts: registering a base-command hook does not
+automatically bind it to derived commands. Use a constrained open implementation for
+all matching command/response pairs.
+
+### CommandDispatchState
+
+```csharp
+public sealed class CommandDispatchState
+{
+    public TState GetOrAdd<TState>(Func<TState> factory) where TState : class;
+    public bool TryGet<TState>([NotNullWhen(true)] out TState? state) where TState : class;
+    public bool Remove<TState>() where TState : class;
+}
+```
+
+Injectable accessor to the current transactional command's typed state. The behavior
+opens a new frame **before the handler** and always closes it after hooks/commit or on
+any failure, exception, or cancellation. Frames are dispatch-specific, never keyed by
+message identity: reusing the same message instance or a struct command still creates
+separate state. Nested commands hide parent entries; closing the child restores the
+parent. Separate asynchronous dispatch flows are isolated.
+
+| Member | Contract |
+|---|---|
+| `GetOrAdd<TState>(Func<TState> factory)` | Returns the existing entry or invokes the factory once to add one. Null factory throws `ArgumentNullException`; a null factory result throws `InvalidOperationException` and adds nothing. |
+| `TryGet<TState>(out TState? state)` | Returns whether this frame has an entry of that exact state type. Missing is false, not a parent lookup. |
+| `Remove<TState>()` | Removes only that state type and returns whether it existed. |
+
+Access outside an active transactional command or through an expired frame throws
+`InvalidOperationException`; orphan tasks cannot reuse a completed frame or fall back
+to its parent. The frame releases unremoved entries on close but does not dispose
+application objects. Use a distinct container type per state owner/hook; do not retain
+its mutable entries beyond dispatch. The accessor itself is stateless and registered
+as singleton by `AddTransactionalCommandBehavior`, including through hook/EF helpers.
+For explicitly closed/generated pipelines, register
+`services.AddSingleton<CommandDispatchState>()` directly when handlers/hooks need it.
+It is command state, not query state or an authorization context, and does not make a
+shared `DbContext` safe for parallel commands.
 
 ### TransactionalCommandBehavior<TMessage, TResponse>
 
@@ -993,7 +1043,7 @@ Provider-neutral command commit behavior. Queries do not satisfy its constraint.
 |---|---|
 | `public TransactionalCommandBehavior(IUnitOfWork unitOfWork)` | Preserved convenience constructor; runs with no hooks. Throws `ArgumentNullException` for null `unitOfWork`. |
 | `public TransactionalCommandBehavior(IUnitOfWork unitOfWork, IEnumerable<ICommandPreCommitHook<TMessage,TResponse>> preCommitHooks)` | Captures hooks in execution order. Throws `ArgumentNullException` for either null argument. Microsoft DI selects this constructor and supplies an empty enumerable when no hooks are registered. |
-| `public ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage,TResponse> next, CancellationToken cancellationToken)` | Opens `BeginScope`, awaits the handler, runs hooks for success or explicit persist-on-failure, then calls `CommitAsync`. The first hook or commit error replaces the handler response. Ordinary failures are returned without hooks or commit. |
+| `public ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage,TResponse> next, CancellationToken cancellationToken)` | Opens `BeginScope` and a fresh command-state frame, awaits the handler, runs hooks for success or explicit persist-on-failure, then calls `CommitAsync`. The first hook or commit error replaces the handler response. Ordinary failures skip hooks/commit; every exit closes the state frame. |
 
 Nested scopes defer actual persistence to the owner; hooks still run at the end of each
 committable nested handler. Existing no-hook behavior and owning-commit event-dispatch
@@ -1136,6 +1186,13 @@ Conflict detection inspects `ServiceDescriptor.ImplementationType` and `Implemen
 ```csharp
 public static class CommandPreCommitHookServiceCollectionExtensions
 {
+    public static IServiceCollection AddCommandPreCommitHook(
+        this IServiceCollection services,
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicConstructors |
+            DynamicallyAccessedMemberTypes.Interfaces)]
+        Type hookType);
+
     public static IServiceCollection AddCommandPreCommitHook<
         TMessage,
         TResponse,
@@ -1152,19 +1209,30 @@ so it is not silently unused. Register `IUnitOfWork` separately, normally throug
 adapter's `AddTrellisUnitOfWork<TContext>()`. Direct managed composition still registers
 standard behaviors with `AddTrellisBehaviors()`; the
 [builder slot](trellis-api-servicedefaults.md#trellisservicebuilder)
-`UseCommandPreCommitHook<TMessage,TResponse,THook>()` implies those standard behaviors.
+`UseCommandPreCommitHook<TMessage,TResponse,THook>()` and
+`UseCommandPreCommitHook(Type hookType)` imply those standard behaviors.
 
-Repeated command/response/hook bindings deduplicate; distinct hooks execute in binding
+The `Type` overload accepts a concrete, nonabstract open generic class with exactly
+two parameters, implementing `ICommandPreCommitHook<TMessage,TResponse>` with its
+first/second parameters in that order. Closed types, wrong arities, and reversed
+mappings throw `ArgumentException` **before registrations are changed**. The open
+implementation's generic constraints filter Microsoft DI's hook enumerable, so
+`services.AddCommandPreCommitHook(typeof(RequiredAuditHook<,>))` covers every matching
+command without per-command registration and excludes nonmatching commands.
+
+Repeated identical open or closed bindings deduplicate; distinct hooks execute in binding
 order. Registration is order-independent with standard Trellis behaviors and unit-of-work
 helpers: there is no new pipeline slot. Throws `ArgumentNullException` for null services
 and the existing `InvalidOperationException` for conflicting known closed transaction
-behaviors.
+behaviors. Open and explicitly closed descriptors are distinct bindings; registering
+both shapes for the same implementation can execute it twice.
 
-This typed helper does no assembly scanning, but installs an **open** transaction
+Neither helper performs assembly scanning, but both install an **open** transaction
 behavior. For an explicitly closed/generated pipeline, register
 `services.AddScoped<ICommandPreCommitHook<MyCommand,Result<MyOutcome>>,MyHook>()`
 directly and keep the closed transaction behavior inside that pipeline. It must resolve
-the hook-aware constructor. The helper and builder slot do not remove Native DI's
+the hook-aware constructor; register `CommandDispatchState` directly when needed.
+The helpers and builder slots do not remove Native DI's
 restriction on open behaviors with struct results; see [Native AOT registration](#native-aot-registration).
 
 ### Trellis.Mediator.ServiceCollectionExtensions
