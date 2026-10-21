@@ -3,7 +3,7 @@ package: Trellis.ServiceDefaults
 namespaces: [Trellis.ServiceDefaults]
 types: [TrellisServiceCollectionExtensions, TrellisServiceBuilder]
 version: v3
-last_verified: 2026-10-20
+last_verified: 2026-10-21
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring AddTrellis(...) in canonical order, including reliable outbox/inbox/transport composition and registrations deliberately kept outside the builder."
@@ -242,6 +242,10 @@ entity-returning handlers. A fresh frame opens before each handler and always cl
 each hook reads/removes its own entry. See the complete
 [hook contract](trellis-api-mediator.md#icommandprecommithooktmessage-tresponse).
 The builder adds no new pipeline behavior slot, store dependency, or audit schema.
+This is a command-level extension point, not automatic audit coverage: marker coverage,
+no-op recording policy, and direct store writes remain application-owned. Background
+processors must not reuse a rejected worker-lifetime unit of work; create a fresh
+DI/unit-of-work scope per message.
 
 Actor-provider selectors also register the optional `IActorIdentityProvider` capability.
 `UseCachingActorProvider<T>()` has the same one-call dual-registration semantics as

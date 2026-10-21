@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - command pre-commit hooks and dispatch state (TFR-31)
+
+`ICommandPreCommitHook<TMessage,TResponse>` validates outcomes and stages changes
+before the owning commit. Typed and constrained open-generic registrations are
+available through `AddCommandPreCommitHook` and `UseCommandPreCommitHook`.
+`CommandDispatchState` shares owner-specific typed entries between handlers and
+hooks without changing entity responses; nested dispatches have isolated frames
+that always close.
+This is an opt-in command-level extension point, not automatic auditing; command
+coverage, schemas, and idempotent no-op recording policy remain application-owned.
+
+### Breaking - required unit-of-work invalidation
+
+`IUnitOfWork.MarkUncommittable(Error reason)` is a new required abstract member.
+Custom adapters and test doubles must reject null, preserve the first rejection,
+and return it from every later `CommitAsync` before nested deferral or store access.
+Disposing scopes or opening new ones must not reset the rejection; discard the unit
+of work and backing context instead. The shipped `EfUnitOfWork<TContext>` already
+implements this contract.
+For an existing nonconcurrent test double, this is one retained error, a null/first-reason
+guard, and a rejection check before deferral; Recipe 16 includes a complete tested fake.
+
+Hook vetoes, exceptions, and cancellation invalidate the shared unit of work, even
+when an outer handler ignores an inner hook failure. Ordinary handler failures and
+exceptions retain their existing non-poisoning semantics.
+Background processors must create a fresh DI/unit-of-work scope per message rather
+than reuse an instance rejected by a hook veto, exception, or cancellation.
+
 ### Documentation - messaging composition and discovery
 
 Added direct start-router tasks for transactional inbox consumption, Azure Service Bus

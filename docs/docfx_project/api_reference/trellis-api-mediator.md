@@ -3,7 +3,7 @@ package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
 types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "ICommandPreCommitHook<TMessage,TResponse>", CommandDispatchState, CommandPreCommitHookServiceCollectionExtensions, "TransactionalCommandBehavior<TMessage,TResponse>", "AuthorizationContextBehavior<TMessage,TResponse>", "ActorCommandHandler<TCommand,TResponse>", "ActorQueryHandler<TQuery,TResponse>", "ActorResourceCommandHandler<TCommand,TResource,TResponse>", "ActorResourceQueryHandler<TQuery,TResource,TResponse>", "ActorResourceViaCommandHandler<TCommand,TLeaf,TOwner,TResponse>", "ActorResourceViaQueryHandler<TQuery,TLeaf,TOwner,TResponse>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", MediatorTraceProviderBuilderExtensions, TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-20
+last_verified: 2026-10-21
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when wiring Trellis Mediator handlers and behaviors: validation, authorization, command pre-commit hooks, unit-of-work commits, tracing, logging, and domain/integration events."
@@ -952,7 +952,8 @@ public interface ICommandPreCommitHook<in TMessage, in TResponse>
 Provider-neutral post-handler validation and staging seam, invoked **inside**
 `TransactionalCommandBehavior`, before `IUnitOfWork.CommitAsync`. A hook receives the
 original command, original handler response, and request cancellation token. Return
-`Result.Ok()` to continue, or a failure to veto persistence.
+`Result.Ok()` to continue, or a failure to veto persistence. This is an opt-in
+command-level extension point, not an auditing framework or a guard over every mutation.
 
 | Handler outcome | Hook and commit behavior |
 |---|---|
@@ -985,8 +986,14 @@ this by ignoring an inner hook failure or returning `FailAfterCommit`. This is *
 rollback or tracker cleanup: discard both the unit of work and its backing context.
 Direct store writes/`SaveChanges` bypass the contract and must not be used to evade it.
 Ordinary handler failures/exceptions do not invalidate the unit of work; their existing
-nested staging semantics remain unchanged. Concurrent commands sharing one unit of work
-remain unsupported.
+nested staging semantics remain unchanged. Ignoring an ordinary inner handler failure
+can therefore leave staged changes that a successful owner later commits. Concurrent
+commands sharing one unit of work remain unsupported.
+
+Use a fresh DI/unit-of-work scope per background message, not one scope for a worker's
+lifetime: after a hook veto, exception, or cancellation, later messages cannot reuse the
+rejected instance. Applications own which commands require hooks, marker coverage tests,
+audit schemas, and whether successful idempotent no-ops must record an entry.
 
 The interface remains contravariant for CLR assignments. Microsoft DI nevertheless
 resolves exact closed hook contracts: registering a base-command hook does not
@@ -1009,7 +1016,9 @@ opens a new frame **before the handler** and always closes it after hooks/commit
 any failure, exception, or cancellation. Frames are dispatch-specific, never keyed by
 message identity: reusing the same message instance or a struct command still creates
 separate state. Nested commands hide parent entries; closing the child restores the
-parent. Separate asynchronous dispatch flows are isolated.
+parent. This remains true without registered hooks or state entries; an unused child
+must not inherit its parent's entries. Separate asynchronous dispatch flows are isolated.
+The entry dictionary is allocated only when state is first added.
 
 | Member | Contract |
 |---|---|
@@ -1027,6 +1036,19 @@ For explicitly closed/generated pipelines, register
 `services.AddSingleton<CommandDispatchState>()` directly when handlers/hooks need it.
 It is command state, not query state or an authorization context, and does not make a
 shared `DbContext` safe for parallel commands.
+
+**Direct handler tests.** Calling a handler directly does not open a frame;
+constructing or registering `CommandDispatchState` is not enough. Frame creation is
+internal. Dispatch through the configured Mediator pipeline, or invoke
+`TransactionalCommandBehavior<TMessage,TResponse>.Handle` with a test `IUnitOfWork`
+and the handler method as its `next` delegate. Supply hooks to the behavior's
+hook-aware constructor when testing their interaction with the handler. Assert on
+pending entries inside the handler delegate or a test hook, before the frame closes.
+See Recipe 16's [lightweight compiled example](trellis-api-cookbook.md#testing-handlers-that-use-dispatch-state)
+and depth-aware test double; no container or database is needed. If application tests
+deliberately call handlers without the pipeline, keep an application-owned recorder
+interface as the seam and substitute it there; its production implementation can use
+`CommandDispatchState`.
 
 ### TransactionalCommandBehavior<TMessage, TResponse>
 
@@ -1175,7 +1197,7 @@ Installs the open-generic `TransactionalCommandBehavior<,>` (slot 9 of the [cano
 
 | Situation | Result |
 |---|---|
-| The open-generic `TransactionalCommandBehavior<,>` is already registered | No-op — the method is idempotent |
+| The open-generic `TransactionalCommandBehavior<,>` is already registered | Keeps the behavior and ensures the singleton `CommandDispatchState` accessor is registered |
 | Other `IPipelineBehavior<,>` registrations exist | Inserted after the last one, so it runs innermost (closest to the handler); appended at the end when none exist |
 | A **closed**-generic `TransactionalCommandBehavior<TMessage,TResponse>` is already registered | Throws `InvalidOperationException` — the open generic would resolve alongside it and commit twice per command |
 

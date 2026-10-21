@@ -227,6 +227,115 @@ public class CommandDispatchStateTests
     }
 
     [Fact]
+    public async Task Handle_NestedDispatchWithoutHooksOrEntries_HidesAndRestoresParentState()
+    {
+        var state = new CommandDispatchState();
+        var behavior = new TransactionalCommandBehavior<Command, Result<string>>(new UnitOfWork());
+
+        var result = await behavior.Handle(new Command(), async (message, token) =>
+        {
+            var parent = state.GetOrAdd(static () => new Pending());
+            parent.Items.Add("parent");
+
+            var nested = await behavior.Handle(message, (_, _) =>
+            {
+                state.TryGet<Pending>(out _).Should().BeFalse();
+                state.Remove<Pending>().Should().BeFalse();
+                return Result.Ok("child").AsValueTask();
+            }, token);
+
+            nested.Should().HaveValue("child");
+            state.TryGet<Pending>(out var restored).Should().BeTrue();
+            restored.Should().BeSameAs(parent);
+            restored!.Items.Should().Equal(["parent"]);
+            return Result.Ok("parent");
+        }, Token);
+
+        result.Should().HaveValue("parent");
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public async Task Handle_AsynchronousException_PreservesOriginalAndClosesFrames(
+        bool fromHook, bool nested, bool cancellation)
+    {
+        using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        if (cancellation)
+            source.Cancel();
+        Exception original = cancellation
+            ? new OperationCanceledException("Original cancellation.", source.Token)
+            : new InvalidOperationException("Original failure.");
+        var state = new CommandDispatchState();
+        var unitOfWork = new UnitOfWork();
+        var hook = new Hook(async (_, response, _) =>
+        {
+            await Task.Yield();
+            state.TryGet<Pending>(out _).Should().BeTrue();
+            if (fromHook && response.Unwrap() == "child")
+                throw original;
+            return Result.Ok();
+        });
+        var behavior = new TransactionalCommandBehavior<Command, Result<string>>(unitOfWork, [hook]);
+        async ValueTask<Result<string>> Handler(Command _, CancellationToken token)
+        {
+            token.Should().Be(source.Token);
+            state.GetOrAdd(static () => new Pending()).Items.Add("child");
+            await Task.Yield();
+            if (!fromHook)
+                throw original;
+            return Result.Ok("child");
+        }
+
+        if (nested)
+        {
+            var result = await behavior.Handle(new Command(), async (message, token) =>
+            {
+                var parent = state.GetOrAdd(static () => new Pending());
+                parent.Items.Add("parent");
+                var act = async () => await behavior.Handle(message, Handler, token);
+
+                var thrown = await act.Should().ThrowAsync<Exception>();
+
+                thrown.Which.Should().BeSameAs(original);
+                state.TryGet<Pending>(out var restored).Should().BeTrue();
+                restored.Should().BeSameAs(parent);
+                restored!.Items.Should().Equal(["parent"]);
+                return Result.Ok("parent");
+            }, source.Token);
+
+            if (fromHook)
+                result.Should().HaveErrorCode(FaultCodes.UnitOfWorkUncommittable);
+            else
+                result.Should().HaveValue("parent");
+        }
+        else
+        {
+            var act = async () => await behavior.Handle(new Command(), Handler, source.Token);
+
+            var thrown = await act.Should().ThrowAsync<Exception>();
+
+            thrown.Which.Should().BeSameAs(original);
+        }
+
+        FluentActions.Invoking(() => state.TryGet<Pending>(out _))
+            .Should().Throw<InvalidOperationException>();
+        using var scope = unitOfWork.BeginScope();
+        scope.IsOwner.Should().BeTrue();
+        var commit = await unitOfWork.CommitAsync(Token);
+        if (fromHook)
+            commit.Should().HaveErrorCode(FaultCodes.UnitOfWorkUncommittable);
+        else
+            commit.Should().BeSuccess();
+    }
+
+    [Fact]
     public async Task Handle_StructCommand_ProvidesDispatchStateWithoutMessageIdentity()
     {
         var state = new CommandDispatchState();

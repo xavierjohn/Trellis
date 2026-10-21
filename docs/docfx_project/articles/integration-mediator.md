@@ -3,7 +3,7 @@ title: Mediator Pipeline
 package: Trellis.Mediator
 topics: [mediator, command, query, pipeline, behaviors, authorization, validation, telemetry]
 related_api_reference: [trellis-api-mediator.md, trellis-api-core.md, trellis-api-efcore-outbox.md, trellis-api-efcore-inbox.md]
-last_verified: 2026-10-20
+last_verified: 2026-10-21
 audience: [developer]
 ---
 # Mediator Pipeline
@@ -152,7 +152,10 @@ registration paths; publish-only success does not prove native DI dispatch works
 
 Use a hook when post-handler validation or extra staged writes must complete before
 persistence. An outer behavior's code after `next(...)` can run after the innermost
-transaction has already committed; registration order is not a reliable audit seam.
+transaction has already committed; registration order is not a reliable pre-commit seam.
+This is an opt-in command-level extension point, not an auditing framework. Applications
+own marker/command coverage, audit schemas, and whether successful no-ops need records;
+direct store writes are outside the contract.
 
 ```csharp
 services.AddTrellisBehaviors();
@@ -179,6 +182,8 @@ commits. An ignored inner hook failure still blocks the owning commit and every 
 commit: first reason wins, scope disposal/new scopes never reset it. This is not rollback;
 discard the unit of work and context, and never bypass it with direct store writes.
 Ordinary handler failures/exceptions keep their existing staging semantics.
+Use a fresh DI/unit-of-work scope per background message: a hook veto, exception, or
+cancellation permanently rejects a worker-lifetime instance, not just one message.
 
 Inject `CommandDispatchState` in handlers/hooks. Its `GetOrAdd<TState>`, `TryGet<TState>`,
 and `Remove<TState>` use a fresh frame opened before the handler and always closed after
@@ -194,6 +199,10 @@ Neither registration provides the store. Explicitly closed/generated pipelines b
 `ICommandPreCommitHook<Command,Response>` directly instead of installing an open
 transaction behavior, and register `CommandDispatchState` directly when needed; see the
 [exact registration contract](../api_reference/trellis-api-mediator.md#commandprecommithookservicecollectionextensions).
+For state-dependent handler tests, invoke the real transactional behavior with the
+[lightweight fake](../api_reference/trellis-api-cookbook.md#testing-handlers-that-use-dispatch-state),
+or substitute an application-owned recorder interface in pipeline-free tests. Constructing
+the accessor alone does not open a frame.
 
 ## Permission authorization
 

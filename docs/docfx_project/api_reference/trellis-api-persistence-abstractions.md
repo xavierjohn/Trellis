@@ -3,7 +3,7 @@ package: Trellis.Persistence.Abstractions
 namespaces: [Trellis]
 types: [IUnitOfWork, IUnitOfWorkScope, IInboxStore, IConsumerCheckpointStore, InboxRecord]
 version: v3
-last_verified: 2026-10-20
+last_verified: 2026-10-21
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when implementing IUnitOfWork, IInboxStore or IConsumerCheckpointStore for a non-EF store (Trellis.Persistence.Abstractions)."
@@ -51,6 +51,13 @@ cannot make the owner's commit succeed. Explicit vetoes preserve the hook error;
 hook exceptions/cancellation use `FaultCodes.UnitOfWorkUncommittable` while propagating
 the original exception. Ordinary handler failures/exceptions do not invalidate the
 unit of work.
+
+For an existing nonconcurrent test double, the migration is a retained error,
+null/first-reason guard, and rejection check at the start of `CommitAsync`; see
+[Recipe 16's complete fake](trellis-api-cookbook.md#testing-handlers-that-use-dispatch-state).
+Real adapters must preserve the same semantics before any store access.
+Background processors need a fresh DI/unit-of-work scope per message; one hook veto,
+exception, or cancellation permanently rejects a reused worker-lifetime instance.
 
 Invalidation does not roll back or detach staged changes. Direct store writes or
 `DbContext.SaveChanges` are outside this contract; handlers/hooks must not use them

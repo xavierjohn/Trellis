@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-10-20
+last_verified: 2026-10-21
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when the task lookup in trellis-start-here.md points to a recipe: compile-checked end-to-end patterns that cross Trellis packages."
@@ -1451,6 +1451,7 @@ The recipe number is preserved as a stub so existing bookmark and search-index e
 |---|---|
 | Understand who persists repository-staged changes | [Handler staging and commit ownership](#handler-staging-and-commit-ownership) |
 | Stage audit records atomically with business writes and reject missing audits | [Same-commit audit staging](#same-commit-audit-staging) |
+| Test a state-dependent handler without a container, database, or public frame opener | [Testing handlers that use dispatch state](#testing-handlers-that-use-dispatch-state) |
 
 ### Handler staging and commit ownership
 
@@ -1681,8 +1682,10 @@ contains the required audits; it does not depend on a success payload.
 Any hook veto, exception, or cancellation permanently makes the owning unit of work
 **uncommittable until discarded**. Its first reason is returned by every later commit,
 including after scopes close or new ones open; ignoring a nested hook failure or using
-`FailAfterCommit` cannot bypass it. Explicit vetoes retain the hook error; hook exceptions
-or cancellation record `FaultCodes.UnitOfWorkUncommittable` and still propagate unchanged.
+`FailAfterCommit` cannot bypass it. An outer loop cannot treat an inner hook veto as a
+soft failure and commit the remaining items: one veto rejects the entire owning unit
+of work. Explicit vetoes retain the hook error; hook exceptions or cancellation record
+`FaultCodes.UnitOfWorkUncommittable` and still propagate unchanged.
 This does **not** roll back tracked changes or erase earlier hooks' staging. Discard both
 the unit of work and context; direct store writes/`SaveChanges` must not bypass the guard.
 Ordinary handler failures/exceptions retain their existing non-poisoning staging semantics.
@@ -1690,6 +1693,12 @@ Hooks observe the request token, never save/publish independently, and add no pi
 
 The audit schema, actor metadata, redaction, retention, and whether an audit entry raises
 `AuditRecorded` remain application policy, not framework-provided automatic auditing.
+The application must also test that every command requiring an audit carries its marker:
+an unmarked command or a direct store write is outside this command-level policy.
+This example requires a pending entry for every successful marked dispatch, including
+idempotent no-ops; Trellis supplies no automatic "nothing to audit" signal.
+Use a fresh DI/unit-of-work scope per background message, rather than reusing a worker
+scope after a hook veto, exception, or cancellation.
 Pending audits stay out of the returned entity; map that entity to the host's public
 response normally. For post-commit events from hook-added aggregates, select
 `UseTrackedAggregateDomainEvents(...)` even though this command returns an entity:
@@ -1705,6 +1714,92 @@ in-pipeline publication.
 > persistence, ignored nested vetoes, rollback after a second insert fails, entity results,
 > failed-handler cleanup, same-instance nested state, persist-on-failure, and post-commit
 > tracked events. The outbox suite also covers hook-introduced aggregates.
+
+### Testing handlers that use dispatch state
+
+A direct handler call does not open a frame. A small boundary test can invoke the real
+transactional behavior with a depth-aware fake `IUnitOfWork`, the real handler, and its
+real hook; no container, EF provider, or public frame opener is needed:
+
+```csharp
+using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Trellis;
+using Trellis.Mediator;
+using Trellis.Testing;
+
+var orders = new Orders();
+var audits = new Audits();
+var state = new CommandDispatchState();
+var unitOfWork = new TestUnitOfWork();
+var handler = new CreateAuditedOrderHandler(orders, state, TimeProvider.System);
+var hook = new RequiredAuditHook<CreateAuditedOrderCommand, Result<Order>>(
+    state, audits, NullLogger<RequiredAuditHook<CreateAuditedOrderCommand, Result<Order>>>.Instance);
+var behavior = new TransactionalCommandBehavior<CreateAuditedOrderCommand, Result<Order>>(
+    unitOfWork, [hook]);
+
+var result = await behavior.Handle(
+    new CreateAuditedOrderCommand(new Money(10m)), handler.Handle, CancellationToken.None);
+
+result.Should().BeSuccess();
+audits.GetAll().Should().ContainSingle().Which.OrderId.Should().Be(result.Unwrap().Id);
+unitOfWork.Commits.Should().Be(1);
+
+sealed class Orders : FakeRepository<Order, OrderId>, IOrderRepository;
+sealed class Audits : FakeRepository<AuditEntry, AuditEntryId>, IAuditEntryRepository;
+```
+
+The fake counts owning commits instead of writing a store. Its invalidation migration
+is one retained error, a null/first-reason guard, and a rejection check **before**
+nested deferral. Scope disposal never resets the error:
+
+```csharp
+sealed class TestUnitOfWork : IUnitOfWork
+{
+    private int _depth;
+    private Error? _rejection;
+    public int Commits { get; private set; }
+
+    public Task<Result<Trellis.Unit>> CommitAsync(CancellationToken cancellationToken = default)
+    {
+        if (_rejection is { } rejection)
+            return Result.Fail(rejection).AsTask();
+        if (_depth <= 1)
+            Commits++;
+        return Result.Ok().AsTask();
+    }
+
+    public void MarkUncommittable(Error reason)
+    {
+        ArgumentNullException.ThrowIfNull(reason);
+        _rejection ??= reason;
+    }
+
+    public IUnitOfWorkScope BeginScope() => new Scope(this, ++_depth == 1);
+
+    private sealed class Scope(TestUnitOfWork owner, bool isOwner) : IUnitOfWorkScope
+    {
+        private bool _disposed;
+        public bool IsOwner { get; } = isOwner;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            owner._depth--;
+        }
+    }
+}
+```
+
+`Examples/CookbookSnippets.Tests/Recipe16CommandHandlerTests.cs` compiles this pattern
+and pins success, failed-handler cleanup, veto rejection, nested deferral, and permanent
+first-reason invalidation. This fake is nonconcurrent and does not model persistence
+or cancellation: `FakeRepository.Add` is immediately visible and accepts domain events.
+Keep the SQLite tests above as the proof of atomicity, rollback, and post-commit events.
+For pipeline-free application tests, substitute an application-owned recorder interface;
+its production implementation can buffer through `CommandDispatchState`.
 
 ---
 
