@@ -26,6 +26,15 @@ builder.Services.AddTrellis(options => options
 
 `UseEntityFrameworkUnitOfWork<TContext>()` is always applied last so the transactional command behavior runs innermost. `AddDbContext<TContext>(...)` and `AddMediator(...)` remain application-owned registrations.
 
+`UseCommandPreCommitHook<TMessage,TResponse,THook>()` implies `UseMediator()` and registers
+a scoped hook **inside** the transaction behavior, after the handler and before commit.
+Use it to validate an outcome or stage same-commit audit rows; register `IUnitOfWork`
+separately, typically with `UseEntityFrameworkUnitOfWork<TContext>()`. Either fluent or
+direct registration order works. Ordinary handler failures skip hooks, and a hook
+failure vetoes even persist-on-failure outcomes. See the
+[audit recipe](../docs/docfx_project/api_reference/trellis-api-cookbook.md#same-commit-audit-staging)
+for dispatch isolation and failure/context-lifetime constraints.
+
 `UseFluentValidation()` and `UseResourceAuthorization()` both support no-assembly calls for explicit, no-scanning composition; pass assemblies only when you want Trellis to discover validators/resource loaders automatically.
 
 Common `HttpContext.PageUrl(...)` pagination links need no API-versioning package.

@@ -3,7 +3,7 @@ title: Service Defaults (Composition Root)
 package: Trellis.ServiceDefaults
 topics: [composition-root, service-collection, di-wiring, builder, pipeline-ordering, messaging]
 related_api_reference: [trellis-api-servicedefaults.md, trellis-api-mediator.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-efcore-inbox.md, trellis-api-efcore-outbox.md, trellis-api-messaging-azureservicebus.md, trellis-api-fluentvalidation.md, trellis-api-cookbook.md]
-last_verified: 2026-10-14
+last_verified: 2026-10-20
 audience: [developer]
 ---
 # Service Defaults (Composition Root)
@@ -45,10 +45,11 @@ Event dispatch retains nested aggregate responses until the owning successful un
 6. **FluentValidation** adapter and (optionally) scanning (`UseFluentValidation`).
 7. **Domain event dispatch** (`UseDomainEvents`) — `DomainEventDispatchBehavior<,>` + default `IDomainEventPublisher` + scanned handlers.
 8. **Integration event registration** (`UseIntegrationEvents`) — default best-effort publisher, scoped collector, and selected handler bindings.
-9. **EF Core Unit of Work** (`UseEntityFrameworkUnitOfWork<TContext>`) — innermost Mediator behavior.
-10. **Outbox relay** (`UseOutbox<TContext>`) — hosted-service registration, not a pipeline behavior.
-11. **Opt-in outbox readiness** (`UseOutboxReadiness<TContext>(profile)`) — named health-check registration, not a pipeline behavior.
-12. **Inbox dispatcher** (`UseInbox<TContext>`) — inbound service registration, not a pipeline behavior.
+9. **Typed command pre-commit hooks** (`UseCommandPreCommitHook<TMessage,TResponse,THook>`) — scoped bindings executed inside the transaction behavior.
+10. **EF Core Unit of Work** (`UseEntityFrameworkUnitOfWork<TContext>`) — innermost Mediator behavior.
+11. **Outbox relay** (`UseOutbox<TContext>`) — hosted-service registration, not a pipeline behavior.
+12. **Opt-in outbox readiness** (`UseOutboxReadiness<TContext>(profile)`) — named health-check registration, not a pipeline behavior.
+13. **Inbox dispatcher** (`UseInbox<TContext>`) — inbound service registration, not a pipeline behavior.
 
 This sequence preserves the central pipeline invariant: the transactional behavior is closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors. Domain events fire after the transaction commits because dispatch is registered before the unit of work.
 
@@ -59,6 +60,30 @@ can receive along with the loaded resource/leaf. Existing builder slots install 
 context automatically; no new `UseXxx` call is needed. Closed/open context descriptors
 normalize without duplicate execution, including resource registrations preceding the
 standard pipeline.
+
+## Same-commit staging and validation
+
+```csharp
+builder.Services.AddTrellis(options => options
+    .UseCommandPreCommitHook<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>, CreateOrderAuditHook>()
+    .UseEntityFrameworkUnitOfWork<AppDbContext>());
+```
+
+`UseCommandPreCommitHook` implies `UseMediator` and installs the transaction behavior,
+but does not register the store or an audit schema. Hooks run after each committable
+handler and before persistence, regardless of fluent or direct unit-of-work registration
+order. Repeated identical bindings deduplicate; distinct hooks run in binding order.
+
+Ordinary handler failures skip hooks. The first hook failure vetoes even explicit
+persist-on-failure outcomes; nested hooks stage before their deferred commit.
+There is no rollback of tracked state or automatic cleanup of an ambient recorder.
+Keep pending records dispatch-specific, propagate nested failures, and dispose failed
+contexts. See [Recipe 16](../api_reference/trellis-api-cookbook.md#same-commit-audit-staging)
+for the complete application-owned audit pattern.
+
+For explicitly closed/generated pipelines, bind the hook interface directly alongside
+the closed transaction behavior; do not use this slot, which implies the managed open
+pipeline. Typed registration does not remove Native DI's struct-result restriction.
 
 ## Integration delivery boundaries
 

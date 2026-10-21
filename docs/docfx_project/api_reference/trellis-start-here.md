@@ -4,7 +4,7 @@ namespaces: [Trellis]
 types: [orientation, routing]
 related_docs: [trellis-api-cookbook.md, trellis-api-core.md, trellis-api-anti-patterns.md, trellis-api-analyzers.md]
 version: v3
-last_verified: 2026-10-14
+last_verified: 2026-10-20
 audience: [llm]
 agent_usage: required
 agent_description: "Routing head for every Trellis task: which reference to open, the recipe lookup and how to read the set. Read before writing or changing code that uses Trellis."
@@ -107,6 +107,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 |---|---|
 | Create or load an aggregate with value objects | [Recipe 1](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) |
 | Write a command handler that validates and persists | [Recipe 2](trellis-api-cookbook.md#recipe-2--command--handler--fluentvalidation--ef-persistence), then [Recipe 16](trellis-api-cookbook.md#recipe-16--unit-of-work-in-handlers-add-staging-vs-immediate-saveasync) |
+| Persist business changes and audit records in one commit, or refuse a command that recorded no audit | [Recipe 16: same-commit audit staging](trellis-api-cookbook.md#same-commit-audit-staging), then [Mediator pre-commit hooks](trellis-api-mediator.md#icommandprecommithooktmessage-tresponse) |
 | Load multiple independent resources in one handler (HTTP + DB, two upstream services, factory-created `DbContext`s) | [Recipe 21](trellis-api-cookbook.md#recipe-21--parallel-independent-loads-in-handlers-resultparallelasync--whenallasync) |
 | Multi-aggregate orchestration: side effect per element of a related-aggregate set | [Recipe 22](trellis-api-cookbook.md#recipe-22--multi-aggregate-orchestration-fail-loud-on-missing-related-aggregates) |
 | Apply an operation to every element of a related-aggregate set where per-element validation can fail (reserve stock per line item, etc.) — avoid partial mutation | [Recipe 25](trellis-api-cookbook.md#recipe-25--two-pass-validate-then-mutate-over-a-collection-of-related-aggregates) |

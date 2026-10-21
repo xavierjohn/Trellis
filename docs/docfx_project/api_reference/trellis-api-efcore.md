@@ -3,7 +3,7 @@ package: Trellis.EntityFrameworkCore
 namespaces: [Trellis.EntityFrameworkCore]
 types: [DbContextExtensions, DbContextIdempotencyExtensions, DbContextOptionsBuilderExtensions, DbContextRetryExtensions, DbExceptionClassifier, "EfUnitOfWork<TContext>", EntityTimestampInterceptor, GeoCoordinateExpressions, IUnitOfWork, MaybeColumnMapping, MaybeEntityTypeBuilderExtensions, MaybeModelExtensions, MaybePropertyMapping, MaybeStorageKind, MaybeQueryableExtensions, MaybeQueryInterceptor, MaybeUpdateExtensions, ModelConfigurationBuilderExtensions, OwnedEntityAttribute, QueryableExtensions, PaginationQueryableExtensions, SeekDefinition, "SeekDefinition<T,TState>", "RepositoryBase<TAggregate,TId>", ScalarValueQueryInterceptor, "TransactionalCommandBehavior<TMessage,TResponse>", TrellisPersistenceMappingException, "TrellisScalarConverter<TModel,TProvider>", UnitOfWorkServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-07
+last_verified: 2026-10-20
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when using Trellis.EntityFrameworkCore for persistence, Maybe queries, conventions, unit of work, seek pagination, or translated spherical nearby queries."
@@ -47,6 +47,7 @@ Use this table to find the canonical Trellis API for the most common EF Core tas
 | Classify an EF/DB exception | `DbExceptionClassifier.IsDuplicateKey(ex)` / `IsForeignKeyViolation(ex)` / `ExtractConstraintDetail(ex)` / `ExtractConstraintIdentity(ex)`. To map DB exceptions to a Trellis `Error` automatically, use `db.SaveChangesResultAsync()` / `SaveChangesResultUnitAsync()` (or, for idempotent inserts, `db.TryInsertUniqueAsync()`) instead of catching and classifying by hand. | [`DbExceptionClassifier`](#dbexceptionclassifier), [`DbContextExtensions`](#dbcontextextensions), [`DbContextIdempotencyExtensions`](#dbcontextidempotencyextensions) |
 | Wrap an aggregate-store repository with `Result<T>` returns | Inherit `RepositoryBase<TAggregate, TId>` | [`RepositoryBase<TAggregate, TId>`](#repositorybasetaggregate-tid) |
 | Stage commands in a unit of work and flush once per request | `IUnitOfWork` + `EfUnitOfWork<TContext>` + `TransactionalCommandBehavior<,>` (registered via `AddTrellisUnitOfWork<TContext>()`) | [`IUnitOfWork`](#iunitofwork), [`EfUnitOfWork<TContext>`](#efunitofworktcontext), [`TransactionalCommandBehavior<TMessage, TResponse>`](#transactionalcommandbehaviortmessage-tresponse) |
+| Stage audit records after a handler but before that same save, or refuse a missing audit | Mediator's `ICommandPreCommitHook<TMessage,TResponse>` sharing the same scoped context | [Hook contract](trellis-api-mediator.md#icommandprecommithooktmessage-tresponse), [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging) |
 | Paginate an `IQueryable<T>` with a typed, single/composite, ascending/descending seek | `PageRequest.TryCreate(...)` then `source.ToPageAsync(request, seek, ...)`; define ordering with `SeekDefinition.Ascending` / `Descending` and `ThenAscending` / `ThenDescending` | [`SeekDefinition`](#seekdefinition), [`PaginationQueryableExtensions`](#paginationqueryableextensions) |
 | Filter by a spherical radius and order/page by computed distance | Validate `GeoBounds`, compose `GeoCoordinateExpressions.WithinRadius(...)` and `DistanceMetersTo(...)`, then use the distance expression in `SeekDefinition.Ascending(...)` | [`GeoCoordinateExpressions`](#geocoordinateexpressions), [`PaginationQueryableExtensions`](#paginationqueryableextensions) |
 
@@ -467,9 +468,16 @@ public sealed class TransactionalCommandBehavior<TMessage, TResponse>
 
 > **Defined in `Trellis.Mediator`, not this package.** It depends only on `IUnitOfWork`, so it works over any store, not just EF Core; `AddTransactionalCommandBehavior()` in `Trellis.Mediator` is the provider-neutral registration, and `AddTrellisUnitOfWork<TContext>()` below is the EF-specific helper that calls it. `Trellis.EntityFrameworkCore` references `Trellis.Mediator`, so no extra `PackageReference` is needed. See [`trellis-api-mediator.md`](trellis-api-mediator.md#trellismediatortransactionalcommandbehaviorservicecollectionextensions) for the registration surface.
 
-Pipeline behavior that auto-commits staged changes after a successful command handler. Only applies to `ICommand<TResponse>` messages — queries are skipped at the type-constraint level and incur no overhead. If the handler returns a failure, no commit occurs and staged changes are discarded with the `DbContext`. EF Core wraps each `SaveChanges` call in an implicit transaction, so all staged changes within a single handler commit atomically.
+Pipeline behavior that auto-commits staged changes after a successful command handler and acceptance by every registered pre-commit hook. Only applies to `ICommand<TResponse>` messages — queries are skipped at the type-constraint level and incur no overhead. On ordinary handler failure or hook rejection, no commit occurs and staged changes must be discarded with the `DbContext`. EF Core wraps each `SaveChanges` call in an implicit transaction, so all staged business and hook-added changes sharing that context commit atomically.
 
-> **Persist-on-failure outcomes.** If `TResponse` implements `IPersistOnFailure` and the per-instance `PersistOnFailure` flag is `true` — the canonical producer is `Result.FailAfterCommit<T>(error)` — the commit step runs even though the result is a failure. This enables the worker-handler pattern of persisting a `permanently_failed` state row alongside the failure outcome. On commit failure for a persist-on-failure outcome, the commit error replaces the handler error in the returned response.
+> **Persist-on-failure outcomes.** If `TResponse` implements `IPersistOnFailure` and the per-instance `PersistOnFailure` flag is `true` — the canonical producer is `Result.FailAfterCommit<T>(error)` — hooks and then the commit step run even though the result is a failure. Every hook must accept; the first hook or commit error replaces the handler error in the returned response.
+
+Hooks execute sequentially inside this behavior, before even a deferred nested
+`CommitAsync`. Hook-added aggregates therefore participate in `EfUnitOfWork`'s pre-save
+snapshot and any outbox capture. They must stage through the same scoped context, not
+save or publish independently. A veto is not rollback; propagate nested failures and
+discard the failed context. See the owning package's
+[complete contract](trellis-api-mediator.md#icommandprecommithooktmessage-tresponse).
 
 > **Important:** This behavior is **not** registered by `Trellis.Mediator.ServiceCollectionExtensions.AddTrellisBehaviors()`. Consumers of `Trellis.EntityFrameworkCore` must register it explicitly via `AddTrellisUnitOfWork<TContext>()` (see below). Ordering is independent versus `AddTrellisBehaviors()` and domain-event dispatch helpers: the transaction behavior is rehomed innermost — closest to the handler — so commit failures remain visible to outer logging/tracing/exception behaviors.
 
@@ -483,7 +491,8 @@ authorization-before-commit order.
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public TransactionalCommandBehavior(IUnitOfWork unitOfWork)` | — | Captures the scoped `IUnitOfWork` resolved alongside the handler. Throws `ArgumentNullException` when `unitOfWork` is null. |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Wraps the invocation in `using var scope = unitOfWork.BeginScope();` so a successful inner command's commit is deferred until the outermost scope unwinds. Awaits the inner handler; on success **or** persist-on-failure (`result is IPersistOnFailure { PersistOnFailure: true }`), calls `unitOfWork.CommitAsync(cancellationToken)`; if the commit reports an `Error`, returns `TResponse.CreateFailure(error)` (overwriting the original handler error for persist-on-failure outcomes). On ordinary failure, returns the failure as-is without committing. |
+| `public TransactionalCommandBehavior(IUnitOfWork unitOfWork, IEnumerable<ICommandPreCommitHook<TMessage,TResponse>> preCommitHooks)` | — | Hook-aware constructor selected by DI; the original one-argument constructor runs without hooks. Throws `ArgumentNullException` for either null argument. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Opens `BeginScope` so nested commits defer to the owner. On success or explicit persist-on-failure, awaits hooks in registration order, then calls `CommitAsync` only if all accept. Returns `TResponse.CreateFailure(error)` for the first hook or commit error. Ordinary failures skip hooks and commit. |
 
 ### `UnitOfWorkServiceCollectionExtensions`
 

@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-10-14
+last_verified: 2026-10-20
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when the task lookup in trellis-start-here.md points to a recipe: compile-checked end-to-end patterns that cross Trellis packages."
@@ -976,6 +976,7 @@ public static class CompositionRoot
 | `UseAsp()` | `AddTrellisAsp()` | Error → status mapping and `ResourceCollectionNameRegistry`. **Does NOT register scalar-value JSON / model-binding validation** — compose with `UseScalarValueValidation()` when binding value-object DTOs. |
 | `UseScalarValueValidation()` | `AddScalarValueValidation()` | Configures both MVC and Minimal API JSON pipelines (model binders + JSON converters + `SuppressModelStateInvalidFilter` toggle). Independent of `UseAsp()`. Minimal API hosts must still call `app.UseScalarValueValidation()` middleware and chain `.WithScalarValueValidation()` per endpoint. |
 | `UseMediator()` | `AddTrellisBehaviors()` | Registers the canonical Result-aware pipeline behaviors. |
+| `UseCommandPreCommitHook<TMessage,TResponse,THook>()` | `AddCommandPreCommitHook<TMessage,TResponse,THook>()` | Implies `UseMediator()`; validates or stages writes inside the transaction behavior before commit. Register `IUnitOfWork` separately. See Recipe 16. |
 | `UseFluentValidation(...)` | `AddTrellisFluentValidation(...)` (from `Trellis.Mediator.FluentValidation`) | Implies `UseMediator()`. Pass assemblies to scan, or omit assemblies when validators are registered explicitly. |
 | `UseClaimsActorProvider()` / `UseEntraActorProvider()` / `UseDevelopmentActorProvider()` | One ASP actor provider | The builder rejects multiple actor providers. |
 | `UseResourceAuthorization(...)` | `AddResourceAuthorization(...)` | Implies `UseMediator()` and scans for resource auth/loaders. |
@@ -1446,6 +1447,13 @@ The recipe number is preserved as a stub so existing bookmark and search-index e
 
 ## Recipe 16 — Unit of work in handlers: `Add` staging vs immediate `SaveAsync`
 
+| Task within this recipe | Read |
+|---|---|
+| Understand who persists repository-staged changes | [Handler staging and commit ownership](#handler-staging-and-commit-ownership) |
+| Stage audit records atomically with business writes and reject missing audits | [Same-commit audit staging](#same-commit-audit-staging) |
+
+### Handler staging and commit ownership
+
 **Problem.** A command handler creates a new aggregate. Where does the `SaveChanges` call go? The first time you read a Trellis handler that ends with `repo.Add(order); return Result.Ok(order.Id);` the question is unavoidable: *who actually saves it?*
 
 ```csharp
@@ -1460,9 +1468,16 @@ public sealed class CreateOrderHandler(IOrderRepository repo)
 }
 ```
 
-> `repo.Add(entity)` stages the aggregate for insertion via EF Core; `TransactionalCommandBehavior`, registered by `services.AddTrellisUnitOfWork<TContext>()` in your ACL composition root, automatically calls `SaveChangesAsync` after every successful handler — no explicit save call is needed in the handler.
+> `repo.Add(entity)` stages the aggregate for insertion via EF Core; `TransactionalCommandBehavior`, registered by `services.AddTrellisUnitOfWork<TContext>()` in your ACL composition root, automatically saves after a successful handler and acceptance by its pre-commit hooks — no explicit save call is needed in the handler.
 
-**What it shows.** Handlers in Trellis follow a strict separation: the handler shapes domain state and the pipeline owns the commit boundary. `RepositoryBase.Add` (the base behind your `IOrderRepository`) returns `void` precisely to signal "staged, not yet persisted" — the `void` return makes it impossible to write the (wrong) `await repo.Add(...).Should().BeSuccess()`. The mediator pipeline wraps the handler; from innermost (closest to the handler) outward it is: `TransactionalCommandBehavior` → `ValidationBehavior` → `AuthorizationBehavior` → `LoggingBehavior` → `TracingBehavior` → `ExceptionBehavior` (the opt-in `ResourceAuthorizationBehavior` sits just outside `ValidationBehavior`). When the handler returns a successful `Result<T>`, the transactional behavior calls `SaveChangesAsync` and only then surfaces the result; on failure or exception, nothing is committed (unless the command opts into `IPersistOnFailure`, which deliberately commits the failure path).
+**What it shows.** Handlers shape domain state; the pipeline owns the commit boundary.
+`RepositoryBase.Add` returns `void` to signal "staged, not persisted" — not an awaitable
+save result. The innermost `TransactionalCommandBehavior` awaits the handler, then its
+pre-commit hooks, then saves before returning. Ordinary failure, hook rejection, or an
+exception prevents that commit. `IPersistOnFailure` deliberately enables hooks and
+persistence for an explicit failure outcome, but does not bypass a rejecting hook.
+See the [canonical pipeline](trellis-api-mediator.md#canonical-pipeline-order) for the
+outer authorization, validation, telemetry, and event-dispatch stages.
 
 | Method | Signature | Saves immediately? | When to use |
 |---|---|---|---|
@@ -1516,7 +1531,156 @@ services
     .AddScoped<IOrderRepository, EfOrderRepository>();
 ```
 
-Without `AddTrellisUnitOfWork<TContext>()`, `repo.Add(order)` stages the entity but **nothing ever calls `SaveChangesAsync`** — handler tests against EF (or against a real database) silently insert nothing. This is the production analogue of the fake/real divergence trap covered in [Recipe 8](#recipe-8--ef-core-maybepropertymapping-for-nullable-value-objects): the tests pass against `FakeRepository` (which has no UoW boundary, so `Add` is immediately visible), and production silently commits nothing. Always wire `AddTrellisUnitOfWork` in the ACL composition root, not inside each handler.
+Without a transaction behavior and matching `IUnitOfWork`, `repo.Add(order)` only stages
+the entity. Tests against `FakeRepository` can hide that omission because `Add` is
+immediately visible there. Wire `AddTrellisUnitOfWork<TContext>()` in the EF composition
+root, not each handler. A selected pre-commit hook also installs the behavior, but never
+supplies the store itself.
+
+### Same-commit audit staging
+
+**Problem.** A successful command must record an audit entry, and missing audit data
+must refuse persistence. An outer behavior that stages audit rows after `next(...)`
+is too late: Trellis keeps the transactional behavior innermost, so it may already have
+saved before that code runs. Do not solve this with registration-order assumptions,
+a second save, or exposing `DbContext` through provider-neutral `IUnitOfWork`.
+
+**Solution.** Register an `ICommandPreCommitHook<TMessage,TResponse>`. The handler
+stages the business aggregate and returns pending audit records on an **internal
+application outcome**; the hook validates that outcome and stages its audit records
+through a repository sharing the same scoped context. One owning commit persists both.
+The outcome carrier also isolates sequential and nested dispatches without an ambient
+scoped recorder that needs cleanup on failed handlers.
+
+```csharp
+using Mediator;
+using Microsoft.Extensions.Logging;
+using Trellis;
+using Trellis.Mediator;
+
+public sealed partial class AuditEntryId : RequiredGuid<AuditEntryId>;
+public sealed record AuditRecorded(AuditEntryId AuditEntryId, DateTimeOffset OccurredAt) : IDomainEvent;
+
+public sealed class AuditEntry : Aggregate<AuditEntryId>
+{
+    public OrderId OrderId { get; private set; } = default!;
+    public string Action { get; private set; } = string.Empty;
+
+    private AuditEntry(AuditEntryId id) : base(id) { }
+
+    public static AuditEntry ForOrderCreated(OrderId orderId, TimeProvider clock)
+    {
+        var entry = new AuditEntry(AuditEntryId.NewUniqueV7(clock))
+        {
+            OrderId = orderId,
+            Action = "order.created",
+        };
+        entry.DomainEvents.Add(new AuditRecorded(entry.Id, clock.GetUtcNow()));
+        return entry;
+    }
+}
+
+public sealed record AuditedOrderOutcome(OrderId OrderId, IReadOnlyList<AuditEntry> AuditEntries);
+public sealed record CreateAuditedOrderCommand(Money Total) : ICommand<Result<AuditedOrderOutcome>>;
+
+public sealed class CreateAuditedOrderHandler(IOrderRepository orders, TimeProvider clock)
+    : ICommandHandler<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>>
+{
+    public ValueTask<Result<AuditedOrderOutcome>> Handle(
+        CreateAuditedOrderCommand command, CancellationToken cancellationToken) =>
+        Order.TryCreate(command.Total)
+            .Tap(orders.Add)
+            .Map(order => new AuditedOrderOutcome(order.Id, [AuditEntry.ForOrderCreated(order.Id, clock)]))
+            .AsValueTask();
+}
+
+public interface IAuditEntryRepository
+{
+    void Add(AuditEntry entry);
+}
+
+public sealed partial class CreateOrderAuditHook(
+    IAuditEntryRepository audits, ILogger<CreateOrderAuditHook> logger)
+    : ICommandPreCommitHook<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>>
+{
+    public ValueTask<Result<Trellis.Unit>> BeforeCommitAsync(
+        CreateAuditedOrderCommand message,
+        Result<AuditedOrderOutcome> response,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!response.TryGetValue(out var outcome, out var error))
+            return Result.Fail(error).AsValueTask();
+
+        if (outcome.AuditEntries.Count == 0)
+        {
+            var faultId = Guid.NewGuid().ToString("N");
+            LogMissingAudit(logger, faultId);
+            return Result.Fail(new Error.Unexpected("audit.not-recorded", faultId)
+            {
+                Detail = "An unexpected error occurred while processing the request.",
+            }).AsValueTask();
+        }
+
+        foreach (var entry in outcome.AuditEntries)
+            audits.Add(entry);
+
+        return Result.Ok().AsValueTask();
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Order creation recorded no audit entry; commit refused. Fault {FaultId}.")]
+    private static partial void LogMissingAudit(ILogger logger, string faultId);
+}
+```
+
+Register the context and handlers as usual. Both repository adapters inherit
+`RepositoryBase<Aggregate,Id>` and stage only; resolve the **same concrete context**
+for both rather than creating a second context for auditing:
+
+```csharp
+services.AddSingleton(TimeProvider.System);
+services.AddScoped<IOrderRepository>(provider =>
+    new EfOrderRepository(provider.GetRequiredService<Recipe16DbContext>()));
+services.AddScoped<IAuditEntryRepository>(provider =>
+    new EfAuditEntryRepository(provider.GetRequiredService<Recipe16DbContext>()));
+services.AddTrellis(options => options
+    .UseCommandPreCommitHook<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>, CreateOrderAuditHook>()
+    .UseEntityFrameworkUnitOfWork<Recipe16DbContext>());
+```
+
+Without the builder, use
+`services.AddCommandPreCommitHook<CreateAuditedOrderCommand,Result<AuditedOrderOutcome>,CreateOrderAuditHook>()`
+alongside standard behaviors and `AddTrellisUnitOfWork<Recipe16DbContext>()`.
+Either registration order keeps the hook **inside** the transaction behavior.
+`Recipe16DbContext` maps both aggregates and applies generated Trellis conventions;
+its `Money` is a simple decimal-backed sample record with an explicit EF conversion.
+
+**Constraints.** The hook is not a universal `finally` callback. Ordinary failed or
+throwing handlers skip it; no pending audit list is stored on the scoped hook. Each
+nested successful command stages its own records before its deferred commit, and only
+the owning accepted outcome saves them. A hook rejection vetoes even a persist-on-failure
+handler; this particular example also rejects such a failed response because it has no
+success payload. A different hook can explicitly validate and accept that failure case.
+
+Skipping commit does **not** roll back tracked changes, erase earlier hooks' staging,
+or mark the outer scope uncommittable. Propagate nested failures and dispose the failed
+context; do not silently reuse it for another successful command. Hooks observe the
+request token, never save/publish independently, and add no new pipeline behavior slot.
+
+The audit schema, actor metadata, redaction, retention, and whether an audit entry raises
+`AuditRecorded` remain application policy, not framework-provided automatic auditing.
+Map the internal outcome to a public response rather than exposing audit records to
+clients. For post-commit events from these outcome-DTO commands, select
+`UseTrackedAggregateDomainEvents(...)`; hook-added aggregates join the committed snapshot.
+For durable delivery, wire the [outbox](#recipe-35--transactional-outbox-for-crash-safe-domain-events):
+its capture sees the hook-added events in the same save and suppresses duplicate
+in-pipeline publication.
+
+> **Compiled and behavior-pinned.** `Examples/CookbookSnippets/Recipe16_UnitOfWork.cs`
+> contains the complete domain, repository adapters, context mapping, hook, and registration.
+> `Examples/CookbookSnippets.Tests/Recipe16AuditBehaviorTests.cs` exercises real SQLite
+> persistence, veto, rollback after a second insert fails, sequential/nested dispatches,
+> and post-commit tracked events. The outbox suite also covers hook-introduced aggregates.
 
 ---
 

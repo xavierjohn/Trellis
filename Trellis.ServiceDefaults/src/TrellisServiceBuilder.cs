@@ -38,6 +38,7 @@ public sealed class TrellisServiceBuilder
     private readonly List<Action<IServiceCollection>> _typedResourceAuthorizationRegistrations = [];
     private readonly List<Action<Trellis.Mediator.ResourceAuthorizationOptions>> _resourceAuthorizationConfigures = [];
     private readonly List<Action<IServiceCollection>> _typedDomainEventHandlerRegistrations = [];
+    private readonly List<Action<IServiceCollection>> _typedCommandPreCommitHookRegistrations = [];
     private readonly List<Assembly> _integrationEventAssemblies = [];
     private readonly List<Action<IServiceCollection>> _typedIntegrationEventHandlerRegistrations = [];
     private Action<TrellisAspOptions>? _configureAsp;
@@ -188,6 +189,33 @@ public sealed class TrellisServiceBuilder
         if (configureTelemetry is not null)
             _configureMediatorTelemetry += configureTelemetry.Invoke;
 
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a scoped command pre-commit hook that validates or stages changes after the handler
+    /// and before persistence. Implies <see cref="UseMediator"/>.
+    /// </summary>
+    /// <remarks>
+    /// Repeated bindings are idempotent; distinct hooks run in selection order. The hook executes
+    /// inside the transactional behavior, independent of fluent or direct registration order.
+    /// Register an <see cref="IUnitOfWork"/> separately, typically with
+    /// <see cref="UseEntityFrameworkUnitOfWork{TContext}"/>.
+    /// </remarks>
+    /// <typeparam name="TMessage">The command type.</typeparam>
+    /// <typeparam name="TResponse">The command's result type.</typeparam>
+    /// <typeparam name="THook">The hook implementation type.</typeparam>
+    public TrellisServiceBuilder UseCommandPreCommitHook<
+        TMessage,
+        TResponse,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THook>()
+        where TMessage : ICommand<TResponse>
+        where TResponse : IResult, IFailureFactory<TResponse>
+        where THook : class, ICommandPreCommitHook<TMessage, TResponse>
+    {
+        _useMediator = true;
+        _typedCommandPreCommitHookRegistrations.Add(static services =>
+            services.AddCommandPreCommitHook<TMessage, TResponse, THook>());
         return this;
     }
 
@@ -1101,6 +1129,9 @@ public sealed class TrellisServiceBuilder
             _services.AddIntegrationEventDispatch([.. _integrationEventAssemblies]);
 
         foreach (var register in _typedIntegrationEventHandlerRegistrations)
+            register(_services);
+
+        foreach (var register in _typedCommandPreCommitHookRegistrations)
             register(_services);
 
         _unitOfWorkRegistration?.Invoke(_services);

@@ -28,6 +28,14 @@ builder.Services.AddTrellis(trellis => trellis
 
 Call `AddTrellis(...)` once. If omitted, the composition features are intentionally not registered.
 
+`UseCommandPreCommitHook<TMessage,TResponse,THook>()` implies `UseMediator()` and registers
+a scoped hook inside the transactional behavior, after the handler and before commit.
+Register `IUnitOfWork` separately, typically with `UseEntityFrameworkUnitOfWork<TContext>()`.
+Fluent/direct registration order does not change hook placement. The first hook failure
+vetoes persistence, including persist-on-failure outcomes; ordinary handler failures
+skip hooks. See the [same-commit audit recipe](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-cookbook.html#same-commit-audit-staging)
+for dispatch isolation and failure/context-lifetime constraints.
+
 ## Key Features
 
 - Applies Trellis registrations in canonical pipeline order.

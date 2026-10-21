@@ -3,7 +3,7 @@ title: Mediator Pipeline
 package: Trellis.Mediator
 topics: [mediator, command, query, pipeline, behaviors, authorization, validation, telemetry]
 related_api_reference: [trellis-api-mediator.md, trellis-api-core.md, trellis-api-efcore-outbox.md, trellis-api-efcore-inbox.md]
-last_verified: 2026-10-10
+last_verified: 2026-10-20
 audience: [developer]
 ---
 # Mediator Pipeline
@@ -29,6 +29,7 @@ audience: [developer]
 | Auto-dispatch domain events from *every* aggregate the unit-of-work tracked, regardless of response shape | `services.AddTrellis(t => t.UseTrackedAggregateDomainEvents(...))` | [Auto-dispatching from outcome-DTO commands](#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior) |
 | Use a custom envelope response type around an aggregate | `TResponse : IResult<TAggregate>, IFailureFactory<TResponse>` | [Custom envelope response types](#custom-envelope-response-types) |
 | Persist a `permanently_failed` row alongside a failure outcome (worker pattern) | `Result.FailAfterCommit<T>(error)` | [Persisting failure state from a worker handler](#persisting-failure-state-from-a-worker-handler) |
+| Stage audit rows or reject an outcome before the command commits | `ICommandPreCommitHook<TMessage,TResponse>` | [Command pre-commit hooks](#command-pre-commit-hooks) |
 
 ## Use this guide when
 
@@ -49,6 +50,8 @@ audience: [developer]
 | `AddSharedResourceLoader<TMessage, TResource, TId>()` | DI extension | Bridges an `IIdentifyResource<T,TId>` message to a `SharedResourceLoaderById<T,TId>`. |
 | `IValidate` | Interface | Message-side hook; `IResult Validate()` runs before the handler. |
 | `IMessageValidator<TMessage>` | Interface | DI-resolved async validator; aggregated by `ValidationBehavior`. |
+| `ICommandPreCommitHook<TMessage,TResponse>.BeforeCommitAsync(...)` | Interface method | Post-handler validation/staging inside `TransactionalCommandBehavior`, before persistence. |
+| `AddCommandPreCommitHook<TMessage,TResponse,THook>()` | DI extension | Registers a scoped typed hook and the open transaction behavior; the application supplies `IUnitOfWork`. |
 | `TrellisMediatorTelemetryOptions.IncludeErrorDetail` | Property | Opt-in to include `Error.Detail` in logs/traces (default `false`). |
 | `TracingBehavior<,>.ActivitySourceName` | `const string` | `"Trellis.Mediator"` — add this to your OpenTelemetry config. |
 | `ServiceCollectionExtensions.PipelineBehaviors` | Property | Ordered inspection list; source-generator configuration must use literal `typeof(...)` entries. |
@@ -131,7 +134,7 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 | 6 | Direct/via resource authorization *(opt-in)* | `IAuthorizeResource<T>` / `IAuthorizeResourceVia<T>` messages | Loads the resource/owners and applies the message's rule. Publishes the direct resource or via leaf, immediately before validation. |
 | 7 | `ValidationBehavior` | all messages | Runs `IValidate.Validate()` and every `IMessageValidator<TMessage>`; aggregates `Error.InvalidInput`. |
 | 8 | `DomainEventDispatchBehavior` *(opt-in)* | `ICommand<TResponse>` where `TResponse : IResult` | After a successful response, extracts the aggregate via `IResult<TAggregate>` and publishes the events it raised. Inserted by `AddDomainEventDispatch(...)`. See [Domain event dispatch](#domain-event-dispatch). |
-| 9 | `TransactionalCommandBehavior` *(opt-in, EFCore)* | `ICommand<TResponse>` | `IUnitOfWork.CommitAsync` on success; wraps each command in `using var scope = unitOfWork.BeginScope();` so nested commands defer commit to the outermost scope. Remains innermost in either registration order. See [Nested commands and scope-aware commit](integration-ef.md#nested-commands-and-scope-aware-commit). |
+| 9 | `TransactionalCommandBehavior` *(opt-in, provider-neutral)* | `ICommand<TResponse>` | Awaits pre-commit hooks on success or explicit persist-on-failure, then calls `IUnitOfWork.CommitAsync` if all accept. Nested commits defer to the owner. Hooks run inside this innermost behavior, not in a new slot. See [Nested commands and scope-aware commit](integration-ef.md#nested-commands-and-scope-aware-commit). |
 
 `ServiceCollectionExtensions.PipelineBehaviors` exposes the six standard types for
 inspection. Mediator `3.0.2` does not evaluate `PipelineBehaviors.ToArray()` as generator
@@ -142,6 +145,38 @@ registration paths; publish-only success does not prove native DI dispatch works
 
 > [!NOTE]
 > Rows 8 and 9 are designed to be **registration-order-independent**: `AddDomainEventDispatch(...)` and `AddTrellisUnitOfWork<TContext>()` both detect the other and shuffle so the canonical order (events fire after the transaction commits, so handlers see committed state) holds regardless of which `services.Add*` call comes first.
+
+## Command pre-commit hooks
+
+Use a hook when post-handler validation or extra staged writes must complete before
+persistence. An outer behavior's code after `next(...)` can run after the innermost
+transaction has already committed; registration order is not a reliable audit seam.
+
+```csharp
+services.AddTrellisBehaviors();
+services.AddCommandPreCommitHook<CreateAuditedOrderCommand, Result<AuditedOrderOutcome>, CreateOrderAuditHook>();
+services.AddTrellisUnitOfWork<AppDbContext>();
+```
+
+The hook's `BeforeCommitAsync(message, response, token)` returns
+`ValueTask<Result<Trellis.Unit>>`. Hooks run sequentially in registration order for
+success and explicit persist-on-failure outcomes. The first rejection replaces the
+response and vetoes persistence, even if it returns `FailAfterCommit`. Ordinary failed
+or throwing handlers skip hooks. Exceptions and cancellation propagate through the
+normal pipeline.
+
+Stage through repositories sharing the command's unit of work; do not save, publish, or
+perform external effects in a hook. Nested commands run their own hooks before deferred
+commits. A veto does not roll back staging or prevent an outer command from ignoring the
+failure: propagate failures and discard the failed context. Pending records must be
+dispatch-specific because scoped hooks can be reused and never see ordinary failed
+handlers. The [same-commit audit recipe](../api_reference/trellis-api-cookbook.md#same-commit-audit-staging)
+uses an internal outcome carrier and demonstrates tracked events and outbox compatibility.
+
+The matching builder slot is `UseCommandPreCommitHook<TMessage,TResponse,THook>()`.
+Neither registration provides the store. Explicitly closed/generated pipelines bind
+`ICommandPreCommitHook<Command,Response>` directly instead of installing an open
+transaction behavior; see the [exact registration contract](../api_reference/trellis-api-mediator.md#commandprecommithookservicecollectionextensions).
 
 ## Permission authorization
 

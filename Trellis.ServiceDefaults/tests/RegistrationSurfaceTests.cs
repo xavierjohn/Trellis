@@ -64,6 +64,7 @@ public class RegistrationSurfaceTests
         ["Trellis.Asp::AddCachingActorProvider"] = new("UseCachingActorProvider", "Decorates the ambient actor provider."),
         ["Trellis.Asp::AddTrellisWorkerActor"] = new("UseWorkerActor", "Ambient actor for non-HTTP hosts."),
         ["Trellis.Mediator::AddTrellisBehaviors"] = new("UseMediator", "Core pipeline behaviors."),
+        ["Trellis.Mediator::AddCommandPreCommitHook"] = new("UseCommandPreCommitHook", "Command-specific validation and staging before the unit-of-work commit."),
         ["Trellis.Mediator::AddResourceAuthorization"] = new("UseResourceAuthorization", "Resource-authorization behavior."),
         ["Trellis.Mediator::AddSharedResourceAuthorization"] = new("UseSharedResourceAuthorization", "Resource-authorization behavior with its shared-loader adapter."),
         ["Trellis.Mediator::AddRelatedResourceAuthorization"] = new("UseRelatedResourceAuthorization", "Related-resource authorization behavior."),
