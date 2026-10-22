@@ -28,8 +28,13 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 - **Error/Error.InvalidInput assertions** — `HaveCode()`, `HaveFieldError()`
 - **Unwrap helpers** — Extract values in test code without analyzer warnings
 - **FakeRepository** — In-memory aggregate store with domain event tracking
+- **FakeUnitOfWork** — Configurable commit results, call/attempt counters, and deferred nested commits
 - **TestActorProvider** — Mutable actor/identity provider with shared async-flow scoping
 - **Identity agreement** — `await actorProvider.ShouldHaveConsistentActorIdentityAsync(identityProvider, ct)` compares sequential resolutions with provider-specific diagnostics
+
+`FakeUnitOfWork` implements provider-neutral `IUnitOfWork` without EF Core or Mediator.
+It tests commit decisions and scope ownership, not persistence atomicity or rollback.
+See the full documentation for setup and counter semantics.
 
 For ASP.NET Core integration test helpers (WebApplicationFactory, DI replacement), see [Trellis.Testing.AspNetCore](https://www.nuget.org/packages/Trellis.Testing.AspNetCore).
 

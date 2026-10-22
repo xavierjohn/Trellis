@@ -1,9 +1,9 @@
 ﻿---
 title: Integration Testing
 package: Trellis.Testing
-topics: [testing, assertions, result, maybe, fakerepository, webfactory, actor-headers, http-replay, idempotency-conformance]
-related_api_reference: [trellis-api-testing-reference.md, trellis-api-testing-aspnetcore.md, trellis-api-testing-worker.md, trellis-api-testing-idempotency.md, trellis-api-core.md]
-last_verified: 2026-10-06
+topics: [testing, assertions, result, maybe, fakerepository, fakeunitofwork, webfactory, actor-headers, http-replay, idempotency-conformance]
+related_api_reference: [trellis-api-testing-reference.md, trellis-api-testing-aspnetcore.md, trellis-api-testing-worker.md, trellis-api-testing-idempotency.md, trellis-api-core.md, trellis-api-persistence-abstractions.md]
+last_verified: 2026-10-22
 audience: [developer]
 ---
 # Integration Testing
@@ -20,6 +20,7 @@ audience: [developer]
 | Assert error code / detail / payload type | `error.Should().HaveCode(...)` / `.HaveDetailContaining(...)` / `.BeOfType<TError>()` | [Error assertions](#error-assertions) |
 | Assert a validation field violation | `unprocessable.Should().HaveFieldError(...)` | [Validation error assertions](#validation-error-assertions) |
 | Stub a repository with unique-constraint and not-found semantics | `new FakeRepository<TAggregate, TId>().WithUniqueConstraint(...)` | [FakeRepository](#fakerepository) |
+| Test commit decisions and nested ownership without a database | `new FakeUnitOfWork()` | [FakeUnitOfWork](#fakeunitofwork) |
 | Provide an actor inside a unit test | `new TestActorProvider(id, perms)` / `.WithActor(...)` scope | [TestActorProvider](#testactorprovider) |
 | Send `X-Test-Actor` from an integration test client | `factory.CreateClientWithActor(...)` | [WebApplicationFactory helpers](#webapplicationfactory-helpers) |
 | Replace EF provider in `WebApplicationFactory` | `services.ReplaceDbProvider<TContext>(...)` | [WebApplicationFactory helpers](#webapplicationfactory-helpers) |
@@ -34,7 +35,7 @@ audience: [developer]
 
 - You are writing handler / domain unit tests that consume Trellis `Result<T>`, `Maybe<T>`, or the closed `Error` ADT.
 - You are writing ASP.NET Core integration tests with `WebApplicationFactory<TEntryPoint>` and need actor headers, DI replacement, deterministic time, or `.http` replay.
-- You want fakes (`FakeRepository<,>`, `TestActorProvider`) instead of hand-rolled mocks for repositories and authorization.
+- You want fakes (`FakeRepository<,>`, `FakeUnitOfWork`, `TestActorProvider`) instead of hand-rolled mocks for repositories, commits, and authorization.
 
 ## Surface at a glance
 
@@ -48,6 +49,7 @@ audience: [developer]
 | `UnwrapExtensions` | `Trellis.Testing` | Test-only `Unwrap()` / `UnwrapError()` (sync, async, `Result<Unit>`, `Maybe<T>`). |
 | `FakeRepository<TAggregate, TId>` | `Trellis.Testing` | In-memory repository with unique-constraint, not-found, and domain-event capture. |
 | `FakeSharedResourceLoader<TResource, TId>` | `Trellis.Testing` | Test double over `SharedResourceLoaderById<TResource, TId>` backed by `FakeRepository`. |
+| `FakeUnitOfWork` | `Trellis.Testing` | Configurable commit outcomes and call/attempt counters with deferred nested commits. |
 | `TestActorProvider` / `TestActorScope` | `Trellis.Testing` | `IActorProvider` for handler tests, with scoped `WithActor(...)` overrides. |
 | `AggregateTestMutator` | `Trellis.Testing` | `SetMaybeField` / `ClearMaybeField` for whitebox aggregate setup. |
 | `WebApplicationFactoryExtensions` | `Trellis.Testing.AspNetCore` | `CreateClientWithActor(...)`, `CreateClientWithEntraTokenAsync(...)`. |
@@ -290,6 +292,58 @@ var dupe = new Order(new OrderId(Guid.NewGuid()), "ada@example.com");
 
 > [!NOTE]
 > `SaveAsync` / `DeleteAsync` are not on `RepositoryBase<TAggregate, TId>`. If a handler accepts the `IRepository` contract, it cannot call them; use the staging API (`Add` / `Remove` / `RemoveByIdAsync`) instead. See cookbook **Recipe 16 — Unit of work in handlers**.
+
+## FakeUnitOfWork
+
+Use `FakeUnitOfWork` as `IUnitOfWork` when exercising the real
+`TransactionalCommandBehavior` without EF Core or a DI container. The fake implements
+the provider-neutral contract; it does not introduce a Mediator or EF dependency.
+Ordinary handler-only tests still need no unit of work.
+
+```csharp
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+var unitOfWork = new FakeUnitOfWork
+{
+    CommitResult = Result.Fail(new Error.Conflict("test.commit-failed"))
+};
+
+using var owner = unitOfWork.BeginScope();
+owner.IsOwner.Should().BeTrue();
+using (var nested = unitOfWork.BeginScope())
+{
+    nested.IsOwner.Should().BeFalse();
+    (await unitOfWork.CommitAsync()).Should().BeSuccess();
+    unitOfWork.CommitCallCount.Should().Be(1);
+    unitOfWork.CommitAttemptCount.Should().Be(0);
+}
+
+(await unitOfWork.CommitAsync()).Should().BeFailureOfType<Error.Conflict>();
+unitOfWork.CommitCallCount.Should().Be(2);
+unitOfWork.CommitAttemptCount.Should().Be(1);
+```
+
+`CommitResult` defaults to success and can change between attempts. `CommitCallCount`
+counts every call; `CommitAttemptCount` counts non-deferred calls, including failed
+and canceled attempts, not successful writes. Calls without a scope also count as
+attempts. Scope disposal is idempotent and never commits; dispose nested scopes in
+reverse opening order.
+
+An already-canceled token returns a canceled task on a non-deferred call. A nested
+call returns deferred success without using the configured result or checking the
+token, matching the EF adapter. Normal calls complete immediately; the fake does not
+simulate in-flight I/O cancellation.
+
+> [!IMPORTANT]
+> This fake tests pipeline decisions, not database atomicity. It does not coordinate
+> `FakeRepository`, track aggregates, persist data, or roll back changes. Repository
+> changes remain immediately visible after a failed commit. Use one instance per
+> test/DI scope and serial nested commands; keep real-provider integration tests for
+> atomicity, rollback, and tracked post-commit events.
+
+Full signatures: [FakeUnitOfWork API reference](../api_reference/trellis-api-testing-reference.md#fakeunitofwork).
 
 ## TestActorProvider
 

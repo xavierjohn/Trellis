@@ -164,7 +164,7 @@ Start with `Trellis.Core`; add only the integrations your application uses. `Tre
 
 | Package | Use it for |
 | --- | --- |
-| [Trellis.Testing](https://www.nuget.org/packages/Trellis.Testing) | FluentAssertions extensions, fake repositories, and test actor providers |
+| [Trellis.Testing](https://www.nuget.org/packages/Trellis.Testing) | FluentAssertions extensions, repository/unit-of-work fakes, and test actor providers |
 | [Trellis.Testing.AspNetCore](https://www.nuget.org/packages/Trellis.Testing.AspNetCore) | `WebApplicationFactory`, dependency replacement, fake time, and `.http` replay helpers |
 | [Trellis.Testing.Idempotency](https://www.nuget.org/packages/Trellis.Testing.Idempotency) | Executable conformance tests for custom `IIdempotencyStore` implementations |
 | [Trellis.Testing.Worker](https://www.nuget.org/packages/Trellis.Testing.Worker) | Deterministic integration testing for `BackgroundService` workers |

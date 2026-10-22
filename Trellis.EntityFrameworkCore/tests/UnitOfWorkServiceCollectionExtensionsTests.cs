@@ -4,6 +4,7 @@ using global::Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Mediator;
+using Trellis.Testing;
 using static RepositoryBaseTests;
 
 public class UnitOfWorkServiceCollectionExtensionsTests
@@ -103,7 +104,7 @@ public class UnitOfWorkServiceCollectionExtensionsTests
         // registrations (a second Copilot review round called out the empty implementation slot).
         var services = CreateServices();
         var preBuiltBehavior = new TransactionalCommandBehavior<ClosedTransactionalCommand, Result<Unit>>(
-            new NoopUnitOfWork());
+            new FakeUnitOfWork());
         services.AddSingleton<IPipelineBehavior<ClosedTransactionalCommand, Result<Unit>>>(preBuiltBehavior);
 
         var act = () => services.AddTrellisUnitOfWork<RepoTestDbContext>();
@@ -112,20 +113,6 @@ public class UnitOfWorkServiceCollectionExtensionsTests
             .WithMessage("*TransactionalCommandBehavior*closed*generic*")
             .WithMessage("*TransactionalCommandBehavior`2*")
             .WithMessage("*AddTrellisUnitOfWorkWithoutBehavior*");
-    }
-
-    private sealed class NoopUnitOfWork : IUnitOfWork
-    {
-        public Task<global::Trellis.Result<global::Trellis.Unit>> CommitAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(global::Trellis.Result.Ok());
-
-        public IUnitOfWorkScope BeginScope() => new NoopScope();
-
-        private sealed class NoopScope : IUnitOfWorkScope
-        {
-            public bool IsOwner => true;
-            public void Dispose() { }
-        }
     }
 
     [Fact]
