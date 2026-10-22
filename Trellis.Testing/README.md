@@ -29,9 +29,41 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 - **Error.InvalidInput assertions** — `HaveFieldError()`, `HaveFieldErrorWithDetail()`, `HaveFieldCount()`
 - **Unwrap helpers** — `Unwrap()` for extracting values in test code without analyzer warnings
 - **FakeRepository** — In-memory aggregate store with domain event tracking and unique constraints
+- **FakeUnitOfWork** — Configurable commit outcomes and counters with owner/nested-scope commit deferral
 - **TestActorProvider** — Mutable actor/identity provider with shared `AsyncLocal` scoping for authorization tests
 - **Identity agreement** — `await actorProvider.ShouldHaveConsistentActorIdentityAsync(identityProvider, ct)` asserts the full actor's ID matches identity-only resolution, sequentially and with provider-specific diagnostics
 - **AggregateTestMutator** — Reflection helpers for setting `Maybe<T>` backing fields in tests
+
+## FakeUnitOfWork
+
+Use `FakeUnitOfWork` when a test exercises the real transactional command behavior
+without a database:
+
+```csharp
+using FluentAssertions;
+using Trellis;
+using Trellis.Testing;
+
+var unitOfWork = new FakeUnitOfWork
+{
+    CommitResult = Result.Fail(new Error.Conflict("test.commit-failed"))
+};
+
+using var scope = unitOfWork.BeginScope();
+(await unitOfWork.CommitAsync()).Should().BeFailureOfType<Error.Conflict>();
+unitOfWork.CommitCallCount.Should().Be(1);
+unitOfWork.CommitAttemptCount.Should().Be(1);
+```
+
+`CommitResult` defaults to success. `CommitCallCount` includes every call;
+`CommitAttemptCount` excludes deferred nested calls but includes failed and canceled
+attempts. Nested commits return success until only the owning scope remains.
+Scope disposal never commits. An already-canceled token cancels a non-deferred call.
+
+The fake depends only on provider-neutral persistence abstractions, not EF Core or
+Mediator. It does not coordinate repositories, persist data, or roll back changes.
+Use one instance per test/DI scope, dispose nested scopes in reverse order, and keep
+real-provider integration tests for atomicity.
 
 ## ASP.NET Core Integration Tests
 

@@ -22,7 +22,7 @@ public class TransactionalCommandBehaviorTests
         // Assert
         result.Should().BeSuccess();
         result.Unwrap().Should().Be("done");
-        uow.CommitCount.Should().Be(1);
+        uow.CommitAttemptCount.Should().Be(1);
     }
 
     [Fact]
@@ -42,7 +42,9 @@ public class TransactionalCommandBehaviorTests
 
         // Assert
         result.Should().BeFailure();
-        uow.CommitCount.Should().Be(0);
+        uow.CommitAttemptCount.Should().Be(0);
+        using var nextScope = uow.BeginScope();
+        nextScope.IsOwner.Should().BeTrue();
     }
 
     [Fact]
@@ -63,7 +65,7 @@ public class TransactionalCommandBehaviorTests
         // Assert
         result.Should().BeFailure();
         result.UnwrapError().Should().BeOfType<Error.Conflict>();
-        uow.CommitCount.Should().Be(1);
+        uow.CommitAttemptCount.Should().Be(1);
     }
 
     [Fact]
@@ -83,7 +85,7 @@ public class TransactionalCommandBehaviorTests
 
         // Assert
         result.Should().BeSuccess();
-        uow.CommitCount.Should().Be(1);
+        uow.CommitAttemptCount.Should().Be(1);
     }
 
     /// <summary>
@@ -100,7 +102,7 @@ public class TransactionalCommandBehaviorTests
     {
         // Arrange — simulate the inner command's behavior running inside the outer's scope.
         var ct = TestContext.Current.CancellationToken;
-        var uow = new ScopeTrackingFakeUnitOfWork();
+        var uow = new FakeUnitOfWork();
         var outerBehavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
         var innerBehavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
 
@@ -124,8 +126,8 @@ public class TransactionalCommandBehaviorTests
         result.Should().BeSuccess();
         uow.CommitCallCount.Should().Be(2,
             "both outer and inner behaviors call CommitAsync; the inner call is deferred internally");
-        uow.ActualPersistCount.Should().Be(1,
-            "only the outermost scope's commit actually persists changes; nested CommitAsync calls return success without persisting");
+        uow.CommitAttemptCount.Should().Be(1,
+            "only the outermost scope attempts a commit; nested CommitAsync calls return deferred success");
     }
 
     /// <summary>
@@ -139,7 +141,7 @@ public class TransactionalCommandBehaviorTests
     public async Task Handle_nested_outer_failure_after_inner_success_does_not_commit_anything()
     {
         var ct = TestContext.Current.CancellationToken;
-        var uow = new ScopeTrackingFakeUnitOfWork();
+        var uow = new FakeUnitOfWork();
         var outerBehavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
         var innerBehavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
 
@@ -159,8 +161,8 @@ public class TransactionalCommandBehaviorTests
         result.Should().BeFailure();
         uow.CommitCallCount.Should().Be(1,
             "only the inner's deferred CommitAsync was called; the outer's failure short-circuits before its commit");
-        uow.ActualPersistCount.Should().Be(0,
-            "the inner commit was deferred and the outer never committed — no persistence happens");
+        uow.CommitAttemptCount.Should().Be(0,
+            "the inner commit was deferred and the outer failure prevented a commit attempt");
     }
 
     /// <summary>
@@ -188,7 +190,7 @@ public class TransactionalCommandBehaviorTests
         // Assert
         result.Should().BeFailure();
         result.Error.Should().BeSameAs(error);
-        uow.CommitCount.Should().Be(1,
+        uow.CommitAttemptCount.Should().Be(1,
             "FailAfterCommit must trigger the post-handler commit so the staged failure-state row is persisted");
     }
 
@@ -214,7 +216,7 @@ public class TransactionalCommandBehaviorTests
 
         result.Should().BeFailure();
         result.UnwrapError().Should().BeSameAs(commitError);
-        uow.CommitCount.Should().Be(1);
+        uow.CommitAttemptCount.Should().Be(1);
     }
 
     /// <summary>
@@ -238,7 +240,7 @@ public class TransactionalCommandBehaviorTests
 
         result.Should().BeFailure();
         result.Error.Should().BeSameAs(error);
-        uow.CommitCount.Should().Be(1);
+        uow.CommitAttemptCount.Should().Be(1);
     }
 
     /// <summary>
@@ -260,82 +262,13 @@ public class TransactionalCommandBehaviorTests
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("handler blew up");
-        uow.CommitCount.Should().Be(0,
+        uow.CommitAttemptCount.Should().Be(0,
             "an exception bypasses the success/persist-on-failure branches; no commit must run");
+        using var nextScope = uow.BeginScope();
+        nextScope.IsOwner.Should().BeTrue();
     }
 
     #region Test Infrastructure
-
-    private sealed class FakeUnitOfWork : IUnitOfWork
-    {
-        public int CommitCount { get; private set; }
-        public Result<Unit>? CommitResult { get; init; }
-
-        public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
-        {
-            CommitCount++;
-            return Task.FromResult(CommitResult ?? Result.Ok());
-        }
-
-        public IUnitOfWorkScope BeginScope() => new NoOpScope();
-
-        private sealed class NoOpScope : IUnitOfWorkScope
-        {
-            public bool IsOwner => true;
-            public void Dispose() { }
-        }
-    }
-
-    /// <summary>
-    /// Fake unit-of-work that emulates the depth-tracking + deferred-commit semantics of
-    /// <see cref="EfUnitOfWork{TContext}"/> so the regression tests above don't depend on a
-    /// real <c>DbContext</c>.
-    /// </summary>
-    private sealed class ScopeTrackingFakeUnitOfWork : IUnitOfWork
-    {
-        private int _depth;
-
-        public int CommitCallCount { get; private set; }
-
-        public int ActualPersistCount { get; private set; }
-
-        public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
-        {
-            CommitCallCount++;
-            if (_depth > 1)
-                return Task.FromResult(Result.Ok());
-
-            ActualPersistCount++;
-            return Task.FromResult(Result.Ok());
-        }
-
-        public IUnitOfWorkScope BeginScope()
-        {
-            _depth++;
-            return new Releaser(this);
-        }
-
-        private sealed class Releaser : IUnitOfWorkScope
-        {
-            private readonly ScopeTrackingFakeUnitOfWork _owner;
-            private bool _disposed;
-
-            public Releaser(ScopeTrackingFakeUnitOfWork owner)
-            {
-                _owner = owner;
-                IsOwner = owner._depth == 1;
-            }
-
-            public bool IsOwner { get; }
-
-            public void Dispose()
-            {
-                if (_disposed) return;
-                _disposed = true;
-                _owner._depth--;
-            }
-        }
-    }
 
     private sealed record FakeCommand : global::Mediator.ICommand<Result<string>>;
 

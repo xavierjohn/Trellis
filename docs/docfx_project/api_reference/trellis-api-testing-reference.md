@@ -1,18 +1,18 @@
 ﻿---
 package: Trellis.Testing
 namespaces: [Trellis.Testing]
-types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", TestActorProvider, TestActorScope, ActorIdentityAssertionsExtensions, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator]
+types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", FakeUnitOfWork, TestActorProvider, TestActorScope, ActorIdentityAssertionsExtensions, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator]
 version: v3
-last_verified: 2026-10-13
+last_verified: 2026-10-22
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when writing unit or handler tests for Result, Maybe, errors or mediator handlers: FluentAssertions extensions, unwrap helpers and fakes (Trellis.Testing)."
+agent_description: "Open when writing unit or handler tests: Result/Maybe/error assertions, fake repositories, fake unit-of-work commits and scopes, and test actor providers (Trellis.Testing)."
 ---
 # Trellis.Testing — API Reference
 
 - **Package:** `Trellis.Testing`
 - **Namespace:** `Trellis.Testing`
-- **Purpose:** FluentAssertions extensions, unwrap helpers, and test doubles (FakeRepository, TestActorProvider) for Trellis applications.
+- **Purpose:** FluentAssertions extensions, unwrap helpers, and test doubles (FakeRepository, FakeUnitOfWork, TestActorProvider) for Trellis applications.
 
 See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror) — recipes using this package.
 
@@ -22,7 +22,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-hand
 
 - You are writing unit/handler/domain tests for Trellis `Result`, `Maybe`, errors, or mediator handlers.
 - You need FluentAssertions extensions for success/failure/error-shape assertions.
-- You need test-only unwrap helpers, fake repositories, or test actor providers.
+- You need test-only unwrap helpers, fake repositories, fake unit-of-work commits, or test actor providers.
 
 ## Patterns Index
 
@@ -37,6 +37,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-hand
 | Provide an actor in Mediator-dispatch handler tests | Register `TestActorProvider` as `IActorProvider` with the normal pipeline and fake dependencies | [`TestActorProvider`](#testactorprovider) |
 | Assert full actor and identity-only providers agree | `await actorProvider.ShouldHaveConsistentActorIdentityAsync(identityProvider, token)` | [`ActorIdentityAssertionsExtensions`](#actoridentityassertionsextensions) |
 | Stub repository behavior | `FakeRepository<TAggregate,TId>` | [`FakeRepository<TAggregate,TId>`](#fakerepositorytaggregate-tid) |
+| Test commit decisions and nested scopes without a database | `FakeUnitOfWork` | [`FakeUnitOfWork`](#fakeunitofwork) |
 
 ## Common traps
 
@@ -494,6 +495,41 @@ public class FakeSharedResourceLoader<TResource, TId> : SharedResourceLoaderById
     public override Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken);
 }
 ```
+
+#### `FakeUnitOfWork`
+
+```csharp
+public sealed class FakeUnitOfWork : IUnitOfWork
+{
+    public FakeUnitOfWork();
+
+    public Result<Unit> CommitResult { get; set; }
+    public int CommitCallCount { get; }
+    public int CommitAttemptCount { get; }
+
+    public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default);
+    public IUnitOfWorkScope BeginScope();
+}
+```
+
+Provider-neutral test double for the [`IUnitOfWork` contract](trellis-api-persistence-abstractions.md#iunitofwork).
+`Trellis.Testing` references `Trellis.Persistence.Abstractions`, not EF Core or Mediator.
+Pass the fake to the real `TransactionalCommandBehavior` when testing commit decisions;
+an ordinary handler-only test does not need a unit of work.
+
+| Member / scenario | Behavior |
+| --- | --- |
+| `CommitResult` | Defaults to `Result.Ok()`. Each non-deferred, uncanceled call returns the current configured result unchanged; changing it affects subsequent attempts. A failed attempt does not permanently reject later attempts. |
+| `CommitCallCount` | Counts every `CommitAsync` invocation, including deferred nested calls and canceled attempts. Starts at zero. |
+| `CommitAttemptCount` | Counts calls at scope depth zero or one, including success, failure, and cancellation. Deferred calls do not increment it. This is not a successful-write count. |
+| Nested commit (depth > 1) | Returns success without using `CommitResult` or observing cancellation, matching the EF adapter's deferred-commit behavior. |
+| Cancellation at depth zero or one | An already-canceled token produces a canceled task carrying that token, instead of the configured result. Normal calls complete synchronously; no in-flight I/O or cancellation is simulated. |
+| `BeginScope` | Returns `IUnitOfWorkScope` with fixed `IsOwner`: true only for the outermost scope. Dispose scopes in reverse opening order. Disposal is idempotent, restores depth, and never commits. |
+
+Use one instance per test or DI scope and serial nested commands only. The fake does not
+coordinate `FakeRepository`, track aggregates, persist data, or simulate rollback.
+Repository changes remain immediately visible even when a commit fails. Keep real-provider
+integration tests for persistence atomicity, rollback, and post-commit aggregate tracking.
 
 #### `TestActorProvider`
 ```csharp

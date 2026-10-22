@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - provider-neutral unit-of-work test double
+
+`FakeUnitOfWork` in `Trellis.Testing` provides configurable `CommitResult`,
+`CommitCallCount` / `CommitAttemptCount`, fixed scope ownership, and deferred nested
+commits. Pre-canceled non-deferred calls return canceled tasks. It models commit
+decisions without coordinating repositories, persisting data, or simulating rollback.
+The added dependency is `Trellis.Persistence.Abstractions`, not EF Core or Mediator.
+
 ### Added - inside-transaction behavior placement (TFR-31)
 
 `AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` and its constrained

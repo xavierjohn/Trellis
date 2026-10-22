@@ -1761,6 +1761,12 @@ behavior around a real handler without a container to verify staging, cleanup on
 exit paths, and preservation of original exceptions. Fake repositories are immediately
 visible and do not prove transaction atomicity; keep the SQLite tests for that boundary.
 
+To include the real `TransactionalCommandBehavior` in a database-free test, pass a
+[`FakeUnitOfWork`](trellis-api-testing-reference.md#fakeunitofwork) as its `IUnitOfWork`.
+Configure `CommitResult` to exercise commit failure and compare `CommitCallCount`
+with `CommitAttemptCount` to distinguish deferred nested calls from owner attempts.
+The fake supplies no repository rollback or persistence atomicity.
+
 ---
 
 ## Recipe 17 — Defining custom domain events: `OccurredAt` is the only timestamp
