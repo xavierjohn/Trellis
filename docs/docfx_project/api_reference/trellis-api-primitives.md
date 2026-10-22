@@ -3,7 +3,7 @@ package: Trellis.Primitives
 namespaces: [Trellis, Trellis.Primitives]
 types: [Age, CountryCode, CurrencyCode, EmailAddress, GeoBoundingBox, GeoBounds, GeoCoordinate, Hostname, IpAddress, LanguageCode, MonetaryAmount, Money, Percentage, PhoneNumber, Slug, Url, WeeklyPeriod, WeeklySchedule, CompositeValueObjectJsonConverter<T>, PrimitiveValueObjectTraceProviderBuilderExtensions]
 version: v3
-last_verified: 2026-10-12
+last_verified: 2026-10-22
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when using ready-made value objects such as EmailAddress, Money or GeoCoordinate, building geographic bounds, or choosing a built-in primitive versus a custom one."
@@ -495,6 +495,19 @@ underlying primitive of an `IScalarValue<TSelf, TPrimitive>` property, or the pr
 is already a primitive. The target type must expose a public static
 `Result<T> TryCreate(p1, ..., pN[, string? fieldName])` whose parameters are the primitive types in the
 order the properties are declared.
+
+**Factory selection is positional, not name-based.** Keep property declarations and primitive
+factory parameters in the same order. Different scalar value-object types can reduce to the same
+primitive (for example, five distinct `RequiredString<TSelf>` properties all become `string`), so
+reordering only declarations or only parameters can compile and silently swap field values.
+JSON member order is independent: values are looked up by JSON name, then passed in property order.
+Keep exactly one matching primitive-prefix overload; any trailing parameters must be optional
+and receive their declared defaults, not the live JSON path.
+
+A typed `TryCreate` overload accepting the scalar properties can coexist with that primitive-input
+overload, but does not replace it or match its primitive prefix. The primitive factory can validate
+and `Bind` to the typed factory so both callers share construction and cross-field validation.
+See [Recipe 13's typed factories and ordering contract](trellis-api-cookbook.md#typed-composite-factories-and-property-order).
 
 | Signature | Returns | Description |
 | --- | --- | --- |

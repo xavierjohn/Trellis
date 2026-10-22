@@ -4,7 +4,7 @@ namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator
 types: [recipes]
 related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
-last_verified: 2026-10-21
+last_verified: 2026-10-22
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when the task lookup in trellis-start-here.md points to a recipe: compile-checked end-to-end patterns that cross Trellis packages."
@@ -1007,107 +1007,170 @@ a versioning-SDK dependency. Location still uses `.WithVersionedRoute()` per res
 | Task within this recipe | Read |
 |---|---|
 | Define and persist the composite value object | [Domain and persistence contract](#composite-value-object-domain-and-persistence-contract), including the solution and storage rules |
+| Use typed interior fields and choose the JSON or domain factory without swapping values | [Typed factories and property order](#typed-composite-factories-and-property-order) |
 | Choose the JSON boundary shape | [JSON wire shape](#composite-value-object-json-wire-shape), then [supported interiors and DTO seam](#supported-property-shapes-inside-a-composite-vo--when-to-map-to-a-dto-instead) |
 | Map a read-only collection with a backing field | [Owned collections](#owned-collections-with-a-private-backing-field) |
 | Only require a nonblank string | [Core string guard](trellis-api-core.md#required-nonblank-strings); the composite recipe is not needed |
 
 ### Composite value object domain and persistence contract
 
-**Problem.** Persist a multi-field value object (`ShippingAddress` with street/city/state/postalCode/country) as part of a `Customer` aggregate. Every field is required, the VO must validate at construction, and the JSON wire format must reuse the same validation as the domain TryCreate.
+**Problem.** Persist a `ShippingAddress` inside a `Customer`, with typed street/city/state/postalCode/country fields. Every field is required, construction returns a `Result<ShippingAddress>`, and JSON must reuse the domain validation while remaining a flat object of primitive fields.
 
-The unobvious bits this recipe pins down:
+#### Typed composite factories and property order
 
-- `ApplyTrellisConventions` already configures composite value objects as owned navigations — **you do not need `builder.OwnsOne(...)` in your `IEntityTypeConfiguration`** (the `CompositeValueObjectConvention` discovers them by **inheritance from `ValueObject`** when the assembly is passed to `ApplyTrellisConventions`). The `[OwnedEntity]` attribute is **not** the convention's discovery key — it drives the source generator (which emits the parameterless ctor EF Core's materializer needs) and the analyzers `TRLS036` / `TRLS037` / `TRLS038`. The convention maps any `ValueObject` subtype in the scanned assemblies as an owned type; without a parameterless constructor materialization fails — Trellis fails fast at model-build with an actionable `TrellisPersistenceMappingException` naming the value object (instead of EF Core's cryptic "No suitable constructor was found"). `[OwnedEntity]` generates the constructor for you. **Domain-purity note (axiom A8):** because `[OwnedEntity]` lives in `Trellis.EntityFrameworkCore`, annotating a domain value object with it references EF Core; to keep a domain value object EF-free, declare a private parameterless constructor yourself instead (as `Money` does) and the convention materializes via it — `[OwnedEntity]` is the convenient default, the hand-written ctor is the EF-free alternative. Referencing the package analyzer-only (`OutputItemType="Analyzer" ReferenceOutputAssembly="false"`) pulls in the generators but does **not** make the layer EF-free — see [trellis-api-efcore.md](trellis-api-efcore.md#maybet-storage-owned-types-and-migrations).
-- **With `[OwnedEntity]`,** the class **must** be `partial` (`TRLS036`), inherit `ValueObject` (`TRLS038`), and have **no** hand-written parameterless constructor (`TRLS037`) — the source generator emits one for EF Core's materialization path. (To keep the value object EF-free instead, omit `[OwnedEntity]` and hand-write a `private` parameterless constructor, as the previous bullet describes.)
-- Recipe 1's custom `Money` uses that EF-free alternative with private setters; the owning aggregate also needs a materialization constructor that does not take owned navigations. The `Customer(CustomerId id)` constructor below serves that purpose.
-- `[JsonConverter(typeof(CompositeValueObjectJsonConverter<TSelf>))]` routes JSON deserialization through the public `TryCreate`, so the API surface and the domain agree on what's valid. Without it, model binding produces a default-constructed VO that bypasses `TryCreate`.
+Use a string-backed scalar value object for each component and write **both** composite factories:
+
+| Factory | Caller | Responsibility |
+|---|---|---|
+| Primitive-input `TryCreate` | JSON converter or code with unvalidated strings | Validate every scalar, accumulate field failures with `Combine`, then `Bind` to the typed factory. |
+| Typed-input `TryCreate` | Domain code with validated scalar instances | Reject missing references with `Result.EnsureNotNull`, then construct the composite. Put additional cross-field rules here so both entry paths use them. |
+
+`RequiredString<TSelf>` supplies the scalar factories; you write the two `ShippingAddress.TryCreate` overloads. `[Trim, NotDefault]` opts into trimming and blank rejection: these example types require nonblank text, not postal/ISO-format validity. `ValueObject` supplies equality, hashing, and comparison; the composite supplies only its ordered `GetEqualityComponents`.
+
+> [!WARNING]
+> **Property declaration order and primitive-factory parameter order are one positional contract.** The converter reduces scalar properties to their primitive types and selects `TryCreate` by parameter types and positions, **not parameter names**. All five components below become `string`, so swapping city/state in only one place can compile and silently exchange values.
+>
+> Keep `Street, City, State, PostalCode, Country` aligned with `street, city, state, postalCode, country`. Keep the typed overload, constructor assignments, and equality components in that order too. Named arguments at a handwritten call site do not change the converter's positional call. JSON members may arrive in any order: they are looked up by JSON name before invocation. After a refactor, check every field with distinct values in a JSON round trip.
+
+The distinct-value serialization and JSON member-order assertions in `Examples/CookbookSnippets.Tests/Recipe13FactoryTests.cs` demonstrate this check.
+
+The converter needs exactly one unambiguous primitive-prefix `TryCreate` returning `Result<ShippingAddress>`; trailing parameters must be optional. The typed overload does not match that primitive prefix and is not called directly by the converter.
 
 ```csharp
 using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
 using Trellis;
 using Trellis.EntityFrameworkCore;
 using Trellis.Primitives;
 
-[OwnedEntity]                                                        // TRLS036 if not partial; TRLS037 if you add a parameterless ctor; TRLS038 if not ValueObject
+[Trim, NotDefault]
+public sealed partial class StreetLine : RequiredString<StreetLine>;
+
+[Trim, NotDefault]
+public sealed partial class CityName : RequiredString<CityName>;
+
+[Trim, NotDefault]
+public sealed partial class StateCode : RequiredString<StateCode>;
+
+[Trim, NotDefault]
+public sealed partial class PostalCodeText : RequiredString<PostalCodeText>;
+
+[Trim, NotDefault]
+public sealed partial class CountryCodeText : RequiredString<CountryCodeText>;
+
+[OwnedEntity]
 [JsonConverter(typeof(CompositeValueObjectJsonConverter<ShippingAddress>))]
 public partial class ShippingAddress : ValueObject
 {
-    public string Street     { get; private set; } = null!;
-    public string City       { get; private set; } = null!;
-    public string State      { get; private set; } = null!;
-    public string PostalCode { get; private set; } = null!;
-    public string Country    { get; private set; } = null!;
+    public StreetLine Street { get; private set; } = null!;
+    public CityName City { get; private set; } = null!;
+    public StateCode State { get; private set; } = null!;
+    public PostalCodeText PostalCode { get; private set; } = null!;
+    public CountryCodeText Country { get; private set; } = null!;
 
-    private ShippingAddress(string street, string city, string state, string postalCode, string country)
+    private ShippingAddress(
+        StreetLine street, CityName city, StateCode state, PostalCodeText postalCode, CountryCodeText country)
     {
-        Street = street; City = city; State = state; PostalCode = postalCode; Country = country;
+        Street = street;
+        City = city;
+        State = state;
+        PostalCode = postalCode;
+        Country = country;
     }
 
     public static Result<ShippingAddress> TryCreate(
-        string street, string city, string state, string postalCode, string country, string? fieldName = null)
-    {
-        var violations = new List<FieldViolation>(5);
-        AddIfBlank(violations, street,     fieldName, nameof(Street));
-        AddIfBlank(violations, city,       fieldName, nameof(City));
-        AddIfBlank(violations, state,      fieldName, nameof(State));
-        AddIfBlank(violations, postalCode, fieldName, nameof(PostalCode));
-        AddIfBlank(violations, country,    fieldName, nameof(Country));
-        return violations.Count > 0
-            ? Result.Fail<ShippingAddress>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())))
-            : Result.Ok(new ShippingAddress(street.Trim(), city.Trim(), state.Trim(), postalCode.Trim(), country.Trim()));
-    }
+        string? street, string? city, string? state, string? postalCode, string? country, string? fieldName = null) =>
+        StreetLine.TryCreate(street, ComponentField(fieldName, nameof(Street)))
+            .Combine(CityName.TryCreate(city, ComponentField(fieldName, nameof(City))))
+            .Combine(StateCode.TryCreate(state, ComponentField(fieldName, nameof(State))))
+            .Combine(PostalCodeText.TryCreate(postalCode, ComponentField(fieldName, nameof(PostalCode))))
+            .Combine(CountryCodeText.TryCreate(country, ComponentField(fieldName, nameof(Country))))
+            .Bind((street, city, state, postalCode, country) =>
+                TryCreate(street, city, state, postalCode, country, fieldName));
+
+    public static Result<ShippingAddress> TryCreate(
+        StreetLine? street, CityName? city, StateCode? state,
+        PostalCodeText? postalCode, CountryCodeText? country, string? fieldName = null) =>
+        Result.EnsureNotNull(street, ComponentField(fieldName, nameof(Street)), "Street is required.")
+            .Combine(Result.EnsureNotNull(city, ComponentField(fieldName, nameof(City)), "City is required."))
+            .Combine(Result.EnsureNotNull(state, ComponentField(fieldName, nameof(State)), "State is required."))
+            .Combine(Result.EnsureNotNull(postalCode, ComponentField(fieldName, nameof(PostalCode)), "Postal code is required."))
+            .Combine(Result.EnsureNotNull(country, ComponentField(fieldName, nameof(Country)), "Country is required."))
+            .Map(static (street, city, state, postalCode, country) =>
+                new ShippingAddress(street, city, state, postalCode, country));
 
     protected override void GetEqualityComponents(ref EqualityComponents components)
     {
-        components.Add(Street); components.Add(City); components.Add(State); components.Add(PostalCode); components.Add(Country);
+        components.Add(Street);
+        components.Add(City);
+        components.Add(State);
+        components.Add(PostalCode);
+        components.Add(Country);
     }
 
-    private static void AddIfBlank(List<FieldViolation> v, string value, string? owner, string part)
-    {
-        if (!string.IsNullOrWhiteSpace(value)) return;
-        var leaf = char.ToLowerInvariant(part[0]) + part[1..];
-        var pointer = string.IsNullOrWhiteSpace(owner)
-            ? InputPointer.ForProperty(leaf)
-            : new InputPointer($"/{owner}/{leaf}");
-        v.Add(new FieldViolation(pointer, ValidationCodes.ValueNotEmpty) { Detail = $"{part} is required." });
-    }
+    private static string ComponentField(string? fieldName, string component) =>
+        InputPointer.ForProperty(fieldName.NormalizeFieldName(string.Empty))
+            .AppendProperty(component.ToCamelCase()).Path;
 }
+```
+
+The typed factory preserves supplied scalar instances instead of reparsing them. Its null-only guards emit `ValidationCodes.ValueNotNull` only for missing values. The primitive factory emits `ValidationCodes.ValueNotNull` for null inputs and `ValidationCodes.ValueNotEmpty` for empty/whitespace inputs after trimming. Neither creates violations on success. The private pointer helper appends escaped literal property names to a root, simple owner name, or existing pointer: `fieldName: "/customers/0/shippingAddress"` gives `/customers/0/shippingAddress/state`, not a re-escaped parent.
+
+For JSON calls, trailing optional parameters receive their declared defaults (`fieldName: null` here), not the live JSON parent path. The ASP collecting adapter rebases the resulting component pointers to the live path once. Keep the factory's default root-relative; manual callers can supply a parent explicitly.
+
+#### EF ownership and materialization
+
+| Concern | Contract |
+|---|---|
+| Ownership discovery | `CompositeValueObjectConvention` discovers composites by **inheritance from `ValueObject`**, not `[OwnedEntity]`. The generated `ApplyTrellisConventionsFor<AppDbContext>()` follows reachable types from the context's `DbSet<T>` roots and registers scalar converters too. No manual `OwnsOne` or scalar `HasConversion` is needed for this address. |
+| Composite materialization | `[OwnedEntity]` generates the private parameterless constructor. Its class must be `partial` (`TRLS036`), inherit `ValueObject` (`TRLS038`), and declare no parameterless constructor (`TRLS037`). Keep `{ get; private set; }`, not `init` (`TRLS022`). A mapped composite with neither a generated nor handwritten parameterless constructor fails at model-build with `TrellisPersistenceMappingException`. |
+| Aggregate materialization | EF cannot bind an owned navigation in a constructor. The separate `Customer(CustomerId id)` constructor below provides a materialization path. |
+| JSON validation | `[JsonConverter(typeof(CompositeValueObjectJsonConverter<ShippingAddress>))]` selects the primitive factory. Without the converter, JSON binding does not enforce this `TryCreate` contract. |
+
+**EF-free domain alternative.** `[OwnedEntity]` lives in `Trellis.EntityFrameworkCore`, so applying it introduces that dependency. To keep the value object EF-free, omit the attribute and write a private parameterless constructor yourself, as Recipe 1's custom `Money` does. Convention-based ownership still works. Referencing the package analyzer-only (`OutputItemType="Analyzer" ReferenceOutputAssembly="false"`) supplies generators but does **not** make a layer applying `[OwnedEntity]` EF-free. See the [EF storage and migration guidance](trellis-api-efcore.md#maybet-storage-owned-types-and-migrations).
+
+In the same namespace, add the owning aggregate and context:
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Trellis;
+using Trellis.EntityFrameworkCore;
 
 public sealed partial class CustomerId : RequiredGuid<CustomerId>;
 
 public sealed partial class Customer : Aggregate<CustomerId>
 {
     public string Name { get; private set; } = null!;
-    public ShippingAddress ShippingAddress { get; private set; } = null!;     // required composite owned VO
-    public partial Maybe<ShippingAddress> BillingAddress { get; set; }        // optional composite owned VO
 
-    private Customer(CustomerId id) : base(id) { } // EF cannot bind an owned navigation in a constructor.
+    public ShippingAddress ShippingAddress { get; private set; } = null!;
 
-    private Customer(CustomerId id, string name, ShippingAddress shipping) : base(id)
+    public partial Maybe<ShippingAddress> BillingAddress { get; set; }
+
+    private Customer(CustomerId id) : base(id) { }
+
+    private Customer(CustomerId id, string name, ShippingAddress shipping)
+        : base(id)
     {
-        Name = name; ShippingAddress = shipping;
+        Name = name;
+        ShippingAddress = shipping;
     }
 
     public static Result<Customer> TryCreate(CustomerId? id, string? name, ShippingAddress? shipping) =>
         Result.EnsureNotNull(id, "id", "Customer id is required.")
             .Combine(name.EnsureNotNullOrWhiteSpace("name", "Name is required."))
             .Combine(Result.EnsureNotNull(shipping, "shipping", "Shipping address is required."))
-            .Map((id, name, shipping) => new Customer(id, name, shipping));
+            .Map(static (id, name, shipping) => new Customer(id, name, shipping));
 }
 
 // CONFIGURATION — note the absence of OwnsOne(c => c.ShippingAddress).
-// CompositeValueObjectConvention discovers composite ValueObject types by their inheritance
-// from ValueObject (NOT the [OwnedEntity] attribute) through the source-generated
-// ApplyTrellisConventionsFor<TContext>().
+// CompositeValueObjectConvention discovers ValueObject types by inheritance
+// through the source-generated ApplyTrellisConventionsFor<TContext>() entry point.
 internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Name).IsRequired();
-        // No builder.OwnsOne(c => c.ShippingAddress) — the convention does this for you.
-        // No HasConversion(...) on the inner string fields — they are mapped by EF Core directly.
     }
 }
 
@@ -1126,11 +1189,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 **What it shows.**
 
 - Null-only required-field guards create errors only for missing values. `EnsureNotNullOrWhiteSpace("name", "Name is required.")` reports `value.not-null` for null names and `value.not-empty` for empty/whitespace names, without creating violations on success or trimming valid text.
-- `[OwnedEntity]` + `partial` + `ValueObject` + private ctor is the contract. The three diagnostics (`TRLS036`/`037`/`038`) catch each violation at compile time.
-- `CompositeValueObjectJsonConverter<T>` makes JSON deserialization round-trip through `TryCreate`, so an API request body with an **invalid** `state` (one that fails the VO's rule) produces the same `Error.InvalidInput` shape the domain emits. A **missing** required inner field produces a structured failure *before* `TryCreate` runs. ASP collects both kinds without throwing; standalone serialization rejects them with `TrellisJsonValidationException`.
+- The primitive and typed factories converge on one construction path. Scalar validation and missing-reference checks accumulate all field failures; additional composite rules belong in the typed factory, not a second transport-only implementation.
+- `CompositeValueObjectJsonConverter<T>` calls the primitive `TryCreate`, so an invalid `state` produces the same structured `Error.InvalidInput` the domain emits. Missing/null inner JSON fields fail *before* `TryCreate` runs. ASP collecting adapters collect these failures without throwing; standalone deserialization rejects them with `TrellisJsonValidationException`.
 - `ApplyTrellisConventions` removes the boilerplate `OwnsOne` call. You only need `OwnsOne` when you want to **override** the convention (custom column names, table splitting, indexes on inner properties).
 
 **Storage shape.**
+
+The scalar interior properties are converted to primitive string columns, not nested owned navigations. Typing the fields does not change this address's storage or JSON shape.
 
 | Aggregate property | Storage |
 |---|---|

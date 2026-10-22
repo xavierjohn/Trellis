@@ -243,8 +243,10 @@ public class RecipeBehaviorTests
                 modelBuilder.Entity<Recipe13.PurchaseOrder>());
     }
 
-    [Fact]
-    public async Task CompositeAddress_SnippetContext_RoundTripsRequiredAndOptionalOwnedValues()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompositeAddress_SnippetContext_RoundTripsRequiredAndOptionalOwnedValues(bool includeBillingAddress)
     {
         using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync(TestContext.Current.CancellationToken);
@@ -254,17 +256,30 @@ public class RecipeBehaviorTests
         await db.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
         var address = Recipe13.ShippingAddress.TryCreate("1 Main", "Redmond", "WA", "98052", "US").Unwrap();
         var customer = Recipe13.Customer.TryCreate(Recipe13.CustomerId.NewUniqueV7(), "Alice", address).Unwrap();
-        customer.BillingAddress = Maybe.From(
-            Recipe13.ShippingAddress.TryCreate("2 Main", "Redmond", "WA", "98052", "US").Unwrap());
+        if (includeBillingAddress)
+            customer.BillingAddress = Maybe.From(
+                Recipe13.ShippingAddress.TryCreate("2 Main", "Bellevue", "WA", "98004", "US").Unwrap());
         db.Customers.Add(customer);
         (await db.SaveChangesResultAsync(TestContext.Current.CancellationToken)).Should().BeSuccess();
         db.ChangeTracker.Clear();
 
         var loaded = await db.Customers.SingleAsync(TestContext.Current.CancellationToken);
 
-        loaded.ShippingAddress.Street.Should().Be("1 Main");
-        loaded.BillingAddress.TryGetValue(out var billing).Should().BeTrue();
-        billing!.Street.Should().Be("2 Main");
+        loaded.ShippingAddress.Street.Value.Should().Be("1 Main");
+        loaded.ShippingAddress.City.Value.Should().Be("Redmond");
+        loaded.ShippingAddress.State.Value.Should().Be("WA");
+        loaded.ShippingAddress.PostalCode.Value.Should().Be("98052");
+        loaded.ShippingAddress.Country.Value.Should().Be("US");
+        loaded.BillingAddress.HasValue.Should().Be(includeBillingAddress);
+        if (includeBillingAddress)
+        {
+            var billing = loaded.BillingAddress.Unwrap();
+            billing.Street.Value.Should().Be("2 Main");
+            billing.City.Value.Should().Be("Bellevue");
+            billing.State.Value.Should().Be("WA");
+            billing.PostalCode.Value.Should().Be("98004");
+            billing.Country.Value.Should().Be("US");
+        }
     }
 
     [Fact]
