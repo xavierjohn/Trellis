@@ -10,17 +10,33 @@ using Trellis;
 using Trellis.EntityFrameworkCore;
 using Trellis.Primitives;
 
+[Trim, NotDefault]
+public sealed partial class StreetLine : RequiredString<StreetLine>;
+
+[Trim, NotDefault]
+public sealed partial class CityName : RequiredString<CityName>;
+
+[Trim, NotDefault]
+public sealed partial class StateCode : RequiredString<StateCode>;
+
+[Trim, NotDefault]
+public sealed partial class PostalCodeText : RequiredString<PostalCodeText>;
+
+[Trim, NotDefault]
+public sealed partial class CountryCodeText : RequiredString<CountryCodeText>;
+
 [OwnedEntity]
 [JsonConverter(typeof(CompositeValueObjectJsonConverter<ShippingAddress>))]
 public partial class ShippingAddress : ValueObject
 {
-    public string Street { get; private set; } = null!;
-    public string City { get; private set; } = null!;
-    public string State { get; private set; } = null!;
-    public string PostalCode { get; private set; } = null!;
-    public string Country { get; private set; } = null!;
+    public StreetLine Street { get; private set; } = null!;
+    public CityName City { get; private set; } = null!;
+    public StateCode State { get; private set; } = null!;
+    public PostalCodeText PostalCode { get; private set; } = null!;
+    public CountryCodeText Country { get; private set; } = null!;
 
-    private ShippingAddress(string street, string city, string state, string postalCode, string country)
+    private ShippingAddress(
+        StreetLine street, CityName city, StateCode state, PostalCodeText postalCode, CountryCodeText country)
     {
         Street = street;
         City = city;
@@ -30,18 +46,25 @@ public partial class ShippingAddress : ValueObject
     }
 
     public static Result<ShippingAddress> TryCreate(
-        string street, string city, string state, string postalCode, string country, string? fieldName = null)
-    {
-        var violations = new List<FieldViolation>(5);
-        AddIfBlank(violations, street, fieldName, nameof(Street));
-        AddIfBlank(violations, city, fieldName, nameof(City));
-        AddIfBlank(violations, state, fieldName, nameof(State));
-        AddIfBlank(violations, postalCode, fieldName, nameof(PostalCode));
-        AddIfBlank(violations, country, fieldName, nameof(Country));
-        return violations.Count > 0
-            ? Result.Fail<ShippingAddress>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())))
-            : Result.Ok(new ShippingAddress(street.Trim(), city.Trim(), state.Trim(), postalCode.Trim(), country.Trim()));
-    }
+        string? street, string? city, string? state, string? postalCode, string? country, string? fieldName = null) =>
+        StreetLine.TryCreate(street, ComponentField(fieldName, nameof(Street)))
+            .Combine(CityName.TryCreate(city, ComponentField(fieldName, nameof(City))))
+            .Combine(StateCode.TryCreate(state, ComponentField(fieldName, nameof(State))))
+            .Combine(PostalCodeText.TryCreate(postalCode, ComponentField(fieldName, nameof(PostalCode))))
+            .Combine(CountryCodeText.TryCreate(country, ComponentField(fieldName, nameof(Country))))
+            .Bind((street, city, state, postalCode, country) =>
+                TryCreate(street, city, state, postalCode, country, fieldName));
+
+    public static Result<ShippingAddress> TryCreate(
+        StreetLine? street, CityName? city, StateCode? state,
+        PostalCodeText? postalCode, CountryCodeText? country, string? fieldName = null) =>
+        Result.EnsureNotNull(street, ComponentField(fieldName, nameof(Street)), "Street is required.")
+            .Combine(Result.EnsureNotNull(city, ComponentField(fieldName, nameof(City)), "City is required."))
+            .Combine(Result.EnsureNotNull(state, ComponentField(fieldName, nameof(State)), "State is required."))
+            .Combine(Result.EnsureNotNull(postalCode, ComponentField(fieldName, nameof(PostalCode)), "Postal code is required."))
+            .Combine(Result.EnsureNotNull(country, ComponentField(fieldName, nameof(Country)), "Country is required."))
+            .Map(static (street, city, state, postalCode, country) =>
+                new ShippingAddress(street, city, state, postalCode, country));
 
     protected override void GetEqualityComponents(ref EqualityComponents components)
     {
@@ -52,16 +75,9 @@ public partial class ShippingAddress : ValueObject
         components.Add(Country);
     }
 
-    private static void AddIfBlank(List<FieldViolation> v, string value, string? owner, string part)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-            return;
-        var leaf = char.ToLowerInvariant(part[0]) + part[1..];
-        var pointer = string.IsNullOrWhiteSpace(owner)
-            ? InputPointer.ForProperty(leaf)
-            : new InputPointer($"/{owner}/{leaf}");
-        v.Add(new FieldViolation(pointer, ValidationCodes.ValueNotEmpty) { Detail = $"{part} is required." });
-    }
+    private static string ComponentField(string? fieldName, string component) =>
+        InputPointer.ForProperty(fieldName.NormalizeFieldName(string.Empty))
+            .AppendProperty(component.ToCamelCase()).Path;
 }
 
 public sealed partial class CustomerId : RequiredGuid<CustomerId>;
@@ -91,7 +107,7 @@ public sealed partial class Customer : Aggregate<CustomerId>
 }
 
 // CONFIGURATION — note the absence of OwnsOne(c => c.ShippingAddress).
-// CompositeValueObjectConvention picks up [OwnedEntity] types automatically
+// CompositeValueObjectConvention discovers ValueObject types by inheritance
 // through the source-generated ApplyTrellisConventionsFor<TContext>() entry point.
 internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
