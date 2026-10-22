@@ -2009,6 +2009,42 @@ when ordinary absence becomes a failure. TRLS066 now emits the static guard shap
 
 **Nested collections.** When `CreateCustomerRequest` carries a `List<AddressDto>` whose items each need to become value objects, the `Result.Combine` shape above doesn't generalize to the collection — use [Recipe 20](#recipe-20--fail-fast-vs-accumulating-sequencetraverse-vs-sequencealltraverseall) (`TraverseAll`) to validate every row and accumulate per-item failures into one `Error.InvalidInput`. Inlining `.Select(item => item.ToCommand().Match(c => c, e => throw …))` throws on the first invalid row and surfaces as HTTP 500 instead of HTTP 422 with field violations.
 
+### Exact-input monetary boundaries before normalization
+
+**Problem.** An application requires a submitted payment amount to match a trusted quote exactly. `MonetaryAmount.TryCreate(1.004m)` succeeds with `1.00m`, so comparing only the resulting value object with a `1.00m` quote would accept a different submitted amount. The factory is behaving correctly: non-negative values are normalized to two decimal places using `MidpointRounding.AwayFromZero`.
+
+Keep the request field as a primitive `decimal?` until the application's raw-input checks finish. Binding it directly to `MonetaryAmount` would normalize it before those checks could run. Guard presence, compare the original parsed numeric value with the already-resolved quote, and only then `Bind` to the non-throwing factory:
+
+```csharp
+using System;
+using Trellis;
+using Trellis.Primitives;
+
+internal static class PaymentAmountBoundary
+{
+    public static Result<MonetaryAmount> TryCreateMatchingQuote(
+        decimal? amount, MonetaryAmount quotedAmount)
+    {
+        ArgumentNullException.ThrowIfNull(quotedAmount);
+
+        return Result.EnsureNotNull(amount, "amount", "Amount is required.")
+            .Ensure(value => value == quotedAmount.Value,
+                static _ => Error.InvalidInput.ForField(
+                    code: "payment.amount-mismatch", field: "amount",
+                    detail: "Amount must match the quote exactly."))
+            .Bind(static value => MonetaryAmount.TryCreate(value, "amount"));
+    }
+}
+```
+
+This is a **sample-local application policy**, not a new Trellis API or a stricter factory mode. A missing request amount produces `ValidationCodes.ValueNotNull`; a present amount that differs from the quote produces the application-owned `payment.amount-mismatch` at `/amount`. A null trusted quote is programming misuse and throws before entering the Result chain. Quote lookup and payment-specific rules remain application-owned. Applications that intentionally accept rounding can call `MonetaryAmount.TryCreate` directly.
+
+**Anti-pattern -> fix.** Do not normalize first and then use equality as evidence that the raw submission matched. Moving the exact-match `Ensure` after `Bind` loses the distinction between `1.004m` and `1.00m`. Likewise, deduplicating solely by the normalized value object collapses distinct raw inputs such as `1.001m` and `1.004m`. If raw numeric values are part of business identity, retain the validated raw value and an appropriate business/idempotency identifier; the rounded amount alone cannot represent that identity.
+
+**Exact means numeric, not lexical.** Parsed `decimal` equality accepts `20.2500m` for a `20.25m` quote. This example does not require a particular encoded scale, preserve original JSON text, or provide a lossless number lexer. Retain the original representation separately when an audit or identity contract needs it. `MonetaryAmount` is for a single-currency context; `Money` uses currency-dependent precision, not always two decimal places.
+
+The complete example is compiled in `Examples/CookbookSnippets/Recipe18_ExactMonetaryBoundary.cs`. `Examples/CookbookSnippets.Tests/Recipe18MonetaryBoundaryTests.cs` covers exact and zero matches, equivalent decimal scales, rounding collisions, missing/mismatched inputs, normalized hash-set identity, and the unchanged midpoint/negative-input behavior.
+
 ---
 
 ## Recipe 19 — HTTP client result safety and optional reads

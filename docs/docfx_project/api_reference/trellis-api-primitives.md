@@ -39,6 +39,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggre
 | Validate an email string | `EmailAddress.TryCreate(...)` | [`EmailAddress`](#emailaddress) |
 | Validate optional phone input | `PhoneNumber.TryCreate(...)` and wrap absence with `Maybe<PhoneNumber>` at the domain seam | [`PhoneNumber`](#phonenumber), [Core `Maybe<T>`](trellis-api-core.md#public-readonly-struct-maybet-where-t--notnull) |
 | Represent money | `Money` / `MonetaryAmount` / `CurrencyCode` | [`Money`](#money), [`MonetaryAmount`](#monetaryamount), [`CurrencyCode`](#currencycode) |
+| Validate exact monetary input before normalization-sensitive comparison or deduplication | Application-owned raw-input guards, then `MonetaryAmount.TryCreate(...)` | [Recipe 18's monetary boundary](trellis-api-cookbook.md#exact-input-monetary-boundaries-before-normalization) |
 | Validate geographic coordinates, measure approximate in-memory distance, or build conservative spherical search bounds | `GeoCoordinate.TryCreate(...)`, `DistanceMetersTo(...)`, `GeoBounds.TryCreate(...)` | [`GeoCoordinate`](#geocoordinate), [`GeoBounds`](#geobounds) |
 | Represent recurring weekly availability, overnight windows, or local-clock DST membership | `WeeklyPeriod.TryCreate(...)`, `WeeklySchedule.TryCreate(...)`, `IsActiveAt(...)` | [`WeeklyPeriod`](#weeklyperiod), [`WeeklySchedule`](#weeklyschedule) |
 | Bind/serialize built-in scalar primitives | Use generated converters from the primitive/base contracts; ASP validation is in `Trellis.Asp` | [`ParsableJsonConverter<T>`](trellis-api-core.md#parsablejsonconvertert), [ASP validation](trellis-api-asp.md#namespace-trellisaspvalidation) |
@@ -479,6 +480,8 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
 | `public override string ToString()` | `string` | Invariant decimal string. |
 | `public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)` | `Result<MonetaryAmount>` | Returns `Zero` for empty collections. Throws `ArgumentNullException` when `values` is null and `ArgumentException` when any element is null. |
 
+**Normalization is not exact-input validation.** `MonetaryAmount.TryCreate(1.004m)` succeeds with `1.00m`; it does not reject extra fractional digits. Distinct raw amounts can therefore compare equal and share a hash-set entry after construction. If an application requires an exact quote match or distinguishes raw inputs for deduplication, validate the parsed primitive before constructing the value object and retain any raw input needed by that policy. See [Recipe 18's exact-input boundary](trellis-api-cookbook.md#exact-input-monetary-boundaries-before-normalization). Rounding remains the factory's normal behavior, not a configurable strictness mode.
+
 > **`Create` (throws) vs `TryCreate` (Result).** `MonetaryAmount` inherits the scalar `Create(decimal)` factory from `ScalarValueObject<TSelf, T>`, which **throws** `InvalidOperationException` on invalid input (it runs `TryCreate` and throws on the failure) — the same fail-fast factory the explicit `decimal` cast uses. `TryCreate(...)` returns `Result<MonetaryAmount>` and never throws on a validation failure. Use `Create` only for trusted, constant, or already-validated values (fail-fast at a boundary); use `TryCreate` for untrusted input and **inside any `Result`/ROP chain**, where a throw breaks the railway (analyzer `TRLS010` flags throwing inside `Bind`/`Map`/`Tap`/`Ensure`). The same throws-vs-`Result` split applies across value objects — both the composite `Money` and the scalar `Required*<T>` primitives expose a throwing `Create` alongside `TryCreate`. (`Parse` throws `FormatException`; `TryParse` is the non-throwing parse counterpart.)
 
 ### `CompositeValueObjectJsonConverter<T>`
@@ -541,6 +544,8 @@ If trimming does remove the interface, the converter throws at first use naming 
 ```csharp
 public class Money : ValueObject
 ```
+
+`Money` also normalizes amounts, using currency-dependent minor-unit precision rather than a universal two decimal places. Apply application-owned exact-input checks before `TryCreate` when rounding would hide a distinction the policy needs; do not impose the single-currency example's precision on every currency.
 
 | Name | Type | Description |
 | --- | --- | --- |
