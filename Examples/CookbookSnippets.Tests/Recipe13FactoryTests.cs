@@ -51,24 +51,68 @@ public class Recipe13FactoryTests
     }
 
     [Theory]
-    [InlineData(false, null, "")]
-    [InlineData(true, null, "")]
-    [InlineData(false, "", "")]
-    [InlineData(true, "", "")]
-    [InlineData(false, "ShippingAddress", "/shippingAddress")]
-    [InlineData(true, "ShippingAddress", "/shippingAddress")]
-    [InlineData(false, "/customers/0/shippingAddress", "/customers/0/shippingAddress")]
-    [InlineData(true, "/customers/0/shippingAddress", "/customers/0/shippingAddress")]
-    [InlineData(false, "delivery~slot", "/delivery~0slot")]
-    [InlineData(true, "delivery~slot", "/delivery~0slot")]
-    public void TryCreate_BothOverloads_WithMissingFields_PreservesNestedPointers(
-        bool useTypedFactory, string? fieldName, string expectedPrefix)
+    [InlineData(null, ValidationCodes.ValueNotNull)]
+    [InlineData("", ValidationCodes.ValueNotEmpty)]
+    [InlineData(" \t", ValidationCodes.ValueNotEmpty)]
+    public void TryCreate_Primitives_WithOnlyInvalidCity_ReportsOnlyCityViolation(
+        string? city, string expectedCode)
     {
-        var result = useTypedFactory
-            ? ShippingAddress.TryCreate(
-                (StreetLine?)null, (CityName?)null, (StateCode?)null,
-                (PostalCodeText?)null, (CountryCodeText?)null, fieldName)
-            : ShippingAddress.TryCreate((string?)null, null, null, null, null, fieldName);
+        var result = ShippingAddress.TryCreate(
+            "1 Main", city, "WA", "98052", "US", fieldName: "/customers/0/shippingAddress");
+
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        var violation = error.Fields.Items.Should().ContainSingle().Which;
+        violation.Field.Path.Should().Be("/customers/0/shippingAddress/city");
+        violation.ReasonCode.Should().Be(expectedCode);
+    }
+
+    [Fact]
+    public void TryCreate_Typed_WithOnlyMissingCity_ReportsOnlyCityViolation()
+    {
+        var result = ShippingAddress.TryCreate(
+            StreetLine.Create("1 Main"), null, StateCode.Create("WA"),
+            PostalCodeText.Create("98052"), CountryCodeText.Create("US"),
+            fieldName: "/customers/0/shippingAddress");
+
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        var violation = error.Fields.Items.Should().ContainSingle().Which;
+        violation.Field.Path.Should().Be("/customers/0/shippingAddress/city");
+        violation.ReasonCode.Should().Be(ValidationCodes.ValueNotNull);
+    }
+
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("", "")]
+    [InlineData("ShippingAddress", "/shippingAddress")]
+    [InlineData("/customers/0/shippingAddress", "/customers/0/shippingAddress")]
+    [InlineData("delivery~slot", "/delivery~0slot")]
+    public void TryCreate_Primitives_WithMissingFields_PreservesNestedPointers(
+        string? fieldName, string expectedPrefix)
+    {
+        var result = ShippingAddress.TryCreate((string?)null, null, null, null, null, fieldName);
+
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        error.Fields.Items.Select(v => v.Field.Path).Should().Equal(
+            [
+                expectedPrefix + "/street",
+                expectedPrefix + "/city",
+                expectedPrefix + "/state",
+                expectedPrefix + "/postalCode",
+                expectedPrefix + "/country"
+            ]);
+        error.Fields.Items.Should().OnlyContain(v => v.ReasonCode == ValidationCodes.ValueNotNull);
+    }
+
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("", "")]
+    [InlineData("ShippingAddress", "/shippingAddress")]
+    [InlineData("/customers/0/shippingAddress", "/customers/0/shippingAddress")]
+    [InlineData("delivery~slot", "/delivery~0slot")]
+    public void TryCreate_Typed_WithMissingFields_PreservesNestedPointers(
+        string? fieldName, string expectedPrefix)
+    {
+        var result = ShippingAddress.TryCreate(null, null, null, null, null, fieldName);
 
         var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Select(v => v.Field.Path).Should().Equal(

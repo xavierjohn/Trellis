@@ -103,7 +103,7 @@ public sealed partial class Customer : Aggregate<CustomerId>
         Result.EnsureNotNull(id, "id", "Customer id is required.")
             .Combine(name.EnsureNotNullOrWhiteSpace("name", "Name is required."))
             .Combine(Result.EnsureNotNull(shipping, "shipping", "Shipping address is required."))
-            .Map((id, name, shipping) => new Customer(id, name, shipping));
+            .Map(static (id, name, shipping) => new Customer(id, name, shipping));
 }
 
 // CONFIGURATION — note the absence of OwnsOne(c => c.ShippingAddress).

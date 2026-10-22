@@ -1032,12 +1032,12 @@ Use a string-backed scalar value object for each component and write **both** co
 >
 > Keep `Street, City, State, PostalCode, Country` aligned with `street, city, state, postalCode, country`. Keep the typed overload, constructor assignments, and equality components in that order too. Named arguments at a handwritten call site do not change the converter's positional call. JSON members may arrive in any order: they are looked up by JSON name before invocation. After a refactor, check every field with distinct values in a JSON round trip.
 
+The distinct-value serialization and JSON member-order assertions in `Examples/CookbookSnippets.Tests/Recipe13FactoryTests.cs` demonstrate this check.
+
 The converter needs exactly one unambiguous primitive-prefix `TryCreate` returning `Result<ShippingAddress>`; trailing parameters must be optional. The typed overload does not match that primitive prefix and is not called directly by the converter.
 
 ```csharp
 using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Trellis;
 using Trellis.EntityFrameworkCore;
 using Trellis.Primitives;
@@ -1113,7 +1113,7 @@ public partial class ShippingAddress : ValueObject
 }
 ```
 
-The typed factory preserves supplied scalar instances instead of reparsing them. Its null-only guards emit `ValidationCodes.ValueNotNull` only for missing values; the primitive factory also rejects blanks with `ValidationCodes.ValueNotEmpty`. Neither creates violations on success. The private pointer helper appends escaped literal property names to a root, simple owner name, or existing pointer: `fieldName: "/customers/0/shippingAddress"` gives `/customers/0/shippingAddress/state`, not a re-escaped parent.
+The typed factory preserves supplied scalar instances instead of reparsing them. Its null-only guards emit `ValidationCodes.ValueNotNull` only for missing values. The primitive factory emits `ValidationCodes.ValueNotNull` for null inputs and `ValidationCodes.ValueNotEmpty` for empty/whitespace inputs after trimming. Neither creates violations on success. The private pointer helper appends escaped literal property names to a root, simple owner name, or existing pointer: `fieldName: "/customers/0/shippingAddress"` gives `/customers/0/shippingAddress/state`, not a re-escaped parent.
 
 For JSON calls, trailing optional parameters receive their declared defaults (`fieldName: null` here), not the live JSON parent path. The ASP collecting adapter rebases the resulting component pointers to the live path once. Keep the factory's default root-relative; manual callers can supply a parent explicitly.
 
@@ -1131,17 +1131,25 @@ For JSON calls, trailing optional parameters receive their declared defaults (`f
 In the same namespace, add the owning aggregate and context:
 
 ```csharp
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Trellis;
+using Trellis.EntityFrameworkCore;
+
 public sealed partial class CustomerId : RequiredGuid<CustomerId>;
 
 public sealed partial class Customer : Aggregate<CustomerId>
 {
     public string Name { get; private set; } = null!;
+
     public ShippingAddress ShippingAddress { get; private set; } = null!;
+
     public partial Maybe<ShippingAddress> BillingAddress { get; set; }
 
     private Customer(CustomerId id) : base(id) { }
 
-    private Customer(CustomerId id, string name, ShippingAddress shipping) : base(id)
+    private Customer(CustomerId id, string name, ShippingAddress shipping)
+        : base(id)
     {
         Name = name;
         ShippingAddress = shipping;
@@ -1154,6 +1162,9 @@ public sealed partial class Customer : Aggregate<CustomerId>
             .Map(static (id, name, shipping) => new Customer(id, name, shipping));
 }
 
+// CONFIGURATION — note the absence of OwnsOne(c => c.ShippingAddress).
+// CompositeValueObjectConvention discovers ValueObject types by inheritance
+// through the source-generated ApplyTrellisConventionsFor<TContext>() entry point.
 internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
