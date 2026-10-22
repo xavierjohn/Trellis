@@ -18,9 +18,7 @@ public interface IUnitOfWork
     /// and foreign-key errors as <see cref="Error"/> instead of exceptions.
     /// </summary>
     /// <remarks>
-    /// An uncommittable unit of work must return its first rejection without writing, even
-    /// inside a nested scope. Scope disposal and new scopes must not reset that rejection.
-    /// Otherwise, when called inside a nested <see cref="BeginScope"/> scope (i.e. depth > 1),
+    /// When called inside a nested <see cref="BeginScope"/> scope (i.e. depth > 1),
     /// implementations should defer the actual write and return success without
     /// touching the store; only the outermost scope's <see cref="CommitAsync"/> call
     /// should persist staged changes. This prevents a successful inner command from
@@ -29,18 +27,6 @@ public interface IUnitOfWork
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A <see cref="Result{TValue}"/> with <see cref="Unit"/> representing success or failure.</returns>
     Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Permanently prevents this unit-of-work instance from committing.
-    /// </summary>
-    /// <remarks>
-    /// Preserve the first rejection and return it from every later <see cref="CommitAsync"/>,
-    /// including deferred nested commits. Disposing or reopening scopes does not reset it.
-    /// This does not undo tracked changes; discard the unit of work and its underlying store/context.
-    /// </remarks>
-    /// <param name="reason">The reason that all later commits must fail.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="reason"/> is null.</exception>
-    void MarkUncommittable(Error reason);
 
     /// <summary>
     /// Begins a unit-of-work scope so that <see cref="CommitAsync"/> calls inside nested scopes
@@ -63,13 +49,11 @@ public interface IUnitOfWork
     /// persisted atomically by the implementation.
     /// </para>
     /// <para>
-    /// <b>Caveat.</b> If the inner handler returns an ordinary failure but the outer handler chooses to
+    /// <b>Caveat.</b> If the inner command returns a failure but the outer handler chooses to
     /// ignore it and returns success anyway, the outer's commit will persist any changes the
     /// inner staged before failing. The unit-of-work is shared across the scope; per-scope
     /// rollback of staged changes is not supported. Handlers that need to discard inner failures'
-    /// staged work must detach the affected entities themselves. A pre-commit hook veto,
-    /// exception, or cancellation instead calls <see cref="MarkUncommittable"/> and blocks
-    /// even an owning commit that ignores the inner failure.
+    /// staged work must detach the affected entities themselves.
     /// </para>
     /// <para>
     /// <b>Concurrency.</b> The depth counter is per-<see cref="IUnitOfWork"/>-instance — i.e.

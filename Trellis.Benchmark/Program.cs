@@ -4,8 +4,7 @@ using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 
 var config = ManualConfig.Create(DefaultConfig.Instance)
-    // Generated benchmark executables have no published package baseline.
-    .AddJob(Job.ShortRun.WithArguments([new MsBuildArgument("/p:IsPackable=false")]));
+    .AddJob(Job.ShortRun);
 
 if (args.Length == 0)
 {
@@ -25,7 +24,6 @@ if (args.Length == 0)
     BenchmarkRunner.Run<SpecificationBenchmarks>(config);
     BenchmarkRunner.Run<MoneyBenchmarks>(config);
     BenchmarkRunner.Run<ActorBenchmarks>(config);
-    BenchmarkRunner.Run<CommandDispatchStateBenchmarks>(config);
 }
 else
 {

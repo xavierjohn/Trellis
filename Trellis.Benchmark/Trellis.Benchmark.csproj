@@ -26,6 +26,5 @@
     <ProjectReference Include="..\Trellis.Primitives\src\Trellis.Primitives.csproj" />
     <ProjectReference Include="..\Trellis.Core\src\Trellis.Core.csproj" />
     <ProjectReference Include="..\Trellis.Authorization\src\Trellis.Authorization.csproj" />
-    <ProjectReference Include="..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
   </ItemGroup>
 </Project>

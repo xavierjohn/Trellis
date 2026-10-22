@@ -82,10 +82,10 @@ public class NestedOutboxDispatchTests
 
     [Theory]
     [InlineData("success")]
-    [InlineData("hook-failure")]
+    [InlineData("behavior-failure")]
     [InlineData("persist-failure")]
     [InlineData("commit-failure")]
-    public async Task Handle_PreCommitHook_CapturesIntroducedAggregateOnlyWithSuccessfulCommit(string outcome)
+    public async Task Handle_InsideTransactionBehavior_CapturesIntroducedAggregateOnlyWithSuccessfulCommit(string outcome)
     {
         var ct = TestContext.Current.CancellationToken;
         using var connection = new SqliteConnection("DataSource=:memory:");
@@ -107,48 +107,49 @@ public class NestedOutboxDispatchTests
         var unitOfWork = new EfUnitOfWork<OutboxTestDbContext>(context);
         var publisher = new RecordingPublisher();
         var handlerAggregate = Thing.Create(id, "handler-added", DateTimeOffset.UnixEpoch);
-        var hookAggregate = Thing.Create(ThingId.NewUniqueV7(), "hook-added", DateTimeOffset.UnixEpoch);
-        var hook = new StagingHook(context, hookAggregate, outcome == "hook-failure");
-        var transaction = new TransactionalCommandBehavior<OuterCommand, Result<Trellis.Unit>>(unitOfWork, [hook]);
+        var introducedAggregate = Thing.Create(ThingId.NewUniqueV7(), "behavior-added", DateTimeOffset.UnixEpoch);
+        var staging = new StagingBehavior(context, introducedAggregate, outcome == "behavior-failure");
+        var transaction = new TransactionalCommandBehavior<OuterCommand, Result<Trellis.Unit>>(unitOfWork);
         var dispatch = new TrackedAggregateDomainEventDispatchBehavior<OuterCommand, Result<Trellis.Unit>>(
             unitOfWork, publisher,
             NullLogger<TrackedAggregateDomainEventDispatchBehavior<OuterCommand, Result<Trellis.Unit>>>.Instance);
 
         var result = await dispatch.Handle(new OuterCommand(), (message, token) => transaction.Handle(message,
-            (_, _) =>
+            (command, commandToken) => staging.Handle(command, (_, _) =>
             {
                 context.Things.Add(handlerAggregate);
                 return ValueTask.FromResult(outcome == "persist-failure"
                     ? Result.FailAfterCommit(new Error.Conflict("command.rejected"))
                     : Result.Ok());
-            }, token), ct);
+            }, commandToken), token), ct);
 
         var committed = outcome is "success" or "persist-failure";
         result.IsSuccess.Should().Be(outcome == "success");
         (await context.Things.CountAsync(ct)).Should().Be(originalThings + (committed ? 2 : 0));
         var rows = await context.Set<OutboxMessage>().AsNoTracking().ToListAsync(ct);
         rows.Should().HaveCount(originalRows + (committed ? 2 : 0));
-        rows.Count(row => row.Payload.Contains("hook-added", StringComparison.Ordinal)).Should().Be(committed ? 1 : 0);
+        rows.Count(row => row.Payload.Contains("behavior-added", StringComparison.Ordinal)).Should().Be(committed ? 1 : 0);
         handlerAggregate.UncommittedEvents().Count.Should().Be(committed ? 0 : 1);
-        hookAggregate.UncommittedEvents().Count.Should().Be(committed ? 0 : 1);
+        introducedAggregate.UncommittedEvents().Count.Should().Be(committed ? 0 : 1);
         publisher.Count.Should().Be(0, "outbox capture must remain the only dispatch path");
         if (committed)
-            ((ITrackedAggregateSource)unitOfWork).CommittedAggregates.Should().Contain(hookAggregate);
+            ((ITrackedAggregateSource)unitOfWork).CommittedAggregates.Should().Contain(introducedAggregate);
         else
             ((ITrackedAggregateSource)unitOfWork).CommittedAggregates.Should().BeEmpty();
     }
 
-    private sealed class StagingHook(OutboxTestDbContext context, Thing aggregate, bool reject)
-        : ICommandPreCommitHook<OuterCommand, Result<Trellis.Unit>>
+    private sealed class StagingBehavior(OutboxTestDbContext context, Thing aggregate, bool reject)
+        : IPipelineBehavior<OuterCommand, Result<Trellis.Unit>>
     {
-        public ValueTask<Result<Trellis.Unit>> BeforeCommitAsync(
-            OuterCommand message, Result<Trellis.Unit> response, CancellationToken cancellationToken)
+        public async ValueTask<Result<Trellis.Unit>> Handle(
+            OuterCommand message, MessageHandlerDelegate<OuterCommand, Result<Trellis.Unit>> next, CancellationToken cancellationToken)
         {
+            var response = await next(message, cancellationToken);
+            if (!response.IsSuccess && response is not IPersistOnFailure { PersistOnFailure: true })
+                return response;
             cancellationToken.ThrowIfCancellationRequested();
             context.Things.Add(aggregate);
-            return ValueTask.FromResult(reject
-                ? Result.FailAfterCommit(new Error.Conflict("audit.rejected"))
-                : Result.Ok());
+            return reject ? Result.Fail(new Error.Conflict("audit.rejected")) : response;
         }
     }
 

@@ -37,7 +37,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 | Authorize an identified resource using a shared loader without scanning | `.UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` plus a separately registered shared-loader implementation | [`TrellisServiceBuilder`](#trellisservicebuilder) |
 | Register an actor provider | `.UseClaimsActorProvider()`, `.UseNestedJsonPathClaimsActorProvider()`, `.UseEntraActorProvider()`, or `.UseDevelopmentActorProvider()`. For microservices consuming gateway-minted internal JWTs, install [`Trellis.Microservices.AspNetCore`](https://github.com/xavierjohn/Trellis.Microservices) and call `services.AddTrellisInternalJwtActorProvider(...)` directly (no `TrellisServiceBuilder` slot — the `UseTrellisInternalJwtActor` slot was removed in v3 cleanup when the implementation moved). | [`TrellisServiceBuilder`](#trellisservicebuilder), [ASP actor providers](trellis-api-asp.md#namespace-trellisaspauthorization) |
 | Add EF unit-of-work behavior | `.UseEntityFrameworkUnitOfWork<TContext>()` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator UoW](trellis-api-mediator.md#cross-package-preflight-for-pipeline-changes) |
-| Validate outcomes or stage same-commit audits for selected or constraint-matching commands | `.UseCommandPreCommitHook<TMessage,TResponse,THook>()` or `.UseCommandPreCommitHook(typeof(RequiredAuditHook<,>))` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Mediator hooks](trellis-api-mediator.md#icommandprecommithooktmessage-tresponse), [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging) |
+| Place application behaviors before the commit decision | `.UseInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` or `.UseInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))` | [`TrellisServiceBuilder`](#trellisservicebuilder), [placement contract](trellis-api-mediator.md#insidetransactionbehaviorservicecollectionextensions), [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging) |
 | Relay domain events durably via a transactional outbox | `.UseOutbox<TContext>(configure?)` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Outbox reference](trellis-api-efcore-outbox.md#useoutbox-builder-slot) |
 | Explicitly enable outbox readiness without changing liveness or adding an endpoint | `.UseOutboxReadiness<TContext>(OutboxReadinessOptions.CreateStagedOperationalProfile())` | [`TrellisServiceBuilder`](#trellisservicebuilder), [Outbox readiness](trellis-api-efcore-outbox.md#outbox-readiness) |
 | Monitor metadata from an API host with a separate outbox worker | `.UseOutboxReadiness<TContext>(OutboxReadinessOptions.CreateMetadataOnlyProfile(workerMaxAttempts))` | [Split API/worker hosts](trellis-api-efcore-outbox.md#split-apiworker-hosts) |
@@ -51,8 +51,8 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-12--di-wiring
 ## Common traps
 
 - `AddTrellis(...)` does not register `DbContext`, Mediator handlers, or route constraints — those are always application-owned. Assembly-scanning overloads discover validators, resource loaders, and domain-event handlers; parameterless overloads leave per-type registrations to you. Typed overloads register the specified components without scanning. In particular, `UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` registers the per-message adapter but leaves the `SharedResourceLoaderById<TResource,TId>` implementation application-owned.
-- `UseEntityFrameworkUnitOfWork<TContext>()` is applied last so transaction commit remains innermost in the mediator pipeline.
-- Both `UseCommandPreCommitHook` overloads install the transaction behavior and `CommandDispatchState` accessor, but not the store. Register `IUnitOfWork`, typically with `UseEntityFrameworkUnitOfWork<TContext>()`. Hooks run inside the transaction behavior rather than in an order-sensitive outer behavior.
+- `UseEntityFrameworkUnitOfWork<TContext>()` binds the store after other selected stages. The transaction surrounds any explicitly selected inside-transaction application behaviors and the handler.
+- Both `UseInsideTransactionBehavior` overloads install the transaction behavior, but not the store. Register `IUnitOfWork`, typically with `UseEntityFrameworkUnitOfWork<TContext>()`. Behaviors own outcome checks and cleanup; the slot guarantees placement, not automatic auditing or permanent rejection.
 - Calling `UseEntityFrameworkUnitOfWork<TContext>()` more than once (with the same or a different `TContext`) throws `InvalidOperationException`. The Trellis pipeline supports exactly one transactional `IUnitOfWork` per composition; chaining two calls (e.g. for a read/write context split) is always misconfiguration. Use a separate composition root or a single multi-tenant `DbContext` instead.
 - `UseOutbox<TContext>()` registers only the relay hosted service; you must also call `AddTrellisOutboxInterceptor()` on the context options and `AddTrellisOutbox()` in `OnModelCreating`. Calling `UseOutbox` more than once throws `InvalidOperationException` (one outbox relay per composition). It is order-independent versus `UseEntityFrameworkUnitOfWork<TContext>()` because the relay is a hosted service, not a pipeline behavior.
 - `UseInbox<TContext>()` registers only the inbound dispatcher, its matching EF dedup store, and `InboxOptions`; you must also call `AddTrellisInbox()` in `OnModelCreating` to map the `TrellisInboxMessages` table, and register the `IIntegrationEventHandler<TEvent>` implementations that consume the messages. A new message with no handler throws without committing its dedup row. `InboxOptions.ConsumerId` is required, so the `configure` callback that sets it is mandatory. Calling `UseInbox` more than once throws `InvalidOperationException` (one inbox per composition). It is order-independent versus `UseEntityFrameworkUnitOfWork<TContext>()` because the dispatcher is an inbound seam, not a pipeline behavior. A custom `IInboxStore` needs a coordinated custom dispatcher rather than this EF slot.
@@ -195,8 +195,8 @@ public sealed class TrellisServiceBuilder
 | `public TrellisServiceBuilder UseProblemDetails()` | `TrellisServiceBuilder` | Registers Trellis ProblemDetails customization (`traceId` on every error, `405` `Allow` header projected as `extensions.allow`, `500` detail rewrite) via `AddTrellisProblemDetails()`. Independent of `UseAsp()` — does not pull in Trellis MVC/result-mapping infrastructure. Idempotent across direct + builder composition: a consumer that calls both `services.AddTrellisProblemDetails()` directly and `options.UseProblemDetails()` ends up with exactly one Trellis post-configure layer. |
 | `public TrellisServiceBuilder UseIdempotency(Action<IdempotencyOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `AddTrellisIdempotency(configure)`: startup-validated `IdempotencyOptions`, the default `IIdempotencyScopeResolver` (per-actor, falling back to anonymous), and an internal marker used by `app.UseTrellisIdempotency()` for startup validation. **Does not register a store** — composition is explicit; pair with `services.AddInMemoryIdempotencyStore()` (dev / tests) or an EF-backed store (production). Mount the middleware with `app.UseTrellisIdempotency()` in the request pipeline. Independent of `UseAsp()`. Repeated calls compose the configure delegates rather than overwriting, mirroring `UseAsp` / `UseMediator`. |
 | `public TrellisServiceBuilder UseMediator(Action<TrellisMediatorTelemetryOptions>? configureTelemetry = null)` | `TrellisServiceBuilder` | Registers Trellis Mediator behaviors via `AddTrellisBehaviors(...)`. Repeated calls compose the configure delegates rather than overwriting. |
-| `public TrellisServiceBuilder UseCommandPreCommitHook<TMessage, TResponse, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THook>() where TMessage : ICommand<TResponse> where TResponse : IResult, IFailureFactory<TResponse> where THook : class, ICommandPreCommitHook<TMessage,TResponse>` | `TrellisServiceBuilder` | Registers the typed scoped hook via `AddCommandPreCommitHook<TMessage,TResponse,THook>()` without scanning. Implies `UseMediator()` and installs the open transactional behavior; register `IUnitOfWork` separately. Same binding deduplicates, distinct hooks run in binding order. Independent of fluent/direct unit-of-work registration order. Not for explicitly closed/generated pipelines; register hook interfaces directly there. |
-| `public TrellisServiceBuilder UseCommandPreCommitHook(Type hookType)` | `TrellisServiceBuilder` | Registers a scoped constrained open hook via `AddCommandPreCommitHook(hookType)`, preserving its public constructors and interfaces. Requires a concrete open class with exactly two parameters mapped positionally to the hook contract; invalid types throw `ArgumentException` when registrations are applied. Implies `UseMediator()` and the open transactional behavior/state accessor, but not the store. Identical open bindings deduplicate; constraints filter matching commands. Null throws immediately. |
+| `public TrellisServiceBuilder UseInsideTransactionBehavior<TMessage,TResponse,[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TBehavior>() where TMessage : ICommand<TResponse> where TResponse : IResult, IFailureFactory<TResponse> where TBehavior : class, IPipelineBehavior<TMessage,TResponse>` | `TrellisServiceBuilder` | Registers the scoped application behavior via `AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()`. Implies `UseMediator()` and the open transaction behavior, but not the store. Identical bindings deduplicate; behaviors nest in selection order and unwind in reverse order before commit. |
+| `public TrellisServiceBuilder UseInsideTransactionBehavior(Type behaviorType)` | `TrellisServiceBuilder` | Registers the constrained open application behavior via `AddInsideTransactionBehavior(behaviorType)`, preserving public constructors and interfaces. Requires the exact message/result/failure-factory constraints described in the Mediator reference. Null throws immediately; invalid types throw when registrations are applied. Implies `UseMediator()` and the open transaction behavior, but not the store. |
 | `public TrellisServiceBuilder UseFluentValidation()` | `TrellisServiceBuilder` | **AOT-safe.** Registers the FluentValidation adapter only; pair with `UseFluentValidation<TValidator, TMessage>()` or explicit per-validator DI registrations. Implies `UseMediator()`. |
 | `public TrellisServiceBuilder UseFluentValidation<TValidator, TMessage>() where TValidator : class, IValidator<TMessage>` | `TrellisServiceBuilder` | **AOT-safe.** Registers `TValidator` as the `IValidator<TMessage>` and wires the FluentValidation adapter. Implies `UseMediator()`. |
 | `[RequiresUnreferencedCode] [RequiresDynamicCode] public TrellisServiceBuilder UseFluentValidation(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Registers the FluentValidation adapter and scans the supplied assemblies for `IValidator<T>` implementations (non-AOT). Implies `UseMediator()`. |
@@ -214,7 +214,7 @@ public sealed class TrellisServiceBuilder
 | `public TrellisServiceBuilder UseDevelopmentActorProvider(Action<DevelopmentActorOptions>? configure = null)` | `TrellisServiceBuilder` | Registers `DevelopmentActorProvider` as `IActorProvider`. Mutually exclusive with the other actor-provider selectors; a second actor-provider selector throws `InvalidOperationException`. Use only in development/testing hosts. |
 | `public TrellisServiceBuilder UseCachingActorProvider<T>() where T : class, IActorProvider` | `TrellisServiceBuilder` | Wraps the inner `IActorProvider` registration with a per-request caching decorator via `AddCachingActorProvider<T>()`. Chain after the matching `UseXxxActorProvider(...)` call so the inner provider's `IOptions<TOptions>` is configured first. Throws `InvalidOperationException` on repeated call. |
 | `public TrellisServiceBuilder UseWorkerActor(Actor systemActor)` | `TrellisServiceBuilder` | Wraps the existing unkeyed `IActorProvider` via `AddTrellisWorkerActor(systemActor)`. A builder actor-provider selector is not required: a compatible registration added to `IServiceCollection` beforehand also works. The wrapper returns `systemActor` when `IHttpContextAccessor.HttpContext` is null and delegates otherwise. `Apply()` runs after actor-provider selection and caching, regardless of fluent call order. Exactly one unkeyed inner registration is required. Throws `InvalidOperationException` on repeated calls, missing/multiple registrations, singleton implementation type/factory, or transient lifetime. Scoped registrations and singleton instances are supported; keyed registrations are ignored. |
-| `[RequiresUnreferencedCode] [RequiresDynamicCode] public TrellisServiceBuilder UseEntityFrameworkUnitOfWork<TContext>() where TContext : DbContext` | `TrellisServiceBuilder` | Registers `EfUnitOfWork<TContext>` and `TransactionalCommandBehavior<,>` via `AddTrellisUnitOfWork<TContext>()`. Implies `UseMediator()` and is applied last. Annotated non-AOT because the underlying `Trellis.EntityFrameworkCore` package opts out of AOT/trim. Throws `InvalidOperationException` on repeated call — see "Common traps". |
+| `[RequiresUnreferencedCode] [RequiresDynamicCode] public TrellisServiceBuilder UseEntityFrameworkUnitOfWork<TContext>() where TContext : DbContext` | `TrellisServiceBuilder` | Registers `EfUnitOfWork<TContext>` and `TransactionalCommandBehavior<,>` via `AddTrellisUnitOfWork<TContext>()`. Implies `UseMediator()` and preserves the transaction envelope around selected application behaviors. Annotated non-AOT because the underlying `Trellis.EntityFrameworkCore` package opts out of AOT/trim. Throws `InvalidOperationException` on repeated call — see "Common traps". |
 | `public TrellisServiceBuilder UseDomainEvents()` | `TrellisServiceBuilder` | **AOT-safe.** Registers `DomainEventDispatchBehavior<,>` and the default `IDomainEventPublisher` without scanning. Implies `UseMediator()`. Mutually exclusive with `UseTrackedAggregateDomainEvents(...)`. |
 | `public TrellisServiceBuilder UseDomainEvents<TEvent, THandler>() where TEvent : IDomainEvent where THandler : class, IDomainEventHandler<TEvent>` | `TrellisServiceBuilder` | **AOT-safe.** Registers `THandler` for `TEvent` and wires the dispatch behavior. Implies `UseMediator()`. Mutually exclusive with `UseTrackedAggregateDomainEvents(...)`. |
 | `[RequiresUnreferencedCode] [RequiresDynamicCode] public TrellisServiceBuilder UseDomainEvents(params Assembly[] assemblies)` | `TrellisServiceBuilder` | Scans assemblies for `IDomainEventHandler<TEvent>` implementations (non-AOT). Implies `UseMediator()`. Mutually exclusive with `UseTrackedAggregateDomainEvents(...)`. |
@@ -230,22 +230,18 @@ public sealed class TrellisServiceBuilder
 
 ## Behavior
 
-Command pre-commit hooks run after each committable handler and before its unit-of-work
-commit, including deferred nested commits. Ordinary handler failures skip them; the
-first hook failure vetoes persistence even for `FailAfterCommit` outcomes. Any hook
-veto, exception, or cancellation permanently marks the unit of work uncommittable:
-the first reason wins, and even an outer handler that ignores a nested failure cannot
-commit. Scope disposal/new scopes never reset it; discard the unit of work and context.
-This is not rollback, and ordinary handler failures/exceptions retain their existing
-semantics. Inject `CommandDispatchState` for typed handler/hook entries, including
-entity-returning handlers. A fresh frame opens before each handler and always closes;
-each hook reads/removes its own entry. See the complete
-[hook contract](trellis-api-mediator.md#icommandprecommithooktmessage-tresponse).
-The builder adds no new pipeline behavior slot, store dependency, or audit schema.
-This is a command-level extension point, not automatic audit coverage: marker coverage,
-no-op recording policy, and direct store writes remain application-owned. Background
-processors must not reuse a rejected worker-lifetime unit of work; create a fresh
-DI/unit-of-work scope per message.
+`UseInsideTransactionBehavior` places application-owned pipeline behaviors inside
+`TransactionalCommandBehavior` and outside the handler. Their post-handler code runs
+before the commit decision. Direct/builder overlaps deduplicate identical bindings,
+and mediator, resource, event-dispatch, and unit-of-work helper order does not change
+placement. Behaviors nest in selection order and unwind in reverse order.
+
+No ambient dispatch state or unit-of-work interface change is added. Applications own
+recorders, checkpoints, outcome checks, and `finally` cleanup. An ordinary failure skips
+this invocation's commit, without rollback or permanent rejection of an outer/later
+commit. Concurrent commands sharing one unit of work are unsupported.
+See the [complete registration contract](trellis-api-mediator.md#insidetransactionbehaviorservicecollectionextensions)
+and [application-owned audit recipe](trellis-api-cookbook.md#same-commit-audit-staging).
 
 Actor-provider selectors also register the optional `IActorIdentityProvider` capability.
 `UseCachingActorProvider<T>()` has the same one-call dual-registration semantics as
@@ -279,17 +275,17 @@ Domain-event dispatch uses `IUnitOfWorkScope.IsOwner` to distinguish a real oute
 8. FluentValidation adapter/scanning when selected.
 9. Domain event dispatch (registers `DomainEventDispatchBehavior<,>`, the default `IDomainEventPublisher`, and any scanned handlers), plus tracked-aggregate domain events when selected.
 10. Integration event dispatch (when `UseIntegrationEvents(...)` is selected).
-11. Typed/open command pre-commit hook bindings (when either `UseCommandPreCommitHook` overload is selected).
+11. Typed/open inside-transaction application behaviors (when either `UseInsideTransactionBehavior` overload is selected).
 12. EF Core Unit of Work.
 13. Transactional outbox relay (when `UseOutbox<TContext>()` is selected).
 14. Outbox readiness (when `UseOutboxReadiness<TContext>(profile)` is explicitly selected).
 15. Transactional inbox dispatch registration (when `UseInbox<TContext>(...)` is selected).
 
-That order preserves the important pipeline invariant: `TransactionalCommandBehavior<,>` is the innermost behavior, closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors. The lower-level registration helpers are also order-independent: if a transaction behavior is present before `AddTrellisBehaviors()` or domain-event dispatch runs, it is rehomed to the innermost slot.
+That order preserves the transaction envelope: outer logging/tracing/exception and event-dispatch behaviors surround `TransactionalCommandBehavior<,>`, which surrounds selected application behaviors and the handler. Commit failures remain visible to the outer stages. Lower-level helpers restore the same envelope regardless of call order.
 
 Mediator's order is Exception -> Tracing -> Logging -> AuthorizationContext -> static
 authorization -> direct/via resource authorization -> Validation -> selected event
-dispatch -> TransactionalCommand -> handler. `UseMediator` and the resource slots supply
+dispatch -> TransactionalCommand -> selected inside-transaction behaviors -> handler. `UseMediator` and the resource slots supply
 the integral `AuthorizationContextBehavior` automatically: there is no separate actor
 handler toggle. Known closed/open context descriptors normalize to one applicable frame.
 Options before or after a two-assembly application/persistence scan compose normally;
@@ -371,19 +367,19 @@ services.AddTrellis(options => options
 ```
 
 ```csharp
-// AuditEntry, pending audit records, and the hook's rejection policy are app-owned.
+// The audit recorder, behavior, and missing-record policy are application-owned.
 services.AddTrellis(options => options
-    .UseCommandPreCommitHook(typeof(RequiredAuditHook<,>))
+    .UseInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))
     .UseEntityFrameworkUnitOfWork<AppDbContext>());
 ```
 
-The constrained open hook applies to every matching command without per-command
-registration. Use the typed overload for one explicit closed binding.
+The constrained open behavior applies to every matching command. Use the typed overload
+for one explicit closed application binding. Neither form supplies the store.
 
-These slots imply `UseMediator`; Native AOT hosts with struct results instead bind
-`ICommandPreCommitHook<Command,Response>` directly alongside their explicitly closed
-transaction behavior and register `CommandDispatchState` directly when needed.
-Hook registration does not make open behaviors Native-DI safe.
+Explicitly closed/generated pipelines instead list their application behavior after the
+closed transaction in their literal pipeline configuration. Do not use these helpers or
+builder slots in that shape; open behavior registration does not remove Native DI's
+struct-result restriction.
 
 ## Registrations without a builder slot
 
@@ -411,8 +407,8 @@ The vendor-SDK rule is the important one: `Trellis.ServiceDefaults` references n
 `UseOutboxReadiness<TContext>(profile)`
 surfaces the `IServiceCollection` helper `AddTrellisOutboxReadiness<TContext>(profile)`
 and is classified in `RegistrationSurfaceTests.Expected`. Direct/builder registration
-deduplicates equal context/profile selections and leaves the transaction behavior
-innermost, before or after unit-of-work registration. Existing `UseOutbox` and `UseInbox`
+deduplicates equal context/profile selections and preserves the transaction envelope
+before or after unit-of-work registration. Existing `UseOutbox` and `UseInbox`
 calls still do not enable health checks; endpoint selection and readiness/liveness policy
 remain host-owned. Capture age and consumer lag use the same existing builder slot and
 stay disabled until the immutable profile enables them. Consumer-lag implementations are
@@ -431,6 +427,6 @@ a reason. Vendor SDK lag adapters remain outside this package's reference graph,
 no new cloud SDK dependency or allowlist entry solely to record their unslotted status.
 
 Prove direct/builder idempotence and order-independence before and after
-`AddTrellisUnitOfWork<TContext>()`, without moving the innermost transaction behavior
+`AddTrellisUnitOfWork<TContext>()`, without disturbing the transaction envelope
 or adding probe work to the command/dispatch pipeline. The host explicitly selects the tuned health profile, optional lag evidence, and
 endpoint/readiness mapping.

@@ -66,7 +66,6 @@ Moving an aggregate from in-memory to EF Core surfaces a few constraints that do
 | `DbContextIdempotencyExtensions.TryInsertUniqueAsync<TEntity>(entity, ct)` | Save | `Task<Result<TEntity>>`. Adds `entity`, persists, and converts a unique-constraint violation into an `Error.Conflict` with reason code `FaultCodes.DuplicateKey` carrying `ConstraintName` / `ConstraintTableName`. FK / concurrency / cancellation / connection exceptions propagate. Requires a clean change tracker on entry. |
 | `RepositoryBase<TAggregate, TId>` | Aggregate repo base | `FindByIdAsync` (Maybe), `QueryAsync(spec)`, `ExistsAsync`, `CountAsync`, `Add`, `Remove`, `RemoveByIdAsync` (`Task<Result<Unit>>`). Staging only — never calls `SaveChanges`. |
 | `IUnitOfWork.CommitAsync(ct)` | Commit boundary | `Task<Result<Unit>>`. Implemented by `EfUnitOfWork<TContext>`. Scope-aware via `BeginScope()`: only the outermost scope's commit persists. |
-| `IUnitOfWork.MarkUncommittable(Error reason)` | Commit guard | Permanently rejects every later commit with the first reason, before nested deferral or database access. Scope disposal/new scopes never reset it. |
 | `TransactionalCommandBehavior<TMessage, TResponse>` | Pipeline behavior | Auto-commits after a successful `ICommand<TResponse>` handler; only fires for commands. Wraps each command in `using var scope = unitOfWork.BeginScope();` so a nested command (dispatched via `IMediator` from another handler) defers its commit until the outermost handler returns. |
 | `UnitOfWorkServiceCollectionExtensions.AddTrellisUnitOfWork<TContext>()` / `AddTrellisUnitOfWorkWithoutBehavior<TContext>()` | DI | Registers `EfUnitOfWork<TContext>` (scoped) and inserts the commit behavior innermost. |
 | `DbExceptionClassifier.IsDuplicateKey` / `IsForeignKeyViolation` / `ExtractConstraintDetail` / `ExtractConstraintIdentity` | Diagnostics | Cross-provider DB exception classification used by the save helpers. Recognizes SQL Server, PostgreSQL, SQLite, and MySQL/MariaDB (works with both `MySql.Data.MySqlClient` and `MySqlConnector`); provider exception types are detected by name so consumers don't take a transitive driver dependency. `ExtractConstraintIdentity(ex)` returns `(ConstraintName, TableName)` for structured logs and is the primitive `SaveChangesResultAsync` / `SaveChangesWithRetryAsync` / `TryInsertUniqueAsync` use to populate the new `Error.Conflict` telemetry fields. |
@@ -462,9 +461,13 @@ services.AddTrellisUnitOfWork<AppDbContext>(); // commit behavior goes innermost
 ```
 
 > [!IMPORTANT]
-> Call `AddTrellisUnitOfWork<TContext>()` **after** `AddTrellisBehaviors()`. The transactional behavior is inserted after the last `IPipelineBehavior<,>` registration so it runs innermost — closest to the handler — keeping commit failures visible to logging, tracing, and exception behaviors.
+> `AddTrellisUnitOfWork<TContext>()`, standard mediator registration, and event-dispatch helpers preserve the transaction envelope regardless of call order. Explicitly selected inside-transaction application behaviors sit between the transaction and the handler; commit failures remain visible to outer logging, tracing, and exception behaviors.
 
-`TransactionalCommandBehavior<TMessage, TResponse>` only fires for `ICommand<TResponse>` (queries are skipped at the type-constraint level). On handler success it awaits pre-commit hooks, then calls `unitOfWork.CommitAsync(ct)` if all accept; the first hook or commit error replaces the response. EF Core's implicit transaction around `SaveChanges` makes business and hook-added changes commit atomically. `CommandDispatchState` carries typed handler/hook state even for entity results; the behavior always closes its per-command frame. See [Command pre-commit hooks](integration-mediator.md#command-pre-commit-hooks).
+`TransactionalCommandBehavior<TMessage,TResponse>` only applies to commands. It awaits
+the enclosed application behaviors and handler, then commits their final successful
+response. Use `AddInsideTransactionBehavior` for post-handler staging before that
+decision. Business and application-staged audit rows sharing the context persist in
+the same save. See [inside-transaction application behaviors](integration-mediator.md#inside-transaction-application-behaviors).
 
 A handler can also opt into a **persist-on-failure** outcome by returning `Result.FailAfterCommit<T>(error)` — staged changes are still committed alongside the failure result. This is the canonical shape for a worker handler that wants to persist a `permanently_failed` row and surface the underlying error to the caller. See [Persisting failure state from a worker handler](integration-mediator.md#persisting-failure-state-from-a-worker-handler) in the mediator article for the full recipe.
 
@@ -474,7 +477,7 @@ For background jobs or non-mediator code, inject `IUnitOfWork` directly and call
 
 A command handler may dispatch another command via `IMediator` (typical for orchestration handlers that compose smaller use cases). Both invocations go through `TransactionalCommandBehavior`, which means without depth tracking the inner command would commit *its own* changes the moment its handler returned — even though those changes were staged inside the outer command's transaction. If the outer command then failed, the inner's writes would already be persisted.
 
-`EfUnitOfWork<TContext>` solves this with `BeginScope()`. Each call increments a depth counter; the returned `IUnitOfWorkScope` captures `IsOwner` (true only at depth 1) and decrements depth on disposal. While committable, `CommitAsync` defers without writing at depth > 1. Only the outermost scope's commit saves. The behavior wraps every command automatically; handlers do not call `BeginScope` themselves. Event dispatch retains successful nested aggregate responses until that owning commit and a successful outer response, including outer DTO/Unit responses.
+`EfUnitOfWork<TContext>` solves this with `BeginScope()`. Each call increments a depth counter; the returned `IUnitOfWorkScope` captures `IsOwner` (true only at depth 1) and decrements depth on disposal. `CommitAsync` defers without writing at depth > 1. Only the outermost scope's commit saves. The behavior wraps every command automatically; handlers do not call `BeginScope` themselves. Event dispatch retains successful nested aggregate responses until that owning commit and a successful outer response, including outer DTO/Unit responses.
 
 ```csharp
 public async ValueTask<Result<Unit>> Handle(ShipOrder cmd, CancellationToken ct)
@@ -494,13 +497,13 @@ public async ValueTask<Result<Unit>> Handle(ShipOrder cmd, CancellationToken ct)
 ```
 
 > [!IMPORTANT]
-> The unit of work is shared with the outer's `DbContext`, so per-scope rollback is not supported. An ignored ordinary inner handler failure can still have its staged changes persisted by an outer success. A **hook veto, exception, or cancellation is different**: it calls `MarkUncommittable`, permanently blocking the owning and all later commits with the first rejection, even after scopes close or new scopes open. Discard the unit of work and context; direct `SaveChanges` must not bypass the guard.
+> The unit of work is shared with the outer's `DbContext`, so per-scope rollback is not supported. An ignored inner failure can leave tracked changes that an outer success persists. The inside-transaction slot does not add permanent rejection: propagate failures when the owner must not commit, and discard a failed request's context.
 
 > [!WARNING]
 > The depth counter is per-`IUnitOfWork`-instance — i.e. per DI scope. **Concurrent commands on the same scoped `IUnitOfWork`** (e.g. `Task.WhenAll(mediator.Send(a), mediator.Send(b))` from inside a handler) are **not supported**: their scopes share the counter and one command's commit can suppress or get folded into the other's. This is consistent with EF Core's existing constraint that `DbContext` is not thread-safe — concurrent dispatch on a single request scope is unsafe regardless. To run commands in parallel, give each one its own DI scope via `IServiceScopeFactory.CreateScope()` so each resolves its own `IUnitOfWork` and `DbContext`.
 
 > [!NOTE]
-> **Custom adapters must implement ownership, depth-aware commits, and permanent invalidation.** `BeginScope()` returns `IUnitOfWorkScope`; capture its fixed `IsOwner` when opening it. Implement the required `MarkUncommittable(Error reason)`: reject null, preserve the first reason, and return it from every later commit before deferral or store access. Automatic event dispatch inside an external manually owned scope is rejected; use explicit `DispatchAggregateEventsAsync` after its actual commit instead.
+> **Custom adapters must implement ownership and depth-aware commits.** `BeginScope()` returns `IUnitOfWorkScope`; capture its fixed `IsOwner` when opening it. Automatic event dispatch inside an external manually owned scope is rejected; use explicit `DispatchAggregateEventsAsync` after its actual commit instead.
 
 ## Optimistic concurrency
 

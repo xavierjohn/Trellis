@@ -38,7 +38,7 @@ public sealed class TrellisServiceBuilder
     private readonly List<Action<IServiceCollection>> _typedResourceAuthorizationRegistrations = [];
     private readonly List<Action<Trellis.Mediator.ResourceAuthorizationOptions>> _resourceAuthorizationConfigures = [];
     private readonly List<Action<IServiceCollection>> _typedDomainEventHandlerRegistrations = [];
-    private readonly List<Action<IServiceCollection>> _commandPreCommitHookRegistrations = [];
+    private readonly List<Action<IServiceCollection>> _insideTransactionBehaviorRegistrations = [];
     private readonly List<Assembly> _integrationEventAssemblies = [];
     private readonly List<Action<IServiceCollection>> _typedIntegrationEventHandlerRegistrations = [];
     private Action<TrellisAspOptions>? _configureAsp;
@@ -193,52 +193,52 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
-    /// Registers a scoped command pre-commit hook that validates or stages changes after the handler
-    /// and before persistence. Implies <see cref="UseMediator"/>.
+    /// Registers a scoped application behavior inside the transactional command behavior.
+    /// Implies <see cref="UseMediator"/>.
     /// </summary>
     /// <remarks>
-    /// Repeated bindings are idempotent; distinct hooks run in selection order. The hook executes
-    /// inside the transactional behavior, independent of fluent or direct registration order.
+    /// Repeated bindings are idempotent. Behaviors nest in selection order, so post-handler work
+    /// runs in reverse order before the commit decision, independent of registration order.
     /// Register an <see cref="IUnitOfWork"/> separately, typically with
     /// <see cref="UseEntityFrameworkUnitOfWork{TContext}"/>.
     /// </remarks>
     /// <typeparam name="TMessage">The command type.</typeparam>
     /// <typeparam name="TResponse">The command's result type.</typeparam>
-    /// <typeparam name="THook">The hook implementation type.</typeparam>
-    public TrellisServiceBuilder UseCommandPreCommitHook<
+    /// <typeparam name="TBehavior">The application-owned pipeline behavior.</typeparam>
+    public TrellisServiceBuilder UseInsideTransactionBehavior<
         TMessage,
         TResponse,
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THook>()
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TBehavior>()
         where TMessage : ICommand<TResponse>
         where TResponse : IResult, IFailureFactory<TResponse>
-        where THook : class, ICommandPreCommitHook<TMessage, TResponse>
+        where TBehavior : class, IPipelineBehavior<TMessage, TResponse>
     {
         _useMediator = true;
-        _commandPreCommitHookRegistrations.Add(static services =>
-            services.AddCommandPreCommitHook<TMessage, TResponse, THook>());
+        _insideTransactionBehaviorRegistrations.Add(static services =>
+            services.AddInsideTransactionBehavior<TMessage, TResponse, TBehavior>());
         return this;
     }
 
     /// <summary>
-    /// Registers an open-generic scoped pre-commit hook for matching commands.
+    /// Registers an open-generic scoped behavior inside the transaction for matching commands.
     /// Implies <see cref="UseMediator"/>.
     /// </summary>
     /// <remarks>
     /// Constraints select matching commands without per-command registration. The implementation
-    /// maps its first/second parameters to message/response in that order. Registrations are applied
-    /// in selection order in the canonical hook stage; register the unit of work separately.
+    /// maps its first/second parameters to message/response in that order and explicitly carries
+    /// the transaction's command, result, and failure-factory constraints. Register the unit of work separately.
     /// </remarks>
-    /// <param name="hookType">A concrete open hook with message and response parameters, in that order.</param>
+    /// <param name="behaviorType">A concrete open behavior with message and response parameters, in that order.</param>
     /// <returns>This builder.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="hookType"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when registrations are applied and the type is not a supported open hook.</exception>
-    public TrellisServiceBuilder UseCommandPreCommitHook(
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="behaviorType"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown when registrations are applied and the type is not a supported open behavior.</exception>
+    public TrellisServiceBuilder UseInsideTransactionBehavior(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.Interfaces)]
-        Type hookType)
+        Type behaviorType)
     {
-        ArgumentNullException.ThrowIfNull(hookType);
+        ArgumentNullException.ThrowIfNull(behaviorType);
         _useMediator = true;
-        _commandPreCommitHookRegistrations.Add(services => services.AddCommandPreCommitHook(hookType));
+        _insideTransactionBehaviorRegistrations.Add(services => services.AddInsideTransactionBehavior(behaviorType));
         return this;
     }
 
@@ -1154,7 +1154,7 @@ public sealed class TrellisServiceBuilder
         foreach (var register in _typedIntegrationEventHandlerRegistrations)
             register(_services);
 
-        foreach (var register in _commandPreCommitHookRegistrations)
+        foreach (var register in _insideTransactionBehaviorRegistrations)
             register(_services);
 
         _unitOfWorkRegistration?.Invoke(_services);

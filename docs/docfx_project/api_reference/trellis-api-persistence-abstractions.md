@@ -35,33 +35,15 @@ The commit boundary for staged changes. Repositories stage changes; `CommitAsync
 public interface IUnitOfWork
 {
     Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default);
-    void MarkUncommittable(Error reason);
     IUnitOfWorkScope BeginScope();
 }
 ```
 
 - `CommitAsync` returns `Result<Unit>` so concurrency, duplicate-key, and foreign-key failures surface as a typed `Error` instead of an exception.
 - `BeginScope` makes nested commits depth-aware: while committable, a `CommitAsync` call inside a nested scope (depth &gt; 1) must defer (return success without writing); only the outermost scope's `CommitAsync` persists. This lets the standard `TransactionalCommandBehavior` wrap every command without a successful inner command committing a partially-completed outer command's staged changes.
-- `MarkUncommittable(Error reason)` rejects null and permanently invalidates this instance. Preserve the **first** reason and return it from every later `CommitAsync` **before** nested deferral or store access. Scope disposal and opening new scopes never reset it. There is no reset API: discard the unit of work and its backing store/context.
-
-**Adapter contract change.** `MarkUncommittable` is a required abstract interface member,
-not an optional/default no-op. Custom adapters must implement it. The command pipeline
-uses it for every hook veto, exception, or cancellation; ignoring a nested hook failure
-cannot make the owner's commit succeed. Explicit vetoes preserve the hook error;
-hook exceptions/cancellation use `FaultCodes.UnitOfWorkUncommittable` while propagating
-the original exception. Ordinary handler failures/exceptions do not invalidate the
-unit of work.
-
-For an existing nonconcurrent test double, the migration is a retained error,
-null/first-reason guard, and rejection check at the start of `CommitAsync`; see
-[Recipe 16's complete fake](trellis-api-cookbook.md#testing-handlers-that-use-dispatch-state).
-Real adapters must preserve the same semantics before any store access.
-Background processors need a fresh DI/unit-of-work scope per message; one hook veto,
-exception, or cancellation permanently rejects a reused worker-lifetime instance.
-
-Invalidation does not roll back or detach staged changes. Direct store writes or
-`DbContext.SaveChanges` are outside this contract; handlers/hooks must not use them
-to bypass a blocked commit.
+An inner failure does not roll back tracked changes or permanently prevent commits.
+Propagate failures when the owner must not commit; discard a failed request's context.
+Direct store writes are outside this boundary.
 
 ## `IUnitOfWorkScope`
 
@@ -74,7 +56,7 @@ public interface IUnitOfWorkScope : IDisposable
 
 `IsOwner` is fixed when the scope opens: true for the outermost scope and false for nested scopes. Disposal ends the scope without committing. Custom adapters must return this scope contract (a breaking change from `IDisposable`) and preserve nested commit deferral. The mediator uses ownership to retain nested aggregate dispatch until an actual owning commit succeeds, including when the outer response is a DTO or Unit.
 
-Automatic event dispatch inside a manually opened outer scope is rejected: use manual `DispatchAggregateEventsAsync` after the manual owning commit instead. Scope depth is per unit-of-work instance; concurrent commands sharing it are unsupported. An ignored ordinary inner handler failure does not roll back its staged changes; a hook failure instead invalidates the shared unit of work.
+Automatic event dispatch inside a manually opened outer scope is rejected: use manual `DispatchAggregateEventsAsync` after the manual owning commit instead. Scope depth is per unit-of-work instance; concurrent commands sharing it are unsupported. An ignored inner failure does not roll back staged changes or prevent the owner's commit.
 
 ## `IInboxStore` and `InboxRecord`
 

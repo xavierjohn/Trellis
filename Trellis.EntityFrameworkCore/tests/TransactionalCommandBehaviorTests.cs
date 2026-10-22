@@ -268,20 +268,13 @@ public class TransactionalCommandBehaviorTests
 
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
-        private Error? _rejection;
         public int CommitCount { get; private set; }
         public Result<Unit>? CommitResult { get; init; }
 
         public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
         {
             CommitCount++;
-            return Task.FromResult(_rejection is { } rejection ? Result.Fail(rejection) : CommitResult ?? Result.Ok());
-        }
-
-        public void MarkUncommittable(Error reason)
-        {
-            ArgumentNullException.ThrowIfNull(reason);
-            _rejection ??= reason;
+            return Task.FromResult(CommitResult ?? Result.Ok());
         }
 
         public IUnitOfWorkScope BeginScope() => new NoOpScope();
@@ -301,7 +294,6 @@ public class TransactionalCommandBehaviorTests
     private sealed class ScopeTrackingFakeUnitOfWork : IUnitOfWork
     {
         private int _depth;
-        private Error? _rejection;
 
         public int CommitCallCount { get; private set; }
 
@@ -310,19 +302,11 @@ public class TransactionalCommandBehaviorTests
         public Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
         {
             CommitCallCount++;
-            if (_rejection is { } rejection)
-                return Task.FromResult(Result.Fail(rejection));
             if (_depth > 1)
                 return Task.FromResult(Result.Ok());
 
             ActualPersistCount++;
             return Task.FromResult(Result.Ok());
-        }
-
-        public void MarkUncommittable(Error reason)
-        {
-            ArgumentNullException.ThrowIfNull(reason);
-            _rejection ??= reason;
         }
 
         public IUnitOfWorkScope BeginScope()

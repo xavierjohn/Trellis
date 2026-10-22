@@ -319,7 +319,7 @@ Opt-in marker carried by result types whose **failure** outcome should still tri
 
 | Behavior | Persist-on-failure handling |
 | --- | --- |
-| `TransactionalCommandBehavior` (`Trellis.Mediator`) | Runs registered pre-commit hooks on success **or** persist-on-failure, then commits only if every hook accepts. A hook rejection vetoes persistence, even when the hook returns `FailAfterCommit`. The first hook or commit error replaces the handler error in the returned response. See [hook semantics](trellis-api-mediator.md#icommandprecommithooktmessage-tresponse). |
+| `TransactionalCommandBehavior` (`Trellis.Mediator`) | Commits on the enclosed pipeline's final success **or** explicit persist-on-failure response. An inside-transaction application behavior can return an ordinary failure to skip this commit; a commit error replaces the response. |
 | `DomainEventDispatchBehavior` (`Trellis.Mediator`) | Treats persist-on-failure as failure: events are **not** dispatched. Events the handler raised on aggregates remain on those in-memory instances and are discarded with the request scope — they are not a durable retry buffer. Model post-failure side effects via an outbox row or a dedicated follow-up command. |
 
 #### Anti-pattern — composing `FailAfterCommit` with aggregating operators
@@ -844,7 +844,6 @@ Emit these by constant, not by literal — a typo in a literal is a silent wire 
 | `RateLimitExceeded` | `rate-limit.exceeded` | ASP.NET Core rate-limiting middleware rejected the request before endpoint execution. Carried by `Error.RateLimited`; emitted by `Trellis.Asp`'s `UseTrellisRejectionHandler`. |
 | `DefaultInitialized` | `default-initialized` | A `Result` was default-initialized and never assigned. |
 | `UnhandledException` | `unhandled-exception` | An exception escaped to a boundary that converts it into a failed `Result`. |
-| `UnitOfWorkUncommittable` | `unit-of-work.uncommittable` | A pre-commit hook threw or observed cancellation. The command pipeline records this safe `Error.Unexpected` reason on the unit of work before propagating the original exception; every later commit is refused until that instance is discarded. Explicit hook vetoes retain their own error instead. |
 | `NotImplemented` | `not-implemented` | A boundary reached a path the framework does not implement. Carried by `Error.Unexpected`; surfaces as HTTP 501. |
 | `ConcurrentModification` | `concurrent-modification` | A write lost a race — the row changed between read and save. Carried by `Error.Conflict`; surfaces as 412 when the request carried `If-Match`, otherwise 409. |
 | `DuplicateKey` | `duplicate.key` | A write violates a unique constraint, including losing a concurrent unique-index insert race. Carried by `Error.Conflict`; default HTTP status 409. Emitted by EF save/idempotent-insert helpers and `FakeRepository.SaveAsync`. |

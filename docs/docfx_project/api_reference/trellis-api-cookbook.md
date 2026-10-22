@@ -976,7 +976,7 @@ public static class CompositionRoot
 | `UseAsp()` | `AddTrellisAsp()` | Error → status mapping and `ResourceCollectionNameRegistry`. **Does NOT register scalar-value JSON / model-binding validation** — compose with `UseScalarValueValidation()` when binding value-object DTOs. |
 | `UseScalarValueValidation()` | `AddScalarValueValidation()` | Configures both MVC and Minimal API JSON pipelines (model binders + JSON converters + `SuppressModelStateInvalidFilter` toggle). Independent of `UseAsp()`. Minimal API hosts must still call `app.UseScalarValueValidation()` middleware and chain `.WithScalarValueValidation()` per endpoint. |
 | `UseMediator()` | `AddTrellisBehaviors()` | Registers the canonical Result-aware pipeline behaviors. |
-| `UseCommandPreCommitHook<TMessage,TResponse,THook>()` | `AddCommandPreCommitHook<TMessage,TResponse,THook>()` | Implies `UseMediator()`; validates or stages writes inside the transaction behavior before commit. Register `IUnitOfWork` separately. See Recipe 16. |
+| `UseInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` | `AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` | Implies `UseMediator()`; places an application behavior before the commit decision. Both support constrained open `Type` overloads. Register `IUnitOfWork` separately. See Recipe 16. |
 | `UseFluentValidation(...)` | `AddTrellisFluentValidation(...)` (from `Trellis.Mediator.FluentValidation`) | Implies `UseMediator()`. Pass assemblies to scan, or omit assemblies when validators are registered explicitly. |
 | `UseClaimsActorProvider()` / `UseEntraActorProvider()` / `UseDevelopmentActorProvider()` | One ASP actor provider | The builder rejects multiple actor providers. |
 | `UseResourceAuthorization(...)` | `AddResourceAuthorization(...)` | Implies `UseMediator()` and scans for resource auth/loaders. |
@@ -1451,7 +1451,7 @@ The recipe number is preserved as a stub so existing bookmark and search-index e
 |---|---|
 | Understand who persists repository-staged changes | [Handler staging and commit ownership](#handler-staging-and-commit-ownership) |
 | Stage audit records atomically with business writes and reject missing audits | [Same-commit audit staging](#same-commit-audit-staging) |
-| Test a state-dependent handler without a container, database, or public frame opener | [Testing handlers that use dispatch state](#testing-handlers-that-use-dispatch-state) |
+| Test an audit-recording handler without a container, database, or pipeline | [Testing handlers with an application-owned recorder](#testing-handlers-with-an-application-owned-recorder) |
 
 ### Handler staging and commit ownership
 
@@ -1469,14 +1469,14 @@ public sealed class CreateOrderHandler(IOrderRepository repo)
 }
 ```
 
-> `repo.Add(entity)` stages the aggregate for insertion via EF Core; `TransactionalCommandBehavior`, registered by `services.AddTrellisUnitOfWork<TContext>()` in your ACL composition root, automatically saves after a successful handler and acceptance by its pre-commit hooks — no explicit save call is needed in the handler.
+> `repo.Add(entity)` stages the aggregate for insertion via EF Core; `TransactionalCommandBehavior`, registered by `services.AddTrellisUnitOfWork<TContext>()` in your ACL composition root, automatically saves after a successful enclosed pipeline response — no explicit save call is needed in the handler.
 
 **What it shows.** Handlers shape domain state; the pipeline owns the commit boundary.
 `RepositoryBase.Add` returns `void` to signal "staged, not persisted" — not an awaitable
-save result. The innermost `TransactionalCommandBehavior` awaits the handler, then its
-pre-commit hooks, then saves before returning. Ordinary failure, hook rejection, or an
-exception prevents that commit. `IPersistOnFailure` deliberately enables hooks and
-persistence for an explicit failure outcome, but does not bypass a rejecting hook.
+save result. `TransactionalCommandBehavior` awaits the enclosed application behaviors
+and handler, then saves their final successful response before returning. Ordinary
+failure or exception prevents that invocation's commit. `IPersistOnFailure` deliberately
+enables persistence for an explicit failure outcome.
 See the [canonical pipeline](trellis-api-mediator.md#canonical-pipeline-order) for the
 outer authorization, validation, telemetry, and event-dispatch stages.
 
@@ -1535,33 +1535,36 @@ services
 Without a transaction behavior and matching `IUnitOfWork`, `repo.Add(order)` only stages
 the entity. Tests against `FakeRepository` can hide that omission because `Add` is
 immediately visible there. Wire `AddTrellisUnitOfWork<TContext>()` in the EF composition
-root, not each handler. A selected pre-commit hook also installs the behavior, but never
-supplies the store itself.
+root, not each handler. `AddInsideTransactionBehavior` also installs the transaction
+behavior, but never supplies the store itself.
 
 ### Same-commit audit staging
 
-**Problem.** A successful command must record an audit entry, and missing audit data
-must refuse persistence. An outer behavior that stages audit rows after `next(...)`
-is too late: Trellis keeps the transactional behavior innermost, so it may already have
-saved before that code runs. Do not solve this with registration-order assumptions,
-a second save, or exposing `DbContext` through provider-neutral `IUnitOfWork`.
+**Problem.** Stage audit rows after a handler but before the same commit, without
+changing its entity response. A normal outer behavior's post-handler code can run after
+persistence; relying on manual registration order is fragile.
 
-**Solution.** Register a constrained open `ICommandPreCommitHook<TMessage,TResponse>`
-for every command carrying an application-owned audit marker. The handler stages the
-business aggregate, records pending audits in `CommandDispatchState`, and still returns
-`Result<Order>`; no outcome carrier is required. The hook reads/removes its own typed
-entry and stages audits through a repository sharing the context. One owning commit
-persists both. The transactional behavior opens the frame before the handler and always
-closes it, including when failed handlers skip hooks. Nested dispatches get isolated
-frames even when they reuse the same message instance; parent state is restored afterward.
+**Solution.** Use `AddInsideTransactionBehavior` or its builder slot. Keep the recorder
+application-owned: the behavior captures its starting count, drains only records added
+by that invocation, and cleans up in `finally` on every exit. Serial nested behaviors
+use nested checkpoints; no framework-owned state frame is needed.
 
 ```csharp
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Mediator;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Trellis;
+using Trellis.EntityFrameworkCore;
 using Trellis.Mediator;
+using Trellis.ServiceDefaults;
 
 public sealed partial class AuditEntryId : RequiredGuid<AuditEntryId>;
+
 public sealed record AuditRecorded(AuditEntryId AuditEntryId, DateTimeOffset OccurredAt) : IDomainEvent;
 
 public sealed class AuditEntry : Aggregate<AuditEntryId>
@@ -1583,9 +1586,31 @@ public sealed class AuditEntry : Aggregate<AuditEntryId>
     }
 }
 
-public sealed class PendingOrderAudits
+public interface IOrderAuditRecorder
 {
-    public List<AuditEntry> Entries { get; } = [];
+    IReadOnlyList<AuditEntry> Recorded { get; }
+    void Record(AuditEntry entry);
+    IReadOnlyList<AuditEntry> TakeFrom(int checkpoint);
+}
+
+public sealed class OrderAuditRecorder : IOrderAuditRecorder
+{
+    private readonly List<AuditEntry> _recorded = [];
+    public IReadOnlyList<AuditEntry> Recorded => _recorded;
+
+    public void Record(AuditEntry entry) => _recorded.Add(entry);
+
+    public IReadOnlyList<AuditEntry> TakeFrom(int checkpoint)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(checkpoint);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(checkpoint, _recorded.Count);
+        if (checkpoint == _recorded.Count)
+            return [];
+
+        var records = _recorded.GetRange(checkpoint, _recorded.Count - checkpoint);
+        _recorded.RemoveRange(checkpoint, _recorded.Count - checkpoint);
+        return records;
+    }
 }
 
 public interface IAuditedCommand;
@@ -1593,15 +1618,14 @@ public interface IAuditedCommand;
 public sealed record CreateAuditedOrderCommand(Money Total) : ICommand<Result<Order>>, IAuditedCommand;
 
 public sealed class CreateAuditedOrderHandler(
-    IOrderRepository orders, CommandDispatchState state, TimeProvider clock)
+    IOrderRepository orders, IOrderAuditRecorder recorder, TimeProvider clock)
     : ICommandHandler<CreateAuditedOrderCommand, Result<Order>>
 {
     public ValueTask<Result<Order>> Handle(
         CreateAuditedOrderCommand command, CancellationToken cancellationToken) =>
         Order.TryCreate(command.Total)
             .Tap(orders.Add)
-            .Tap(order => state.GetOrAdd(static () => new PendingOrderAudits())
-                .Entries.Add(AuditEntry.ForOrderCreated(order.Id, clock)))
+            .Tap(order => recorder.Record(AuditEntry.ForOrderCreated(order.Id, clock)))
             .AsValueTask();
 }
 
@@ -1610,33 +1634,48 @@ public interface IAuditEntryRepository
     void Add(AuditEntry entry);
 }
 
-public sealed partial class RequiredAuditHook<TMessage, TResponse>(
-    CommandDispatchState state, IAuditEntryRepository audits, ILogger<RequiredAuditHook<TMessage, TResponse>> logger)
-    : ICommandPreCommitHook<TMessage, TResponse>
+public sealed class EfAuditEntryRepository(DbContext context)
+    : RepositoryBase<AuditEntry, AuditEntryId>(context), IAuditEntryRepository;
+
+public sealed partial class RequiredAuditBehavior<TMessage, TResponse>(
+    IOrderAuditRecorder recorder, IAuditEntryRepository audits, ILogger<RequiredAuditBehavior<TMessage, TResponse>> logger)
+    : IPipelineBehavior<TMessage, TResponse>
     where TMessage : ICommand<TResponse>, IAuditedCommand
-    where TResponse : IResult
+    where TResponse : IResult, IFailureFactory<TResponse>
 {
-    public ValueTask<Result<Trellis.Unit>> BeforeCommitAsync(
+    public async ValueTask<TResponse> Handle(
         TMessage message,
-        TResponse response,
+        MessageHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (!state.TryGet<PendingOrderAudits>(out var pending) || pending.Entries.Count == 0)
+        var checkpoint = recorder.Recorded.Count;
+        try
         {
-            var faultId = Guid.NewGuid().ToString("N");
-            LogMissingAudit(logger, faultId);
-            return Result.Fail(new Error.Unexpected("audit.not-recorded", faultId)
+            var response = await next(message, cancellationToken).ConfigureAwait(false);
+            var mine = recorder.TakeFrom(checkpoint);
+            if (!response.IsSuccess && response is not IPersistOnFailure { PersistOnFailure: true })
+                return response;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            if (mine.Count == 0)
             {
-                Detail = "An unexpected error occurred while processing the request.",
-            }).AsValueTask();
+                var faultId = Guid.NewGuid().ToString("N");
+                LogMissingAudit(logger, faultId);
+                return TResponse.CreateFailure(new Error.Unexpected("audit.not-recorded", faultId)
+                {
+                    Detail = "An unexpected error occurred while processing the request.",
+                });
+            }
+
+            foreach (var entry in mine)
+                audits.Add(entry);
+
+            return response;
         }
-
-        foreach (var entry in pending.Entries)
-            audits.Add(entry);
-
-        state.Remove<PendingOrderAudits>();
-        return Result.Ok().AsValueTask();
+        finally
+        {
+            recorder.TakeFrom(checkpoint);
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Order creation recorded no audit entry; commit refused. Fault {FaultId}.")]
@@ -1644,162 +1683,83 @@ public sealed partial class RequiredAuditHook<TMessage, TResponse>(
 }
 ```
 
-Register the context and handlers as usual. Both repository adapters inherit
-`RepositoryBase<Aggregate,Id>` and stage only; resolve the **same concrete context**
-for both rather than creating a second context for auditing:
+Register the recorder as scoped. Both repositories must resolve the same concrete
+context and stage only; they must not save independently:
 
 ```csharp
 services.AddSingleton(TimeProvider.System);
+services.AddScoped<IOrderAuditRecorder, OrderAuditRecorder>();
 services.AddScoped<IOrderRepository>(provider =>
     new EfOrderRepository(provider.GetRequiredService<Recipe16DbContext>()));
 services.AddScoped<IAuditEntryRepository>(provider =>
     new EfAuditEntryRepository(provider.GetRequiredService<Recipe16DbContext>()));
 services.AddTrellis(options => options
-    .UseCommandPreCommitHook(typeof(RequiredAuditHook<,>))
+    .UseInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))
     .UseEntityFrameworkUnitOfWork<Recipe16DbContext>());
 ```
 
-Without the builder, use
-`services.AddCommandPreCommitHook(typeof(RequiredAuditHook<,>))`
-alongside standard behaviors and `AddTrellisUnitOfWork<Recipe16DbContext>()`.
-Either registration order keeps the hook **inside** the transaction behavior.
-Microsoft DI's hook enumerable filters the open implementation's constraints: newly
-added `IAuditedCommand` commands are covered without an individual hook registration;
-unmarked commands are not. For one explicit command, the typed overload remains valid:
-`AddCommandPreCommitHook<CreateAuditedOrderCommand,Result<Order>,RequiredAuditHook<CreateAuditedOrderCommand,Result<Order>>>()`.
-`Recipe16DbContext` maps both aggregates and applies generated Trellis conventions;
-its `Money` is a simple decimal-backed sample record with an explicit EF conversion.
+Without the builder, register standard behaviors, use
+`services.AddInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))`, and register
+`AddTrellisUnitOfWork<Recipe16DbContext>()`. Either helper order preserves placement.
+The open behavior's marker constraint selects matching commands; the typed
+`AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` overload selects one binding.
+Multiple selected behaviors nest in binding order and unwind in reverse order.
 
-**Constraints.** The hook is not a universal `finally` callback. Ordinary failed or
-throwing handlers skip it; frame disposal still drops their pending entries. No pending
-audit list is stored on the scoped hook, and each hook uses its own state-container type.
-Do not access state outside a transactional command or retain entries after it ends.
-Each successful nested command stages its own records before its deferred commit, and only
-the owning accepted outcome saves them. A hook rejection vetoes even a persist-on-failure
-handler. This hook also accepts an explicit persist-on-failure response when its frame
-contains the required audits; it does not depend on a success payload.
+**Outcome and cleanup contract.** The behavior inspects the actual response: success
+and `IPersistOnFailure { PersistOnFailure: true }` may stage rows. Ordinary failure
+returns unchanged; missing required data returns an ordinary failure **without**
+persistence intent. `finally` removes this invocation's remaining records on success,
+failure, exception, cancellation, or staging error while retaining the parent's prefix.
+Handlers keep injecting the recorder interface and can be tested directly.
 
-Any hook veto, exception, or cancellation permanently makes the owning unit of work
-**uncommittable until discarded**. Its first reason is returned by every later commit,
-including after scopes close or new ones open; ignoring a nested hook failure or using
-`FailAfterCommit` cannot bypass it. An outer loop cannot treat an inner hook veto as a
-soft failure and commit the remaining items: one veto rejects the entire owning unit
-of work. Explicit vetoes retain the hook error; hook exceptions or cancellation record
-`FaultCodes.UnitOfWorkUncommittable` and still propagate unchanged.
-This does **not** roll back tracked changes or erase earlier hooks' staging. Discard both
-the unit of work and context; direct store writes/`SaveChanges` must not bypass the guard.
-Ordinary handler failures/exceptions retain their existing non-poisoning staging semantics.
-Hooks observe the request token, never save/publish independently, and add no pipeline slot.
+**Limits.** Placement does not provide permanent rejection or rollback. Propagate a
+nested failure when its owner must not commit: if the owner ignores it, it can persist
+the failed child's tracked changes. Discard the context after a rejected request.
+Checkpoint cleanup removes recorder entries, not already staged EF entities. Commands
+sharing one recorder/unit of work must execute serially; concurrent commands sharing a
+`DbContext` are unsupported. Use separate DI scopes for independent concurrent work.
 
-The audit schema, actor metadata, redaction, retention, and whether an audit entry raises
-`AuditRecorded` remain application policy, not framework-provided automatic auditing.
-The application must also test that every command requiring an audit carries its marker:
-an unmarked command or a direct store write is outside this command-level policy.
-This example requires a pending entry for every successful marked dispatch, including
-idempotent no-ops; Trellis supplies no automatic "nothing to audit" signal.
-Use a fresh DI/unit-of-work scope per background message, rather than reusing a worker
-scope after a hook veto, exception, or cancellation.
-Pending audits stay out of the returned entity; map that entity to the host's public
-response normally. For post-commit events from hook-added aggregates, select
-`UseTrackedAggregateDomainEvents(...)` even though this command returns an entity:
-response-shape dispatch sees only that entity, not the hook's audit entries. Hook-added
-aggregates join the committed snapshot.
-For durable delivery, wire the [outbox](#recipe-35--transactional-outbox-for-crash-safe-domain-events):
-its capture sees the hook-added events in the same save and suppresses duplicate
-in-pipeline publication.
+The application owns command-marker coverage, audit schemas and metadata, and whether
+successful no-ops record entries. This example requires an entry for each successful
+marked command. Unmarked commands and direct store writes are outside this policy.
+Never commit, publish, or perform irreversible external effects from this behavior.
+For post-commit events from behavior-added aggregates, select
+`UseTrackedAggregateDomainEvents(...)`: response-shape dispatch discovers only returned
+aggregates. Outbox capture sees behavior-added aggregates in the same owning save.
 
 > **Compiled and behavior-pinned.** `Examples/CookbookSnippets/Recipe16_UnitOfWork.cs`
-> contains the complete domain, repository adapters, context mapping, hook, and registration.
-> `Examples/CookbookSnippets.Tests/Recipe16AuditBehaviorTests.cs` exercises real SQLite
-> persistence, ignored nested vetoes, rollback after a second insert fails, entity results,
-> failed-handler cleanup, same-instance nested state, persist-on-failure, and post-commit
-> tracked events. The outbox suite also covers hook-introduced aggregates.
+> contains the complete model, recorder, behavior, adapters, context, and registration.
+> `Examples/CookbookSnippets.Tests/Recipe16AuditBehaviorTests.cs` uses real SQLite to
+> prove same-save atomicity, rollback, nested checkpoints, outcome handling, and
+> post-commit events. It also pins the explicit limitation that ignored inner failures
+> do not permanently reject the owner. The outbox suite covers behavior-added aggregates.
 
-### Testing handlers that use dispatch state
+### Testing handlers with an application-owned recorder
 
-A direct handler call does not open a frame. A small boundary test can invoke the real
-transactional behavior with a depth-aware fake `IUnitOfWork`, the real handler, and its
-real hook; no container, EF provider, or public frame opener is needed:
+No transaction frame or fake unit of work is needed to test the handler:
 
 ```csharp
 using FluentAssertions;
-using Microsoft.Extensions.Logging.Abstractions;
-using Trellis;
-using Trellis.Mediator;
 using Trellis.Testing;
 
 var orders = new Orders();
-var audits = new Audits();
-var state = new CommandDispatchState();
-var unitOfWork = new TestUnitOfWork();
-var handler = new CreateAuditedOrderHandler(orders, state, TimeProvider.System);
-var hook = new RequiredAuditHook<CreateAuditedOrderCommand, Result<Order>>(
-    state, audits, NullLogger<RequiredAuditHook<CreateAuditedOrderCommand, Result<Order>>>.Instance);
-var behavior = new TransactionalCommandBehavior<CreateAuditedOrderCommand, Result<Order>>(
-    unitOfWork, [hook]);
+var recorder = new OrderAuditRecorder();
+var handler = new CreateAuditedOrderHandler(orders, recorder, TimeProvider.System);
 
-var result = await behavior.Handle(
-    new CreateAuditedOrderCommand(new Money(10m)), handler.Handle, CancellationToken.None);
+var result = await handler.Handle(
+    new CreateAuditedOrderCommand(new Money(10m)), CancellationToken.None);
 
-result.Should().BeSuccess();
-audits.GetAll().Should().ContainSingle().Which.OrderId.Should().Be(result.Unwrap().Id);
-unitOfWork.Commits.Should().Be(1);
+orders.GetAll().Should().ContainSingle().Which.Should().BeSameAs(result.Unwrap());
+recorder.Recorded.Should().ContainSingle().Which.OrderId.Should().Be(result.Unwrap().Id);
 
 sealed class Orders : FakeRepository<Order, OrderId>, IOrderRepository;
-sealed class Audits : FakeRepository<AuditEntry, AuditEntryId>, IAuditEntryRepository;
 ```
 
-The fake counts owning commits instead of writing a store. Its invalidation migration
-is one retained error, a null/first-reason guard, and a rejection check **before**
-nested deferral. Scope disposal never resets the error:
-
-```csharp
-sealed class TestUnitOfWork : IUnitOfWork
-{
-    private int _depth;
-    private Error? _rejection;
-    public int Commits { get; private set; }
-
-    public Task<Result<Trellis.Unit>> CommitAsync(CancellationToken cancellationToken = default)
-    {
-        if (_rejection is { } rejection)
-            return Result.Fail(rejection).AsTask();
-        if (_depth <= 1)
-            Commits++;
-        return Result.Ok().AsTask();
-    }
-
-    public void MarkUncommittable(Error reason)
-    {
-        ArgumentNullException.ThrowIfNull(reason);
-        _rejection ??= reason;
-    }
-
-    public IUnitOfWorkScope BeginScope() => new Scope(this, ++_depth == 1);
-
-    private sealed class Scope(TestUnitOfWork owner, bool isOwner) : IUnitOfWorkScope
-    {
-        private bool _disposed;
-        public bool IsOwner { get; } = isOwner;
-
-        public void Dispose()
-        {
-            if (_disposed)
-                return;
-            _disposed = true;
-            owner._depth--;
-        }
-    }
-}
-```
-
-`Examples/CookbookSnippets.Tests/Recipe16CommandHandlerTests.cs` compiles this pattern
-and pins success, failed-handler cleanup, veto rejection, nested deferral, and permanent
-first-reason invalidation. This fake is nonconcurrent and does not model persistence
-or cancellation: `FakeRepository.Add` is immediately visible and accepts domain events.
-Keep the SQLite tests above as the proof of atomicity, rollback, and post-commit events.
-For pipeline-free application tests, substitute an application-owned recorder interface;
-its production implementation can buffer through `CommandDispatchState`.
+An application may substitute its own recorder double through the same interface.
+`Examples/CookbookSnippets.Tests/Recipe16AuditHandlerTests.cs` also invokes the real
+behavior around a real handler without a container to verify staging, cleanup on all
+exit paths, and preservation of original exceptions. Fake repositories are immediately
+visible and do not prove transaction atomicity; keep the SQLite tests for that boundary.
 
 ---
 

@@ -6,9 +6,8 @@ using global::Mediator;
 /// Pipeline behavior that automatically commits staged changes after a successful command handler.
 /// <para>
 /// The behavior wraps each command invocation in an <see cref="IUnitOfWork.BeginScope"/> scope,
-/// runs the handler (which stages changes via repositories), awaits the registered
-/// <see cref="ICommandPreCommitHook{TMessage,TResponse}"/> implementations, then calls
-/// <see cref="IUnitOfWork.CommitAsync"/> if the handler returned success and every hook accepted it. If the handler returned
+/// runs the handler and any application behaviors registered inside this scope, then calls
+/// <see cref="IUnitOfWork.CommitAsync"/> if their final response is successful. If they return
 /// a failure <see cref="Result{T}"/>, no commit occurs and the staged changes are discarded when
 /// the underlying store/context is disposed.
 /// </para>
@@ -16,9 +15,9 @@ using global::Mediator;
 /// <b>Persist-on-failure outcomes.</b> If the response implements <see cref="IPersistOnFailure"/>
 /// and the per-instance flag is <see langword="true"/> (the canonical producer is
 /// <see cref="Result.FailAfterCommit{T}(Error)"/>), the commit step also runs even though the
-/// result is a failure, provided every pre-commit hook accepts the outcome. This enables the worker-handler pattern of persisting a
-/// <c>permanently_failed</c> state row alongside the failure outcome. A hook or commit error
-/// replaces the handler error in the returned result.
+/// result is a failure. This enables the worker-handler pattern of persisting a
+/// <c>permanently_failed</c> state row alongside the failure outcome. On commit failure for a
+/// persist-on-failure outcome, the commit error replaces the handler error in the returned result.
 /// </para>
 /// <para>
 /// This behavior is constrained to <see cref="ICommand{TResponse}"/> messages — queries
@@ -36,17 +35,12 @@ using global::Mediator;
 /// <see cref="IUnitOfWork.BeginScope"/>. The inner <see cref="IUnitOfWork.CommitAsync"/> defers
 /// (returns success without touching the store) until the owning command commits. This
 /// prevents a successful inner command from committing a partially-completed outer command's
-/// staged changes. <b>Caveat:</b> if the inner handler returns an ordinary failure but the outer handler
+/// staged changes. <b>Caveat:</b> if the inner command returns a failure but the outer handler
 /// ignores it and returns success, the outer's commit will persist any changes the inner staged
 /// before failing — handlers that need to discard inner failures' staged work must detach the
-/// affected entities themselves. A hook veto, exception, or cancellation instead calls
-/// <see cref="IUnitOfWork.MarkUncommittable"/> and permanently blocks the owner's commit.
-/// Every <see cref="IUnitOfWork"/> implementation must preserve depth-aware scopes and this
-/// first-rejection invalidation contract.
-/// </para>
-/// <para>
-/// A fresh <see cref="CommandDispatchState"/> frame surrounds each handler, its hooks, and commit.
-/// Every exit closes the frame, drops its remaining entries, and restores the parent dispatch.
+/// affected entities themselves. Every <see cref="IUnitOfWork"/> implementation must implement
+/// <see cref="IUnitOfWork.BeginScope"/> with depth-aware semantics; the shipped EF Core unit of
+/// work does this with an internal depth counter.
 /// </para>
 /// </summary>
 /// <typeparam name="TMessage">The command type.</typeparam>
@@ -57,7 +51,6 @@ public sealed class TransactionalCommandBehavior<TMessage, TResponse>
     where TResponse : IResult, IFailureFactory<TResponse>
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IEnumerable<ICommandPreCommitHook<TMessage, TResponse>> _preCommitHooks;
 
     /// <summary>
     /// Initializes a new instance of <see cref="TransactionalCommandBehavior{TMessage, TResponse}"/>.
@@ -65,23 +58,9 @@ public sealed class TransactionalCommandBehavior<TMessage, TResponse>
     /// <param name="unitOfWork">The scoped unit of work used to commit staged changes.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="unitOfWork"/> is null.</exception>
     public TransactionalCommandBehavior(IUnitOfWork unitOfWork)
-        : this(unitOfWork, [])
-    { }
-
-    /// <summary>
-    /// Initializes a new instance with the hooks to run before each committable command outcome.
-    /// </summary>
-    /// <param name="unitOfWork">The scoped unit of work used to commit staged changes.</param>
-    /// <param name="preCommitHooks">The hooks in execution order.</param>
-    /// <exception cref="ArgumentNullException">Thrown when either argument is null.</exception>
-    public TransactionalCommandBehavior(
-        IUnitOfWork unitOfWork,
-        IEnumerable<ICommandPreCommitHook<TMessage, TResponse>> preCommitHooks)
     {
         ArgumentNullException.ThrowIfNull(unitOfWork);
-        ArgumentNullException.ThrowIfNull(preCommitHooks);
         _unitOfWork = unitOfWork;
-        _preCommitHooks = preCommitHooks;
     }
 
     /// <inheritdoc />
@@ -90,9 +69,8 @@ public sealed class TransactionalCommandBehavior<TMessage, TResponse>
     /// The handler is committed when the result is successful, or when the result opts in to
     /// post-handler persistence via <see cref="IPersistOnFailure.PersistOnFailure"/> = <see langword="true"/>
     /// (typically a <see cref="Result.FailAfterCommit{T}(Error)"/> outcome from a worker handler that
-    /// stages a "permanently_failed" row). Hooks run sequentially before any commit, including
-    /// deferred nested commits. A hook failure vetoes persistence, even if that failure carries
-    /// persist-on-failure intent. A hook or commit error replaces the handler error — the caller must learn that the persist-on-failure
+    /// stages a "permanently_failed" row). On commit failure for a persist-on-failure outcome, the
+    /// commit error replaces the handler error — the caller must learn that the persist-on-failure
     /// guarantee was not honored.
     /// </para>
     /// </remarks>
@@ -102,38 +80,12 @@ public sealed class TransactionalCommandBehavior<TMessage, TResponse>
         CancellationToken cancellationToken)
     {
         using var scope = _unitOfWork.BeginScope();
-        using var state = CommandDispatchState.Begin();
         var dispatch = DomainEventDispatchScope.ObserveTransaction(_unitOfWork, scope.IsOwner);
 
         var result = await next(message, cancellationToken).ConfigureAwait(false);
 
         if (result.IsSuccess || result is IPersistOnFailure { PersistOnFailure: true })
         {
-            var hooksCompleted = false;
-            try
-            {
-                foreach (var hook in _preCommitHooks)
-                {
-                    var hookResult = await hook.BeforeCommitAsync(message, result, cancellationToken).ConfigureAwait(false);
-                    if (hookResult.TryGetError(out var hookError))
-                    {
-                        _unitOfWork.MarkUncommittable(hookError);
-                        hooksCompleted = true;
-                        return TResponse.CreateFailure(hookError);
-                    }
-                }
-
-                hooksCompleted = true;
-            }
-            finally
-            {
-                if (!hooksCompleted)
-                    _unitOfWork.MarkUncommittable(new Error.Unexpected(FaultCodes.UnitOfWorkUncommittable)
-                    {
-                        Detail = "An unexpected error occurred while processing the request.",
-                    });
-            }
-
             var commitResult = await _unitOfWork.CommitAsync(cancellationToken).ConfigureAwait(false);
             if (commitResult.TryGetError(out var error))
                 return TResponse.CreateFailure(error);

@@ -15,7 +15,7 @@ public class Recipe16AuditBehaviorTests
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task PreCommitHook_Success_StagesAuditInSameSaveBeforeTrackedDispatch()
+    public async Task InsideTransactionBehavior_Success_StagesAuditInSameSaveBeforeTrackedDispatch()
     {
         await using var fixture = await Fixture.CreateAsync();
 
@@ -37,7 +37,7 @@ public class Recipe16AuditBehaviorTests
     }
 
     [Fact]
-    public async Task PreCommitHook_MissingAudit_RejectsBeforeAnySave()
+    public async Task InsideTransactionBehavior_MissingAudit_RejectsBeforeAnySave()
     {
         await using var fixture = await Fixture.CreateAsync();
 
@@ -59,7 +59,32 @@ public class Recipe16AuditBehaviorTests
     }
 
     [Fact]
-    public async Task PreCommitHook_IgnoredNestedVeto_RefusesOwningAndLaterCommits()
+    public async Task InsideTransactionBehavior_PropagatedNestedFailure_SkipsOwningCommit()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+
+        var result = await fixture.SendAsync(new CreateAuditedOrderCommand(new Money(10m)), async (message, token) =>
+        {
+            var nested = await fixture.SendAsync(new CreateAuditedOrderCommand(new Money(20m)), (inner, _) =>
+            {
+                var order = Order.TryCreate(inner.Total).Unwrap();
+                fixture.Db.Orders.Add(order);
+                return Result.Ok(order).AsValueTask();
+            });
+            nested.Should().HaveErrorCode("audit.not-recorded");
+            return nested;
+        });
+
+        result.Should().HaveErrorCode("audit.not-recorded");
+        fixture.Recorder.Recorded.Should().BeEmpty();
+        fixture.Probe.SavingCalls.Should().Be(0);
+        (await fixture.Db.Orders.CountAsync(Token)).Should().Be(0);
+        (await fixture.Db.AuditEntries.CountAsync(Token)).Should().Be(0);
+        fixture.Publisher.Events.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InsideTransactionBehavior_IgnoredNestedFailure_DoesNotPermanentlyRejectOwner()
     {
         await using var fixture = await Fixture.CreateAsync();
 
@@ -75,19 +100,15 @@ public class Recipe16AuditBehaviorTests
             return await fixture.Handler.Handle(message, token);
         });
 
-        result.Should().HaveErrorCode("audit.not-recorded");
-        var unitOfWork = fixture.UnitOfWork;
-        (await unitOfWork.CommitAsync(Token)).Should().HaveErrorCode("audit.not-recorded");
-        using (unitOfWork.BeginScope())
-            (await unitOfWork.CommitAsync(Token)).Should().HaveErrorCode("audit.not-recorded");
-        fixture.Probe.SavingCalls.Should().Be(0);
-        (await fixture.Db.Orders.CountAsync(Token)).Should().Be(0);
-        (await fixture.Db.AuditEntries.CountAsync(Token)).Should().Be(0);
-        fixture.Publisher.Events.Should().BeEmpty();
+        result.Should().BeSuccess();
+        (await fixture.Db.Orders.CountAsync(Token)).Should().Be(2);
+        (await fixture.Db.AuditEntries.CountAsync(Token)).Should().Be(1);
+        fixture.Probe.SuccessfulSaves.Should().Be(1);
+        fixture.Recorder.Recorded.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task PreCommitHook_OrdinaryHandlerFailure_SavesNeitherBusinessNorAuditRows()
+    public async Task InsideTransactionBehavior_OrdinaryHandlerFailure_SavesNeitherBusinessNorAuditRows()
     {
         await using var fixture = await Fixture.CreateAsync();
 
@@ -105,7 +126,7 @@ public class Recipe16AuditBehaviorTests
     }
 
     [Fact]
-    public async Task PreCommitHook_OrdinaryFailure_DiscardsPendingAuditBeforeNextCommand()
+    public async Task InsideTransactionBehavior_OrdinaryFailure_DiscardsPendingAuditBeforeNextCommand()
     {
         await using var fixture = await Fixture.CreateAsync();
         var message = new CreateAuditedOrderCommand(new Money(10m));
@@ -130,7 +151,7 @@ public class Recipe16AuditBehaviorTests
     }
 
     [Fact]
-    public async Task PreCommitHook_PersistOnFailure_WithPendingAudit_CommitsAndPreservesIntent()
+    public async Task InsideTransactionBehavior_PersistOnFailure_WithPendingAudit_CommitsAndPreservesIntent()
     {
         await using var fixture = await Fixture.CreateAsync();
 
@@ -149,7 +170,24 @@ public class Recipe16AuditBehaviorTests
     }
 
     [Fact]
-    public async Task PreCommitHook_SecondInsertFails_RollsBackBothRowsAndSuppressesDispatch()
+    public async Task InsideTransactionBehavior_PersistOnFailureWithoutAudit_ReturnsOrdinaryFailureWithoutSave()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+
+        var result = await fixture.SendAsync(new CreateAuditedOrderCommand(new Money(10m)), (message, _) =>
+        {
+            fixture.Db.Orders.Add(Order.TryCreate(message.Total).Unwrap());
+            return Result.FailAfterCommit<Order>(new Error.Conflict("order.rejected")).AsValueTask();
+        });
+
+        result.Should().HaveErrorCode("audit.not-recorded");
+        (result is IPersistOnFailure { PersistOnFailure: true }).Should().BeFalse();
+        fixture.Probe.SavingCalls.Should().Be(0);
+        fixture.Recorder.Recorded.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task InsideTransactionBehavior_SecondInsertFails_RollsBackBothRowsAndSuppressesDispatch()
     {
         await using var fixture = await Fixture.CreateAsync();
         await fixture.Db.Database.ExecuteSqlRawAsync(
@@ -175,7 +213,7 @@ public class Recipe16AuditBehaviorTests
     }
 
     [Fact]
-    public async Task PreCommitHook_SameMessageNestedDispatch_IsolatesAndRestoresPendingAudits()
+    public async Task InsideTransactionBehavior_SameMessageNestedDispatch_PreservesParentCheckpoint()
     {
         await using var fixture = await Fixture.CreateAsync();
         var message = new CreateAuditedOrderCommand(new Money(10m));
@@ -183,14 +221,12 @@ public class Recipe16AuditBehaviorTests
         var result = await fixture.SendAsync(message, async (command, token) =>
         {
             var outer = await fixture.Handler.Handle(command, token);
-            fixture.State.TryGet<PendingOrderAudits>(out var pending).Should().BeTrue();
-            pending!.Entries.Should().ContainSingle().Which.OrderId.Should().Be(outer.Unwrap().Id);
+            var pending = fixture.Recorder.Recorded.Single();
+            pending.OrderId.Should().Be(outer.Unwrap().Id);
 
             (await fixture.SendAsync(command)).Should().BeSuccess();
 
-            fixture.State.TryGet<PendingOrderAudits>(out var restored).Should().BeTrue();
-            restored.Should().BeSameAs(pending);
-            restored!.Entries.Should().ContainSingle();
+            fixture.Recorder.Recorded.Should().ContainSingle().Which.Should().BeSameAs(pending);
             return outer;
         });
 
@@ -198,12 +234,11 @@ public class Recipe16AuditBehaviorTests
         (await fixture.Db.Orders.CountAsync(Token)).Should().Be(2);
         (await fixture.Db.AuditEntries.CountAsync(Token)).Should().Be(2);
         fixture.Probe.SuccessfulSaves.Should().Be(1);
-        FluentActions.Invoking(() => fixture.State.TryGet<PendingOrderAudits>(out _))
-            .Should().Throw<InvalidOperationException>();
+        fixture.Recorder.Recorded.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task PreCommitHook_SequentialCommands_KeepsEachDispatchAuditSeparate()
+    public async Task InsideTransactionBehavior_SequentialCommands_KeepsEachDispatchAuditSeparate()
     {
         await using var fixture = await Fixture.CreateAsync();
 
@@ -222,7 +257,7 @@ public class Recipe16AuditBehaviorTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PreCommitHook_NestedCommands_WaitsForOwningOutcomeBeforeSavingAndDispatching(bool outerSucceeds)
+    public async Task InsideTransactionBehavior_NestedCommands_WaitsForOwningOutcomeBeforeSavingAndDispatching(bool outerSucceeds)
     {
         await using var fixture = await Fixture.CreateAsync();
 
@@ -252,8 +287,7 @@ public class Recipe16AuditBehaviorTests
         : IAsyncDisposable
     {
         public Recipe16DbContext Db => scope.ServiceProvider.GetRequiredService<Recipe16DbContext>();
-        public IUnitOfWork UnitOfWork => scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        public CommandDispatchState State => scope.ServiceProvider.GetRequiredService<CommandDispatchState>();
+        public IOrderAuditRecorder Recorder => scope.ServiceProvider.GetRequiredService<IOrderAuditRecorder>();
         public SaveProbe Probe { get; } = probe;
         public RecordingPublisher Publisher => scope.ServiceProvider.GetRequiredService<RecordingPublisher>();
         public ICommandHandler<CreateAuditedOrderCommand, Result<Order>> Handler =>

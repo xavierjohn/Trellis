@@ -1,9 +1,9 @@
 ﻿---
 title: Performance
 package: Trellis (multiple)
-topics: [performance, benchmarks, allocations, rop, mediator, overhead, optimization]
-related_api_reference: [trellis-api-core.md, trellis-api-mediator.md]
-last_verified: 2026-10-21
+topics: [performance, benchmarks, allocations, rop, overhead, optimization]
+related_api_reference: [trellis-api-core.md]
+last_verified: 2026-05-01
 audience: [developer]
 ---
 # Performance
@@ -110,40 +110,6 @@ These figures come from the benchmark data checked into this repository. Treat t
 > [!NOTE]
 > Benchmarks vary by CPU, runtime version, and benchmark shape. Compare **relative cost** and **allocation behavior** more than any single absolute number.
 
-### Transactional command frames
-
-The Core ROP figures above are not an allocation promise for optional integration
-stages. Every transactional command opens a `CommandDispatchState` frame, even when
-no hooks are registered or no entries are added: an unused child must still hide its
-parent's entries. The entry dictionary remains lazy.
-
-Before measuring, the review budget was fixed at **500 ns and 256 B incremental
-per single unused-state dispatch** versus a matched no-frame baseline. This is an
-investigation trigger, not a portable CI timing assertion.
-
-`CommandDispatchStateBenchmarks` measures the real internal frame's complete lifecycle
-through benchmark-only friend access, with identical depth-aware scopes and synchronously
-completed fake handler/commit work. Used-state cases add, read, and remove one typed entry;
-their baseline carries the same payload locally. This isolates frame/accessor overhead,
-not full Mediator throughput, asynchronous I/O, or database commit latency.
-
-The 2026-10-21 run used BenchmarkDotNet 0.15.8 ShortRun (one launch, three warmups and
-three measured iterations), .NET 10.0.13 x64 Workstation GC, Windows 11, and an AMD
-Ryzen 9 9900X:
-
-| Frames | State per frame | No-frame mean | Framed mean | Incremental time | Incremental allocation |
-| --- | --- | ---: | ---: | ---: | ---: |
-| 1 | Unused | 29.07 ns | 52.58 ns | 23.51 ns | 144 B |
-| 1 | One entry | 29.24 ns | 98.39 ns | 69.15 ns | 360 B |
-| 2 | Unused | 61.12 ns | 118.82 ns | 57.70 ns | 360 B |
-| 2 | One entry | 64.83 ns | 208.67 ns | 143.84 ns | 792 B |
-
-The two-frame rows measure the **whole outer/inner pair**, not a per-dispatch cost.
-For one unused frame, total allocation changed from 32 B to 176 B; the incremental
-23.51 ns / 144 B is within the predeclared budget. No activation flag, hook-count
-shortcut, or frame-elision optimization was justified. These machine-specific figures
-do not predict allocations for every `AsyncLocal` execution-context shape.
-
 ## What actually makes Trellis fast enough
 
 ### 1. Success-path operations are tiny
@@ -229,16 +195,6 @@ Run one subset:
 ```bash
 dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release -- --filter *Combine*
 ```
-
-Run the dispatch-frame matrix (one/two frames, unused/used state, with/without frames):
-
-```powershell
-dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release -- --filter '*CommandDispatchStateBenchmarks*'
-```
-
-The benchmark job marks its generated executables nonpackable so they do not try to
-restore a nonexistent published package baseline. Normal library package validation
-remains enabled.
 
 ## When you should care more
 

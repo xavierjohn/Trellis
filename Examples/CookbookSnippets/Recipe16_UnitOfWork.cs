@@ -76,9 +76,31 @@ public sealed class AuditEntry : Aggregate<AuditEntryId>
     }
 }
 
-public sealed class PendingOrderAudits
+public interface IOrderAuditRecorder
 {
-    public List<AuditEntry> Entries { get; } = [];
+    IReadOnlyList<AuditEntry> Recorded { get; }
+    void Record(AuditEntry entry);
+    IReadOnlyList<AuditEntry> TakeFrom(int checkpoint);
+}
+
+public sealed class OrderAuditRecorder : IOrderAuditRecorder
+{
+    private readonly List<AuditEntry> _recorded = [];
+    public IReadOnlyList<AuditEntry> Recorded => _recorded;
+
+    public void Record(AuditEntry entry) => _recorded.Add(entry);
+
+    public IReadOnlyList<AuditEntry> TakeFrom(int checkpoint)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(checkpoint);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(checkpoint, _recorded.Count);
+        if (checkpoint == _recorded.Count)
+            return [];
+
+        var records = _recorded.GetRange(checkpoint, _recorded.Count - checkpoint);
+        _recorded.RemoveRange(checkpoint, _recorded.Count - checkpoint);
+        return records;
+    }
 }
 
 public interface IAuditedCommand;
@@ -86,15 +108,14 @@ public interface IAuditedCommand;
 public sealed record CreateAuditedOrderCommand(Money Total) : ICommand<Result<Order>>, IAuditedCommand;
 
 public sealed class CreateAuditedOrderHandler(
-    IOrderRepository orders, CommandDispatchState state, TimeProvider clock)
+    IOrderRepository orders, IOrderAuditRecorder recorder, TimeProvider clock)
     : ICommandHandler<CreateAuditedOrderCommand, Result<Order>>
 {
     public ValueTask<Result<Order>> Handle(
         CreateAuditedOrderCommand command, CancellationToken cancellationToken) =>
         Order.TryCreate(command.Total)
             .Tap(orders.Add)
-            .Tap(order => state.GetOrAdd(static () => new PendingOrderAudits())
-                .Entries.Add(AuditEntry.ForOrderCreated(order.Id, clock)))
+            .Tap(order => recorder.Record(AuditEntry.ForOrderCreated(order.Id, clock)))
             .AsValueTask();
 }
 
@@ -106,33 +127,45 @@ public interface IAuditEntryRepository
 public sealed class EfAuditEntryRepository(DbContext context)
     : RepositoryBase<AuditEntry, AuditEntryId>(context), IAuditEntryRepository;
 
-public sealed partial class RequiredAuditHook<TMessage, TResponse>(
-    CommandDispatchState state, IAuditEntryRepository audits, ILogger<RequiredAuditHook<TMessage, TResponse>> logger)
-    : ICommandPreCommitHook<TMessage, TResponse>
+public sealed partial class RequiredAuditBehavior<TMessage, TResponse>(
+    IOrderAuditRecorder recorder, IAuditEntryRepository audits, ILogger<RequiredAuditBehavior<TMessage, TResponse>> logger)
+    : IPipelineBehavior<TMessage, TResponse>
     where TMessage : ICommand<TResponse>, IAuditedCommand
-    where TResponse : IResult
+    where TResponse : IResult, IFailureFactory<TResponse>
 {
-    public ValueTask<Result<Trellis.Unit>> BeforeCommitAsync(
+    public async ValueTask<TResponse> Handle(
         TMessage message,
-        TResponse response,
+        MessageHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (!state.TryGet<PendingOrderAudits>(out var pending) || pending.Entries.Count == 0)
+        var checkpoint = recorder.Recorded.Count;
+        try
         {
-            var faultId = Guid.NewGuid().ToString("N");
-            LogMissingAudit(logger, faultId);
-            return Result.Fail(new Error.Unexpected("audit.not-recorded", faultId)
+            var response = await next(message, cancellationToken).ConfigureAwait(false);
+            var mine = recorder.TakeFrom(checkpoint);
+            if (!response.IsSuccess && response is not IPersistOnFailure { PersistOnFailure: true })
+                return response;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            if (mine.Count == 0)
             {
-                Detail = "An unexpected error occurred while processing the request.",
-            }).AsValueTask();
+                var faultId = Guid.NewGuid().ToString("N");
+                LogMissingAudit(logger, faultId);
+                return TResponse.CreateFailure(new Error.Unexpected("audit.not-recorded", faultId)
+                {
+                    Detail = "An unexpected error occurred while processing the request.",
+                });
+            }
+
+            foreach (var entry in mine)
+                audits.Add(entry);
+
+            return response;
         }
-
-        foreach (var entry in pending.Entries)
-            audits.Add(entry);
-
-        state.Remove<PendingOrderAudits>();
-        return Result.Ok().AsValueTask();
+        finally
+        {
+            recorder.TakeFrom(checkpoint);
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Order creation recorded no audit entry; commit refused. Fault {FaultId}.")]
@@ -176,6 +209,7 @@ internal static class Recipe16Demonstrator
     public static IServiceCollection AuditRegistration(IServiceCollection services)
     {
         services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IOrderAuditRecorder, OrderAuditRecorder>();
         services.AddScoped<IOrderRepository>(provider =>
             new EfOrderRepository(provider.GetRequiredService<Recipe16DbContext>()));
         services.AddScoped<IAuditEntryRepository>(provider =>
@@ -183,7 +217,7 @@ internal static class Recipe16Demonstrator
         services.AddScoped<ICommandHandler<CreateAuditedOrderCommand, Result<Order>>,
             CreateAuditedOrderHandler>();
         return services.AddTrellis(options => options
-            .UseCommandPreCommitHook(typeof(RequiredAuditHook<,>))
+            .UseInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))
             .UseEntityFrameworkUnitOfWork<Recipe16DbContext>());
     }
 

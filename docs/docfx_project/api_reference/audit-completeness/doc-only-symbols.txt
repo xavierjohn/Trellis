@@ -59,11 +59,6 @@ EnsureSuccess
 EnsureSuccessAsync
 Some
 
-# --- Recipe 16 application-owned audit model/context, compiled in CookbookSnippets.
-AuditRecorded
-Recipe16DbContext
-IAuditedCommand
-
 # --- Recipe 41 application-owned prefetch/normalization, explicitly not Trellis APIs.
 UseIdentityPrefetch
 IdentitySnapshot

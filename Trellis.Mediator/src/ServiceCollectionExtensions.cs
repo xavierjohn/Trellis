@@ -37,7 +37,8 @@ public static class ServiceCollectionExtensions
     ///   — runs the handler then
     ///   calls <c>IUnitOfWork.CommitAsync</c> on success. Opt in via
     ///   <c>AddTrellisUnitOfWork&lt;TContext&gt;()</c>; registration is order-independent
-    ///   versus <c>AddTrellisBehaviors()</c> so it lands innermost (closest to the handler).</description></item>
+    ///   versus <c>AddTrellisBehaviors()</c>. Explicit inside-transaction application
+    ///   behaviors sit between it and the handler.</description></item>
     /// </list>
     /// <para>
     /// This array contains the always-on behaviors (<see cref="ExceptionBehavior{TMessage, TResponse}"/>,
@@ -120,22 +121,11 @@ public static class ServiceCollectionExtensions
         RelocateResourceAuthorizationBehaviorsBeforeValidation(services);
         EnsureAuthorizationContextRegistered(services,
             services.First(d => IsAuthorizationContext(d) && d.ServiceType == typeof(IPipelineBehavior<,>)));
-        RelocateTransactionalBehaviorsToEnd(services);
+        TransactionalCommandBehaviorServiceCollectionExtensions.RelocateTransactionalBehaviorsToEnd(services);
 
         AssertMediatorLifetimeSupportsScopedBehaviors(services);
 
         return services;
-    }
-
-    private static void RelocateTransactionalBehaviorsToEnd(IServiceCollection services)
-    {
-        var transactionalDescriptors =
-            TransactionalCommandBehaviorServiceCollectionExtensions.RemoveTransactionalCommandBehaviorRegistrations(services);
-        if (transactionalDescriptors.Count == 0)
-            return;
-
-        foreach (var descriptor in transactionalDescriptors)
-            services.Add(descriptor);
     }
 
     // Trellis's pipeline behaviors are registered Scoped — notably AuthorizationBehavior, which reads the

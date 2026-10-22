@@ -13,17 +13,11 @@ using Microsoft.EntityFrameworkCore;
 /// <remarks>
 /// <para>
 /// <b>Nested-scope tracking.</b> Each call to <see cref="BeginScope"/> increments an internal
-/// depth counter; the matching <c>Dispose</c> decrements it. While committable, <see cref="CommitAsync"/> defers
+/// depth counter; the matching <c>Dispose</c> decrements it. <see cref="CommitAsync"/> defers
 /// (returns success without touching the database) when the depth is greater than one — only
 /// the outermost scope's commit actually persists changes. This makes a successful inner
 /// command's commit a no-op so a failing outer command can still abort, addressing the GPT-5.5
 /// review's "nested commands commit too early" finding.
-/// </para>
-/// <para>
-/// <b>Permanent rejection.</b> <see cref="MarkUncommittable"/> preserves the first rejection.
-/// Every later commit returns it before nested deferral or store access, clearing the committed
-/// snapshot. Scope disposal and new scopes never reset it. Discard this unit of work and its
-/// context; invalidation does not undo or detach tracked changes.
 /// </para>
 /// <para>
 /// <b>Tracked aggregate snapshot.</b> Each outermost <see cref="CommitAsync"/> clears the
@@ -32,7 +26,7 @@ using Microsoft.EntityFrameworkCore;
 /// <see cref="DbContext.SaveChangesAsync(CancellationToken)"/>, and assigns the snapshot to
 /// <see cref="CommittedAggregates"/> only after the save returns success. Failed commits and
 /// commits that throw (cancellation, connection failure, etc.) leave <see cref="CommittedAggregates"/>
-/// as the empty list. Accepted deferred nested commits (depth &gt; 1) do not touch the snapshot.
+/// as the empty list. Deferred nested commits (depth &gt; 1) do not touch the snapshot.
 /// </para>
 /// </remarks>
 /// <typeparam name="TContext">The concrete <see cref="DbContext"/> type registered in DI.</typeparam>
@@ -43,7 +37,6 @@ public class EfUnitOfWork<TContext> : IUnitOfWork, ITrackedAggregateSource
 
     private readonly TContext _context;
     private int _scopeDepth;
-    private Error? _commitRejection;
     private IReadOnlyList<IAggregate> _committedAggregates = EmptyAggregates;
 
     /// <summary>
@@ -63,12 +56,6 @@ public class EfUnitOfWork<TContext> : IUnitOfWork, ITrackedAggregateSource
     /// <inheritdoc />
     public async Task<Result<Unit>> CommitAsync(CancellationToken cancellationToken = default)
     {
-        if (Volatile.Read(ref _commitRejection) is { } rejection)
-        {
-            _committedAggregates = EmptyAggregates;
-            return Result.Fail(rejection);
-        }
-
         // Defer until the outermost scope unwinds. A nested scope's depth is at least 2
         // (its own +1 plus the outer's +1); the outermost commit happens at depth 1.
         // Volatile.Read pairs with the Interlocked operations in BeginScope/ScopeReleaser.
@@ -89,13 +76,6 @@ public class EfUnitOfWork<TContext> : IUnitOfWork, ITrackedAggregateSource
             _committedAggregates = snapshot;
 
         return result;
-    }
-
-    /// <inheritdoc />
-    public void MarkUncommittable(Error reason)
-    {
-        ArgumentNullException.ThrowIfNull(reason);
-        Interlocked.CompareExchange(ref _commitRejection, reason, null);
     }
 
     private IReadOnlyList<IAggregate> SnapshotTrackedAggregates()

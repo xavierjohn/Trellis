@@ -45,13 +45,13 @@ Event dispatch retains nested aggregate responses until the owning successful un
 6. **FluentValidation** adapter and (optionally) scanning (`UseFluentValidation`).
 7. **Domain event dispatch** (`UseDomainEvents`) — `DomainEventDispatchBehavior<,>` + default `IDomainEventPublisher` + scanned handlers.
 8. **Integration event registration** (`UseIntegrationEvents`) — default best-effort publisher, scoped collector, and selected handler bindings.
-9. **Typed/open command pre-commit hooks** (`UseCommandPreCommitHook`) — scoped bindings executed inside the transaction behavior.
-10. **EF Core Unit of Work** (`UseEntityFrameworkUnitOfWork<TContext>`) — innermost Mediator behavior.
+9. **Typed/open application behaviors** (`UseInsideTransactionBehavior`) — scoped bindings placed inside the transaction envelope.
+10. **EF Core Unit of Work** (`UseEntityFrameworkUnitOfWork<TContext>`) — surrounds selected application behaviors and the handler.
 11. **Outbox relay** (`UseOutbox<TContext>`) — hosted-service registration, not a pipeline behavior.
 12. **Opt-in outbox readiness** (`UseOutboxReadiness<TContext>(profile)`) — named health-check registration, not a pipeline behavior.
 13. **Inbox dispatcher** (`UseInbox<TContext>`) — inbound service registration, not a pipeline behavior.
 
-This sequence preserves the central pipeline invariant: the transactional behavior is closest to the handler, so commit failures remain visible to outer logging/tracing/exception behaviors. Domain events fire after the transaction commits because dispatch is registered before the unit of work.
+This sequence preserves the central pipeline invariant: the transaction surrounds selected application behaviors and the handler, while commit failures remain visible to outer logging/tracing/exception behaviors. Domain events fire after the transaction commits because dispatch is registered before the unit of work.
 
 The standard Mediator stage now includes `AuthorizationContextBehavior` before static
 and direct/via resource checks. Those checks share one Actor snapshot per dispatch, which
@@ -61,37 +61,30 @@ context automatically; no new `UseXxx` call is needed. Closed/open context descr
 normalize without duplicate execution, including resource registrations preceding the
 standard pipeline.
 
-## Same-commit staging and validation
+## Inside-transaction application behaviors
 
 ```csharp
 builder.Services.AddTrellis(options => options
-    .UseCommandPreCommitHook(typeof(RequiredAuditHook<,>))
+    .UseInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))
     .UseEntityFrameworkUnitOfWork<AppDbContext>());
 ```
 
-`UseCommandPreCommitHook` implies `UseMediator` and installs the transaction behavior,
-but does not register the store or an audit schema. Hooks run after each committable
-handler and before persistence, regardless of fluent or direct unit-of-work registration
-order. Repeated identical bindings deduplicate; distinct hooks run in binding order.
-The constrained open form applies to every matching command, including future commands
-carrying its marker. Use `UseCommandPreCommitHook<TMessage,TResponse,THook>()` for a
-single explicit binding.
+The slot implies `UseMediator()` and installs the transaction behavior, but not the
+store or an audit model. An application's ordinary pipeline behavior wraps the handler
+inside the unit-of-work scope, so its post-handler work finishes before the commit
+decision. Fluent/direct helper order does not change placement. The typed
+`UseInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` overload selects one
+binding; the constrained open form selects matching commands.
 
-Ordinary handler failures skip hooks. The first hook failure vetoes even explicit
-persist-on-failure outcomes; nested hooks stage before their deferred commit.
-Any hook veto, exception, or cancellation permanently invalidates the unit of work:
-even ignored nested failures block its owner and every later commit. Scope disposal
-or new scopes never reset it. Discard the unit of work and context; this is not rollback.
-`CommandDispatchState` provides typed handler/hook entries without changing entity results.
-The behavior opens a fresh frame before the handler and always closes it; nested frames
-isolate and restore parent entries. Hooks read/remove only their own entries, and failed
-handlers still receive frame cleanup. See [Recipe 16](../api_reference/trellis-api-cookbook.md#same-commit-audit-staging)
-for the complete application-owned audit pattern.
+Identical bindings deduplicate. Behaviors nest in selection order and unwind in reverse
+order. They own outcome checks, recorder checkpoints, and cleanup in `finally`.
+An ordinary failure skips this invocation's commit, without rollback or permanent
+rejection of an outer/later commit. See [Recipe 16](../api_reference/trellis-api-cookbook.md#same-commit-audit-staging)
+for a complete same-context audit example and direct handler tests.
 
-For explicitly closed/generated pipelines, bind the hook interface directly alongside
-the closed transaction behavior and register `CommandDispatchState` directly when needed;
-do not use these slots, which imply the managed open pipeline. Hook registration does
-not remove Native DI's struct-result restriction.
+Explicitly closed/generated pipelines instead list their application behavior after
+the transaction in the literal pipeline configuration. Do not combine that shape with
+these slots, which imply the managed open pipeline.
 
 ## Integration delivery boundaries
 

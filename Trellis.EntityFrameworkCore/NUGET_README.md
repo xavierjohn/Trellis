@@ -70,10 +70,9 @@ pagination across requests. These expressions require no DI or interceptor regis
 
 Register `AddTrellisInterceptors()` when queries or updates rely on Trellis `Maybe<T>`, scalar-value, timestamp, or ETag behavior. Under `AddTrellisUnitOfWork<TContext>()`, repositories stage changes and the pipeline owns the commit.
 
-A pre-commit hook veto, exception, or cancellation permanently invalidates
-`EfUnitOfWork<TContext>` through `MarkUncommittable`. Every later commit returns the
-first rejection without saving, even in new scopes. Discard it and its context; do not
-bypass the guard with direct `SaveChanges`. Ordinary handler failures do not invalidate it.
+Use `AddInsideTransactionBehavior` for application-owned post-handler staging before
+the commit decision. Returning an ordinary failure skips this invocation's commit,
+without rollback or permanent rejection of an outer/later commit.
 
 ## Documentation
 

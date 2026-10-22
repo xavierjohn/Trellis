@@ -28,17 +28,17 @@ builder.Services.AddTrellis(trellis => trellis
 
 Call `AddTrellis(...)` once. If omitted, the composition features are intentionally not registered.
 
-`UseCommandPreCommitHook<TMessage,TResponse,THook>()` or
-`UseCommandPreCommitHook(typeof(RequiredAuditHook<,>))` implies `UseMediator()` and registers
-a scoped hook inside the transactional behavior, after the handler and before commit.
-The open form covers every command satisfying the hook's constraints.
-Register `IUnitOfWork` separately, typically with `UseEntityFrameworkUnitOfWork<TContext>()`.
-Fluent/direct registration order does not change hook placement. Any hook veto, exception,
-or cancellation makes the unit of work uncommittable until discarded, including when
-an outer handler ignores it. Ordinary handler failures skip hooks without invalidation.
-`CommandDispatchState` supplies isolated typed entries with automatic frame cleanup,
-including for entity-returning handlers. See the [same-commit audit recipe](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-cookbook.html#same-commit-audit-staging)
-for dispatch isolation and failure/context-lifetime constraints.
+`UseInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` or
+`UseInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))` implies `UseMediator()`
+and registers an application-owned behavior inside the transaction scope, before the
+handler. Its post-handler work finishes before the commit decision, independent of
+fluent/direct registration order. Register `IUnitOfWork` separately, typically with
+`UseEntityFrameworkUnitOfWork<TContext>()`.
+
+Identical bindings deduplicate; behaviors nest in selection order and unwind in reverse
+order. Applications own recorder state, result checks, and cleanup. A returned ordinary
+failure skips this invocation's commit, without rollback or permanent rejection of
+an outer/later commit. See the same-commit audit recipe for the complete checkpoint pattern.
 
 ## Key Features
 
