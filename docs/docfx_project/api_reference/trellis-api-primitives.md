@@ -545,7 +545,7 @@ If trimming does remove the interface, the converter throws at first use naming 
 public class Money : ValueObject
 ```
 
-`Money` also normalizes amounts, using currency-dependent minor-unit precision rather than a universal two decimal places. Apply application-owned exact-input checks before `TryCreate` when rounding would hide a distinction the policy needs; do not impose the single-currency example's precision on every currency.
+`Money` also normalizes amounts, using currency-dependent minor-unit precision rather than a universal two decimal places. For an exact quote match, validate and match the submitted currency against the trusted quote's `Currency`, compare the unrounded decimal directly with its `Amount`, and only then call `Money.TryCreate(amount, currencyCode, fieldName)`. The quote's `Amount` already has its currency's precision; do not round the submission before comparing or assume every currency uses two decimals.
 
 | Name | Type | Description |
 | --- | --- | --- |

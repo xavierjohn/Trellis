@@ -1906,6 +1906,8 @@ public Result<Order> Submit(TimeProvider clock)
 
 **Problem.** Request DTOs often carry primitive transport fields (`string email`, `string customerName`), while commands and domain methods should receive Trellis value objects. Each `TryCreate` returns `Result<TVO>`. Do not use `Unwrap()` in production code — it is a `Trellis.Testing` helper for tests.
 
+**Monetary inputs.** For an exact quote match or raw-input identity before rounding, read [the monetary boundary below](#exact-input-monetary-boundaries-before-normalization) before converting that DTO field.
+
 ```csharp
 using Mediator;
 using Microsoft.AspNetCore.Mvc;
@@ -2037,13 +2039,15 @@ internal static class PaymentAmountBoundary
 }
 ```
 
+`Bind` deliberately keeps `MonetaryAmount.TryCreate` as the single construction path, even though the equality guard has already restricted the amount to the trusted quote's normalized value.
+
 This is a **sample-local application policy**, not a new Trellis API or a stricter factory mode. A missing request amount produces `ValidationCodes.ValueNotNull`; a present amount that differs from the quote produces the application-owned `payment.amount-mismatch` at `/amount`. A null trusted quote is programming misuse and throws before entering the Result chain. Quote lookup and payment-specific rules remain application-owned. Applications that intentionally accept rounding can call `MonetaryAmount.TryCreate` directly.
 
 **Anti-pattern -> fix.** Do not normalize first and then use equality as evidence that the raw submission matched. Moving the exact-match `Ensure` after `Bind` loses the distinction between `1.004m` and `1.00m`. Likewise, deduplicating solely by the normalized value object collapses distinct raw inputs such as `1.001m` and `1.004m`. If raw numeric values are part of business identity, retain the validated raw value and an appropriate business/idempotency identifier; the rounded amount alone cannot represent that identity.
 
-**Exact means numeric, not lexical.** Parsed `decimal` equality accepts `20.2500m` for a `20.25m` quote. This example does not require a particular encoded scale, preserve original JSON text, or provide a lossless number lexer. Retain the original representation separately when an audit or identity contract needs it. `MonetaryAmount` is for a single-currency context; `Money` uses currency-dependent precision, not always two decimal places.
+**Exact means numeric, not lexical.** Parsed `decimal` equality accepts `20.2500m` for a `20.25m` quote. Parsing itself can round away digits beyond `decimal`'s roughly 28-29 significant digits: both `decimal.Parse` and `Utf8JsonReader.GetDecimal()` read `20.2500000000000000000000000000001` as `20.25m`, before this guard runs. This example does not require a particular encoded scale, preserve original JSON text, or provide a lossless number lexer. Keep the raw JSON number text when true lexical exactness or an audit/identity contract needs the original representation. `MonetaryAmount` is for a single-currency context; `Money` uses currency-dependent precision, not always two decimal places.
 
-The complete example is compiled in `Examples/CookbookSnippets/Recipe18_ExactMonetaryBoundary.cs`. `Examples/CookbookSnippets.Tests/Recipe18MonetaryBoundaryTests.cs` covers exact and zero matches, equivalent decimal scales, rounding collisions, missing/mismatched inputs, normalized hash-set identity, and the unchanged midpoint/negative-input behavior.
+The complete example is compiled in `Examples/CookbookSnippets/Recipe18_ExactMonetaryBoundary.cs`. `Examples/CookbookSnippets.Tests/Recipe18MonetaryBoundaryTests.cs` covers exact and zero matches, equivalent decimal scales, precision loss in both parsing paths, rounding collisions, missing/mismatched inputs, normalized hash-set identity, and the unchanged midpoint/negative-input behavior. The factory's midpoint, normalized-identity, and sub-cent-negative contracts are also pinned in `Trellis.Primitives/tests/MonetaryAmountTests.cs`.
 
 ---
 

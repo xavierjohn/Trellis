@@ -1,5 +1,7 @@
 ﻿namespace CookbookSnippets.Tests;
 
+using System.Globalization;
+using System.Text.Json;
 using CookbookSnippets.Recipe18;
 using Trellis.Primitives;
 using Trellis.Testing;
@@ -22,6 +24,33 @@ public class Recipe18MonetaryBoundaryTests
         var quote = MonetaryAmount.Create(20.25m);
 
         var result = PaymentAmountBoundary.TryCreateMatchingQuote(20.2500m, quote);
+
+        result.Should().BeSuccess().Which.Should().Be(quote);
+    }
+
+    [Fact]
+    public void TryCreateMatchingQuote_ParsedDecimal_ExcessPrecision_AcceptsRoundedValue()
+    {
+        var amount = decimal.Parse(
+            "20.2500000000000000000000000000001", CultureInfo.InvariantCulture);
+        var quote = MonetaryAmount.Create(20.25m);
+        amount.Should().Be(20.25m);
+
+        var result = PaymentAmountBoundary.TryCreateMatchingQuote(amount, quote);
+
+        result.Should().BeSuccess().Which.Should().Be(quote);
+    }
+
+    [Fact]
+    public void TryCreateMatchingQuote_ParsedJsonDecimal_ExcessPrecision_AcceptsRoundedValue()
+    {
+        var reader = new Utf8JsonReader("20.2500000000000000000000000000001"u8);
+        reader.Read().Should().BeTrue();
+        var amount = reader.GetDecimal();
+        var quote = MonetaryAmount.Create(20.25m);
+        amount.Should().Be(20.25m);
+
+        var result = PaymentAmountBoundary.TryCreateMatchingQuote(amount, quote);
 
         result.Should().BeSuccess().Which.Should().Be(quote);
     }
