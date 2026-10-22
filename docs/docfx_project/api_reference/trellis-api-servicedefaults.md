@@ -236,6 +236,11 @@ before the commit decision. Direct/builder overlaps deduplicate identical bindin
 and mediator, resource, event-dispatch, and unit-of-work helper order does not change
 placement. Behaviors nest in selection order and unwind in reverse order.
 
+These guarantees cover Trellis helpers only: raw pipeline registrations such as
+`services.AddScoped(typeof(IPipelineBehavior<,>), ...)` appended after the last helper
+(including `AddTrellis(...)`) remain inside the transaction and selected application
+behaviors, closer to the handler.
+
 No ambient dispatch state or unit-of-work interface change is added. Applications own
 recorders, checkpoints, outcome checks, and `finally` cleanup. An ordinary failure skips
 this invocation's commit, without rollback or permanent rejection of an outer/later
