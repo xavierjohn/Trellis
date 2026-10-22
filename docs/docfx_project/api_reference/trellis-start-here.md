@@ -4,7 +4,7 @@ namespaces: [Trellis]
 types: [orientation, routing]
 related_docs: [trellis-api-cookbook.md, trellis-api-core.md, trellis-api-anti-patterns.md, trellis-api-analyzers.md]
 version: v3
-last_verified: 2026-10-21
+last_verified: 2026-10-22
 audience: [llm]
 agent_usage: required
 agent_description: "Routing head for every Trellis task: which reference to open, the recipe lookup and how to read the set. Read before writing or changing code that uses Trellis."
@@ -117,6 +117,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Return 201 for a PUT upsert without an application-layer URL, or let the endpoint supply a Created Location | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [write outcomes](trellis-api-http-abstractions.md#writeoutcomet-case-payloads) |
 | Generate versioned Location links to a named route or MVC action, including cross-route segment pins | [Recipe 4](trellis-api-cookbook.md#recipe-4--minimal-api-endpoint-wiring-resultt--httpresponseoptionsbuilder--tohttpresponse), then [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) |
 | Map primitive DTO fields to value objects | [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |
+| Require an exact monetary input before rounding or normalized comparison/deduplication | [Recipe 18's monetary boundary](trellis-api-cookbook.md#exact-input-monetary-boundaries-before-normalization) |
 | Require nullable values without `!`, or guard a nullable-returning query | [`Result.EnsureNotNull` / `EnsureNotNullAsync`](trellis-api-core.md#value-returning-null-guards); add [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) for command-factory composition |
 | Require a nonblank string without trimming or constructing unused errors | [`EnsureNotNullOrWhiteSpace`](trellis-api-core.md#required-nonblank-strings); no composite recipe is needed |
 | Migrate universal or nullable `ToResult` calls without losing payloads or treating absence as success | [Choosing a Result entry point](trellis-api-core.md#choosing-a-result-entry-point), then [Recipe 18](trellis-api-cookbook.md#recipe-18--dto-primitives-to-value-object-command-no-test-only-unwrap) |

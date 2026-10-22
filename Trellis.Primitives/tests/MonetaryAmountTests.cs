@@ -43,6 +43,24 @@ public class MonetaryAmountTests
     }
 
     [Fact]
+    public void TryCreate_Decimal_Midpoints_RoundsAwayFromZero()
+    {
+        MonetaryAmount.TryCreate(1.004m).Unwrap().Value.Should().Be(1.00m);
+        MonetaryAmount.TryCreate(1.005m).Unwrap().Value.Should().Be(1.01m);
+    }
+
+    [Fact]
+    public void TryCreate_Decimal_NegativeSubCentAmount_ReturnsFailureBeforeRounding()
+    {
+        var result = MonetaryAmount.TryCreate(-0.001m);
+
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        var violation = error.Fields.Items.Should().ContainSingle().Which;
+        violation.Field.Path.Should().Be("/amount");
+        violation.ReasonCode.Should().Be(ValidationCodes.ValueGreaterThanOrEqual);
+    }
+
+    [Fact]
     public void TryCreate_NullableDecimal_Null_ReturnsFailure()
     {
         decimal? value = null;
@@ -184,6 +202,18 @@ public class MonetaryAmountTests
         var b = MonetaryAmount.Create(99.99m);
 
         a.Should().Be(b);
+    }
+
+    [Fact]
+    public void TryCreate_Decimal_DistinctRawAmounts_ShareNormalizedIdentity()
+    {
+        var first = MonetaryAmount.TryCreate(1.001m).Unwrap();
+        var second = MonetaryAmount.TryCreate(1.004m).Unwrap();
+        HashSet<MonetaryAmount> amounts = [first, second];
+
+        first.Should().Be(second);
+        first.GetHashCode().Should().Be(second.GetHashCode());
+        amounts.Should().ContainSingle();
     }
 
     [Fact]
