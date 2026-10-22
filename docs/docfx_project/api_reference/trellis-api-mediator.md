@@ -1134,6 +1134,11 @@ dispatch, and unit-of-work helpers does not change this envelope:
 
 `outer behaviors -> event dispatch -> TransactionalCommand -> selected application behaviors -> handler`
 
+These guarantees cover Trellis helpers only: raw pipeline registrations such as
+`services.AddScoped(typeof(IPipelineBehavior<,>), ...)` appended after the last helper
+(including `AddTrellis(...)`) remain inside the transaction and selected application
+behaviors, closer to the handler.
+
 The slot supplies placement, not outcome filtering or application state. Each behavior
 must inspect success versus `IPersistOnFailure { PersistOnFailure: true }`, propagate
 ordinary failures, and use `finally` for cleanup. Stage through the same scoped stores;

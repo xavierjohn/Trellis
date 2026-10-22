@@ -76,6 +76,11 @@ decision. Fluent/direct helper order does not change placement. The typed
 `UseInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` overload selects one
 binding; the constrained open form selects matching commands.
 
+These guarantees cover Trellis helpers only: raw pipeline registrations such as
+`services.AddScoped(typeof(IPipelineBehavior<,>), ...)` appended after the last helper
+(including `AddTrellis(...)`) remain inside the transaction and selected application
+behaviors, closer to the handler.
+
 Identical bindings deduplicate. Behaviors nest in selection order and unwind in reverse
 order. They own outcome checks, recorder checkpoints, and cleanup in `finally`.
 An ordinary failure skips this invocation's commit, without rollback or permanent

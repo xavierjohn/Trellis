@@ -174,6 +174,11 @@ helpers preserves `outer stages -> transaction -> selected behaviors -> handler`
 Explicitly closed/generated pipelines declare this order themselves instead of using
 the managed open-registration helpers.
 
+These guarantees cover Trellis helpers only: raw pipeline registrations such as
+`services.AddScoped(typeof(IPipelineBehavior<,>), ...)` appended after the last helper
+(including `AddTrellis(...)`) remain inside the transaction and selected application
+behaviors, closer to the handler.
+
 Placement is not automatic auditing or an outcome filter. Each behavior checks whether
 the actual response is success or `IPersistOnFailure { PersistOnFailure: true }`,
 stages through the same scoped context, and cleans its application-owned state in
