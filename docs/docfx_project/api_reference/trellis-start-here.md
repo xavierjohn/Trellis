@@ -4,7 +4,7 @@ namespaces: [Trellis]
 types: [orientation, routing]
 related_docs: [trellis-api-cookbook.md, trellis-api-core.md, trellis-api-anti-patterns.md, trellis-api-analyzers.md]
 version: v3
-last_verified: 2026-10-14
+last_verified: 2026-10-21
 audience: [llm]
 agent_usage: required
 agent_description: "Routing head for every Trellis task: which reference to open, the recipe lookup and how to read the set. Read before writing or changing code that uses Trellis."
@@ -12,66 +12,59 @@ agent_description: "Routing head for every Trellis task: which reference to open
 
 # Trellis — start here
 
-These versioned references ship with `Trellis.Core`. The optional Trellis.AgentDocs local tool
-(`agentdocs`) installs them after approving `Trellis.Core` in `.agentdocs/policy.json`. This self-contained
-**routing head** is the only always-required read before Trellis work; it selects the references
-and recipes for each task. Other files sit beside it, so links are relative.
+These versioned references ship with `Trellis.Core`. The optional `agentdocs` local tool installs them
+after approving Core in `.agentdocs/policy.json`. This self-contained **routing head** is the only
+always-required read; it selects task references and recipes. Sibling-file links are relative.
 
 ## Read the references yourself — do not delegate them to a sub-agent
 
-Read code-shaping references yourself: a sub-agent's summary omits exact signatures and invites
-invented APIs or wrong overloads. Delegate *verdicts*, not reference learning: builds, tests,
-file searches and accuracy audits are fine. If the answer determines your code, read it yourself.
+Read code-shaping references yourself; summaries lose exact signatures and invite invented APIs.
+Delegate *verdicts* (builds, tests, file searches, accuracy audits), not reference learning.
 
 ## Do not guess
 
-Every Trellis API you write should be traceable to a line in one of these files. If you cannot find
-the method, overload, or attribute you are about to use, stop and read the reference that owns it
-rather than reconstructing the signature from memory. Trellis makes heavy use of source generators,
-so a base type such as `RequiredGuid<TSelf>` or `Aggregate<TId>` already supplies members that are a
-compile error to redeclare — the cookbook's Recipe 1 lists that inherited surface explicitly.
+Trace every Trellis method, overload and attribute to its owning reference; stop and read it rather
+than reconstructing signatures from memory. Bases such as `RequiredGuid<TSelf>` and `Aggregate<TId>`
+already supply members that are compile errors to redeclare; Recipe 1 lists the inherited surface.
 
 ## How to read these recipes
 
 **Hold this file resident; read recipe bodies on demand.** The 38 recipe bodies in `trellis-api-cookbook.md`
-cover the routed tasks; a typical task needs one to three. Open each body when the
-[task lookup table](#task---recipe-lookup) routes you there; never work from its title alone.
-TRLDOC007 enforces that every live recipe is reachable, so an unlisted task has no recipe.
+cover the routed tasks; most need one to three. Follow the [task lookup table](#task---recipe-lookup),
+reading bodies, not just titles. TRLDOC007 enforces that every live recipe is reachable.
 
 Every recipe follows the same shape:
 
-1. **Problem statement** — what the consumer is trying to accomplish.
-2. **Solution code** — copy-pasteable C# that compiles against the documented public surface only. No invented APIs.
-3. **What it shows** — the cross-cutting concept being demonstrated.
-4. **Anti-pattern → fix** *(when applicable)* — the wrong way and which Trellis analyzer catches it.
+1. **Problem statement** — the consumer's task.
+2. **Solution code** — copy-pasteable C# using only documented public APIs.
+3. **What it shows** — the cross-cutting concept.
+4. **Anti-pattern → fix** *(when applicable)* — the mistake and its Trellis analyzer.
 
 Conventions used throughout:
 
-- All Trellis types live in the `Trellis` namespace except where called out (`Trellis.Asp`, `Trellis.Asp.Authorization`, `Trellis.EntityFrameworkCore`, `Trellis.Analyzers`).
-- Snippets use C# 12+ features (file-scoped namespaces, primary constructors, collection expressions) — Trellis targets `net10.0`.
-- `Result.Ok` / `Result.Fail` are *the* construction APIs. `default(Result<T>)` is a typed failure; do not rely on it as success.
-- Every async pipeline uses `*Async` extensions; mixing sync chain methods with `Task<Result<T>>` triggers `TRLS009`.
-- Examples reference an `OrderId : RequiredGuid<OrderId>` value object and an `Order` aggregate. Substitute your own types without changing the structure.
-- A command without a payload returns `Result<Trellis.Unit>` — qualified because a file that imports both `Trellis` and `Mediator` has two `Unit` types in scope (`Trellis.Unit` and `Mediator.Unit`). Add `global using TrellisUnit = Trellis.Unit;` (or `global using Unit = Trellis.Unit;`, since Trellis code never references `Mediator.Unit`) to your `GlobalUsings.cs` to drop the qualification.
+- Types use namespace `Trellis` unless noted (`Trellis.Asp`, `Trellis.Asp.Authorization`, `Trellis.EntityFrameworkCore`, `Trellis.Analyzers`).
+- Snippets use C# 12+ (file-scoped namespaces, primary constructors, collection expressions); Trellis targets `net10.0`.
+- Construct results with `Result.Ok` / `Result.Fail`. `default(Result<T>)` is a typed failure, not success.
+- Async pipelines use `*Async` extensions; sync chain methods on `Task<Result<T>>` trigger `TRLS009`.
+- Examples use `OrderId : RequiredGuid<OrderId>` and an `Order` aggregate; substitute your types, not the structure.
+- Payload-free commands return `Result<Trellis.Unit>`, qualified to avoid ambiguity with `Mediator.Unit`. In `GlobalUsings.cs`, `global using TrellisUnit = Trellis.Unit;` or `global using Unit = Trellis.Unit;` avoids qualification; Trellis code never uses `Mediator.Unit`.
 
 ### Preferred patterns, not just valid overloads
 
-Primary recipe examples are the recommended defaults. Use an alternative only when its
-documented trade-off fits the task, and state why:
+Recipe examples are the defaults. Use alternatives only for a documented trade-off, and state why:
 
-- For required nullables, prefer `Result.EnsureNotNull(value, fieldName, detail)` (or the async form): standard required-field errors are already lazy. These guards check null only, not blank strings or other domain rules. For nonblank strings, use `value.EnsureNotNullOrWhiteSpace(fieldName, detail)`; it emits `ValueNotNull` for null and `ValueNotEmpty` for empty/whitespace, only on failure, and does not trim valid text. Use its `Func<Error>` overload for a custom failure.
-- For custom guard/conversion errors, construct the error **inside** the factory whenever that overload exists: `Result.Ensure(condition, () => new Error.Forbidden(...))`, `Result.EnsureNotNull(value, () => ...)`, or `maybe.ToResult(() => ...)`. Value-threaded `Ensure` uses `value => error`, not a parameterless factory. Eager error construction wastes work and can record validation violations even when a guard passes or an earlier failure skips it.
-- Prefer `static` callbacks when they need no captured state. Capturing factories can still allocate a closure; lazy construction avoids unused errors, not every allocation. Returning an already-created error from a factory does not undo its allocation. Eager overloads remain appropriate for existing/reused errors and APIs without a factory overload; do not invent missing overloads.
-- Use `Result.Ensure` for a boolean guard without a payload, `EnsureNotNull` for required nullable values, and `Result.Ok(value)` for deliberate success wrapping. Do not substitute a `Result<Unit>` guard for a payload-bearing success.
-- Prefer expression-based EF mappings such as `builder.OwnsMany(order => order.LineItems, ...)` when convention can bind the backing field. String-based field mappings are a fallback, not the default; value-object collections need no explicit ownership mapping unless overriding a convention.
+- Prefer `Result.EnsureNotNull(value, fieldName, detail)` (or async) for required nullables: standard errors are lazy. It checks null only, not blanks/domain rules. For nonblank strings, `value.EnsureNotNullOrWhiteSpace(fieldName, detail)` emits `ValueNotNull` for null, `ValueNotEmpty` for empty/whitespace, only on failure, without trimming. Use its `Func<Error>` overload for custom failure.
+- Construct custom guard/conversion errors **inside** an available factory: `Result.Ensure(condition, () => new Error.Forbidden(...))`, `Result.EnsureNotNull(value, () => ...)`, or `maybe.ToResult(() => ...)`. Value-threaded `Ensure` uses `value => error`, not a parameterless factory. Eager construction wastes work and may record violations even when a guard passes or an earlier failure skips it.
+- Prefer `static` callbacks without captured state. Capturing factories may allocate closures; laziness avoids unused errors, not all allocations. Returning a pre-created error does not undo its allocation. Use eager overloads for existing/reused errors or APIs without factories; do not invent overloads.
+- Use `Result.Ensure` for payload-free boolean guards, `EnsureNotNull` for required nullables, and `Result.Ok(value)` for success wrapping. A `Result<Unit>` guard is not payload-bearing success.
+- Prefer expression-based EF mappings like `builder.OwnsMany(order => order.LineItems, ...)` when convention binds the backing field. String-based mappings are a fallback; value-object collections need explicit ownership mapping only to override conventions.
 
 ## LLM preflight: load the smallest correct reference set
 
-Before coding, choose the task below and open required references at their **Patterns Index**.
-Read complete selected API sections, constraints and linked behavioral/preflight sections,
-not unrelated catalogs. Expand for other surfaces, inherited members or cross-package ordering;
-section-first reading waives no required package or safety contract. Recipes cover end-to-end
-composition; a direct API route suffices for a small guard or conversion.
+Choose the task and open required references at their **Patterns Index**. Read complete selected APIs,
+constraints and linked behavior/preflight sections, not unrelated catalogs. Expand for inherited
+surfaces and cross-package ordering; section-first reading waives no package or safety contract.
+Recipes cover end-to-end composition; direct API routes suffice for small guards/conversions.
 
 | If you are changing... | Load these references before coding | Why |
 |---|---|---|
@@ -85,7 +78,7 @@ composition; a direct API route suffices for a small guard or conversion.
 | Tests | [Testing index](trellis-api-testing-reference.md#patterns-index); add [ASP testing index](trellis-api-testing-aspnetcore.md#patterns-index) for `WebApplicationFactory` or `.http` replay | Unit/helper assertions and ASP integration helpers live in separate test packages. |
 | Analyzer diagnostics | Matching [WRONG/FIX section](trellis-api-anti-patterns.md#trls001--result-return-value-not-handled), then the [diagnostic index](trellis-api-analyzers.md#diagnostics) and its detail link, then the named package API section | Adapt the canonical control-flow shape; check the exact API and code-fix limitations. |
 
-Measurable completion check for generated code: every Trellis method call should be traceable to a loaded package reference, every selected integration module should be wired in the documented order, and every public API or behavior change should update the matching package reference plus the matching recipe in `trellis-api-cookbook.md` (and this router's lookup row) when it affects a cross-package recipe.
+Completion: trace each Trellis call to a loaded reference; wire modules in documented order; update the owning reference for public API/behavior changes, plus the affected cross-package recipe in `trellis-api-cookbook.md` and its router row.
 
 Known non-APIs and corrected assumptions:
 
@@ -107,6 +100,8 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 |---|---|
 | Create or load an aggregate with value objects | [Recipe 1](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) |
 | Write a command handler that validates and persists | [Recipe 2](trellis-api-cookbook.md#recipe-2--command--handler--fluentvalidation--ef-persistence), then [Recipe 16](trellis-api-cookbook.md#recipe-16--unit-of-work-in-handlers-add-staging-vs-immediate-saveasync) |
+| Persist business changes and audit records in one commit, or refuse a command that recorded no audit | [Recipe 16: same-commit audit staging](trellis-api-cookbook.md#same-commit-audit-staging), then [inside-transaction behaviors](trellis-api-mediator.md#insidetransactionbehaviorservicecollectionextensions) |
+| Share handler/audit data without changing an entity response | [Recipe 16: application-owned recorder and checkpoint](trellis-api-cookbook.md#same-commit-audit-staging) |
 | Load multiple independent resources in one handler (HTTP + DB, two upstream services, factory-created `DbContext`s) | [Recipe 21](trellis-api-cookbook.md#recipe-21--parallel-independent-loads-in-handlers-resultparallelasync--whenallasync) |
 | Multi-aggregate orchestration: side effect per element of a related-aggregate set | [Recipe 22](trellis-api-cookbook.md#recipe-22--multi-aggregate-orchestration-fail-loud-on-missing-related-aggregates) |
 | Apply an operation to every element of a related-aggregate set where per-element validation can fail (reserve stock per line item, etc.) — avoid partial mutation | [Recipe 25](trellis-api-cookbook.md#recipe-25--two-pass-validate-then-mutate-over-a-collection-of-related-aggregates) |
@@ -195,19 +190,12 @@ These rows route recurring LLM lab mistakes to the most relevant reference befor
 | [`trellis-api-anti-patterns.md`](trellis-api-anti-patterns.md#trls001--result-return-value-not-handled) | Ready-to-apply WRONG/FIX shapes for the analyzer diagnostics (`TRLSxxx`). |
 | [`trellis-value-object-taxonomy.md`](trellis-value-object-taxonomy.md#patterns-index) | Choosing a value-object category: scalar, symbolic, structured, optional. |
 
-The remaining `trellis-api-*.md` files cover the optional packages — `trellis-api-efcore.md` for
-`Trellis.EntityFrameworkCore`, and so on. The lookup tables above name the right one per task, so route
-through them rather than opening files speculatively.
+Other `trellis-api-*.md` files cover optional packages; use the lookup tables, not speculative reads.
 
-**A file being present here does not mean the project you are editing references that package.** The
-complete first-party set ships with `Trellis.Core`, so references for packages you have not installed
-are present by design — that is how you discover a module worth adopting. The `agentdocs` command
-installs the references of the packages you approved in `.agentdocs/policy.json` and removes them when the package
-is no longer approved or no longer publishes guidance. Packages published from other repositories (for example
-`Trellis.ServiceLevelIndicators`) ship their own reference alongside themselves, so those appear
-only once installed.
+**File presence does not mean the project references that package.** Core ships all first-party
+references for discovery, including uninstalled modules. `agentdocs` installs approved packages'
+references and removes them when approval or published guidance ends. Other repositories' packages
+(e.g. `Trellis.ServiceLevelIndicators`) ship their own references, visible only once installed.
 
-So before writing code against one of these files, confirm the package is actually referenced by the
-project you are editing — check its `.csproj` or `Directory.Packages.props`. If it is not, the
-reference still tells you what adopting the package would buy; say that, rather than emitting code
-that cannot compile.
+Before coding, confirm the project's package reference in its `.csproj` or `Directory.Packages.props`.
+If absent, explain what adoption would enable; do not emit code that cannot compile.

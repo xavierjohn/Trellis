@@ -6,8 +6,8 @@ using global::Mediator;
 /// Pipeline behavior that automatically commits staged changes after a successful command handler.
 /// <para>
 /// The behavior wraps each command invocation in an <see cref="IUnitOfWork.BeginScope"/> scope,
-/// runs the handler (which stages changes via repositories), then calls
-/// <see cref="IUnitOfWork.CommitAsync"/> if the handler returned success. If the handler returned
+/// runs the handler and any application behaviors registered inside this scope, then calls
+/// <see cref="IUnitOfWork.CommitAsync"/> if their final response is successful. If they return
 /// a failure <see cref="Result{T}"/>, no commit occurs and the staged changes are discarded when
 /// the underlying store/context is disposed.
 /// </para>
@@ -33,7 +33,7 @@ using global::Mediator;
 /// <c>IMediator</c>, the inner command flows through the same pipeline and the inner
 /// <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/> opens a nested
 /// <see cref="IUnitOfWork.BeginScope"/>. The inner <see cref="IUnitOfWork.CommitAsync"/> defers
-/// (returns success without touching the store) until the outermost scope unwinds. This
+/// (returns success without touching the store) until the owning command commits. This
 /// prevents a successful inner command from committing a partially-completed outer command's
 /// staged changes. <b>Caveat:</b> if the inner command returns a failure but the outer handler
 /// ignores it and returns success, the outer's commit will persist any changes the inner staged

@@ -28,6 +28,18 @@ builder.Services.AddTrellis(trellis => trellis
 
 Call `AddTrellis(...)` once. If omitted, the composition features are intentionally not registered.
 
+`UseInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` or
+`UseInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))` implies `UseMediator()`
+and registers an application-owned behavior inside the transaction scope, before the
+handler. Its post-handler work finishes before the commit decision, independent of
+fluent/direct registration order. Register `IUnitOfWork` separately, typically with
+`UseEntityFrameworkUnitOfWork<TContext>()`.
+
+Identical bindings deduplicate; behaviors nest in selection order and unwind in reverse
+order. Applications own recorder state, result checks, and cleanup. A returned ordinary
+failure skips this invocation's commit, without rollback or permanent rejection of
+an outer/later commit. See the same-commit audit recipe for the complete checkpoint pattern.
+
 ## Key Features
 
 - Applies Trellis registrations in canonical pipeline order.

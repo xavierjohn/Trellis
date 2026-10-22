@@ -3,7 +3,7 @@ package: Trellis.Persistence.Abstractions
 namespaces: [Trellis]
 types: [IUnitOfWork, IUnitOfWorkScope, IInboxStore, IConsumerCheckpointStore, InboxRecord]
 version: v3
-last_verified: 2026-10-14
+last_verified: 2026-10-21
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when implementing IUnitOfWork, IInboxStore or IConsumerCheckpointStore for a non-EF store (Trellis.Persistence.Abstractions)."
@@ -40,7 +40,10 @@ public interface IUnitOfWork
 ```
 
 - `CommitAsync` returns `Result<Unit>` so concurrency, duplicate-key, and foreign-key failures surface as a typed `Error` instead of an exception.
-- `BeginScope` makes nested commits depth-aware: a `CommitAsync` call inside a nested scope (depth &gt; 1) must defer (return success without writing); only the outermost scope's `CommitAsync` persists. This lets the standard `TransactionalCommandBehavior` wrap every command without a successful inner command committing a partially-completed outer command's staged changes.
+- `BeginScope` makes nested commits depth-aware: while committable, a `CommitAsync` call inside a nested scope (depth &gt; 1) must defer (return success without writing); only the outermost scope's `CommitAsync` persists. This lets the standard `TransactionalCommandBehavior` wrap every command without a successful inner command committing a partially-completed outer command's staged changes.
+An inner failure does not roll back tracked changes or permanently prevent commits.
+Propagate failures when the owner must not commit; discard a failed request's context.
+Direct store writes are outside this boundary.
 
 ## `IUnitOfWorkScope`
 
@@ -53,7 +56,7 @@ public interface IUnitOfWorkScope : IDisposable
 
 `IsOwner` is fixed when the scope opens: true for the outermost scope and false for nested scopes. Disposal ends the scope without committing. Custom adapters must return this scope contract (a breaking change from `IDisposable`) and preserve nested commit deferral. The mediator uses ownership to retain nested aggregate dispatch until an actual owning commit succeeds, including when the outer response is a DTO or Unit.
 
-Automatic event dispatch inside a manually opened outer scope is rejected: use manual `DispatchAggregateEventsAsync` after the manual owning commit instead. Scope depth is per unit-of-work instance; concurrent commands sharing it are unsupported. An ignored inner failure does not roll back its staged changes.
+Automatic event dispatch inside a manually opened outer scope is rejected: use manual `DispatchAggregateEventsAsync` after the manual owning commit instead. Scope depth is per unit-of-work instance; concurrent commands sharing it are unsupported. An ignored inner failure does not roll back staged changes or prevent the owner's commit.
 
 ## `IInboxStore` and `InboxRecord`
 

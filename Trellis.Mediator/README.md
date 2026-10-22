@@ -39,6 +39,7 @@ builder.Services.AddTrellisBehaviors();
 - Short-circuits failures before handlers do unnecessary work.
 - Unified `ValidationBehavior` composes `IValidate` + every `IMessageValidator<TMessage>` (e.g., the `Trellis.FluentValidation` adapter) and aggregates failures into one response.
 - Supports resource authorization with explicit or assembly-scanned registration.
+- `AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` and its constrained open `Type` overload place application-owned behaviors between the transaction behavior and handler, independently of Trellis registration order. Post-handler work finishes before the commit decision; the application supplies its recorder, outcome checks, cleanup, and `IUnitOfWork`.
 - `AddSharedResourceAuthorization<TMessage, TResource, TId, TResponse>()` registers the authorization behavior, authorized-resource accessor, and shared-loader adapter without scanning. Register `SharedResourceLoaderById<TResource,TId>` separately. Existing per-message loaders are preserved; the lower-level registration APIs remain unchanged.
 - Per-resource `HideAsNotFound` gives missing, removed (`Gone`), and withheld resources the same public NotFound, without original metadata or causes. `HideExistence<TResource>(code: ..., detail: ...)` optionally supplies fixed public metadata; the projection form selects a separate public type.
 
@@ -49,6 +50,8 @@ builder.Services.AddTrellisBehaviors();
 - `IntegrationMessageContext.BeginCorrelation("workflow-id")` supplies an application-owned business correlation id; inbox dispatch scopes inherit nonblank inbound correlation and expose the inbound message id as the direct cause for outbox capture. `OutboundIntegrationMessage` carries persisted lineage and W3C trace context without guessing from the relay's ambient activity.
 
 ## Documentation
+- [Same-commit audit recipe](../docs/docfx_project/api_reference/trellis-api-cookbook.md#same-commit-audit-staging): stage records through the same unit of work using a supported behavior slot and cleanup-safe recorder checkpoints.
+- [Direct handler tests](../docs/docfx_project/api_reference/trellis-api-cookbook.md#testing-handlers-with-an-application-owned-recorder): test the handler directly through its application-owned recorder, with no framework frame or unit-of-work double.
 - [Handler migration and dispatch contracts](../docs/docfx_project/api_reference/trellis-api-mediator.md#actor-aware-handler-bases): replace custom actor/resource bases, override protected `Handle`, and remove lookup-only constructor dependencies. Standard managed registrations supply the context automatically; hand-built authorization pipelines must add it before authorization.
 - [Native AOT registration](../docs/docfx_project/api_reference/trellis-api-mediator.md#native-aot-registration): use literal generator `typeof(...)` configuration for closed behaviors. Native DI cannot close open behaviors over struct `Result<T>` responses; do not combine the closed-generator shape with `AddTrellisBehaviors` or builder slots that imply it.
 - [Full documentation](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html)

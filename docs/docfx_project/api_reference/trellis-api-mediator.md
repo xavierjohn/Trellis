@@ -1,12 +1,12 @@
 ﻿---
 package: Trellis.Mediator
 namespaces: [Trellis.Mediator]
-types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", "AuthorizationContextBehavior<TMessage,TResponse>", "ActorCommandHandler<TCommand,TResponse>", "ActorQueryHandler<TQuery,TResponse>", "ActorResourceCommandHandler<TCommand,TResource,TResponse>", "ActorResourceQueryHandler<TQuery,TResource,TResponse>", "ActorResourceViaCommandHandler<TCommand,TLeaf,TOwner,TResponse>", "ActorResourceViaQueryHandler<TQuery,TLeaf,TOwner,TResponse>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", MediatorTraceProviderBuilderExtensions, TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
+types: [ICommand<T>, IQuery<T>, "IRequestHandler<,>", "IPipelineBehavior<,>", InsideTransactionBehaviorServiceCollectionExtensions, "TransactionalCommandBehavior<TMessage,TResponse>", "AuthorizationContextBehavior<TMessage,TResponse>", "ActorCommandHandler<TCommand,TResponse>", "ActorQueryHandler<TQuery,TResponse>", "ActorResourceCommandHandler<TCommand,TResource,TResponse>", "ActorResourceQueryHandler<TQuery,TResource,TResponse>", "ActorResourceViaCommandHandler<TCommand,TLeaf,TOwner,TResponse>", "ActorResourceViaQueryHandler<TQuery,TLeaf,TOwner,TResponse>", "AuthorizationBehavior<TMessage,TResponse>", "ExceptionBehavior<TMessage,TResponse>", IValidate, "LoggingBehavior<TMessage,TResponse>", "ResourceAuthorizationViaBehavior<TMessage,TLeaf,TOwner,TResponse>", ResolvedAuthorizationPath, ResolvedAuthorizationHop, HopLoadResult, "ResolvedAuthorizationPathHolder<TMessage,TLeaf,TOwner,TResponse>", ResourceAuthorizationPathResolver, "ResourceAuthorizationBehavior<TMessage,TResource,TResponse>", ServiceCollectionExtensions, "TracingBehavior<TMessage,TResponse>", MediatorTraceProviderBuilderExtensions, TrellisMediatorTelemetryOptions, IMessageValidator<TMessage>, IDomainEventHandler<TEvent>, IDomainEventPublisher, IReportingDomainEventPublisher, DomainEventDispatchReport, DomainEventHandlerFailure, IIntegrationEventHandler<TEvent>, IIntegrationEventPublisher, OutboundIntegrationMessage, IntegrationEventNameMap, IIntegrationEventCollector, DomainEventHandlerCascadedException, CascadeOffender, "DomainEventDispatchBehavior<,>", DomainEventDispatchServiceCollectionExtensions, DomainEventPublisherExtensions, IntegrationEventDispatchServiceCollectionExtensions, "TrackedAggregateDomainEventDispatchBehavior<,>", TrackedAggregateDomainEventDispatchServiceCollectionExtensions]
 version: v3
-last_verified: 2026-10-14
+last_verified: 2026-10-21
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when wiring Trellis behaviors into the Mediator pipeline: command and query interfaces, validation, authorization, tracing, logging and unit-of-work behavior."
+agent_description: "Open when wiring Trellis Mediator handlers and behaviors: validation, authorization, inside-transaction behaviors, unit-of-work commits, tracing, logging, and domain/integration events."
 ---
 # Trellis.Mediator — API Reference
 
@@ -38,6 +38,9 @@ See also: [trellis-start-here.md](trellis-start-here.md#patterns-index) — reci
 | Bridge `IIdentifyResource<TResource,TId>` to a shared loader | `services.AddSharedResourceLoader<TMessage,TResource,TId>()` | [`ServiceCollectionExtensions`](#servicecollectionextensions) |
 | Register EF unit-of-work behavior | `services.AddTrellisUnitOfWork<TContext>()` | [`Canonical pipeline order`](#canonical-pipeline-order) |
 | Keep commits inside the pipeline | Repositories stage changes; `TransactionalCommandBehavior` commits on success | [`Behavioral notes`](#behavioral-notes) |
+| Validate an outcome or stage audit rows before the command commits | `AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` | [Inside-transaction behaviors](#insidetransactionbehaviorservicecollectionextensions), [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging) |
+| Apply an application behavior to every matching command | `AddInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))` | [Behavior registration](#insidetransactionbehaviorservicecollectionextensions) |
+| Share handler/audit data without changing the entity response | Application-owned scoped recorder with a checkpoint | [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging) |
 | Dispatch domain events on a successful command (assembly scan) | `services.AddDomainEventDispatch(typeof(MyHandler).Assembly)` | [`DomainEventDispatchServiceCollectionExtensions`](#domaineventdispatchservicecollectionextensions) |
 | Dispatch domain events with explicit (AOT-friendly) handler registration | `services.AddDomainEventHandler<TEvent, THandler>()` | [`DomainEventDispatchServiceCollectionExtensions`](#domaineventdispatchservicecollectionextensions) |
 | Auto-dispatch domain events from every tracked aggregate (regardless of response shape) | `services.AddTrackedAggregateDomainEventDispatch()` | [`TrackedAggregateDomainEventDispatchServiceCollectionExtensions`](#trackedaggregatedomaineventdispatchservicecollectionextensions) |
@@ -52,7 +55,8 @@ See also: [trellis-start-here.md](trellis-start-here.md#patterns-index) — reci
 
 - Explicit `AddResourceAuthorization<TMessage,TResource,TResponse>()` registers the behavior and authorized-resource accessor, but not a loader. For messages implementing `IIdentifyResource<TResource,TId>`, `AddSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()` also registers the shared-loader bridge. The shared-loader implementation remains application-owned.
 - Loader precedence is application registration, then scanned custom loader, then framework shared-loader adapter. Both `AddResourceAuthorization(assemblies)` and `AddResourceLoaders(assembly)` replace an earlier framework adapter when a custom loader is discovered, so typed-first and scan-first composition select the same custom loader. Scanning preserves application-provided implementation, factory, and instance descriptors and leaves keyed registrations untouched.
-- `AddTrellisUnitOfWork<TContext>()` is order-independent versus `AddTrellisBehaviors()` and domain-event dispatch helpers; the transaction behavior is rehomed innermost.
+- `AddTrellisUnitOfWork<TContext>()` is order-independent versus `AddTrellisBehaviors()` and domain-event dispatch helpers; the transaction surrounds explicitly selected inside-transaction application behaviors and the handler.
+- Use `AddInsideTransactionBehavior` for post-handler work that must precede the commit decision. An ordinary outer behavior's post-handler code may run after persistence. Application behaviors own outcome checks and cleanup; placement does not provide rollback or permanent commit rejection.
 - Handlers should return Trellis `Result` / `Result<T>` failures, not throw for expected business outcomes.
 - The default integration publisher is **best-effort**, even when called by a durable outbox. Swallowed consumer failures do not reach the relay and are not retried. A broker publisher must await acceptance and propagate publication failures; registering an inbox does not route the default publisher through it.
 
@@ -530,13 +534,13 @@ No public constructors.
 
 | Name | Type | Description |
 | --- | --- | --- |
-| `PipelineBehaviors` | `IReadOnlyList<Type>` | Ordered pipeline behavior types (outermost → innermost): `ExceptionBehavior<,>`, `TracingBehavior<,>`, `LoggingBehavior<,>`, `AuthorizationContextBehavior<,>`, `AuthorizationBehavior<,>`, `ValidationBehavior<,>`. Resource authorization and the `TransactionalCommandBehavior` are opt-in and not part of this list. This is an inspection list, not compile-time evaluation of generator options. |
+| `PipelineBehaviors` | `IReadOnlyList<Type>` | Ordered pipeline behavior types (outermost → innermost): `ExceptionBehavior<,>`, `TracingBehavior<,>`, `LoggingBehavior<,>`, `AuthorizationContextBehavior<,>`, `AuthorizationBehavior<,>`, `ValidationBehavior<,>`. Resource authorization, `TransactionalCommandBehavior`, and selected inside-transaction application behaviors are opt-in and not part of this list. This is an inspection list, not compile-time evaluation of generator options. |
 
 **Methods**
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)` | `IServiceCollection` | Registers the six open generic behaviors listed in `PipelineBehaviors` and a default `TrellisMediatorTelemetryOptions` singleton (Detail redacted). **Idempotent** — uses `TryAddEnumerable`/`TryAddSingleton` so repeated normal registration does not duplicate behaviors. Absorbs known closed context descriptors into the open context and places it before authorization; resource behaviors relocate before validation and existing transaction descriptors remain innermost. **Startup guardrail:** a previously registered `Singleton` `IMediator` or `ISender` throws; use scoped (or transient) Mediator and call `AddMediator` first. For Native AOT with struct Result responses, use the separate [closed-generator shape](#native-aot-registration), not this open-generic helper. |
+| `public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services)` | `IServiceCollection` | Registers the six open generic behaviors listed in `PipelineBehaviors` and a default `TrellisMediatorTelemetryOptions` singleton (Detail redacted). **Idempotent** — uses `TryAddEnumerable`/`TryAddSingleton` so repeated normal registration does not duplicate behaviors. Absorbs known closed context descriptors into the open context and places it before authorization; resource behaviors relocate before validation and the transaction envelope remains inside the outer stages. **Startup guardrail:** a previously registered `Singleton` `IMediator` or `ISender` throws; use scoped (or transient) Mediator and call `AddMediator` first. For Native AOT with struct Result responses, use the separate [closed-generator shape](#native-aot-registration), not this open-generic helper. |
 | `public static IServiceCollection AddTrellisBehaviors(this IServiceCollection services, Action<TrellisMediatorTelemetryOptions> configure)` | `IServiceCollection` | Same as the parameterless overload, but applies `configure` to the registered `TrellisMediatorTelemetryOptions` singleton. Replaces any prior options registration so this call wins regardless of ordering. |
 | `public static IServiceCollection AddResourceAuthorization<TMessage, TResource, TResponse>(this IServiceCollection services) where TMessage : IAuthorizeResource<TResource>, global::Mediator.IMessage where TResource : class where TResponse : IResult, IFailureFactory<TResponse>` | `IServiceCollection` | Registers `ResourceAuthorizationBehavior<TMessage, TResource, TResponse>` and inserts it immediately before `ValidationBehavior<,>` when validation is already registered. Also registers `IAuthorizedResource<TMessage, TResource>` as scoped (backed by `AuthorizedResourceHolder<,>`) so handlers can inject the v4 typed accessor; see [Recipe 31](trellis-api-cookbook.md#recipe-31--avoid-duplicate-load-with-iauthorizedresourcetcommand-tresource). **Idempotent** for the same closed service type + implementation type; different response types or via behaviors remain distinct. **Throws `InvalidOperationException`** when `TMessage` also implements `IAuthorizeResourceVia<TOwner>` (dual-mode commands are rejected at every entry point — security primitives are never silently composed). |
 | `[RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use explicit registration for AOT/trimming scenarios.")] [RequiresDynamicCode("Constructs closed generic types at runtime. Use explicit registration for AOT scenarios.")] public static IServiceCollection AddResourceAuthorization(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans assemblies for `IAuthorizeResource<TResource>` AND `IAuthorizeResourceVia<TOwner>` implementations, resolves `TResponse` from `ICommand<T>`, `IQuery<T>`, or `IRequest<T>`, registers closed `ResourceAuthorizationBehavior<,,>` / `ResourceAuthorizationViaBehavior<,,,>` instances, registers discovered `IResourceLoader<,>` and `SharedResourceLoaderById<,>` implementations, and bridges `IIdentifyResource<TResource, TId>` messages to shared loaders. Also auto-registers `IAuthorizedResource<TMessage, TResource>` (for direct commands) and `IAuthorizedResource<TMessage, TLeaf>` (for via commands — leaf only, owner accessor not in v4) so handlers can inject the v4 typed accessor. Closed behavior registration is idempotent across repeated scans and explicit-plus-scanned overlap when service type + implementation type match. For `IAuthorizeResourceVia<TOwner>` commands the scanner runs `ResourceAuthorizationPathResolver.Resolve(...)` over every scanned entity type and registers the closed `ResolvedAuthorizationPathHolder<,,,>` so the behavior receives its path via DI. **Throws `InvalidOperationException` at startup** when (a) any message's `TResponse` does not implement both `IResult` and `IFailureFactory<TResponse>` (security-marker fail-fast), (b) any message implements both `IAuthorizeResource<T>` and `IAuthorizeResourceVia<TOwner>` (security primitives are never silently composed), (c) any `IAuthorizeResourceVia<TOwner>` command does not also implement `IIdentifyResource<TLeaf, TLeafId>` (silent skip would leave the via-marker unprotected at runtime), (d) the path resolver finds zero or multiple distinct simple paths from leaf to owner, or (e) any discovered resource type or via-leaf type is a value type (the v4 accessor closed generics require `where TResource : class` / `where TLeaf : class`; the friendly diagnostic names the offending command and resource type). |
@@ -931,6 +935,28 @@ Identifies one aggregate type whose pending-event list changed during dispatch.
 | `AggregateType` | `Type` | The offending aggregate type. |
 | `CascadedEventTypeNames` | `IReadOnlyList<string>` | The event type names still present from the first changed position after the entry snapshot was published. |
 
+### TransactionalCommandBehavior<TMessage, TResponse>
+
+```csharp
+public sealed class TransactionalCommandBehavior<TMessage, TResponse>
+    : global::Mediator.IPipelineBehavior<TMessage, TResponse>
+    where TMessage : global::Mediator.ICommand<TResponse>
+    where TResponse : IResult, IFailureFactory<TResponse>
+```
+
+Provider-neutral command commit behavior. Queries do not satisfy its constraint.
+
+| Signature | Description |
+| --- | --- |
+| `public TransactionalCommandBehavior(IUnitOfWork unitOfWork)` | Captures the scoped unit of work. Throws `ArgumentNullException` for null `unitOfWork`. |
+| `public ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage,TResponse> next, CancellationToken cancellationToken)` | Opens `BeginScope`, awaits the enclosed application behaviors and handler, then commits on their final success or explicit persist-on-failure response. A commit error replaces that response. Ordinary failure or exception skips this commit. |
+
+Nested scopes defer persistence to the owner. An ignored inner failure can leave
+tracked changes that the owner later persists: no rollback or permanent rejection is
+implied. Propagate nested failures when the owner must not commit and discard a failed
+request's context. Concurrent commands sharing one unit of work remain unsupported.
+This behavior is opt-in; `AddTrellisBehaviors()` alone does not install it.
+
 ### DomainEventDispatchBehavior
 **Declaration**
 
@@ -1052,15 +1078,76 @@ DI registration helper for the tracked dispatch behavior.
 public static IServiceCollection AddTransactionalCommandBehavior(this IServiceCollection services)
 ```
 
-Installs the open-generic `TransactionalCommandBehavior<,>` (slot 8 of the [canonical pipeline order](#canonical-pipeline-order)) independently of any persistence adapter. It is provider-neutral: any adapter that registers an `IUnitOfWork` can call it, and the shipped EF Core adapter does so from `AddTrellisUnitOfWork<TContext>()`. Because it is a leaf/adapter-author extension point rather than a composition-root feature, it deliberately has **no** `TrellisServiceBuilder.UseXxx()` slot — application authors reach it through `UseEntityFrameworkUnitOfWork<TContext>()`.
+Installs the open-generic `TransactionalCommandBehavior<,>` (slot 9 of the [canonical pipeline order](#canonical-pipeline-order)) independently of any persistence adapter. It is provider-neutral: any adapter that registers an `IUnitOfWork` can call it, and the shipped EF Core adapter does so from `AddTrellisUnitOfWork<TContext>()`. Because it is a leaf/adapter-author extension point rather than a composition-root feature, it deliberately has **no** `TrellisServiceBuilder.UseXxx()` slot — application authors reach it through `UseEntityFrameworkUnitOfWork<TContext>()` or `UseInsideTransactionBehavior(...)`.
 
 | Situation | Result |
 |---|---|
-| The open-generic `TransactionalCommandBehavior<,>` is already registered | No-op — the method is idempotent |
-| Other `IPipelineBehavior<,>` registrations exist | Inserted after the last one, so it runs innermost (closest to the handler); appended at the end when none exist |
+| The open-generic `TransactionalCommandBehavior<,>` is already registered | Keeps one binding and restores the transaction envelope, with explicitly selected application behaviors inside it |
+| Other `IPipelineBehavior<,>` registrations exist | Keeps ordinary outer behaviors before the transaction, and explicitly selected inside-transaction behaviors after it |
 | A **closed**-generic `TransactionalCommandBehavior<TMessage,TResponse>` is already registered | Throws `InvalidOperationException` — the open generic would resolve alongside it and commit twice per command |
 
 Conflict detection inspects `ServiceDescriptor.ImplementationType` and `ImplementationInstance`. A closed behavior registered through `ImplementationFactory` **cannot** be detected without invoking the factory and is therefore not caught — if you register behaviors by factory, skip this method and own the wiring yourself.
+
+### InsideTransactionBehaviorServiceCollectionExtensions
+
+```csharp
+public static class InsideTransactionBehaviorServiceCollectionExtensions
+{
+    public static IServiceCollection AddInsideTransactionBehavior<
+        TMessage,
+        TResponse,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TBehavior>(
+        this IServiceCollection services)
+        where TMessage : global::Mediator.ICommand<TResponse>
+        where TResponse : IResult, IFailureFactory<TResponse>
+        where TBehavior : class, global::Mediator.IPipelineBehavior<TMessage,TResponse>;
+
+    public static IServiceCollection AddInsideTransactionBehavior(
+        this IServiceCollection services,
+        [DynamicallyAccessedMembers(
+            DynamicallyAccessedMemberTypes.PublicConstructors |
+            DynamicallyAccessedMemberTypes.Interfaces)]
+        Type behaviorType);
+}
+```
+
+Registers an application-owned behavior inside `TransactionalCommandBehavior`, before
+the handler. Its code after `await next(...)` completes before the transaction makes
+its commit decision. Installs the open transaction behavior, but not `IUnitOfWork`;
+register that store boundary separately. The builder's matching
+`UseInsideTransactionBehavior` overloads also imply the standard `UseMediator` stage.
+
+The `Type` overload requires a concrete, nonabstract open class with exactly two
+parameters mapping directly to `IPipelineBehavior<TMessage,TResponse>`. It must
+explicitly constrain `TMessage : ICommand<TResponse>` and
+`TResponse : IResult, IFailureFactory<TResponse>`; additional constraints can select an
+application marker. Queries and nonmatching commands do not resolve the behavior.
+Invalid types throw `ArgumentException` before registrations change; null arguments
+throw `ArgumentNullException`.
+
+New bindings are scoped. Identical bindings deduplicate across direct/builder calls;
+distinct behaviors **nest** in registration order, so their post-handler code runs in
+**reverse** order. Open and explicitly closed bindings are distinct and can both run.
+An existing identical implementation binding retains its configured lifetime.
+Registration order versus mediator, resource authorization, response/tracked event
+dispatch, and unit-of-work helpers does not change this envelope:
+
+`outer behaviors -> event dispatch -> TransactionalCommand -> selected application behaviors -> handler`
+
+The slot supplies placement, not outcome filtering or application state. Each behavior
+must inspect success versus `IPersistOnFailure { PersistOnFailure: true }`, propagate
+ordinary failures, and use `finally` for cleanup. Stage through the same scoped stores;
+do not commit, publish, or perform irreversible external effects independently.
+Returning an ordinary failure prevents this invocation's commit, **not** every later
+or owning commit. No rollback, automatic auditing, or permanent rejection is supplied.
+See [Recipe 16](trellis-api-cookbook.md#same-commit-audit-staging) for an application-owned
+recorder with serial nested checkpoints and cleanup on every exit.
+
+These helpers install an **open** transaction and reject known conflicting closed
+transaction registrations with `InvalidOperationException`. Explicitly closed/generated
+pipelines instead declare the application behavior **after** their transaction behavior
+in the literal pipeline configuration. Do not combine that shape with these helpers or
+builder slots; see [Native AOT registration](#native-aot-registration).
 
 ### Trellis.Mediator.ServiceCollectionExtensions
 
@@ -1180,7 +1267,7 @@ Both outcomes mean the message is durably accounted for, so **a pull consumer ma
 
 ### Canonical pipeline order
 
-The Trellis pipeline executes outermost → innermost in this order. `AddTrellisBehaviors()` registers slots 1-5 and 7; resource authorization, domain-event dispatch, tracked dispatch, and EF transactions are opt-in registrations that are inserted into the canonical slots shown below.
+The Trellis pipeline executes outermost → innermost in this order. `AddTrellisBehaviors()` registers slots 1-5 and 7; resource authorization, domain-event dispatch, tracked dispatch, transactions, and inside-transaction application behaviors are opt-in registrations inserted into the canonical slots below.
 
 1. **`ExceptionBehavior<,>`** — catches unhandled exceptions (except `OperationCanceledException`), logs them with a per-incident fault id, and converts them to a typed `TResponse.CreateFailure(new Error.Unexpected("unhandled-exception", faultId) { Detail = "An unexpected error occurred while processing the request." })`. Sits outermost so every other layer is wrapped.
 2. **`TracingBehavior<,>`** — opens an OpenTelemetry `Activity` per message under the `"Trellis.Mediator"` activity source. On failed results, tags `error.code` (`Error.Code`, matching the HTTP boundary) / `error.type` and sets `ActivityStatusCode.Error`; non-cancellation thrown exceptions do the same and also add the standard exception event (`exception.type`, `exception.message`, `exception.stacktrace`). Consumer-initiated cancellations (the thrown exception carries the canceled request token) record the exception event, tag `otel.status_description` = `canceled`, and leave the status `Unset`. `Error.Detail` is redacted from `StatusDescription` unless `TrellisMediatorTelemetryOptions.IncludeErrorDetail` is `true`.
@@ -1191,7 +1278,8 @@ The Trellis pipeline executes outermost → innermost in this order. `AddTrellis
 7. **`ValidationBehavior<,>`** — unified validation stage. Runs `IValidate.Validate()` if implemented, then every `IMessageValidator<TMessage>` resolved from DI; aggregates all `Error.InvalidInput` failures into a single response. External validation sources (e.g., the `Trellis.Mediator.FluentValidation` adapter) participate here without occupying their own pipeline slot.
 8. **`DomainEventDispatchBehavior<,>`** *(opt-in via `AddDomainEventDispatch(...)`)* — commands with successful aggregate responses contribute to an owning dispatch batch. Deferred inner commands neither publish nor clear; the successful owning outer commit releases nested batches even when its response is DTO/Unit. All aggregate event queues are snapshotted and validated before any `AcceptChanges()`. Handlers receive `CancellationToken.None`, and default-publisher handler failures are logged/swallowed. Cascade detection throws after the durable commit and cannot roll it back. **Mutually exclusive** with tracked dispatch: registration removes response-shape dispatch and later response-shape helpers do not reintroduce it.
    - **Or** `TrackedAggregateDomainEventDispatchBehavior<,>` *(opt-in via `AddTrackedAggregateDomainEventDispatch(...)`)* — sits at the same slot but reads the aggregates from `ITrackedAggregateSource.CommittedAggregates` (populated by the unit-of-work at commit time), snapshots each aggregate's events, and throws `DomainEventHandlerCascadedException` when same-aggregate or cross-aggregate cascade is detected. Fires for any response shape, including outcome DTOs. See [`TrackedAggregateDomainEventDispatchBehavior`](#trackedaggregatedomaineventdispatchbehavior).
-9. **`TransactionalCommandBehavior<,>`** *(opt-in, lives in `Trellis.Mediator`, not registered by `AddTrellisBehaviors()`)* — wraps the handler for `ICommand<TResponse>` messages and calls `IUnitOfWork.CommitAsync` on success. Install via `AddTransactionalCommandBehavior()` (or the EF Core adapter's `AddTrellisUnitOfWork<TContext>()`, which calls it). Registration is order-independent versus `AddTrellisBehaviors()` and domain-event dispatch helpers: open- and closed-generic transaction descriptors are rehomed to remain innermost (closest to the handler), keeping commit failures visible to outer logging/tracing/dispatch. Queries are skipped.
+9. **`TransactionalCommandBehavior<,>`** *(opt-in, provider-neutral)* — opens the unit-of-work scope, awaits the enclosed behaviors and handler, then calls `IUnitOfWork.CommitAsync` on their final success or explicit persist-on-failure. Install via `AddTransactionalCommandBehavior()`, `AddInsideTransactionBehavior(...)`, or `AddTrellisUnitOfWork<TContext>()`. Registration helpers keep it inside telemetry/event dispatch and outside the selected application behaviors, regardless of call order. Queries are skipped.
+10. **Application-owned inside-transaction behaviors** *(opt-in via `AddInsideTransactionBehavior`)* — wrap the handler in binding order and unwind in reverse order before the commit decision. Without these bindings, the transaction behavior remains closest to the handler.
 
 ### Native AOT registration
 

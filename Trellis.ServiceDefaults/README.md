@@ -24,7 +24,19 @@ builder.Services.AddTrellis(options => options
     .UseEntityFrameworkUnitOfWork<AppDbContext>());
 ```
 
-`UseEntityFrameworkUnitOfWork<TContext>()` is always applied last so the transactional command behavior runs innermost. `AddDbContext<TContext>(...)` and `AddMediator(...)` remain application-owned registrations.
+`UseEntityFrameworkUnitOfWork<TContext>()` binds the store after other selected stages; the transaction surrounds explicitly selected inside-transaction behaviors and the handler. `AddDbContext<TContext>(...)` and `AddMediator(...)` remain application-owned registrations.
+
+`UseInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` or
+`UseInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))` implies `UseMediator()`
+and registers an application-owned behavior inside the transaction scope, before the
+handler. Its post-handler work finishes before the commit decision, independent of
+fluent/direct registration order. Register `IUnitOfWork` separately, typically with
+`UseEntityFrameworkUnitOfWork<TContext>()`.
+
+Identical bindings deduplicate; behaviors nest in selection order and unwind in reverse
+order. Applications own recorder state, result checks, and cleanup. A returned ordinary
+failure skips this invocation's commit, without rollback or permanent rejection of
+an outer/later commit. See the same-commit audit recipe for the complete checkpoint pattern.
 
 `UseFluentValidation()` and `UseResourceAuthorization()` both support no-assembly calls for explicit, no-scanning composition; pass assemblies only when you want Trellis to discover validators/resource loaders automatically.
 
@@ -68,7 +80,7 @@ Generic Host lifecycle startup, not when building a bare service provider.
 - Domain-event slots preserve owning-commit dispatch: deferred inner commands do not publish or clear events, including when the outer response is a DTO/Unit. `UseOutbox<TContext>()` validates the reporting publisher at host startup, and validates the integration publisher only when integration features are registered.
 - `UseWorkerActor(systemActor)` can wrap a compatible pre-existing unkeyed `IActorProvider`; selecting a builder actor-provider slot is not required.
 - One composition root for the typical Trellis web service: `AddTrellis(...)` chains every framework slot (`UseAsp`, `UseProblemDetails`, `UseMediator`, `UseFluentValidation`, an actor provider, `UseResourceAuthorization`, `UseEntityFrameworkUnitOfWork`) so consumers don't have to remember per-package wiring order.
-- Mediator pipeline order is owned by `Trellis.Mediator` (outermost → innermost: `ExceptionBehavior`, `TracingBehavior`, `LoggingBehavior`, `AuthorizationContextBehavior`, static authorization, direct/via resource authorization (opt-in), `ValidationBehavior`, selected event dispatch, `TransactionalCommandBehavior` (opt-in)). Existing builder slots automatically supply the context for actor-aware handlers; there is no new toggle. The unit of work remains innermost.
+- Mediator pipeline order is owned by `Trellis.Mediator` (outermost → innermost: `ExceptionBehavior`, `TracingBehavior`, `LoggingBehavior`, `AuthorizationContextBehavior`, static authorization, direct/via resource authorization (opt-in), `ValidationBehavior`, selected event dispatch, `TransactionalCommandBehavior` (opt-in)). Existing builder slots automatically supply the context for actor-aware handlers; there is no new toggle. Explicit inside-transaction application behaviors sit between the unit of work and the handler.
 - Actor-provider selectors (`UseClaimsActorProvider`, `UseEntraActorProvider`, `UseDevelopmentActorProvider`) are mutually exclusive; selecting more than one throws. `UseCachingActorProvider<T>` wraps the selected provider.
 - The existing actor/cache/worker slots preserve identity-only resolution. Supported `UseCachingActorProvider<T>()` binds both contracts to the same scoped wrapper with independent lazy caches; custom providers/subclasses implement `IActorIdentityProvider` explicitly. See [identity registration](../docs/docfx_project/api_reference/trellis-api-asp.md#identity-only-provider-registration).
 - `UseWorkerActor(systemActor)` composes the selected actor provider with a worker/system fallback for background scopes that have no `HttpContext`. It is applied after the actor-provider selection and the optional caching wrap, so HTTP requests still resolve through the inner provider (and its cache) and `BackgroundService` ticks resolve to the supplied system actor without traversing caching.

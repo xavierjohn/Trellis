@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - inside-transaction behavior placement (TFR-31)
+
+`AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` and its constrained
+open-generic `Type` overload register application-owned pipeline behaviors between
+`TransactionalCommandBehavior` and the handler. The matching
+`TrellisServiceBuilder.UseInsideTransactionBehavior` overloads provide the same slot.
+Placement is independent of mediator, resource-authorization, event-dispatch, and
+unit-of-work registration order. Identical bindings deduplicate; behaviors nest in
+registration order and unwind in reverse order before the commit decision.
+
+Recipe 16 demonstrates same-commit audit staging with an application-owned recorder,
+a checkpoint, and cleanup on every exit. The slot adds no ambient dispatch state or
+unit-of-work interface change. Returning a failure skips that invocation's commit;
+it does not roll back tracked changes or permanently prevent an outer/later commit.
+
 ### Documentation - messaging composition and discovery
 
 Added direct start-router tasks for transactional inbox consumption, Azure Service Bus

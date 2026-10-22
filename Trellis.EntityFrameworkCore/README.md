@@ -76,7 +76,8 @@ No DI or interceptor registration is required for these expressions.
 ## Important Setup
 
 - Register `AddTrellisInterceptors()` when queries or updates rely on Trellis `Maybe<T>`, scalar-value, timestamp, or ETag behavior.
-- Under `AddTrellisUnitOfWork<TContext>()`, repositories stage changes; the innermost transactional pipeline behavior owns the commit.
+- Under `AddTrellisUnitOfWork<TContext>()`, repositories stage changes; the transactional pipeline behavior owns the commit after any selected inside-transaction behaviors.
+- Use `AddInsideTransactionBehavior` for application-owned post-handler staging that must precede the commit decision. Return an ordinary failure to skip this invocation's commit; it does not roll back tracked changes or permanently reject outer/later commits.
 - `[OwnedEntity]` generates the constructor EF needs but introduces an EF Core dependency into the declaring assembly. Use a private parameterless constructor when the domain assembly must remain EF-free.
 - Prefer the typed `MaybeQueryableExtensions` over hand-written storage/sentinel expressions.
 

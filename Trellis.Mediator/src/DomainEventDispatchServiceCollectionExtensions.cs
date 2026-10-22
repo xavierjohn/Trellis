@@ -27,9 +27,9 @@ public static class DomainEventDispatchServiceCollectionExtensions
     /// running after <c>ValidationBehavior</c>
     /// (Exception → Tracing → Logging → AuthorizationContext → static/direct/via authorization → Validation → DomainEventDispatch).
     /// If <c>TransactionalCommandBehavior</c> (from <c>Trellis.Mediator</c>) is
-    /// already registered, this method temporarily yanks it, ensures the always-on Trellis
-    /// behaviors are present, appends dispatch, and re-appends the transactional behavior as
-    /// innermost. The result is order-independent: events fire after the transaction commits
+    /// already registered, this method restores the transaction envelope after dispatch,
+    /// including any explicitly registered inside-transaction application behaviors.
+    /// The result is order-independent: events fire after the transaction commits
     /// regardless of whether <c>AddTrellisUnitOfWork&lt;TContext&gt;()</c> was called before
     /// or after this method.
     /// </para>
@@ -50,12 +50,6 @@ public static class DomainEventDispatchServiceCollectionExtensions
         // reintroduce swallowing on the retrying path.
         services.TryAddScoped<IReportingDomainEventPublisher>(sp => sp.GetRequiredService<MediatorDomainEventPublisher>());
 
-        // Temporarily yank already-registered transactional behaviors so subsequent
-        // appends (always-on behaviors + dispatch) land before them; re-append them as
-        // innermost at the end. This makes the result order-independent vs the consumer's
-        // call to AddTrellisUnitOfWork<TContext>().
-        var transactionalDescriptors = RemoveTransactionalBehaviors(services);
-
         services.AddTrellisBehaviors();
 
         // If the tracked-aggregate behavior is already registered (opt-in dispatch chose
@@ -66,9 +60,7 @@ public static class DomainEventDispatchServiceCollectionExtensions
         if (!HasTrackedAggregateDispatchBehavior(services))
             AppendDispatchBehavior(services);
 
-        foreach (var descriptor in transactionalDescriptors)
-            services.Add(descriptor);
-
+        TransactionalCommandBehaviorServiceCollectionExtensions.RelocateTransactionalBehaviorsToEnd(services);
         return services;
     }
 
@@ -129,9 +121,6 @@ public static class DomainEventDispatchServiceCollectionExtensions
 
         return services;
     }
-
-    internal static List<ServiceDescriptor> RemoveTransactionalBehaviors(IServiceCollection services)
-        => TransactionalCommandBehaviorServiceCollectionExtensions.RemoveTransactionalCommandBehaviorRegistrations(services);
 
     private static void AppendDispatchBehavior(IServiceCollection services)
     {

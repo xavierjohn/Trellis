@@ -461,9 +461,13 @@ services.AddTrellisUnitOfWork<AppDbContext>(); // commit behavior goes innermost
 ```
 
 > [!IMPORTANT]
-> Call `AddTrellisUnitOfWork<TContext>()` **after** `AddTrellisBehaviors()`. The transactional behavior is inserted after the last `IPipelineBehavior<,>` registration so it runs innermost — closest to the handler — keeping commit failures visible to logging, tracing, and exception behaviors.
+> `AddTrellisUnitOfWork<TContext>()`, standard mediator registration, and event-dispatch helpers preserve the transaction envelope regardless of call order. Explicitly selected inside-transaction application behaviors sit between the transaction and the handler; commit failures remain visible to outer logging, tracing, and exception behaviors.
 
-`TransactionalCommandBehavior<TMessage, TResponse>` only fires for `ICommand<TResponse>` (queries are skipped at the type-constraint level). On handler success it calls `unitOfWork.CommitAsync(ct)`; if commit fails, it returns `TResponse.CreateFailure(error)`. EF Core's implicit transaction around `SaveChanges` makes the staged changes commit atomically.
+`TransactionalCommandBehavior<TMessage,TResponse>` only applies to commands. It awaits
+the enclosed application behaviors and handler, then commits their final successful
+response. Use `AddInsideTransactionBehavior` for post-handler staging before that
+decision. Business and application-staged audit rows sharing the context persist in
+the same save. See [inside-transaction application behaviors](integration-mediator.md#inside-transaction-application-behaviors).
 
 A handler can also opt into a **persist-on-failure** outcome by returning `Result.FailAfterCommit<T>(error)` — staged changes are still committed alongside the failure result. This is the canonical shape for a worker handler that wants to persist a `permanently_failed` row and surface the underlying error to the caller. See [Persisting failure state from a worker handler](integration-mediator.md#persisting-failure-state-from-a-worker-handler) in the mediator article for the full recipe.
 
@@ -493,13 +497,13 @@ public async ValueTask<Result<Unit>> Handle(ShipOrder cmd, CancellationToken ct)
 ```
 
 > [!IMPORTANT]
-> The unit of work is shared with the outer's `DbContext`, so per-scope rollback of staged changes is not supported. If an inner command returns `Result.Fail` but the outer handler ignores that failure and returns success, the outer's commit will persist any changes the inner staged before failing. Handlers that need to discard inner failures' staged work must detach the affected entities themselves.
+> The unit of work is shared with the outer's `DbContext`, so per-scope rollback is not supported. An ignored inner failure can leave tracked changes that an outer success persists. The inside-transaction slot does not add permanent rejection: propagate failures when the owner must not commit, and discard a failed request's context.
 
 > [!WARNING]
 > The depth counter is per-`IUnitOfWork`-instance — i.e. per DI scope. **Concurrent commands on the same scoped `IUnitOfWork`** (e.g. `Task.WhenAll(mediator.Send(a), mediator.Send(b))` from inside a handler) are **not supported**: their scopes share the counter and one command's commit can suppress or get folded into the other's. This is consistent with EF Core's existing constraint that `DbContext` is not thread-safe — concurrent dispatch on a single request scope is unsafe regardless. To run commands in parallel, give each one its own DI scope via `IServiceScopeFactory.CreateScope()` so each resolves its own `IUnitOfWork` and `DbContext`.
 
 > [!NOTE]
-> **Custom adapters must implement `IUnitOfWorkScope` as well as depth-aware commits.** `BeginScope()` now returns `IUnitOfWorkScope`, not plain `IDisposable`; capture its fixed `IsOwner` when opening the scope. Preserve deferred commits at depth > 1. Automatic event dispatch inside an external manually owned scope is rejected; use explicit `DispatchAggregateEventsAsync` after its actual commit instead.
+> **Custom adapters must implement ownership and depth-aware commits.** `BeginScope()` returns `IUnitOfWorkScope`; capture its fixed `IsOwner` when opening it. Automatic event dispatch inside an external manually owned scope is rejected; use explicit `DispatchAggregateEventsAsync` after its actual commit instead.
 
 ## Optimistic concurrency
 

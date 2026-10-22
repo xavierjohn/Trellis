@@ -28,9 +28,9 @@ public static class TrackedAggregateDomainEventDispatchServiceCollectionExtensio
     /// running after <c>ValidationBehavior</c>
     /// (Exception → Tracing → Logging → AuthorizationContext → static/direct/via authorization → Validation → TrackedAggregateDispatch).
     /// If <c>TransactionalCommandBehavior</c> (from <c>Trellis.Mediator</c>) is
-    /// already registered, this method temporarily yanks it, ensures the always-on Trellis
-    /// behaviors are present, appends tracked dispatch, and re-appends the transactional behavior
-    /// as innermost. The result is order-independent: events fire after the transaction commits
+    /// already registered, this method restores the transaction envelope after tracked dispatch,
+    /// including any explicitly registered inside-transaction application behaviors.
+    /// The result is order-independent: events fire after the transaction commits
     /// regardless of whether <c>AddTrellisUnitOfWork&lt;TContext&gt;()</c> was called before
     /// or after this method.
     /// </para>
@@ -63,16 +63,10 @@ public static class TrackedAggregateDomainEventDispatchServiceCollectionExtensio
         // tracked source).
         DomainEventDispatchServiceCollectionExtensions.RemoveResponseShapeDispatchBehavior(services);
 
-        // Same yank-and-reappend dance as AddDomainEventDispatch so the transactional behavior
-        // stays innermost regardless of registration order.
-        var transactionalDescriptors = DomainEventDispatchServiceCollectionExtensions.RemoveTransactionalBehaviors(services);
-
         services.AddTrellisBehaviors();
         AppendTrackedDispatchBehavior(services);
 
-        foreach (var descriptor in transactionalDescriptors)
-            services.Add(descriptor);
-
+        TransactionalCommandBehaviorServiceCollectionExtensions.RelocateTransactionalBehaviorsToEnd(services);
         return services;
     }
 

@@ -13,12 +13,12 @@ public static class TransactionalCommandBehaviorServiceCollectionExtensions
 {
     /// <summary>
     /// Inserts the open-generic <see cref="TransactionalCommandBehavior{TMessage,TResponse}"/>
-    /// after the last <see cref="IPipelineBehavior{TMessage,TResponse}"/> registration so it runs
-    /// innermost (closest to the handler). If no behaviors are registered yet, appends at the end.
+    /// inside the outer behaviors and before explicitly registered inside-transaction behaviors.
+    /// Without those application behaviors, it runs closest to the handler.
     /// </summary>
     /// <remarks>
-    /// <para>Idempotent for the open-generic case: a second call is a no-op when the open-generic
-    /// <c>TransactionalCommandBehavior&lt;,&gt;</c> is already registered.</para>
+    /// <para>Idempotent for the open-generic case: does not duplicate an existing
+    /// <c>TransactionalCommandBehavior&lt;,&gt;</c>. Restores the transaction envelope on repeated calls.</para>
     /// <para>Throws <see cref="InvalidOperationException"/> when a closed-generic
     /// <c>TransactionalCommandBehavior&lt;TMessage,TResponse&gt;</c> is already registered. The
     /// open generic added here would resolve alongside the closed registration on matching
@@ -41,7 +41,7 @@ public static class TransactionalCommandBehaviorServiceCollectionExtensions
         // Single-pass scan: detect an existing open-generic TransactionalCommandBehavior
         // registration (idempotency), detect any closed-generic TransactionalCommandBehavior
         // registrations (conflict — must throw), and track the index of the last open-or-closed
-        // IPipelineBehavior<,> registration so the new behavior is inserted innermost.
+        // IPipelineBehavior<,> registration before restoring the transaction envelope.
         var lastBehaviorIndex = -1;
         var openTransactionalAlreadyRegistered = false;
         string? closedConflictDisplay = null;
@@ -71,7 +71,10 @@ public static class TransactionalCommandBehaviorServiceCollectionExtensions
         }
 
         if (openTransactionalAlreadyRegistered)
+        {
+            RelocateTransactionalBehaviorsToEnd(services);
             return services;
+        }
 
         var descriptor = ServiceDescriptor.Scoped(
             typeof(IPipelineBehavior<,>), typeof(TransactionalCommandBehavior<,>));
@@ -81,7 +84,20 @@ public static class TransactionalCommandBehaviorServiceCollectionExtensions
         else
             services.Add(descriptor);
 
+        RelocateTransactionalBehaviorsToEnd(services);
         return services;
+    }
+
+    internal static void RelocateTransactionalBehaviorsToEnd(IServiceCollection services)
+    {
+        var transactions = RemoveTransactionalCommandBehaviorRegistrations(services);
+        var inside = InsideTransactionBehaviorServiceCollectionExtensions
+            .RemoveInsideTransactionBehaviorRegistrations(services);
+
+        foreach (var descriptor in transactions)
+            services.Add(descriptor);
+        foreach (var descriptor in inside)
+            services.Add(descriptor);
     }
 
     private static bool IsPipelineBehaviorRegistration(Type serviceType) =>

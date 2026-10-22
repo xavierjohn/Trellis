@@ -3,7 +3,7 @@ title: Mediator Pipeline
 package: Trellis.Mediator
 topics: [mediator, command, query, pipeline, behaviors, authorization, validation, telemetry]
 related_api_reference: [trellis-api-mediator.md, trellis-api-core.md, trellis-api-efcore-outbox.md, trellis-api-efcore-inbox.md]
-last_verified: 2026-10-10
+last_verified: 2026-10-21
 audience: [developer]
 ---
 # Mediator Pipeline
@@ -29,6 +29,7 @@ audience: [developer]
 | Auto-dispatch domain events from *every* aggregate the unit-of-work tracked, regardless of response shape | `services.AddTrellis(t => t.UseTrackedAggregateDomainEvents(...))` | [Auto-dispatching from outcome-DTO commands](#auto-dispatching-from-outcome-dto-commands-opt-in-tracked-behavior) |
 | Use a custom envelope response type around an aggregate | `TResponse : IResult<TAggregate>, IFailureFactory<TResponse>` | [Custom envelope response types](#custom-envelope-response-types) |
 | Persist a `permanently_failed` row alongside a failure outcome (worker pattern) | `Result.FailAfterCommit<T>(error)` | [Persisting failure state from a worker handler](#persisting-failure-state-from-a-worker-handler) |
+| Stage audit rows or reject an outcome before the command commits | `AddInsideTransactionBehavior(...)` | [Inside-transaction application behaviors](#inside-transaction-application-behaviors) |
 
 ## Use this guide when
 
@@ -49,6 +50,8 @@ audience: [developer]
 | `AddSharedResourceLoader<TMessage, TResource, TId>()` | DI extension | Bridges an `IIdentifyResource<T,TId>` message to a `SharedResourceLoaderById<T,TId>`. |
 | `IValidate` | Interface | Message-side hook; `IResult Validate()` runs before the handler. |
 | `IMessageValidator<TMessage>` | Interface | DI-resolved async validator; aggregated by `ValidationBehavior`. |
+| `AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` | DI extension | Places a scoped application behavior inside the transaction, before the handler. The application supplies `IUnitOfWork`. |
+| `AddInsideTransactionBehavior(Type behaviorType)` | DI extension | Registers a constrained open application behavior for matching commands, independently of Trellis registration order. |
 | `TrellisMediatorTelemetryOptions.IncludeErrorDetail` | Property | Opt-in to include `Error.Detail` in logs/traces (default `false`). |
 | `TracingBehavior<,>.ActivitySourceName` | `const string` | `"Trellis.Mediator"` — add this to your OpenTelemetry config. |
 | `ServiceCollectionExtensions.PipelineBehaviors` | Property | Ordered inspection list; source-generator configuration must use literal `typeof(...)` entries. |
@@ -119,7 +122,7 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 
 ## Pipeline order
 
-`AddTrellisBehaviors()` registers the six standard behaviors in this fixed order (outermost → innermost). The opt-in entries in rows 6, 8, and 9 slot in only when their registration helpers are called.
+`AddTrellisBehaviors()` registers the six standard behaviors in this fixed order (outermost → innermost). The opt-in entries in rows 6, 8, 9, and 10 slot in only when their registration helpers are called.
 
 | # | Behavior | Runs for | What it does |
 |---|---|---|---|
@@ -131,7 +134,8 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 | 6 | Direct/via resource authorization *(opt-in)* | `IAuthorizeResource<T>` / `IAuthorizeResourceVia<T>` messages | Loads the resource/owners and applies the message's rule. Publishes the direct resource or via leaf, immediately before validation. |
 | 7 | `ValidationBehavior` | all messages | Runs `IValidate.Validate()` and every `IMessageValidator<TMessage>`; aggregates `Error.InvalidInput`. |
 | 8 | `DomainEventDispatchBehavior` *(opt-in)* | `ICommand<TResponse>` where `TResponse : IResult` | After a successful response, extracts the aggregate via `IResult<TAggregate>` and publishes the events it raised. Inserted by `AddDomainEventDispatch(...)`. See [Domain event dispatch](#domain-event-dispatch). |
-| 9 | `TransactionalCommandBehavior` *(opt-in, EFCore)* | `ICommand<TResponse>` | `IUnitOfWork.CommitAsync` on success; wraps each command in `using var scope = unitOfWork.BeginScope();` so nested commands defer commit to the outermost scope. Remains innermost in either registration order. See [Nested commands and scope-aware commit](integration-ef.md#nested-commands-and-scope-aware-commit). |
+| 9 | `TransactionalCommandBehavior` *(opt-in, provider-neutral)* | `ICommand<TResponse>` | Opens the scope, awaits the enclosed behaviors/handler, then commits their final success or explicit persist-on-failure response. Nested commits defer to the owner. |
+| 10 | Application-owned inside-transaction behaviors *(opt-in)* | Matching commands | Wrap the handler and finish post-handler work before the transaction's commit decision. |
 
 `ServiceCollectionExtensions.PipelineBehaviors` exposes the six standard types for
 inspection. Mediator `3.0.2` does not evaluate `PipelineBehaviors.ToArray()` as generator
@@ -142,6 +146,48 @@ registration paths; publish-only success does not prove native DI dispatch works
 
 > [!NOTE]
 > Rows 8 and 9 are designed to be **registration-order-independent**: `AddDomainEventDispatch(...)` and `AddTrellisUnitOfWork<TContext>()` both detect the other and shuffle so the canonical order (events fire after the transaction commits, so handlers see committed state) holds regardless of which `services.Add*` call comes first.
+
+## Inside-transaction application behaviors
+
+Use `AddInsideTransactionBehavior` when an application behavior must wrap the handler
+inside its unit-of-work scope. Its code after `await next(...)` runs **before** the
+commit decision. Ordinary outer behaviors cannot promise that timing, and manually
+registering last is fragile because Trellis helpers restore canonical ordering.
+
+```csharp
+services.AddTrellisBehaviors();
+services.AddInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>));
+services.AddTrellisUnitOfWork<AppDbContext>();
+```
+
+The application supplies the behavior and its recorder. The constrained open overload
+applies to matching commands; it requires the standard command, result, and
+failure-factory constraints. For one binding use
+`AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()`. Both install the
+transaction behavior but not the store. The builder offers matching
+`UseInsideTransactionBehavior` overloads and implies `UseMediator()`.
+
+Identical bindings deduplicate across direct/builder calls. Multiple behaviors nest
+in registration order and unwind in **reverse** order. Registration before or after
+mediator, resource authorization, response/tracked event dispatch, or unit-of-work
+helpers preserves `outer stages -> transaction -> selected behaviors -> handler`.
+Explicitly closed/generated pipelines declare this order themselves instead of using
+the managed open-registration helpers.
+
+Placement is not automatic auditing or an outcome filter. Each behavior checks whether
+the actual response is success or `IPersistOnFailure { PersistOnFailure: true }`,
+stages through the same scoped context, and cleans its application-owned state in
+`finally`. It must not save, publish, or perform irreversible external effects itself.
+Returning an ordinary failure skips **this invocation's** commit, without rollback or
+permanently blocking an outer/later commit. Propagate nested failures when their owner
+must not commit, and discard a failed request's context. Concurrent commands sharing
+one unit of work remain unsupported.
+
+The [same-commit audit recipe](../api_reference/trellis-api-cookbook.md#same-commit-audit-staging)
+uses a scoped recorder and nested checkpoints, with cleanup on every exit. Its handler
+returns the entity normally and can be tested directly without a framework frame or
+unit-of-work double. Audit coverage, schemas, metadata, and no-op recording remain
+application policy. See the [exact registration contract](../api_reference/trellis-api-mediator.md#insidetransactionbehaviorservicecollectionextensions).
 
 ## Permission authorization
 
@@ -857,7 +903,7 @@ The `error.code` tag and the `Error.Code` value are operator-defined identifiers
 
 ## Composition
 
-Resource authorization, FluentValidation, and the EF Core unit-of-work behavior compose into one pipeline. Register Trellis behaviors first, then any extension validators, then the actor provider, and finally `AddTrellisUnitOfWork<TContext>()` so the transactional behavior lands innermost (closest to the handler) and commit failures stay visible to outer logging/tracing.
+Resource authorization, FluentValidation, and the EF Core unit-of-work behavior compose into one pipeline. The registration helpers preserve canonical placement regardless of call order: logging/tracing and event dispatch surround the transaction, which surrounds selected inside-transaction application behaviors and the handler.
 
 ```csharp
 using Mediator;
