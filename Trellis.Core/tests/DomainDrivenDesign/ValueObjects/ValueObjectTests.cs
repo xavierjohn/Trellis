@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Core.Tests.DomainDrivenDesign.ValueObjects;
 
+using System.Collections.Concurrent;
 using FluentAssertions;
 using Xunit;
 
@@ -496,30 +497,78 @@ public class ValueObjectTests
         const int Threads = 16;
         const int Rounds = 400;
 
+        var subjects = new SlowHashingValueObject[Rounds];
+        var expected = new int[Rounds];
+        var observed = new int[Rounds][];
         for (var round = 0; round < Rounds; round++)
         {
-            var subject = new SlowHashingValueObject("street", "city");
-            var expected = new SlowHashingValueObject("street", "city").GetHashCode();
-            var observed = new int[Threads];
+            subjects[round] = new SlowHashingValueObject("street", "city");
+            expected[round] = new SlowHashingValueObject("street", "city").GetHashCode();
+            observed[round] = new int[Threads];
+        }
 
-            using var gate = new Barrier(Threads);
-            var workers = new Thread[Threads];
+        using var shutdown = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var gate = new Barrier(Threads);
+        var failures = new ConcurrentQueue<Exception>();
+        var workers = new List<Thread>(Threads);
+        var completionDeadline = Environment.TickCount64 + 30_000;
+        try
+        {
             for (var t = 0; t < Threads; t++)
             {
                 var slot = t;
-                workers[slot] = new Thread(() =>
+                var worker = new Thread(() =>
                 {
-                    gate.SignalAndWait();
-                    observed[slot] = subject.GetHashCode();
-                });
-                workers[slot].Start();
+                    try
+                    {
+                        for (var round = 0; round < Rounds; round++)
+                        {
+                            gate.SignalAndWait(shutdown.Token);
+                            observed[round][slot] = subjects[round].GetHashCode();
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        failures.Enqueue(exception);
+                        try
+                        {
+                            shutdown.Cancel();
+                        }
+                        catch (ObjectDisposedException) when (shutdown.IsCancellationRequested)
+                        {
+                            // A stalled worker may resume after the owner has finished bounded cleanup.
+                        }
+                    }
+                })
+                {
+                    IsBackground = true
+                };
+                worker.Start();
+                workers.Add(worker);
             }
 
             foreach (var worker in workers)
-                worker.Join();
-
-            observed.Should().AllBeEquivalentTo(expected, "round {0} observed a torn or inconsistent hash", round);
+            {
+                if (worker.Join((int)Math.Max(0, completionDeadline - Environment.TickCount64)))
+                    continue;
+                failures.Enqueue(new TimeoutException("Concurrent hash workers did not finish within 30 seconds."));
+                break;
+            }
         }
+        finally
+        {
+            shutdown.Cancel();
+            var joinDeadline = Environment.TickCount64 + 5_000;
+            foreach (var worker in workers)
+                if (!worker.Join((int)Math.Max(0, joinDeadline - Environment.TickCount64)))
+                    failures.Enqueue(new TimeoutException($"Hash worker {worker.ManagedThreadId} did not stop during cleanup."));
+        }
+
+        if (!failures.IsEmpty)
+            throw new AggregateException("Concurrent hash workers failed.", failures);
+
+        for (var round = 0; round < Rounds; round++)
+            observed[round].Should().AllBeEquivalentTo(expected[round], "round {0} observed a torn or inconsistent hash", round);
     }
 
     [Fact]
