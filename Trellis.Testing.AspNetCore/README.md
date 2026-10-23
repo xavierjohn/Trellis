@@ -58,3 +58,9 @@ dotnet test Trellis.Testing.AspNetCore\tests\Trellis.Testing.AspNetCore.Tests.cs
 
 Repository tests require PowerShell 7 (`pwsh`) to exercise the real Showcase replay script,
 including a loopback host. Consumers of the .NET replay helpers do not need PowerShell.
+
+The eleven unresolved-placeholder theory rows share one PowerShell process. Each row still
+executes the unmodified script with its own input/environment files, script scope, send
+capture, and transcript path, and is reported separately. GUID generation, static variables,
+empty-file handling, sequence stopping, and both real-loopback script invocations retain
+independent fresh processes.
