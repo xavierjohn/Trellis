@@ -104,8 +104,9 @@ public sealed class CreatedAtRouteMissingApiVersionCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References,
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
         test.FixedState.Sources.Add(("Stubs.cs", StubSource));
         test.ExpectedDiagnostics.Add(
@@ -165,8 +166,9 @@ public sealed class CreatedAtRouteMissingApiVersionCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References,
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
         test.FixedState.Sources.Add(("Stubs.cs", StubSource));
         test.ExpectedDiagnostics.Add(
@@ -220,8 +222,9 @@ public sealed class CreatedAtRouteMissingApiVersionCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References,
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
         test.FixedState.Sources.Add(("Stubs.cs", StubSource));
         test.ExpectedDiagnostics.Add(
@@ -282,8 +285,9 @@ public sealed class CreatedAtRouteMissingApiVersionCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References,
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
         test.FixedState.Sources.Add(("Stubs.cs", StubSource));
         test.ExpectedDiagnostics.Add(
@@ -351,8 +355,9 @@ public sealed class CreatedAtRouteMissingApiVersionCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References,
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
         test.FixedState.Sources.Add(("Stubs.cs", StubSource));
         test.ExpectedDiagnostics.Add(
@@ -419,8 +424,9 @@ public sealed class CreatedAtRouteMissingApiVersionCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References,
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
         test.FixedState.Sources.Add(("Stubs.cs", StubSource));
         test.ExpectedDiagnostics.Add(
@@ -482,8 +488,9 @@ public sealed class CreatedAtRouteMissingApiVersionCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References,
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
         test.FixedState.Sources.Add(("Stubs.cs", StubSource));
         test.ExpectedDiagnostics.Add(

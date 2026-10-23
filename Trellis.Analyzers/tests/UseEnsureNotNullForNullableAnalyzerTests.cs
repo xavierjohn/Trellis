@@ -34,8 +34,9 @@ public class UseEnsureNotNullForNullableAnalyzerTests
         var test = new CSharpAnalyzerTest<UseEnsureNotNullForNullableAnalyzer, DefaultVerifier>
         {
             TestCode = source,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References,
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("Stubs.cs", UseEnsureNotNullForNullableTestStubs.Source));
         test.ExpectedDiagnostics.AddRange(expected);
         return test;
@@ -48,8 +49,9 @@ public class UseEnsureNotNullForNullableAnalyzerTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80,
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References,
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("Stubs.cs", UseEnsureNotNullForNullableTestStubs.Source));
         test.FixedState.Sources.Add(("Stubs.cs", UseEnsureNotNullForNullableTestStubs.Source));
         return test;

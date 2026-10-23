@@ -1,15 +1,29 @@
 ﻿namespace Trellis.Analyzers.Tests;
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
 
 /// <summary>
-/// Helper for creating analyzer tests with Trellis references.
+/// Helper for creating analyzer tests with .NET 10 references and Trellis stubs.
 /// </summary>
 public static class AnalyzerTestHelper
 {
+    internal static ReferenceAssemblies Net10References => ReferenceAssemblies.Net.Net100;
+
+    internal static CSharpParseOptions Net10ParseOptions =>
+        CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.CSharp14);
+
+    internal static Solution WithNet10ParseOptions(Solution solution, ProjectId projectId)
+    {
+        if (solution.GetProject(projectId)?.ParseOptions is not CSharpParseOptions options)
+            throw new InvalidOperationException("The .NET 10 reference profile requires a C# project.");
+
+        return solution.WithProjectParseOptions(projectId, options.WithLanguageVersion(Net10ParseOptions.LanguageVersion));
+    }
+
     /// <summary>
     /// Creates a test that verifies no diagnostics are produced.
     /// </summary>
@@ -19,9 +33,10 @@ public static class AnalyzerTestHelper
         var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
         {
             TestCode = WrapInNamespace(source),
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = Net10References
         };
 
+        test.SolutionTransforms.Add(WithNet10ParseOptions);
         AddTrellisStubSource(test);
         return test;
     }
@@ -37,9 +52,10 @@ public static class AnalyzerTestHelper
         var test = new CSharpAnalyzerTest<TAnalyzer, DefaultVerifier>
         {
             TestCode = WrapInNamespace(source),
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = Net10References
         };
 
+        test.SolutionTransforms.Add(WithNet10ParseOptions);
         AddTrellisStubSource(test);
         test.ExpectedDiagnostics.AddRange(expectedDiagnostics);
         return test;
@@ -57,9 +73,10 @@ public static class AnalyzerTestHelper
         var test = new CombinedAnalyzerTest<TAnalyzer, TAdditionalAnalyzer>
         {
             TestCode = WrapInNamespace(source),
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = Net10References
         };
 
+        test.SolutionTransforms.Add(WithNet10ParseOptions);
         AddTrellisStubSource(test);
         test.ExpectedDiagnostics.AddRange(expectedDiagnostics);
         return test;

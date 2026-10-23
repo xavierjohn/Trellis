@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
 
 /// <summary>
-/// Helper for creating code fix tests with Trellis references.
+/// Helper for creating code fix tests with .NET 10 references and Trellis stubs.
 /// </summary>
 public static class CodeFixTestHelper
 {
@@ -25,9 +25,10 @@ public static class CodeFixTestHelper
         {
             TestCode = WrapInNamespace(source),
             FixedCode = WrapInNamespace(fixedSource),
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References
         };
 
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         AddTrellisStubSource(test.TestState);
         AddTrellisStubSource(test.FixedState);
         test.ExpectedDiagnostics.AddRange(expectedDiagnostics);
