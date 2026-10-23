@@ -10,8 +10,32 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Trellis.Testing.AspNetCore.Http;
 
-public class ReplayApiHttpScriptTests
+public class ReplayApiHttpScriptTests(ReplayApiHttpScriptTests.UnresolvedPlaceholderFixture unresolvedPlaceholders)
+    : IClassFixture<ReplayApiHttpScriptTests.UnresolvedPlaceholderFixture>
 {
+    private static readonly (string Location, string Token)[] s_unresolvedPlaceholders =
+    [
+        ("URL", "{{missing}}"),
+        ("header", "{{missing}}"),
+        ("content header", "{{missing}}"),
+        ("header name", "{{missing}}"),
+        ("header name", "{{ missing }}"),
+        ("body", "{{missing}}"),
+        ("URL", "{{create.response.body.id}}"),
+        ("header", "{{$timestamp}}"),
+        ("body", "{{$randomInt}}"),
+        ("URL", "{{$datetime}}"),
+        ("body", "{{unclosed"),
+    ];
+
+    public static TheoryData<string, string> UnresolvedPlaceholders()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var (location, token) in s_unresolvedPlaceholders)
+            data.Add(location, token);
+        return data;
+    }
+
     [Fact]
     public async Task Replay_GuidOccurrences_RepeatedExecution_GeneratesDistinctValues()
     {
@@ -57,34 +81,28 @@ public class ReplayApiHttpScriptTests
     }
 
     [Theory]
-    [InlineData("URL", "{{missing}}")]
-    [InlineData("header", "{{missing}}")]
-    [InlineData("content header", "{{missing}}")]
-    [InlineData("header name", "{{missing}}")]
-    [InlineData("header name", "{{ missing }}")]
-    [InlineData("body", "{{missing}}")]
-    [InlineData("URL", "{{create.response.body.id}}")]
-    [InlineData("header", "{{$timestamp}}")]
-    [InlineData("body", "{{$randomInt}}")]
-    [InlineData("URL", "{{$datetime}}")]
-    [InlineData("body", "{{unclosed")]
+    [MemberData(nameof(UnresolvedPlaceholders))]
     public async Task Replay_UnresolvedPlaceholder_InRequestFields_RejectsBeforeSending(string location, string token)
+    {
+        var report = await unresolvedPlaceholders.GetReportAsync(location, token);
+
+        report.GetProperty("sent").GetArrayLength().Should().Be(0);
+        report.GetProperty("transcript").ValueKind.Should().Be(JsonValueKind.Null);
+        var error = report.GetProperty("error").GetString();
+        error.Should().Contain("Reject token").And.Contain("{{").And.NotContain("private-body");
+        error.Should().Contain(location == "content header" ? "header 'Content-Type'" : location);
+        if (token.EndsWith("}}", StringComparison.Ordinal))
+            error.Should().Contain(token);
+    }
+
+    private static string CreateUnresolvedPlaceholderRequest(string location, string token)
     {
         var url = location == "URL" ? "{{host}}/things/" + token : "{{host}}/things";
         var header = location == "header" ? token : "known";
         var headerName = location == "header name" ? token : "X-Value";
         var contentType = location == "content header" ? token : "text/plain";
         var body = location == "body" ? "private-body " + token : "private-body";
-        var file = $"### Reject token\nPOST {url}\n{headerName}: {header}\nContent-Type: {contentType}\n\n{body}\n\n### Next\nGET {{{{host}}}}/next\n";
-
-        using var report = await ReplayAsync(file);
-
-        report.RootElement.GetProperty("sent").GetArrayLength().Should().Be(0);
-        var error = report.RootElement.GetProperty("error").GetString();
-        error.Should().Contain("Reject token").And.Contain("{{").And.NotContain("private-body");
-        error.Should().Contain(location == "content header" ? "header 'Content-Type'" : location);
-        if (token.EndsWith("}}", StringComparison.Ordinal))
-            error.Should().Contain(token);
+        return $"### Reject token\nPOST {url}\n{headerName}: {header}\nContent-Type: {contentType}\n\n{body}\n\n### Next\nGET {{{{host}}}}/next\n";
     }
 
     [Fact]
@@ -200,6 +218,13 @@ public class ReplayApiHttpScriptTests
     private static async Task<JsonDocument> ReplayAsync(
         string content, int repetitions = 1, string host = "http://fake", bool mockSend = true)
     {
+        using var reports = await ReplayBatchAsync([content], repetitions, host, mockSend);
+        return JsonDocument.Parse(reports.RootElement[0].GetRawText());
+    }
+
+    private static async Task<JsonDocument> ReplayBatchAsync(
+        IReadOnlyList<string> contents, int repetitions = 1, string host = "http://fake", bool mockSend = true)
+    {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
         while (root is not null && !File.Exists(Path.Combine(root.FullName, "Trellis.slnx")))
             root = root.Parent;
@@ -210,56 +235,71 @@ public class ReplayApiHttpScriptTests
         Directory.CreateDirectory(directory);
         try
         {
-            var script = Path.Combine(directory, "replay-api-http.ps1");
             var output = Path.Combine(directory, "captured.json");
-            var transcript = Path.Combine(directory, "transcript.txt");
-            File.Copy(Path.Combine(root.FullName, "Examples", "Showcase", "replay-api-http.ps1"), script);
-            await File.WriteAllTextAsync(Path.Combine(directory, "api.http"), content, new UTF8Encoding(true), TestContext.Current.CancellationToken);
-            await File.WriteAllTextAsync(
-                Path.Combine(directory, "http-client.env.json"),
-                JsonSerializer.Serialize(new Dictionary<string, Dictionary<string, string>>
-                {
-                    ["$shared"] = new() { ["$guid"] = "not-a-dynamic-guid", ["guidAlias"] = "{{$guid}}" },
-                    ["mvc"] = new() { ["host"] = host },
-                }),
-                new UTF8Encoding(true), TestContext.Current.CancellationToken);
+            var caseDirectories = new List<string>();
+            foreach (var content in contents)
+            {
+                var caseDirectory = Path.Combine(directory, $"case-{caseDirectories.Count}");
+                Directory.CreateDirectory(caseDirectory);
+                File.Copy(Path.Combine(root.FullName, "Examples", "Showcase", "replay-api-http.ps1"), Path.Combine(caseDirectory, "replay-api-http.ps1"));
+                await File.WriteAllTextAsync(Path.Combine(caseDirectory, "api.http"), content, new UTF8Encoding(true), TestContext.Current.CancellationToken);
+                await File.WriteAllTextAsync(
+                    Path.Combine(caseDirectory, "http-client.env.json"),
+                    JsonSerializer.Serialize(new Dictionary<string, Dictionary<string, string>>
+                    {
+                        ["$shared"] = new() { ["$guid"] = "not-a-dynamic-guid", ["guidAlias"] = "{{$guid}}" },
+                        ["mvc"] = new() { ["host"] = host },
+                    }),
+                    new UTF8Encoding(true), TestContext.Current.CancellationToken);
+                caseDirectories.Add(caseDirectory);
+            }
+
             var command = $$"""
                 $ErrorActionPreference = 'Stop'
-                $global:sent = [System.Collections.Generic.List[object]]::new()
-                if ({{(mockSend ? "$true" : "$false")}}) {
-                    function Invoke-WebRequest {
-                        [CmdletBinding()]
-                        param(
-                            [uri]$Uri, [string]$Method, [hashtable]$Headers,
-                            [string]$Body, [string]$ContentType,
-                            [switch]$SkipCertificateCheck, [switch]$SkipHttpErrorCheck,
-                            [int]$MaximumRedirection
-                        )
-                        $global:sent.Add([pscustomobject]@{
-                            url = $Uri.OriginalString
-                            headers = $Headers
-                            body = $Body
-                        })
-                        [pscustomobject]@{
-                            StatusCode = 200
-                            Headers = @{ 'Content-Type' = @('application/json') }
-                            Content = '{}'
+                $caseDirectories = '{{JsonSerializer.Serialize(caseDirectories).Replace("'", "''")}}' | ConvertFrom-Json
+                $reports = @(foreach ($caseDirectory in $caseDirectories) {
+                    & {
+                        param($caseDirectory)
+                        $script = Join-Path $caseDirectory 'replay-api-http.ps1'
+                        $transcript = Join-Path $caseDirectory 'transcript.txt'
+                        $global:sent = [System.Collections.Generic.List[object]]::new()
+                        if ({{(mockSend ? "$true" : "$false")}}) {
+                            function Invoke-WebRequest {
+                                [CmdletBinding()]
+                                param(
+                                    [uri]$Uri, [string]$Method, [hashtable]$Headers,
+                                    [string]$Body, [string]$ContentType,
+                                    [switch]$SkipCertificateCheck, [switch]$SkipHttpErrorCheck,
+                                    [int]$MaximumRedirection
+                                )
+                                $global:sent.Add([pscustomobject]@{
+                                    url = $Uri.OriginalString
+                                    headers = $Headers
+                                    body = $Body
+                                })
+                                [pscustomobject]@{
+                                    StatusCode = 200
+                                    Headers = @{ 'Content-Type' = @('application/json') }
+                                    Content = '{}'
+                                }
+                            }
                         }
-                    }
-                }
-                $errorMessage = $null
-                try {
-                    for ($i = 0; $i -lt {{repetitions}}; $i++) {
-                        & '{{script.Replace("'", "''")}}' -Environment mvc -TranscriptPath '{{transcript.Replace("'", "''")}}'
-                    }
-                }
-                catch {
-                    $errorMessage = $_.Exception.Message
-                }
-                $transcriptText = if (Test-Path -LiteralPath '{{transcript.Replace("'", "''")}}') {
-                    [System.IO.File]::ReadAllText('{{transcript.Replace("'", "''")}}')
-                } else { $null }
-                $report = @{ sent = @($global:sent.ToArray()); error = $errorMessage; transcript = $transcriptText } | ConvertTo-Json -Depth 20
+                        $errorMessage = $null
+                        try {
+                            for ($i = 0; $i -lt {{repetitions}}; $i++) {
+                                & $script -Environment mvc -TranscriptPath $transcript
+                            }
+                        }
+                        catch {
+                            $errorMessage = $_.Exception.Message
+                        }
+                        $transcriptText = if (Test-Path -LiteralPath $transcript) {
+                            [System.IO.File]::ReadAllText($transcript)
+                        } else { $null }
+                        @{ sent = @($global:sent.ToArray()); error = $errorMessage; transcript = $transcriptText }
+                    } $caseDirectory
+                })
+                $report = ConvertTo-Json -InputObject $reports -Depth 20
                 [System.IO.File]::WriteAllText('{{output.Replace("'", "''")}}', $report, [System.Text.UTF8Encoding]::new($true))
                 """;
             using var process = new Process
@@ -298,6 +338,25 @@ public class ReplayApiHttpScriptTests
         finally
         {
             Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    public class UnresolvedPlaceholderFixture
+    {
+        private readonly Lazy<Task<IReadOnlyDictionary<(string Location, string Token), JsonElement>>> _reports = new(CreateReportsAsync);
+
+        public async Task<JsonElement> GetReportAsync(string location, string token)
+            => (await _reports.Value)[(location, token)];
+
+        private static async Task<IReadOnlyDictionary<(string Location, string Token), JsonElement>> CreateReportsAsync()
+        {
+            var contents = s_unresolvedPlaceholders.Select(item => CreateUnresolvedPlaceholderRequest(item.Location, item.Token)).ToArray();
+            using var reports = await ReplayBatchAsync(contents);
+            reports.RootElement.GetArrayLength().Should().Be(s_unresolvedPlaceholders.Length);
+            var reportsByCase = new Dictionary<(string Location, string Token), JsonElement>();
+            for (var i = 0; i < s_unresolvedPlaceholders.Length; i++)
+                reportsByCase.Add(s_unresolvedPlaceholders[i], reports.RootElement[i].Clone());
+            return reportsByCase;
         }
     }
 }
