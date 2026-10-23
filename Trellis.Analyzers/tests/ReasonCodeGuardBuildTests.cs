@@ -8,22 +8,7 @@ using Xunit;
 public class ReasonCodeGuardBuildTests
 {
     [Theory]
-    [InlineData("new Error.Unexpected(Guid.NewGuid().ToString(\"N\"))", true)]
-    [InlineData("new(Guid.NewGuid().ToString(\"N\"))", true)]
-    [InlineData("new(Code: Guid.CreateVersion7().ToString(\"N\"))", true)]
-    [InlineData("new(\n Code: Guid.NewGuid().ToString(\"N\"),\n FaultId: \"incident\")", true)]
-    [InlineData("new($\"fault-{Guid.NewGuid():N}\")", true)]
-    [InlineData("new(string.Concat(\"fault-\", \"a\", \"b\", \"c\", Guid.NewGuid().ToString(\"N\")))", true)]
-    [InlineData("new(string.Concat(\"fault-\", \"a\", \"b\", Guid.NewGuid()))", true)]
-    [InlineData("new(string.Concat((ReadOnlySpan<string?>)[\"fault-\", Guid.NewGuid().ToString(\"N\")]))", true)]
-    [InlineData("new(string.Concat((ReadOnlySpan<object?>)[\"fault-\", Guid.NewGuid()]))", true)]
-    [InlineData("new(string.Concat((ReadOnlySpan<string?>)[.. new[] { \"fault-\", Guid.NewGuid().ToString(\"N\") }]))", true)]
-    [InlineData("new(Convert.ToString(new[] { Guid.NewGuid() })!)", false)]
-    [InlineData("new(string.Concat((object)new[] { Guid.NewGuid() }))", false)]
-    [InlineData("new(string.Concat(new object[] { new[] { Guid.NewGuid() } }))", false)]
-    [InlineData("new(string.Concat((ReadOnlySpan<object?>)[.. new object[] { new[] { Guid.NewGuid() } }]))", false)]
-    [InlineData("new(Code: \"order.failed\", FaultId: Guid.NewGuid().ToString(\"N\"))", false)]
-    [InlineData("new(Code: \"order.\" + nameof(Probe), FaultId: Guid.NewGuid().ToString(\"N\"))", false)]
+    [MemberData(nameof(ReasonCodeGuardTestCases.Expressions), MemberType = typeof(ReasonCodeGuardTestCases))]
     public async Task Build_EnabledGuard_OnlyFreshReasonCodeFails(string expression, bool fails)
     {
         var result = await BuildAsync($$"""
@@ -60,11 +45,7 @@ public class ReasonCodeGuardBuildTests
     [Fact]
     public async Task Build_EnabledGuard_SingleWriteLocalReasonFails()
     {
-        var result = await BuildAsync("""
-            var incident = Guid.NewGuid();
-            var code = incident.ToString("N");
-            Error.Unexpected error = new(Code: code);
-            """);
+        var result = await BuildAsync(ReasonCodeGuardTestCases.SingleWriteLocal);
 
         result.ExitCode.Should().Be(1, result.Output);
         result.Output.Should().Contain("error TRLS067");
@@ -73,11 +54,7 @@ public class ReasonCodeGuardBuildTests
     [Fact]
     public async Task Build_EnabledGuard_CollectionSpread_MutableLocalRemainsUnknown()
     {
-        var result = await BuildAsync("""
-            var parts = new[] { Guid.NewGuid().ToString("N") };
-            parts[0] = "order.failed";
-            Error.Unexpected error = new(string.Concat((ReadOnlySpan<string?>)[.. parts]));
-            """);
+        var result = await BuildAsync(ReasonCodeGuardTestCases.MutableCollectionSpread);
 
         result.ExitCode.Should().Be(0, result.Output);
         result.Output.Should().NotContain("TRLS067");
@@ -220,24 +197,7 @@ public class ReasonCodeGuardBuildTests
                   {{analyzerItem}}
                 </Project>
                 """, new UTF8Encoding(true));
-            File.WriteAllText(Path.Combine(projectDirectory, "Probe.cs"), $$"""
-                using Trellis;
-
-                public static class Probe
-                {
-                    public static void Emit()
-                    {
-                        {{statements}}
-                    }
-                }
-
-                namespace Trellis
-                {
-                    public readonly struct Result<T> { }
-                }
-
-                {{PerIncidentReasonCodeAnalyzerTests.Stubs}}
-                """, new UTF8Encoding(true));
+            File.WriteAllText(Path.Combine(projectDirectory, "Probe.cs"), CreateProbeSource(statements), new UTF8Encoding(true));
 
             var startInfo = new ProcessStartInfo("dotnet")
             {
@@ -279,6 +239,25 @@ public class ReasonCodeGuardBuildTests
             Directory.Delete(temporaryDirectory, recursive: true);
         }
     }
+
+    internal static string CreateProbeSource(string statements) => $$"""
+        using Trellis;
+
+        public static class Probe
+        {
+            public static void Emit()
+            {
+                {{statements}}
+            }
+        }
+
+        namespace Trellis
+        {
+            public readonly struct Result<T> { }
+        }
+
+        {{PerIncidentReasonCodeAnalyzerTests.Stubs}}
+        """;
 
     private static string FindRepositoryRoot()
     {

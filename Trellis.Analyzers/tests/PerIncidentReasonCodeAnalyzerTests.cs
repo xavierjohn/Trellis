@@ -232,8 +232,9 @@ public class PerIncidentReasonCodeAnalyzerTests
         var test = new CSharpAnalyzerTest<PerIncidentReasonCodeAnalyzer, DefaultVerifier>
         {
             TestCode = "using System;\nusing Trellis;\n" + source,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References
         };
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.TestState.Sources.Add(("ReasonCodeGuardStubs.cs", Stubs));
         test.ExpectedDiagnostics.AddRange(expected);
         test.SolutionTransforms.Add((solution, projectId) => solution.WithProjectCompilationOptions(

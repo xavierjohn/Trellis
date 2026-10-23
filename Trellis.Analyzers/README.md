@@ -59,8 +59,12 @@ This package is part of the [Trellis](https://github.com/xavierjohn/Trellis) fra
 Run the analyzer tests from the repository root:
 
 ```powershell
-dotnet test Trellis.Analyzers\tests\Trellis.Analyzers.Tests.csproj -c Release
+dotnet test --project Trellis.Analyzers\tests\Trellis.Analyzers.Tests.csproj -c Release
 ```
+
+Analyzer and code-fix test compilations use .NET 10 reference metadata (`ReferenceAssemblies.Net.Net100`) and C# 14, matching the SDK guard fixtures. Shared helpers and tests that construct their own Roslyn harnesses use the same defaults; other parse options are preserved.
+
+`Net10ReferenceParityTests` compiles the same 18 reason-code guard source scenarios as the SDK fixtures, verifies actual .NET 10 API bindings and Roslyn operation shapes, and checks exact diagnostic IDs, severities, and source spans. Two additional checks exercise the analyzer and code-fix helpers with .NET 10 APIs. These tests use real framework metadata, not framework API shims; the existing minimal Trellis stubs do not establish shipped-package compatibility. All 31 SDK builds remain in `ReasonCodeGuardBuildTests` to protect build wiring, configuration, and SDK behavior.
 
 Repository CI replaces the reason-code text grep with the semantic TRLS067 build guard. To run the same source guard locally, build its analyzer first:
 

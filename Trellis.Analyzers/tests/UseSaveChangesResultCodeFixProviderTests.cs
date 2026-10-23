@@ -588,9 +588,10 @@ public class UseSaveChangesResultCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References
         };
 
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
                 .WithLocation(0)
@@ -676,9 +677,10 @@ public class UseSaveChangesResultCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References
         };
 
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
                 .WithLocation(0)
@@ -728,9 +730,10 @@ public class UseSaveChangesResultCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References
         };
 
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
                 .WithLocation(0)
@@ -777,9 +780,10 @@ public class UseSaveChangesResultCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References
         };
 
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
                 .WithLocation(0)
@@ -822,9 +826,10 @@ public class UseSaveChangesResultCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = source,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References
         };
 
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
                 .WithLocation(0)
@@ -886,9 +891,10 @@ public class UseSaveChangesResultCodeFixProviderTests
         {
             TestCode = source,
             FixedCode = fixedSource,
-            ReferenceAssemblies = ReferenceAssemblies.Net.Net80
+            ReferenceAssemblies = AnalyzerTestHelper.Net10References
         };
 
+        test.SolutionTransforms.Add(AnalyzerTestHelper.WithNet10ParseOptions);
         test.ExpectedDiagnostics.Add(
             new DiagnosticResult(DiagnosticDescriptors.UseSaveChangesResult)
                 .WithLocation(0)
