@@ -1,6 +1,8 @@
 ﻿namespace Trellis.Core.Tests.Packaging;
 
 using System.Diagnostics;
+using System.Globalization;
+using System.Reflection;
 using System.Text;
 using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
@@ -55,6 +57,22 @@ internal sealed class DocumentationAuditFixture : IDisposable
 
     public void WriteLedger(string name, string contents) =>
         File.WriteAllText(Path.Combine(_docsDirectory, "audit-completeness", name), contents, new UTF8Encoding(true));
+
+    public DocMemberAudit.Catalog CreateMemberCatalog(string name)
+    {
+        var path = AssemblyPath(name, "Release");
+        var runtimeDirectory = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+        var resolver = new PathAssemblyResolver(Directory.GetFiles(runtimeDirectory, "*.dll").Append(path));
+        using var context = new MetadataLoadContext(resolver);
+        return DocMemberAudit.CreateCatalog([path], context);
+    }
+
+    public (int ExitCode, string Output) RunMemberAudit(DocMemberAudit.Catalog catalog)
+    {
+        using var output = new StringWriter(CultureInfo.InvariantCulture);
+        var exitCode = DocMemberAudit.Run(_docsDirectory, catalog, output);
+        return (exitCode, output.ToString());
+    }
 
     public async Task<(int ExitCode, string Output)> RunAsync()
     {
