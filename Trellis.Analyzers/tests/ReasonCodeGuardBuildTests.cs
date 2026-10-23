@@ -8,7 +8,7 @@ using Xunit;
 public class ReasonCodeGuardBuildTests
 {
     [Theory]
-    [MemberData(nameof(ReasonCodeGuardTestCases.Expressions), MemberType = typeof(ReasonCodeGuardTestCases))]
+    [MemberData(nameof(ReasonCodeGuardTestCases.SdkExpressions), MemberType = typeof(ReasonCodeGuardTestCases))]
     public async Task Build_EnabledGuard_OnlyFreshReasonCodeFails(string expression, bool fails)
     {
         var result = await BuildAsync($$"""
@@ -37,24 +37,6 @@ public class ReasonCodeGuardBuildTests
     {
         var result = await BuildAsync("_ = new Error.Unexpected(Guid.NewGuid().ToString(\"N\"));",
             includeAnalyzer: includeInputs, includeConfiguration: includeInputs, projectArea: projectArea);
-
-        result.ExitCode.Should().Be(0, result.Output);
-        result.Output.Should().NotContain("TRLS067");
-    }
-
-    [Fact]
-    public async Task Build_EnabledGuard_SingleWriteLocalReasonFails()
-    {
-        var result = await BuildAsync(ReasonCodeGuardTestCases.SingleWriteLocal);
-
-        result.ExitCode.Should().Be(1, result.Output);
-        result.Output.Should().Contain("error TRLS067");
-    }
-
-    [Fact]
-    public async Task Build_EnabledGuard_CollectionSpread_MutableLocalRemainsUnknown()
-    {
-        var result = await BuildAsync(ReasonCodeGuardTestCases.MutableCollectionSpread);
 
         result.ExitCode.Should().Be(0, result.Output);
         result.Output.Should().NotContain("TRLS067");
@@ -197,7 +179,8 @@ public class ReasonCodeGuardBuildTests
                   {{analyzerItem}}
                 </Project>
                 """, new UTF8Encoding(true));
-            File.WriteAllText(Path.Combine(projectDirectory, "Probe.cs"), CreateProbeSource(statements), new UTF8Encoding(true));
+            File.WriteAllText(Path.Combine(projectDirectory, "Probe.cs"),
+                ReasonCodeGuardTestHelper.CreateProbeSource(statements), new UTF8Encoding(true));
 
             var startInfo = new ProcessStartInfo("dotnet")
             {
@@ -239,25 +222,6 @@ public class ReasonCodeGuardBuildTests
             Directory.Delete(temporaryDirectory, recursive: true);
         }
     }
-
-    internal static string CreateProbeSource(string statements) => $$"""
-        using Trellis;
-
-        public static class Probe
-        {
-            public static void Emit()
-            {
-                {{statements}}
-            }
-        }
-
-        namespace Trellis
-        {
-            public readonly struct Result<T> { }
-        }
-
-        {{PerIncidentReasonCodeAnalyzerTests.Stubs}}
-        """;
 
     private static string FindRepositoryRoot()
     {
