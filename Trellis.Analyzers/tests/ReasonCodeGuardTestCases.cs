@@ -21,7 +21,7 @@ internal static class ReasonCodeGuardTestCases
     [
         new("new Error.Unexpected(Guid.NewGuid().ToString(\"N\"))", true),
         new("new(Guid.NewGuid().ToString(\"N\"))", true),
-        new("new(Code: Guid.CreateVersion7().ToString(\"N\"))", true),
+        new("new(Code: Guid.CreateVersion7().ToString(\"N\"))", true, RequiresSdkBuild: true),
         new("new(\n Code: Guid.NewGuid().ToString(\"N\"),\n FaultId: \"incident\")", true),
         new("new($\"fault-{Guid.NewGuid():N}\")", true),
         new("new(string.Concat(\"fault-\", \"a\", \"b\", \"c\", Guid.NewGuid().ToString(\"N\")))", true,
@@ -44,9 +44,12 @@ internal static class ReasonCodeGuardTestCases
             "string.Concat(params object?[])", ArgumentKind.Explicit, OperationKind.ArrayCreation, ArrayCount: 2),
         new("new(string.Concat((ReadOnlySpan<object?>)[.. new object[] { new[] { Guid.NewGuid() } }]))", false,
             "string.Concat(params System.ReadOnlySpan<object?>)", ArgumentKind.Explicit, OperationKind.Conversion, false, 1, 2),
-        new("new(Code: \"order.failed\", FaultId: Guid.NewGuid().ToString(\"N\"))", false),
+        new("new(Code: \"order.failed\", FaultId: Guid.NewGuid().ToString(\"N\"))", false, RequiresSdkBuild: true),
         new("new(Code: \"order.\" + nameof(Probe), FaultId: Guid.NewGuid().ToString(\"N\"))", false)
     ];
+
+    internal static bool RequiresSdkBuild(string expression) =>
+        s_cases.Single(item => item.Expression == expression).RequiresSdkBuild;
 
     public static TheoryData<string, bool> Expressions()
     {
@@ -73,5 +76,6 @@ internal static class ReasonCodeGuardTestCases
         OperationKind? ValueKind = null,
         bool? CollectionIsImplicit = null,
         int SpreadCount = 0,
-        int ArrayCount = 0);
+        int ArrayCount = 0,
+        bool RequiresSdkBuild = false);
 }

@@ -11,11 +11,19 @@ public class ReasonCodeGuardBuildTests
     [MemberData(nameof(ReasonCodeGuardTestCases.Expressions), MemberType = typeof(ReasonCodeGuardTestCases))]
     public async Task Build_EnabledGuard_OnlyFreshReasonCodeFails(string expression, bool fails)
     {
-        var result = await BuildAsync($$"""
+        var statements = $$"""
             Error.Unexpected error = {{expression}};
             CustomerId id = new(Guid.NewGuid().ToString("N"));
             _ = default(Result<int>);
-            """);
+            """;
+
+        if (!ReasonCodeGuardTestCases.RequiresSdkBuild(expression))
+        {
+            await ReasonCodeGuardTestHelper.VerifyAsync(statements, fails);
+            return;
+        }
+
+        var result = await BuildAsync(statements);
 
         result.ExitCode.Should().Be(fails ? 1 : 0, result.Output);
         if (fails)
@@ -43,22 +51,12 @@ public class ReasonCodeGuardBuildTests
     }
 
     [Fact]
-    public async Task Build_EnabledGuard_SingleWriteLocalReasonFails()
-    {
-        var result = await BuildAsync(ReasonCodeGuardTestCases.SingleWriteLocal);
-
-        result.ExitCode.Should().Be(1, result.Output);
-        result.Output.Should().Contain("error TRLS067");
-    }
+    public async Task Build_EnabledGuard_SingleWriteLocalReasonFails() =>
+        await ReasonCodeGuardTestHelper.VerifyAsync(ReasonCodeGuardTestCases.SingleWriteLocal, fails: true);
 
     [Fact]
-    public async Task Build_EnabledGuard_CollectionSpread_MutableLocalRemainsUnknown()
-    {
-        var result = await BuildAsync(ReasonCodeGuardTestCases.MutableCollectionSpread);
-
-        result.ExitCode.Should().Be(0, result.Output);
-        result.Output.Should().NotContain("TRLS067");
-    }
+    public async Task Build_EnabledGuard_CollectionSpread_MutableLocalRemainsUnknown() =>
+        await ReasonCodeGuardTestHelper.VerifyAsync(ReasonCodeGuardTestCases.MutableCollectionSpread, fails: false);
 
     [Theory]
     [InlineData("new(\"order.failed\")", 0)]
