@@ -12,7 +12,7 @@ internal static class ReasonCodeGuardTestHelper
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var parseOptions = AnalyzerTestHelper.Net10ParseOptions;
-        var tree = CSharpSyntaxTree.ParseText(ReasonCodeGuardBuildTests.CreateProbeSource(statements),
+        var tree = CSharpSyntaxTree.ParseText(CreateProbeSource(statements),
             parseOptions, path: "Probe.cs", cancellationToken: cancellationToken);
         var globalUsings = CSharpSyntaxTree.ParseText("""
             global using global::System;
@@ -70,6 +70,25 @@ internal static class ReasonCodeGuardTestHelper
 
         return operations;
     }
+
+    internal static string CreateProbeSource(string statements) => $$"""
+        using Trellis;
+
+        public static class Probe
+        {
+            public static void Emit()
+            {
+                {{statements}}
+            }
+        }
+
+        namespace Trellis
+        {
+            public readonly struct Result<T> { }
+        }
+
+        {{PerIncidentReasonCodeAnalyzerTests.Stubs}}
+        """;
 
     private static IEnumerable<IOperation> Walk(IOperation operation)
     {

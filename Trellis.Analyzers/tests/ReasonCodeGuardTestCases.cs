@@ -48,13 +48,10 @@ internal static class ReasonCodeGuardTestCases
         new("new(Code: \"order.\" + nameof(Probe), FaultId: Guid.NewGuid().ToString(\"N\"))", false)
     ];
 
-    internal static bool RequiresSdkBuild(string expression) =>
-        s_cases.Single(item => item.Expression == expression).RequiresSdkBuild;
-
-    public static TheoryData<string, bool> Expressions()
+    public static TheoryData<string, bool> SdkExpressions()
     {
         var data = new TheoryData<string, bool>();
-        foreach (var item in s_cases)
+        foreach (var item in s_cases.Where(item => item.RequiresSdkBuild))
             data.Add(item.Expression, item.Fails);
         return data;
     }
