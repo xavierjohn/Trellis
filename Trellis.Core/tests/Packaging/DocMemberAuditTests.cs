@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Packaging;
 
-public class DocMemberAuditTests
+public class DocMemberAuditTests(DocMemberAuditTests.CatalogFixture catalogFixture)
+    : IClassFixture<DocMemberAuditTests.CatalogFixture>
 {
     private const string Source = """
         namespace OwnershipFixtures;
@@ -57,116 +58,208 @@ public class DocMemberAuditTests
         ```
         """;
 
-    [Theory]
-    [InlineData("Use `Probe.ReasonCode`.", "Probe")]
-    [InlineData("### `Probe.ReasonCode`", "Probe")]
-    [InlineData("| Member | Meaning |\n| --- | --- |\n| `Probe.ReasonCode` | Reason. |", "Probe")]
-    [InlineData("Use [`Probe.ReasonCode`](reference.md).", "Probe")]
-    [InlineData("> Use **`Probe.ReasonCode`**.", "Probe")]
-    [InlineData("Use ``Probe.ReasonCode``.", "Probe")]
-    [InlineData("Use `OwnershipFixtures.Probe.ReasonCode`.", "Probe")]
-    [InlineData("Use `GenericProbe<OtherProbe>.ReasonCode`.", "GenericProbe")]
-    [InlineData("Use `GenericProbe<System.String>.ReasonCode`.", "GenericProbe")]
-    [InlineData("Use `GenericProbe<GenericProbe<OtherProbe>>.ReasonCode`.", "GenericProbe")]
-    public async Task Audit_StandaloneInline_WrongOwner_FailsEvenWhenTheMemberExistsElsewhere(string markdown, string receiver)
+    private static readonly (string Markdown, string Receiver)[] s_wrongOwnerCases =
+    [
+        ("Use `Probe.ReasonCode`.", "Probe"),
+        ("### `Probe.ReasonCode`", "Probe"),
+        ("| Member | Meaning |\n| --- | --- |\n| `Probe.ReasonCode` | Reason. |", "Probe"),
+        ("Use [`Probe.ReasonCode`](reference.md).", "Probe"),
+        ("> Use **`Probe.ReasonCode`**.", "Probe"),
+        ("Use ``Probe.ReasonCode``.", "Probe"),
+        ("Use `OwnershipFixtures.Probe.ReasonCode`.", "Probe"),
+        ("Use `GenericProbe<OtherProbe>.ReasonCode`.", "GenericProbe"),
+        ("Use `GenericProbe<System.String>.ReasonCode`.", "GenericProbe"),
+        ("Use `GenericProbe<GenericProbe<OtherProbe>>.ReasonCode`.", "GenericProbe"),
+    ];
+
+    private static readonly string[] s_validOwnerCases =
+    [
+        "Use `Probe.Code`.",
+        "Use `OtherProbe.ReasonCode`.",
+        "Use `DerivedProbe.Inherited`.",
+        "Use `InterfaceProbe.ContractMember`.",
+        "Use `GenericProbe<OtherProbe>.Code`.",
+        "Use `Probe.OwnedExtension`.",
+        "Use `DerivedProbe.UniversalExtension`.",
+        "Use `OwnershipFixtures.Probe.Code`.",
+        "Use `Probe.Nested`.",
+        "Use `probe.Probe.ReasonCode`.",
+        "Use `ReasonCode`.",
+        "Use `Probe.ReasonCode()`.",
+        "Use `Probe.ReasonCode<T>(value)`.",
+        "Use `public string Probe.ReasonCode { get; }`.",
+        "Use `Probe.ReasonCode / OtherProbe.ReasonCode`.",
+        "Use `\"Probe.ReasonCode\"` as a wire value.",
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; removed member in historical guidance -->.",
+        "No `GenericProbe<OtherProbe>.ReasonCode` <!-- doc-member-ok: GenericProbe.ReasonCode; deliberately absent API --> exists.",
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; historical GenericProbe&lt;T&gt; member -->.",
+    ];
+
+    private static readonly string[] s_markdownTriviaCases =
+    [
+        "---\ntypes: [`Probe.ReasonCode`]\n---\n",
+        "<!-- `Probe.ReasonCode` -->",
+        "<!--\nUse `Probe.ReasonCode`.\n-->",
+        "<div>\nUse `Probe.ReasonCode`.\n</div>",
+        "![`Probe.ReasonCode`](image.png)",
+        "Use \\`Probe.ReasonCode\\` literally.",
+        "Use `Probe.ReasonCode without closing.",
+        "    `Probe.ReasonCode`",
+        "```text\nUse `Probe.ReasonCode`.\n```",
+        "```json\n{\"member\": \"`Probe.ReasonCode`\"}\n```",
+        "```\nUse `Probe.ReasonCode`.\n```",
+    ];
+
+    private static readonly string[] s_localTypeCases =
+    [
+        "class",
+        "record",
+        "record class",
+        "record struct",
+        "struct",
+        "interface",
+        "enum",
+    ];
+
+    private static readonly string[] s_invalidExceptionCases =
+    [
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: OtherProbe.ReasonCode; different receiver -->.",
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.Code; different member -->.",
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; -->.",
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode;   -->.",
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; contains < in the reason -->.",
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; contains > in the reason -->.",
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; historical GenericProbe<T> member -->.",
+        "Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode -->.",
+        "Use `Probe.ReasonCode` <!-- v1-stale-ok: historical reference -->.",
+        "<!-- doc-member-ok: Probe.ReasonCode; misplaced marker -->\nUse `Probe.ReasonCode`.",
+        "Use `Probe.ReasonCode`.\n<!-- doc-member-ok: Probe.ReasonCode; marker on another line -->",
+        "Use `Probe.ReasonCode` and this comment <!-- doc-member-ok: Probe.ReasonCode; not adjacent -->.",
+    ];
+
+    public static TheoryData<string, string> WrongOwnerCases()
     {
-        var result = await RunAuditAsync(markdown);
+        var data = new TheoryData<string, string>();
+        foreach (var (markdown, receiver) in s_wrongOwnerCases)
+            data.Add(markdown, receiver);
+        return data;
+    }
+
+    public static TheoryData<string> ValidOwnerCases() => new(s_validOwnerCases);
+
+    public static TheoryData<string> MarkdownTriviaCases() => new(s_markdownTriviaCases);
+
+    public static TheoryData<string> LocalTypeCases() => new(s_localTypeCases);
+
+    public static TheoryData<string> InvalidExceptionCases() => new(s_invalidExceptionCases);
+
+    [Theory]
+    [MemberData(nameof(WrongOwnerCases))]
+    public void Audit_StandaloneInline_WrongOwner_FailsEvenWhenTheMemberExistsElsewhere(string markdown, string receiver)
+    {
+        var result = RunAudit(markdown);
 
         result.ExitCode.Should().Be(1, result.Output);
         result.Output.Should().Contain($"error TRLDOC014: '{receiver}.ReasonCode' does not resolve");
-        result.Output.Should().NotContain("error TRLDOC005");
-        result.Output.Should().NotContain("error TRLDOC008");
-        result.Output.Should().NotContain("error TRLDOC015");
     }
 
     [Theory]
-    [InlineData("Use `Probe.Code`.")]
-    [InlineData("Use `OtherProbe.ReasonCode`.")]
-    [InlineData("Use `DerivedProbe.Inherited`.")]
-    [InlineData("Use `InterfaceProbe.ContractMember`.")]
-    [InlineData("Use `GenericProbe<OtherProbe>.Code`.")]
-    [InlineData("Use `Probe.OwnedExtension`.")]
-    [InlineData("Use `DerivedProbe.UniversalExtension`.")]
-    [InlineData("Use `OwnershipFixtures.Probe.Code`.")]
-    [InlineData("Use `Probe.Nested`.")]
-    [InlineData("Use `probe.Probe.ReasonCode`.")]
-    [InlineData("Use `ReasonCode`.")]
-    [InlineData("Use `Probe.ReasonCode()`.")]
-    [InlineData("Use `Probe.ReasonCode<T>(value)`.")]
-    [InlineData("Use `public string Probe.ReasonCode { get; }`.")]
-    [InlineData("Use `Probe.ReasonCode / OtherProbe.ReasonCode`.")]
-    [InlineData("Use `\"Probe.ReasonCode\"` as a wire value.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; removed member in historical guidance -->.")]
-    [InlineData("No `GenericProbe<OtherProbe>.ReasonCode` <!-- doc-member-ok: GenericProbe.ReasonCode; deliberately absent API --> exists.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; historical GenericProbe&lt;T&gt; member -->.")]
-    public async Task Audit_InlineReference_ValidOwnerOrDeliberateBoundary_Passes(string markdown)
+    [MemberData(nameof(ValidOwnerCases))]
+    public void Audit_InlineReference_ValidOwnerOrDeliberateBoundary_Passes(string markdown)
     {
-        var result = await RunAuditAsync(markdown);
+        var result = RunAudit(markdown);
 
         result.ExitCode.Should().Be(0, result.Output);
         result.Output.Should().NotContain("error TRLDOC014");
     }
 
     [Theory]
-    [InlineData("---\ntypes: [`Probe.ReasonCode`]\n---\n")]
-    [InlineData("<!-- `Probe.ReasonCode` -->")]
-    [InlineData("<!--\nUse `Probe.ReasonCode`.\n-->")]
-    [InlineData("<div>\nUse `Probe.ReasonCode`.\n</div>")]
-    [InlineData("![`Probe.ReasonCode`](image.png)")]
-    [InlineData("Use \\`Probe.ReasonCode\\` literally.")]
-    [InlineData("Use `Probe.ReasonCode without closing.")]
-    [InlineData("    `Probe.ReasonCode`")]
-    [InlineData("```text\nUse `Probe.ReasonCode`.\n```")]
-    [InlineData("```json\n{\"member\": \"`Probe.ReasonCode`\"}\n```")]
-    [InlineData("```\nUse `Probe.ReasonCode`.\n```")]
-    public async Task Audit_MarkdownTriviaOrNonCSharpCode_InlineLookalike_IsNotAnOwnershipClaim(string markdown)
+    [MemberData(nameof(MarkdownTriviaCases))]
+    public void Audit_MarkdownTriviaOrNonCSharpCode_InlineLookalike_IsNotAnOwnershipClaim(string markdown)
     {
-        var result = await RunAuditAsync(markdown, prepend: true);
+        var result = RunAudit(markdown, prepend: true);
 
         result.ExitCode.Should().Be(0, result.Output);
         result.Output.Should().NotContain("error TRLDOC014");
     }
 
     [Theory]
-    [InlineData("class")]
-    [InlineData("record")]
-    [InlineData("record class")]
-    [InlineData("record struct")]
-    [InlineData("struct")]
-    [InlineData("interface")]
-    [InlineData("enum")]
-    public async Task Audit_DocumentLocalTypeDeclaration_InlineReference_ShadowsTheAssemblyType(string declaration)
+    [MemberData(nameof(LocalTypeCases))]
+    public void Audit_DocumentLocalTypeDeclaration_InlineReference_ShadowsTheAssemblyType(string declaration)
     {
-        var result = await RunAuditAsync($$"""
-            Use `Probe.ReasonCode` on this example-owned type.
-
-            ```csharp
-            public {{declaration}} Probe { }
-            ```
-            """);
+        var result = RunAudit(LocalTypeMarkdown(declaration));
 
         result.ExitCode.Should().Be(0, result.Output);
     }
 
     [Theory]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: OtherProbe.ReasonCode; different receiver -->.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.Code; different member -->.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; -->.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode;   -->.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; contains < in the reason -->.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; contains > in the reason -->.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode; historical GenericProbe<T> member -->.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- doc-member-ok: Probe.ReasonCode -->.")]
-    [InlineData("Use `Probe.ReasonCode` <!-- v1-stale-ok: historical reference -->.")]
-    [InlineData("<!-- doc-member-ok: Probe.ReasonCode; misplaced marker -->\nUse `Probe.ReasonCode`.")]
-    [InlineData("Use `Probe.ReasonCode`.\n<!-- doc-member-ok: Probe.ReasonCode; marker on another line -->")]
-    [InlineData("Use `Probe.ReasonCode` and this comment <!-- doc-member-ok: Probe.ReasonCode; not adjacent -->.")]
-    public async Task Audit_InlineException_InvalidOrUnscopedMarker_DoesNotSuppressOwnership(string markdown)
+    [MemberData(nameof(InvalidExceptionCases))]
+    public void Audit_InlineException_InvalidOrUnscopedMarker_DoesNotSuppressOwnership(string markdown)
     {
-        var result = await RunAuditAsync(markdown);
+        var result = RunAudit(markdown);
 
         result.ExitCode.Should().Be(1, result.Output);
         result.Output.Should().Contain("error TRLDOC014: 'Probe.ReasonCode' does not resolve");
+    }
+
+    [Fact]
+    public async Task Audit_ReusedCatalog_DocumentAndAssemblyInputs_RemainIsolated()
+    {
+        DocMemberAudit.Catalog originalCatalog;
+        using (var original = new DocumentationAuditFixture())
+        {
+            original.WritePackage("Primary", Source, Documentation);
+            originalCatalog = original.CreateMemberCatalog("Primary");
+        }
+
+        DocMemberAudit.Catalog revisedCatalog;
+        using (var revised = new DocumentationAuditFixture())
+        {
+            revised.WritePackage("Primary", "public sealed class Probe { public int ReasonCode => 1; }", "`Probe.ReasonCode`");
+            revisedCatalog = revised.CreateMemberCatalog("Primary");
+        }
+
+        using var waived = new DocumentationAuditFixture();
+        waived.WriteDocument("waived.md", "Use `Probe.ReasonCode`.");
+        waived.WriteLedger("doc-only-members.txt", "Probe.ReasonCode");
+        using var strict = new DocumentationAuditFixture();
+        strict.WriteDocument("strict.md", "Use `Probe.ReasonCode`.");
+
+        var results = await Task.WhenAll(
+            Task.Run(() => waived.RunMemberAudit(originalCatalog), TestContext.Current.CancellationToken),
+            Task.Run(() => strict.RunMemberAudit(originalCatalog), TestContext.Current.CancellationToken),
+            Task.Run(() => strict.RunMemberAudit(revisedCatalog), TestContext.Current.CancellationToken));
+
+        results[0].ExitCode.Should().Be(0, results[0].Output);
+        results[0].Output.Should().NotContain("strict.md");
+        results[1].ExitCode.Should().Be(1, results[1].Output);
+        results[1].Output.Should().Contain("strict.md(1,1): error TRLDOC014: 'Probe.ReasonCode' does not resolve");
+        results[1].Output.Should().NotContain("waived.md");
+        results[2].ExitCode.Should().Be(0, results[2].Output);
+
+        var repeated = strict.RunMemberAudit(originalCatalog);
+        repeated.ExitCode.Should().Be(1, repeated.Output);
+        repeated.Output.Should().Be(results[1].Output);
+    }
+
+    [Fact]
+    public async Task Audit_GrammarCorpus_ScopedCatalog_MatchesFullCliDiagnostics()
+    {
+        using var fixture = new DocumentationAuditFixture();
+        fixture.WritePackage("Primary", Source, Documentation);
+        var documents = GrammarDocuments().ToArray();
+        documents.Should().HaveCount(59);
+        for (var i = 0; i < documents.Length; i++)
+            fixture.WriteDocument($"grammar-{i:D2}.md", documents[i]);
+
+        var expected = fixture.RunMemberAudit(fixture.CreateMemberCatalog("Primary"));
+        var actual = await fixture.RunAsync();
+
+        actual.ExitCode.Should().Be(expected.ExitCode, actual.Output);
+        OwnershipDiagnostics(actual.Output).Should().Equal(OwnershipDiagnostics(expected.Output));
+        actual.Output.Should().NotContain("error TRLDOC005");
+        actual.Output.Should().NotContain("error TRLDOC008");
+        actual.Output.Should().NotContain("error TRLDOC015");
     }
 
     [Fact]
@@ -324,12 +417,45 @@ public class DocMemberAuditTests
             result.Output.Should().Contain("error TRLDOC014: 'Probe.StaleCode' does not resolve");
     }
 
-    private static async Task<(int ExitCode, string Output)> RunAuditAsync(string markdown, bool prepend = false)
+    private (int ExitCode, string Output) RunAudit(string markdown, bool prepend = false)
     {
         using var fixture = new DocumentationAuditFixture();
-        fixture.WritePackage("Primary", Source, prepend
-            ? markdown + "\n\n" + Documentation
-            : Documentation + "\n\n" + markdown);
-        return await fixture.RunAsync();
+        fixture.WriteDocument("trellis-api-primary.md", WithDocumentation(markdown, prepend));
+        return fixture.RunMemberAudit(catalogFixture.Catalog);
+    }
+
+    private static IEnumerable<string> GrammarDocuments() =>
+        s_wrongOwnerCases.Select(row => WithDocumentation(row.Markdown))
+            .Concat(s_validOwnerCases.Select(markdown => WithDocumentation(markdown)))
+            .Concat(s_markdownTriviaCases.Select(markdown => WithDocumentation(markdown, prepend: true)))
+            .Concat(s_localTypeCases.Select(declaration => WithDocumentation(LocalTypeMarkdown(declaration))))
+            .Concat(s_invalidExceptionCases.Select(markdown => WithDocumentation(markdown)));
+
+    private static string WithDocumentation(string markdown, bool prepend = false) =>
+        prepend ? markdown + "\n\n" + Documentation : Documentation + "\n\n" + markdown;
+
+    private static string LocalTypeMarkdown(string declaration) => $$"""
+        Use `Probe.ReasonCode` on this example-owned type.
+
+        ```csharp
+        public {{declaration}} Probe { }
+        ```
+        """;
+
+    private static IEnumerable<string> OwnershipDiagnostics(string output) =>
+        output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.TrimEnd('\r'))
+            .Where(line => line.Contains(": error TRLDOC014:", StringComparison.Ordinal));
+
+    public sealed class CatalogFixture
+    {
+        internal DocMemberAudit.Catalog Catalog { get; }
+
+        public CatalogFixture()
+        {
+            using var fixture = new DocumentationAuditFixture();
+            fixture.WritePackage("Primary", Source, Documentation);
+            Catalog = fixture.CreateMemberCatalog("Primary");
+        }
     }
 }

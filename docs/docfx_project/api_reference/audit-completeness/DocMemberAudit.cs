@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -82,18 +83,32 @@ internal static class DocMemberAudit
         || symbol.Contains("Xxx", StringComparison.Ordinal);
 
     public static int Run(string docsDir, IEnumerable<string> assemblyPaths, MetadataLoadContext mlc)
+        => Run(docsDir, CreateCatalog(assemblyPaths, mlc), Console.Out);
+
+    internal static Catalog CreateCatalog(IEnumerable<string> assemblyPaths, MetadataLoadContext mlc)
     {
         var index = BuildTypeIndex(assemblyPaths, mlc, out var namespaceSegments, out var universalExtensions);
+        return new Catalog(
+            index.ToFrozenDictionary(pair => pair.Key, pair => pair.Value.ToFrozenSet(StringComparer.Ordinal), StringComparer.Ordinal),
+            namespaceSegments.ToFrozenSet(StringComparer.Ordinal),
+            universalExtensions.ToFrozenSet(StringComparer.Ordinal));
+    }
+
+    internal static int Run(string docsDir, Catalog catalog, TextWriter output)
+    {
+        var index = catalog.Types;
+        var namespaceSegments = catalog.NamespaceSegments;
+        var universalExtensions = catalog.UniversalExtensions;
         var allowlist = LoadAllowlist(docsDir, out var allowlistPath);
 
-        Console.WriteLine();
-        Console.WriteLine("=== Receiver-qualified member audit (docs -> API) ===");
+        output.WriteLine();
+        output.WriteLine("=== Receiver-qualified member audit (docs -> API) ===");
 
         // Vacuity guard: if the type index is empty the gate would pass every document without
         // checking anything. TRLDOC013 takes the same stance on an empty diagnostic-id scan.
         if (index.Count == 0)
         {
-            Console.WriteLine($"{docsDir}(1,1): error TRLDOC014: Loaded no types, so no member chain in any document can be verified. Fix the assembly discovery in this tool.");
+            output.WriteLine($"{docsDir}(1,1): error TRLDOC014: Loaded no types, so no member chain in any document can be verified. Fix the assembly discovery in this tool.");
             return 1;
         }
 
@@ -193,7 +208,7 @@ internal static class DocMemberAudit
             }
         }
 
-        Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+        output.WriteLine(string.Create(CultureInfo.InvariantCulture,
             $"Types indexed: {index.Count}; files scanned: {filesScanned}; C# fences scanned: {fencesScanned}; standalone inline spans scanned: {inlineSpansScanned}; receiver-qualified pairs checked: {checkedPairs}"));
 
         // Second vacuity guard. The index can be healthy while extraction silently matches
@@ -201,7 +216,7 @@ internal static class DocMemberAudit
         // would then pass by examining zero call sites.
         if (checkedPairs == 0)
         {
-            Console.WriteLine($"{docsDir}(1,1): error TRLDOC014: Extracted no receiver-qualified member accesses from any document, so this gate verified nothing. Fix the extraction patterns in this tool.");
+            output.WriteLine($"{docsDir}(1,1): error TRLDOC014: Extracted no receiver-qualified member accesses from any document, so this gate verified nothing. Fix the extraction patterns in this tool.");
             return 1;
         }
 
@@ -209,25 +224,30 @@ internal static class DocMemberAudit
 
         if (total == 0)
         {
-            Console.WriteLine("Every receiver-qualified member access in the docs resolves on its receiving type.");
-            ReportUnusedAllowlist(unusedAllowlist, allowlistPath);
+            output.WriteLine("Every receiver-qualified member access in the docs resolves on its receiving type.");
+            ReportUnusedAllowlist(unusedAllowlist, allowlistPath, output);
             return 0;
         }
 
-        Console.WriteLine();
+        output.WriteLine();
         foreach (var (file, entries) in findings)
         {
             foreach (var finding in entries.OrderBy(e => e.Line))
             {
-                Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                output.WriteLine(string.Create(CultureInfo.InvariantCulture,
                     $"{Path.Combine(docsDir, file)}({finding.Line},1): error TRLDOC014: '{finding.Receiver}.{finding.Member}' does not resolve: '{finding.Receiver}' is a real type but has no member or nested type named '{finding.Member}'. Fix the owner/member. Shared legitimate exceptions belong in {Path.GetFileName(allowlistPath)}; a deliberate non-API inline reference needs an adjacent doc-member-ok comment naming this pair and its reason."));
             }
         }
 
-        Console.WriteLine();
-        Console.WriteLine(string.Create(CultureInfo.InvariantCulture, $"{total} unresolved member access(es)."));
+        output.WriteLine();
+        output.WriteLine(string.Create(CultureInfo.InvariantCulture, $"{total} unresolved member access(es)."));
         return 1;
     }
+
+    internal sealed record Catalog(
+        FrozenDictionary<string, FrozenSet<string>> Types,
+        FrozenSet<string> NamespaceSegments,
+        FrozenSet<string> UniversalExtensions);
 
     private readonly record struct Finding(int Line, string Receiver, string Member);
 
@@ -559,12 +579,12 @@ internal static class DocMemberAudit
         return allowlist;
     }
 
-    private static void ReportUnusedAllowlist(HashSet<string> unused, string allowlistPath)
+    private static void ReportUnusedAllowlist(HashSet<string> unused, string allowlistPath, TextWriter output)
     {
         if (unused.Count == 0)
             return;
 
-        Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+        output.WriteLine(string.Create(CultureInfo.InvariantCulture,
             $"Note: {unused.Count} allowlist entr(ies) in {Path.GetFileName(allowlistPath)} are no longer referenced by any doc and can be removed: {string.Join(", ", unused.OrderBy(x => x, StringComparer.Ordinal))}"));
     }
 }
