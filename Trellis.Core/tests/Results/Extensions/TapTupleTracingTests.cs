@@ -339,9 +339,6 @@ public class TapTupleTracingTests : TestBase
         // Assert
         result.Should().BeSuccess();
 
-        // Wait for async activities
-        await Task.Delay(100, TestContext.Current.CancellationToken);
-
         // Should have activities for all operations
         activityTest.AssertActivityCapturedWithStatus("Combine", ActivityStatusCode.Ok);
         activityTest.AssertActivityCaptured("Tap", 2);
