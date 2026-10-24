@@ -49,7 +49,7 @@ Tests needing the emulator are marked `[Trait("Category", "Integration")]` and a
 default and CI runs. With the Azure Cosmos DB emulator running on `https://localhost:8081/`:
 
 ```powershell
-dotnet test Trellis.Asp.Idempotency.Cosmos/tests/Trellis.Asp.Idempotency.Cosmos.Tests.csproj `
+dotnet test --project Trellis.Asp.Idempotency.Cosmos\tests\Trellis.Asp.Idempotency.Cosmos.Tests.csproj `
   --filter-trait "Category=Integration"
 ```
 
@@ -62,7 +62,13 @@ for the document model, partitioning and RU-cost guidance, and the concurrency p
 Run the package tests from the repository root:
 
 ```powershell
-dotnet test Trellis.Asp.Idempotency.Cosmos\tests\Trellis.Asp.Idempotency.Cosmos.Tests.csproj -c Release
+dotnet test --project Trellis.Asp.Idempotency.Cosmos\tests\Trellis.Asp.Idempotency.Cosmos.Tests.csproj -c Release
 ```
 
 The Cosmos emulator integration tests are opt-in; see the package API reference for the required setup and Microsoft.Testing.Platform trait syntax.
+
+To use a separate HTTPS emulator, set `TRELLIS_TEST_COSMOS_ENDPOINT` before running the tests.
+Only development emulators are supported: the tests trust the emulator's self-signed certificate
+and use Microsoft's published emulator key. An explicit endpoint disables endpoint discovery;
+connection or provisioning failures fail the tests rather than falling back to the default emulator
+or skipping. Leave the variable unset to retain the default `https://localhost:8081/` behavior.

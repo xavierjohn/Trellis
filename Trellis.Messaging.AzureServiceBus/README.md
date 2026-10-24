@@ -93,7 +93,13 @@ The emulator declares its entities in `Config.json` at startup and cannot create
 Run the package tests from the repository root:
 
 ```powershell
-dotnet test Trellis.Messaging.AzureServiceBus\tests\Trellis.Messaging.AzureServiceBus.Tests.csproj -c Release
+dotnet test --project Trellis.Messaging.AzureServiceBus\tests\Trellis.Messaging.AzureServiceBus.Tests.csproj -c Release
 ```
 
 Start the Azure Service Bus emulator with the command above before running emulator-backed integration tests.
+
+To use an isolated emulator on another port, set `TRELLIS_TEST_SERVICEBUS_CONNECTION` to its
+connection string, including `UseDevelopmentEmulator=true`, before running the tests. Provision
+the same topic and subscriptions from `tests\emulator\Config.json`. An explicit connection must
+be reachable; probe failures fail the tests rather than falling back to the shared emulator or
+skipping. Leave the variable unset to retain the default local emulator behavior.

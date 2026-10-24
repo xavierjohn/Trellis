@@ -19,6 +19,8 @@
 	  <!-- Test-only: real provider exception types for the classifier contract tests. -->
 	  <PackageReference Include="Npgsql" />
 	  <PackageReference Include="MySqlConnector" />
+	  <PackageReference Include="Moq" />
+	  <PackageReference Include="Testcontainers.MsSql" />
 	</ItemGroup>
 
 </Project>

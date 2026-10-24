@@ -7,10 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using Trellis.Primitives;
 
 /// <summary>
-/// Tests Specification&lt;T&gt; with in-memory, SQLite, and SQL Server (LocalDB) backends.
+/// Tests Specification&lt;T&gt; with in-memory, SQLite, and SQL Server backends.
 /// In-memory tests verify specification logic; SQLite and SQL Server tests verify EF Core translation.
 /// </summary>
-public class SpecificationTests : IAsyncLifetime
+public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
+    : IAsyncLifetime, IClassFixture<SqlServerTestcontainersFixture>
 {
     private static readonly string SqlServerConnectionString = GetSqlServerConnectionString();
 
@@ -42,20 +43,13 @@ public class SpecificationTests : IAsyncLifetime
         _sqliteContext = new ScalarValueTestDbContext(sqliteOptions);
         await _sqliteContext.Database.EnsureCreatedAsync();
 
-        // SQL Server setup (opt-in via environment variable — not available on GitHub Actions)
-        if (Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER") == "true")
+        if (sqlServerFixture.IsEnabled)
+            await InitializeSqlServerAsync(sqlServerFixture.CreateConnectionString());
+        else if (Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER") == "true")
         {
             try
             {
-                var sqlServerOptions = new DbContextOptionsBuilder<ScalarValueTestDbContext>()
-                    .UseSqlServer(SqlServerConnectionString).IgnoreManyServiceProvidersCreatedWarning()
-                    .AddTrellisInterceptors()
-                    .Options;
-
-                _sqlServerContext = new ScalarValueTestDbContext(sqlServerOptions);
-                await _sqlServerContext.Database.EnsureDeletedAsync();
-                await _sqlServerContext.Database.EnsureCreatedAsync();
-                _sqlServerAvailable = true;
+                await InitializeSqlServerAsync(SqlServerConnectionString);
             }
             catch
             {
@@ -106,6 +100,19 @@ public class SpecificationTests : IAsyncLifetime
         }
 
         _memoryStore = [alice, bob];
+    }
+
+    private async Task InitializeSqlServerAsync(string connectionString)
+    {
+        var sqlServerOptions = new DbContextOptionsBuilder<ScalarValueTestDbContext>()
+            .UseSqlServer(connectionString).IgnoreManyServiceProvidersCreatedWarning()
+            .AddTrellisInterceptors()
+            .Options;
+
+        _sqlServerContext = new ScalarValueTestDbContext(sqlServerOptions);
+        await _sqlServerContext.Database.EnsureDeletedAsync();
+        await _sqlServerContext.Database.EnsureCreatedAsync();
+        _sqlServerAvailable = true;
     }
 
     public async ValueTask DisposeAsync()
