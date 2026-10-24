@@ -175,19 +175,13 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         // Arrange - simulate service that fails once then succeeds (transient 503 error)
         var attemptCount = 0;
 
-        async Task<Result<InventoryResponse>> CheckInventoryWithRetry(string productId)
+        Task<Result<InventoryResponse>> CheckInventoryWithRetry(string productId)
         {
             attemptCount++;
             if (attemptCount == 1)
-            {
-                // First attempt: transient error (503 Service Unavailable)
-                await Task.Delay(10); // Simulate network delay
-                return Result.Fail<InventoryResponse>(new Error.Unavailable() { Detail = "Inventory service temporarily unavailable" });
-            }
+                return Task.FromResult(Result.Fail<InventoryResponse>(new Error.Unavailable() { Detail = "Inventory service temporarily unavailable" }));
 
-            // Retry succeeds
-            await Task.Delay(10);
-            return Result.Ok(new InventoryResponse(productId, 100, true));
+            return Task.FromResult(Result.Ok(new InventoryResponse(productId, 100, true)));
         }
 
         var request = new CheckoutRequest("user-123", "prod-456", "pm-789", "123 Main St");
@@ -198,11 +192,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             () => CheckInventoryWithRetry(request.ProductId)
                 .RecoverOnFailureAsync(
                     predicate: error => error is Error.Unavailable,
-                    funcAsync: async () =>
-                    {
-                        await Task.Delay(50); // Backoff delay
-                        return await CheckInventoryWithRetry(request.ProductId); // Retry
-                    }),
+                    funcAsync: () => CheckInventoryWithRetry(request.ProductId)),
             () => ValidatePaymentAsync(request.PaymentMethodId),
             () => CalculateShippingAsync(request.ShippingAddress)
         ).WhenAllAsync();
@@ -217,42 +207,47 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
     {
         // Arrange - service fails twice then succeeds
         var attemptCount = 0;
+        var releaseFirstAttempt = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         async Task<Result<PaymentResponse>> ValidatePaymentWithRetries(string paymentId)
         {
             attemptCount++;
-            if (attemptCount <= 2)
-            {
-                // Fail first 2 attempts (transient)
-                await Task.Delay(10);
-                return Result.Fail<PaymentResponse>(new Error.Unavailable() { Detail = "Payment service timeout" });
-            }
+            if (attemptCount == 1)
+                await releaseFirstAttempt.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-            // Third attempt succeeds
-            await Task.Delay(10);
+            if (attemptCount <= 2)
+                return Result.Fail<PaymentResponse>(new Error.Unavailable() { Detail = "Payment service timeout" });
+
             return Result.Ok(new PaymentResponse(paymentId, true));
         }
 
         // Act - chain RecoverOnFailureAsync for multiple retries
-        var result = await ValidatePaymentWithRetries("pm-789")
+        var resultTask = ValidatePaymentWithRetries("pm-789")
             .RecoverOnFailureAsync(
                 predicate: error => error is Error.Unavailable,
-                funcAsync: async () =>
-                {
-                    await Task.Delay(50); // First retry delay
-                    return await ValidatePaymentWithRetries("pm-789")
-                        .RecoverOnFailureAsync(
-                            predicate: error => error is Error.Unavailable,
-                            funcAsync: async () =>
-                            {
-                                await Task.Delay(100); // Second retry delay (exponential backoff)
-                                return await ValidatePaymentWithRetries("pm-789");
-                            });
-                });
+                funcAsync: () => ValidatePaymentWithRetries("pm-789")
+                    .RecoverOnFailureAsync(
+                        predicate: error => error is Error.Unavailable,
+                        funcAsync: () => ValidatePaymentWithRetries("pm-789")));
 
-        // Assert - should succeed on 3rd attempt
-        result.Should().BeSuccess();
-        attemptCount.Should().Be(3);
+        try
+        {
+            attemptCount.Should().Be(1);
+            resultTask.IsCompleted.Should().BeFalse();
+            releaseFirstAttempt.SetResult();
+
+            var result = await resultTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+            // Assert - should succeed on 3rd attempt
+            result.Should().BeSuccess();
+            attemptCount.Should().Be(3);
+        }
+        finally
+        {
+            releaseFirstAttempt.TrySetResult();
+            // Drain the released operation even when the test was cancelled.
+            _ = await resultTask.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
+        }
     }
 
     [Fact]
@@ -261,30 +256,20 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         // Arrange - service always returns transient error
         var attemptCount = 0;
 
-        async Task<Result<ShippingResponse>> CalculateShippingAlwaysFails(string address)
+        Task<Result<ShippingResponse>> CalculateShippingAlwaysFails(string address)
         {
             attemptCount++;
-            await Task.Delay(10);
-            return Result.Fail<ShippingResponse>(new Error.Unavailable() { Detail = "Shipping service down" });
+            return Task.FromResult(Result.Fail<ShippingResponse>(new Error.Unavailable() { Detail = "Shipping service down" }));
         }
 
         // Act - try with 2 retries (3 total attempts)
         var result = await CalculateShippingAlwaysFails("123 Main St")
             .RecoverOnFailureAsync(
                 predicate: error => error is Error.Unavailable,
-                funcAsync: async () =>
-                {
-                    await Task.Delay(50); // First retry
-                    return await CalculateShippingAlwaysFails("123 Main St")
-                        .RecoverOnFailureAsync(
-                            predicate: error => error is Error.Unavailable,
-                            funcAsync: async () =>
-                            {
-                                await Task.Delay(100); // Second retry
-                                return await CalculateShippingAlwaysFails("123 Main St");
-                                // No more retries after this
-                            });
-                });
+                funcAsync: () => CalculateShippingAlwaysFails("123 Main St")
+                    .RecoverOnFailureAsync(
+                        predicate: error => error is Error.Unavailable,
+                        funcAsync: () => CalculateShippingAlwaysFails("123 Main St")));
 
         // Assert - should fail after all retries exhausted
         result.Should().BeFailure();
