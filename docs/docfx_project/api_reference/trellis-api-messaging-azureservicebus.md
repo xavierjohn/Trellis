@@ -212,8 +212,6 @@ Neither this adapter nor the inbox ships an archive/redrive/rebuild coordinator.
 
 Integration tests are marked `[Trait("Category", "Integration")]` and skip visibly when no emulator is reachable, so they never pass against a substitute.
 
-The transport suite shares one client through an xUnit class fixture. Each case awaits consumer shutdown with an independent timeout before disposing its service provider; the fixture disposes the shared client only after all cases finish.
-
 ```
 docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compose.yml up -d
 ```
