@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Messaging.AzureServiceBus.Tests;
 
+using System.Diagnostics.CodeAnalysis;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -353,16 +354,26 @@ public sealed class ServiceBusInboxConsumerLifecycleTests
             NullLogger<ServiceBusInboxConsumer>.Instance);
     }
 
-    private sealed class ControlledClient(params ControlledProcessor[] processors) : ServiceBusClient
+    internal sealed class ControlledClient(params ControlledProcessor[] processors) : ServiceBusClient
     {
+        private int _disposeCalls;
+
         public int CreatedProcessors { get; private set; }
+        public int DisposeCalls => Volatile.Read(ref _disposeCalls);
 
         public override ServiceBusProcessor CreateProcessor(
             string topicName, string subscriptionName, ServiceBusProcessorOptions options) =>
             processors[CreatedProcessors++];
+
+        [SuppressMessage("Usage", "CA2215", Justification = "The SDK mock constructor has no connection for base.DisposeAsync to close.")]
+        public override ValueTask DisposeAsync()
+        {
+            Interlocked.Increment(ref _disposeCalls);
+            return ValueTask.CompletedTask;
+        }
     }
 
-    private sealed class ControlledProcessor : ServiceBusProcessor
+    internal sealed class ControlledProcessor : ServiceBusProcessor
     {
         private readonly TaskCompletionSource _start = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _stop = new(TaskCreationOptions.RunContinuationsAsynchronously);

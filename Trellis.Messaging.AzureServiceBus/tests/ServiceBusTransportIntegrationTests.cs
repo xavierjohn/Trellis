@@ -33,7 +33,7 @@ using Trellis.Mediator;
 /// </para>
 /// </remarks>
 [Trait("Category", "Integration")]
-public sealed class ServiceBusTransportIntegrationTests
+public sealed class ServiceBusTransportIntegrationTests(ServiceBusEmulator emulator) : IClassFixture<ServiceBusEmulator>
 {
     private static readonly IntegrationEventNameMap Map = new(
     [
@@ -51,7 +51,7 @@ public sealed class ServiceBusTransportIntegrationTests
 
         var recorder = new RecordingInboxDispatcher();
         await using var host = BuildConsumer(client, Subscription, recorder);
-        await StartAsync(host);
+        await host.StartAsync(CancellationToken.None);
 
         var placed = new OrderPlaced($"ORD-{Guid.NewGuid():N}", DateTimeOffset.UnixEpoch);
         var messageId = Guid.CreateVersion7();
@@ -72,7 +72,7 @@ public sealed class ServiceBusTransportIntegrationTests
 
         var recorder = new RecordingInboxDispatcher();
         await using var host = BuildConsumer(client, Subscription, recorder);
-        await StartAsync(host);
+        await host.StartAsync(CancellationToken.None);
 
         var traceParent = $"00-{ActivityTraceId.CreateRandom()}-{ActivitySpanId.CreateRandom()}-01";
         var message = new OutboundIntegrationMessage(
@@ -111,7 +111,7 @@ public sealed class ServiceBusTransportIntegrationTests
 
         var recorder = new RecordingInboxDispatcher();
         await using var host = BuildConsumer(client, Subscription, recorder);
-        await StartAsync(host);
+        await host.StartAsync(CancellationToken.None);
 
         // One outbox row, published twice: exactly what an at-least-once relay does when it crashes
         // between publishing and saving its bookkeeping.
@@ -138,7 +138,7 @@ public sealed class ServiceBusTransportIntegrationTests
 
         var recorder = new RecordingInboxDispatcher { Outcome = InboxDispatchOutcome.SkippedDuplicate };
         await using var host = BuildConsumer(client, Subscription, recorder);
-        await StartAsync(host);
+        await host.StartAsync(CancellationToken.None);
 
         var row = new OutboundIntegrationMessage(
             Guid.CreateVersion7(), new OrderPlaced($"ORD-{Guid.NewGuid():N}", DateTimeOffset.UnixEpoch));
@@ -161,7 +161,7 @@ public sealed class ServiceBusTransportIntegrationTests
 
         var recorder = new RecordingInboxDispatcher();
         await using var host = BuildConsumer(client, Subscription, recorder);
-        await StartAsync(host);
+        await host.StartAsync(CancellationToken.None);
 
         var messageId = Guid.CreateVersion7();
         await using (var sender = client.CreateSender(ServiceBusEmulator.Topic))
@@ -191,7 +191,7 @@ public sealed class ServiceBusTransportIntegrationTests
 
         var recorder = new RecordingInboxDispatcher { ThrowOnFirstAttempt = true };
         await using var host = BuildConsumer(client, Subscription, recorder);
-        await StartAsync(host);
+        await host.StartAsync(CancellationToken.None);
 
         var row = new OutboundIntegrationMessage(
             Guid.CreateVersion7(), new OrderPlaced($"ORD-{Guid.NewGuid():N}", DateTimeOffset.UnixEpoch));
@@ -202,9 +202,9 @@ public sealed class ServiceBusTransportIntegrationTests
         await recorder.WaitForCountAsync(row.MessageId, 2);
     }
 
-    private static async Task<ServiceBusClient> RequireEmulatorAsync()
+    private async Task<ServiceBusClient> RequireEmulatorAsync()
     {
-        var client = await ServiceBusEmulator.TryGetClientAsync();
+        var client = await emulator.TryGetClientAsync();
         Assert.SkipWhen(
             client is null,
             "No Azure Service Bus emulator reachable on localhost:5672, so the transport integration tests did not run. " +
@@ -224,7 +224,7 @@ public sealed class ServiceBusTransportIntegrationTests
         await publisher.PublishAsync(message, CancellationToken.None);
     }
 
-    private static ServiceProvider BuildConsumer(ServiceBusClient client, string subscription, RecordingInboxDispatcher recorder)
+    internal static ConsumerHost BuildConsumer(ServiceBusClient client, string subscription, RecordingInboxDispatcher recorder)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -233,12 +233,8 @@ public sealed class ServiceBusTransportIntegrationTests
         services.AddAzureServiceBusIntegrationEventConsumer(
             Map, o => o.Subscribe(ServiceBusEmulator.Topic, subscription));
 
-        return services.BuildServiceProvider();
+        return new ConsumerHost(services.BuildServiceProvider());
     }
-
-    private static Task StartAsync(ServiceProvider host) =>
-        host.GetServices<IHostedService>().OfType<ServiceBusInboxConsumer>().Single()
-            .StartAsync(CancellationToken.None);
 
     private static async Task DrainAsync(ServiceBusClient client, string subscription)
     {
@@ -276,7 +272,34 @@ public sealed class ServiceBusTransportIntegrationTests
         throw new TimeoutException($"Message {messageId} was not dead-lettered within {Patience}.");
     }
 
-    private sealed class RecordingInboxDispatcher : IInboxDispatcher
+    internal sealed class ConsumerHost(ServiceProvider services) : IAsyncDisposable
+    {
+        private ServiceBusInboxConsumer? _consumer;
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            _consumer = services.GetServices<IHostedService>().OfType<ServiceBusInboxConsumer>().Single();
+            return _consumer.StartAsync(cancellationToken);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                if (_consumer is not null)
+                {
+                    using var shutdown = new CancellationTokenSource(Patience);
+                    await _consumer.StopAsync(shutdown.Token);
+                }
+            }
+            finally
+            {
+                await services.DisposeAsync();
+            }
+        }
+    }
+
+    internal sealed class RecordingInboxDispatcher : IInboxDispatcher
     {
         private readonly ConcurrentQueue<IntegrationEnvelope> _received = new();
         private readonly ConcurrentDictionary<Guid, int> _attempts = new();

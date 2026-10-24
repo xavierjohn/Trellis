@@ -4,7 +4,7 @@ using System.Net.Sockets;
 using Azure.Messaging.ServiceBus;
 
 /// <summary>
-/// Resolves the Service Bus client the transport integration tests run against, once per test process.
+/// Owns the shared Service Bus client for the transport integration test class.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -18,7 +18,7 @@ using Azure.Messaging.ServiceBus;
 /// <see cref="Topic"/> and the subscription names below must match that file.
 /// </para>
 /// </remarks>
-internal static class ServiceBusEmulator
+public sealed class ServiceBusEmulator : IAsyncLifetime
 {
     /// <summary>
     /// The well-known emulator connection string. Published by Microsoft and identical on every
@@ -33,10 +33,31 @@ internal static class ServiceBusEmulator
     /// <summary>The topic declared in <c>emulator/Config.json</c>, named after the event's wire name.</summary>
     public const string Topic = OrderPlaced.WireName;
 
-    private static readonly Lazy<Task<ServiceBusClient?>> Client = new(ProbeAsync);
+    private readonly Lazy<Task<ServiceBusClient?>> _client;
+
+    /// <summary>Creates the shared emulator client fixture.</summary>
+    public ServiceBusEmulator() : this(ProbeAsync)
+    {
+    }
+
+    internal ServiceBusEmulator(Func<Task<ServiceBusClient?>> probe) => _client = new(probe);
 
     /// <summary>Returns a shared client, or <c>null</c> when no emulator is reachable.</summary>
-    public static Task<ServiceBusClient?> TryGetClientAsync() => Client.Value;
+    public Task<ServiceBusClient?> TryGetClientAsync() => _client.Value;
+
+    /// <inheritdoc />
+    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (!_client.IsValueCreated)
+            return;
+
+        var client = await _client.Value;
+        if (client is not null)
+            await client.DisposeAsync();
+    }
 
     private static async Task<ServiceBusClient?> ProbeAsync()
     {
