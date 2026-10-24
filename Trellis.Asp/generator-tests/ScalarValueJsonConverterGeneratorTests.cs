@@ -3,7 +3,6 @@
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Trellis;
 
 /// <summary>
 /// Tests for <see cref="ScalarValueJsonConverterGenerator"/> to verify it discovers
@@ -634,7 +633,7 @@ public class ScalarValueJsonConverterGeneratorTests
     private static List<string> RunGenerator(string source, CancellationToken cancellationToken)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
-        var references = GetMetadataReferences();
+        var references = GeneratorTestReferences.All;
 
         var compilation = CSharpCompilation.Create(
             assemblyName: "ScalarValueGeneratorTests",
@@ -666,7 +665,7 @@ public class ScalarValueJsonConverterGeneratorTests
         bool includeCoreGenerator = false)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
-        var references = GetMetadataReferences();
+        var references = GeneratorTestReferences.All;
 
         Compilation compilation = CSharpCompilation.Create(
             assemblyName: "ScalarValueGeneratorTests",
@@ -713,19 +712,4 @@ public class ScalarValueJsonConverterGeneratorTests
 
         return (generatedSources, allDiagnostics, hintNames);
     }
-
-    private static MetadataReference[] GetMetadataReferences() =>
-        AppDomain.CurrentDomain.GetAssemblies()
-            .Where(static assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
-            .Select(static assembly => assembly.Location)
-            .Concat([
-                typeof(RequiredGuid<>).Assembly.Location,
-                typeof(ScalarValueObject<,>).Assembly.Location,
-                typeof(Trellis.Asp.ValidationErrorsContext).Assembly.Location,
-                typeof(System.Text.Json.JsonSerializer).Assembly.Location,
-                typeof(System.ComponentModel.DataAnnotations.StringLengthAttribute).Assembly.Location,
-            ])
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(static location => MetadataReference.CreateFromFile(location))
-            .ToArray();
 }
