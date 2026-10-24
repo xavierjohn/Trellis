@@ -3,7 +3,6 @@
 using System;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Trellis;
 
 /// <summary>
 /// Tests for <see cref="PathTrackingRegistryGenerator"/> (issue #664): the compile-time DTO graph walk
@@ -699,7 +698,7 @@ public class PathTrackingRegistryGeneratorTests
         var compilation = CSharpCompilation.Create(
             assemblyName: "PathTrackingRegistryGeneratorTests",
             syntaxTrees: [syntaxTree],
-            references: GetMetadataReferences(),
+            references: GeneratorTestReferences.All,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         var driver = CSharpGeneratorDriver.Create(new PathTrackingRegistryGenerator())
@@ -717,19 +716,4 @@ public class PathTrackingRegistryGeneratorTests
             .Select(s => s.SourceText.ToString())
             .FirstOrDefault();
     }
-
-    private static MetadataReference[] GetMetadataReferences() =>
-        AppDomain.CurrentDomain.GetAssemblies()
-            .Where(static assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
-            .Select(static assembly => assembly.Location)
-            .Concat([
-                typeof(RequiredGuid<>).Assembly.Location,
-                typeof(ScalarValueObject<,>).Assembly.Location,
-                typeof(Trellis.Primitives.CompositeValueObjectJsonConverter<>).Assembly.Location,
-                typeof(Trellis.Asp.ValidationErrorsContext).Assembly.Location,
-                typeof(System.Text.Json.JsonSerializer).Assembly.Location,
-            ])
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(static location => MetadataReference.CreateFromFile(location))
-            .ToArray();
 }
