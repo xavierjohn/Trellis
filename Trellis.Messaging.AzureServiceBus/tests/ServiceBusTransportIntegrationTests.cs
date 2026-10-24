@@ -137,19 +137,21 @@ public sealed class ServiceBusTransportIntegrationTests(ServiceBusEmulator emula
         await DrainAsync(client, Subscription);
 
         var recorder = new RecordingInboxDispatcher { Outcome = InboxDispatchOutcome.SkippedDuplicate };
-        await using var host = BuildConsumer(client, Subscription, recorder);
-        await host.StartAsync(CancellationToken.None);
-
         var row = new OutboundIntegrationMessage(
             Guid.CreateVersion7(), new OrderPlaced($"ORD-{Guid.NewGuid():N}", DateTimeOffset.UnixEpoch));
-        await PublishAsync(client, row, messageSource: null);
 
-        await recorder.WaitForAsync(row.MessageId);
+        await using (var host = BuildConsumer(client, Subscription, recorder))
+        {
+            await host.StartAsync(CancellationToken.None);
+            await PublishAsync(client, row, messageSource: null);
+            await recorder.WaitForAsync(row.MessageId);
+        }
 
         // SkippedDuplicate means the message is durably accounted for. Abandoning it instead would loop
         // forever, because every redelivery would reach the same conclusion.
-        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         recorder.CountFor(row.MessageId).Should().Be(1);
+        await AssertMessageAbsentAsync(client, Subscription, row.MessageId, SubQueue.None);
+        await AssertMessageAbsentAsync(client, Subscription, row.MessageId, SubQueue.DeadLetter);
     }
 
     [Fact]
@@ -270,6 +272,29 @@ public sealed class ServiceBusTransportIntegrationTests(ServiceBusEmulator emula
         }
 
         throw new TimeoutException($"Message {messageId} was not dead-lettered within {Patience}.");
+    }
+
+    private static async Task AssertMessageAbsentAsync(
+        ServiceBusClient client, string subscription, Guid messageId, SubQueue subQueue)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(Patience);
+        await using var receiver = client.CreateReceiver(
+            ServiceBusEmulator.Topic, subscription, new ServiceBusReceiverOptions { SubQueue = subQueue });
+
+        // Peek includes locked and deferred messages; an empty receive would not prove completion.
+        long fromSequenceNumber = 0;
+        while (true)
+        {
+            var batch = await receiver.PeekMessagesAsync(50, fromSequenceNumber, timeout.Token);
+            if (batch.Count == 0)
+                return;
+
+            batch.Should().NotContain(
+                message => message.MessageId == messageId.ToString(),
+                "the skipped duplicate must be completed, not left in {0}", subQueue);
+            fromSequenceNumber = batch[^1].SequenceNumber + 1;
+        }
     }
 
     internal sealed class ConsumerHost(ServiceProvider services) : IAsyncDisposable
