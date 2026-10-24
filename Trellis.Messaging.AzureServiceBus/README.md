@@ -82,6 +82,8 @@ docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compos
 
 The emulator declares its entities in `Config.json` at startup and cannot create them at runtime, which is why the compose file and its entity list are part of the test fixture. Duplicate detection is deliberately **off** on the test topic: if the broker collapsed duplicate ids, the tests would pass even if the transport invented a fresh id per publish. The suite skips visibly when no emulator is reachable, so it never passes against a substitute.
 
+The `Build` workflow's required `build` check provisions this emulator and runs the transport integration tests, treating skipped tests as failures. Local runs remain optional and skip visibly when the emulator is unavailable.
+
 ## Documentation
 
 - [Package API reference](../docs/docfx_project/api_reference/trellis-api-messaging-azureservicebus.md)
@@ -93,7 +95,7 @@ The emulator declares its entities in `Config.json` at startup and cannot create
 Run the package tests from the repository root:
 
 ```powershell
-dotnet test Trellis.Messaging.AzureServiceBus\tests\Trellis.Messaging.AzureServiceBus.Tests.csproj -c Release
+dotnet test --project Trellis.Messaging.AzureServiceBus\tests\Trellis.Messaging.AzureServiceBus.Tests.csproj -c Release
 ```
 
 Start the Azure Service Bus emulator with the command above before running emulator-backed integration tests.

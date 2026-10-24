@@ -138,6 +138,37 @@ jobs:
           --coverage --coverage-output-format cobertura \
           --report-trx
 
+    - name: Start Service Bus emulator
+      id: servicebus
+      timeout-minutes: 5
+      run: |
+        docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compose.yml up -d
+        timeout 120s bash -c '
+          until curl --fail --silent --show-error --max-time 2 --output /dev/null http://localhost:5300/health; do
+            sleep 2
+          done
+        '
+
+    - name: Service Bus integration tests (required)
+      timeout-minutes: 5
+      run: |
+        dotnet test --project Trellis.Messaging.AzureServiceBus/tests/Trellis.Messaging.AzureServiceBus.Tests.csproj --no-build -c Release \
+          --filter-class Trellis.Messaging.AzureServiceBus.Tests.ServiceBusTransportIntegrationTests \
+          --fail-skips on --minimum-expected-tests 6 \
+          --report-trx --results-directory "$GITHUB_WORKSPACE/TestResults/servicebus-integration"
+
+    - name: Service Bus emulator diagnostics
+      if: ${{ failure() && steps.servicebus.outcome != 'skipped' }}
+      timeout-minutes: 2
+      run: |
+        docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compose.yml ps -a
+        docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compose.yml logs --no-color
+
+    - name: Stop Service Bus emulator
+      if: ${{ always() && steps.servicebus.outcome != 'skipped' }}
+      timeout-minutes: 2
+      run: docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compose.yml down --volumes
+
     - name: Publish Test Results
       uses: EnricoMi/publish-unit-test-result-action@v2
       if: always()
