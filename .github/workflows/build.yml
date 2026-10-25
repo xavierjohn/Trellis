@@ -138,6 +138,52 @@ jobs:
           --coverage --coverage-output-format cobertura \
           --report-trx
 
+    - name: Run Service Bus integration tests without skips
+      timeout-minutes: 8
+      env:
+        TRELLIS_TEST_SERVICEBUS: testcontainers
+      run: >-
+        dotnet test --project Trellis.Messaging.AzureServiceBus/tests/Trellis.Messaging.AzureServiceBus.Tests.csproj
+        --no-build -c Release
+        --filter-class Trellis.Messaging.AzureServiceBus.Tests.ServiceBusTransportIntegrationTests
+        --fail-skips on --minimum-expected-tests 6
+        --report-trx --results-directory TestResults/servicebus-integration
+        --no-progress --no-ansi
+
+    - name: Service Bus Docker diagnostics
+      if: failure()
+      timeout-minutes: 1
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p TestResults/servicebus-integration
+        docker ps -a --no-trunc --filter label=trellis.testcontainers-fixture=servicebus-integration \
+          | tee TestResults/servicebus-integration/docker-containers.log
+        docker network ls --no-trunc --filter label=trellis.testcontainers-fixture=servicebus-integration \
+          | tee TestResults/servicebus-integration/docker-networks.log
+
+    - name: Clean up owned Service Bus resources
+      if: always()
+      timeout-minutes: 1
+      shell: bash
+      run: |
+        set -euo pipefail
+        cleanup_status=0
+        docker ps -aq --filter label=trellis.testcontainers-fixture=servicebus-integration \
+          | xargs -r docker rm -f || cleanup_status=$?
+        docker network ls -q --filter label=trellis.testcontainers-fixture=servicebus-integration \
+          | xargs -r docker network rm || cleanup_status=$?
+        exit "$cleanup_status"
+
+    - name: Upload Service Bus integration results
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: servicebus-testcontainers-integration-results
+        path: |
+          TestResults/servicebus-integration
+          Trellis.Messaging.AzureServiceBus/tests/bin/Release/*/TestResults/servicebus-integration
+
     - name: Publish Test Results
       uses: EnricoMi/publish-unit-test-result-action@v2
       if: always()

@@ -14,6 +14,7 @@ using Microsoft.Azure.Cosmos;
 /// rather than a failure: <see cref="TryGetContainerAsync"/> returns <c>null</c> when the emulator
 /// cannot be reached and the tests skip. That keeps the suite honest — it either runs against real
 /// Cosmos DB or visibly does not run at all, rather than passing against a substitute.
+/// An explicitly configured endpoint is required to work; its failures propagate instead of skipping.
 /// </remarks>
 internal static class CosmosEmulator
 {
@@ -31,37 +32,50 @@ internal static class CosmosEmulator
     private static readonly Lazy<Task<Container?>> Container = new(ProvisionAsync);
 
     /// <summary>
-    /// Returns the shared idempotency container, or <c>null</c> when no emulator is reachable.
+    /// Returns the shared idempotency container, or <c>null</c> when the default emulator is unreachable.
     /// </summary>
     public static Task<Container?> TryGetContainerAsync() => Container.Value;
 
-    private static async Task<Container?> ProvisionAsync()
+    private static Task<Container?> ProvisionAsync() => ProvisionAsync(static async (client, cancellationToken) =>
     {
-        var client = new CosmosClient(Endpoint, Key, new CosmosClientOptions
-        {
-            // The emulator presents a self-signed certificate, and Gateway mode keeps the test to
-            // the single HTTPS port that was probed.
-            ConnectionMode = ConnectionMode.Gateway,
-            ServerCertificateCustomValidationCallback = (_, _, _) => true,
-            RequestTimeout = TimeSpan.FromSeconds(10),
-            MaxRetryAttemptsOnRateLimitedRequests = 0,
-        });
+        var database = await client.CreateDatabaseIfNotExistsAsync(
+            DatabaseId, cancellationToken: cancellationToken);
+
+        return await CosmosIdempotencyContainer.CreateIfNotExistsAsync(
+            database.Database, cancellationToken: cancellationToken);
+    });
+
+    internal static async Task<Container?> ProvisionAsync(
+        Func<CosmosClient, CancellationToken, Task<Container>> provision)
+    {
+        var configuredEndpoint = Environment.GetEnvironmentVariable("TRELLIS_TEST_COSMOS_ENDPOINT");
+        var client = new CosmosClient(
+            string.IsNullOrWhiteSpace(configuredEndpoint) ? Endpoint : configuredEndpoint,
+            Key, new CosmosClientOptions
+            {
+                // The emulator presents a self-signed certificate, and Gateway mode keeps the test to
+                // the single HTTPS port that was probed.
+                ConnectionMode = ConnectionMode.Gateway,
+                LimitToEndpoint = !string.IsNullOrWhiteSpace(configuredEndpoint),
+                ServerCertificateCustomValidationCallback = (_, _, _) => true,
+                RequestTimeout = TimeSpan.FromSeconds(10),
+                MaxRetryAttemptsOnRateLimitedRequests = 0,
+            });
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
         try
         {
-            var database = await client.CreateDatabaseIfNotExistsAsync(
-                DatabaseId, cancellationToken: timeout.Token);
-
-            return await CosmosIdempotencyContainer.CreateIfNotExistsAsync(
-                database.Database, cancellationToken: timeout.Token);
+            return await provision(client, timeout.Token);
         }
         catch (Exception ex) when (ex is CosmosException or HttpRequestException or OperationCanceledException)
         {
             // Narrow by design: these are the shapes "no emulator here" takes. Anything else is a
             // real defect and must surface rather than silently skipping the whole suite.
             client.Dispose();
+            if (!string.IsNullOrWhiteSpace(configuredEndpoint))
+                throw;
+
             return null;
         }
     }

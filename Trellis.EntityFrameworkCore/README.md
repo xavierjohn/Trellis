@@ -92,6 +92,28 @@ No DI or interceptor registration is required for these expressions.
 Run the package and generator tests from the repository root:
 
 ```powershell
-dotnet test Trellis.EntityFrameworkCore\tests\Trellis.EntityFrameworkCore.Tests.csproj -c Release
-dotnet test Trellis.EntityFrameworkCore\generator-tests\Trellis.EntityFrameworkCore.Generator.Tests.csproj -c Release
+dotnet test --project Trellis.EntityFrameworkCore\tests\Trellis.EntityFrameworkCore.Tests.csproj -c Release
+dotnet test --project Trellis.EntityFrameworkCore\generator-tests\Trellis.EntityFrameworkCore.Generator.Tests.csproj -c Release
 ```
+
+### SQL Server Testcontainers pilot
+
+With Docker running Linux containers, the specification tests can provision their own
+SQL Server 2025 instance instead of requiring LocalDB or a prestarted database:
+
+```powershell
+$env:TRELLIS_TEST_SQLSERVER = 'testcontainers'
+dotnet test --project Trellis.EntityFrameworkCore\tests\Trellis.EntityFrameworkCore.Tests.csproj -c Release `
+    --filter-class Trellis.EntityFrameworkCore.Tests.SpecificationTests --filter-display-name '*SqlServer*' `
+    --fail-skips on --minimum-expected-tests 15
+Remove-Item Env:\TRELLIS_TEST_SQLSERVER
+```
+
+The first run downloads the image pinned by tag and digest. Container startup or SQL setup failures fail
+the run rather than skip cases. The separate **SQL Server Testcontainers pilot** workflow
+runs this selection on Linux and retains its results and container logs.
+
+This mode currently applies only to `SpecificationTests`; other SQL integration tests
+keep their existing setup. With the variable unset, the specification tests do not access
+Docker. The existing `TRELLIS_TEST_SQLSERVER=true` LocalDB/external-connection mode remains
+available; do not combine Testcontainers mode with `TRELLIS_TEST_SQLSERVER_CONNECTION`.
