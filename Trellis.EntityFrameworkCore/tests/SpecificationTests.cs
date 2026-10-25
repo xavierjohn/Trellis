@@ -149,7 +149,7 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
         {
             await InitializeSqlServerOnDemandAsync();
             if (!_sqlServerAvailable)
-                Assert.Skip("SQL Server (LocalDB) is not available");
+                Assert.Skip("SQL Server is not available");
             return _sqlServerContext!;
         }
 

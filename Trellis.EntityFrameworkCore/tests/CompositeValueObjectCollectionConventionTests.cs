@@ -21,7 +21,7 @@ using Microsoft.EntityFrameworkCore;
 /// convention-only. Use an explicit <c>OwnsMany</c> when owned aggregate-child semantics are required.
 /// </para>
 /// </summary>
-public partial class CompositeValueObjectCollectionConventionTests(SqlServerTestcontainersFixture sqlServerFixture) : IDisposable
+public partial class CompositeValueObjectCollectionConventionTests(SqlServerTestcontainersFixture sqlServerFixture) : IAsyncDisposable
 {
     private CollectionVoDbContext? _context;
     private SqliteConnection? _connection;
@@ -44,12 +44,13 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        using var connection = _connection;
-        using var context = _context;
-        using var sqlServerContext = _sqlServerContext;
-        _sqlServerContext?.Database.EnsureDeleted();
+        await using var connection = _connection;
+        await using var context = _context;
+        await using var sqlServerContext = _sqlServerContext;
+        if (_sqlServerContext is not null)
+            await _sqlServerContext.Database.EnsureDeletedAsync();
         GC.SuppressFinalize(this);
     }
 
@@ -147,12 +148,9 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
         }
 
         var connectionString = await CreateSqlServerConnectionStringAsync();
-        if (!sqlServerFixture.IsEnabled)
-            new SqlConnectionStringBuilder(connectionString).InitialCatalog.Should()
-                .Be(new SqlConnectionStringBuilder(SqlServerConnectionString).InitialCatalog);
         var ctx = _sqlServerContext = new CollectionVoSqlServerContext(connectionString);
-        ctx.Database.EnsureDeleted();
-        ctx.Database.EnsureCreated();
+        await ctx.Database.EnsureDeletedAsync(TestContext.Current.CancellationToken);
+        await ctx.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
         ctx.Set<RequiredScorecardEntity>().Add(new RequiredScorecardEntity
         {
             Inning = new CricketInning(
@@ -162,10 +160,10 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
                     new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
                 ]),
         });
-        ctx.SaveChanges();
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        using var verify = new CollectionVoSqlServerContext(connectionString);
-        var loaded = verify.Set<RequiredScorecardEntity>().Single();
+        await using var verify = new CollectionVoSqlServerContext(connectionString);
+        var loaded = await verify.Set<RequiredScorecardEntity>().SingleAsync(TestContext.Current.CancellationToken);
         loaded.Inning.Lines.Should().HaveCount(2);
     }
 
@@ -179,12 +177,9 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
         }
 
         var connectionString = await CreateSqlServerConnectionStringAsync();
-        if (!sqlServerFixture.IsEnabled)
-            new SqlConnectionStringBuilder(connectionString).InitialCatalog.Should()
-                .Be(new SqlConnectionStringBuilder(SqlServerConnectionString).InitialCatalog);
         var ctx = _sqlServerContext = new CollectionVoSqlServerContext(connectionString);
-        ctx.Database.EnsureDeleted();
-        ctx.Database.EnsureCreated();
+        await ctx.Database.EnsureDeletedAsync(TestContext.Current.CancellationToken);
+        await ctx.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
         ctx.Set<MaybeScorecardEntity>().Add(new MaybeScorecardEntity
         {
             Inning = Maybe.From(new CricketInning(
@@ -194,10 +189,10 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
                     new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
                 ])),
         });
-        ctx.SaveChanges();
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        using var verify = new CollectionVoSqlServerContext(connectionString);
-        var loaded = verify.Set<MaybeScorecardEntity>().Single();
+        await using var verify = new CollectionVoSqlServerContext(connectionString);
+        var loaded = await verify.Set<MaybeScorecardEntity>().SingleAsync(TestContext.Current.CancellationToken);
         loaded.Inning.HasValue.Should().BeTrue();
         loaded.Inning.Value.Lines.Should().HaveCount(2);
     }

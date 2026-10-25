@@ -175,7 +175,7 @@ jobs:
       run: |
         set -euo pipefail
         mkdir -p TestResults/container-diagnostics
-        for fixture in sqlserver-specifications servicebus-integration; do
+        for fixture in sqlserver-integration servicebus-integration; do
           docker ps -a --no-trunc --filter "label=trellis.testcontainers-fixture=$fixture" \
             | tee "TestResults/container-diagnostics/$fixture-containers.log"
           docker network ls --no-trunc --filter "label=trellis.testcontainers-fixture=$fixture" \
@@ -189,7 +189,7 @@ jobs:
       run: |
         set -euo pipefail
         cleanup_status=0
-        for fixture in sqlserver-specifications servicebus-integration; do
+        for fixture in sqlserver-integration servicebus-integration; do
           docker ps -aq --filter "label=trellis.testcontainers-fixture=$fixture" \
             | xargs -r docker rm -f || cleanup_status=$?
           docker network ls -q --filter "label=trellis.testcontainers-fixture=$fixture" \

@@ -96,8 +96,8 @@ public class SqlServerTestcontainersFixtureTests
             startupToken.CanBeCanceled.Should().BeTrue();
             first.DataSource.Should().Be("127.0.0.1,49152");
             second.DataSource.Should().Be(first.DataSource);
-            first.InitialCatalog.Should().StartWith("TrellisSpec_").And.NotBe("master");
-            second.InitialCatalog.Should().StartWith("TrellisSpec_").And.NotBe(first.InitialCatalog);
+            first.InitialCatalog.Should().StartWith("TrellisSqlServer_").And.NotBe("master");
+            second.InitialCatalog.Should().StartWith("TrellisSqlServer_").And.NotBe(first.InitialCatalog);
         }
 
         container.Verify(c => c.DisposeAsync(), Times.Once);

@@ -16,7 +16,7 @@ public sealed class SqlServerTestcontainersFixture : IAsyncLifetime
     // same tag, refresh the digest: docker buildx imagetools inspect <tag> --format '{{.Manifest.Digest}}'
     private const string Image = "mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04@sha256:245f6b1c8903edae52cb20fa31419cefcde1a49938bb8c3447099011fc871ca3";
     private const string OwnerLabel = "trellis.testcontainers-fixture";
-    private const string Owner = "sqlserver-specifications";
+    private const string Owner = "sqlserver-integration";
     private readonly Func<IDatabaseContainer> _createContainer;
     private readonly string? _externalConnectionString;
     private readonly Lazy<Task<IDatabaseContainer>> _startup;
@@ -56,7 +56,7 @@ public sealed class SqlServerTestcontainersFixture : IAsyncLifetime
         var container = await _startup.Value;
         return new SqlConnectionStringBuilder(container.GetConnectionString())
         {
-            InitialCatalog = $"TrellisSpec_{Guid.NewGuid():N}"
+            InitialCatalog = $"TrellisSqlServer_{Guid.NewGuid():N}"
         }.ConnectionString;
     }
 

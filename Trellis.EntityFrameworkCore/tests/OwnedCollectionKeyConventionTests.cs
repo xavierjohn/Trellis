@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 /// inserts throw), and a non-default key on a child added to a loaded parent is read as a
 /// modification → <c>UPDATE</c> (zero rows) → a spurious <see cref="DbUpdateConcurrencyException"/>.
 /// </summary>
-public sealed class OwnedCollectionKeyConventionTests : IDisposable
+public sealed class OwnedCollectionKeyConventionTests : IAsyncDisposable
 {
     private readonly SqlServerTestcontainersFixture _sqlServerFixture;
     private readonly SqliteConnection _connection;
@@ -31,11 +31,12 @@ public sealed class OwnedCollectionKeyConventionTests : IDisposable
 
     private OwnedKeyDbContext NewContext() => new(_options);
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        using var connection = _connection;
-        using var sqlServerContext = _sqlServerContext;
-        _sqlServerContext?.Database.EnsureDeleted();
+        await using var connection = _connection;
+        await using var sqlServerContext = _sqlServerContext;
+        if (_sqlServerContext is not null)
+            await _sqlServerContext.Database.EnsureDeletedAsync();
         GC.SuppressFinalize(this);
     }
 
@@ -131,21 +132,18 @@ public sealed class OwnedCollectionKeyConventionTests : IDisposable
         var connectionString = _sqlServerFixture.IsEnabled
             ? await _sqlServerFixture.CreateConnectionStringAsync()
             : SqlServerConnectionString;
-        if (!_sqlServerFixture.IsEnabled)
-            new SqlConnectionStringBuilder(connectionString).InitialCatalog.Should()
-                .Be(new SqlConnectionStringBuilder(SqlServerConnectionString).InitialCatalog);
         var ctx = _sqlServerContext = new LedgerSqlServerContext(connectionString);
-        ctx.Database.EnsureDeleted();
-        ctx.Database.EnsureCreated();
+        await ctx.Database.EnsureDeletedAsync(TestContext.Current.CancellationToken);
+        await ctx.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
         var parent = new LedgerParent { Id = Guid.CreateVersion7() };
         parent.Entries.Add(new LedgerEntry { Id = explicitKey, Payload = "first" });
         // RED before the fix: an integer owned-collection key mapped as store-generated becomes an
         // IDENTITY column, so inserting the domain-assigned value throws SqlException 544.
         ctx.LedgerParents.Add(parent);
-        ctx.SaveChanges();
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        using var verify = new LedgerSqlServerContext(connectionString);
-        var loaded = verify.LedgerParents.Include(p => p.Entries).Single();
+        await using var verify = new LedgerSqlServerContext(connectionString);
+        var loaded = await verify.LedgerParents.Include(p => p.Entries).SingleAsync(TestContext.Current.CancellationToken);
         loaded.Entries.Should().ContainSingle().Which.Id.Should().Be(explicitKey);
     }
 
