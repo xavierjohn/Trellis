@@ -34,11 +34,29 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-nuget-
 
-    - name: Restore dependencies
-      run: dotnet restore Trellis.EntityFrameworkCore/tests/Trellis.EntityFrameworkCore.Tests.csproj
+    - name: Restore and build while pulling the SQL Server image
+      shell: bash
+      run: |
+        set -euo pipefail
+        (
+          TIMEFORMAT='SQL Server image pull: %3R seconds'
+          time docker pull --quiet mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
+        ) &
+        sql_pull=$!
 
-    - name: Build pilot tests
-      run: dotnet build Trellis.EntityFrameworkCore/tests/Trellis.EntityFrameworkCore.Tests.csproj --no-restore -c Release
+        build_status=0
+        {
+          dotnet restore Trellis.EntityFrameworkCore/tests/Trellis.EntityFrameworkCore.Tests.csproj &&
+          dotnet build Trellis.EntityFrameworkCore/tests/Trellis.EntityFrameworkCore.Tests.csproj --no-restore -c Release
+        } || build_status=$?
+
+        pull_status=0
+        wait "$sql_pull" || pull_status=$?
+        if [ "$pull_status" -ne 0 ]; then
+          echo "::error::SQL Server image pull failed"
+          exit "$pull_status"
+        fi
+        exit "$build_status"
 
     - name: Run SQL Server specifications without skips
       timeout-minutes: 8

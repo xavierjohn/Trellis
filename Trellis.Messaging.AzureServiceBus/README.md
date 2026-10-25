@@ -80,7 +80,7 @@ The subscriber identity used for deduplication is `InboxOptions.ConsumerId`, not
 docker compose -f Trellis.Messaging.AzureServiceBus/tests/emulator/docker-compose.yml up -d
 ```
 
-The emulator declares its entities in `Config.json` at startup and cannot create them at runtime, which is why the compose file and its entity list are part of the test fixture. Duplicate detection is deliberately **off** on the test topic: if the broker collapsed duplicate ids, the tests would pass even if the transport invented a fresh id per publish. The suite skips visibly when no emulator is reachable, so it never passes against a substitute.
+The emulator declares its entities in `Config.json` at startup and cannot create them at runtime, which is why the compose file and its entity list are part of the test fixture. Duplicate detection is deliberately **off** on the test topic: if the broker collapsed duplicate ids, the tests would pass even if the transport invented a fresh id per publish. With no backend or connection selected, the suite probes the local emulator and skips visibly if it is unavailable; it never passes against a substitute.
 
 ## Documentation
 
@@ -96,10 +96,35 @@ Run the package tests from the repository root:
 dotnet test --project Trellis.Messaging.AzureServiceBus\tests\Trellis.Messaging.AzureServiceBus.Tests.csproj -c Release
 ```
 
-Start the Azure Service Bus emulator with the command above before running emulator-backed integration tests.
+For an isolated run, use Testcontainers with a running Linux-container Docker daemon:
+
+```powershell
+$env:TRELLIS_TEST_SERVICEBUS = 'testcontainers'
+dotnet test --project Trellis.Messaging.AzureServiceBus\tests\Trellis.Messaging.AzureServiceBus.Tests.csproj -c Release `
+    --filter-class Trellis.Messaging.AzureServiceBus.Tests.ServiceBusTransportIntegrationTests `
+    --fail-skips on --minimum-expected-tests 6
+```
+
+The fixture owns one Service Bus emulator (`2.0.1`), its separate SQL Server backend
+(`2022-CU27-ubuntu-22.04`), a private network, and the shared SDK client for the six
+integration cases. It loads the existing `Config.json` and publishes dynamic loopback-only
+ports without changing a locally running emulator. Startup is bounded to five minutes;
+teardown waits up to thirty seconds and attempts to dispose the client, broker, SQL backend,
+and network in that order. Explicit Testcontainers startup failures fail rather than skip.
+Broker and SQL logs are retained under the test output directory's
+`TestResults\servicebus-integration`.
+
+CI runs these six cases automatically inside the `build` job with skips and empty discovery
+treated as failures. The pinned broker and SQL images are pulled while restore/build runs;
+both pulls must finish successfully before testing. TRX results and container logs are uploaded
+even after failures.
+
+Unset `TRELLIS_TEST_SERVICEBUS` to return to the default local-emulator probe and start the
+emulator with the Compose command above. Other nonblank backend values are configuration errors.
 
 To use an isolated emulator on another port, set `TRELLIS_TEST_SERVICEBUS_CONNECTION` to its
 connection string, including `UseDevelopmentEmulator=true`, before running the tests. Provision
 the same topic and subscriptions from `tests\emulator\Config.json`. An explicit connection must
 be reachable; probe failures fail the tests rather than falling back to the shared emulator or
-skipping. Leave the variable unset to retain the default local emulator behavior.
+skipping. Do not combine this override with `TRELLIS_TEST_SERVICEBUS=testcontainers`.
+Leave both variables unset to retain the default local emulator behavior.

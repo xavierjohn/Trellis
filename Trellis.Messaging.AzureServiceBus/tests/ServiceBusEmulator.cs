@@ -14,6 +14,7 @@ using Azure.Messaging.ServiceBus;
 /// against a substitute.
 /// </para>
 /// <para>An explicitly configured connection is required to work; probe failures propagate.</para>
+/// <para>Explicit Testcontainers selection owns a broker and its SQL backend; startup failures propagate.</para>
 /// <para>
 /// Entities are declared in <c>emulator/Config.json</c> and cannot be created at runtime, so
 /// <see cref="Topic"/> and the subscription names below must match that file.
@@ -34,13 +35,51 @@ public sealed class ServiceBusEmulator : IAsyncLifetime
     public const string Topic = OrderPlaced.WireName;
 
     private readonly Lazy<Task<ServiceBusClient?>> _client;
+    private readonly Func<ServiceBusTestcontainersFixture> _createFixture = () => new();
+    private ServiceBusTestcontainersFixture? _ownedFixture;
 
     /// <summary>Creates the shared emulator client fixture.</summary>
-    public ServiceBusEmulator() : this(ProbeAsync)
+    public ServiceBusEmulator() : this(ReadEnabled(), () => new())
     {
     }
 
     internal ServiceBusEmulator(Func<Task<ServiceBusClient?>> probe) => _client = new(probe);
+
+    internal ServiceBusEmulator(
+        bool useTestcontainers,
+        Func<ServiceBusTestcontainersFixture> createFixture,
+        Func<Task<ServiceBusClient?>>? nativeProbe = null)
+    {
+        _createFixture = createFixture;
+        _client = useTestcontainers
+            ? new(CreateOwnedClientAsync)
+            : new(nativeProbe ?? ProbeAsync);
+    }
+
+    private static bool ReadEnabled()
+    {
+        var backend = Environment.GetEnvironmentVariable("TRELLIS_TEST_SERVICEBUS");
+        if (string.IsNullOrWhiteSpace(backend))
+            return false;
+
+        if (backend != "testcontainers")
+            throw new InvalidOperationException(
+                "TRELLIS_TEST_SERVICEBUS must be unset or 'testcontainers'.");
+
+        if (!string.IsNullOrWhiteSpace(
+            Environment.GetEnvironmentVariable("TRELLIS_TEST_SERVICEBUS_CONNECTION")))
+            throw new InvalidOperationException(
+                "Do not combine TRELLIS_TEST_SERVICEBUS=testcontainers with TRELLIS_TEST_SERVICEBUS_CONNECTION.");
+
+        return true;
+    }
+
+    private async Task<ServiceBusClient?> CreateOwnedClientAsync()
+    {
+        _ownedFixture = _createFixture();
+        await _ownedFixture.InitializeAsync();
+        return _ownedFixture.Client;
+    }
 
     /// <summary>Returns a shared client, or <c>null</c> when the default emulator is unreachable.</summary>
     public Task<ServiceBusClient?> TryGetClientAsync() => _client.Value;
@@ -50,6 +89,17 @@ public sealed class ServiceBusEmulator : IAsyncLifetime
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
+    {
+        if (_ownedFixture is not null)
+        {
+            await _ownedFixture.DisposeAsync();
+            return;
+        }
+
+        await DisposeNativeClientAsync().WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
+    }
+
+    private async Task DisposeNativeClientAsync()
     {
         if (!_client.IsValueCreated)
             return;
@@ -66,21 +116,28 @@ public sealed class ServiceBusEmulator : IAsyncLifetime
 
     private static async Task<ServiceBusClient?> ProbeAsync()
     {
+        using var probe = new TcpClient();
         var configuredConnection = Environment.GetEnvironmentVariable("TRELLIS_TEST_SERVICEBUS_CONNECTION");
+        return await ProbeAsync(configuredConnection, probe.ConnectAsync);
+    }
+
+    internal static async Task<ServiceBusClient?> ProbeAsync(
+        string? configuredConnection,
+        Func<string, int, CancellationToken, ValueTask> connect)
+    {
         var connectionString = string.IsNullOrWhiteSpace(configuredConnection)
             ? ConnectionString
             : configuredConnection;
         var endpoint = ServiceBusConnectionStringProperties.Parse(connectionString).Endpoint
             ?? throw new InvalidOperationException("The emulator connection string must include an Endpoint.");
-        using var probe = new TcpClient();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         try
         {
-            await probe.ConnectAsync(endpoint.Host, endpoint.IsDefaultPort ? AmqpPort : endpoint.Port, timeout.Token);
+            await connect(endpoint.Host, endpoint.IsDefaultPort ? AmqpPort : endpoint.Port, timeout.Token);
         }
         catch (Exception ex) when (string.IsNullOrWhiteSpace(configuredConnection)
-            && ex is SocketException or OperationCanceledException)
+            && (ex is SocketException or OperationCanceledException))
         {
             // Narrow by design: these are the shapes "no emulator here" takes. Anything else is a real
             // defect and must surface rather than silently skipping the whole suite.

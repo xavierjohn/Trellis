@@ -78,6 +78,7 @@
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="MySqlConnector" Version="2.6.2" />
     <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.ServiceBus" Version="4.16.0" />
     <!-- The Cosmos DB SDK uses Newtonsoft.Json internally but deliberately omits it from its
          dependencies so consumers pin the version. Its build target fails without an explicit
          reference. -->
