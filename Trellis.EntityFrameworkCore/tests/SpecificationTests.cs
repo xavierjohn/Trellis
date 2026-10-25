@@ -43,20 +43,6 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
         _sqliteContext = new ScalarValueTestDbContext(sqliteOptions);
         await _sqliteContext.Database.EnsureCreatedAsync();
 
-        if (sqlServerFixture.IsEnabled)
-            await InitializeSqlServerAsync(sqlServerFixture.CreateConnectionString());
-        else if (Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER") == "true")
-        {
-            try
-            {
-                await InitializeSqlServerAsync(SqlServerConnectionString);
-            }
-            catch
-            {
-                _sqlServerAvailable = false;
-            }
-        }
-
         // Seed data
         var alice = new TestCustomer
         {
@@ -76,6 +62,28 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
         _sqliteContext.Customers.AddRange(alice, bob);
         await _sqliteContext.SaveChangesAsync();
         _sqliteContext.ChangeTracker.Clear();
+
+        _memoryStore = [alice, bob];
+    }
+
+    private async Task InitializeSqlServerOnDemandAsync()
+    {
+        if (_sqlServerContext is not null)
+            return;
+
+        if (sqlServerFixture.IsEnabled)
+            await InitializeSqlServerAsync(await sqlServerFixture.CreateConnectionStringAsync());
+        else if (Environment.GetEnvironmentVariable("TRELLIS_TEST_SQLSERVER") == "true")
+        {
+            try
+            {
+                await InitializeSqlServerAsync(SqlServerConnectionString);
+            }
+            catch
+            {
+                _sqlServerAvailable = false;
+            }
+        }
 
         if (_sqlServerAvailable)
         {
@@ -98,8 +106,6 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
             await _sqlServerContext.SaveChangesAsync();
             _sqlServerContext.ChangeTracker.Clear();
         }
-
-        _memoryStore = [alice, bob];
     }
 
     private async Task InitializeSqlServerAsync(string connectionString)
@@ -117,14 +123,11 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
 
     public async ValueTask DisposeAsync()
     {
-        await _sqliteContext.DisposeAsync();
-        await _sqliteConnection.DisposeAsync();
-
+        await using var sqliteConnection = _sqliteConnection;
+        await using var sqliteContext = _sqliteContext;
+        await using var sqlServerContext = _sqlServerContext;
         if (_sqlServerContext is not null)
-        {
             await _sqlServerContext.Database.EnsureDeletedAsync();
-            await _sqlServerContext.DisposeAsync();
-        }
 
         GC.SuppressFinalize(this);
     }
@@ -136,20 +139,15 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
         if (backend == "Memory")
             return _memoryStore.Where(spec.IsSatisfiedBy).ToList();
 
-        if (backend == "SqlServer")
-        {
-            if (!_sqlServerAvailable)
-                Assert.Skip("SQL Server (LocalDB) is not available");
-            return await _sqlServerContext!.Customers.Where(spec).ToListAsync(TestContext.Current.CancellationToken);
-        }
-
-        return await _sqliteContext.Customers.Where(spec).ToListAsync(TestContext.Current.CancellationToken);
+        var context = await GetEfContextAsync(backend);
+        return await context.Customers.Where(spec).ToListAsync(TestContext.Current.CancellationToken);
     }
 
-    private ScalarValueTestDbContext GetEfContext(string backend)
+    private async ValueTask<ScalarValueTestDbContext> GetEfContextAsync(string backend)
     {
         if (backend == "SqlServer")
         {
+            await InitializeSqlServerOnDemandAsync();
             if (!_sqlServerAvailable)
                 Assert.Skip("SQL Server (LocalDB) is not available");
             return _sqlServerContext!;
@@ -225,7 +223,7 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
     [MemberData(nameof(EfBackends))]
     public async Task OrderBy_VO_without_Value(string backend)
     {
-        var ctx = GetEfContext(backend);
+        var ctx = await GetEfContextAsync(backend);
         var ct = TestContext.Current.CancellationToken;
 
         var customers = await ctx.Customers
@@ -241,7 +239,7 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
     [MemberData(nameof(EfBackends))]
     public async Task OrderByDescending_VO_without_Value(string backend)
     {
-        var ctx = GetEfContext(backend);
+        var ctx = await GetEfContextAsync(backend);
         var ct = TestContext.Current.CancellationToken;
 
         var customers = await ctx.Customers
@@ -286,7 +284,7 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
     [MemberData(nameof(EfBackends))]
     public async Task Select_VO_then_Where_equals(string backend)
     {
-        var ctx = GetEfContext(backend);
+        var ctx = await GetEfContextAsync(backend);
         var ct = TestContext.Current.CancellationToken;
 
         var names = await ctx.Customers
@@ -302,7 +300,7 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
     [MemberData(nameof(EfBackends))]
     public async Task Select_VO_then_Where_StartsWith(string backend)
     {
-        var ctx = GetEfContext(backend);
+        var ctx = await GetEfContextAsync(backend);
         var ct = TestContext.Current.CancellationToken;
 
         var names = await ctx.Customers

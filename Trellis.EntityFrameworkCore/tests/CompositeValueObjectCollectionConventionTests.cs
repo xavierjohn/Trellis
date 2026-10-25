@@ -25,6 +25,7 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
 {
     private CollectionVoDbContext? _context;
     private SqliteConnection? _connection;
+    private CollectionVoSqlServerContext? _sqlServerContext;
 
     private CollectionVoDbContext Context
     {
@@ -45,8 +46,10 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
 
     public void Dispose()
     {
-        _context?.Dispose();
-        _connection?.Dispose();
+        using var connection = _connection;
+        using var context = _context;
+        using var sqlServerContext = _sqlServerContext;
+        _sqlServerContext?.Database.EnsureDeleted();
         GC.SuppressFinalize(this);
     }
 
@@ -135,7 +138,7 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
     }
 
     [Fact]
-    public void RequiredComposite_OwningVoCollection_RoundTrips_OnSqlServer()
+    public async Task RequiredComposite_OwningVoCollection_RoundTrips_OnSqlServer()
     {
         if (!sqlServerFixture.IsEnabled && !SqlServerAvailable())
         {
@@ -143,34 +146,31 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
             return;
         }
 
-        var connectionString = CreateSqlServerConnectionString();
-        using var ctx = new CollectionVoSqlServerContext(connectionString);
-        try
+        var connectionString = await CreateSqlServerConnectionStringAsync();
+        if (!sqlServerFixture.IsEnabled)
+            new SqlConnectionStringBuilder(connectionString).InitialCatalog.Should()
+                .Be(new SqlConnectionStringBuilder(SqlServerConnectionString).InitialCatalog);
+        var ctx = _sqlServerContext = new CollectionVoSqlServerContext(connectionString);
+        ctx.Database.EnsureDeleted();
+        ctx.Database.EnsureCreated();
+        ctx.Set<RequiredScorecardEntity>().Add(new RequiredScorecardEntity
         {
-            ctx.Database.EnsureCreated();
-            ctx.Set<RequiredScorecardEntity>().Add(new RequiredScorecardEntity
-            {
-                Inning = new CricketInning(
-                    TestStateCode.Create("Alpha"),
-                    [
-                        new CricketLine(TestStateCode.Create("Bob"), TestTicketNumber.Create(10)),
-                        new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
-                    ]),
-            });
-            ctx.SaveChanges();
+            Inning = new CricketInning(
+                TestStateCode.Create("Alpha"),
+                [
+                    new CricketLine(TestStateCode.Create("Bob"), TestTicketNumber.Create(10)),
+                    new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
+                ]),
+        });
+        ctx.SaveChanges();
 
-            using var verify = new CollectionVoSqlServerContext(connectionString);
-            var loaded = verify.Set<RequiredScorecardEntity>().Single();
-            loaded.Inning.Lines.Should().HaveCount(2);
-        }
-        finally
-        {
-            ctx.Database.EnsureDeleted();
-        }
+        using var verify = new CollectionVoSqlServerContext(connectionString);
+        var loaded = verify.Set<RequiredScorecardEntity>().Single();
+        loaded.Inning.Lines.Should().HaveCount(2);
     }
 
     [Fact]
-    public void MaybeComposite_OwningVoCollection_RoundTrips_OnSqlServer()
+    public async Task MaybeComposite_OwningVoCollection_RoundTrips_OnSqlServer()
     {
         if (!sqlServerFixture.IsEnabled && !SqlServerAvailable())
         {
@@ -178,42 +178,36 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
             return;
         }
 
-        var connectionString = CreateSqlServerConnectionString();
-        using var ctx = new CollectionVoSqlServerContext(connectionString);
-        try
+        var connectionString = await CreateSqlServerConnectionStringAsync();
+        if (!sqlServerFixture.IsEnabled)
+            new SqlConnectionStringBuilder(connectionString).InitialCatalog.Should()
+                .Be(new SqlConnectionStringBuilder(SqlServerConnectionString).InitialCatalog);
+        var ctx = _sqlServerContext = new CollectionVoSqlServerContext(connectionString);
+        ctx.Database.EnsureDeleted();
+        ctx.Database.EnsureCreated();
+        ctx.Set<MaybeScorecardEntity>().Add(new MaybeScorecardEntity
         {
-            ctx.Database.EnsureCreated();
-            ctx.Set<MaybeScorecardEntity>().Add(new MaybeScorecardEntity
-            {
-                Inning = Maybe.From(new CricketInning(
-                    TestStateCode.Create("Alpha"),
-                    [
-                        new CricketLine(TestStateCode.Create("Bob"), TestTicketNumber.Create(10)),
-                        new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
-                    ])),
-            });
-            ctx.SaveChanges();
+            Inning = Maybe.From(new CricketInning(
+                TestStateCode.Create("Alpha"),
+                [
+                    new CricketLine(TestStateCode.Create("Bob"), TestTicketNumber.Create(10)),
+                    new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
+                ])),
+        });
+        ctx.SaveChanges();
 
-            using var verify = new CollectionVoSqlServerContext(connectionString);
-            var loaded = verify.Set<MaybeScorecardEntity>().Single();
-            loaded.Inning.HasValue.Should().BeTrue();
-            loaded.Inning.Value.Lines.Should().HaveCount(2);
-        }
-        finally
-        {
-            ctx.Database.EnsureDeleted();
-        }
+        using var verify = new CollectionVoSqlServerContext(connectionString);
+        var loaded = verify.Set<MaybeScorecardEntity>().Single();
+        loaded.Inning.HasValue.Should().BeTrue();
+        loaded.Inning.Value.Lines.Should().HaveCount(2);
     }
 
     private const string SqlServerConnectionString =
         "Server=(localdb)\\MSSQLLocalDB;Database=TrellisCompositeVoCollectionTests;Trusted_Connection=True;TrustServerCertificate=True";
 
-    private string CreateSqlServerConnectionString() => sqlServerFixture.IsEnabled
-        ? sqlServerFixture.CreateConnectionString()
-        : new SqlConnectionStringBuilder(SqlServerConnectionString)
-        {
-            InitialCatalog = $"TrellisCompositeVoCollectionTests_{Guid.NewGuid():N}"
-        }.ConnectionString;
+    private async ValueTask<string> CreateSqlServerConnectionStringAsync() => sqlServerFixture.IsEnabled
+        ? await sqlServerFixture.CreateConnectionStringAsync()
+        : SqlServerConnectionString;
 
     private static bool SqlServerAvailable()
     {

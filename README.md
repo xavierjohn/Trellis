@@ -202,7 +202,7 @@ Integration tests that need SQL Server, Azure Service Bus or Cosmos DB skip visi
 
 | Variable | Values | Effect |
 |---|---|---|
-| `TRELLIS_TEST_SQLSERVER` | `testcontainers` | SQL Server specification and convention tests share one owned container, with an isolated database per case. |
+| `TRELLIS_TEST_SQLSERVER` | `testcontainers` | SQL Server specification and convention tests share one on-demand owned container, with an isolated database per case. |
 | `TRELLIS_TEST_SQLSERVER` | `true` | Use LocalDB, or the server named by `TRELLIS_TEST_SQLSERVER_CONNECTION`. |
 | `TRELLIS_TEST_SQLSERVER_CONNECTION` | connection string | External SQL Server; do not combine with `testcontainers`. |
 | `TRELLIS_TEST_SERVICEBUS` | `testcontainers` | The transport tests start their own emulator and SQL backend. |

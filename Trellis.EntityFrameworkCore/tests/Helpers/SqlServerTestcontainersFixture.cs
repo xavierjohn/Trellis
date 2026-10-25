@@ -8,7 +8,7 @@ using Testcontainers.MsSql;
 using Trellis.TestSupport;
 
 /// <summary>
-/// Owns the optional SQL Server container shared by this test assembly.
+/// Owns the optional, lazily started SQL Server container shared by this test assembly.
 /// </summary>
 public sealed class SqlServerTestcontainersFixture : IAsyncLifetime
 {
@@ -18,7 +18,10 @@ public sealed class SqlServerTestcontainersFixture : IAsyncLifetime
     private const string OwnerLabel = "trellis.testcontainers-fixture";
     private const string Owner = "sqlserver-specifications";
     private readonly Func<IDatabaseContainer> _createContainer;
+    private readonly string? _externalConnectionString;
+    private readonly Lazy<Task<IDatabaseContainer>> _startup;
     private readonly ContainerLogs _logs = new("sqlserver-integration", "sqlserver");
+    private CancellationToken _assemblyCancellationToken;
     private IDatabaseContainer? _container;
 
     /// <summary>Creates the optional SQL Server fixture.</summary>
@@ -28,50 +31,53 @@ public sealed class SqlServerTestcontainersFixture : IAsyncLifetime
 
     internal SqlServerTestcontainersFixture(Func<string, string?> getEnvironmentVariable)
     {
-        IsEnabled = ReadEnabled(getEnvironmentVariable);
+        IsEnabled = getEnvironmentVariable("TRELLIS_TEST_SQLSERVER") == "testcontainers";
+        _externalConnectionString = IsEnabled ? getEnvironmentVariable("TRELLIS_TEST_SQLSERVER_CONNECTION") : null;
         _createContainer = CreateContainer;
+        _startup = new(StartContainerAsync);
     }
 
     internal SqlServerTestcontainersFixture(bool enabled, Func<IDatabaseContainer> createContainer)
     {
         IsEnabled = enabled;
         _createContainer = createContainer;
-    }
-
-    private static bool ReadEnabled(Func<string, string?> getEnvironmentVariable)
-    {
-        var enabled = getEnvironmentVariable("TRELLIS_TEST_SQLSERVER") == "testcontainers";
-        if (enabled && !string.IsNullOrWhiteSpace(getEnvironmentVariable("TRELLIS_TEST_SQLSERVER_CONNECTION")))
-            throw new InvalidOperationException(
-                "Do not combine TRELLIS_TEST_SQLSERVER=testcontainers with TRELLIS_TEST_SQLSERVER_CONNECTION.");
-        return enabled;
+        _startup = new(StartContainerAsync);
     }
 
     /// <summary>Gets whether the Testcontainers backend was explicitly selected.</summary>
     public bool IsEnabled { get; }
 
-    /// <summary>Creates a connection string for an isolated test database.</summary>
-    public string CreateConnectionString()
+    /// <summary>Starts the shared container on demand and creates a connection string for an isolated test database.</summary>
+    public async ValueTask<string> CreateConnectionStringAsync()
     {
-        if (_container is null)
-            throw new InvalidOperationException("The SQL Server container is not initialized.");
+        if (!IsEnabled)
+            throw new InvalidOperationException("SQL Server Testcontainers is not enabled for this test run.");
 
-        return new SqlConnectionStringBuilder(_container.GetConnectionString())
+        var container = await _startup.Value;
+        return new SqlConnectionStringBuilder(container.GetConnectionString())
         {
             InitialCatalog = $"TrellisSpec_{Guid.NewGuid():N}"
         }.ConnectionString;
     }
 
     /// <inheritdoc />
-    public async ValueTask InitializeAsync()
+    public ValueTask InitializeAsync()
     {
-        if (!IsEnabled)
-            return;
+        _assemblyCancellationToken = TestContext.Current.CancellationToken;
+        return ValueTask.CompletedTask;
+    }
+
+    private async Task<IDatabaseContainer> StartContainerAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_externalConnectionString))
+            throw new InvalidOperationException(
+                "Do not combine TRELLIS_TEST_SQLSERVER=testcontainers with TRELLIS_TEST_SQLSERVER_CONNECTION.");
 
         _container = _createContainer();
-        using var startup = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        using var startup = CancellationTokenSource.CreateLinkedTokenSource(_assemblyCancellationToken);
         startup.CancelAfter(ContainerFixtureSupport.StartupTimeout);
         await _container.StartAsync(startup.Token);
+        return _container;
     }
 
     /// <inheritdoc />

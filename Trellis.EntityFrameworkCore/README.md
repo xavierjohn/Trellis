@@ -116,10 +116,12 @@ The first run downloads the image pinned by tag and digest. Container startup or
 the run rather than skip cases. The `Build` workflow's `build` job runs this selection on Linux
 with skips treated as failures, and retains its results and container logs.
 
-The assembly fixture shares one container across `SpecificationTests`,
+The assembly fixture starts one container on the first SQL Server request and shares it across `SpecificationTests`,
 `CompositeValueObjectCollectionConventionTests`, and `OwnedCollectionKeyConventionTests`
-without serializing those classes. Each SQL case uses an isolated database that is deleted
-after the case, including on failure.
+without serializing those classes. Selecting only other tests does not start Docker or validate SQL configuration.
+Each owned-container case uses an isolated database. Native convention cases reuse their class-specific LocalDB
+databases and recreate them before use, recovering interrupted runs. Database cleanup runs in xUnit teardown
+so cleanup errors do not replace test failures.
 
 With the variable unset, the tests do not access Docker; the convention cases still probe
 LocalDB. The existing `TRELLIS_TEST_SQLSERVER=true` LocalDB/external-connection mode for

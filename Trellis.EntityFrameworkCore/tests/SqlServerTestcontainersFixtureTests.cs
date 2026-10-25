@@ -20,6 +20,8 @@ public class SqlServerTestcontainersFixtureTests
         await fixture.InitializeAsync();
 
         fixture.IsEnabled.Should().BeFalse();
+        Func<Task> request = () => fixture.CreateConnectionStringAsync().AsTask();
+        await request.Should().ThrowExactlyAsync<InvalidOperationException>();
         factoryCalls.Should().Be(0);
     }
 
@@ -38,12 +40,16 @@ public class SqlServerTestcontainersFixtureTests
     }
 
     [Fact]
-    public void Constructor_BackendSelection_TestcontainersWithExternalConnection_Throws()
+    public async Task CreateConnectionStringAsync_TestcontainersWithExternalConnection_ThrowsOnDemand()
     {
-        var create = () => new SqlServerTestcontainersFixture(
+        await using var fixture = new SqlServerTestcontainersFixture(
             SqlServerEnvironment("testcontainers", "Server=.;Database=x"));
 
-        create.Should().ThrowExactly<InvalidOperationException>()
+        await fixture.InitializeAsync();
+        fixture.IsEnabled.Should().BeTrue();
+        Func<Task> request = () => fixture.CreateConnectionStringAsync().AsTask();
+
+        (await request.Should().ThrowExactlyAsync<InvalidOperationException>())
             .Which.Message.Should().Contain("TRELLIS_TEST_SQLSERVER_CONNECTION");
     }
 
@@ -53,14 +59,15 @@ public class SqlServerTestcontainersFixtureTests
             ("TRELLIS_TEST_SQLSERVER_CONNECTION", connection));
 
     [Fact]
-    public async Task InitializeAsync_Enabled_MultipleDatabases_SharesContainerAndIsolatesDatabases()
+    public async Task CreateConnectionStringAsync_ConcurrentRequests_SharesStartupAndIsolatesDatabases()
     {
+        var startup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var container = new Mock<IDatabaseContainer>(MockBehavior.Strict);
         var factoryCalls = 0;
         CancellationToken startupToken = default;
         container.Setup(c => c.StartAsync(It.IsAny<CancellationToken>()))
             .Callback<CancellationToken>(token => startupToken = token)
-            .Returns(Task.CompletedTask);
+            .Returns(startup.Task);
         container.Setup(c => c.GetConnectionString())
             .Returns("Server=127.0.0.1,49152;Database=master;Integrated Security=True;TrustServerCertificate=True");
         container.Setup(c => c.DisposeAsync()).Returns(ValueTask.CompletedTask);
@@ -73,10 +80,17 @@ public class SqlServerTestcontainersFixtureTests
         {
             await fixture.InitializeAsync();
 
-            container.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
-            var first = new SqlConnectionStringBuilder(fixture.CreateConnectionString());
-            var second = new SqlConnectionStringBuilder(fixture.CreateConnectionString());
+            factoryCalls.Should().Be(0);
+            container.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Never);
+            var firstRequest = fixture.CreateConnectionStringAsync().AsTask();
+            var secondRequest = fixture.CreateConnectionStringAsync().AsTask();
 
+            container.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
+            firstRequest.IsCompleted.Should().BeFalse();
+            secondRequest.IsCompleted.Should().BeFalse();
+            startup.SetResult();
+            var first = new SqlConnectionStringBuilder(await firstRequest);
+            var second = new SqlConnectionStringBuilder(await secondRequest);
             fixture.IsEnabled.Should().BeTrue();
             factoryCalls.Should().Be(1);
             startupToken.CanBeCanceled.Should().BeTrue();
@@ -104,9 +118,13 @@ public class SqlServerTestcontainersFixtureTests
 
         try
         {
-            Func<Task> initialize = () => fixture.InitializeAsync().AsTask();
-            var thrown = await initialize.Should().ThrowExactlyAsync<InvalidOperationException>();
+            await fixture.InitializeAsync();
+            Func<Task> request = () => fixture.CreateConnectionStringAsync().AsTask();
+            var thrown = await request.Should().ThrowExactlyAsync<InvalidOperationException>();
             thrown.Which.Should().BeSameAs(failure);
+            (await request.Should().ThrowExactlyAsync<InvalidOperationException>())
+                .Which.Should().BeSameAs(failure);
+            container.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
 
             cleanup = fixture.DisposeAsync().AsTask();
             await cleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);

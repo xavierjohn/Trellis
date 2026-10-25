@@ -17,6 +17,7 @@ public sealed class OwnedCollectionKeyConventionTests : IDisposable
     private readonly SqlServerTestcontainersFixture _sqlServerFixture;
     private readonly SqliteConnection _connection;
     private readonly DbContextOptions<OwnedKeyDbContext> _options;
+    private LedgerSqlServerContext? _sqlServerContext;
 
     public OwnedCollectionKeyConventionTests(SqlServerTestcontainersFixture sqlServerFixture)
     {
@@ -32,7 +33,9 @@ public sealed class OwnedCollectionKeyConventionTests : IDisposable
 
     public void Dispose()
     {
-        _connection.Dispose();
+        using var connection = _connection;
+        using var sqlServerContext = _sqlServerContext;
+        _sqlServerContext?.Database.EnsureDeleted();
         GC.SuppressFinalize(this);
     }
 
@@ -116,7 +119,7 @@ public sealed class OwnedCollectionKeyConventionTests : IDisposable
     }
 
     [Fact]
-    public void OwnedCollectionChild_DomainAssignedKey_InsertsExplicitValue_OnSqlServer()
+    public async Task OwnedCollectionChild_DomainAssignedKey_InsertsExplicitValue_OnSqlServer()
     {
         if (!_sqlServerFixture.IsEnabled && !SqlServerAvailable())
         {
@@ -126,30 +129,24 @@ public sealed class OwnedCollectionKeyConventionTests : IDisposable
 
         const long explicitKey = 1001L;
         var connectionString = _sqlServerFixture.IsEnabled
-            ? _sqlServerFixture.CreateConnectionString()
-            : new SqlConnectionStringBuilder(SqlServerConnectionString)
-            {
-                InitialCatalog = $"TrellisOwnedCollectionKeyTests_{Guid.NewGuid():N}"
-            }.ConnectionString;
-        using var ctx = new LedgerSqlServerContext(connectionString);
-        try
-        {
-            ctx.Database.EnsureCreated();
-            var parent = new LedgerParent { Id = Guid.CreateVersion7() };
-            parent.Entries.Add(new LedgerEntry { Id = explicitKey, Payload = "first" });
-            // RED before the fix: an integer owned-collection key mapped as store-generated becomes an
-            // IDENTITY column, so inserting the domain-assigned value throws SqlException 544.
-            ctx.LedgerParents.Add(parent);
-            ctx.SaveChanges();
+            ? await _sqlServerFixture.CreateConnectionStringAsync()
+            : SqlServerConnectionString;
+        if (!_sqlServerFixture.IsEnabled)
+            new SqlConnectionStringBuilder(connectionString).InitialCatalog.Should()
+                .Be(new SqlConnectionStringBuilder(SqlServerConnectionString).InitialCatalog);
+        var ctx = _sqlServerContext = new LedgerSqlServerContext(connectionString);
+        ctx.Database.EnsureDeleted();
+        ctx.Database.EnsureCreated();
+        var parent = new LedgerParent { Id = Guid.CreateVersion7() };
+        parent.Entries.Add(new LedgerEntry { Id = explicitKey, Payload = "first" });
+        // RED before the fix: an integer owned-collection key mapped as store-generated becomes an
+        // IDENTITY column, so inserting the domain-assigned value throws SqlException 544.
+        ctx.LedgerParents.Add(parent);
+        ctx.SaveChanges();
 
-            using var verify = new LedgerSqlServerContext(connectionString);
-            var loaded = verify.LedgerParents.Include(p => p.Entries).Single();
-            loaded.Entries.Should().ContainSingle().Which.Id.Should().Be(explicitKey);
-        }
-        finally
-        {
-            ctx.Database.EnsureDeleted();
-        }
+        using var verify = new LedgerSqlServerContext(connectionString);
+        var loaded = verify.LedgerParents.Include(p => p.Entries).Single();
+        loaded.Entries.Should().ContainSingle().Which.Id.Should().Be(explicitKey);
     }
 
     private static IReadOnlyProperty OwnedChildProperty(OwnedKeyDbContext ctx, Type parent, string navigation, string keyName)
