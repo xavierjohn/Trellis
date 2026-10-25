@@ -36,19 +36,22 @@ internal static class CosmosEmulator
     /// </summary>
     public static Task<Container?> TryGetContainerAsync() => Container.Value;
 
-    private static Task<Container?> ProvisionAsync() => ProvisionAsync(static async (client, cancellationToken) =>
-    {
-        var database = await client.CreateDatabaseIfNotExistsAsync(
-            DatabaseId, cancellationToken: cancellationToken);
+    private static Task<Container?> ProvisionAsync() => ProvisionAsync(
+        Environment.GetEnvironmentVariable,
+        static async (client, cancellationToken) =>
+        {
+            var database = await client.CreateDatabaseIfNotExistsAsync(
+                DatabaseId, cancellationToken: cancellationToken);
 
-        return await CosmosIdempotencyContainer.CreateIfNotExistsAsync(
-            database.Database, cancellationToken: cancellationToken);
-    });
+            return await CosmosIdempotencyContainer.CreateIfNotExistsAsync(
+                database.Database, cancellationToken: cancellationToken);
+        });
 
     internal static async Task<Container?> ProvisionAsync(
+        Func<string, string?> getEnvironmentVariable,
         Func<CosmosClient, CancellationToken, Task<Container>> provision)
     {
-        var configuredEndpoint = Environment.GetEnvironmentVariable("TRELLIS_TEST_COSMOS_ENDPOINT");
+        var configuredEndpoint = getEnvironmentVariable("TRELLIS_TEST_COSMOS_ENDPOINT");
         var client = new CosmosClient(
             string.IsNullOrWhiteSpace(configuredEndpoint) ? Endpoint : configuredEndpoint,
             Key, new CosmosClientOptions

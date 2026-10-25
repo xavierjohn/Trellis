@@ -3,6 +3,7 @@
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Moq;
+using Trellis.TestSupport;
 
 public class SqlServerTestcontainersFixtureTests
 {
@@ -21,6 +22,35 @@ public class SqlServerTestcontainersFixtureTests
         fixture.IsEnabled.Should().BeFalse();
         factoryCalls.Should().Be(0);
     }
+
+    [Theory]
+    [InlineData(null, null, false)]
+    [InlineData("true", null, false)]
+    [InlineData("true", "Server=.;Database=x", false)]
+    [InlineData("testcontainers", null, true)]
+    [InlineData("testcontainers", "  ", true)]
+    public void Constructor_BackendSelection_ReadsOnlyTheTestcontainersValue(
+        string? backend, string? connection, bool expectedEnabled)
+    {
+        var fixture = new SqlServerTestcontainersFixture(SqlServerEnvironment(backend, connection));
+
+        fixture.IsEnabled.Should().Be(expectedEnabled);
+    }
+
+    [Fact]
+    public void Constructor_BackendSelection_TestcontainersWithExternalConnection_Throws()
+    {
+        var create = () => new SqlServerTestcontainersFixture(
+            SqlServerEnvironment("testcontainers", "Server=.;Database=x"));
+
+        create.Should().ThrowExactly<InvalidOperationException>()
+            .Which.Message.Should().Contain("TRELLIS_TEST_SQLSERVER_CONNECTION");
+    }
+
+    private static Func<string, string?> SqlServerEnvironment(string? backend, string? connection) =>
+        FakeEnvironment.With(
+            ("TRELLIS_TEST_SQLSERVER", backend),
+            ("TRELLIS_TEST_SQLSERVER_CONNECTION", connection));
 
     [Fact]
     public async Task InitializeAsync_Enabled_MultipleDatabases_SharesContainerAndIsolatesDatabases()

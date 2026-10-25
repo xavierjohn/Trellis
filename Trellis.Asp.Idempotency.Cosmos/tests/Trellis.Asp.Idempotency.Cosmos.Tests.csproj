@@ -6,4 +6,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\build\test-support\FakeEnvironment.cs" Link="Helpers\FakeEnvironment.cs" />
+  </ItemGroup>
+
 </Project>

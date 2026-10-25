@@ -196,6 +196,21 @@ The Trellis family extends the core framework into multi-service topologies, rea
 
 Contributions are welcome. For major changes, please open an issue first and run `dotnet test` before sending a PR.
 
+### Optional integration backends
+
+Integration tests that need SQL Server, Azure Service Bus or Cosmos DB skip visibly when no backend is reachable. The `build` workflow runs the SQL Server and Service Bus cases with owned containers and treats skips as failures. These variables select a backend locally:
+
+| Variable | Values | Effect |
+|---|---|---|
+| `TRELLIS_TEST_SQLSERVER` | `testcontainers` | `SpecificationTests` start their own SQL Server container. |
+| `TRELLIS_TEST_SQLSERVER` | `true` | Use LocalDB, or the server named by `TRELLIS_TEST_SQLSERVER_CONNECTION`. |
+| `TRELLIS_TEST_SQLSERVER_CONNECTION` | connection string | External SQL Server; do not combine with `testcontainers`. |
+| `TRELLIS_TEST_SERVICEBUS` | `testcontainers` | The transport tests start their own emulator and SQL backend. |
+| `TRELLIS_TEST_SERVICEBUS_CONNECTION` | connection string | Use an emulator on another port; unreachable means failure, not skip. Do not combine with `testcontainers`. |
+| `TRELLIS_TEST_COSMOS_ENDPOINT` | HTTPS URL | Use a Cosmos emulator on another endpoint; unreachable means failure, not skip. |
+
+Unset variables keep the defaults: the local emulators are probed and the cases skip when absent. Setup details are in [`Trellis.EntityFrameworkCore`](Trellis.EntityFrameworkCore/README.md), [`Trellis.Messaging.AzureServiceBus`](Trellis.Messaging.AzureServiceBus/README.md) and [`Trellis.Asp.Idempotency.Cosmos`](Trellis.Asp.Idempotency.Cosmos/README.md).
+
 ## License
 
 [MIT](LICENSE)
