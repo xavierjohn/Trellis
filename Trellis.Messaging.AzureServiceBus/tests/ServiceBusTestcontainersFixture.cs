@@ -4,19 +4,21 @@ using System.Runtime.ExceptionServices;
 using Azure.Messaging.ServiceBus;
 using Docker.DotNet.Models;
 using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Networks;
 using Testcontainers.MsSql;
 using Testcontainers.ServiceBus;
+using Trellis.TestSupport;
 
 internal sealed class ServiceBusTestcontainersFixture : IAsyncLifetime
 {
+    // Both images are pinned by digest so a registry-side change cannot alter the required check. To move to a newer
+    // build of the same tag, refresh the digest: docker buildx imagetools inspect <tag> --format '{{.Manifest.Digest}}'
     private const string BrokerImage = "mcr.microsoft.com/azure-messaging/servicebus-emulator:2.0.1@sha256:5a96d893b245031740f7d46e0fe5ff282d24b78c4b7d761dd57590f3f010a9b3";
     private const string DatabaseImage = "mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090";
     private const string OwnerLabel = "trellis.testcontainers-fixture";
     private const string Owner = "servicebus-integration";
-    private readonly List<IOutputConsumer> _outputs = [];
+    private readonly ContainerLogs _logs = new("servicebus-integration", "servicebus");
     private IContainer? _broker;
     private IContainer? _database;
     private INetwork? _network;
@@ -42,7 +44,7 @@ internal sealed class ServiceBusTestcontainersFixture : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         using var startup = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        startup.CancelAfter(TimeSpan.FromMinutes(5));
+        startup.CancelAfter(ContainerFixtureSupport.StartupTimeout);
         if (_broker is null)
             CreateContainers();
 
@@ -53,21 +55,8 @@ internal sealed class ServiceBusTestcontainersFixture : IAsyncLifetime
         _client = new ServiceBusClient(getConnectionString());
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        var cleanup = DisposeResourcesAsync();
-        try
-        {
-            await cleanup.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
-        }
-        finally
-        {
-            // An in-flight teardown still owns the output streams.
-            if (cleanup.IsCompletedSuccessfully)
-                foreach (var output in _outputs)
-                    output.Dispose();
-        }
-    }
+    public ValueTask DisposeAsync() => ContainerFixtureSupport.DisposeWithinAsync(
+        DisposeResourcesAsync(), _logs, ContainerFixtureSupport.TeardownTimeout);
 
     private async Task DisposeResourcesAsync()
     {
@@ -96,19 +85,16 @@ internal sealed class ServiceBusTestcontainersFixture : IAsyncLifetime
 
     private void CreateContainers()
     {
-        var logDirectory = Path.Combine(AppContext.BaseDirectory, "TestResults", "servicebus-integration");
-        Directory.CreateDirectory(logDirectory);
-        var instance = Guid.NewGuid().ToString("N");
         _network = new NetworkBuilder()
             .WithLabel(OwnerLabel, Owner)
             .Build();
-        var password = $"{Guid.NewGuid():N}aA1!";
+        var password = ContainerFixtureSupport.NewSqlPassword();
         var database = new MsSqlBuilder(DatabaseImage)
             .WithPassword(password)
             .WithNetwork(_network)
             .WithNetworkAliases("broker-sql")
             .WithLabel(OwnerLabel, Owner)
-            .WithOutputConsumer(CreateOutput(logDirectory, instance, "sql"))
+            .WithOutputConsumer(_logs.Create("sql"))
             .WithCreateParameterModifier(BindToLoopback)
             .Build();
         _database = database;
@@ -117,19 +103,11 @@ internal sealed class ServiceBusTestcontainersFixture : IAsyncLifetime
             .WithMsSqlContainer(_network, database, "broker-sql", password)
             .WithConfig(Path.Combine(AppContext.BaseDirectory, "emulator", "Config.json"))
             .WithLabel(OwnerLabel, Owner)
-            .WithOutputConsumer(CreateOutput(logDirectory, instance, "broker"))
+            .WithOutputConsumer(_logs.Create("broker"))
             .WithCreateParameterModifier(BindToLoopback)
             .Build();
         _broker = broker;
         _getConnectionString = broker.GetConnectionString;
-    }
-
-    private IOutputConsumer CreateOutput(string directory, string instance, string resource)
-    {
-        var stream = Stream.Synchronized(File.Create(Path.Combine(directory, $"servicebus-{instance}-{resource}.log")));
-        var output = Consume.RedirectStdoutAndStderrToStream(stream, stream);
-        _outputs.Add(output);
-        return output;
     }
 
     private static void BindToLoopback(CreateContainerParameters parameters)

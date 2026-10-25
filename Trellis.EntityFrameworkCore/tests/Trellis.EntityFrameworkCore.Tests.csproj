@@ -23,4 +23,9 @@
 	  <PackageReference Include="Testcontainers.MsSql" />
 	</ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\..\build\test-support\ContainerFixtureSupport.cs" Link="Helpers\ContainerFixtureSupport.cs" />
+    <Compile Include="..\..\build\test-support\FakeEnvironment.cs" Link="Helpers\FakeEnvironment.cs" />
+  </ItemGroup>
+
 </Project>

@@ -39,7 +39,18 @@ public sealed class ServiceBusEmulator : IAsyncLifetime
     private ServiceBusTestcontainersFixture? _ownedFixture;
 
     /// <summary>Creates the shared emulator client fixture.</summary>
-    public ServiceBusEmulator() : this(ReadEnabled(), () => new())
+    public ServiceBusEmulator() : this(Environment.GetEnvironmentVariable)
+    {
+    }
+
+    internal ServiceBusEmulator(
+        Func<string, string?> getEnvironmentVariable,
+        Func<ServiceBusTestcontainersFixture>? createFixture = null,
+        Func<Task<ServiceBusClient?>>? nativeProbe = null)
+        : this(
+            ReadEnabled(getEnvironmentVariable),
+            createFixture ?? (() => new()),
+            nativeProbe ?? (() => ProbeAsync(getEnvironmentVariable)))
     {
     }
 
@@ -53,12 +64,12 @@ public sealed class ServiceBusEmulator : IAsyncLifetime
         _createFixture = createFixture;
         _client = useTestcontainers
             ? new(CreateOwnedClientAsync)
-            : new(nativeProbe ?? ProbeAsync);
+            : new(nativeProbe ?? throw new ArgumentNullException(nameof(nativeProbe)));
     }
 
-    private static bool ReadEnabled()
+    private static bool ReadEnabled(Func<string, string?> getEnvironmentVariable)
     {
-        var backend = Environment.GetEnvironmentVariable("TRELLIS_TEST_SERVICEBUS");
+        var backend = getEnvironmentVariable("TRELLIS_TEST_SERVICEBUS");
         if (string.IsNullOrWhiteSpace(backend))
             return false;
 
@@ -66,8 +77,7 @@ public sealed class ServiceBusEmulator : IAsyncLifetime
             throw new InvalidOperationException(
                 "TRELLIS_TEST_SERVICEBUS must be unset or 'testcontainers'.");
 
-        if (!string.IsNullOrWhiteSpace(
-            Environment.GetEnvironmentVariable("TRELLIS_TEST_SERVICEBUS_CONNECTION")))
+        if (!string.IsNullOrWhiteSpace(getEnvironmentVariable("TRELLIS_TEST_SERVICEBUS_CONNECTION")))
             throw new InvalidOperationException(
                 "Do not combine TRELLIS_TEST_SERVICEBUS=testcontainers with TRELLIS_TEST_SERVICEBUS_CONNECTION.");
 
@@ -114,10 +124,10 @@ public sealed class ServiceBusEmulator : IAsyncLifetime
             await client.DisposeAsync();
     }
 
-    private static async Task<ServiceBusClient?> ProbeAsync()
+    private static async Task<ServiceBusClient?> ProbeAsync(Func<string, string?> getEnvironmentVariable)
     {
         using var probe = new TcpClient();
-        var configuredConnection = Environment.GetEnvironmentVariable("TRELLIS_TEST_SERVICEBUS_CONNECTION");
+        var configuredConnection = getEnvironmentVariable("TRELLIS_TEST_SERVICEBUS_CONNECTION");
         return await ProbeAsync(configuredConnection, probe.ConnectAsync);
     }
 
