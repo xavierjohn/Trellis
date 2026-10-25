@@ -138,7 +138,23 @@ jobs:
           --coverage --coverage-output-format cobertura \
           --report-trx
 
+    - name: Run SQL Server specifications without skips
+      id: sqlserver_integration
+      timeout-minutes: 8
+      env:
+        TRELLIS_TEST_SQLSERVER: testcontainers
+      run: >-
+        dotnet test --project Trellis.EntityFrameworkCore/tests/Trellis.EntityFrameworkCore.Tests.csproj
+        --no-build -c Release
+        --filter-class Trellis.EntityFrameworkCore.Tests.SpecificationTests
+        --filter-display-name '*SqlServer*'
+        --fail-skips on --minimum-expected-tests 15
+        --report-trx --results-directory TestResults/sqlserver-integration
+        --no-progress --no-ansi
+
     - name: Run Service Bus integration tests without skips
+      # Runs even when the SQL lane failed, so one run reports both integration lanes.
+      if: ${{ !cancelled() && steps.sqlserver_integration.conclusion != 'skipped' }}
       timeout-minutes: 8
       env:
         TRELLIS_TEST_SERVICEBUS: testcontainers
@@ -150,38 +166,45 @@ jobs:
         --report-trx --results-directory TestResults/servicebus-integration
         --no-progress --no-ansi
 
-    - name: Service Bus Docker diagnostics
+    - name: Container integration diagnostics
       if: failure()
       timeout-minutes: 1
       shell: bash
       run: |
         set -euo pipefail
-        mkdir -p TestResults/servicebus-integration
-        docker ps -a --no-trunc --filter label=trellis.testcontainers-fixture=servicebus-integration \
-          | tee TestResults/servicebus-integration/docker-containers.log
-        docker network ls --no-trunc --filter label=trellis.testcontainers-fixture=servicebus-integration \
-          | tee TestResults/servicebus-integration/docker-networks.log
+        mkdir -p TestResults/container-diagnostics
+        for fixture in sqlserver-specifications servicebus-integration; do
+          docker ps -a --no-trunc --filter "label=trellis.testcontainers-fixture=$fixture" \
+            | tee "TestResults/container-diagnostics/$fixture-containers.log"
+          docker network ls --no-trunc --filter "label=trellis.testcontainers-fixture=$fixture" \
+            | tee "TestResults/container-diagnostics/$fixture-networks.log"
+        done
 
-    - name: Clean up owned Service Bus resources
+    - name: Clean up owned container resources
       if: always()
       timeout-minutes: 1
       shell: bash
       run: |
         set -euo pipefail
         cleanup_status=0
-        docker ps -aq --filter label=trellis.testcontainers-fixture=servicebus-integration \
-          | xargs -r docker rm -f || cleanup_status=$?
-        docker network ls -q --filter label=trellis.testcontainers-fixture=servicebus-integration \
-          | xargs -r docker network rm || cleanup_status=$?
+        for fixture in sqlserver-specifications servicebus-integration; do
+          docker ps -aq --filter "label=trellis.testcontainers-fixture=$fixture" \
+            | xargs -r docker rm -f || cleanup_status=$?
+          docker network ls -q --filter "label=trellis.testcontainers-fixture=$fixture" \
+            | xargs -r docker network rm || cleanup_status=$?
+        done
         exit "$cleanup_status"
 
-    - name: Upload Service Bus integration results
+    - name: Upload container integration results
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: servicebus-testcontainers-integration-results
+        name: container-integration-results
         path: |
+          TestResults/sqlserver-integration
           TestResults/servicebus-integration
+          TestResults/container-diagnostics
+          Trellis.EntityFrameworkCore/tests/bin/Release/*/TestResults/sqlserver-integration
           Trellis.Messaging.AzureServiceBus/tests/bin/Release/*/TestResults/servicebus-integration
 
     - name: Publish Test Results

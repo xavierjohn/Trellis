@@ -12,6 +12,8 @@ using Testcontainers.MsSql;
 public sealed class SqlServerTestcontainersFixture : IAsyncLifetime
 {
     private const string Image = "mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04@sha256:245f6b1c8903edae52cb20fa31419cefcde1a49938bb8c3447099011fc871ca3";
+    private const string OwnerLabel = "trellis.testcontainers-fixture";
+    private const string Owner = "sqlserver-specifications";
     private readonly Func<IDatabaseContainer> _createContainer;
     private IDatabaseContainer? _container;
     private IOutputConsumer? _outputConsumer;
@@ -85,13 +87,13 @@ public sealed class SqlServerTestcontainersFixture : IAsyncLifetime
 
     private MsSqlContainer CreateContainer()
     {
-        var logDirectory = Path.Combine(AppContext.BaseDirectory, "TestResults", "sqlserver-pilot");
+        var logDirectory = Path.Combine(AppContext.BaseDirectory, "TestResults", "sqlserver-integration");
         Directory.CreateDirectory(logDirectory);
         var output = Stream.Synchronized(File.Create(Path.Combine(logDirectory, $"sqlserver-{Guid.NewGuid():N}.log")));
         _outputConsumer = Consume.RedirectStdoutAndStderrToStream(output, output);
         return new MsSqlBuilder(Image)
             .WithPassword($"{Guid.NewGuid():N}aA1!")
-            .WithLabel("trellis.testcontainers-pilot", "sqlserver-specifications")
+            .WithLabel(OwnerLabel, Owner)
             .WithOutputConsumer(_outputConsumer)
             .Build();
     }
