@@ -96,7 +96,7 @@ dotnet test --project Trellis.EntityFrameworkCore\tests\Trellis.EntityFrameworkC
 dotnet test --project Trellis.EntityFrameworkCore\generator-tests\Trellis.EntityFrameworkCore.Generator.Tests.csproj -c Release
 ```
 
-### SQL Server Testcontainers pilot
+### SQL Server Testcontainers
 
 With Docker running Linux containers, the specification tests can provision their own
 SQL Server 2025 instance instead of requiring LocalDB or a prestarted database:
@@ -110,8 +110,8 @@ Remove-Item Env:\TRELLIS_TEST_SQLSERVER
 ```
 
 The first run downloads the image pinned by tag and digest. Container startup or SQL setup failures fail
-the run rather than skip cases. The separate **SQL Server Testcontainers pilot** workflow
-runs this selection on Linux and retains its results and container logs.
+the run rather than skip cases. The `Build` workflow's `build` job runs this selection on Linux
+with skips treated as failures, and retains its results and container logs.
 
 This mode currently applies only to `SpecificationTests`; other SQL integration tests
 keep their existing setup. With the variable unset, the specification tests do not access
