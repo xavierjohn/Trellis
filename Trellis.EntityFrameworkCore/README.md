@@ -98,14 +98,17 @@ dotnet test --project Trellis.EntityFrameworkCore\generator-tests\Trellis.Entity
 
 ### SQL Server Testcontainers
 
-With Docker running Linux containers, the specification tests can provision their own
+With Docker running Linux containers, the SQL Server specification and convention tests share an owned
 SQL Server 2025 instance instead of requiring LocalDB or a prestarted database:
 
 ```powershell
 $env:TRELLIS_TEST_SQLSERVER = 'testcontainers'
 dotnet test --project Trellis.EntityFrameworkCore\tests\Trellis.EntityFrameworkCore.Tests.csproj -c Release `
-    --filter-class Trellis.EntityFrameworkCore.Tests.SpecificationTests --filter-display-name '*SqlServer*' `
-    --fail-skips on --minimum-expected-tests 15
+    --filter-class Trellis.EntityFrameworkCore.Tests.SpecificationTests `
+        Trellis.EntityFrameworkCore.Tests.CompositeValueObjectCollectionConventionTests `
+        Trellis.EntityFrameworkCore.Tests.OwnedCollectionKeyConventionTests `
+    --filter-display-name '*SqlServer*' `
+    --fail-skips on --minimum-expected-tests 18
 Remove-Item Env:\TRELLIS_TEST_SQLSERVER
 ```
 
@@ -113,7 +116,12 @@ The first run downloads the image pinned by tag and digest. Container startup or
 the run rather than skip cases. The `Build` workflow's `build` job runs this selection on Linux
 with skips treated as failures, and retains its results and container logs.
 
-This mode currently applies only to `SpecificationTests`; other SQL integration tests
-keep their existing setup. With the variable unset, the specification tests do not access
-Docker. The existing `TRELLIS_TEST_SQLSERVER=true` LocalDB/external-connection mode remains
-available; do not combine Testcontainers mode with `TRELLIS_TEST_SQLSERVER_CONNECTION`.
+The assembly fixture shares one container across `SpecificationTests`,
+`CompositeValueObjectCollectionConventionTests`, and `OwnedCollectionKeyConventionTests`
+without serializing those classes. Each SQL case uses an isolated database that is deleted
+after the case, including on failure.
+
+With the variable unset, the tests do not access Docker; the convention cases still probe
+LocalDB. The existing `TRELLIS_TEST_SQLSERVER=true` LocalDB/external-connection mode for
+specifications remains available; do not combine Testcontainers mode with
+`TRELLIS_TEST_SQLSERVER_CONNECTION`.

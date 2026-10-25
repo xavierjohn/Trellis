@@ -1,4 +1,6 @@
-﻿namespace Trellis.EntityFrameworkCore.Tests.Helpers;
+﻿[assembly: AssemblyFixture(typeof(SqlServerTestcontainersFixture))]
+
+namespace Trellis.EntityFrameworkCore.Tests.Helpers;
 
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
@@ -6,7 +8,7 @@ using Testcontainers.MsSql;
 using Trellis.TestSupport;
 
 /// <summary>
-/// Owns the optional SQL Server container shared by the specification tests.
+/// Owns the optional SQL Server container shared by this test assembly.
 /// </summary>
 public sealed class SqlServerTestcontainersFixture : IAsyncLifetime
 {

@@ -14,11 +14,13 @@ using Microsoft.EntityFrameworkCore.Metadata;
 /// </summary>
 public sealed class OwnedCollectionKeyConventionTests : IDisposable
 {
+    private readonly SqlServerTestcontainersFixture _sqlServerFixture;
     private readonly SqliteConnection _connection;
     private readonly DbContextOptions<OwnedKeyDbContext> _options;
 
-    public OwnedCollectionKeyConventionTests()
+    public OwnedCollectionKeyConventionTests(SqlServerTestcontainersFixture sqlServerFixture)
     {
+        _sqlServerFixture = sqlServerFixture;
         _connection = new SqliteConnection("DataSource=:memory:");
         _connection.Open();
         _options = new DbContextOptionsBuilder<OwnedKeyDbContext>().UseSqlite(_connection).Options;
@@ -116,16 +118,22 @@ public sealed class OwnedCollectionKeyConventionTests : IDisposable
     [Fact]
     public void OwnedCollectionChild_DomainAssignedKey_InsertsExplicitValue_OnSqlServer()
     {
-        if (!SqlServerAvailable())
+        if (!_sqlServerFixture.IsEnabled && !SqlServerAvailable())
         {
             Assert.Skip("SQL Server (LocalDB) is not available");
             return;
         }
 
         const long explicitKey = 1001L;
-        using (var ctx = new LedgerSqlServerContext())
+        var connectionString = _sqlServerFixture.IsEnabled
+            ? _sqlServerFixture.CreateConnectionString()
+            : new SqlConnectionStringBuilder(SqlServerConnectionString)
+            {
+                InitialCatalog = $"TrellisOwnedCollectionKeyTests_{Guid.NewGuid():N}"
+            }.ConnectionString;
+        using var ctx = new LedgerSqlServerContext(connectionString);
+        try
         {
-            ctx.Database.EnsureDeleted();
             ctx.Database.EnsureCreated();
             var parent = new LedgerParent { Id = Guid.CreateVersion7() };
             parent.Entries.Add(new LedgerEntry { Id = explicitKey, Payload = "first" });
@@ -133,12 +141,13 @@ public sealed class OwnedCollectionKeyConventionTests : IDisposable
             // IDENTITY column, so inserting the domain-assigned value throws SqlException 544.
             ctx.LedgerParents.Add(parent);
             ctx.SaveChanges();
-        }
 
-        using (var ctx = new LedgerSqlServerContext())
-        {
-            var loaded = ctx.LedgerParents.Include(p => p.Entries).Single();
+            using var verify = new LedgerSqlServerContext(connectionString);
+            var loaded = verify.LedgerParents.Include(p => p.Entries).Single();
             loaded.Entries.Should().ContainSingle().Which.Id.Should().Be(explicitKey);
+        }
+        finally
+        {
             ctx.Database.EnsureDeleted();
         }
     }
@@ -245,12 +254,12 @@ public sealed class OwnedCollectionKeyConventionTests : IDisposable
         }
     }
 
-    private sealed class LedgerSqlServerContext : DbContext
+    private sealed class LedgerSqlServerContext(string connectionString) : DbContext
     {
         public DbSet<LedgerParent> LedgerParents => Set<LedgerParent>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
-            optionsBuilder.UseSqlServer(SqlServerConnectionString).IgnoreManyServiceProvidersCreatedWarning();
+            optionsBuilder.UseSqlServer(connectionString).IgnoreManyServiceProvidersCreatedWarning();
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
             configurationBuilder.ApplyTrellisConventions();

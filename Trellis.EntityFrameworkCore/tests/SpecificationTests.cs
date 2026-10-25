@@ -11,7 +11,7 @@ using Trellis.Primitives;
 /// In-memory tests verify specification logic; SQLite and SQL Server tests verify EF Core translation.
 /// </summary>
 public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
-    : IAsyncLifetime, IClassFixture<SqlServerTestcontainersFixture>
+    : IAsyncLifetime
 {
     private static readonly string SqlServerConnectionString = GetSqlServerConnectionString();
 

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 /// as an EF Core owned collection by the Trellis conventions, with no manual <c>Ignore</c> +
 /// <c>OwnsMany</c>. This holds whether the composite owner is required or optional
 /// (<see cref="Maybe{T}"/>). The model-shape tests lock the auto-mapping; the SQL Server tests
-/// lock the round-trip (and skip when LocalDB is unavailable).
+/// lock the round-trip using Testcontainers or LocalDB (and skip when LocalDB is unavailable).
 /// </para>
 /// <para>
 /// Entity collections behave differently and are out of scope here: Trellis auto-owns value
@@ -21,7 +21,7 @@ using Microsoft.EntityFrameworkCore;
 /// convention-only. Use an explicit <c>OwnsMany</c> when owned aggregate-child semantics are required.
 /// </para>
 /// </summary>
-public partial class CompositeValueObjectCollectionConventionTests : IDisposable
+public partial class CompositeValueObjectCollectionConventionTests(SqlServerTestcontainersFixture sqlServerFixture) : IDisposable
 {
     private CollectionVoDbContext? _context;
     private SqliteConnection? _connection;
@@ -137,15 +137,16 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
     [Fact]
     public void RequiredComposite_OwningVoCollection_RoundTrips_OnSqlServer()
     {
-        if (!SqlServerAvailable())
+        if (!sqlServerFixture.IsEnabled && !SqlServerAvailable())
         {
             Assert.Skip("SQL Server (LocalDB) is not available");
             return;
         }
 
-        using (var ctx = new CollectionVoSqlServerContext())
+        var connectionString = CreateSqlServerConnectionString();
+        using var ctx = new CollectionVoSqlServerContext(connectionString);
+        try
         {
-            ctx.Database.EnsureDeleted();
             ctx.Database.EnsureCreated();
             ctx.Set<RequiredScorecardEntity>().Add(new RequiredScorecardEntity
             {
@@ -157,12 +158,13 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
                     ]),
             });
             ctx.SaveChanges();
-        }
 
-        using (var ctx = new CollectionVoSqlServerContext())
-        {
-            var loaded = ctx.Set<RequiredScorecardEntity>().Single();
+            using var verify = new CollectionVoSqlServerContext(connectionString);
+            var loaded = verify.Set<RequiredScorecardEntity>().Single();
             loaded.Inning.Lines.Should().HaveCount(2);
+        }
+        finally
+        {
             ctx.Database.EnsureDeleted();
         }
     }
@@ -170,15 +172,16 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
     [Fact]
     public void MaybeComposite_OwningVoCollection_RoundTrips_OnSqlServer()
     {
-        if (!SqlServerAvailable())
+        if (!sqlServerFixture.IsEnabled && !SqlServerAvailable())
         {
             Assert.Skip("SQL Server (LocalDB) is not available");
             return;
         }
 
-        using (var ctx = new CollectionVoSqlServerContext())
+        var connectionString = CreateSqlServerConnectionString();
+        using var ctx = new CollectionVoSqlServerContext(connectionString);
+        try
         {
-            ctx.Database.EnsureDeleted();
             ctx.Database.EnsureCreated();
             ctx.Set<MaybeScorecardEntity>().Add(new MaybeScorecardEntity
             {
@@ -190,19 +193,27 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
                     ])),
             });
             ctx.SaveChanges();
-        }
 
-        using (var ctx = new CollectionVoSqlServerContext())
-        {
-            var loaded = ctx.Set<MaybeScorecardEntity>().Single();
+            using var verify = new CollectionVoSqlServerContext(connectionString);
+            var loaded = verify.Set<MaybeScorecardEntity>().Single();
             loaded.Inning.HasValue.Should().BeTrue();
             loaded.Inning.Value.Lines.Should().HaveCount(2);
+        }
+        finally
+        {
             ctx.Database.EnsureDeleted();
         }
     }
 
     private const string SqlServerConnectionString =
         "Server=(localdb)\\MSSQLLocalDB;Database=TrellisCompositeVoCollectionTests;Trusted_Connection=True;TrustServerCertificate=True";
+
+    private string CreateSqlServerConnectionString() => sqlServerFixture.IsEnabled
+        ? sqlServerFixture.CreateConnectionString()
+        : new SqlConnectionStringBuilder(SqlServerConnectionString)
+        {
+            InitialCatalog = $"TrellisCompositeVoCollectionTests_{Guid.NewGuid():N}"
+        }.ConnectionString;
 
     private static bool SqlServerAvailable()
     {
@@ -281,13 +292,13 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
             configurationBuilder.ApplyTrellisConventions(typeof(TestStateCode).Assembly);
     }
 
-    private sealed class CollectionVoSqlServerContext : DbContext
+    private sealed class CollectionVoSqlServerContext(string connectionString) : DbContext
     {
         public DbSet<RequiredScorecardEntity> RequiredScorecards => Set<RequiredScorecardEntity>();
         public DbSet<MaybeScorecardEntity> MaybeScorecards => Set<MaybeScorecardEntity>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
-            optionsBuilder.UseSqlServer(SqlServerConnectionString).IgnoreManyServiceProvidersCreatedWarning();
+            optionsBuilder.UseSqlServer(connectionString).IgnoreManyServiceProvidersCreatedWarning();
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
             configurationBuilder.ApplyTrellisConventions(typeof(TestStateCode).Assembly);

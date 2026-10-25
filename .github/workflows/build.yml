@@ -138,7 +138,7 @@ jobs:
           --coverage --coverage-output-format cobertura \
           --report-trx
 
-    - name: Run SQL Server specifications without skips
+    - name: Run SQL Server integration tests without skips
       id: sqlserver_integration
       timeout-minutes: 8
       env:
@@ -147,8 +147,10 @@ jobs:
         dotnet test --project Trellis.EntityFrameworkCore/tests/Trellis.EntityFrameworkCore.Tests.csproj
         --no-build -c Release
         --filter-class Trellis.EntityFrameworkCore.Tests.SpecificationTests
+        Trellis.EntityFrameworkCore.Tests.CompositeValueObjectCollectionConventionTests
+        Trellis.EntityFrameworkCore.Tests.OwnedCollectionKeyConventionTests
         --filter-display-name '*SqlServer*'
-        --fail-skips on --minimum-expected-tests 15
+        --fail-skips on --minimum-expected-tests 18
         --report-trx --results-directory TestResults/sqlserver-integration
         --no-progress --no-ansi
 
