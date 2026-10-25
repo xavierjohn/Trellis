@@ -115,9 +115,9 @@ Broker and SQL logs are retained under the test output directory's
 `TestResults\servicebus-integration`.
 
 CI runs these six cases automatically inside the `build` job with skips and empty discovery
-treated as failures. The pinned broker and SQL images are pulled while restore/build runs;
-both pulls must finish successfully before testing. TRX results and container logs are uploaded
-even after failures.
+treated as failures. The broker and SQL images are pinned by tag and digest and downloaded
+on first use. Restore, analyzer build, and guarded build retain separate step timings.
+TRX results and container logs are uploaded even after failures.
 
 Unset `TRELLIS_TEST_SERVICEBUS` to return to the default local-emulator probe and start the
 emulator with the Compose command above. Other nonblank backend values are configuration errors.

@@ -109,7 +109,7 @@ dotnet test --project Trellis.EntityFrameworkCore\tests\Trellis.EntityFrameworkC
 Remove-Item Env:\TRELLIS_TEST_SQLSERVER
 ```
 
-The first run downloads the pinned image. Container startup or SQL setup failures fail
+The first run downloads the image pinned by tag and digest. Container startup or SQL setup failures fail
 the run rather than skip cases. The separate **SQL Server Testcontainers pilot** workflow
 runs this selection on Linux and retains its results and container logs.
 

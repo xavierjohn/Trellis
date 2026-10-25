@@ -11,7 +11,7 @@ using Testcontainers.MsSql;
 /// </summary>
 public sealed class SqlServerTestcontainersFixture : IAsyncLifetime
 {
-    private const string Image = "mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04";
+    private const string Image = "mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04@sha256:245f6b1c8903edae52cb20fa31419cefcde1a49938bb8c3447099011fc871ca3";
     private readonly Func<IDatabaseContainer> _createContainer;
     private IDatabaseContainer? _container;
     private IOutputConsumer? _outputConsumer;

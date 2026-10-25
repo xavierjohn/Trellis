@@ -222,7 +222,7 @@ dotnet test Trellis.Asp.Idempotency.Cosmos/tests/Trellis.Asp.Idempotency.Cosmos.
 
 | Run | Tests |
 |---|---|
-| Default / CI | 40 — decision ordering, document model, key encoding, service registration; no emulator needed |
+| Default / CI | 41 — decision ordering, document model, key encoding, service registration, endpoint selection; no emulator needed |
 | `Category=Integration` | 20 — the 18 conformance rules plus the two `ttl` tests, against real Cosmos DB |
 
 Because CI cannot see the integration run, `CosmosIdempotencyStore.cs` and

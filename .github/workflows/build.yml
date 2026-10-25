@@ -77,36 +77,14 @@ jobs:
         fi
         echo "Semantic reason-code guard source scope: $FILE_COUNT files."
 
-    - name: Restore and build while pulling integration images
-      shell: bash
-      run: |
-        set -euo pipefail
-        (
-          TIMEFORMAT='Service Bus image pull: %3R seconds'
-          time docker pull --quiet mcr.microsoft.com/azure-messaging/servicebus-emulator:2.0.1
-        ) &
-        broker_pull=$!
-        (
-          TIMEFORMAT='Service Bus SQL image pull: %3R seconds'
-          time docker pull --quiet mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04
-        ) &
-        sql_pull=$!
+    - name: Restore dependencies
+      run: dotnet restore
 
-        build_status=0
-        {
-          dotnet restore &&
-          dotnet build Trellis.Analyzers/src/Trellis.Analyzers.csproj --no-restore -c Release &&
-          dotnet build --no-restore -c Release -p:TrellisEnableReasonCodeGuard=true
-        } || build_status=$?
+    - name: Build reason-code analyzer
+      run: dotnet build Trellis.Analyzers/src/Trellis.Analyzers.csproj --no-restore -c Release
 
-        pull_status=0
-        wait "$broker_pull" || pull_status=$?
-        wait "$sql_pull" || pull_status=$?
-        if [ "$pull_status" -ne 0 ]; then
-          echo "::error::Integration image pull failed"
-          exit "$pull_status"
-        fi
-        exit "$build_status"
+    - name: Build with semantic reason-code guard
+      run: dotnet build --no-restore -c Release -p:TrellisEnableReasonCodeGuard=true
 
     - name: API reference audits (TRLDOC005, TRLDOC008, TRLDOC014, TRLDOC015)
       # Reflects over the just-built assemblies to check the doc<->API relationship in both

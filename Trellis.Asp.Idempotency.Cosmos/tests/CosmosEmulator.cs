@@ -36,7 +36,17 @@ internal static class CosmosEmulator
     /// </summary>
     public static Task<Container?> TryGetContainerAsync() => Container.Value;
 
-    private static async Task<Container?> ProvisionAsync()
+    private static Task<Container?> ProvisionAsync() => ProvisionAsync(static async (client, cancellationToken) =>
+    {
+        var database = await client.CreateDatabaseIfNotExistsAsync(
+            DatabaseId, cancellationToken: cancellationToken);
+
+        return await CosmosIdempotencyContainer.CreateIfNotExistsAsync(
+            database.Database, cancellationToken: cancellationToken);
+    });
+
+    internal static async Task<Container?> ProvisionAsync(
+        Func<CosmosClient, CancellationToken, Task<Container>> provision)
     {
         var configuredEndpoint = Environment.GetEnvironmentVariable("TRELLIS_TEST_COSMOS_ENDPOINT");
         var client = new CosmosClient(
@@ -56,11 +66,7 @@ internal static class CosmosEmulator
 
         try
         {
-            var database = await client.CreateDatabaseIfNotExistsAsync(
-                DatabaseId, cancellationToken: timeout.Token);
-
-            return await CosmosIdempotencyContainer.CreateIfNotExistsAsync(
-                database.Database, cancellationToken: timeout.Token);
+            return await provision(client, timeout.Token);
         }
         catch (Exception ex) when (ex is CosmosException or HttpRequestException or OperationCanceledException)
         {
