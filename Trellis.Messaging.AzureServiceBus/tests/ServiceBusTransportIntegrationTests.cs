@@ -181,7 +181,9 @@ public sealed class ServiceBusTransportIntegrationTests(ServiceBusEmulator emula
 
         deadLettered.DeadLetterReason.Should().Be(ServiceBusConsumerErrors.UnknownContractCode);
         deadLettered.DeadLetterErrorDescription.Should().Contain("orders.never-heard-of.v1");
-        recorder.Received.Should().BeEmpty();
+        await AssertMessageAbsentAsync(client, Subscription, messageId, SubQueue.None);
+        // Every test publishes to the shared topic, so an earlier test's message can still reach this subscription.
+        recorder.CountFor(messageId).Should().Be(0);
     }
 
     [Fact]
@@ -259,16 +261,25 @@ public sealed class ServiceBusTransportIntegrationTests(ServiceBusEmulator emula
         await using var receiver = client.CreateReceiver(
             ServiceBusEmulator.Topic, subscription, new ServiceBusReceiverOptions { SubQueue = SubQueue.DeadLetter });
 
+        // Peek takes no lock and removes nothing, so a settlement race on the dead-lettered message cannot fail the test.
         var deadline = DateTime.UtcNow + Patience;
         while (DateTime.UtcNow < deadline)
         {
-            var message = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(2));
-            if (message is null)
-                continue;
+            long fromSequenceNumber = 0;
+            while (true)
+            {
+                var batch = await receiver.PeekMessagesAsync(50, fromSequenceNumber, TestContext.Current.CancellationToken);
+                if (batch.Count == 0)
+                    break;
 
-            await receiver.CompleteMessageAsync(message);
-            if (message.MessageId == messageId.ToString())
-                return message;
+                var match = batch.FirstOrDefault(message => message.MessageId == messageId.ToString());
+                if (match is not null)
+                    return match;
+
+                fromSequenceNumber = batch[^1].SequenceNumber + 1;
+            }
+
+            await Task.Delay(200, TestContext.Current.CancellationToken);
         }
 
         throw new TimeoutException($"Message {messageId} was not dead-lettered within {Patience}.");
