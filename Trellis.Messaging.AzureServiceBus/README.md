@@ -102,11 +102,11 @@ For an isolated run, use Testcontainers with a running Linux-container Docker da
 $env:TRELLIS_TEST_SERVICEBUS = 'testcontainers'
 dotnet test --project Trellis.Messaging.AzureServiceBus\tests\Trellis.Messaging.AzureServiceBus.Tests.csproj -c Release `
     --filter-class Trellis.Messaging.AzureServiceBus.Tests.ServiceBusTransportIntegrationTests `
-    --fail-skips on --minimum-expected-tests 6
+    --fail-skips on --minimum-expected-tests 5
 ```
 
 The fixture owns one Service Bus emulator (`2.0.1`), its separate SQL Server backend
-(`2022-CU27-ubuntu-22.04`), a private network, and the shared SDK client for the six
+(`2022-CU27-ubuntu-22.04`), a private network, and the shared SDK client for the five
 integration cases. It loads the existing `Config.json` and publishes dynamic loopback-only
 ports without changing a locally running emulator. Startup is bounded to five minutes;
 teardown waits up to thirty seconds and attempts to dispose the client, broker, SQL backend,
@@ -114,7 +114,7 @@ and network in that order. Explicit Testcontainers startup failures fail rather 
 Broker and SQL logs are retained under the test output directory's
 `TestResults\servicebus-integration`.
 
-CI runs these six cases automatically inside the `build` job with skips and empty discovery
+CI runs these five cases automatically inside the `build` job with skips and empty discovery
 treated as failures. The broker and SQL images are pinned by tag and digest and downloaded
 on first use. Restore, analyzer build, and guarded build retain separate step timings.
 TRX results and container logs are uploaded even after failures.

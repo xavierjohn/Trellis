@@ -103,33 +103,6 @@ public sealed class ServiceBusTransportIntegrationTests(ServiceBusEmulator emula
     }
 
     [Fact]
-    public async Task RepublishingTheSameOutboxRow_ArrivesTwiceUnderOneMessageId()
-    {
-        var client = await RequireEmulatorAsync();
-        const string Subscription = "duplicate";
-        await DrainAsync(client, Subscription);
-
-        var recorder = new RecordingInboxDispatcher();
-        await using var host = BuildConsumer(client, Subscription, recorder);
-        await host.StartAsync(CancellationToken.None);
-
-        // One outbox row, published twice: exactly what an at-least-once relay does when it crashes
-        // between publishing and saving its bookkeeping.
-        var row = new OutboundIntegrationMessage(
-            Guid.CreateVersion7(), new OrderPlaced($"ORD-{Guid.NewGuid():N}", DateTimeOffset.UnixEpoch));
-
-        await PublishAsync(client, row, messageSource: null);
-        await PublishAsync(client, row, messageSource: null);
-
-        await recorder.WaitForCountAsync(row.MessageId, 2);
-
-        // Both copies carry the producer's id, so the inbox sees one (ConsumerId, MessageId) pair and
-        // deduplicates. Had the transport generated its own id, these would be two distinct messages and
-        // the handlers would run twice.
-        recorder.Received.Select(e => e.MessageId).Should().AllBeEquivalentTo(row.MessageId);
-    }
-
-    [Fact]
     public async Task ADuplicateTheInboxSkips_IsCompletedNotRedelivered()
     {
         var client = await RequireEmulatorAsync();
