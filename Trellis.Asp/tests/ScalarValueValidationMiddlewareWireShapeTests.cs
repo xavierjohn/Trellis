@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
+using Trellis.Asp.Validation;
 
 /// <summary>
 /// Round-5 regression guard for PR #454: the JSON-deserialization 400 path
@@ -312,6 +313,72 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         var errors = ReadErrors(problem);
         errors.Should().ContainKey("[\"\"]",
             "the empty STJ path segment must produce [\"\"] to match JsonPointerToMvc.Translate(\"/\")");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InvokeAsync_StructuredLegacyJsonException_MarkedOrUnmarked_PreservesCodeAndViolations(
+        bool pathTracked)
+    {
+        var field = new FieldViolation(InputPointer.ForProperty("postalCode"), "customer.postal-code-invalid")
+        {
+            Args = ValidationArgs.Of("minLength", 3, "country", "US"),
+            Detail = "Postal code is invalid.",
+        };
+        var rule = new RuleViolation("customer.address-incomplete", EquatableArray.Create(
+            InputPointer.ForProperty("postalCode"), InputPointer.ForProperty("region")))
+        {
+            Args = ValidationArgs.Of("minimumParts", 1),
+            Detail = "Provide a postal code or region.",
+        };
+        var error = new Error.InvalidInput(EquatableArray.Create(field), EquatableArray.Create(rule))
+        {
+            Code = "customer.input.rejected",
+            Detail = "Customer input was rejected.",
+        };
+        var inner = new TrellisJsonValidationException(error.GetDisplayMessage()) { InvalidInput = error };
+        if (pathTracked)
+        {
+            using var scope = ValidationErrorsContext.BeginScope();
+            using var address = ValidationErrorsContext.PushPathSegment("address");
+            inner = JsonValidationPathRebase.RebaseIfUnmarked(inner);
+        }
+
+        JsonValidationPathRebase.IsMarked(inner).Should().Be(pathTracked);
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, pathTracked ? "$.displaced" : "$.address");
+        var ctx = NewContext();
+        var failure = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+        var middleware = new ScalarValueValidationMiddleware(_ => throw failure);
+
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(422);
+        var problem = await ReadProblemAsync(ctx);
+        problem.GetProperty("code").GetString().Should().Be(error.Code);
+        problem.GetProperty("kind").GetString().Should().Be("unprocessable-content");
+        var errors = ReadErrors(problem);
+        errors.Keys.Should().Equal(["address.postalCode"]);
+        errors["address.postalCode"].Should().Equal([field.Detail]);
+        var fields = problem.GetProperty("fieldViolations");
+        fields.GetArrayLength().Should().Be(1);
+        fields[0].GetProperty("code").GetString().Should().Be(field.ReasonCode);
+        fields[0].GetProperty("detail").GetString().Should().Be(field.Detail);
+        fields[0].GetProperty("args").GetProperty("minLength").GetDecimal().Should().Be(3m);
+        fields[0].GetProperty("args").GetProperty("country").GetString().Should().Be("US");
+        fields[0].GetProperty("location").GetProperty("in").GetString().Should().Be("body");
+        fields[0].GetProperty("location").GetProperty("pointer").GetString().Should().Be("/address/postalCode");
+        var rules = problem.GetProperty("ruleViolations");
+        rules.GetArrayLength().Should().Be(1);
+        rules[0].GetProperty("code").GetString().Should().Be(rule.ReasonCode);
+        rules[0].GetProperty("detail").GetString().Should().Be(rule.Detail);
+        rules[0].GetProperty("args").GetProperty("minimumParts").GetDecimal().Should().Be(1m);
+        var locations = rules[0].GetProperty("locations");
+        locations.GetArrayLength().Should().Be(2);
+        locations[0].GetProperty("in").GetString().Should().Be("body");
+        locations[0].GetProperty("pointer").GetString().Should().Be("/address/postalCode");
+        locations[1].GetProperty("in").GetString().Should().Be("body");
+        locations[1].GetProperty("pointer").GetString().Should().Be("/address/region");
     }
 
     [Fact]
