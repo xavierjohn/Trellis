@@ -547,6 +547,10 @@ Only `Body`, `Query` and `Unspecified` may be declared; `Path` and `Header` thro
 
 **Most endpoints do not need it** — see below.
 
+Input-origin promotion changes only unlocated violation pointers. Rebuilding an
+`Error.Aggregate` to locate its children preserves its inherited `Error.Code`,
+`Error.Detail`, and `Error.Cause`. Already-located violations keep their original location.
+
 #### Locations are derived, not declared
 
 A model binder stamps the parameter it binds, so a route, query or header violation arrives already located. A violation that comes back up from the **domain** does not: an aggregate names the field that failed but cannot know where the value came from, because the same method is reachable from a worker, a message handler, or a test. It therefore emits `InputLocation.Unspecified`, which projects as `unknown` — the producer declining to assert a checkable claim that may be false.
