@@ -170,6 +170,48 @@ public class JsonValidationPathRebaseTests
         rule.Fields.Items.Should().OnlyContain(p => p.In == InputLocation.Body);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void RebaseTo_CustomMetadata_FieldAndRuleOrRuleOnly_PreservesMetadataAndViolations(bool includeField)
+    {
+        var field = new FieldViolation(InputPointer.ForProperty("postalCode"), "customer.postal-code-invalid")
+        {
+            Args = ValidationArgs.Of("minLength", 3, "country", "US"),
+            Detail = "Postal code is invalid.",
+        };
+        var rule = new RuleViolation("customer.address-incomplete", EquatableArray.Create(
+            InputPointer.ForProperty("postalCode"), InputPointer.ForProperty("region")))
+        {
+            Args = ValidationArgs.Of("minimumParts", 1),
+            Detail = "Provide a postal code or region.",
+        };
+        var cause = new Error.Conflict("customer.address-conflict");
+        var error = new Error.InvalidInput(
+            includeField ? EquatableArray.Create(field) : EquatableArray<FieldViolation>.Empty,
+            EquatableArray.Create(rule))
+        {
+            Code = "customer.input.rejected",
+            Detail = "Customer input was rejected.",
+            Cause = cause,
+        };
+
+        var rebased = JsonValidationPathRebase.RebaseTo(error, "/address");
+
+        rebased.Code.Should().Be(error.Code);
+        rebased.Detail.Should().Be(error.Detail);
+        rebased.Cause.Should().BeSameAs(cause);
+        var expectedFields = includeField
+            ? EquatableArray.Create(field with { Field = InputPointer.ForBody("/address/postalCode") })
+            : EquatableArray<FieldViolation>.Empty;
+        rebased.Fields.Items.Should().Equal(expectedFields.Items);
+        rebased.Rules.Items.Should().Equal([rule with
+        {
+            Fields = EquatableArray.Create(
+                InputPointer.ForBody("/address/postalCode"), InputPointer.ForBody("/address/region")),
+        }]);
+    }
+
     /// <summary>
     /// An unstructured throw carries no pointers to re-root, but it is still rewrapped so the live
     /// ancestor is recorded. Passing it through would have preserved

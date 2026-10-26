@@ -1858,6 +1858,11 @@ root, the framework's invalid-query 400 is preserved instead. ASP.NET Core can i
 after a parameter-check failure, but its terminal delegate returns an empty result whenever
 the response status is already at least 400, rather than calling the handler.
 
+For legacy exception-based JSON binding, a `TrellisJsonValidationException` carrying an
+`InvalidInput` with at least one field violation retains the error's root `Code` and field/rule
+payloads. Marked absolute pointers are used as-is; unmarked pointers are rebased from
+`JsonException.Path`. Rules-only legacy exceptions retain the message-based fallback.
+
 ### `ScalarValuePathTracking`
 
 **Declaration**
@@ -1878,8 +1883,10 @@ converters. They apply the live ancestor plus the effective JSON property name e
 preserving reason codes, args and curated detail. Unspecified scalar-factory field labels address
 the scalar property itself, not synthetic child properties; explicitly located violations retain
 their locations. Legacy throwing converters retain the marked exception-rebasing compatibility
-path. Reflection-enabled hosts can discover Result converter attributes dynamically; reflection-
-disabled hosts require closed generated or explicit registrations instead.
+path; this rebase preserves the structured error's inherited `Code`, `Detail` and `Cause`
+while changing only field/rule locations. Reflection-enabled hosts can discover Result converter
+attributes dynamically; reflection-disabled hosts require closed generated or explicit registrations
+instead.
 Class-only scalar registrations are not emitted for struct `IScalarValue` implementations;
 structs with a Result converter use the unconstrained `RegisterResultConverter` registration.
 The built-in optional scalar converters and `RegisterScalar` remain reference-type-only

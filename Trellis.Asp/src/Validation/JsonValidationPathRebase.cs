@@ -140,7 +140,11 @@ internal static class JsonValidationPathRebase
                 })
             .ToImmutableArray();
 
-        return new Error.InvalidInput(fields, rules);
+        return invalidInput with
+        {
+            Fields = fields,
+            Rules = rules,
+        };
     }
 
     private static InputPointer RebasePointerToBody(InputPointer pointer, string ancestor, bool scalarProperty) =>
