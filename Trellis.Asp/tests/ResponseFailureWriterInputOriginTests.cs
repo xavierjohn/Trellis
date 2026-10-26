@@ -158,6 +158,72 @@ public class ResponseFailureWriterInputOriginTests
         promoted.Cause.Should().Be(cause);
     }
 
+    [Theory]
+    [InlineData(InputLocation.Unspecified, InputLocation.Body)]
+    [InlineData(InputLocation.Query, InputLocation.Query)]
+    public void Apply_AggregateWithCustomCode_PromotedOrLocatedChild_PreservesMetadata(
+        InputLocation originalLocation, InputLocation expectedLocation)
+    {
+        var cause = new Error.Conflict("orders.stock-unavailable");
+        var child = Error.InvalidInput.ForField(
+            field: new InputPointer("/amount", originalLocation),
+            code: "orders.amount-out-of-range",
+            detail: "Amount is outside the allowed range.");
+        var error = new Error.Aggregate(EquatableArray.Create<Error>(child))
+        {
+            Code = "orders.batch-rejected",
+            Detail = "The batch was rejected.",
+            Cause = cause,
+        };
+
+        var promoted = (Error.Aggregate)InputOriginPromotion.Apply(NewContext(InputLocation.Body), error);
+
+        promoted.Code.Should().Be(error.Code);
+        promoted.Detail.Should().Be(error.Detail);
+        promoted.Cause.Should().BeSameAs(cause);
+        promoted.Errors.Items.Should().Equal([child with
+        {
+            Fields = EquatableArray.Create(child.Fields.Items[0] with
+            {
+                Field = new InputPointer("/amount", expectedLocation),
+            }),
+        }]);
+        child.Fields.Items[0].Field.In.Should().Be(originalLocation);
+
+        if (originalLocation is InputLocation.Unspecified)
+            promoted.Should().NotBeSameAs(error);
+        else
+            promoted.Should().BeSameAs(error);
+    }
+
+    [Theory]
+    [InlineData(InputLocation.Unspecified, "body", "pointer", "/amount")]
+    [InlineData(InputLocation.Query, "query", "name", "amount")]
+    public async Task WriteAsync_AggregateWithCustomCode_PromotedOrLocatedChild_PreservesReasonAndLocation(
+        InputLocation originalLocation, string expectedLocation, string addressMember, string expectedAddress)
+    {
+        var error = new Error.Aggregate(EquatableArray.Create<Error>(
+            Error.InvalidInput.ForField(
+                field: new InputPointer("/amount", originalLocation),
+                code: "orders.amount-out-of-range")))
+        {
+            Code = "orders.batch-rejected",
+            Detail = "The batch was rejected.",
+        };
+
+        using var body = await WriteAsync(NewContext(InputLocation.Body), error);
+
+        body.RootElement.GetProperty("code").GetString().Should().Be("orders.batch-rejected");
+        body.RootElement.GetProperty("detail").GetString().Should().Be("The batch was rejected.");
+        var problems = body.RootElement.GetProperty("problems");
+        problems.GetArrayLength().Should().Be(1);
+        var field = problems[0].GetProperty("fieldViolations")[0];
+        field.GetProperty("code").GetString().Should().Be("orders.amount-out-of-range");
+        var location = field.GetProperty("location");
+        location.GetProperty("in").GetString().Should().Be(expectedLocation);
+        location.GetProperty(addressMember).GetString().Should().Be(expectedAddress);
+    }
+
     [Fact]
     public async Task UnchangedViolations_SurviveTheRebuild_BeforeAndAfterAPromotedOne()
     {

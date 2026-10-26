@@ -94,6 +94,7 @@ internal static class InputOriginPromotion
             ? aggregate
             : new Error.Aggregate(EquatableArray.Create(promoted))
             {
+                Code = aggregate.Code,
                 Detail = aggregate.Detail,
                 Cause = aggregate.Cause,
             };
