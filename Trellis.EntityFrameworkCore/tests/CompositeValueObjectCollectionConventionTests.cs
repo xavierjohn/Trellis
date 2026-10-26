@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 /// as an EF Core owned collection by the Trellis conventions, with no manual <c>Ignore</c> +
 /// <c>OwnsMany</c>. This holds whether the composite owner is required or optional
 /// (<see cref="Maybe{T}"/>). The model-shape tests lock the auto-mapping; the SQL Server tests
-/// lock the round-trip (and skip when LocalDB is unavailable).
+/// lock the round-trip using Testcontainers or LocalDB (and skip when LocalDB is unavailable).
 /// </para>
 /// <para>
 /// Entity collections behave differently and are out of scope here: Trellis auto-owns value
@@ -21,10 +21,11 @@ using Microsoft.EntityFrameworkCore;
 /// convention-only. Use an explicit <c>OwnsMany</c> when owned aggregate-child semantics are required.
 /// </para>
 /// </summary>
-public partial class CompositeValueObjectCollectionConventionTests : IDisposable
+public partial class CompositeValueObjectCollectionConventionTests(SqlServerTestcontainersFixture sqlServerFixture) : IAsyncDisposable
 {
     private CollectionVoDbContext? _context;
     private SqliteConnection? _connection;
+    private CollectionVoSqlServerContext? _sqlServerContext;
 
     private CollectionVoDbContext Context
     {
@@ -43,10 +44,13 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _context?.Dispose();
-        _connection?.Dispose();
+        await using var connection = _connection;
+        await using var context = _context;
+        await using var sqlServerContext = _sqlServerContext;
+        if (_sqlServerContext is not null)
+            await _sqlServerContext.Database.EnsureDeletedAsync();
         GC.SuppressFinalize(this);
     }
 
@@ -135,74 +139,70 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
     }
 
     [Fact]
-    public void RequiredComposite_OwningVoCollection_RoundTrips_OnSqlServer()
+    public async Task RequiredComposite_OwningVoCollection_RoundTrips_OnSqlServer()
     {
-        if (!SqlServerAvailable())
+        if (!sqlServerFixture.IsEnabled && !SqlServerAvailable())
         {
             Assert.Skip("SQL Server (LocalDB) is not available");
             return;
         }
 
-        using (var ctx = new CollectionVoSqlServerContext())
+        var connectionString = await CreateSqlServerConnectionStringAsync();
+        var ctx = _sqlServerContext = new CollectionVoSqlServerContext(connectionString);
+        await ctx.Database.EnsureDeletedAsync(TestContext.Current.CancellationToken);
+        await ctx.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+        ctx.Set<RequiredScorecardEntity>().Add(new RequiredScorecardEntity
         {
-            ctx.Database.EnsureDeleted();
-            ctx.Database.EnsureCreated();
-            ctx.Set<RequiredScorecardEntity>().Add(new RequiredScorecardEntity
-            {
-                Inning = new CricketInning(
-                    TestStateCode.Create("Alpha"),
-                    [
-                        new CricketLine(TestStateCode.Create("Bob"), TestTicketNumber.Create(10)),
-                        new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
-                    ]),
-            });
-            ctx.SaveChanges();
-        }
+            Inning = new CricketInning(
+                TestStateCode.Create("Alpha"),
+                [
+                    new CricketLine(TestStateCode.Create("Bob"), TestTicketNumber.Create(10)),
+                    new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
+                ]),
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        using (var ctx = new CollectionVoSqlServerContext())
-        {
-            var loaded = ctx.Set<RequiredScorecardEntity>().Single();
-            loaded.Inning.Lines.Should().HaveCount(2);
-            ctx.Database.EnsureDeleted();
-        }
+        await using var verify = new CollectionVoSqlServerContext(connectionString);
+        var loaded = await verify.Set<RequiredScorecardEntity>().SingleAsync(TestContext.Current.CancellationToken);
+        loaded.Inning.Lines.Should().HaveCount(2);
     }
 
     [Fact]
-    public void MaybeComposite_OwningVoCollection_RoundTrips_OnSqlServer()
+    public async Task MaybeComposite_OwningVoCollection_RoundTrips_OnSqlServer()
     {
-        if (!SqlServerAvailable())
+        if (!sqlServerFixture.IsEnabled && !SqlServerAvailable())
         {
             Assert.Skip("SQL Server (LocalDB) is not available");
             return;
         }
 
-        using (var ctx = new CollectionVoSqlServerContext())
+        var connectionString = await CreateSqlServerConnectionStringAsync();
+        var ctx = _sqlServerContext = new CollectionVoSqlServerContext(connectionString);
+        await ctx.Database.EnsureDeletedAsync(TestContext.Current.CancellationToken);
+        await ctx.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+        ctx.Set<MaybeScorecardEntity>().Add(new MaybeScorecardEntity
         {
-            ctx.Database.EnsureDeleted();
-            ctx.Database.EnsureCreated();
-            ctx.Set<MaybeScorecardEntity>().Add(new MaybeScorecardEntity
-            {
-                Inning = Maybe.From(new CricketInning(
-                    TestStateCode.Create("Alpha"),
-                    [
-                        new CricketLine(TestStateCode.Create("Bob"), TestTicketNumber.Create(10)),
-                        new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
-                    ])),
-            });
-            ctx.SaveChanges();
-        }
+            Inning = Maybe.From(new CricketInning(
+                TestStateCode.Create("Alpha"),
+                [
+                    new CricketLine(TestStateCode.Create("Bob"), TestTicketNumber.Create(10)),
+                    new CricketLine(TestStateCode.Create("Cara"), TestTicketNumber.Create(20)),
+                ])),
+        });
+        await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        using (var ctx = new CollectionVoSqlServerContext())
-        {
-            var loaded = ctx.Set<MaybeScorecardEntity>().Single();
-            loaded.Inning.HasValue.Should().BeTrue();
-            loaded.Inning.Value.Lines.Should().HaveCount(2);
-            ctx.Database.EnsureDeleted();
-        }
+        await using var verify = new CollectionVoSqlServerContext(connectionString);
+        var loaded = await verify.Set<MaybeScorecardEntity>().SingleAsync(TestContext.Current.CancellationToken);
+        loaded.Inning.HasValue.Should().BeTrue();
+        loaded.Inning.Value.Lines.Should().HaveCount(2);
     }
 
     private const string SqlServerConnectionString =
         "Server=(localdb)\\MSSQLLocalDB;Database=TrellisCompositeVoCollectionTests;Trusted_Connection=True;TrustServerCertificate=True";
+
+    private async ValueTask<string> CreateSqlServerConnectionStringAsync() => sqlServerFixture.IsEnabled
+        ? await sqlServerFixture.CreateConnectionStringAsync()
+        : SqlServerConnectionString;
 
     private static bool SqlServerAvailable()
     {
@@ -281,13 +281,13 @@ public partial class CompositeValueObjectCollectionConventionTests : IDisposable
             configurationBuilder.ApplyTrellisConventions(typeof(TestStateCode).Assembly);
     }
 
-    private sealed class CollectionVoSqlServerContext : DbContext
+    private sealed class CollectionVoSqlServerContext(string connectionString) : DbContext
     {
         public DbSet<RequiredScorecardEntity> RequiredScorecards => Set<RequiredScorecardEntity>();
         public DbSet<MaybeScorecardEntity> MaybeScorecards => Set<MaybeScorecardEntity>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
-            optionsBuilder.UseSqlServer(SqlServerConnectionString).IgnoreManyServiceProvidersCreatedWarning();
+            optionsBuilder.UseSqlServer(connectionString).IgnoreManyServiceProvidersCreatedWarning();
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
             configurationBuilder.ApplyTrellisConventions(typeof(TestStateCode).Assembly);
