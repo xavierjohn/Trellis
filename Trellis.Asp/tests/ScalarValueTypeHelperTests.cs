@@ -415,6 +415,61 @@ public class ScalarValueTypeHelperTests
 
     #endregion
 
+    #region GetValidationError Tests
+
+    [Fact]
+    public void GetValidationError_ByteOverflow_ReflectionFallback_PreservesConversionStructure()
+    {
+        var nativeResult = PrimitiveConverter.ConvertToPrimitive<byte>("256");
+        nativeResult.TryGetError(out var nativeError).Should().BeTrue();
+        var native = nativeError.Should().BeOfType<Error.InvalidInput>().Which;
+        var nativeViolation = native.Fields.Items.Should().ContainSingle().Which;
+        nativeViolation.Field.Should().Be(InputPointer.Root);
+        nativeViolation.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
+        nativeViolation.Args.Should().HaveCount(2);
+        nativeViolation.Args!["min"].Should().Be(new ValidationArgValue.Number(0));
+        nativeViolation.Args["max"].Should().Be(new ValidationArgValue.Number(255));
+
+        var error = ScalarValueTypeHelper.GetValidationError(
+            typeof(ScalarValueModelBinderPrimitiveTypesTests.ByteVO), "256", "level");
+
+        var actual = error.Should().BeOfType<Error.InvalidInput>().Which;
+        actual.Fields.Items.Should().ContainSingle().Which.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
+        actual.Should().Be(native with
+        {
+            Fields = EquatableArray.Create(nativeViolation with { Field = InputPointer.ForProperty("level") }),
+        });
+    }
+
+    [Theory]
+    [InlineData(null, ValidationCodes.ValueNotNull)]
+    [InlineData("", ValidationCodes.ValueNotEmpty)]
+    public void GetValidationError_MissingByteValue_ReflectionFallback_PreservesCodeAndRequiredDetail(
+        string? rawValue, string expectedCode)
+    {
+        var nativeResult = PrimitiveConverter.ConvertToPrimitive<byte>(rawValue);
+        nativeResult.TryGetError(out var nativeError).Should().BeTrue();
+        var native = nativeError.Should().BeOfType<Error.InvalidInput>().Which;
+        var nativeViolation = native.Fields.Items.Should().ContainSingle().Which;
+        nativeViolation.ReasonCode.Should().Be(expectedCode);
+
+        var error = ScalarValueTypeHelper.GetValidationError(
+            typeof(ScalarValueModelBinderPrimitiveTypesTests.ByteVO), rawValue, "level");
+
+        var actual = error.Should().BeOfType<Error.InvalidInput>().Which;
+        actual.GetDisplayMessage().Should().Be("'level' is required.");
+        var modelStateErrors = ScalarValueTypeHelper.ToModelStateErrors(actual, "level");
+        modelStateErrors.Should().ContainSingle().Which.Key.Should().Be("level");
+        modelStateErrors["level"].Should().Equal("'level' is required.");
+        actual.Fields.Items.Should().Equal([nativeViolation with
+        {
+            Field = InputPointer.ForProperty("level"),
+            Detail = "'level' is required.",
+        }]);
+    }
+
+    #endregion
+
     #region GetValidationErrors Tests
 
     [Fact]

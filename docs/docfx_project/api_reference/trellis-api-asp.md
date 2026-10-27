@@ -1777,6 +1777,8 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
 | `public void OnActionExecuting(ActionExecutingContext context)` | `void` | Short-circuits with a validation problem result for collected JSON validation errors, structured `TrellisJsonValidationException` entries in `ModelState`, invalid scalar route/query parameters, **or any remaining invalid `ModelState` entry** (the final `else if (!ModelState.IsValid)` fallback — this is the path a plain type-conversion failure takes). A plain `JsonException` in `ModelState` takes precedence and forces the 400 path rather than 422. |
 | `public void OnActionExecuted(ActionExecutedContext context)` | `void` | No-op. |
 
+When a scalar action argument is present but null, with no existing parameter `ModelState` error or binder-collected violation, the MVC filter re-derives validation from raw route/query input. If the string `TryCreate` cannot be used and primitive conversion fails, the reflection fallback preserves the native field reason code and typed arguments while assigning the parameter's field pointer. For example, rejected `byte` input `256` retains `format.integer` and numeric `min: 0`, `max: 255`; the filter records the known query/path origin rather than treating it as a body pointer. Conversion details are preserved, including the helper's existing parameter-specific required message for null/empty input. Ordinary native binder failures already carry structured violations and bypass this re-derivation.
+
 ### `ScalarValueValidationEndpointFilter`
 
 **Declaration**
