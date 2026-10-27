@@ -1,11 +1,14 @@
 ﻿namespace Trellis.Asp;
 
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp.Validation;
 
@@ -175,7 +178,7 @@ public sealed class ScalarValueValidationMiddleware
             if (scalarValueType is null)
                 continue;
 
-            var rawValue = GetRawParameterValue(context, parameterName, out var location);
+            var rawValue = GetRawParameterValue(context, parameterMetadata, out parameterName, out var location);
             if (rawValue is null)
                 continue;
 
@@ -192,22 +195,56 @@ public sealed class ScalarValueValidationMiddleware
         return errors.Count > 0;
     }
 
-    private static string? GetRawParameterValue(HttpContext context, string parameterName, out InputLocation location)
+    private static string? GetRawParameterValue(
+        HttpContext context,
+        IParameterBindingMetadata parameterMetadata,
+        out string parameterName,
+        out InputLocation location)
     {
-        if (context.Request.RouteValues.TryGetValue(parameterName, out var routeValue))
-        {
-            location = InputLocation.Path;
-            return routeValue?.ToString();
-        }
-
-        if (context.Request.Query.TryGetValue(parameterName, out var queryValue))
-        {
-            location = InputLocation.Query;
-            return queryValue.ToString();
-        }
-
+        parameterName = parameterMetadata.Name;
         location = InputLocation.Unspecified;
-        return null;
+        var attributes = parameterMetadata.ParameterInfo.GetCustomAttributes();
+
+        if (attributes.OfType<IFromRouteMetadata>().FirstOrDefault() is { } fromRoute)
+        {
+            parameterName = fromRoute.Name ?? parameterName;
+            location = InputLocation.Path;
+        }
+        else if (attributes.OfType<IFromQueryMetadata>().FirstOrDefault() is { } fromQuery)
+        {
+            parameterName = fromQuery.Name ?? parameterName;
+            location = InputLocation.Query;
+        }
+        else if (parameterMetadata.HasBindAsync
+            || attributes.Any(attribute => attribute is IFromHeaderMetadata or IFromBodyMetadata
+                or IFromFormMetadata or IFromServiceMetadata or FromKeyedServicesAttribute))
+            return null;
+        else if (context.GetEndpoint() is RouteEndpoint routeEndpoint)
+        {
+            if (!parameterMetadata.HasTryParse)
+                return null;
+
+            location = routeEndpoint.RoutePattern.Parameters.Any(parameter =>
+                string.Equals(parameter.Name, parameterMetadata.Name, StringComparison.OrdinalIgnoreCase))
+                ? InputLocation.Path
+                : InputLocation.Query;
+        }
+        else
+        {
+            // RequestDelegateFactory also falls back to route before query when the route pattern is unknown.
+            location = context.Request.RouteValues.ContainsKey(parameterName)
+                ? InputLocation.Path
+                : InputLocation.Query;
+        }
+
+        if (location == InputLocation.Path)
+            return context.Request.RouteValues.TryGetValue(parameterName, out var routeValue)
+                ? routeValue?.ToString()
+                : null;
+
+        return context.Request.Query.TryGetValue(parameterName, out var queryValue)
+            ? queryValue.ToString()
+            : null;
     }
 
     private static bool HasEndpointParameterMetadata(HttpContext context) =>

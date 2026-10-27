@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Net;
+using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -535,6 +537,173 @@ public class ScalarValueValidationMiddlewareTests
         AssertStructuredOrderCodeProblem(problem.RootElement, fromRoute ? "path" : "query", invalidPath);
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task InvokeAsync_MinimalApiScalarBinding_DeclaredSource_PreservesBoundValueAndName(
+        bool fromRoute, bool aliased)
+    {
+        List<int> bindingFailureStatuses = [];
+        await using var app = CreateScalarBindingApp(bindingFailureStatuses);
+        var handlerCalls = 0;
+        Microsoft.AspNetCore.Http.IResult Handle(StructuredOrderCode code)
+        {
+            handlerCalls++;
+            return Results.Ok(code.Value);
+        }
+
+        var parameterName = aliased ? "orderCode" : "code";
+        Delegate handler = (fromRoute, aliased) switch
+        {
+            (true, true) => ([FromRoute(Name = "orderCode")] StructuredOrderCode code) => Handle(code),
+            (true, false) => ([FromRoute] StructuredOrderCode code) => Handle(code),
+            (false, true) => ([FromQuery(Name = "orderCode")] StructuredOrderCode code) => Handle(code),
+            (false, false) => ([FromQuery] StructuredOrderCode code) => Handle(code),
+        };
+        app.MapGet($"/middleware-metadata/{{{(fromRoute ? parameterName : "code")}}}", handler)
+            .WithScalarValueValidation();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        using var client = app.GetTestClient();
+
+        var validPath = fromRoute
+            ? "/middleware-metadata/ORD-123?code=INVALID&orderCode=INVALID"
+            : $"/middleware-metadata/INVALID?{parameterName}=ORD-123{(aliased ? "&code=INVALID" : string.Empty)}";
+        using var validResponse = await client.GetAsync(validPath, TestContext.Current.CancellationToken);
+        validResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonSerializer.Deserialize<string>(await validResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Be("ORD-123");
+        handlerCalls.Should().Be(1);
+        handlerCalls = 0;
+
+        var invalidPath = fromRoute
+            ? "/middleware-metadata/INVALID?code=ORD-123&orderCode=ORD-123"
+            : $"/middleware-metadata/ORD-123?{parameterName}=INVALID{(aliased ? "&code=ORD-123" : string.Empty)}";
+        using var response = await client.GetAsync(invalidPath, TestContext.Current.CancellationToken);
+
+        handlerCalls.Should().Be(0);
+        bindingFailureStatuses.Should().Equal([400]);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        AssertStructuredOrderCodeProblem(problem.RootElement, fromRoute ? "path" : "query", invalidPath, parameterName);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InvokeAsync_MinimalApiScalarBinding_InheritedSource_PreservesBoundValueAndName(bool fromRoute)
+    {
+        List<int> bindingFailureStatuses = [];
+        await using var app = CreateScalarBindingApp(bindingFailureStatuses);
+        var handler = new OverridingScalarBindingHandler();
+        Func<StructuredOrderCode, Microsoft.AspNetCore.Http.IResult> endpointHandler =
+            fromRoute ? handler.BindRoute : handler.BindQuery;
+        app.MapGet(fromRoute ? "/middleware-metadata/inherited/{orderCode}" : "/middleware-metadata/inherited",
+            endpointHandler).WithScalarValueValidation();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        using var client = app.GetTestClient();
+
+        var validPath = fromRoute
+            ? "/middleware-metadata/inherited/ORD-123?code=INVALID&orderCode=INVALID"
+            : "/middleware-metadata/inherited?code=ORD-123";
+        using var validResponse = await client.GetAsync(validPath, TestContext.Current.CancellationToken);
+        validResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonSerializer.Deserialize<string>(await validResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Be("ORD-123");
+        handler.HandlerCalls.Should().Be(1);
+        handler.HandlerCalls = 0;
+
+        var invalidPath = fromRoute
+            ? "/middleware-metadata/inherited/INVALID?code=ORD-123&orderCode=ORD-123"
+            : "/middleware-metadata/inherited?code=INVALID";
+        using var response = await client.GetAsync(invalidPath, TestContext.Current.CancellationToken);
+
+        handler.HandlerCalls.Should().Be(0);
+        bindingFailureStatuses.Should().Equal([400]);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        AssertStructuredOrderCodeProblem(problem.RootElement, fromRoute ? "path" : "query", invalidPath,
+            fromRoute ? "orderCode" : "code");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InvokeAsync_MinimalApiScalarBinding_NonQuerySource_DoesNotRevalidateQuery(bool fromHeader)
+    {
+        List<int> bindingFailureStatuses = [];
+        await using var app = CreateScalarBindingApp(bindingFailureStatuses);
+        var handlerCalls = 0;
+        Microsoft.AspNetCore.Http.IResult Handle(StructuredOrderCode code, int count)
+        {
+            count.Should().Be(1);
+            handlerCalls++;
+            return Results.Ok(code.Value);
+        }
+
+        Delegate handler = fromHeader
+            ? ([FromHeader(Name = "X-Order-Code")] StructuredOrderCode code, int count) => Handle(code, count)
+            : ([FromBody] StructuredOrderCode code, int count) => Handle(code, count);
+        app.MapPost("/middleware-metadata/other-source", handler).WithScalarValueValidation();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        using var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Add("X-Order-Code", "ORD-123");
+
+        using var validResponse = await client.PostAsJsonAsync(
+            "/middleware-metadata/other-source?code=INVALID&count=1", "ORD-123", TestContext.Current.CancellationToken);
+        validResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonSerializer.Deserialize<string>(await validResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Be("ORD-123");
+        handlerCalls.Should().Be(1);
+        handlerCalls = 0;
+
+        var act = async () => await client.PostAsJsonAsync(
+            "/middleware-metadata/other-source?code=INVALID&count=INVALID", "ORD-123", TestContext.Current.CancellationToken);
+        var failure = await act.Should().ThrowAsync<BadHttpRequestException>();
+
+        failure.Which.StatusCode.Should().Be(400);
+        handlerCalls.Should().Be(0);
+        bindingFailureStatuses.Should().Equal([400]);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_MinimalApiScalarBinding_InferredQuery_IgnoresUnboundRouteValue()
+    {
+        List<int> bindingFailureStatuses = [];
+        await using var app = CreateScalarBindingApp(bindingFailureStatuses);
+        app.Use((context, next) =>
+        {
+            context.Request.RouteValues["code"] = "ORD-ROUTE";
+            return next(context);
+        });
+        var handlerCalls = 0;
+        app.MapGet("/middleware-metadata/inferred", (StructuredOrderCode code) =>
+        {
+            handlerCalls++;
+            return Results.Ok(code.Value);
+        }).WithScalarValueValidation();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        using var client = app.GetTestClient();
+
+        using var validResponse = await client.GetAsync(
+            "/middleware-metadata/inferred?code=ORD-123", TestContext.Current.CancellationToken);
+        validResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonSerializer.Deserialize<string>(await validResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Be("ORD-123");
+        handlerCalls.Should().Be(1);
+        handlerCalls = 0;
+
+        const string invalidPath = "/middleware-metadata/inferred?code=INVALID";
+        using var response = await client.GetAsync(invalidPath, TestContext.Current.CancellationToken);
+
+        handlerCalls.Should().Be(0);
+        bindingFailureStatuses.Should().Equal([400]);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        AssertStructuredOrderCodeProblem(problem.RootElement, "query", invalidPath);
+    }
+
     [Fact]
     public async Task InvokeAsync_BindingFailure_ForScalarValueWithQualifiedTypeName_Returns422WithRichErrors()
     {
@@ -964,13 +1133,64 @@ public class ScalarValueValidationMiddlewareTests
 
     #region Helper Methods
 
-    private static void AssertStructuredOrderCodeProblem(JsonElement problem, string location, string instance)
+    private class BaseScalarBindingHandler
+    {
+        public int HandlerCalls { get; set; }
+
+        public virtual Microsoft.AspNetCore.Http.IResult BindRoute([FromRoute(Name = "orderCode")] StructuredOrderCode code) =>
+            Handle(code);
+
+        public virtual Microsoft.AspNetCore.Http.IResult BindQuery([FromQuery] StructuredOrderCode code) =>
+            Handle(code);
+
+        private Microsoft.AspNetCore.Http.IResult Handle(StructuredOrderCode code)
+        {
+            HandlerCalls++;
+            return Results.Ok(code.Value);
+        }
+    }
+
+    private sealed class OverridingScalarBindingHandler : BaseScalarBindingHandler
+    {
+        public override Microsoft.AspNetCore.Http.IResult BindRoute(StructuredOrderCode code) => base.BindRoute(code);
+        public override Microsoft.AspNetCore.Http.IResult BindQuery(StructuredOrderCode code) => base.BindQuery(code);
+    }
+
+    private static WebApplication CreateScalarBindingApp(List<int> bindingFailureStatuses)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production,
+        });
+        builder.WebHost.UseTestServer();
+        builder.Services.AddTrellisAspWithScalarValidation();
+        builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+        var app = builder.Build();
+        app.UseScalarValueValidation();
+        app.UseRouting();
+        app.Use(async (context, next) =>
+        {
+            try
+            {
+                await next(context);
+            }
+            catch (BadHttpRequestException exception)
+            {
+                bindingFailureStatuses.Add(exception.StatusCode);
+                throw;
+            }
+        });
+        return app;
+    }
+
+    private static void AssertStructuredOrderCodeProblem(
+        JsonElement problem, string location, string instance, string parameterName = "code")
     {
         problem.GetProperty("status").GetInt32().Should().Be(422);
         problem.GetProperty("instance").GetString().Should().Be(instance);
         problem.GetProperty("code").GetString().Should().Be("error.unspecified");
         problem.GetProperty("kind").GetString().Should().Be("unprocessable-content");
-        problem.GetProperty("errors").GetProperty("code").EnumerateArray().Should().ContainSingle()
+        problem.GetProperty("errors").GetProperty(parameterName).EnumerateArray().Should().ContainSingle()
             .Which.GetString().Should().Be("Order code must start with 'ORD-'.");
         problem.TryGetProperty("fieldViolations", out var fields).Should().BeTrue(
             "the scalar factory supplied a coded field violation with typed arguments");
@@ -981,7 +1201,7 @@ public class ScalarValueValidationMiddlewareTests
         prefix.ValueKind.Should().Be(JsonValueKind.String);
         prefix.GetString().Should().Be("ORD-");
         violation.GetProperty("location").GetProperty("in").GetString().Should().Be(location);
-        violation.GetProperty("location").GetProperty("name").GetString().Should().Be("code");
+        violation.GetProperty("location").GetProperty("name").GetString().Should().Be(parameterName);
         violation.GetProperty("location").TryGetProperty("pointer", out _).Should().BeFalse();
     }
 
