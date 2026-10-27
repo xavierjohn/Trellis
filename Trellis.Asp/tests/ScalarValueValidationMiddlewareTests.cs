@@ -1,16 +1,24 @@
 ﻿namespace Trellis.Asp.Tests;
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Net;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using Trellis;
+using Trellis.Asp.Validation;
 using Xunit;
 
 /// <summary>
@@ -353,8 +361,28 @@ public class ScalarValueValidationMiddlewareTests
         }
     }
 
+    public sealed class StructuredOrderCode : ScalarValueObject<StructuredOrderCode, string>, IScalarValue<StructuredOrderCode, string>
+    {
+        private StructuredOrderCode(string value) : base(value) { }
+
+        public static Result<StructuredOrderCode> TryCreate(string? value, string? fieldName = null)
+        {
+            if (value is null || !value.StartsWith("ORD-", StringComparison.Ordinal))
+                return Result.Fail<StructuredOrderCode>(Error.InvalidInput.ForField(
+                    "order.code-prefix", fieldName ?? "code",
+                    args: ValidationArgs.Of("prefix", "ORD-"),
+                    detail: "Order code must start with 'ORD-'."));
+
+            return Result.Ok(new StructuredOrderCode(value));
+        }
+
+        public static bool TryParse(string? value, [MaybeNullWhen(false)] out StructuredOrderCode result) =>
+            TryCreate(value).TryGetValue(out result);
+    }
+
     // Helper method signatures used to obtain ParameterInfo via reflection
     private static void ScalarValueParam(OrderCode code) { }
+    private static void StructuredScalarValueParam(StructuredOrderCode code) { }
     private static void MaybeScalarValueParam(Maybe<OrderCode> code) { }
     private static void NonScalarValueParam(int id) { }
     private static void IntOnlyScalarValueParam(IntOnlyScalarValue val) { }
@@ -401,6 +429,110 @@ public class ScalarValueValidationMiddlewareTests
         // 422 branch (WriteValidationProblemAsync). Pins the middleware emission point
         // independently of the JSON-deserialization branches.
         problem.GetProperty("instance").GetString().Should().Be("/middleware-binding-422");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InvokeAsync_ScalarBindingFailure_StructuredError_PreservesCodeArgsAndLocation(bool fromRoute)
+    {
+        var source = StructuredOrderCode.TryCreate("INVALID", "code");
+        source.TryGetError(out var sourceError).Should().BeTrue();
+        var sourceViolation = sourceError.Should().BeOfType<Error.InvalidInput>().Which
+            .Fields.Items.Should().ContainSingle().Which;
+        sourceViolation.ReasonCode.Should().Be("order.code-prefix");
+        sourceViolation.Args!["prefix"].Should().Be(new ValidationArgValue.Text("ORD-"));
+
+        var parameter = typeof(ScalarValueValidationMiddlewareTests)
+            .GetMethod(nameof(StructuredScalarValueParam), BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetParameters()[0];
+        var context = CreateContextWithEndpointMetadata(parameter, "code", fromRoute ? "INVALID" : null);
+        context.Request.Path = "/middleware-binding-structure";
+        context.Request.QueryString = new QueryString(fromRoute ? "?code=ORD-123" : "?code=INVALID");
+        BoundViolationCollector.Get(context).Should().BeEmpty();
+
+        var middleware = new ScalarValueValidationMiddleware(_ =>
+            throw new BadHttpRequestException("Parameter binding failed.", 400));
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.StatusCode.Should().Be(422);
+        using var problem = JsonDocument.Parse(await ReadResponseBodyAsync(context));
+        AssertStructuredOrderCodeProblem(problem.RootElement, fromRoute ? "path" : "query",
+            context.Request.Path + context.Request.QueryString);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task InvokeAsync_MinimalApiScalarBinding_ExceptionPolicy_PreservesStructuredFailureOrBare400(
+        bool fromRoute, bool throwOnBadRequest)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production,
+        });
+        builder.WebHost.UseTestServer();
+        builder.Services.AddTrellisAspWithScalarValidation();
+        builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = throwOnBadRequest);
+        await using var app = builder.Build();
+        app.UseScalarValueValidation();
+
+        List<int> bindingFailureStatuses = [];
+        app.Use(async (context, next) =>
+        {
+            try
+            {
+                await next(context);
+            }
+            catch (BadHttpRequestException exception)
+            {
+                bindingFailureStatuses.Add(exception.StatusCode);
+                throw;
+            }
+        });
+
+        var handlerCalls = 0;
+        app.MapGet(fromRoute ? "/middleware-binding/route/{code}" : "/middleware-binding/query",
+            (StructuredOrderCode code) =>
+            {
+                handlerCalls++;
+                return Results.Ok(code.Value);
+            }).WithScalarValueValidation();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        using var client = app.GetTestClient();
+        var invalidPath = fromRoute
+            ? "/middleware-binding/route/INVALID?code=ORD-123"
+            : "/middleware-binding/query?code=INVALID";
+
+        using var response = await client.GetAsync(invalidPath, TestContext.Current.CancellationToken);
+        handlerCalls.Should().Be(0);
+
+        var validPath = fromRoute
+            ? "/middleware-binding/route/ORD-123?code=INVALID"
+            : "/middleware-binding/query?code=ORD-123";
+        using var validResponse = await client.GetAsync(validPath, TestContext.Current.CancellationToken);
+        validResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonSerializer.Deserialize<string>(await validResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
+            .Should().Be("ORD-123");
+        handlerCalls.Should().Be(1);
+
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        if (!throwOnBadRequest)
+        {
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            bindingFailureStatuses.Should().BeEmpty();
+            body.Should().BeEmpty();
+            return;
+        }
+
+        bindingFailureStatuses.Should().Equal([400]);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        using var problem = JsonDocument.Parse(body);
+        AssertStructuredOrderCodeProblem(problem.RootElement, fromRoute ? "path" : "query", invalidPath);
     }
 
     [Fact]
@@ -831,6 +963,27 @@ public class ScalarValueValidationMiddlewareTests
     #endregion
 
     #region Helper Methods
+
+    private static void AssertStructuredOrderCodeProblem(JsonElement problem, string location, string instance)
+    {
+        problem.GetProperty("status").GetInt32().Should().Be(422);
+        problem.GetProperty("instance").GetString().Should().Be(instance);
+        problem.GetProperty("code").GetString().Should().Be("error.unspecified");
+        problem.GetProperty("kind").GetString().Should().Be("unprocessable-content");
+        problem.GetProperty("errors").GetProperty("code").EnumerateArray().Should().ContainSingle()
+            .Which.GetString().Should().Be("Order code must start with 'ORD-'.");
+        problem.TryGetProperty("fieldViolations", out var fields).Should().BeTrue(
+            "the scalar factory supplied a coded field violation with typed arguments");
+        var violation = fields.EnumerateArray().Should().ContainSingle().Which;
+        violation.GetProperty("code").GetString().Should().Be("order.code-prefix");
+        violation.GetProperty("detail").GetString().Should().Be("Order code must start with 'ORD-'.");
+        var prefix = violation.GetProperty("args").GetProperty("prefix");
+        prefix.ValueKind.Should().Be(JsonValueKind.String);
+        prefix.GetString().Should().Be("ORD-");
+        violation.GetProperty("location").GetProperty("in").GetString().Should().Be(location);
+        violation.GetProperty("location").GetProperty("name").GetString().Should().Be("code");
+        violation.GetProperty("location").TryGetProperty("pointer", out _).Should().BeFalse();
+    }
 
     private static DefaultHttpContext CreateContextWithEndpointMetadata(
         ParameterInfo paramInfo,

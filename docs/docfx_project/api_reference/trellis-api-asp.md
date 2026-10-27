@@ -1865,6 +1865,15 @@ For legacy exception-based JSON binding, a `TrellisJsonValidationException` carr
 payloads. Marked absolute pointers are used as-is; unmarked pointers are rebased from
 `JsonException.Path`. Rules-only legacy exceptions retain the message-based fallback.
 
+For exception-based scalar route/query binding, when ASP.NET Core throws
+`BadHttpRequestException` with status 400 (for example, with
+`RouteHandlerOptions.ThrowOnBadRequest` enabled), the middleware revalidates scalar parameters
+from endpoint metadata. It retains the existing `errors` messages and configured semantic status
+(default 422), and also projects available field reason codes and typed arguments in
+`fieldViolations`, with named `path` or `query` locations. Raw-value lookup keeps its
+route-before-query precedence. A nonthrowing framework binding failure remains a bodyless 400;
+this fallback neither enables `ThrowOnBadRequest` nor formats that response.
+
 ### `ScalarValuePathTracking`
 
 **Declaration**

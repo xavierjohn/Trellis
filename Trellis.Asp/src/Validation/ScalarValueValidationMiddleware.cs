@@ -175,14 +175,16 @@ public sealed class ScalarValueValidationMiddleware
             if (scalarValueType is null)
                 continue;
 
-            var rawValue = GetRawParameterValue(context, parameterName);
+            var rawValue = GetRawParameterValue(context, parameterName, out var location);
             if (rawValue is null)
                 continue;
 
-            var parameterErrors = ScalarValueTypeHelper.GetValidationErrors(scalarValueType, rawValue, parameterName);
-            if (parameterErrors is null)
+            var parameterError = ScalarValueTypeHelper.GetValidationError(scalarValueType, rawValue, parameterName);
+            if (parameterError is null)
                 continue;
 
+            BoundViolationCollector.AddFrom(context, parameterError, parameterName, location);
+            var parameterErrors = ScalarValueTypeHelper.ToModelStateErrors(parameterError, parameterName);
             foreach (var (fieldName, details) in parameterErrors)
                 errors[fieldName] = details;
         }
@@ -190,14 +192,21 @@ public sealed class ScalarValueValidationMiddleware
         return errors.Count > 0;
     }
 
-    private static string? GetRawParameterValue(HttpContext context, string parameterName)
+    private static string? GetRawParameterValue(HttpContext context, string parameterName, out InputLocation location)
     {
         if (context.Request.RouteValues.TryGetValue(parameterName, out var routeValue))
+        {
+            location = InputLocation.Path;
             return routeValue?.ToString();
+        }
 
         if (context.Request.Query.TryGetValue(parameterName, out var queryValue))
+        {
+            location = InputLocation.Query;
             return queryValue.ToString();
+        }
 
+        location = InputLocation.Unspecified;
         return null;
     }
 
@@ -217,12 +226,13 @@ public sealed class ScalarValueValidationMiddleware
         // 9110 §15.5.21), aligning the binder seam with handler-level Error.InvalidInput.
         var statusCode = ScalarValidationStatus.Resolve(context);
         context.Response.StatusCode = statusCode;
+        var validationError = new Error.InvalidInput(EquatableArray.From(BoundViolationCollector.Get(context)));
 
         var result = Results.ValidationProblem(
             errors,
             instance: context.Request.GetEncodedPathAndQuery(),
             statusCode: statusCode,
-            extensions: ProblemEnvelope.ForError(EmptyInvalidInput));
+            extensions: ViolationProjection.ToProblemExtensions(validationError));
         await result.ExecuteAsync(context).ConfigureAwait(false);
     }
 
