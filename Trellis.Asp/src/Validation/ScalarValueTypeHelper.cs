@@ -262,8 +262,17 @@ internal static class ScalarValueTypeHelper
                 ? $"'{fieldName}' is required."
                 : convError!.GetDisplayMessage();
 
-            conversionError = new Error.InvalidInput(EquatableArray.Create(
-                new FieldViolation(InputPointer.ForProperty(fieldName), ValidationCodes.Unspecified, Detail: detail)));
+            conversionError = convError is Error.InvalidInput invalidInput
+                ? invalidInput with
+                {
+                    Fields = EquatableArray.From(invalidInput.Fields.Items.Select(violation => violation with
+                    {
+                        Field = InputPointer.ForProperty(fieldName),
+                        Detail = detail,
+                    })),
+                    Detail = detail,
+                }
+                : convError;
             return null;
         }
 

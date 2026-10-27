@@ -2,7 +2,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
+using System.Text.Json;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -343,6 +346,53 @@ public class ScalarValueValidationFilterTests
         var problemDetails = GetValidationProblemDetails(context);
         problemDetails.Errors.Should().ContainKey("code");
         problemDetails.Errors["code"].Should().Contain(e => e.Contains("ORD-"));
+    }
+
+    [Fact]
+    public async Task OnActionExecuting_NullByteQuery_ReflectionFallback_PreservesConversionStructure()
+    {
+        var paramDescriptor = new ParameterDescriptor
+        {
+            Name = "level",
+            ParameterType = typeof(ScalarValueModelBinderPrimitiveTypesTests.ByteVO),
+            BindingInfo = new BindingInfo { BindingSource = BindingSource.Query },
+        };
+        var context = CreateActionExecutingContextWithParams(
+            parameters: [paramDescriptor],
+            arguments: new Dictionary<string, object?> { ["level"] = null },
+            routeValues: new RouteValueDictionary(),
+            queryString: "?level=256");
+        context.ModelState.IsValid.Should().BeTrue();
+        BoundViolationCollector.Get(context.HttpContext).Should().BeEmpty(
+            "an existing binder violation would bypass the reflection fallback");
+
+        new ScalarValueValidationFilter().OnActionExecuting(context);
+
+        var problemDetails = GetValidationProblemDetails(context);
+        problemDetails.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        problemDetails.Errors.Should().ContainSingle().Which.Key.Should().Be("level");
+        problemDetails.Errors["level"].Should().Equal("The value is not a valid byte (0-255).");
+
+        using var body = new MemoryStream();
+        context.HttpContext.Response.Body = body;
+        await context.Result!.ExecuteResultAsync(context);
+
+        context.HttpContext.Response.StatusCode.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        context.HttpContext.Response.ContentType.Should().Be("application/problem+json");
+        body.Position = 0;
+        using var payload = JsonDocument.Parse(body);
+        var violation = payload.RootElement.GetProperty("fieldViolations")
+            .EnumerateArray().Should().ContainSingle().Which;
+        violation.GetProperty("code").GetString().Should().Be(ValidationCodes.FormatInteger);
+        violation.GetProperty("detail").GetString().Should().Be("The value is not a valid byte (0-255).");
+        var args = violation.GetProperty("args");
+        args.EnumerateObject().Should().HaveCount(2);
+        args.GetProperty("min").GetInt32().Should().Be(0);
+        args.GetProperty("max").GetInt32().Should().Be(255);
+        var location = violation.GetProperty("location");
+        location.GetProperty("in").GetString().Should().Be("query");
+        location.GetProperty("name").GetString().Should().Be("level");
+        location.TryGetProperty("pointer", out _).Should().BeFalse();
     }
 
     [Fact]
