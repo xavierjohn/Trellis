@@ -89,6 +89,37 @@ public sealed class BoundErrorMetadataTests(BoundErrorMetadataFixture fixture)
         body.Should().NotContain(MetadataCode.CauseDetail);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BindingFailure_DuplicateQueryBinding_PreservesSingleRoot(bool rulesOnly)
+    {
+        const string path = "/bound-error-metadata/mvc/duplicate";
+        using var valid = await fixture.Client.GetAsync(
+            $"{path}?code=ORD-123", TestContext.Current.CancellationToken);
+        valid.StatusCode.Should().Be(HttpStatusCode.OK);
+        valid.Headers.GetValues("X-Handler-Executed").Should().Equal("true");
+
+        using var response = await fixture.Client.GetAsync(
+            $"{path}?code={(rulesOnly ? "RULE" : "BAD")}", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.Headers.Contains("X-Handler-Executed").Should().BeFalse();
+        using var document = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var problem = document.RootElement;
+        problem.GetProperty("code").GetString().Should().Be(MetadataCode.RootCode);
+        problem.GetProperty("detail").GetString().Should().Be(MetadataCode.RootDetail);
+        problem.GetProperty("errors").GetProperty("code").EnumerateArray()
+            .Select(error => error.GetString()).Should().Equal(
+                Enumerable.Repeat(rulesOnly ? MetadataCode.RootDetail : MetadataCode.FieldDetail, 2));
+        if (rulesOnly)
+            problem.TryGetProperty("fieldViolations", out _).Should().BeFalse();
+        else
+            problem.GetProperty("fieldViolations").GetArrayLength().Should().Be(1);
+        problem.GetProperty("ruleViolations").GetArrayLength().Should().Be(1);
+        problem.TryGetProperty("cause", out _).Should().BeFalse();
+    }
+
     public sealed class MetadataCode : ScalarValueObject<MetadataCode, string>, IScalarValue<MetadataCode, string>
     {
         public const string RootCode = "order.invalid-code";
@@ -173,5 +204,14 @@ public sealed class BoundErrorMetadataController : ControllerBase
     {
         Response.Headers["X-Handler-Executed"] = "true";
         return Ok(new[] { code.Value, other.Value });
+    }
+
+    [HttpGet("duplicate")]
+    public IActionResult GetDuplicate(
+        [FromQuery] BoundErrorMetadataTests.MetadataCode code,
+        [FromQuery(Name = "code")] BoundErrorMetadataTests.MetadataCode copy)
+    {
+        Response.Headers["X-Handler-Executed"] = "true";
+        return Ok(new[] { code.Value, copy.Value });
     }
 }

@@ -75,6 +75,125 @@ public sealed class BoundViolationCollectorCodeTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void GetError_DuplicateFailure_PreservesSingleRoot(bool rulesOnly, bool aggregateCause)
+    {
+        var context = new DefaultHttpContext();
+        var original = BoundErrorMetadataTests.MetadataCode.CreateError("code", rulesOnly);
+        var duplicate = BoundErrorMetadataTests.MetadataCode.CreateError("code", rulesOnly);
+        if (aggregateCause)
+        {
+            original = original with { Cause = new Error.Aggregate(original.Cause!) };
+            duplicate = duplicate with { Cause = new Error.Aggregate(duplicate.Cause!) };
+        }
+
+        BoundViolationCollector.AddFrom(context, original, "code", InputLocation.Query);
+        BoundViolationCollector.AddFrom(context, original, "code", InputLocation.Query);
+        BoundViolationCollector.AddFrom(context, duplicate, "code", InputLocation.Query);
+
+        var result = BoundViolationCollector.GetError(context)!;
+        result.Code.Should().Be(original.Code);
+        result.Detail.Should().Be(original.Detail);
+        result.Cause.Should().BeSameAs(original.Cause);
+        result.Fields.Items.Should().HaveCount(rulesOnly ? 0 : 1);
+        result.Rules.Items.Should().ContainSingle();
+    }
+
+    [Theory]
+    [InlineData("other", InputLocation.Query)]
+    [InlineData("code", InputLocation.Header)]
+    public void GetError_SameGlobalRule_DifferentBindings_RemainsIndependent(string secondName, InputLocation secondLocation)
+    {
+        var context = new DefaultHttpContext();
+        var source = Error.InvalidInput.ForRule("order.code-policy") with
+        {
+            Code = BoundErrorMetadataTests.MetadataCode.RootCode,
+            Detail = BoundErrorMetadataTests.MetadataCode.RootDetail,
+        };
+
+        BoundViolationCollector.AddFrom(context, source, "code", InputLocation.Query);
+        BoundViolationCollector.AddFrom(context, source, secondName, secondLocation);
+
+        var result = BoundViolationCollector.GetError(context)!;
+        result.Code.Should().Be(ValidationCodes.Unspecified);
+        result.Detail.Should().BeNull();
+        result.Fields.Items.Should().BeEmpty();
+        result.Rules.Items.Should().ContainSingle().Which.Fields.Items.Should().BeEmpty();
+        var originals = result.Cause.Should().BeOfType<Error.Aggregate>().Which.Errors.Items;
+        originals.Should().HaveCount(2);
+        originals[0].Should().BeSameAs(source);
+        originals[1].Should().BeSameAs(source);
+    }
+
+    [Theory]
+    [InlineData("code")]
+    [InlineData("detail")]
+    [InlineData("field")]
+    [InlineData("rule")]
+    public void GetError_SameBinding_DifferentPayloads_RemainsIndependent(string difference)
+    {
+        var context = new DefaultHttpContext();
+        var first = BoundErrorMetadataTests.MetadataCode.CreateError("code");
+        var second = difference switch
+        {
+            "code" => first with { Code = "order.other-code" },
+            "detail" => first with { Detail = "Different root detail." },
+            "field" => first with
+            {
+                Fields = EquatableArray.Create(first.Fields[0] with { ReasonCode = "order.other-prefix" }),
+            },
+            _ => first with
+            {
+                Rules = EquatableArray.Create(first.Rules[0] with { ReasonCode = "order.other-policy" }),
+            },
+        };
+
+        BoundViolationCollector.AddFrom(context, first, "code", InputLocation.Query);
+        BoundViolationCollector.AddFrom(context, second, "code", InputLocation.Query);
+
+        var result = BoundViolationCollector.GetError(context)!;
+        result.Code.Should().Be(ValidationCodes.Unspecified);
+        result.Detail.Should().BeNull();
+        var originals = result.Cause.Should().BeOfType<Error.Aggregate>().Which.Errors.Items;
+        originals.Should().HaveCount(2);
+        originals[0].Should().BeSameAs(first);
+        originals[1].Should().BeSameAs(second);
+    }
+
+    [Theory]
+    [InlineData("direct")]
+    [InlineData("nested")]
+    [InlineData("aggregate")]
+    public void GetError_SameBinding_DifferentCauses_RetainsBothOriginals(string causeShape)
+    {
+        Error CreateCause(string detail)
+        {
+            Error cause = new Error.Forbidden("orders.restricted") { Detail = detail };
+            if (causeShape != "direct")
+                cause = new Error.Forbidden("orders.policy") { Cause = cause };
+            return causeShape == "aggregate" ? new Error.Aggregate(cause) : cause;
+        }
+
+        var context = new DefaultHttpContext();
+        var first = BoundErrorMetadataTests.MetadataCode.CreateError("code") with { Cause = CreateCause("First context.") };
+        var second = first with { Cause = CreateCause("Second context.") };
+        first.Should().Be(second);
+
+        BoundViolationCollector.AddFrom(context, first, "code", InputLocation.Query);
+        BoundViolationCollector.AddFrom(context, second, "code", InputLocation.Query);
+
+        var result = BoundViolationCollector.GetError(context)!;
+        result.Code.Should().Be(ValidationCodes.Unspecified);
+        result.Detail.Should().BeNull();
+        var originals = result.Cause.Should().BeOfType<Error.Aggregate>().Which.Errors.Items;
+        originals.Should().HaveCount(2);
+        originals[0].Should().BeSameAs(first);
+        originals[1].Should().BeSameAs(second);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void GetError_MultipleFailures_UsesNeutralRootAndRetainsEachOriginal(bool reverse)

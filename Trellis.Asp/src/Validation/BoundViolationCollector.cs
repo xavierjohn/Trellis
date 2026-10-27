@@ -36,7 +36,8 @@ internal static class BoundViolationCollector
 
     /// <summary>
     /// Records the complete failure, relocating field and rule pointers onto
-    /// <paramref name="location"/> without dropping root metadata.
+    /// <paramref name="location"/> without dropping root metadata. Equivalent reports for the
+    /// same parameter and location are recorded once, including their diagnostic causes.
     /// </summary>
     /// <remarks>
     /// For a named location the pointer is replaced by the parameter name rather than merely
@@ -56,6 +57,12 @@ internal static class BoundViolationCollector
                 Detail = error.Detail,
                 Cause = error,
             };
+        var boundErrors = GetOrCreate(httpContext);
+        if (boundErrors.Any(bound => bound.ParameterName == parameterName
+            && bound.Location == location
+            && EqualsIncludingCauses(bound.OriginalError, invalid)))
+            return;
+
         var relocated = invalid with
         {
             Fields = EquatableArray.From(invalid.Fields.Items.Select(violation => violation with
@@ -68,7 +75,7 @@ internal static class BoundViolationCollector
             })),
         };
 
-        GetOrCreate(httpContext).Add(new BoundError(parameterName, invalid, relocated));
+        boundErrors.Add(new BoundError(parameterName, location, invalid, relocated));
     }
 
     /// <summary>
@@ -180,6 +187,25 @@ internal static class BoundViolationCollector
         return InputLocation.Unspecified;
     }
 
+    private static bool EqualsIncludingCauses(Error? left, Error? right)
+    {
+        while (!ReferenceEquals(left, right))
+        {
+            if (left is null || right is null || left != right)
+                return false;
+
+            if (left is Error.Aggregate leftAggregate && right is Error.Aggregate rightAggregate)
+                for (var index = 0; index < leftAggregate.Errors.Length; index++)
+                    if (!EqualsIncludingCauses(leftAggregate.Errors[index], rightAggregate.Errors[index]))
+                        return false;
+
+            left = left.Cause;
+            right = right.Cause;
+        }
+
+        return true;
+    }
+
     private static InputPointer Relocate(InputPointer pointer, string parameterName, InputLocation location) =>
         location switch
         {
@@ -212,5 +238,5 @@ internal static class BoundViolationCollector
         return created;
     }
 
-    private sealed record BoundError(string ParameterName, Error.InvalidInput OriginalError, Error.InvalidInput Error);
+    private sealed record BoundError(string ParameterName, InputLocation Location, Error.InvalidInput OriginalError, Error.InvalidInput Error);
 }

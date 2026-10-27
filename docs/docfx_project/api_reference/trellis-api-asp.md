@@ -1782,6 +1782,8 @@ When a scalar action argument is present but null, with no existing parameter `M
 Bound scalar failures retain the complete `Error.InvalidInput`, including root `Code`, `Detail`
 and `Cause` and both `Fields` and `Rules`; field and rule pointers are relocated to the binding
 source. A single bound failure supplies its root code and optional Problem Details `detail`.
+Equivalent reports for the same parameter and binding source count once, including rules-only
+failures; different payloads or diagnostic causes remain independent.
 Rules-only failures retain `ruleViolations` without inventing a field violation. Multiple
 independent failures use the neutral `error.unspecified` root and merge all field/rule payloads,
 even when the factories supplied the same root code. Their complete errors remain available
