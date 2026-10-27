@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Trellis;
+using Trellis.Primitives;
 using Xunit;
 
 public sealed class BoundErrorMetadataTests(BoundErrorMetadataFixture fixture)
@@ -90,11 +91,17 @@ public sealed class BoundErrorMetadataTests(BoundErrorMetadataFixture fixture)
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task BindingFailure_DuplicateQueryBinding_PreservesSingleRoot(bool rulesOnly)
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    public async Task BindingFailure_DuplicateQueryBinding_PreservesSingleRoot(bool mvc, bool rulesOnly, bool caseOnly)
     {
-        const string path = "/bound-error-metadata/mvc/duplicate";
+        var path = $"/bound-error-metadata/{(mvc ? "mvc" : "minimal")}/{(caseOnly ? "case-duplicate" : "duplicate")}";
         using var valid = await fixture.Client.GetAsync(
             $"{path}?code=ORD-123", TestContext.Current.CancellationToken);
         valid.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -111,12 +118,80 @@ public sealed class BoundErrorMetadataTests(BoundErrorMetadataFixture fixture)
         problem.GetProperty("detail").GetString().Should().Be(MetadataCode.RootDetail);
         problem.GetProperty("errors").GetProperty("code").EnumerateArray()
             .Select(error => error.GetString()).Should().Equal(
-                Enumerable.Repeat(rulesOnly ? MetadataCode.RootDetail : MetadataCode.FieldDetail, 2));
+                Enumerable.Repeat(rulesOnly ? MetadataCode.RootDetail : MetadataCode.FieldDetail, mvc ? 2 : 1));
         if (rulesOnly)
             problem.TryGetProperty("fieldViolations", out _).Should().BeFalse();
         else
             problem.GetProperty("fieldViolations").GetArrayLength().Should().Be(1);
         problem.GetProperty("ruleViolations").GetArrayLength().Should().Be(1);
+        problem.TryGetProperty("cause", out _).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task BindingFailure_NativeErrorSharesScalarKey_OnlyCountsActualScalarFailures(
+        bool nativeFirst, bool validScalar)
+    {
+        var path = $"/bound-error-metadata/mvc/{(nativeFirst ? "native-first" : "scalar-first")}";
+        using var valid = await fixture.Client.GetAsync(
+            $"{path}/ORD-123?id=42", TestContext.Current.CancellationToken);
+        valid.StatusCode.Should().Be(HttpStatusCode.OK);
+        valid.Headers.GetValues("X-Handler-Executed").Should().Equal("true");
+
+        using var response = await fixture.Client.GetAsync(
+            $"{path}/{(validScalar ? "ORD-123" : "BAD")}?id=not-an-integer", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(validScalar ? HttpStatusCode.BadRequest : HttpStatusCode.UnprocessableEntity);
+        response.Headers.Contains("X-Handler-Executed").Should().BeFalse();
+        using var document = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var problem = document.RootElement;
+        problem.GetProperty("code").GetString().Should().Be(ValidationCodes.Unspecified);
+        problem.GetProperty("kind").GetString().Should().Be(validScalar ? "bad-request" : "unprocessable-content");
+        problem.TryGetProperty("detail", out _).Should().BeFalse();
+        problem.GetProperty("errors").GetProperty("id").GetArrayLength().Should().Be(validScalar ? 1 : 2);
+        if (validScalar)
+        {
+            problem.TryGetProperty("fieldViolations", out _).Should().BeFalse();
+            problem.TryGetProperty("ruleViolations", out _).Should().BeFalse();
+        }
+        else
+        {
+            var field = problem.GetProperty("fieldViolations").EnumerateArray().Should().ContainSingle().Which;
+            field.GetProperty("location").GetProperty("in").GetString().Should().Be("path");
+            field.GetProperty("location").GetProperty("name").GetString().Should().Be("id");
+            problem.GetProperty("ruleViolations").GetArrayLength().Should().Be(1);
+        }
+
+        problem.TryGetProperty("cause", out _).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BindingFailure_AliasedScalar_SharedValidKey_ReturnsSemanticStatus(bool aliasFirst)
+    {
+        var path = $"/bound-error-metadata/mvc/{(aliasFirst ? "aliased-scalar-first" : "valid-scalar-first")}";
+        using var valid = await fixture.Client.GetAsync(
+            $"{path}?code=ORD-user@example.com", TestContext.Current.CancellationToken);
+        valid.StatusCode.Should().Be(HttpStatusCode.OK);
+        valid.Headers.GetValues("X-Handler-Executed").Should().Equal("true");
+
+        using var response = await fixture.Client.GetAsync(
+            $"{path}?code=ORD-123", TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        response.Headers.Contains("X-Handler-Executed").Should().BeFalse();
+        using var document = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var problem = document.RootElement;
+        problem.GetProperty("kind").GetString().Should().Be("unprocessable-content");
+        problem.GetProperty("errors").GetProperty("code").GetArrayLength().Should().Be(1);
+        var field = problem.GetProperty("fieldViolations").EnumerateArray().Should().ContainSingle().Which;
+        field.GetProperty("code").GetString().Should().Be(ValidationCodes.StringEmail);
+        field.GetProperty("location").GetProperty("in").GetString().Should().Be("query");
+        field.GetProperty("location").GetProperty("name").GetString().Should().Be("code");
         problem.TryGetProperty("cause", out _).Should().BeFalse();
     }
 
@@ -132,7 +207,7 @@ public sealed class BoundErrorMetadataTests(BoundErrorMetadataFixture fixture)
         public static Result<MetadataCode> TryCreate(string? value, string? fieldName = null) =>
             value is not null && value.StartsWith("ORD-", StringComparison.Ordinal)
                 ? Result.Ok(new MetadataCode(value))
-                : Result.Fail<MetadataCode>(CreateError(fieldName, value == "RULE"));
+                : Result.Fail<MetadataCode>(CreateError(value == "LEAF" ? "leaf" : fieldName, value == "RULE"));
 
         public static bool TryParse(string? value, [MaybeNullWhen(false)] out MetadataCode result) =>
             TryCreate(value).TryGetValue(out result);
@@ -182,6 +257,22 @@ public sealed class BoundErrorMetadataFixture : IAsyncLifetime
                 context.Response.Headers["X-Handler-Executed"] = "true";
                 return Results.Ok(new[] { code.Value, other.Value });
             }).WithScalarValueValidation();
+        _app.MapGet("/bound-error-metadata/minimal/duplicate",
+            ([FromQuery] BoundErrorMetadataTests.MetadataCode code,
+             [FromQuery(Name = "code")] BoundErrorMetadataTests.MetadataCode copy,
+             HttpContext context) =>
+            {
+                context.Response.Headers["X-Handler-Executed"] = "true";
+                return Results.Ok(new[] { code.Value, copy.Value });
+            }).WithScalarValueValidation();
+        _app.MapGet("/bound-error-metadata/minimal/case-duplicate",
+            ([FromQuery] BoundErrorMetadataTests.MetadataCode code,
+             [FromQuery(Name = "CODE")] BoundErrorMetadataTests.MetadataCode copy,
+             HttpContext context) =>
+            {
+                context.Response.Headers["X-Handler-Executed"] = "true";
+                return Results.Ok(new[] { code.Value, copy.Value });
+            }).WithScalarValueValidation();
         await _app.StartAsync();
         Client = _app.GetTestClient();
     }
@@ -213,5 +304,50 @@ public sealed class BoundErrorMetadataController : ControllerBase
     {
         Response.Headers["X-Handler-Executed"] = "true";
         return Ok(new[] { code.Value, copy.Value });
+    }
+
+    [HttpGet("case-duplicate")]
+    public IActionResult GetCaseDuplicate(
+        [FromQuery] BoundErrorMetadataTests.MetadataCode code,
+        [FromQuery(Name = "CODE")] BoundErrorMetadataTests.MetadataCode copy)
+    {
+        Response.Headers["X-Handler-Executed"] = "true";
+        return Ok(new[] { code.Value, copy.Value });
+    }
+
+    [HttpGet("scalar-first/{id}")]
+    public IActionResult GetScalarFirst(
+        [FromRoute] BoundErrorMetadataTests.MetadataCode id,
+        [FromQuery(Name = "id")] int queryId)
+    {
+        Response.Headers["X-Handler-Executed"] = "true";
+        return Ok(new { id.Value, queryId });
+    }
+
+    [HttpGet("native-first/{id}")]
+    public IActionResult GetNativeFirst(
+        [FromQuery(Name = "id")] int queryId,
+        [FromRoute] BoundErrorMetadataTests.MetadataCode id)
+    {
+        Response.Headers["X-Handler-Executed"] = "true";
+        return Ok(new { id.Value, queryId });
+    }
+
+    [HttpGet("valid-scalar-first")]
+    public IActionResult GetValidScalarFirst(
+        [FromQuery] BoundErrorMetadataTests.MetadataCode code,
+        [FromQuery(Name = "code")] EmailAddress? email)
+    {
+        Response.Headers["X-Handler-Executed"] = "true";
+        return Ok(new { code.Value, Email = email?.Value });
+    }
+
+    [HttpGet("aliased-scalar-first")]
+    public IActionResult GetAliasedScalarFirst(
+        [FromQuery(Name = "code")] EmailAddress? email,
+        [FromQuery] BoundErrorMetadataTests.MetadataCode code)
+    {
+        Response.Headers["X-Handler-Executed"] = "true";
+        return Ok(new { code.Value, Email = email?.Value });
     }
 }

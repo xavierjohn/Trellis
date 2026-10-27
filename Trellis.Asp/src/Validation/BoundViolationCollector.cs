@@ -9,11 +9,10 @@ using Trellis;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <c>ModelStateDictionary</c> holds strings, and <c>ModelStateExtensions.AddResultErrors</c> is
-/// handed no <see cref="HttpContext"/>, so a binder-produced <see cref="FieldViolation"/> has
-/// nowhere to survive between the binder and the action filter that renders the response. Without
-/// this channel such violations reach the wire as message text only, degrading exactly the
-/// failures a client is most likely to want to act on.
+/// <c>ModelStateDictionary</c> carries MVC error entries rather than complete Trellis failures.
+/// This channel retains the structured payload between binding and response rendering and
+/// identifies the exact <see cref="ModelError"/> entries produced by scalar binding, without
+/// claiming unrelated errors at the same key.
 /// </para>
 /// <para>
 /// The binder keeps writing to <c>ModelState</c> as well — MVC's own invalid-model short-circuit
@@ -33,11 +32,13 @@ using Trellis;
 internal static class BoundViolationCollector
 {
     private const string ItemsKey = "Trellis.Asp.BoundViolations";
+    private const string ModelStateErrorsKey = "Trellis.Asp.BoundModelStateErrors";
 
     /// <summary>
     /// Records the complete failure, relocating field and rule pointers onto
     /// <paramref name="location"/> without dropping root metadata. Equivalent reports for the
     /// same parameter and location are recorded once, including their diagnostic causes.
+    /// Query, path and header binding-name comparisons are case-insensitive.
     /// </summary>
     /// <remarks>
     /// For a named location the pointer is replaced by the parameter name rather than merely
@@ -58,9 +59,7 @@ internal static class BoundViolationCollector
                 Cause = error,
             };
         var boundErrors = GetOrCreate(httpContext);
-        if (boundErrors.Any(bound => bound.ParameterName == parameterName
-            && bound.Location == location
-            && EqualsIncludingCauses(bound.OriginalError, invalid)))
+        if (boundErrors.Any(bound => IsEquivalentBinding(bound, invalid, parameterName, location)))
             return;
 
         var relocated = invalid with
@@ -71,7 +70,7 @@ internal static class BoundViolationCollector
             }).Distinct()),
             Rules = EquatableArray.From(invalid.Rules.Items.Select(rule => rule with
             {
-                Fields = EquatableArray.From(rule.Fields.Items.Select(field => Relocate(field, parameterName, location))),
+                Fields = EquatableArray.From(rule.Fields.Items.Select(field => Relocate(field, parameterName, location)).Distinct()),
             })),
         };
 
@@ -145,26 +144,30 @@ internal static class BoundViolationCollector
     }
 
     /// <summary>
-    /// True when a recorded failure supplies the MVC error at <paramref name="modelStateKey"/>.
+    /// Records the exact MVC error produced by a scalar binding failure.
     /// </summary>
-    public static bool HasModelStateErrorFor(HttpContext? httpContext, string modelStateKey)
+    public static void RecordModelStateError(HttpContext? httpContext, ModelError error)
     {
-        var boundErrors = GetBoundErrors(httpContext);
-        if (boundErrors is null)
-            return false;
+        if (httpContext is null)
+            return;
 
-        foreach (var bound in boundErrors)
+        if (!httpContext.Items.TryGetValue(ModelStateErrorsKey, out var existing)
+            || existing is not HashSet<ModelError> errors)
         {
-            if (string.Equals(bound.ParameterName, modelStateKey, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            foreach (var field in bound.OriginalError.Fields)
-                if (string.Equals(JsonPointerToMvc.Translate(field.Field.Path), modelStateKey, StringComparison.OrdinalIgnoreCase))
-                    return true;
+            errors = new HashSet<ModelError>(ReferenceEqualityComparer.Instance);
+            httpContext.Items[ModelStateErrorsKey] = errors;
         }
 
-        return false;
+        errors.Add(error);
     }
+
+    /// <summary>
+    /// True when a scalar binding failure produced this specific MVC error.
+    /// </summary>
+    public static bool HasModelStateErrorFor(HttpContext? httpContext, ModelError error) =>
+        httpContext?.Items.TryGetValue(ModelStateErrorsKey, out var existing) == true
+        && existing is HashSet<ModelError> errors
+        && errors.Contains(error);
 
     /// <summary>
     /// Maps an MVC binding source onto the wire location. An unrecognized source yields
@@ -185,6 +188,38 @@ internal static class BoundViolationCollector
             return InputLocation.Body;
 
         return InputLocation.Unspecified;
+    }
+
+    private static bool IsEquivalentBinding(
+        BoundError bound,
+        Error.InvalidInput error,
+        string parameterName,
+        InputLocation location)
+    {
+        if (bound.Location != location)
+            return false;
+        if (bound.ParameterName == parameterName)
+            return EqualsIncludingCauses(bound.OriginalError, error);
+        if (location is not (InputLocation.Query or InputLocation.Path or InputLocation.Header)
+            || !string.Equals(bound.ParameterName, parameterName, StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (EqualsIncludingCauses(bound.OriginalError, error))
+            return true;
+
+        var parameterPath = InputPointer.ForProperty(parameterName).Path;
+        var canonicalPath = InputPointer.ForProperty(bound.ParameterName).Path;
+        InputPointer Normalize(InputPointer pointer) =>
+            pointer.Path == parameterPath ? pointer with { Path = canonicalPath } : pointer;
+
+        var normalized = error with
+        {
+            Fields = EquatableArray.From(error.Fields.Items.Select(field => field with { Field = Normalize(field.Field) })),
+            Rules = EquatableArray.From(error.Rules.Items.Select(rule => rule with
+            {
+                Fields = EquatableArray.From(rule.Fields.Items.Select(Normalize)),
+            })),
+        };
+        return EqualsIncludingCauses(bound.OriginalError, normalized);
     }
 
     private static bool EqualsIncludingCauses(Error? left, Error? right)

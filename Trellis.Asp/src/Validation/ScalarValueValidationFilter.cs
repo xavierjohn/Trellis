@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
+using Trellis.Asp.ModelBinding;
 using Trellis.Asp.Validation;
 
 /// <summary>
@@ -224,6 +225,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             context.HttpContext,
             freshModelState,
             statusCode: statusCode,
+            detail: validationError.Detail,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
         AttachViolations(problemDetails, validationError);
 
@@ -260,14 +262,15 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             modelState.AddModelError(JsonPointerToMvc.Translate(fieldViolation.Field.Path), fieldViolation.Detail ?? fieldViolation.ReasonCode);
         }
 
+        var combinedError = BoundViolationCollector.GetError(context.HttpContext, validationError) ?? validationError;
         var statusCode = ScalarValidationStatus.Resolve(context.HttpContext);
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
         var problemDetails = factory.CreateValidationProblemDetails(
             context.HttpContext,
             modelState,
             statusCode: statusCode,
+            detail: combinedError.Detail,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
-        var combinedError = BoundViolationCollector.GetError(context.HttpContext, validationError) ?? validationError;
         AttachViolations(problemDetails, combinedError);
         AttachEnvelope(problemDetails, combinedError, statusCode);
         context.Result = new ProblemDetailsActionResult(problemDetails, statusCode);
@@ -280,7 +283,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
     {
         var hasUncollectedErrors = rejectedValue is not null && context.ModelState.Any(entry =>
             entry.Value is { Errors.Count: > 0 }
-            && !BoundViolationCollector.HasModelStateErrorFor(context.HttpContext, entry.Key));
+            && entry.Value.Errors.Any(error => !BoundViolationCollector.HasModelStateErrorFor(context.HttpContext, error)));
         var validationError = BoundViolationCollector.GetError(
             context.HttpContext, hasUncollectedErrors ? EmptyInvalidInput : null);
         var envelopeError = rejectedValue is null ? null : validationError ?? rejectedValue;
@@ -326,9 +329,8 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
     /// Adds the combined field and rule violations to the problem.
     /// </summary>
     /// <remarks>
-    /// The <c>errors</c> map and the structured members describe the same failures — the map is
-    /// the lossy MVC-shaped view retained for compatibility. Both are emitted from one source so
-    /// they cannot disagree.
+    /// Structured members retain known binding locations. The legacy <c>errors</c> map keeps
+    /// the original MVC field keys and can also contain errors from native MVC validation.
     /// </remarks>
     private static void AttachViolations(
         ProblemDetails problemDetails,
@@ -346,13 +348,13 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
     {
         var actionParameters = context.ActionDescriptor.Parameters;
 
-        // Track whether THIS pass identified any scalar-value-object failures so the final
+        // Track binder-collected and newly identified scalar-value-object failures so the final
         // result discrimination can choose the correct status code:
         //   - Scalar VO failure (binder couldn't construct the value, or TryCreate rejected it)
         //     → 422 Unprocessable Content (semantic per RFC 9110 §15.5.21).
         //   - Pre-existing ModelState invalidity from non-Trellis sources (plain JsonException
         //     for malformed JSON, [Required] field missing, type-conversion failures) → 400.
-        var addedScalarValueFailure = false;
+        var addedScalarValueFailure = BoundViolationCollector.GetError(context.HttpContext) is not null;
 
         foreach (var parameter in actionParameters)
         {
@@ -381,6 +383,9 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             //       under the parameter name (action argument absent from the dictionary).
             // Both are semantic failures of the input value, not JSON syntax errors.
             var hasArg = context.ActionArguments.TryGetValue(parameter.Name!, out var value);
+            if (hasArg && value is not null)
+                continue;
+
             var valueIsNull = hasArg && value is null;
             var hasModelStateError = context.ModelState.TryGetValue(parameter.Name!, out var mse)
                 && mse is { Errors.Count: > 0 };
@@ -413,7 +418,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
 
                     foreach (var (fieldName, details) in ScalarValueTypeHelper.ToModelStateErrors(derived, parameter.Name!))
                         foreach (var detail in details)
-                            context.ModelState.AddModelError(fieldName, detail);
+                            context.ModelState.AddBoundError(fieldName, detail, context.HttpContext);
                 }
                 else
                 {
@@ -426,7 +431,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
                         ? $"'{parameter.Name}' is required."
                         : $"'{parameter.Name}' is not in a valid format for {typeName}.";
 
-                    context.ModelState.AddModelError(parameter.Name!, errorMessage);
+                    context.ModelState.AddBoundError(parameter.Name!, errorMessage, context.HttpContext);
                     BoundViolationCollector.AddFrom(
                         context.HttpContext,
                         new Error.InvalidInput(EquatableArray.Create(

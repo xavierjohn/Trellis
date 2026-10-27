@@ -1783,13 +1783,24 @@ Bound scalar failures retain the complete `Error.InvalidInput`, including root `
 and `Cause` and both `Fields` and `Rules`; field and rule pointers are relocated to the binding
 source. A single bound failure supplies its root code and optional Problem Details `detail`.
 Equivalent reports for the same parameter and binding source count once, including rules-only
-failures; different payloads or diagnostic causes remain independent.
+failures. Query, path and header binding names are case-insensitive; binding-name pointer casing
+does not make an otherwise equivalent report independent. Other field paths, payloads and
+diagnostic causes remain distinct. Relocated rule locations are emitted once each, preserving
+distinct body pointers.
 Rules-only failures retain `ruleViolations` without inventing a field violation. Multiple
 independent failures use the neutral `error.unspecified` root and merge all field/rule payloads,
 even when the factories supplied the same root code. Their complete errors remain available
 internally as an aggregate `Cause`; causes are not serialized into the HTTP response. This also
 applies when MVC combines bound failures with collected body failures or other `ModelState`
-errors. Existing error messages and malformed-JSON 400 precedence remain unchanged.
+errors. MVC tracks individual scalar-binding errors, not entire `ModelState` keys: an unrelated
+native error remains independent even when it shares the key and message. A successfully bound
+scalar does not turn a native conversion error at the same key into a semantic 422.
+Collector-confirmed scalar failures still use the configured semantic status when another scalar
+sharing the binding key succeeded or an aliased action argument is absent.
+MVC's JSON response paths also use the selected combined error's optional `Detail`; a neutral
+multi-failure root does not select one factory's detail. The collection scope still supplies its
+generic validation detail rather than retaining individual factory roots.
+Existing error messages and malformed-JSON 400 precedence remain unchanged.
 
 ### `ScalarValueValidationEndpointFilter`
 
@@ -1872,9 +1883,10 @@ root, the framework's invalid-query 400 is preserved instead. ASP.NET Core can i
 after a parameter-check failure, but its terminal delegate returns an empty result whenever
 the response status is already at least 400, rather than calling the handler.
 
-For legacy exception-based JSON binding, a `TrellisJsonValidationException` carrying an
-`InvalidInput` with at least one field violation retains the error's root `Code` and field/rule
-payloads. Marked absolute pointers are used as-is; unmarked pointers are rebased from
+For legacy exception-based JSON binding, a body-only `TrellisJsonValidationException` carrying an
+`InvalidInput` with at least one field violation retains the error's root `Code`, optional `Detail`
+and field/rule payloads. Independent bound failures use the neutral combined-root policy above.
+Marked absolute pointers are used as-is; unmarked pointers are rebased from
 `JsonException.Path`. Rules-only legacy exceptions retain the message-based fallback.
 
 For exception-based scalar route/query binding, when ASP.NET Core throws

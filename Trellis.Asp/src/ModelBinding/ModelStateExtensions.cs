@@ -1,6 +1,8 @@
 ﻿namespace Trellis.Asp.ModelBinding;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Trellis.Asp.Validation;
 
 /// <summary>
 /// Extension methods for adding <see cref="Error"/> details to <see cref="ModelStateDictionary"/>.
@@ -17,16 +19,27 @@ internal static class ModelStateExtensions
     /// <param name="modelState">The model state dictionary.</param>
     /// <param name="modelName">The model name to use for non-validation errors.</param>
     /// <param name="error">The error to add.</param>
-    public static void AddResultErrors(this ModelStateDictionary modelState, string modelName, Error error)
+    /// <param name="httpContext">The request receiving scalar-binding error provenance, if available.</param>
+    public static void AddResultErrors(this ModelStateDictionary modelState, string modelName, Error error, HttpContext? httpContext = null)
     {
         if (error is Error.InvalidInput unprocessable && unprocessable.Fields.Items.Length > 0)
         {
             foreach (var fieldViolation in unprocessable.Fields)
-                modelState.AddModelError(JsonPointerToMvc.Translate(fieldViolation.Field.Path), fieldViolation.Detail ?? fieldViolation.ReasonCode);
+                modelState.AddBoundError(
+                    JsonPointerToMvc.Translate(fieldViolation.Field.Path), fieldViolation.Detail ?? fieldViolation.ReasonCode, httpContext);
         }
         else
         {
-            modelState.AddModelError(modelName, error.GetDisplayMessage());
+            modelState.AddBoundError(modelName, error.GetDisplayMessage(), httpContext);
         }
+    }
+
+    /// <summary>
+    /// Adds a scalar-binding error and records the MVC error instance without claiming other errors at its key.
+    /// </summary>
+    public static void AddBoundError(this ModelStateDictionary modelState, string modelName, string message, HttpContext? httpContext)
+    {
+        if (modelState.TryAddModelError(modelName, message))
+            BoundViolationCollector.RecordModelStateError(httpContext, modelState[modelName]!.Errors[^1]);
     }
 }

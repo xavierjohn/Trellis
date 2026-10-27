@@ -89,6 +89,7 @@ public class ScalarValueValidationFilterTests
             var problemDetails = (ValidationProblemDetails)unprocessableResult.Value!;
             problemDetails.Status.Should().Be(422);
             problemDetails.Title.Should().Be("One or more validation errors occurred.");
+            problemDetails.Detail.Should().Be("One or more validation errors occurred.");
             problemDetails.Errors.Should().HaveCount(2);
             problemDetails.Errors["Email"].Should().Contain("Email is required.");
             problemDetails.Errors["Name"].Should().Contain("Name cannot be empty.");
@@ -344,16 +345,25 @@ public class ScalarValueValidationFilterTests
     }
 
     [Fact]
-    public void OnActionExecuting_BoundScalarWithDifferentFactoryField_PreservesSingleRoot()
+    public async Task OnActionExecuting_BoundScalarWithDifferentFactoryField_PreservesSingleRoot()
     {
         var context = CreateActionExecutingContextWithParams(
             [new ParameterDescriptor { Name = "code", ParameterType = typeof(BoundErrorMetadataTests.MetadataCode) }],
             new Dictionary<string, object?> { ["code"] = null },
             new RouteValueDictionary(),
-            "?code=BAD");
-        BoundViolationCollector.AddFrom(
-            context.HttpContext, BoundErrorMetadataTests.MetadataCode.CreateError("leaf"), "code", InputLocation.Query);
-        context.ModelState.AddModelError("leaf", BoundErrorMetadataTests.MetadataCode.FieldDetail);
+            "?code=LEAF");
+        var bindingContext = new DefaultModelBindingContext
+        {
+            ActionContext = context,
+            ModelName = "code",
+            ModelState = context.ModelState,
+            ModelMetadata = new EmptyModelMetadataProvider().GetMetadataForType(typeof(BoundErrorMetadataTests.MetadataCode)),
+            BindingSource = BindingSource.Query,
+            ValueProvider = new QueryStringValueProvider(
+                BindingSource.Query, context.HttpContext.Request.Query, CultureInfo.InvariantCulture),
+        };
+        await new ScalarValueModelBinder<BoundErrorMetadataTests.MetadataCode, string>().BindModelAsync(bindingContext);
+        bindingContext.Result.IsModelSet.Should().BeFalse();
 
         new ScalarValueValidationFilter().OnActionExecuting(context);
 
@@ -363,6 +373,71 @@ public class ScalarValueValidationFilterTests
         problem.Errors.Keys.Should().Equal("leaf");
         var field = problem.Extensions["fieldViolations"].Should().BeOfType<FieldViolationProblemDetail[]>().Which.Single();
         field.Location.Name.Should().Be("code");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OnActionExecuting_IdenticalNativeAndBoundMessages_UsesNeutralRoot(bool nativeFirst)
+    {
+        var context = CreateActionExecutingContextWithParams(
+            [new ParameterDescriptor { Name = "code", ParameterType = typeof(BoundErrorMetadataTests.MetadataCode) }],
+            new Dictionary<string, object?> { ["code"] = null },
+            new RouteValueDictionary(),
+            "?code=BAD");
+        if (nativeFirst)
+            context.ModelState.AddModelError("code", BoundErrorMetadataTests.MetadataCode.FieldDetail);
+        var bindingContext = new DefaultModelBindingContext
+        {
+            ActionContext = context,
+            ModelName = "code",
+            ModelState = context.ModelState,
+            ModelMetadata = new EmptyModelMetadataProvider().GetMetadataForType(typeof(BoundErrorMetadataTests.MetadataCode)),
+            BindingSource = BindingSource.Query,
+            ValueProvider = new QueryStringValueProvider(
+                BindingSource.Query, context.HttpContext.Request.Query, CultureInfo.InvariantCulture),
+        };
+        await new ScalarValueModelBinder<BoundErrorMetadataTests.MetadataCode, string>().BindModelAsync(bindingContext);
+        if (!nativeFirst)
+            context.ModelState.AddModelError("code", BoundErrorMetadataTests.MetadataCode.FieldDetail);
+        context.ModelState["code"]!.Errors.Select(error => error.ErrorMessage)
+            .Should().Equal(Enumerable.Repeat(BoundErrorMetadataTests.MetadataCode.FieldDetail, 2));
+
+        new ScalarValueValidationFilter().OnActionExecuting(context);
+
+        var problem = GetValidationProblemDetails(context);
+        problem.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        problem.Extensions["code"].Should().Be(ValidationCodes.Unspecified);
+        problem.Detail.Should().BeNull();
+        problem.Extensions["ruleViolations"].Should().BeOfType<RuleViolationProblemDetail[]>()
+            .Which.Should().ContainSingle();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OnActionExecuting_LegacyStructuredJson_PreservesSelectedRootDetail(bool withBoundFailure)
+    {
+        var context = CreateActionExecutingContext();
+        var body = BoundErrorMetadataTests.MetadataCode.CreateError("name") with { Detail = "Body code was rejected." };
+        context.ModelState.TryAddModelException("$",
+            new TrellisJsonValidationException("Rejected body.") { InvalidInput = body });
+        if (withBoundFailure)
+        {
+            BoundViolationCollector.AddFrom(
+                context.HttpContext, BoundErrorMetadataTests.MetadataCode.CreateError("code"), "code", InputLocation.Query);
+            context.ModelState.AddModelError("code", BoundErrorMetadataTests.MetadataCode.FieldDetail);
+        }
+
+        new ScalarValueValidationFilter().OnActionExecuting(context);
+
+        var problem = GetValidationProblemDetails(context);
+        problem.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        problem.Extensions["code"].Should().Be(withBoundFailure ? ValidationCodes.Unspecified : body.Code);
+        problem.Detail.Should().Be(withBoundFailure ? null : body.Detail);
+        problem.Extensions["ruleViolations"].Should().BeOfType<RuleViolationProblemDetail[]>()
+            .Which.Should().HaveCount(withBoundFailure ? 2 : 1);
+        problem.Extensions.Should().NotContainKey("cause");
     }
 
     [Fact]
@@ -380,6 +455,7 @@ public class ScalarValueValidationFilterTests
         var problem = GetValidationProblemDetails(context);
         problem.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
         problem.Extensions["code"].Should().Be(ValidationCodes.Unspecified);
+        problem.Detail.Should().BeNull();
         var fields = problem.Extensions["fieldViolations"].Should().BeOfType<FieldViolationProblemDetail[]>().Which;
         fields.Select(field => field.Location.In).Should().Equal("body", "query");
         var rules = problem.Extensions["ruleViolations"].Should().BeOfType<RuleViolationProblemDetail[]>().Which;

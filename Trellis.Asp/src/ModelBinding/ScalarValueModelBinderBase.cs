@@ -63,7 +63,7 @@ public abstract class ScalarValueModelBinderBase<TResult, TValue, TPrimitive> : 
         // accompanying dead defensive throw the old shape required after them).
         if (!parseResult.TryGetValue(out var primitiveValue, out var parseError))
         {
-            bindingContext.ModelState.AddModelError(modelName, parseError.GetDisplayMessage());
+            bindingContext.ModelState.AddBoundError(modelName, parseError.GetDisplayMessage(), bindingContext.HttpContext);
             RecordStructured(bindingContext, parseError, modelName);
             bindingContext.Result = ModelBindingResult.Failed();
             return Task.CompletedTask;
@@ -77,7 +77,7 @@ public abstract class ScalarValueModelBinderBase<TResult, TValue, TPrimitive> : 
         }
         else if (result.TryGetError(out var createError))
         {
-            bindingContext.ModelState.AddResultErrors(modelName, createError);
+            bindingContext.ModelState.AddResultErrors(modelName, createError, bindingContext.HttpContext);
             RecordStructured(bindingContext, createError, modelName);
             bindingContext.Result = ModelBindingResult.Failed();
         }
