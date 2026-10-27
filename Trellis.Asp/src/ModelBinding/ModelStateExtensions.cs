@@ -20,7 +20,7 @@ internal static class ModelStateExtensions
     /// <param name="modelName">The model name to use for non-validation errors.</param>
     /// <param name="error">The error to add.</param>
     /// <param name="httpContext">The request receiving scalar-binding error provenance, if available.</param>
-    public static void AddResultErrors(this ModelStateDictionary modelState, string modelName, Error error, HttpContext? httpContext = null)
+    public static void AddResultErrors(this ModelStateDictionary modelState, string modelName, Error error, HttpContext? httpContext)
     {
         if (error is Error.InvalidInput unprocessable && unprocessable.Fields.Items.Length > 0)
         {

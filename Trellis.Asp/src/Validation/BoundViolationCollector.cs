@@ -78,12 +78,6 @@ internal static class BoundViolationCollector
     }
 
     /// <summary>
-    /// Gets the violations recorded for the current request, or an empty list.
-    /// </summary>
-    public static IReadOnlyList<FieldViolation> Get(HttpContext? httpContext) =>
-        GetBoundErrors(httpContext)?.SelectMany(bound => bound.Error.Fields.Items).Distinct().ToArray() ?? [];
-
-    /// <summary>
     /// Retains a single failure's metadata, or merges independent failures under a neutral root
     /// with their complete errors retained in an aggregate cause.
     /// </summary>

@@ -29,7 +29,7 @@ public sealed class BoundViolationCollectorCodeTests
             "orderId",
             InputLocation.Path);
 
-        var violation = BoundViolationCollector.Get(context).Should().ContainSingle().Subject;
+        var violation = BoundViolationCollector.GetError(context)!.Fields.Items.Should().ContainSingle().Subject;
         violation.ReasonCode.Should().Be(ValidationCodes.Unspecified);
     }
 
@@ -44,7 +44,7 @@ public sealed class BoundViolationCollectorCodeTests
             "quantity",
             InputLocation.Query);
 
-        var violation = BoundViolationCollector.Get(context).Should().ContainSingle().Subject;
+        var violation = BoundViolationCollector.GetError(context)!.Fields.Items.Should().ContainSingle().Subject;
         violation.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
     }
 

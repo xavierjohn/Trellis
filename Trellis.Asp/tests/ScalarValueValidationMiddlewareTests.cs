@@ -451,7 +451,7 @@ public class ScalarValueValidationMiddlewareTests
         var context = CreateContextWithEndpointMetadata(parameter, "code", fromRoute ? "INVALID" : null);
         context.Request.Path = "/middleware-binding-structure";
         context.Request.QueryString = new QueryString(fromRoute ? "?code=ORD-123" : "?code=INVALID");
-        BoundViolationCollector.Get(context).Should().BeEmpty();
+        BoundViolationCollector.GetError(context).Should().BeNull();
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("Parameter binding failed.", 400));

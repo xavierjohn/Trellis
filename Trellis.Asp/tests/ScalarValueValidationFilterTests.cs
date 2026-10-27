@@ -549,7 +549,7 @@ public class ScalarValueValidationFilterTests
             routeValues: new RouteValueDictionary(),
             queryString: "?level=256");
         context.ModelState.IsValid.Should().BeTrue();
-        BoundViolationCollector.Get(context.HttpContext).Should().BeEmpty(
+        BoundViolationCollector.GetError(context.HttpContext).Should().BeNull(
             "an existing binder violation would bypass the reflection fallback");
 
         new ScalarValueValidationFilter().OnActionExecuting(context);
