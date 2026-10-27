@@ -1870,9 +1870,14 @@ For exception-based scalar route/query binding, when ASP.NET Core throws
 `RouteHandlerOptions.ThrowOnBadRequest` enabled), the middleware revalidates scalar parameters
 from endpoint metadata. It retains the existing `errors` messages and configured semantic status
 (default 422), and also projects available field reason codes and typed arguments in
-`fieldViolations`, with named `path` or `query` locations. Raw-value lookup keeps its
-route-before-query precedence. A nonthrowing framework binding failure remains a bodyless 400;
-this fallback neither enables `ThrowOnBadRequest` nor formats that response.
+`fieldViolations`, with named `path` or `query` locations. The raw value, `errors` key and
+named location honor explicit `[FromRoute]` / `[FromQuery]` sources and their binding-name
+aliases, including inherited attributes on overridden handler parameters. Without an explicit
+source, a routed endpoint's route pattern selects path versus query; unrelated route values do
+not override a query-bound scalar. Route-before-query lookup
+is retained only when no route pattern is available. Header, body, form, service and custom-bound
+parameters are not reinterpreted as route/query failures. A nonthrowing framework binding failure
+remains a bodyless 400; this fallback neither enables `ThrowOnBadRequest` nor formats that response.
 
 ### `ScalarValuePathTracking`
 
