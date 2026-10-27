@@ -226,10 +226,11 @@ public sealed class ScalarValueValidationMiddleware
         // 9110 §15.5.21), aligning the binder seam with handler-level Error.InvalidInput.
         var statusCode = ScalarValidationStatus.Resolve(context);
         context.Response.StatusCode = statusCode;
-        var validationError = new Error.InvalidInput(EquatableArray.From(BoundViolationCollector.Get(context)));
+        var validationError = BoundViolationCollector.GetError(context) ?? EmptyInvalidInput;
 
         var result = Results.ValidationProblem(
             errors,
+            detail: validationError.Detail,
             instance: context.Request.GetEncodedPathAndQuery(),
             statusCode: statusCode,
             extensions: ViolationProjection.ToProblemExtensions(validationError));

@@ -1779,6 +1779,16 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
 
 When a scalar action argument is present but null, with no existing parameter `ModelState` error or binder-collected violation, the MVC filter re-derives validation from raw route/query input. If the string `TryCreate` cannot be used and primitive conversion fails, the reflection fallback preserves the native field reason code and typed arguments while assigning the parameter's field pointer. For example, rejected `byte` input `256` retains `format.integer` and numeric `min: 0`, `max: 255`; the filter records the known query/path origin rather than treating it as a body pointer. Conversion details are preserved, including the helper's existing parameter-specific required message for null/empty input. Ordinary native binder failures already carry structured violations and bypass this re-derivation.
 
+Bound scalar failures retain the complete `Error.InvalidInput`, including root `Code`, `Detail`
+and `Cause` and both `Fields` and `Rules`; field and rule pointers are relocated to the binding
+source. A single bound failure supplies its root code and optional Problem Details `detail`.
+Rules-only failures retain `ruleViolations` without inventing a field violation. Multiple
+independent failures use the neutral `error.unspecified` root and merge all field/rule payloads,
+even when the factories supplied the same root code. Their complete errors remain available
+internally as an aggregate `Cause`; causes are not serialized into the HTTP response. This also
+applies when MVC combines bound failures with collected body failures or other `ModelState`
+errors. Existing error messages and malformed-JSON 400 precedence remain unchanged.
+
 ### `ScalarValueValidationEndpointFilter`
 
 **Declaration**
@@ -1873,6 +1883,10 @@ from endpoint metadata. It retains the existing `errors` messages and configured
 `fieldViolations`, with named `path` or `query` locations. Raw-value lookup keeps its
 route-before-query precedence. A nonthrowing framework binding failure remains a bodyless 400;
 this fallback neither enables `ThrowOnBadRequest` nor formats that response.
+
+The scalar compatibility path uses the same complete-error collection policy as MVC: a single
+failure preserves its root metadata and rule payloads; combined failures have a neutral root
+with all field/rule violations retained. `Cause` remains internal.
 
 ### `ScalarValuePathTracking`
 

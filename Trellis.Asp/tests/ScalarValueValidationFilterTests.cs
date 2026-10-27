@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
@@ -16,6 +17,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
+using Trellis.Asp.ModelBinding;
 using Trellis.Asp.Validation;
 using Xunit;
 
@@ -304,6 +306,114 @@ public class ScalarValueValidationFilterTests
     }
 
     #region ValidateScalarValueParameters Tests
+
+    [Fact]
+    public async Task OnActionExecuting_BinderConversionFailure_PreservesSingleRootDetail()
+    {
+        var context = CreateActionExecutingContextWithParams(
+            [new ParameterDescriptor { Name = "level", ParameterType = typeof(ScalarValueModelBinderPrimitiveTypesTests.ByteVO) }],
+            new Dictionary<string, object?> { ["level"] = null },
+            new RouteValueDictionary(),
+            "?level=256");
+        var bindingContext = new DefaultModelBindingContext
+        {
+            ActionContext = context,
+            ModelName = "level",
+            ModelState = context.ModelState,
+            ModelMetadata = new EmptyModelMetadataProvider().GetMetadataForType(typeof(ScalarValueModelBinderPrimitiveTypesTests.ByteVO)),
+            BindingSource = BindingSource.Query,
+            ValueProvider = new QueryStringValueProvider(
+                BindingSource.Query, context.HttpContext.Request.Query, CultureInfo.InvariantCulture),
+        };
+        await new ScalarValueModelBinder<ScalarValueModelBinderPrimitiveTypesTests.ByteVO, byte>()
+            .BindModelAsync(bindingContext);
+        bindingContext.Result.IsModelSet.Should().BeFalse();
+        context.ModelState.Keys.Should().Equal("level");
+        var original = BoundViolationCollector.GetError(context.HttpContext)!;
+        original.Detail.Should().Be("The value is not a valid byte (0-255).");
+
+        new ScalarValueValidationFilter().OnActionExecuting(context);
+
+        var problem = GetValidationProblemDetails(context);
+        problem.Detail.Should().Be(original.Detail);
+        problem.Extensions["code"].Should().Be(original.Code);
+        problem.Errors["level"].Should().Equal(original.Detail);
+        var field = problem.Extensions["fieldViolations"].Should().BeOfType<FieldViolationProblemDetail[]>().Which.Single();
+        field.Location.Name.Should().Be("level");
+        field.Location.In.Should().Be("query");
+    }
+
+    [Fact]
+    public void OnActionExecuting_BoundScalarWithDifferentFactoryField_PreservesSingleRoot()
+    {
+        var context = CreateActionExecutingContextWithParams(
+            [new ParameterDescriptor { Name = "code", ParameterType = typeof(BoundErrorMetadataTests.MetadataCode) }],
+            new Dictionary<string, object?> { ["code"] = null },
+            new RouteValueDictionary(),
+            "?code=BAD");
+        BoundViolationCollector.AddFrom(
+            context.HttpContext, BoundErrorMetadataTests.MetadataCode.CreateError("leaf"), "code", InputLocation.Query);
+        context.ModelState.AddModelError("leaf", BoundErrorMetadataTests.MetadataCode.FieldDetail);
+
+        new ScalarValueValidationFilter().OnActionExecuting(context);
+
+        var problem = GetValidationProblemDetails(context);
+        problem.Extensions["code"].Should().Be(BoundErrorMetadataTests.MetadataCode.RootCode);
+        problem.Detail.Should().Be(BoundErrorMetadataTests.MetadataCode.RootDetail);
+        problem.Errors.Keys.Should().Equal("leaf");
+        var field = problem.Extensions["fieldViolations"].Should().BeOfType<FieldViolationProblemDetail[]>().Which.Single();
+        field.Location.Name.Should().Be("code");
+    }
+
+    [Fact]
+    public void OnActionExecuting_BoundAndBodyFailures_MergesRulesUnderNeutralEnvelope()
+    {
+        var context = CreateActionExecutingContext();
+        var bound = BoundErrorMetadataTests.MetadataCode.CreateError("code");
+        BoundViolationCollector.AddFrom(context.HttpContext, bound, "code", InputLocation.Query);
+        context.ModelState.AddModelError("code", BoundErrorMetadataTests.MetadataCode.FieldDetail);
+        using var scope = ValidationErrorsContext.BeginScope();
+        ValidationErrorsContext.AddBodyError(BoundErrorMetadataTests.MetadataCode.CreateError("name"));
+
+        new ScalarValueValidationFilter().OnActionExecuting(context);
+
+        var problem = GetValidationProblemDetails(context);
+        problem.Status.Should().Be(StatusCodes.Status422UnprocessableEntity);
+        problem.Extensions["code"].Should().Be(ValidationCodes.Unspecified);
+        var fields = problem.Extensions["fieldViolations"].Should().BeOfType<FieldViolationProblemDetail[]>().Which;
+        fields.Select(field => field.Location.In).Should().Equal("body", "query");
+        var rules = problem.Extensions["ruleViolations"].Should().BeOfType<RuleViolationProblemDetail[]>().Which;
+        rules.Select(rule => rule.Locations.Single().In).Should().Equal("body", "query");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OnActionExecuting_BoundAndOtherFailures_DoesNotClaimSingleFactoryRoot(bool malformedJson)
+    {
+        var context = CreateActionExecutingContextWithParams(
+            [new ParameterDescriptor { Name = "code", ParameterType = typeof(BoundErrorMetadataTests.MetadataCode) }],
+            new Dictionary<string, object?> { ["code"] = null },
+            new RouteValueDictionary(),
+            "?code=BAD");
+        BoundViolationCollector.AddFrom(
+            context.HttpContext, BoundErrorMetadataTests.MetadataCode.CreateError("code"), "code", InputLocation.Query);
+        context.ModelState.AddModelError("code", BoundErrorMetadataTests.MetadataCode.FieldDetail);
+        if (malformedJson)
+            context.ModelState.TryAddModelException("$", new JsonException("Malformed JSON."));
+        else
+            context.ModelState.AddModelError("quantity", "The value is not a valid integer.");
+
+        new ScalarValueValidationFilter().OnActionExecuting(context);
+
+        var problem = GetValidationProblemDetails(context);
+        problem.Status.Should().Be(malformedJson ? StatusCodes.Status400BadRequest : StatusCodes.Status422UnprocessableEntity);
+        problem.Extensions["code"].Should().Be(ValidationCodes.Unspecified);
+        problem.Extensions["kind"].Should().Be(malformedJson ? "bad-request" : "unprocessable-content");
+        problem.Detail.Should().BeNull();
+        problem.Extensions["ruleViolations"].Should().BeOfType<RuleViolationProblemDetail[]>()
+            .Which.Should().ContainSingle();
+    }
 
     [Fact]
     public void OnActionExecuting_NullScalarValueParam_WithRouteValue_ReturnsRichValidationError()

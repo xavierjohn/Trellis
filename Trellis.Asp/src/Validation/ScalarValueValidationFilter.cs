@@ -216,6 +216,8 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             }
         }
 
+        var validationError = BoundViolationCollector.GetError(
+            context.HttpContext, structuredError ?? EmptyInvalidInput) ?? EmptyInvalidInput;
         var statusCode = ScalarValidationStatus.Resolve(context.HttpContext);
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
         var problemDetails = factory.CreateValidationProblemDetails(
@@ -223,11 +225,11 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             freshModelState,
             statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
-        AttachViolations(context, problemDetails, structuredError);
+        AttachViolations(problemDetails, validationError);
 
         // A TrellisJsonValidationException means a value object rejected a value, so this is an
         // Error.InvalidInput even on the unstructured branch where no violations survived.
-        AttachEnvelope(problemDetails, structuredError ?? EmptyInvalidInput, statusCode);
+        AttachEnvelope(problemDetails, validationError, statusCode);
         context.Result = new ProblemDetailsActionResult(problemDetails, statusCode);
         return true;
     }
@@ -265,8 +267,9 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             modelState,
             statusCode: statusCode,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
-        AttachViolations(context, problemDetails, validationError);
-        AttachEnvelope(problemDetails, validationError, statusCode);
+        var combinedError = BoundViolationCollector.GetError(context.HttpContext, validationError) ?? validationError;
+        AttachViolations(problemDetails, combinedError);
+        AttachEnvelope(problemDetails, combinedError, statusCode);
         context.Result = new ProblemDetailsActionResult(problemDetails, statusCode);
     }
 
@@ -275,14 +278,21 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         int statusCode,
         Error.InvalidInput? rejectedValue = null)
     {
+        var hasUncollectedErrors = rejectedValue is not null && context.ModelState.Any(entry =>
+            entry.Value is { Errors.Count: > 0 }
+            && !BoundViolationCollector.HasModelStateErrorFor(context.HttpContext, entry.Key));
+        var validationError = BoundViolationCollector.GetError(
+            context.HttpContext, hasUncollectedErrors ? EmptyInvalidInput : null);
+        var envelopeError = rejectedValue is null ? null : validationError ?? rejectedValue;
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
         var problemDetails = factory.CreateValidationProblemDetails(
             context.HttpContext,
             context.ModelState,
             statusCode: statusCode,
+            detail: envelopeError?.Detail,
             instance: context.HttpContext.Request.GetEncodedPathAndQuery());
-        AttachViolations(context, problemDetails, null);
-        AttachEnvelope(problemDetails, rejectedValue, statusCode);
+        AttachViolations(problemDetails, validationError);
+        AttachEnvelope(problemDetails, envelopeError, statusCode);
         return new ProblemDetailsActionResult(problemDetails, statusCode);
     }
 
@@ -313,8 +323,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
     private static readonly Error.InvalidInput EmptyInvalidInput = new(default);
 
     /// <summary>
-    /// Adds the structured violations to the problem, merging the ones carried by
-    /// <paramref name="error"/> with those the model binders recorded on the side-channel.
+    /// Adds the combined field and rule violations to the problem.
     /// </summary>
     /// <remarks>
     /// The <c>errors</c> map and the structured members describe the same failures — the map is
@@ -322,22 +331,11 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
     /// they cannot disagree.
     /// </remarks>
     private static void AttachViolations(
-        ActionExecutingContext context,
         ProblemDetails problemDetails,
         Error.InvalidInput? error)
     {
-        var fields = new List<FieldViolation>();
-        if (error is not null)
-            fields.AddRange(error.Fields.Items);
-
-        foreach (var bound in BoundViolationCollector.Get(context.HttpContext))
-        {
-            if (!fields.Contains(bound))
-                fields.Add(bound);
-        }
-
-        if (fields.Count > 0)
-            problemDetails.Extensions["fieldViolations"] = ViolationProjection.ToFieldViolations(EquatableArray.Create([.. fields]));
+        if (error is { Fields.Items.Length: > 0 })
+            problemDetails.Extensions["fieldViolations"] = ViolationProjection.ToFieldViolations(error.Fields);
 
         if (error is { Rules.Items.Length: > 0 })
             problemDetails.Extensions["ruleViolations"] = ViolationProjection.ToRuleViolations(error.Rules);

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Trellis;
 
 /// <summary>
-/// A request-scoped side-channel carrying structured violations produced by MVC model binders.
+/// A request-scoped side-channel carrying complete failures from scalar parameter binding.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -35,22 +35,8 @@ internal static class BoundViolationCollector
     private const string ItemsKey = "Trellis.Asp.BoundViolations";
 
     /// <summary>
-    /// Records a violation for the current request, ignoring one already present for the same
-    /// pointer and reason so a re-derivation cannot double-count it.
-    /// </summary>
-    public static void Add(HttpContext? httpContext, FieldViolation violation)
-    {
-        if (httpContext is null)
-            return;
-
-        var violations = GetOrCreate(httpContext);
-        if (!violations.Contains(violation))
-            violations.Add(violation);
-    }
-
-    /// <summary>
-    /// Records every field violation carried by <paramref name="error"/>, re-stamping each
-    /// pointer onto <paramref name="location"/>.
+    /// Records the complete failure, relocating field and rule pointers onto
+    /// <paramref name="location"/> without dropping root metadata.
     /// </summary>
     /// <remarks>
     /// For a named location the pointer is replaced by the parameter name rather than merely
@@ -62,39 +48,112 @@ internal static class BoundViolationCollector
         if (httpContext is null)
             return;
 
-        if (error is Error.InvalidInput invalid && invalid.Fields.Items.Length > 0)
+        var invalid = error as Error.InvalidInput
+            ?? new Error.InvalidInput(EquatableArray.Create(new FieldViolation(
+                InputPointer.ForProperty(parameterName), error.Code, Detail: error.Detail)))
+            {
+                Code = error.Code,
+                Detail = error.Detail,
+                Cause = error,
+            };
+        var relocated = invalid with
         {
-            foreach (var violation in invalid.Fields)
-                Add(httpContext, violation with { Field = Relocate(violation.Field, parameterName, location) });
+            Fields = EquatableArray.From(invalid.Fields.Items.Select(violation => violation with
+            {
+                Field = Relocate(violation.Field, parameterName, location),
+            }).Distinct()),
+            Rules = EquatableArray.From(invalid.Rules.Items.Select(rule => rule with
+            {
+                Fields = EquatableArray.From(rule.Fields.Items.Select(field => Relocate(field, parameterName, location))),
+            })),
+        };
 
-            return;
-        }
-
-        Add(httpContext, new FieldViolation(
-            Relocate(InputPointer.ForProperty(parameterName), parameterName, location),
-            error.Code,
-            Detail: error.Detail));
+        GetOrCreate(httpContext).Add(new BoundError(parameterName, invalid, relocated));
     }
 
     /// <summary>
     /// Gets the violations recorded for the current request, or an empty list.
     /// </summary>
     public static IReadOnlyList<FieldViolation> Get(HttpContext? httpContext) =>
-        httpContext?.Items.TryGetValue(ItemsKey, out var existing) == true && existing is List<FieldViolation> violations
-            ? violations
-            : [];
+        GetBoundErrors(httpContext)?.SelectMany(bound => bound.Error.Fields.Items).Distinct().ToArray() ?? [];
 
     /// <summary>
-    /// True when the collector already holds a violation for <paramref name="parameterName"/>,
+    /// Retains a single failure's metadata, or merges independent failures under a neutral root
+    /// with their complete errors retained in an aggregate cause.
+    /// </summary>
+    public static Error.InvalidInput? GetError(HttpContext? httpContext, Error.InvalidInput? additionalError = null)
+    {
+        var boundErrors = GetBoundErrors(httpContext);
+        if (boundErrors is not { Count: > 0 })
+            return additionalError;
+        if (boundErrors.Count == 1 && additionalError is null)
+            return boundErrors[0].Error;
+
+        var fields = additionalError?.Fields.Items.ToList() ?? [];
+        var rules = additionalError?.Rules.Items.ToList() ?? [];
+        var errors = new List<Error>();
+        if (additionalError is not null)
+            errors.Add(additionalError);
+
+        foreach (var bound in boundErrors)
+        {
+            errors.Add(bound.OriginalError);
+            foreach (var field in bound.Error.Fields)
+                if (!fields.Contains(field))
+                    fields.Add(field);
+
+            foreach (var rule in bound.Error.Rules)
+                if (!rules.Contains(rule))
+                    rules.Add(rule);
+        }
+
+        return new Error.InvalidInput(EquatableArray.From(fields), EquatableArray.From(rules))
+        {
+            Cause = new Error.Aggregate(errors),
+        };
+    }
+
+    /// <summary>
+    /// True when the collector already holds a failure for <paramref name="parameterName"/>,
     /// which is how the filter's early-out knows a binder has already reported the failure
     /// structurally and must not re-derive it from <c>ModelState</c>.
     /// </summary>
     public static bool HasViolationFor(HttpContext? httpContext, string parameterName)
     {
-        foreach (var violation in Get(httpContext))
+        var boundErrors = GetBoundErrors(httpContext);
+        if (boundErrors is null)
+            return false;
+
+        foreach (var bound in boundErrors)
         {
-            if (string.Equals(NameOf(violation.Field), parameterName, StringComparison.Ordinal))
+            if (string.Equals(bound.ParameterName, parameterName, StringComparison.Ordinal))
                 return true;
+
+            foreach (var violation in bound.Error.Fields)
+                if (string.Equals(NameOf(violation.Field), parameterName, StringComparison.Ordinal))
+                    return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// True when a recorded failure supplies the MVC error at <paramref name="modelStateKey"/>.
+    /// </summary>
+    public static bool HasModelStateErrorFor(HttpContext? httpContext, string modelStateKey)
+    {
+        var boundErrors = GetBoundErrors(httpContext);
+        if (boundErrors is null)
+            return false;
+
+        foreach (var bound in boundErrors)
+        {
+            if (string.Equals(bound.ParameterName, modelStateKey, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            foreach (var field in bound.OriginalError.Fields)
+                if (string.Equals(JsonPointerToMvc.Translate(field.Field.Path), modelStateKey, StringComparison.OrdinalIgnoreCase))
+                    return true;
         }
 
         return false;
@@ -138,13 +197,20 @@ internal static class BoundViolationCollector
                     .Replace("~0", "~", StringComparison.Ordinal);
     }
 
-    private static List<FieldViolation> GetOrCreate(HttpContext httpContext)
-    {
-        if (httpContext.Items.TryGetValue(ItemsKey, out var existing) && existing is List<FieldViolation> violations)
-            return violations;
+    private static List<BoundError>? GetBoundErrors(HttpContext? httpContext) =>
+        httpContext?.Items.TryGetValue(ItemsKey, out var existing) == true && existing is List<BoundError> errors
+            ? errors
+            : null;
 
-        var created = new List<FieldViolation>();
+    private static List<BoundError> GetOrCreate(HttpContext httpContext)
+    {
+        if (httpContext.Items.TryGetValue(ItemsKey, out var existing) && existing is List<BoundError> errors)
+            return errors;
+
+        var created = new List<BoundError>();
         httpContext.Items[ItemsKey] = created;
         return created;
     }
+
+    private sealed record BoundError(string ParameterName, Error.InvalidInput OriginalError, Error.InvalidInput Error);
 }
