@@ -333,6 +333,25 @@ public sealed class BoundViolationCollectorCodeTests
     }
 
     [Fact]
+    public void GetError_SingleFailureWithOtherFailures_UsesNeutralRootWithoutFabricatingACause()
+    {
+        var context = new DefaultHttpContext();
+        var source = BoundErrorMetadataTests.MetadataCode.CreateError("code");
+        BoundViolationCollector.AddFrom(context, source, "code", InputLocation.Query);
+
+        var result = BoundViolationCollector.GetError(context, hasOtherFailures: true)!;
+
+        result.Code.Should().Be(ValidationCodes.Unspecified);
+        result.Detail.Should().BeNull();
+        result.Cause.Should().BeOfType<Error.Aggregate>().Which.Errors.Items.Should().ContainSingle()
+            .Which.Should().BeSameAs(source);
+    }
+
+    [Fact]
+    public void GetError_NoBoundFailureWithOtherFailures_ReturnsNull() =>
+        BoundViolationCollector.GetError(new DefaultHttpContext(), hasOtherFailures: true).Should().BeNull();
+
+    [Fact]
     public void GetError_NonValidationFailure_RetainsTheOriginalAsCause()
     {
         var context = new DefaultHttpContext();

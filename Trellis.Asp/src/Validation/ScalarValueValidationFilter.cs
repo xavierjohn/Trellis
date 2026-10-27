@@ -218,7 +218,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
         }
 
         var validationError = BoundViolationCollector.GetError(
-            context.HttpContext, structuredError ?? EmptyInvalidInput) ?? EmptyInvalidInput;
+            context.HttpContext, structuredError, hasOtherFailures: structuredError is null) ?? EmptyInvalidInput;
         var statusCode = ScalarValidationStatus.Resolve(context.HttpContext);
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
         var problemDetails = factory.CreateValidationProblemDetails(
@@ -285,7 +285,7 @@ public sealed class ScalarValueValidationFilter : IActionFilter, IOrderedFilter
             entry.Value is { Errors.Count: > 0 }
             && entry.Value.Errors.Any(error => !BoundViolationCollector.HasModelStateErrorFor(context.HttpContext, error)));
         var validationError = BoundViolationCollector.GetError(
-            context.HttpContext, hasUncollectedErrors ? EmptyInvalidInput : null);
+            context.HttpContext, hasOtherFailures: hasUncollectedErrors);
         var envelopeError = rejectedValue is null ? null : validationError ?? rejectedValue;
         var factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
         var problemDetails = factory.CreateValidationProblemDetails(

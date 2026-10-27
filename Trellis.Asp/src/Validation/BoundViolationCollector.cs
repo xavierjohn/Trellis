@@ -87,12 +87,20 @@ internal static class BoundViolationCollector
     /// Retains a single failure's metadata, or merges independent failures under a neutral root
     /// with their complete errors retained in an aggregate cause.
     /// </summary>
-    public static Error.InvalidInput? GetError(HttpContext? httpContext, Error.InvalidInput? additionalError = null)
+    /// <remarks>
+    /// <paramref name="hasOtherFailures"/> says unrelated failures exist that have no
+    /// <see cref="Error"/> to contribute, so a lone bound failure must not claim the root. It is a
+    /// flag rather than a placeholder error so nothing fabricated reaches the aggregate cause.
+    /// </remarks>
+    public static Error.InvalidInput? GetError(
+        HttpContext? httpContext,
+        Error.InvalidInput? additionalError = null,
+        bool hasOtherFailures = false)
     {
         var boundErrors = GetBoundErrors(httpContext);
         if (boundErrors is not { Count: > 0 })
             return additionalError;
-        if (boundErrors.Count == 1 && additionalError is null)
+        if (boundErrors.Count == 1 && additionalError is null && !hasOtherFailures)
             return boundErrors[0].Error;
 
         var fields = additionalError?.Fields.Items.ToList() ?? [];
