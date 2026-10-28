@@ -37,7 +37,8 @@ public sealed class PrimitiveValidationExamplesTests
             path, new CreateUserRequest("", "Doe", "test@example.com"), TestContext.Current.CancellationToken);
 
         await AssertProblemAsync(response, path, "firstName", "value.not-empty",
-            "First Name cannot be empty.", """{"in":"body","pointer":"/firstName"}""");
+            "First Name cannot be empty.", """{"in":"body","pointer":"/firstName"}""",
+            rootDetail: "One or more validation errors occurred.");
     }
 
     [Fact]
@@ -97,7 +98,7 @@ public sealed class PrimitiveValidationExamplesTests
     }
 
     private static async Task AssertProblemAsync(
-        HttpResponseMessage response, string instance, string field, string code, string detail, string location)
+        HttpResponseMessage response, string instance, string field, string code, string detail, string location, string? rootDetail = null)
     {
         response.StatusCode.Should().Be((HttpStatusCode)422);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
@@ -120,6 +121,8 @@ public sealed class PrimitiveValidationExamplesTests
               }]
             }
             """);
+        if (rootDetail is not null)
+            expected!["detail"] = rootDetail;
 
         JsonNode.DeepEquals(actual, expected).Should().BeTrue($"the documented payload must match the response: {actual}");
     }

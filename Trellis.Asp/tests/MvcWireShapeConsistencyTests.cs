@@ -45,7 +45,7 @@ public sealed class MvcWireShapeConsistencyTests
     {
         var modelState = new ModelStateDictionary();
 
-        modelState.AddResultErrors("body", NestedFieldError());
+        modelState.AddResultErrors("body", NestedFieldError(), httpContext: null);
 
         modelState.ContainsKey(MvcKey).Should().BeTrue(
             $"expected MVC convention key '{MvcKey}', got: {string.Join(", ", modelState.Keys)}");

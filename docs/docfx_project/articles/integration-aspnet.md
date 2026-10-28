@@ -641,6 +641,11 @@ serialization still rejects invalid values. Semantic failures retain their confi
 validation status (default 422). Malformed JSON takes precedence and remains 400
 even when an earlier field already failed validation.
 
+MVC JSON-body validation responses use the selected error's optional `Detail`. The collection
+path includes `"detail": "One or more validation errors occurred."`; a legacy structured body
+failure keeps its factory detail. When combined with an independent bound failure, the neutral
+root does not select either factory's detail.
+
 Scalar-validation middleware does not rewrite bodyless responses, including an application's
 own `Results.BadRequest()`. To format bare framework 400s as Problem Details, explicitly
 register `services.AddTrellisProblemDetails()` and add `app.UseStatusCodePages()` before
