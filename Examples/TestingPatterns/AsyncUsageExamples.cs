@@ -45,7 +45,10 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
     [Fact]
     public static async Task Ask_manager_for_promotion()
     {
-        var id = 1;
+        var id = 2;
+        List<long> managerRequests = [];
+        List<Customer> approvedCustomers = [];
+        List<(Customer Customer, bool WasPromoted)> notifications = [];
 
         using var activity = TraceFixture.ActivitySource.StartActivity();
 
@@ -53,13 +56,27 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
             .EnsureNotNullAsync(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer with such Id is not found: " + id })
             .EnsureAsync(customer => customer.CanBePromoted, _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Need to ask manager" })
             .TapOnFailureAsync(Log)
-            .RecoverOnFailureAsync(() => AskManagerAsync(id))
+            .RecoverOnFailureAsync(() =>
+            {
+                managerRequests.Add(id);
+                return AskManagerAsync(id).TapAsync(approvedCustomers.Add);
+            })
             .TapAsync(static customer => Log("Manager approved promotion"))
             .TapAsync(static customer => customer.PromoteAsync())
-            .BindAsync(static customer => EmailGateway.SendPromotionNotificationAsync(customer.Email))
+            .BindAsync(customer =>
+            {
+                notifications.Add((customer, customer.Promoted));
+                return EmailGateway.SendPromotionNotificationAsync(customer.Email);
+            })
             .MatchAsync(static (Unit _) => "Okay", static error => error.Detail);
 
         result.Should().Be("Okay");
+        managerRequests.Should().Equal([id]);
+        var approvedCustomer = approvedCustomers.Should().ContainSingle().Which;
+        approvedCustomer.Promoted.Should().BeTrue();
+        var notification = notifications.Should().ContainSingle().Which;
+        notification.Customer.Should().BeSameAs(approvedCustomer);
+        notification.WasPromoted.Should().BeTrue();
     }
 
     static void Log(Error error)
