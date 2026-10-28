@@ -2711,7 +2711,9 @@ For an ordinary failed result, `TransactionalCommandBehavior` skips its automati
 - **Pure `Can*` predicate alongside the mutator.** The aggregate exposes a side-effect-free `CanReserve(qty) → Result<Trellis.Unit>` that returns the same domain error the mutator would, and a `Reserve(qty)` that internally delegates to `CanReserve` before mutating. Same shape as Recipe 9's state-machine `CanFire`+`Fire`/`FireResult` pattern, lifted from "single transition on one aggregate" to "collection of operations across many aggregates."
 - **Mutation-plan grouping for duplicate keys.** If the input collection can name the same related aggregate twice (e.g., two line items with the same `ProductId`), aggregate the duplicates into a single `(Product, totalQuantity)` plan entry before validating. Validating each line independently against unchanged stock is **not** equivalent to mutating them sequentially: two `CanReserve(3)` calls against `Stock=5` both pass, but the second `Reserve(3)` then fails. Grouping eliminates the aliasing.
 
-> ⚠️ **Per-line invariants must be enforced before grouping.** The plan step (`g.Sum(li => li.Quantity)`) preserves the aggregated quantity but destroys per-line identity. If `LineItem.Quantity` could be `-4`, then a `(5, -4)` pair would group to a valid `1`, slipping a negative quantity past `CanReserve`. In Trellis services per-line invariants are typically enforced at line-item construction (value-object `Quantity : RequiredInt<Quantity>` validating `> 0`, or a private constructor + `TryCreate` factory). If your per-line invariants don't aggregate cleanly into a sum — e.g., "no single line may exceed 100 units" rather than "the total across lines must not exceed available stock" — add an explicit per-line validation pass *before* the grouping step and `Sequence` its results into Pass 1. Production code should also cap each line's `Quantity` (and/or the order's line count) so a sequence of valid positives cannot overflow `int` inside `g.Sum(...)`; `Sum` throws `OverflowException` rather than producing a `Result` failure, which would bypass the pipeline.
+> ⚠️ **Per-line invariants must be enforced before grouping.** The plan step (`g.Sum(li => (long)li.Quantity)`) preserves the aggregated quantity but destroys per-line identity. If `LineItem.Quantity` could be `-4`, then a `(5, -4)` pair would group to a valid `1`, slipping a negative quantity past `CanReserve`. In Trellis services per-line invariants are typically enforced at line-item construction (value-object `Quantity : RequiredInt<Quantity>` validating `> 0`, or a private constructor + `TryCreate` factory). If your per-line invariants don't aggregate cleanly into a sum — e.g., "no single line may exceed 100 units" rather than "the total across lines must not exceed available stock" — add an explicit per-line validation pass *before* the grouping step and `Sequence` its results into Pass 1. Sum into `long`, not `int`, so valid positive quantities whose total exceeds `int.MaxValue` reach `CanReserve(long)` and return the existing `stock.insufficient` rule instead of throwing `OverflowException` inside `Sum`. `Stock` remains an `int`; `Reserve(long)` narrows the quantity only after `CanReserve` proves `0 < quantity <= Stock`.
+
+Production services should still bound per-line quantities and the number of lines per order according to business and resource limits. Wider arithmetic does not replace those policies.
 
 **Worked example.**
 
@@ -2728,7 +2730,7 @@ public sealed class Product : Aggregate<ProductId>
     public int Stock { get; private set; }
 
     // Pure predicate — runs in Pass 1, mutates nothing.
-    public Result<Trellis.Unit> CanReserve(int quantity) =>
+    public Result<Trellis.Unit> CanReserve(long quantity) =>
         Result.Ensure(
             quantity > 0 && quantity <= Stock,
             () => Error.InvalidInput.ForRule(
@@ -2738,8 +2740,8 @@ public sealed class Product : Aggregate<ProductId>
     // Mutator — re-checks via CanReserve as defense in depth so it is safe to call
     // outside the two-pass orchestration. Success remains proved only while quantity and
     // Stock stay unchanged from validation until this call. This guard has no clock input.
-    public Result<Trellis.Unit> Reserve(int quantity) =>
-        CanReserve(quantity).Tap(() => Stock -= quantity);
+    public Result<Trellis.Unit> Reserve(long quantity) =>
+        CanReserve(quantity).Tap(() => Stock -= (int)quantity);
 }
 
 public sealed class Order : Aggregate<OrderId>
@@ -2785,7 +2787,7 @@ public sealed class SubmitOrderHandler(
         // CanReserve checks operate on the same quantity the matching Reserve will deduct.
         var plan = order.LineItems
             .GroupBy(li => li.ProductId)
-            .Select(g => (Product: byId[g.Key], Quantity: g.Sum(li => li.Quantity)))
+            .Select(g => (Product: byId[g.Key], Quantity: g.Sum(li => (long)li.Quantity)))
             .ToArray();
 
         // PASS 1 — validate every fallible domain check across every aggregate. No mutations.
@@ -2899,7 +2901,7 @@ return order.Submit();
 // noninterfering guards keep each matching mutation's domain success proved.
 var plan = order.LineItems
     .GroupBy(li => li.ProductId)
-    .Select(g => (Product: byId[g.Key], Quantity: g.Sum(li => li.Quantity)))
+    .Select(g => (Product: byId[g.Key], Quantity: g.Sum(li => (long)li.Quantity)))
     .ToArray();
 
 var validation = plan
@@ -2939,7 +2941,7 @@ public async Task Submit_with_one_unsatisfiable_line_does_not_reserve_any_stock(
 }
 ```
 
-Also test duplicate products whose summed quantity exceeds available stock. These two cases cover the worked stock example, not every cross-aggregate operation. For time-dependent or interacting guards, add deterministic clock changes between preflight and transition, intra-pass invalidation, and each supported business policy's stock/metadata/event assertions. The executable regressions also pin the exact deadline and one tick on either side.
+Also test duplicate products whose summed quantity exceeds available stock. Include boundary cases with `Stock = int.MaxValue`: a grouped total exactly `int.MaxValue` succeeds, while two `int.MaxValue` lines reject without changing any product's stock, order state or events. These cases cover the worked stock example, not every cross-aggregate operation. For time-dependent or interacting guards, add deterministic clock changes between preflight and transition, intra-pass invalidation, and each supported business policy's stock/metadata/event assertions. The executable regressions also pin the exact deadline and one tick on either side.
 
 ---
 

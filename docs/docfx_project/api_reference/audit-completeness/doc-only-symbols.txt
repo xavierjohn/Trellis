@@ -49,6 +49,7 @@ MyWorker
 WrongHandler
 Recipe1InheritedSurface
 CanReserve
+Stock
 ReturnWindowOrder
 ReturnInventory
 ApprovedAt

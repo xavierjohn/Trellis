@@ -61,7 +61,7 @@ public sealed class Product : Aggregate<ProductId>
     public static Product ForTesting(ProductId id, int stock) => new(id, stock);
 
     // Pure predicate — runs in Pass 1, mutates nothing.
-    public Result<Trellis.Unit> CanReserve(int quantity) =>
+    public Result<Trellis.Unit> CanReserve(long quantity) =>
         Result.Ensure(
             quantity > 0 && quantity <= Stock,
             () => Error.InvalidInput.ForRule(
@@ -71,8 +71,8 @@ public sealed class Product : Aggregate<ProductId>
     // Mutator — re-checks via CanReserve so the method is safe to call outside the
     // two-pass orchestration. Success remains proved only while this quantity and Stock stay
     // unchanged from validation until this call; the guard has no external/time-dependent input.
-    public Result<Trellis.Unit> Reserve(int quantity) =>
-        CanReserve(quantity).Tap(() => Stock -= quantity);
+    public Result<Trellis.Unit> Reserve(long quantity) =>
+        CanReserve(quantity).Tap(() => Stock -= (int)quantity);
 }
 
 public sealed class Order : Aggregate<OrderId>
@@ -141,7 +141,7 @@ public sealed class SubmitOrderHandler(
         // unchanged stock; the actual sequential mutation then fails on the second item.
         var plan = order.LineItems
             .GroupBy(li => li.ProductId)
-            .Select(g => (Product: byId[g.Key], Quantity: g.Sum(li => li.Quantity)))
+            .Select(g => (Product: byId[g.Key], Quantity: g.Sum(li => (long)li.Quantity)))
             .ToArray();
 
         // PASS 1 — validate every fallible domain check across every participating aggregate.

@@ -44,6 +44,36 @@ public class TwoPassMutationTests
             result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
+    [Theory]
+    [InlineData(int.MaxValue - 1, 1, true)]
+    [InlineData(int.MaxValue, int.MaxValue, false)]
+    public async Task Submit_TwoPass_GroupedQuantityAtIntLimit_ReservesOnlyOnSuccess(
+        int firstQuantity, int secondQuantity, bool succeeds)
+    {
+        var first = Stock.Product.ForTesting(Stock.ProductId.NewUniqueV7(), 10);
+        var grouped = Stock.Product.ForTesting(Stock.ProductId.NewUniqueV7(), int.MaxValue);
+        var order = Stock.Order.ForTesting(Stock.OrderId.NewUniqueV7(),
+            [new(first.Id, 3), new(grouped.Id, firstQuantity), new(grouped.Id, secondQuantity)]);
+        var handler = new Stock.SubmitOrderHandler(new OrderRepository(order), new ProductRepository(first, grouped));
+
+        var result = await handler.Handle(new(order.Id), TestContext.Current.CancellationToken);
+
+        if (succeeds)
+            result.Should().BeSuccess().Which.Should().BeSameAs(order);
+        else
+        {
+            result.Should().BeFailureOfType<Error.InvalidInput>().Which.Rules.Items
+                .Should().ContainSingle().Which.ReasonCode.Should().Be("stock.insufficient");
+            first.UncommittedEvents().Should().BeEmpty();
+            grouped.UncommittedEvents().Should().BeEmpty();
+            order.UncommittedEvents().Should().BeEmpty();
+        }
+
+        first.Stock.Should().Be(succeeds ? 7 : 10);
+        grouped.Stock.Should().Be(succeeds ? 0 : int.MaxValue);
+        order.IsSubmitted.Should().Be(succeeds);
+    }
+
     [Fact]
     public async Task Submit_TwoPass_MissingProduct_FailsBeforeAnyReservation()
     {
