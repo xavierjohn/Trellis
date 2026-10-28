@@ -331,8 +331,8 @@ public class StateMachineExtensionsTests
         // ga-16: FireResult now pre-checks with CanFire (which evaluates the guard) before
         // invoking Fire (which evaluates it again). Stateless guards are documented as
         // requiring idempotence and side-effect freedom, so this is the accepted cost of
-        // not depending on Stateless exception message text. The contract is "at most twice
-        // per FireResult call".
+        // not depending on Stateless exception message text. The supported envelope is
+        // one or two evaluations per FireResult call.
         var guardCallCount = 0;
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle)
@@ -349,8 +349,8 @@ public class StateMachineExtensionsTests
         result.IsSuccess.Should().BeTrue();
         result.TryGetValue(out var v).Should().BeTrue();
         v.Should().Be(State.Running);
-        guardCallCount.Should().BeLessThanOrEqualTo(2,
-            "FireResult evaluates the guard once via CanFire and once via Fire — Stateless guards must be idempotent");
+        guardCallCount.Should().BeInRange(1, 2,
+            "a guarded transition must evaluate the guard, at most once via CanFire and once via Fire");
     }
 
     [Fact]
