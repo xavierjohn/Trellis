@@ -26,10 +26,12 @@ public class ApiHttpFileReplayTests : IClassFixture<WebApplicationFactory<Progra
         // Treat URLs as host-relative so HttpClient.BaseAddress resolves them.
         var vars = new Dictionary<string, string> { ["host"] = string.Empty };
         var requests = HttpFileParser.ParseFile(path, vars);
+        requests.Should().NotBeEmpty();
 
         using var client = _factory.CreateClient();
         var results = await HttpFileRunner.RunAsync(client, requests, Ct);
 
+        results.Should().HaveCount(requests.Count);
         Assert.All(results, HttpFileAssertions.AssertExpectationsMet);
     }
 
