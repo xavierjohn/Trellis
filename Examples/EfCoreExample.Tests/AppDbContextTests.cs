@@ -131,13 +131,15 @@ public class AppDbContextTests
     }
 
     [Fact]
-    public async Task Product_TryCreate_with_negative_price_fails_validation()
+    public void Product_TryCreate_with_negative_price_fails_validation()
     {
         // Sanity check that domain validation (Result<T> Railway pattern) is
         // wired up before EF Core ever sees the entity.
         var result = Product.TryCreate("Bad", -1m, 0);
 
-        result.IsSuccess.Should().BeFalse();
-        await Task.CompletedTask;
+        var field = result.Should().BeFailureOfType<Trellis.Error.InvalidInput>()
+            .Which.Fields.Items.Should().ContainSingle().Which;
+        field.Field.Path.Should().Be("/price");
+        field.ReasonCode.Should().Be(Trellis.ValidationCodes.ValueGreaterThan);
     }
 }
