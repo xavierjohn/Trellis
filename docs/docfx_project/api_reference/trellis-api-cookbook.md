@@ -2713,6 +2713,8 @@ For an ordinary failed result, `TransactionalCommandBehavior` skips its automati
 
 > ⚠️ **Per-line invariants must be enforced before grouping.** The plan step (`g.Sum(li => (long)li.Quantity)`) preserves the aggregated quantity but destroys per-line identity. If `LineItem.Quantity` could be `-4`, then a `(5, -4)` pair would group to a valid `1`, slipping a negative quantity past `CanReserve`. In Trellis services per-line invariants are typically enforced at line-item construction (value-object `Quantity : RequiredInt<Quantity>` validating `> 0`, or a private constructor + `TryCreate` factory). If your per-line invariants don't aggregate cleanly into a sum — e.g., "no single line may exceed 100 units" rather than "the total across lines must not exceed available stock" — add an explicit per-line validation pass *before* the grouping step and `Sequence` its results into Pass 1. Sum into `long`, not `int`, so valid positive quantities whose total exceeds `int.MaxValue` reach `CanReserve(long)` and return the existing `stock.insufficient` rule instead of throwing `OverflowException` inside `Sum`. `Stock` remains an `int`; `Reserve(long)` narrows the quantity only after `CanReserve` proves `0 < quantity <= Stock`.
 
+Production services should still bound per-line quantities and the number of lines per order according to business and resource limits. Wider arithmetic does not replace those policies.
+
 **Worked example.**
 
 ```csharp
