@@ -499,7 +499,7 @@ public sealed class WithCacheControlTests
         var r = Result.Ok<WriteOutcome<Todo>>(outcome);
         var selectorCalled = false;
 
-        await r.ToHttpResponse<Todo>(o => o.WithCacheControl(_ =>
+        await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(_ =>
         {
             selectorCalled = true;
             return CacheControl.Public(TimeSpan.FromMinutes(5));
@@ -509,6 +509,7 @@ public sealed class WithCacheControlTests
             "a null Value on WriteOutcome.Created carries no usable domain; domain-dependent " +
             "selectors must not run against null");
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
+        ctx.Response.Headers.ContentLanguage.ToString().Should().Be("en");
     }
 
     [Fact]
@@ -519,7 +520,7 @@ public sealed class WithCacheControlTests
         var r = Result.Ok<WriteOutcome<Todo>>(outcome);
         var selectorCalled = false;
 
-        await r.ToHttpResponse<Todo>(o => o.WithCacheControl(_ =>
+        await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(_ =>
         {
             selectorCalled = true;
             return CacheControl.Public(TimeSpan.FromMinutes(5));
@@ -527,6 +528,7 @@ public sealed class WithCacheControlTests
 
         selectorCalled.Should().BeFalse();
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
+        ctx.Response.Headers.ContentLanguage.ToString().Should().Be("en");
     }
 
     [Fact]
@@ -537,7 +539,7 @@ public sealed class WithCacheControlTests
         var r = Result.Ok<WriteOutcome<Todo>>(outcome);
         var selectorCalled = false;
 
-        await r.ToHttpResponse<Todo>(o => o.WithCacheControl(_ =>
+        await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(_ =>
         {
             selectorCalled = true;
             return CacheControl.Public(TimeSpan.FromMinutes(5));
@@ -545,6 +547,7 @@ public sealed class WithCacheControlTests
 
         selectorCalled.Should().BeFalse();
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
+        ctx.Response.Headers.ContentLanguage.ToString().Should().Be("en");
     }
 
     [Fact]

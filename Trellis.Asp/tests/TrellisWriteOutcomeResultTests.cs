@@ -339,6 +339,22 @@ public sealed class TrellisWriteOutcomeResultTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_UpdatedNoContent_ContentLanguageMetadata_OverridesBuilder()
+    {
+        var ctx = NewContext();
+        var meta = RepresentationMetadata.Create().AddContentLanguage("fr").Build();
+        var outcome = new WriteOutcome<Item>.UpdatedNoContent(meta);
+
+        await Result.Ok<WriteOutcome<Item>>(outcome)
+            .ToHttpResponse<Item>(o => o.WithContentLanguage("en"))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(204);
+        ctx.Response.Body.Length.Should().Be(0);
+        ctx.Response.Headers.ContentLanguage.ToString().Should().Be("fr");
+    }
+
+    [Fact]
     public async Task Accepted_with_status_body_returns_202_with_RetryAfter()
     {
         var ctx = NewContext();
@@ -412,6 +428,31 @@ public sealed class TrellisWriteOutcomeResultTests
         ctx.Response.Headers.Vary.ToString().Should().Contain("Accept");
         ctx.Response.Headers.ContentLanguage.ToString().Should().Be("en");
         ctx.Response.Headers["Content-Location"].ToString().Should().Be("/items/1");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExecuteAsync_NoContentOutcome_StaticContentLanguage_EmitsWithoutDomainSelectors(bool accepted)
+    {
+        var ctx = NewContext();
+        WriteOutcome<Item> outcome = accepted
+            ? new WriteOutcome<Item>.AcceptedNoContent()
+            : new WriteOutcome<Item>.UpdatedNoContent();
+        Func<Item, ItemBody> body = static _ => throw new InvalidOperationException("Body selector must not run.");
+        Func<Item, string> etag = static _ => throw new InvalidOperationException("ETag selector must not run.");
+
+        await Result.Ok(outcome).ToHttpResponse(body, o => o
+            .WithContentLanguage("en", "fr")
+            .WithETag(etag)
+            .WithLastModified(static _ => throw new InvalidOperationException("Last-Modified selector must not run."))
+            .WithContentLocation(static _ => throw new InvalidOperationException("Content-Location selector must not run."))
+            .WithCacheControl(static _ => throw new InvalidOperationException("Cache-Control selector must not run.")))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(accepted ? StatusCodes.Status202Accepted : StatusCodes.Status204NoContent);
+        ctx.Response.Body.Length.Should().Be(0);
+        ctx.Response.Headers.ContentLanguage.ToString().Should().Be("en, fr");
     }
 
     [Fact]
