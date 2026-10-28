@@ -194,6 +194,9 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
         // no-payload short-circuit below — otherwise a 204 UpdatedNoContent silently drops them.
         LinkHeader.Append(response, _options.Links);
 
+        if (_options.ContentLanguage is { Count: > 0 })
+            response.Headers.ContentLanguage = string.Join(", ", _options.ContentLanguage);
+
         // Reference-type TDomain with a runtime-null Value / StatusBody: WriteOutcome's
         // sealed records carry no null guard on construction, so a misbehaving caller can
         // pass null. Domain-dependent selectors must not run against null — they'd NPE on
@@ -216,9 +219,6 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
             if (d.HasValue)
                 response.Headers["Last-Modified"] = d.Value.ToString("R");
         }
-
-        if (_options.ContentLanguage is { Count: > 0 })
-            response.Headers.ContentLanguage = string.Join(", ", _options.ContentLanguage);
 
         if (_options.ContentLocationSelector is { } cls)
         {
