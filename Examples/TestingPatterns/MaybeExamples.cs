@@ -137,7 +137,7 @@ public class MaybeExamples
         string unknownFruitValue = unknownFruit.GetValueOrDefault("banana");
 
         // Assert
-        apple.Should().Be("apple");
+        appleValue.Should().Be("apple");
         unknownFruitValue.Should().Be("banana");
     }
 }
