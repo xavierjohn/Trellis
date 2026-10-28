@@ -190,8 +190,8 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
                 TrellisHttpResult<TDomain, TBody>.AppendVaryUnique(response, v);
         }
 
-        // Configured links carry no domain dependency, so they must be emitted before the
-        // no-payload short-circuit below — otherwise a 204 UpdatedNoContent silently drops them.
+        // Static options such as links and Content-Language need no domain, so emit them
+        // before the no-payload short-circuit below.
         LinkHeader.Append(response, _options.Links);
 
         if (_options.ContentLanguage is { Count: > 0 })

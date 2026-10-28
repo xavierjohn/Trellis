@@ -339,6 +339,22 @@ public sealed class TrellisWriteOutcomeResultTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_UpdatedNoContent_ContentLanguageMetadata_OverridesBuilder()
+    {
+        var ctx = NewContext();
+        var meta = RepresentationMetadata.Create().AddContentLanguage("fr").Build();
+        var outcome = new WriteOutcome<Item>.UpdatedNoContent(meta);
+
+        await Result.Ok<WriteOutcome<Item>>(outcome)
+            .ToHttpResponse<Item>(o => o.WithContentLanguage("en"))
+            .ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(204);
+        ctx.Response.Body.Length.Should().Be(0);
+        ctx.Response.Headers.ContentLanguage.ToString().Should().Be("fr");
+    }
+
+    [Fact]
     public async Task Accepted_with_status_body_returns_202_with_RetryAfter()
     {
         var ctx = NewContext();
