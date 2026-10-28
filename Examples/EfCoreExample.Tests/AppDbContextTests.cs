@@ -84,14 +84,26 @@ public class AppDbContextTests
         db.Orders.Add(order);
         await AssertSaveChangesAsync(db);
 
+        var savedLine = order.Lines.Should().ContainSingle().Which;
+
+        db.ChangeTracker.Clear();
+
         var fetched = await db.Orders
             .Include(o => o.Lines)
             .SingleAsync(o => o.Id == order.Id, Ct);
 
+        fetched.Should().NotBeSameAs(order);
+        fetched.Id.Should().Be(order.Id);
         fetched.CustomerId.Should().Be(customer.Id);
         fetched.State.Should().Be(OrderState.Confirmed);
-        fetched.Lines.Should().ContainSingle()
-            .Which.Quantity.Should().Be(2);
+        var fetchedLine = fetched.Lines.Should().ContainSingle().Which;
+        fetchedLine.Should().NotBeSameAs(savedLine);
+        fetchedLine.Id.Should().Be(savedLine.Id);
+        fetchedLine.OrderId.Should().Be(order.Id);
+        fetchedLine.ProductId.Should().Be(product.Id);
+        fetchedLine.ProductName.Should().Be(product.Name);
+        fetchedLine.UnitPrice.Should().Be(1000m);
+        fetchedLine.Quantity.Should().Be(2);
         fetched.Total.Should().Be(2000m);
     }
 
