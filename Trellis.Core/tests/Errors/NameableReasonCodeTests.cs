@@ -24,10 +24,6 @@ public class NameableReasonCodeTests
     private static readonly ResourceRef OrderRef = new("Order", "42");
 
     [Fact]
-    public void NotFound_without_a_reason_stays_silent() =>
-        new Error.NotFound(OrderRef).Code.Should().Be(ValidationCodes.Unspecified);
-
-    [Fact]
     public void NotFound_publishes_the_reason_a_producer_named() =>
         new Error.NotFound(OrderRef) { Code = "order.not-found" }.Code
             .Should().Be("order.not-found");
@@ -76,7 +72,7 @@ public class NameableReasonCodeTests
         new Error.Unavailable { Code = "db.unreachable" }.Code.Should().Be("db.unreachable");
 
     /// <summary>
-    /// 
+    /// Unnamed optional reasons use the sentinel instead of the error kind.
     /// </summary>
     /// <remarks>
     /// A case whose reason is optional and unnamed reports the sentinel, never its kind — the

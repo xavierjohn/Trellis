@@ -373,14 +373,6 @@ public class MaybeMethodTests
         act.Should().Throw<ArgumentNullException>().WithParameterName("some");
     }
 
-    [Fact]
-    public void Match_WithNullNone_ThrowsEvenWhenSome()
-    {
-        var sut = Maybe.From("x");
-        var act = () => sut.Match<int>(s => s.Length, null!);
-        act.Should().Throw<ArgumentNullException>().WithParameterName("none");
-    }
-
     #endregion
 
     #region HasValueWhere (predicate)

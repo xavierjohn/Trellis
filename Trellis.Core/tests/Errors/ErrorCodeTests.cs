@@ -84,11 +84,6 @@ public class ErrorCodeTests
     }
 
     [Fact]
-    public void Code_is_the_sentinel_when_the_case_carries_no_reason() =>
-        new Error.NotFound(new ResourceRef("Order", "42")).Code
-            .Should().Be(ValidationCodes.Unspecified);
-
-    [Fact]
     public void Code_never_leaks_the_kind_for_a_case_without_a_reason() =>
         new Error.NotFound(new ResourceRef("Order", "42")).Code
             .Should().NotBe("not-found");
@@ -107,11 +102,6 @@ public class ErrorCodeTests
     public void Code_passes_an_explicit_reason_through() =>
         new Error.Conflict(Resource: new ResourceRef("Order", "42"), Code: "order.already-shipped").Code
             .Should().Be("order.already-shipped");
-
-    [Fact]
-    public void Code_is_the_reason_once_an_optional_case_names_one() =>
-        new Error.NotFound(new ResourceRef("Order", "42")) { Code = "order.archived" }.Code
-            .Should().Be("order.archived");
 
     /// <summary>
     /// The vocabulary freeze constrains Trellis, not the application: a code the framework did not

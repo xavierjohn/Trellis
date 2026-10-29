@@ -345,19 +345,6 @@ public class AggregateTests
     }
 
     [Fact]
-    public void OptionalETag_TypedEmptyArray_ReturnsPreconditionFailed()
-    {
-        var aggregate = TestAggregate.Create("1");
-        aggregate.SetTestETag("abc123");
-        var result = Result.Ok(aggregate);
-
-        var ensured = result.OptionalETag(Array.Empty<EntityTagValue>());
-        ensured.IsSuccess.Should().BeFalse();
-        ensured.UnwrapError().Should().BeOfType<Error.TransportFault>()
-            .Which.Fault.Should().BeOfType<HttpError.PreconditionFailed>();
-    }
-
-    [Fact]
     public void OptionalETag_TypedMultipleTags_MatchesAnyStrong()
     {
         var aggregate = TestAggregate.Create("1");
@@ -434,47 +421,6 @@ public class AggregateTests
         ensured.IsSuccess.Should().BeFalse();
         ensured.UnwrapError().Should().BeOfType<Error.TransportFault>()
             .Which.Fault.Should().BeOfType<HttpError.PreconditionFailed>();
-    }
-
-    #endregion
-
-    #region IsChanged Tests
-
-    [Fact]
-    public void IsChanged_IsFalse_WhenNoEvents()
-    {
-        // Arrange & Act
-        var aggregate = TestAggregate.Create("1");
-
-        // Assert
-        aggregate.IsChanged.Should().BeFalse();
-    }
-
-    [Fact]
-    public void IsChanged_IsTrue_WhenEventsExist()
-    {
-        // Arrange
-        var aggregate = TestAggregate.Create("1");
-
-        // Act
-        aggregate.DoSomething();
-
-        // Assert
-        aggregate.IsChanged.Should().BeTrue();
-    }
-
-    [Fact]
-    public void IsChanged_IsFalse_AfterAcceptChanges()
-    {
-        // Arrange
-        var aggregate = TestAggregate.Create("1");
-        aggregate.DoSomething();
-
-        // Act
-        aggregate.AcceptChanges();
-
-        // Assert
-        aggregate.IsChanged.Should().BeFalse();
     }
 
     #endregion

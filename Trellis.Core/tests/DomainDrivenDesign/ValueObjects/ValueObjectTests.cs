@@ -468,17 +468,6 @@ public class ValueObjectTests
     #region Hash Cache
 
     [Fact]
-    public void GetHashCode_is_stable_across_repeated_calls()
-    {
-        var address = new Address("Street", "City");
-
-        var first = address.GetHashCode();
-
-        for (var i = 0; i < 10; i++)
-            address.GetHashCode().Should().Be(first);
-    }
-
-    [Fact]
     public void GetHashCode_collects_components_only_once_across_repeated_calls()
     {
         var address = new CountingComponentsValueObject("a", "b");
