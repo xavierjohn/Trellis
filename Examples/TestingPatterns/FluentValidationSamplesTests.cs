@@ -98,6 +98,38 @@ public class FluentValidationSamplesTests
             Task.FromResult(!_blockedDomains.Contains(domain));
     }
 
+    private sealed class GatedValidationDependencies : IUserRepository, IEmailService
+    {
+        private readonly TaskCompletionSource _emailCheckStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _emailExists = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task EmailCheckStarted => _emailCheckStarted.Task;
+        public List<(string Input, CancellationToken Token)> EmailChecks { get; } = [];
+        public List<(string Input, CancellationToken Token)> UsernameChecks { get; } = [];
+        public List<(string Input, CancellationToken Token)> DomainChecks { get; } = [];
+
+        public Task<bool> ExistsEmailAsync(string email, CancellationToken ct)
+        {
+            EmailChecks.Add((email, ct));
+            _emailCheckStarted.TrySetResult();
+            return _emailExists.Task.WaitAsync(ct);
+        }
+
+        public Task<bool> ExistsUsernameAsync(string username, CancellationToken ct)
+        {
+            UsernameChecks.Add((username, ct));
+            return Task.FromResult(false);
+        }
+
+        public Task<bool> IsValidDomainAsync(string domain, CancellationToken ct)
+        {
+            DomainChecks.Add((domain, ct));
+            return Task.FromResult(true);
+        }
+
+        public void CompleteEmailCheck() => _emailExists.TrySetResult(false);
+    }
+
     #endregion
 
     #region Async Validation Tests
@@ -268,9 +300,8 @@ public class FluentValidationSamplesTests
     public async Task AsyncValidation_WithCancellationToken_Succeeds()
     {
         // Arrange
-        var repository = new MockUserRepository();
-        var emailService = new MockEmailService();
-        var validator = new CreateUserValidator(repository, emailService);
+        var dependencies = new GatedValidationDependencies();
+        var validator = new CreateUserValidator(dependencies, dependencies);
         var request = new CreateUserRequest(
             Email: "newuser@example.com",
             Username: "newuser123",
@@ -278,12 +309,26 @@ public class FluentValidationSamplesTests
         using var cts = new CancellationTokenSource();
 
         // Act
-        var result = await validator.ValidateToResultAsync(
+        var validationTask = validator.ValidateToResultAsync(
             request,
             cancellationToken: cts.Token);
+        Result<CreateUserRequest> result;
+        try
+        {
+            await dependencies.EmailCheckStarted.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            validationTask.IsCompleted.Should().BeFalse("validation must await the pending repository check");
+        }
+        finally
+        {
+            dependencies.CompleteEmailCheck();
+            result = await validationTask.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        }
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        dependencies.EmailChecks.Should().ContainSingle().Which.Should().Be((request.Email, cts.Token));
+        dependencies.UsernameChecks.Should().ContainSingle().Which.Should().Be((request.Username, cts.Token));
+        dependencies.DomainChecks.Should().ContainSingle().Which.Should().Be(("example.com", cts.Token));
     }
 
     #endregion

@@ -597,21 +597,58 @@ public class TrellisServiceBuilderTests
         // post-configure layer wrapping CustomizeProblemDetails — not two layers
         // doubling traceId/allow extensions.
         var services = new ServiceCollection();
+        var applicationCustomizationCount = 0;
+        services.AddProblemDetails(options => options.CustomizeProblemDetails = customizationContext =>
+        {
+            applicationCustomizationCount++;
+            customizationContext.ProblemDetails.Detail = "Application customization";
+        });
         services.AddTrellisProblemDetails();
         services.AddTrellis(options => options.UseProblemDetails());
 
-        // The marker sentinel registered by AddTrellisProblemDetails IS the
-        // idempotency contract — its presence short-circuits the second call. Count
-        // marker registrations directly rather than IPostConfigureOptions descriptors,
-        // because the descriptor count is coupled to ASP.NET Core internals (a future
-        // AddProblemDetails() release adding its own PostConfigure would break the
-        // assertion even though Trellis idempotency is still correct). The marker is
-        // private to Trellis.Asp, so match by type name across the assembly boundary.
+        // The private marker is supplementary evidence: one sentinel alone does not
+        // prove one observable customization layer.
         var markerRegistrationCount = services.Count(d =>
             string.Equals(d.ServiceType.Name, "TrellisProblemDetailsMarker", StringComparison.Ordinal));
 
         markerRegistrationCount.Should().Be(1,
             "the marker-sentinel idempotency must apply across builder + direct composition");
+
+        using var sp = services.BuildServiceProvider();
+        var customize = sp.GetRequiredService<IOptions<ProblemDetailsOptions>>().Value.CustomizeProblemDetails;
+        var extensions = new TraceIdWriteTrackingDictionary();
+        var context = new ProblemDetailsContext
+        {
+            HttpContext = new DefaultHttpContext(),
+            ProblemDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status500InternalServerError,
+                Extensions = extensions,
+            },
+        };
+        customize.Should().NotBeNull();
+        customize!.Invoke(context);
+
+        extensions.TraceIdWrites.Should().Be(1,
+            "builder and direct registration must add one observable customization layer");
+        applicationCustomizationCount.Should().Be(1);
+        context.ProblemDetails.Detail.Should().Be("Application customization");
+    }
+
+    private sealed class TraceIdWriteTrackingDictionary : Dictionary<string, object?>, IDictionary<string, object?>
+    {
+        public int TraceIdWrites { get; private set; }
+
+        object? IDictionary<string, object?>.this[string key]
+        {
+            get => base[key];
+            set
+            {
+                if (key == "traceId")
+                    TraceIdWrites++;
+                base[key] = value;
+            }
+        }
     }
 
     [Fact]
@@ -866,6 +903,8 @@ public class TrellisServiceBuilderTests
         before.Validation.Should().BeGreaterThanOrEqualTo(0);
         before.Via.Should().BeLessThan(before.Validation,
             "authorization must run before validation so an unauthorized caller cannot probe validation messages");
+        after.Via.Should().BeGreaterThanOrEqualTo(0);
+        after.Validation.Should().BeGreaterThanOrEqualTo(0);
         after.Via.Should().BeLessThan(after.Validation);
     }
 
@@ -1458,6 +1497,12 @@ public class TrellisServiceBuilderTests
     public async Task UseWorkerActor_ComposesAfterCachingWrap_WorkerPathSkipsCaching()
     {
         var services = new ServiceCollection();
+        var innerConstructionCount = 0;
+        services.AddScoped<ClaimsActorProvider>(provider =>
+        {
+            innerConstructionCount++;
+            return ActivatorUtilities.CreateInstance<ClaimsActorProvider>(provider);
+        });
         var systemActor = Actor.Create(
             id: "system",
             permissions: new HashSet<string> { "reminders:dispatch" });
@@ -1478,6 +1523,8 @@ public class TrellisServiceBuilderTests
 
         actor.HasValue.Should().BeTrue();
         actor.Value.Id.Value.Should().Be("system");
+        innerConstructionCount.Should().Be(0,
+            "a worker tick must not construct the cached HTTP provider");
     }
 
     [Fact]
