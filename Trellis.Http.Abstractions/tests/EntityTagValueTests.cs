@@ -90,7 +90,9 @@ public class EntityTagValueTests
     {
         var result = EntityTagValue.TryParse(input);
 
-        result.Should().BeFailure();
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        error.Fields.Items.Should().BeEmpty();
+        error.Rules.Items.Should().ContainSingle().Which.ReasonCode.Should().Be(ValidationCodes.EtagMalformed);
     }
 
     [Fact]

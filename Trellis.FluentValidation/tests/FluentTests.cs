@@ -191,16 +191,21 @@ public class FluentTests
     public async Task ValidateToResultAsync_WithInvalidValue_ReturnsFailure()
     {
         // Arrange
+        var value = "ab";
         var validator = new InlineValidator<string>
         {
             v => v.RuleFor(x => x).NotEmpty().MinimumLength(5)
         };
 
         // Act
-        var result = await validator.ValidateToResultAsync("ab", cancellationToken: TestContext.Current.CancellationToken);
+        var result = await validator.ValidateToResultAsync(value, cancellationToken: TestContext.Current.CancellationToken);
 
         // Assert
-        result.Should().BeFailureOfType<Error.InvalidInput>();
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        error.Rules.Items.Should().BeEmpty();
+        var violation = error.Fields.Items.Should().ContainSingle().Which;
+        violation.Field.Path.Should().Be("/value");
+        violation.ReasonCode.Should().Be(ValidationCodes.StringMinLength);
     }
 
     [Fact]
@@ -266,17 +271,37 @@ public class FluentTests
     public async Task ValidateToResultAsync_WithCancellationToken_RespectsToken()
     {
         // Arrange
+        var ruleEntered = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completeRule = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var validator = new InlineValidator<string>
         {
             v => v.RuleFor(x => x).NotEmpty()
+                .MustAsync(async (_, token) =>
+                {
+                    ruleEntered.SetResult(token);
+                    return await completeRule.Task.WaitAsync(token);
+                })
+                .WithErrorCode("sample.async-validation")
         };
         using var cts = new CancellationTokenSource();
 
         // Act
-        var result = await validator.ValidateToResultAsync("test", cancellationToken: cts.Token);
+        var validationTask = validator.ValidateToResultAsync("test", cancellationToken: cts.Token);
+        Result<string> result;
+        try
+        {
+            var token = await ruleEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            token.Should().Be(cts.Token);
+            validationTask.IsCompleted.Should().BeFalse();
+        }
+        finally
+        {
+            completeRule.TrySetResult(true);
+            result = await validationTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
 
         // Assert
-        result.Should().BeSuccess();
+        result.Should().BeSuccess().Which.Should().Be("test");
     }
 
     [Fact]

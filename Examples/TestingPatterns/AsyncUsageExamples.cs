@@ -12,34 +12,66 @@ public class AsyncUsageExamples : IClassFixture<TraceFixture>
     [InlineData(2)]
     public async Task Promote_customer(int id)
     {
+        List<Customer> loadedCustomers = [];
+        List<(Customer Customer, bool WasPromoted)> notifications = [];
+
         using var activity = TraceFixture.ActivitySource.StartActivity();
         var result = await GetCustomerByIdAsync(id)
             .EnsureNotNullAsync(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer with such Id is not found: " + id })
+            .TapAsync(loadedCustomers.Add)
             .EnsureAsync(customer => customer.CanBePromoted, _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The customer has the highest status possible" })
             .TapAsync(customer => customer.Promote())
-            .BindAsync(customer => EmailGateway.SendPromotionNotification(customer.Email))
+            .BindAsync(customer =>
+            {
+                notifications.Add((customer, customer.Promoted));
+                return EmailGateway.SendPromotionNotification(customer.Email);
+            })
             .MatchAsync(_ => "Okay", error => "Failed");
 
+        var loadedCustomer = loadedCustomers.Should().ContainSingle().Which;
         if (id == 1)
+        {
             result.Should().Be("Okay");
+            loadedCustomer.Promoted.Should().BeTrue();
+            var notification = notifications.Should().ContainSingle().Which;
+            notification.Customer.Should().BeSameAs(loadedCustomer);
+            notification.WasPromoted.Should().BeTrue();
+        }
         else
+        {
             result.Should().Be("Failed");
+            loadedCustomer.Promoted.Should().BeFalse();
+            notifications.Should().BeEmpty();
+        }
     }
 
     [Fact]
     public static async Task PromoteAsync_customer()
     {
         var id = 1;
+        List<Customer> loadedCustomers = [];
+        List<(Customer Customer, bool WasPromoted)> notifications = [];
+
         using var activity = TraceFixture.ActivitySource.StartActivity();
 
         var result = await GetCustomerByIdAsync(id)
             .EnsureNotNullAsync(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Customer with such Id is not found: " + id })
+            .TapAsync(loadedCustomers.Add)
             .EnsureAsync(static customer => customer.CanBePromoted, static _ => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "The customer has the highest status possible" })
             .TapAsync(static customer => customer.PromoteAsync())
-            .BindAsync(static customer => EmailGateway.SendPromotionNotificationAsync(customer.Email))
+            .BindAsync(customer =>
+            {
+                notifications.Add((customer, customer.Promoted));
+                return EmailGateway.SendPromotionNotificationAsync(customer.Email);
+            })
             .MatchAsync(static (Unit _) => "Okay", static error => error.Detail);
 
         result.Should().Be("Okay");
+        var loadedCustomer = loadedCustomers.Should().ContainSingle().Which;
+        loadedCustomer.Promoted.Should().BeTrue();
+        var notification = notifications.Should().ContainSingle().Which;
+        notification.Customer.Should().BeSameAs(loadedCustomer);
+        notification.WasPromoted.Should().BeTrue();
     }
 
     [Fact]

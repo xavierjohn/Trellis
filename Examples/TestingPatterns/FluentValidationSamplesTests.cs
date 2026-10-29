@@ -501,8 +501,13 @@ public class FluentValidationSamplesTests
                     OrderLine.TryCreate(productId, req.ProductName, price, quantity)));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().HaveCount(3);
+        var lines = result.Should().BeSuccess().Which;
+        lines.Select(line => (line.ProductId.Value, line.ProductName, line.Quantity.Value, line.Price.Amount))
+            .Should().Equal([
+                ("PROD-001", "Product 1", 5, 29.99m),
+                ("PROD-002", "Product 2", 3, 49.99m),
+                ("PROD-003", "Product 3", 1, 99.99m)
+            ]);
     }
 
     [Fact]
@@ -525,7 +530,12 @@ public class FluentValidationSamplesTests
                     OrderLine.TryCreate(productId, req.ProductName, price, quantity)));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        error.Rules.Items.Should().BeEmpty();
+        var violation = error.Fields.Items.Should().ContainSingle().Which;
+        violation.Field.Path.Should().Be("/value");
+        violation.ReasonCode.Should().Be(ValidationCodes.ValueGreaterThan);
+        violation.Detail.Should().Be("Quantity must be positive");
     }
 
     #endregion
@@ -1051,11 +1061,15 @@ public class FluentValidationSamplesTests
         var result = validator.ValidateToResult(customer);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validationError = (Error.InvalidInput)result.UnwrapError();
-        // Both Email and Phone should have validation errors
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("email"));
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("phone"));
+        (string Path, string ReasonCode)[] expectedViolations =
+        [
+            ("/contactInfo/email", ValidationCodes.StringEmail),
+            ("/contactInfo/phone", ValidationCodes.StringPattern)
+        ];
+        var validationError = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validationError.Rules.Items.Should().BeEmpty();
+        validationError.Fields.Items.Select(violation => (violation.Field.Path, violation.ReasonCode))
+            .Should().BeEquivalentTo(expectedViolations);
     }
 
     [Fact]
@@ -1072,11 +1086,16 @@ public class FluentValidationSamplesTests
         var result = validator.ValidateToResult(customer);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validationError = (Error.InvalidInput)result.UnwrapError();
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("street"));
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("postalCode"));
-        validationError.Fields.Items.Should().Contain(e => e.Field.Path.Contains("country"));
+        (string Path, string ReasonCode)[] expectedViolations =
+        [
+            ("/billingAddress/street", ValidationCodes.ValueNotEmpty),
+            ("/billingAddress/postalCode", ValidationCodes.StringPattern),
+            ("/billingAddress/country", ValidationCodes.StringExactLength)
+        ];
+        var validationError = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validationError.Rules.Items.Should().BeEmpty();
+        validationError.Fields.Items.Select(violation => (violation.Field.Path, violation.ReasonCode))
+            .Should().BeEquivalentTo(expectedViolations);
     }
 
     [Fact]
