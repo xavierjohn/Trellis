@@ -35,9 +35,12 @@ public sealed class HttpErrorTests
         {
             Detail = "PATCH is not supported.",
         };
+        var differentPayload = left with { Allow = EquatableArray.Create("POST") };
 
         left.Should().Be(right);
         left.GetHashCode().Should().Be(right.GetHashCode());
+        left.Should().NotBe(differentPayload);
+        left.Should().NotBe(left with { Detail = "A different detail." });
     }
 
     [Fact]

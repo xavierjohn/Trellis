@@ -123,19 +123,34 @@ public class ParallelExamples : IClassFixture<TraceFixture>
         // A realistic pipeline that fetches data in parallel, logs via Tap,
         // maps the tuple into a domain object, then binds to a final operation.
         var userId = "user-456";
+        List<(string Profile, string Orders)> tapInputs = [];
+        List<string> stages = [];
 
         var result = await (
             FetchUserProfileAsync(userId),
             FetchUserOrdersAsync(userId)
         )
         .WhenAllAsync()
-        .TapAsync((profile, orders) => { /* Side effect: audit log, metrics, etc. */ })
+        .TapAsync((profile, orders) =>
+        {
+            stages.Add("tap");
+            tapInputs.Add((profile, orders));
+        })
         .MapAsync((profile, orders) =>
-            new Dashboard(profile, orders, "default-prefs"))
-        .BindAsync(SaveDashboardAsync);
+        {
+            stages.Add("map");
+            return new Dashboard(profile, orders, "default-prefs");
+        })
+        .BindAsync(dashboard =>
+        {
+            stages.Add("bind");
+            return SaveDashboardAsync(dashboard);
+        });
 
         result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Contain("Saved dashboard for user-456");
+        stages.Should().Equal(["tap", "map", "bind"]);
+        tapInputs.Should().Equal([("Profile for user-456", "Orders for user-456")]);
+        result.Unwrap().Should().Be("Saved dashboard for user-456");
     }
 
     #endregion

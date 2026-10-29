@@ -139,13 +139,33 @@ public class ValidationArgsOptionsTests
     [Fact]
     public void AllowArgs_is_chainable_and_accumulates()
     {
-        var options = new ValidationArgsOptions()
-            .AllowArgs("GreaterThanValidator", "ComparisonValue")
-            .AllowArgs("GreaterThanValidator", "ComparisonProperty");
+        const string errorCode = "age.out-of-range";
+        var options = new ValidationArgsOptions();
+        var first = options.AllowArgs(errorCode, "MinAge");
+        var second = first.AllowArgs(errorCode, "MaxAge");
 
-        var violation = Violate(v => v.RuleFor(x => x.N).GreaterThan(5), new Subject(N: 1), options);
+        first.Should().BeSameAs(options);
+        second.Should().BeSameAs(options);
 
-        violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Number(5));
+        var violation = Violate(
+            v => v.RuleFor(x => x.N)
+                .Must((_, value, context) =>
+                {
+                    context.MessageFormatter.AppendArgument("MinAge", 18);
+                    context.MessageFormatter.AppendArgument("MaxAge", 65);
+                    return value is >= 18 and <= 65;
+                })
+                .WithErrorCode(errorCode)
+                .WithMessage("Age must be between {MinAge} and {MaxAge}."),
+            new Subject(N: 12),
+            options);
+
+        violation.Args.Should().ContainKeys("minAge", "maxAge").And.HaveCount(2);
+        violation.Args!["minAge"].Should().Be(new ValidationArgValue.Number(18));
+        violation.Args["maxAge"].Should().Be(new ValidationArgValue.Number(65));
+
+        var comparison = Violate(v => v.RuleFor(x => x.N).GreaterThan(5), new Subject(N: 1), options);
+        comparison.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Number(5));
     }
 
     [Fact]

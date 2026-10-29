@@ -118,9 +118,11 @@ public class WriteOutcomeTests
     [Fact]
     public void AcceptedNoContent_returns_base_typed_case()
     {
-        WriteOutcome<Doc> outcome = WriteOutcome.AcceptedNoContent<Doc>("/status/5");
+        var retry = RetryAfterValue.FromSeconds(45);
+        WriteOutcome<Doc> outcome = WriteOutcome.AcceptedNoContent<Doc>("/status/5", retry);
 
-        outcome.Should().BeOfType<WriteOutcome<Doc>.AcceptedNoContent>()
-            .Which.MonitorUri.Should().Be("/status/5");
+        var accepted = outcome.Should().BeOfType<WriteOutcome<Doc>.AcceptedNoContent>().Subject;
+        accepted.MonitorUri.Should().Be("/status/5");
+        accepted.RetryAfter.Should().Be(retry);
     }
 }

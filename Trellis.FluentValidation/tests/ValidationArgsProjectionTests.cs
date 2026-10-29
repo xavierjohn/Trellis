@@ -322,7 +322,7 @@ public class ValidationArgsProjectionTests
 
         var violation = ((Error.InvalidInput)result.Error!).Fields[0];
         violation.Args!["allowed"].Should().Be(ValidationArgs.Allowed(Enum.GetNames<Shade>())["allowed"]);
-        violation.Args.Should().ContainKey("collectionIndex",
+        violation.Args["collectionIndex"].Should().Be(new ValidationArgValue.Number(9),
             "the member list is merged into the projected placeholders rather than substituted for them");
     }
 
