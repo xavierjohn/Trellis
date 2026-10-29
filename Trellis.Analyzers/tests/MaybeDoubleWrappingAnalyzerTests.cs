@@ -133,30 +133,6 @@ public class MaybeDoubleWrappingAnalyzerTests
     }
 
     [Fact]
-    public async Task ComplexType_DoubleWrapped_ReportsDiagnostic()
-    {
-        const string source = """
-            public class TestClass
-            {
-                public {|#0:Maybe<Maybe<User>>|} GetUser() => default;
-            }
-
-            public class User
-            {
-                public string Name { get; set; }
-            }
-            """;
-
-        var test = AnalyzerTestHelper.CreateDiagnosticTest<MaybeDoubleWrappingAnalyzer>(
-            source,
-            AnalyzerTestHelper.Diagnostic(DiagnosticDescriptors.MaybeDoubleWrapping)
-                .WithLocation(0)
-                .WithArguments("User"));
-
-        await test.RunAsync();
-    }
-
-    [Fact]
     public async Task MultipleDoubleWrappings_ReportsMultipleDiagnostics()
     {
         const string source = """

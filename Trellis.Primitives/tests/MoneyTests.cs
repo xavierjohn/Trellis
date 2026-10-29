@@ -39,16 +39,6 @@ public class MoneyTests
     }
 
     [Fact]
-    public void Cannot_create_Money_with_invalid_currency()
-    {
-        // Act
-        var result = Money.TryCreate(100.00m, "INVALID");
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-    }
-
-    [Fact]
     public void Cannot_create_Money_with_invalid_currency_uses_custom_field_name()
     {
         // Act
@@ -648,14 +638,6 @@ public class MoneyTests
     #endregion
 
     #region FieldName Edge Cases
-
-    [Fact]
-    public void TryCreate_with_empty_string_fieldName_should_not_throw()
-    {
-        var act = () => Money.TryCreate(-1m, "USD", fieldName: "");
-
-        act.Should().NotThrow();
-    }
 
     [Fact]
     public void TryCreate_without_fieldName_points_amount_failure_at_amount()

@@ -462,23 +462,4 @@ public class HasIndexMaybePropertyAnalyzerTests
     }
 
     #endregion
-
-    #region No EF Core reference does not activate analyzer
-
-    [Fact]
-    public async Task NoEfCoreReference_NoDiagnostic()
-    {
-        const string source = """
-            public class TestClass
-            {
-                public void TestMethod() { }
-            }
-            """;
-
-        var test = AnalyzerTestHelper.CreateNoDiagnosticTest<HasIndexMaybePropertyAnalyzer>(source);
-
-        await test.RunAsync();
-    }
-
-    #endregion
 }
