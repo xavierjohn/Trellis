@@ -109,7 +109,8 @@ public class InboxMessageHandlerTests
         var (settler, _) = await HandleAsync(message, InboxDispatchOutcome.Processed);
 
         settler.DeadLetterReason.Should().Be(ServiceBusConsumerErrors.MalformedBodyCode);
-        settler.DeadLetterDescription.Should().NotBeNullOrWhiteSpace("the dead-letter must carry the diagnosis");    }
+        settler.DeadLetterDescription.Should().NotBeNullOrWhiteSpace("the dead-letter must carry the diagnosis");
+    }
 
     [Fact]
     public async Task MalformedLineage_DeadLettersWithoutDispatch()

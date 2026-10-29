@@ -1,4 +1,4 @@
-namespace Trellis.TestSupport;
+﻿namespace Trellis.TestSupport;
 
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;

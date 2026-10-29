@@ -355,6 +355,9 @@ public sealed class ResponseFailureWriterTests
 
     // ----------------- The sentinel is not a discriminator -----------------
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// <para>
     /// <see cref="Error.Code"/> defaults to the <c>error.unspecified</c> sentinel, so an error
@@ -402,6 +405,9 @@ public sealed class ResponseFailureWriterTests
             + "collide with a route miss — the envelope claim is about code and kind only");
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The other half of the same contract: the sentinel is a default, not a fixed value for the
     /// case. Naming a reason is what makes the two responses tell them apart, and it is available on

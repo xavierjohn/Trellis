@@ -1,4 +1,4 @@
-namespace CookbookSnippets.Tests;
+﻿namespace CookbookSnippets.Tests;
 
 using CookbookSnippets.Recipe16;
 using global::Mediator;

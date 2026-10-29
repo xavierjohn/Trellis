@@ -1,4 +1,4 @@
-namespace Trellis.Mediator;
+﻿namespace Trellis.Mediator;
 
 using System.Diagnostics.CodeAnalysis;
 using global::Mediator;

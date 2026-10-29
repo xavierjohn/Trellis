@@ -1,4 +1,4 @@
-namespace Trellis.ServiceDefaults.Tests;
+﻿namespace Trellis.ServiceDefaults.Tests;
 
 using global::Mediator;
 using Microsoft.EntityFrameworkCore;

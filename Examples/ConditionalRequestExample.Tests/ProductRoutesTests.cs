@@ -58,15 +58,22 @@ public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
     {
         using var client = _factory.CreateClient();
         var (created, postResponse) = await CreateProductAsync(client, "/optional/products", "Widget-Get", 21.50m);
-        postResponse.Dispose();
+        using (postResponse)
+        {
+            postResponse.Headers.ETag.Should().NotBeNull();
+            postResponse.Headers.ETag!.IsWeak.Should().BeFalse();
+            postResponse.Headers.ETag.Tag.Should().Be($"\"{created.ETag}\"");
+        }
 
         using var getResponse = await client.GetAsync(new Uri($"/optional/products/{created.Id}", UriKind.Relative), Ct);
 
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         getResponse.Headers.ETag.Should().NotBeNull();
+        getResponse.Headers.ETag!.IsWeak.Should().BeFalse();
         var fetched = await getResponse.Content.ReadFromJsonAsync<ProductWire>(Ct);
         fetched.Should().NotBeNull();
         fetched!.ETag.Should().Be(created.ETag);
+        getResponse.Headers.ETag.Tag.Should().Be($"\"{fetched.ETag}\"");
     }
 
     [Fact]
@@ -100,6 +107,20 @@ public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
         putResponse.Headers.Vary.Should().Contain("Prefer");
         putResponse.Headers.ETag.Should().NotBeNull();
         putResponse.Headers.ETag!.Tag.Should().NotBe($"\"{created.ETag}\"");
+        (await putResponse.Content.ReadAsByteArrayAsync(Ct)).Should().BeEmpty();
+
+        using var getResponse = await client.GetAsync(new Uri($"/optional/products/{created.Id}", UriKind.Relative), Ct);
+
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await getResponse.Content.ReadFromJsonAsync<ProductWire>(Ct);
+        updated.Should().NotBeNull();
+        updated!.Price.Should().Be(77m);
+        updated.ETag.Should().NotBe(created.ETag);
+        putResponse.Headers.ETag.IsWeak.Should().BeFalse();
+        putResponse.Headers.ETag.Tag.Should().Be($"\"{updated.ETag}\"");
+        getResponse.Headers.ETag.Should().NotBeNull();
+        getResponse.Headers.ETag!.IsWeak.Should().BeFalse();
+        getResponse.Headers.ETag.Tag.Should().Be($"\"{updated.ETag}\"");
     }
 
     [Fact]
@@ -130,6 +151,17 @@ public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
         using var putResponse = await PutPriceAsync(client, $"/optional/products/{created.Id}", 50m, ifMatch: "\"stale-etag\"");
 
         putResponse.StatusCode.Should().Be(HttpStatusCode.PreconditionFailed);
+
+        using var getResponse = await client.GetAsync(new Uri($"/optional/products/{created.Id}", UriKind.Relative), Ct);
+
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var unchanged = await getResponse.Content.ReadFromJsonAsync<ProductWire>(Ct);
+        unchanged.Should().NotBeNull();
+        unchanged!.Price.Should().Be(10m);
+        unchanged.ETag.Should().Be(created.ETag);
+        getResponse.Headers.ETag.Should().NotBeNull();
+        getResponse.Headers.ETag!.IsWeak.Should().BeFalse();
+        getResponse.Headers.ETag.Tag.Should().Be($"\"{created.ETag}\"");
     }
 
     [Fact]
@@ -142,6 +174,17 @@ public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
         using var putResponse = await PutPriceAsync(client, $"/required/products/{created.Id}", 33m, ifMatch: null);
 
         putResponse.StatusCode.Should().Be(HttpStatusCode.PreconditionRequired);
+
+        using var getResponse = await client.GetAsync(new Uri($"/required/products/{created.Id}", UriKind.Relative), Ct);
+
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var unchanged = await getResponse.Content.ReadFromJsonAsync<ProductWire>(Ct);
+        unchanged.Should().NotBeNull();
+        unchanged!.Price.Should().Be(12m);
+        unchanged.ETag.Should().Be(created.ETag);
+        getResponse.Headers.ETag.Should().NotBeNull();
+        getResponse.Headers.ETag!.IsWeak.Should().BeFalse();
+        getResponse.Headers.ETag.Tag.Should().Be($"\"{created.ETag}\"");
     }
 
     [Fact]
@@ -174,6 +217,20 @@ public class ProductRoutesTests : IClassFixture<WebApplicationFactory<Program>>
         putResponse.Headers.Vary.Should().Contain("Prefer");
         putResponse.Headers.ETag.Should().NotBeNull();
         putResponse.Headers.ETag!.Tag.Should().NotBe($"\"{created.ETag}\"");
+        (await putResponse.Content.ReadAsByteArrayAsync(Ct)).Should().BeEmpty();
+
+        using var getResponse = await client.GetAsync(new Uri($"/required/products/{created.Id}", UriKind.Relative), Ct);
+
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await getResponse.Content.ReadFromJsonAsync<ProductWire>(Ct);
+        updated.Should().NotBeNull();
+        updated!.Price.Should().Be(55m);
+        updated.ETag.Should().NotBe(created.ETag);
+        putResponse.Headers.ETag.IsWeak.Should().BeFalse();
+        putResponse.Headers.ETag.Tag.Should().Be($"\"{updated.ETag}\"");
+        getResponse.Headers.ETag.Should().NotBeNull();
+        getResponse.Headers.ETag!.IsWeak.Should().BeFalse();
+        getResponse.Headers.ETag.Tag.Should().Be($"\"{updated.ETag}\"");
     }
 
     [Fact]

@@ -5,8 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;
 using Trellis.Mediator.Tests.Helpers;
 using Trellis.Testing;
-using Unit = global::Mediator.Unit;
 using static Trellis.Mediator.Tests.SharedResourceLoaderTests;
+using Unit = global::Mediator.Unit;
 
 public class SharedResourceAuthorizationRegistrationTests
 {

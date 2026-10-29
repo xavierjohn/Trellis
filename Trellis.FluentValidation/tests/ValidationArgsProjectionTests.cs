@@ -4,6 +4,7 @@ using System.Linq;
 using global::FluentValidation;
 using Trellis;
 using Trellis.FluentValidation;
+using Trellis.Testing;
 
 /// <summary>
 /// Pins the two independent controls on <c>Args</c>: the per-validator allowlist (correctness)
@@ -143,9 +144,7 @@ public class ValidationArgsProjectionTests
         var comparison = violation.Args!["comparisonValue"]
             .Should().BeOfType<ValidationArgValue.Text>().Subject.Value;
 
-        comparison.Length.Should().BeLessThan(80,
-            "no structural rule identifies which string args carry submitted input, so the bound is universal");
-        comparison.Should().EndWith("...");
+        comparison.Should().Be(new string('X', 64) + "...");
     }
 
     [Fact]
@@ -195,6 +194,13 @@ public class ValidationArgsProjectionTests
         var violation = Violate(v => v.RuleFor(x => x.A).NotEmpty(), new Subject(A: ""));
 
         violation.Args.Should().BeNull();
+
+        var comparison = Violate(
+            v => v.RuleFor(x => x.A).Equal("expected-literal"),
+            new Subject(A: "submitted-only-secret"));
+
+        comparison.Args.Should().NotBeNull().And.HaveCount(1);
+        comparison.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Text("expected-literal"));
     }
 
     [Fact]
@@ -215,8 +221,11 @@ public class ValidationArgsProjectionTests
             v => v.RuleFor(x => x.D).PrecisionScale(3, 1, ignoreTrailingZeros: true),
             new Subject(D: 123.45m));
 
+        violation.Args.Should().NotBeNull().And.HaveCount(4);
         violation.Args!["expectedPrecision"].Should().Be(new ValidationArgValue.Number(3));
         violation.Args["expectedScale"].Should().Be(new ValidationArgValue.Number(1));
+        violation.Args["actualScale"].Should().Be(new ValidationArgValue.Number(2));
+        violation.Args["digits"].Should().Be(new ValidationArgValue.Number(5));
     }
 
     [Fact]
@@ -264,6 +273,23 @@ public class ValidationArgsProjectionTests
         violation.Args!["allowed"].Should().Be(
             ValidationArgValue.ListOf(new ValidationArgValue.Text("Amber"), new ValidationArgValue.Text("Zinc")),
             "the members are ordinally sorted, so Amber precedes Zinc even though Zinc is declared first");
+    }
+
+    [Fact]
+    public void ToResult_IsInEnum_With65Members_EmitsNumericAllowedCount()
+    {
+        var validator = new InlineValidator<OversizedEnum>();
+        validator.RuleFor(x => x).IsInEnum();
+        var value = (OversizedEnum)65;
+
+        var result = validator.Validate(value).ToResult(value);
+
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        var violation = error.Fields.Items.Should().ContainSingle().Which;
+        error.Rules.Items.Should().BeEmpty();
+        violation.ReasonCode.Should().Be(ValidationCodes.EnumUndefined);
+        violation.Args.Should().NotBeNull().And.HaveCount(1);
+        violation.Args!["allowedCount"].Should().Be(new ValidationArgValue.Number(65));
     }
 
     [Fact]
@@ -326,13 +352,13 @@ public class ValidationArgsProjectionTests
             "the member list is merged into the projected placeholders rather than substituted for them");
     }
 
-    /// <remarks>
+    /// <summary>
     /// <c>RequiredEnum&lt;T&gt;</c> is a registry of declared statics, not a CLR enum, so
     /// FluentValidation's <c>IsInEnum()</c> rejects <em>every</em> value of one — including a valid
     /// member. That is FluentValidation's own behaviour and not something Trellis can correct from
     /// here; what Trellis controls is that a violation it cannot substantiate names nothing, rather
     /// than lending a spurious rejection the authority of a member list.
-    /// </remarks>
+    /// </summary>
     [Fact]
     public void A_RequiredEnum_is_not_a_clr_enum_so_the_violation_names_nothing()
     {
@@ -347,6 +373,75 @@ public class ValidationArgsProjectionTests
         violation.ReasonCode.Should().Be(ValidationCodes.EnumUndefined);
         violation.Args.Should().BeNull(
             "the members are read from the attempted value's own type, and a RequiredEnum has none to read");
+    }
+
+    private enum OversizedEnum
+    {
+        Value0,
+        Value1,
+        Value2,
+        Value3,
+        Value4,
+        Value5,
+        Value6,
+        Value7,
+        Value8,
+        Value9,
+        Value10,
+        Value11,
+        Value12,
+        Value13,
+        Value14,
+        Value15,
+        Value16,
+        Value17,
+        Value18,
+        Value19,
+        Value20,
+        Value21,
+        Value22,
+        Value23,
+        Value24,
+        Value25,
+        Value26,
+        Value27,
+        Value28,
+        Value29,
+        Value30,
+        Value31,
+        Value32,
+        Value33,
+        Value34,
+        Value35,
+        Value36,
+        Value37,
+        Value38,
+        Value39,
+        Value40,
+        Value41,
+        Value42,
+        Value43,
+        Value44,
+        Value45,
+        Value46,
+        Value47,
+        Value48,
+        Value49,
+        Value50,
+        Value51,
+        Value52,
+        Value53,
+        Value54,
+        Value55,
+        Value56,
+        Value57,
+        Value58,
+        Value59,
+        Value60,
+        Value61,
+        Value62,
+        Value63,
+        Value64,
     }
 
     private sealed class ToneHolder

@@ -3,10 +3,10 @@
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Testing;
+using ConsumerOrder = ActorHandlers.Consumer.Order;
 using Folder = ActorHandlers.Consumer.Folder;
 using MultiResourceCommand = ActorHandlers.Consumer.MultiResourceCommand;
 using Observation = ActorHandlers.Consumer.Observation;
-using ConsumerOrder = ActorHandlers.Consumer.Order;
 
 public class AuthorizationSnapshotTests
 {

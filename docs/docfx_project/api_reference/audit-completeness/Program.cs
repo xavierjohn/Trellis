@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Xml.Linq;
-using System.Globalization;
 using Trellis.Docs.Audit;
 
 string? fwRoot = Environment.GetEnvironmentVariable("TRELLIS_FW_ROOT")
@@ -27,7 +27,8 @@ if (packages.Length == 0)
     return 1;
 }
 
-string? FindDll(PackageInfo package) {
+string? FindDll(PackageInfo package)
+{
     var projectDir = Path.GetDirectoryName(package.ProjectPath)!;
     var candidates = new[] {
         Path.Combine(projectDir, "bin", "Release", "net10.0", $"{package.AssemblyName}.dll"),
@@ -54,7 +55,8 @@ foreach (var dll in selectedDlls)
 // directory rather than hardcoding a Windows install path — this tool has to run on CI Linux too.
 var sharedRoot = Path.GetDirectoryName(Path.GetDirectoryName(runtimeDir));
 var aspnet = sharedRoot is null ? null : Path.Combine(sharedRoot, "Microsoft.AspNetCore.App");
-if (aspnet is not null && Directory.Exists(aspnet)) {
+if (aspnet is not null && Directory.Exists(aspnet))
+{
     var ver = Directory.GetDirectories(aspnet)
         .OrderByDescending(d => Version.TryParse(Path.GetFileName(d).Split('-')[0], out var v) ? v : new Version(0, 0))
         .FirstOrDefault();
@@ -115,11 +117,14 @@ string[] skipMembers = { "Equals","GetHashCode","ToString","GetType","Memberwise
 var sb = new StringBuilder();
 var summary = new List<(string Pkg, int Types, int UndocTypes, int Members, int UndocMembers)>();
 
-foreach (var package in packages) {
+foreach (var package in packages)
+{
     var dll = FindDll(package);
     if (dll == null) { Console.WriteLine($"[{package.PackageName}] DLL not found, skipping"); continue; }
+
     var docPath = Path.Combine(docsDir, package.DocFile);
     if (!File.Exists(docPath)) { Console.WriteLine($"[{package.PackageName}] Doc missing: {docPath}"); continue; }
+
     var evidence = new ApiDocumentationEvidence(File.ReadAllText(docPath));
 
     Assembly asm;
@@ -134,20 +139,24 @@ foreach (var package in packages) {
     var undocMembers = new List<string>();
     int memberTotal = 0;
 
-    foreach (var t in types) {
+    foreach (var t in types)
+    {
         if (t.Name.StartsWith("<", StringComparison.Ordinal)) continue;
         var simple = t.Name.Contains('`') ? t.Name.Substring(0, t.Name.IndexOf('`')) : t.Name;
-        if (!evidence.Contains(simple)) {
+        if (!evidence.Contains(simple))
+        {
             undocTypes.Add(t.FullName ?? simple);
             continue;
         }
+
         var bf = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
         IEnumerable<MemberInfo> members =
             t.GetMethods(bf).Where(m => !m.IsSpecialName).Cast<MemberInfo>()
             .Concat(t.GetProperties(bf))
             .Concat(t.GetEvents(bf))
             .Concat(t.GetFields(bf).Where(f => !f.IsSpecialName));
-        foreach (var m in members) {
+        foreach (var m in members)
+        {
             memberTotal++;
             if (skipMembers.Contains(m.Name)) continue;
             if (m.Name.StartsWith("op_", StringComparison.Ordinal) || m.Name.StartsWith("get_", StringComparison.Ordinal) || m.Name.StartsWith("set_", StringComparison.Ordinal)
@@ -164,12 +173,15 @@ foreach (var package in packages) {
     sb.AppendLine(CultureInfo.InvariantCulture, $"- Doc: `{package.DocFile}`");
     sb.AppendLine(CultureInfo.InvariantCulture, $"- Types: {types.Length} ({undocTypes.Count} undocumented)");
     sb.AppendLine(CultureInfo.InvariantCulture, $"- Members: {memberTotal} total, {undocMembers.Count} undocumented signatures, {dedupedMembers.Count} unique undocumented names");
-    if (undocTypes.Any()) {
+    if (undocTypes.Any())
+    {
         sb.AppendLine();
         sb.AppendLine("### Undocumented types");
         foreach (var u in undocTypes.OrderBy(x => x)) sb.AppendLine(CultureInfo.InvariantCulture, $"- `{u}`");
     }
-    if (dedupedMembers.Any()) {
+
+    if (dedupedMembers.Any())
+    {
         sb.AppendLine();
         sb.AppendLine("### Undocumented members on documented types (deduped — overloads collapsed)");
         foreach (var u in dedupedMembers) sb.AppendLine(CultureInfo.InvariantCulture, $"- `{u}`");
@@ -179,7 +191,7 @@ foreach (var package in packages) {
 Console.WriteLine();
 Console.WriteLine("=== Summary ===");
 Console.WriteLine($"{"Package",-32} {"Types",6} {"UndocT",6} {"Members",8} {"UndocM",6}");
-foreach (var (p,t,ut,m,um) in summary)
+foreach (var (p, t, ut, m, um) in summary)
     Console.WriteLine($"{p,-32} {t,6} {ut,6} {m,8} {um,6}");
 
 var outPath = Path.Combine(docsDir, "completeness-report.md");

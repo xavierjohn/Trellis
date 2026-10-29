@@ -33,6 +33,9 @@ public class MediatorTraceProviderBuilderExtensionsTests
             .Which.DisplayName.Should().Be(nameof(TestCommand));
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The control for the test above. Without it, that test would still pass if the source were
     /// registered by something else entirely, and the extension would be proven to do nothing.
@@ -53,6 +56,9 @@ public class MediatorTraceProviderBuilderExtensionsTests
         captured.Should().BeEmpty();
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// Pins the helper to the constant the behaviour actually emits from. Were the extension to
     /// register a hand-typed copy of the name, the two could drift and the helper would go quietly

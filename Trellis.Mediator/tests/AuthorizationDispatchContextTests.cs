@@ -1,10 +1,10 @@
 ﻿namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
+using ConsumerOrder = ActorHandlers.Consumer.Order;
 using Folder = ActorHandlers.Consumer.Folder;
 using MultiResourceCommand = ActorHandlers.Consumer.MultiResourceCommand;
 using Observation = ActorHandlers.Consumer.Observation;
-using ConsumerOrder = ActorHandlers.Consumer.Order;
 
 public class AuthorizationDispatchContextTests
 {

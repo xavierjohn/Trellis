@@ -1,7 +1,7 @@
 ﻿namespace Trellis.Asp.Authorization.Tests;
 
-using Microsoft.AspNetCore.Http;
 using System.Threading.Tasks.Sources;
+using Microsoft.AspNetCore.Http;
 using Trellis.Authorization;
 using Trellis.Testing;
 

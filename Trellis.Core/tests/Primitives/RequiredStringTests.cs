@@ -148,7 +148,7 @@ public class RequiredStringTests
 
         public CultureScope(string name) => CultureInfo.CurrentCulture = new CultureInfo(name);
 
-        public void Dispose() => CultureInfo.CurrentCulture = this.original;
+        public void Dispose() => CultureInfo.CurrentCulture = original;
     }
 
     [Fact]

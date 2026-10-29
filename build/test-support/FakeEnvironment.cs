@@ -1,4 +1,4 @@
-namespace Trellis.TestSupport;
+﻿namespace Trellis.TestSupport;
 
 // Linked into test projects whose fixtures read configuration through an injected Func<string, string?>.
 internal static class FakeEnvironment

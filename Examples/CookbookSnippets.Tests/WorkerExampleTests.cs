@@ -1,10 +1,10 @@
 ﻿namespace CookbookSnippets.Tests;
 
 using System.Threading.Channels;
+using CookbookSnippets.Recipe26.NamedTicks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Trellis.Testing.Worker;
-using CookbookSnippets.Recipe26.NamedTicks;
 
 public class WorkerExampleTests
 {
