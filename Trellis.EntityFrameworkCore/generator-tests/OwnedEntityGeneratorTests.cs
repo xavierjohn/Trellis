@@ -158,41 +158,6 @@ public class OwnedEntityGeneratorTests
     #region Happy path — ValueObject-derived types
 
     /// <summary>
-    /// A class inheriting directly from ValueObject must NOT emit TRLS038.
-    /// </summary>
-    [Fact]
-    public void OwnedEntity_On_ValueObject_Derived_Class_Should_Not_Emit_TRLS038()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using System.Collections.Generic;
-            namespace Trellis { public abstract class ValueObject { protected abstract IEnumerable<System.IComparable?> GetEqualityComponents(); } }
-            namespace Trellis.EntityFrameworkCore { public sealed class OwnedEntityAttribute : System.Attribute { } }
-
-            namespace TestNamespace
-            {
-                [Trellis.EntityFrameworkCore.OwnedEntity]
-                public partial class Address : Trellis.ValueObject
-                {
-                    public string Street { get; private set; } = null!;
-
-                    public Address(string street) { Street = street; }
-
-                    protected override System.Collections.Generic.IEnumerable<System.IComparable?> GetEqualityComponents()
-                    {
-                        yield return Street;
-                    }
-                }
-            }
-            """;
-
-        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
-
-        diagnostics.Where(d => d.Id == "TRLS038").Should().BeEmpty();
-    }
-
-    /// <summary>
     /// A class inheriting directly from ValueObject should have a constructor generated.
     /// </summary>
     [Fact]

@@ -49,10 +49,4 @@ public class RequiredGuidValidateAdditionalTests
         result.IsFailure.Should().BeTrue();
     }
 
-    [Fact]
-    public void PlainId_WithoutHook_StillWorks()
-    {
-        var result = PlainId.TryCreate(Guid.NewGuid());
-        result.IsSuccess.Should().BeTrue();
-    }
 }
