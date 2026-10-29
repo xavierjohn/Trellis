@@ -134,7 +134,7 @@ public class ValidationArgsOptionsTests
     [Fact]
     public void AllowArgs_rejects_a_blank_error_code() =>
         new Func<object>(() => new ValidationArgsOptions().AllowArgs("  ", "MaxLength"))
-            .Should().Throw<ArgumentException>();
+            .Should().Throw<ArgumentException>().WithParameterName("errorCode");
 
     [Fact]
     public void AllowArgs_is_chainable_and_accumulates()

@@ -3,9 +3,10 @@
 using global::FluentValidation;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Trellis;
-using Trellis.Mediator;
 using Trellis.FluentValidation;
+using Trellis.Mediator;
 using Trellis.Mediator.FluentValidation;
 using Trellis.Testing;
 
@@ -194,9 +195,15 @@ public class FluentValidationMessageValidatorAdapterTests
 
         services.AddTrellisFluentValidation();
 
-        services.Should().ContainSingle(d =>
-            d.ServiceType == typeof(IMessageValidator<>)
-            && d.ImplementationType == typeof(FluentValidationMessageValidatorAdapter<>));
+        var registration = services.Should().ContainSingle(d => d.ServiceType == typeof(IMessageValidator<>)).Which;
+        registration.ImplementationType.Should().Be(typeof(FluentValidationMessageValidatorAdapter<>));
+        registration.Lifetime.Should().Be(ServiceLifetime.Scoped);
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IOptions<ValidationArgsOptions>>().Value.Should().NotBeNull();
+        scope.ServiceProvider.GetRequiredService<IMessageValidator<CreateUserCommand>>()
+            .Should().BeOfType<FluentValidationMessageValidatorAdapter<CreateUserCommand>>();
     }
 
     [Fact]
@@ -222,6 +229,10 @@ public class FluentValidationMessageValidatorAdapterTests
         services.AddScoped<IValidator<CreateUserCommand>, CreateUserCommandNameValidator>();
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
+        var validator = scope.ServiceProvider.GetRequiredService<IValidator<CreateUserCommand>>()
+            .Should().BeOfType<CreateUserCommandNameValidator>().Which;
+        var validationCalls = 0;
+        validator.RuleFor(x => x).Custom((_, _) => validationCalls++);
         // Mirror the production path: ValidationBehavior injects IEnumerable<IMessageValidator<T>>
         // and runs every resolved instance. Using GetRequiredService here would mask duplicate
         // adapter registrations because it returns only the last-registered descriptor.
@@ -237,6 +248,7 @@ public class FluentValidationMessageValidatorAdapterTests
 
         var error = ExtractError(result).Should().BeOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().HaveCount(1);
+        validationCalls.Should().Be(1);
     }
 
     [Fact]
@@ -332,10 +344,13 @@ public class FluentValidationMessageValidatorAdapterTests
         singleServices.AddTrellisFluentValidation(typeof(FluentValidationMessageValidatorAdapterTests).Assembly);
         using var singleProvider = singleServices.BuildServiceProvider();
         using var singleScope = singleProvider.CreateScope();
-        var singleAdapter = singleScope.ServiceProvider.GetRequiredService<IMessageValidator<CreateUserCommand>>();
+        var singleCalls = ObserveValidatorCalls(singleScope.ServiceProvider);
+        var singleAdapter = singleScope.ServiceProvider.GetServices<IMessageValidator<CreateUserCommand>>()
+            .Should().ContainSingle().Which;
         var singleResult = await singleAdapter.ValidateAsync(command, CancellationToken.None);
         var singleError = ExtractError(singleResult).Should().BeOfType<Error.InvalidInput>().Which;
         var baselineCount = singleError.Fields.Items.Length;
+        singleCalls.Values.Should().OnlyContain(count => count == 1);
 
         // Scan twice — must produce the same count, not double.
         var doubleServices = new ServiceCollection();
@@ -343,11 +358,36 @@ public class FluentValidationMessageValidatorAdapterTests
         doubleServices.AddTrellisFluentValidation(typeof(FluentValidationMessageValidatorAdapterTests).Assembly);
         using var doubleProvider = doubleServices.BuildServiceProvider();
         using var doubleScope = doubleProvider.CreateScope();
-        var doubleAdapter = doubleScope.ServiceProvider.GetRequiredService<IMessageValidator<CreateUserCommand>>();
+        var doubleCalls = ObserveValidatorCalls(doubleScope.ServiceProvider);
+        var doubleAdapter = doubleScope.ServiceProvider.GetServices<IMessageValidator<CreateUserCommand>>()
+            .Should().ContainSingle().Which;
         var doubleResult = await doubleAdapter.ValidateAsync(command, CancellationToken.None);
         var doubleError = ExtractError(doubleResult).Should().BeOfType<Error.InvalidInput>().Which;
 
         doubleError.Fields.Items.Length.Should().Be(baselineCount, "scanning the same assembly twice must not double validator execution");
+        doubleCalls.Values.Should().OnlyContain(count => count == 1);
+
+        static Dictionary<Type, int> ObserveValidatorCalls(IServiceProvider provider)
+        {
+            var validators = provider.GetServices<IValidator<CreateUserCommand>>().ToList();
+            Type[] expectedTypes =
+            [
+                typeof(MinimumNameLengthValidator),
+                typeof(CreateUserCommandNameValidator),
+                typeof(CreateUserCommandEmailValidator),
+                typeof(CreateUserCommandRootValidator),
+            ];
+            validators.Select(validator => validator.GetType()).Should().BeEquivalentTo(expectedTypes);
+            var calls = validators.ToDictionary(validator => validator.GetType(), _ => 0);
+            foreach (var validator in validators)
+            {
+                var validatorType = validator.GetType();
+                validator.Should().BeAssignableTo<AbstractValidator<CreateUserCommand>>().Which
+                    .RuleFor(x => x).Custom((_, _) => calls[validatorType]++);
+            }
+
+            return calls;
+        }
     }
 
     [Fact]
@@ -360,7 +400,25 @@ public class FluentValidationMessageValidatorAdapterTests
 
         var validators = scope.ServiceProvider.GetServices<IValidator<CreateUserCommand>>().ToList();
 
-        validators.Should().HaveCountGreaterThanOrEqualTo(2);
+        Type[] expectedTypes =
+        [
+            typeof(MinimumNameLengthValidator),
+            typeof(CreateUserCommandNameValidator),
+            typeof(CreateUserCommandEmailValidator),
+            typeof(CreateUserCommandRootValidator),
+        ];
+        validators.Select(validator => validator.GetType()).Should().BeEquivalentTo(expectedTypes);
+        var sameScopeValidators = scope.ServiceProvider.GetServices<IValidator<CreateUserCommand>>()
+            .ToDictionary(validator => validator.GetType());
+        using var otherScope = provider.CreateScope();
+        var otherScopeValidators = otherScope.ServiceProvider.GetServices<IValidator<CreateUserCommand>>()
+            .ToDictionary(validator => validator.GetType());
+        otherScopeValidators.Keys.Should().BeEquivalentTo(expectedTypes);
+        foreach (var validator in validators)
+        {
+            sameScopeValidators[validator.GetType()].Should().BeSameAs(validator);
+            otherScopeValidators[validator.GetType()].Should().NotBeSameAs(validator);
+        }
     }
 
     [Fact]
@@ -377,7 +435,16 @@ public class FluentValidationMessageValidatorAdapterTests
             CancellationToken.None);
 
         var error = ExtractError(result).Should().BeOfType<Error.InvalidInput>().Which;
-        error.Fields.Items.Should().HaveCountGreaterThanOrEqualTo(2);
+        (string Path, string ReasonCode)[] expectedFields =
+        [
+            ("/name", ValidationCodes.ValueNotEmpty),
+            ("/email", "email.invalid"),
+            ("/createUserCommand", ValidationCodes.Unspecified),
+            ("/name", "MinimumNameLength"),
+        ];
+        error.Fields.Items.Select(field => (field.Field.Path, field.ReasonCode))
+            .Should().BeEquivalentTo(expectedFields);
+        error.Rules.Items.Should().BeEmpty();
     }
 
     #endregion
