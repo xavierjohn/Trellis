@@ -75,6 +75,9 @@ public class NameableReasonCodeTests
     public void Unavailable_publishes_the_reason_a_producer_named() =>
         new Error.Unavailable { Code = "db.unreachable" }.Code.Should().Be("db.unreachable");
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// A case whose reason is optional and unnamed reports the sentinel, never its kind — the
     /// distinction this whole surface exists to preserve.

@@ -879,7 +879,7 @@ public class ResponseFailureWriterInputOriginTests
         private readonly ApiDescriptionGroupCollection groups;
 
         public StubApiDescriptionProvider(params ApiDescription[] descriptions) =>
-            this.groups = new([new ApiDescriptionGroup("test", descriptions)], 1);
+            groups = new([new ApiDescriptionGroup("test", descriptions)], 1);
 
         public int Reads { get; private set; }
 
@@ -887,8 +887,8 @@ public class ResponseFailureWriterInputOriginTests
         {
             get
             {
-                this.Reads++;
-                return this.groups;
+                Reads++;
+                return groups;
             }
         }
     }

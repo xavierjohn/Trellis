@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using CookbookSnippets.Compilation;
 using FluentAssertions;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +14,6 @@ using Microsoft.Extensions.Hosting;
 using Trellis;
 using Trellis.Mediator;
 using Trellis.Testing.Worker;
-using CookbookSnippets.Compilation;
 
 public sealed partial class ProbeId : RequiredGuid<ProbeId>;
 

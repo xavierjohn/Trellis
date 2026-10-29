@@ -62,6 +62,9 @@ public class ValidationArgsTests
     public void Allowed_names_the_entry_allowed() =>
         ValidationArgs.Allowed(["red", "green"]).Should().ContainKey("allowed");
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The whole point of routing every producer through one helper: query binding reads its
     /// members from <c>Enum.GetNames</c> (declaration order), a <c>RequiredEnum</c> reads its own
@@ -79,6 +82,9 @@ public class ValidationArgsTests
             .Should().Be(new ValidationArgValue.List(EquatableArray.Create<ValidationArgValue>(
                 [new ValidationArgValue.Text("red")])));
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// An enum with no members is degenerate but reachable, and an empty array is the honest
     /// answer — "nothing is permitted" — where omitting the entry would read as "this violation
@@ -139,6 +145,9 @@ public class ValidationArgsTests
         number.Should().NotBe(text);
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// A list a client cannot act on is not worth the bytes it costs. 248 country names serialize
     /// to roughly 3 KB on <em>every</em> rejection, and a request with several invalid enum fields
@@ -157,6 +166,9 @@ public class ValidationArgsTests
         args.Should().NotContainKey("allowedCount");
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The list is dropped whole rather than truncated. A truncated list is a false statement: it
     /// tells a client that a member it omitted is not permitted, so a client rendering "choose one

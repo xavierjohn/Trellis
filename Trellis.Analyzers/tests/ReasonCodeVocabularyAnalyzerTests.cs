@@ -95,6 +95,9 @@ public class ReasonCodeVocabularyAnalyzerTests
                     Failure.ForField(reasonCode: {|#0:"value.not-null"|}, propertyName: "name");
             """, ExpectFrozen(0, "value.not-null", "ValidationCodes.ValueNotNull"));
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The error cases whose reason is required take it as a positional parameter named <c>Code</c>
     /// rather than <c>ReasonCode</c>. A rule that matched only the latter would go quiet on
@@ -108,6 +111,9 @@ public class ReasonCodeVocabularyAnalyzerTests
                     _ = new CodedConflict("Order", {|#0:"value.not-null"|});
             """, ExpectFrozen(0, "value.not-null", "ValidationCodes.ValueNotNull"));
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// Cases whose reason is optional name it through an object initializer, which is an assignment
     /// rather than an argument — a different operation, and therefore a surface the argument walk

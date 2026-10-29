@@ -196,6 +196,9 @@ public sealed class FailureEnvelopeParityTests
         problem.Extensions.Should().ContainKey("kind").WhoseValue.Should().Be("bad-request");
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The body-deserialization path, which is how a real MVC request reaches this filter: the
     /// converter throws, MVC records the exception in ModelState, and the filter rebuilds the
@@ -242,6 +245,9 @@ public sealed class FailureEnvelopeParityTests
         problem.Extensions.Should().ContainKey("kind").WhoseValue.Should().Be("internal-server-error");
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The hook also runs over problems a Trellis writer produced. Their <c>kind</c> came from
     /// the error, which is the better answer, so seeding must not overwrite it — otherwise a
@@ -259,6 +265,9 @@ public sealed class FailureEnvelopeParityTests
         problem.Extensions["kind"].Should().Be("unprocessable-content");
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// A document that arrives with only one of the two members is the case a paired
     /// <c>ContainsKey</c> guard misses: it reads as "someone already supplied an envelope"
@@ -295,6 +304,9 @@ public sealed class FailureEnvelopeParityTests
     public void ProblemTypeForStatus_resolves_the_uri_the_response_writer_uses(int status, string expected) =>
         ProblemEnvelope.ProblemTypeForStatus(status).Should().Be(expected);
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// Several statuses Trellis emits have no framework default. RFC 9457 §3.1.1 makes an absent
     /// <c>type</c> equivalent to <c>about:blank</c>, so omitting it is correct; writing a bare

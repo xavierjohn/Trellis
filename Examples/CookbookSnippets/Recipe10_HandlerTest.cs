@@ -5,6 +5,7 @@ namespace CookbookSnippets.Recipe10;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using CookbookSnippets.Compilation;
 using CookbookSnippets.Recipe01;
 using CookbookSnippets.Recipe02;
 using CookbookSnippets.Stubs;
@@ -12,7 +13,6 @@ using FluentAssertions;
 using Trellis;
 using Trellis.Authorization;
 using Trellis.Testing;
-using CookbookSnippets.Compilation;
 
 public class PlaceOrderHandlerTests
 {

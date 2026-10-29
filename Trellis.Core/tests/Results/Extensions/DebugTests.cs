@@ -399,6 +399,9 @@ public class DebugTests : TestBase
         activity.Status.Should().Be(ActivityStatusCode.Error);
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The detailed view carries both halves: <c>kind</c> is the case, <c>code</c> is the reason
     /// the producer named. Collapsing them onto one tag — which a blanket rename will do, since
@@ -470,6 +473,9 @@ public class DebugTests : TestBase
         activity.Tags.Should().Contain(t => t.Key == "debug.error.aggregate[1].kind" && t.Value == "authentication-required");
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// Children carry both halves for the same reason the root does. These tags are built with
     /// interpolated names, so a grep for the literal tag prefix does not find them — which is

@@ -34,6 +34,9 @@ public sealed class RequiredEnumAllowedArgsTests
         AllowedOf(result.Error!).Should().Be(ValidationArgValue.ListOf("Amber", "Zinc"));
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The fixture declares <c>Zinc</c> before <c>Amber</c> deliberately. Registry order is an
     /// implementation detail of where the members happen to sit in the file; a wire contract a
@@ -47,6 +50,9 @@ public sealed class RequiredEnumAllowedArgsTests
         AllowedOf(result.Error!).Should().Be(ValidationArgValue.ListOf("Amber", "Zinc"));
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// A blank value reports <c>value.not-empty</c>, not <c>enum.name-undefined</c> — the caller
     /// named no member at all rather than an unrecognized one. Attaching the permitted set there
@@ -85,6 +91,9 @@ public sealed class RequiredEnumAllowedArgsTests
             .Should().Equal(["Amber", "Zinc"]);
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The JSON converter is a fourth producer, and it curates its own message rather than
     /// propagating the producer's detail (the raw name is attacker-supplied and is sanitized
@@ -107,6 +116,9 @@ public sealed class RequiredEnumAllowedArgsTests
         violation.Args!["allowed"].Should().Be(ValidationArgValue.ListOf("Amber", "Zinc"));
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The converter deliberately reports the <em>producer's</em> code, so a blank value arrives
     /// as <c>value.not-empty</c> rather than <c>enum.name-undefined</c>. The permitted set must
@@ -137,6 +149,9 @@ public sealed class AllowedArgsShade :
     public static readonly AllowedArgsShade Zinc = new();
     public static readonly AllowedArgsShade Amber = new();
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// <para>
     /// 248 country names cost roughly 3 KB of args and another 2.8 KB of prose on every rejection,

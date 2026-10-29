@@ -1,7 +1,7 @@
 ﻿namespace Trellis.EntityFrameworkCore.Outbox.Tests;
 
-using System.Diagnostics;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using global::Trellis.Mediator;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

@@ -140,6 +140,9 @@ public class ProducerIndependenceTests
     private static ValidationArgValue? AllowedOf(Error error) =>
         ((Error.InvalidInput)error).Fields.Items[0].Args?["allowed"];
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// Query binding's detail is the generic "The value is not a recognized option." — it never
     /// named the members at all, so before this the permitted set was unavailable to a client by
@@ -153,6 +156,9 @@ public class ProducerIndependenceTests
         AllowedOf(result.Error!).Should().Be(ValidationArgValue.ListOf("Green", "Red"));
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     /// <remarks>
     /// The two enum codes are chosen by a ternary inside one branch, so covering only the
     /// name case would leave a client told which members exist when it sent <c>"mauve"</c> but

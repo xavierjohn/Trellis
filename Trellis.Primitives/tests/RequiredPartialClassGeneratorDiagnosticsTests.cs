@@ -325,7 +325,8 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
     }
 
     [Fact]
-    public void TrimAndNotDefaultOnRequiredString_ReportsNoPlacementDiagnostic()    {
+    public void TrimAndNotDefaultOnRequiredString_ReportsNoPlacementDiagnostic()
+    {
         var cancellationToken = TestContext.Current.CancellationToken;
 
         const string source = """

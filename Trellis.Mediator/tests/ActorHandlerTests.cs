@@ -1,7 +1,7 @@
 ﻿namespace Trellis.Mediator.Tests;
 
-using global::Mediator;
 using System.Reflection;
+using global::Mediator;
 using Trellis.Testing;
 
 public class ActorHandlerTests
