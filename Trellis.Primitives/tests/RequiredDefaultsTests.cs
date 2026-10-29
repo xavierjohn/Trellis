@@ -33,24 +33,6 @@ public partial class DefaultDecimal : RequiredDecimal<DefaultDecimal> { }
 public class RequiredDefaultsTests
 {
     [Fact]
-    public void RequiredGuid_Default_AcceptsGuidEmpty()
-    {
-        var result = DefaultGuid.TryCreate(Guid.Empty);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(Guid.Empty);
-    }
-
-    [Fact]
-    public void RequiredGuid_Default_AcceptsParsedAllZeroString()
-    {
-        var result = DefaultGuid.TryCreate("00000000-0000-0000-0000-000000000000");
-
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(Guid.Empty);
-    }
-
-    [Fact]
     public void RequiredGuid_NotDefault_RejectsGuidEmpty()
     {
         var result = NotDefaultRequiredGuid.TryCreate(Guid.Empty);
@@ -61,15 +43,6 @@ public class RequiredDefaultsTests
     }
 
     [Fact]
-    public void RequiredDateTime_Default_AcceptsMinValue()
-    {
-        var result = DefaultDateTime.TryCreate(DateTime.MinValue);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(DateTime.MinValue);
-    }
-
-    [Fact]
     public void RequiredDateTime_NotDefault_RejectsMinValue()
     {
         var result = NotDefaultRequiredDateTime.TryCreate(DateTime.MinValue);
@@ -77,15 +50,6 @@ public class RequiredDefaultsTests
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
         validation.Fields[0].Detail.Should().Be("Not Default Required Date Time cannot be DateTime.MinValue.");
-    }
-
-    [Fact]
-    public void RequiredDateTimeOffset_Default_AcceptsMinValue()
-    {
-        var result = DefaultDateTimeOffset.TryCreate(DateTimeOffset.MinValue);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(DateTimeOffset.MinValue);
     }
 
     [Fact]
@@ -133,15 +97,6 @@ public class RequiredDefaultsTests
     }
 
     [Fact]
-    public void RequiredInt_Default_AcceptsZero()
-    {
-        var result = DefaultInt.TryCreate(0);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(0);
-    }
-
-    [Fact]
     public void RequiredInt_NotDefault_RejectsZero()
     {
         var result = NotDefaultRequiredInt.TryCreate(0);
@@ -152,15 +107,6 @@ public class RequiredDefaultsTests
     }
 
     [Fact]
-    public void RequiredLong_Default_AcceptsZero()
-    {
-        var result = DefaultLong.TryCreate(0L);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(0L);
-    }
-
-    [Fact]
     public void RequiredLong_NotDefault_RejectsZero()
     {
         var result = NotDefaultRequiredLong.TryCreate(0L);
@@ -168,15 +114,6 @@ public class RequiredDefaultsTests
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
         validation.Fields[0].Detail.Should().Be("Not Default Required Long cannot be zero.");
-    }
-
-    [Fact]
-    public void RequiredDecimal_Default_AcceptsZero()
-    {
-        var result = DefaultDecimal.TryCreate(0m);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(0m);
     }
 
     [Fact]

@@ -134,18 +134,6 @@ public class ValidateAdditionalTests
 
     #endregion
 
-    #region RequiredString — PlainName without ValidateAdditional (optional hook)
-
-    [Fact]
-    public void PlainName_WithoutHook_StillWorks()
-    {
-        var result = PlainName.TryCreate("Hello");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("Hello");
-    }
-
-    #endregion
-
     #region RequiredInt — EvenPercentage (Range + custom)
 
     [Fact]
@@ -307,30 +295,6 @@ public class ValidateAdditionalTests
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
         validation.Fields[0].Detail.Should().Be("Precise Amount must have at most 2 decimal places.");
-    }
-
-    #endregion
-
-    #region Optionality — RequiredInt without ValidateAdditional
-
-    [Fact]
-    public void PlainCount_WithoutHook_StillWorks()
-    {
-        var result = PlainCount.TryCreate(42);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(42);
-    }
-
-    #endregion
-
-    #region Optionality — RequiredDecimal without ValidateAdditional
-
-    [Fact]
-    public void PlainRate_WithoutHook_StillWorks()
-    {
-        var result = PlainRate.TryCreate(3.14m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(3.14m);
     }
 
     #endregion

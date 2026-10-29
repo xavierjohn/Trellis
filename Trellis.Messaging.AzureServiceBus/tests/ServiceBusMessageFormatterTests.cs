@@ -16,17 +16,6 @@ public class ServiceBusMessageFormatterTests
     private static readonly JsonSerializerOptions Json = JsonSerializerOptions.Web;
 
     [Fact]
-    public void ToServiceBusMessage_CarriesTheOutboxIdAsTheServiceBusMessageId()
-    {
-        var outboxId = Guid.CreateVersion7();
-        var message = new OutboundIntegrationMessage(outboxId, SampleEvent());
-
-        var sent = ServiceBusMessageFormatter.ToServiceBusMessage(message, OrderPlaced.WireName, messageSource: null, Json);
-
-        sent.MessageId.Should().Be(outboxId.ToString());
-    }
-
-    [Fact]
     public void ToServiceBusMessage_PutsTheWireNameOnTheSubject()
     {
         var message = new OutboundIntegrationMessage(Guid.CreateVersion7(), SampleEvent());

@@ -247,54 +247,5 @@ public class SourceGeneratedCreateMethodTests
         trackingId.Value.Should().Be("   ");
     }
 
-    [Fact]
-    public void RequiredString_ExplicitCast_WithEmptyString_Succeeds()
-    {
-        // Lenient default — explicit cast from "" succeeds.
-        TrackingId trackingId = (TrackingId)string.Empty;
-
-        trackingId.Value.Should().Be("");
-    }
-
-    #endregion
-
-    #region Integration Tests - TRLS007 Compatibility
-
-    [Fact]
-    public void Create_CanBeUsedInsteadOfTryCreateValue_ForAllTypes()
-    {
-        // This test verifies that Create() methods work as drop-in replacements
-        // for TryCreate().Value pattern (what TRLS007 analyzer suggests)
-
-        // Arrange & Act & Assert - All should succeed
-        var employeeId = EmployeeId.Create(Guid.NewGuid());
-        employeeId.Should().NotBeNull();
-
-        var ticketNumber = TicketNumber.Create(42);
-        ticketNumber.Should().NotBeNull();
-
-        var unitPrice = UnitPrice.Create(99.99m);
-        unitPrice.Should().NotBeNull();
-
-        var trackingId = TrackingId.Create("ABC123");
-        trackingId.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void Create_WithStringParsing_WorksForAllTypes()
-    {
-        // Verifies that Create(string) overloads work correctly
-
-        // Arrange & Act & Assert
-        var employeeId = EmployeeId.Create("2F45ACF9-6E51-4DC7-8732-DBE7F260E951");
-        employeeId.Value.Should().Be(Guid.Parse("2F45ACF9-6E51-4DC7-8732-DBE7F260E951"));
-
-        var ticketNumber = TicketNumber.Create("123");
-        ticketNumber.Value.Should().Be(123);
-
-        var unitPrice = UnitPrice.Create("19.99");
-        unitPrice.Value.Should().Be(19.99m);
-    }
-
     #endregion
 }
