@@ -284,6 +284,18 @@ public class DomainDrivenDesignSamplesTests
 
         // Assert - Different values, not equal
         address1.Unwrap().Should().NotBe(address3.Unwrap());
+
+        Address[] componentChanges =
+        [
+            Address.TryCreate("456 Oak Ave", "Springfield", "IL", "62701", "USA").Unwrap(),
+            Address.TryCreate("123 Main St", "Shelbyville", "IL", "62701", "USA").Unwrap(),
+            Address.TryCreate("123 Main St", "Springfield", "MO", "62701", "USA").Unwrap(),
+            Address.TryCreate("123 Main St", "Springfield", "IL", "62702", "USA").Unwrap(),
+            Address.TryCreate("123 Main St", "Springfield", "IL", "62701", "Canada").Unwrap()
+        ];
+
+        foreach (var address in componentChanges)
+            address1.Unwrap().Should().NotBe(address);
     }
 
     [Fact]
@@ -372,11 +384,14 @@ public class DomainDrivenDesignSamplesTests
     public void ValueObject_Temperature_RoundedEqual()
     {
         // Arrange & Act
-        var temp1 = Temperature.TryCreate(98.6m);
-        var temp2 = Temperature.TryCreate(98.60m);
+        var temp1 = Temperature.TryCreate(98.601m);
+        var temp2 = Temperature.TryCreate(98.604m);
+        var temp3 = Temperature.TryCreate(98.606m);
 
         // Assert - Rounded to same value, equal
         temp1.Unwrap().Should().Be(temp2.Unwrap());
+        temp1.Unwrap().GetHashCode().Should().Be(temp2.Unwrap().GetHashCode());
+        temp1.Unwrap().Should().NotBe(temp3.Unwrap());
     }
 
     [Fact]
