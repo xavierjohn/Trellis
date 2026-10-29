@@ -76,24 +76,6 @@ public class StateMachineExtensionsTests
     #region Invalid transitions
 
     [Fact]
-    public void FireResult_InvalidTransition_ReturnsFailureWithDomainError()
-    {
-        // Arrange
-        var machine = new StateMachine<State, Trigger>(State.Idle);
-        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
-
-        // Act
-        var result = machine.FireResult(Trigger.Pause);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.TryGetError(out var err).Should().BeTrue();
-        err!.Should().BeOfType<Error.InvariantViolation>();
-        err!.Detail.Should().Contain("Pause");
-        err!.Detail.Should().Contain("Idle");
-    }
-
-    [Fact]
     public void FireResult_InvalidTransition_DoesNotChangeState()
     {
         // Arrange

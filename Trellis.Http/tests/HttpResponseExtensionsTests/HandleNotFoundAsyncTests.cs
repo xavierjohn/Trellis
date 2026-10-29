@@ -64,19 +64,6 @@ public class HandleNotFoundAsyncTests
     }
 
     [Fact]
-    public async Task Throws_ArgumentNullException_when_error_is_null()
-    {
-        // Inspection finding M-H1: error parameter must be null-guarded fail-fast,
-        // not deferred to the matched-status path or to Result.Fail's internal guard.
-        var task = Task.FromResult<HttpResponseMessage>(new HttpResponseMessage(HttpStatusCode.OK));
-
-        var act = async () => await task.HandleNotFoundAsync(null!);
-
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("error");
-    }
-
-    [Fact]
     public async Task Null_error_disposes_response_before_throwing()
     {
         // Inspection finding (PR #462 round 4): the null-`error` guard previously fired

@@ -126,18 +126,6 @@ public class ReadJsonOrNoneOn404AsyncTests
     }
 
     [Fact]
-    public async Task Throws_ArgumentNullException_when_json_metadata_is_null()
-    {
-        using var response = new HttpResponseMessage(HttpStatusCode.OK);
-        var task = Task.FromResult(response);
-
-        var act = async () => await task.ReadJsonOrNoneOn404Async<camelcasePerson>(null!);
-
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("jsonTypeInfo");
-    }
-
-    [Fact]
     public async Task Null_jsonTypeInfo_disposes_response_before_throwing()
     {
         // Round-6 PR finding: round-1 fixed ReadJsonAsync and ReadJsonMaybeAsync to put
