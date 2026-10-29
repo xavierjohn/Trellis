@@ -130,17 +130,6 @@ public class ReadJsonAsyncTests
     }
 
     [Fact]
-    public async Task Null_jsonTypeInfo_on_Ok_throws_ArgumentNullException()
-    {
-        using var response = new HttpResponseMessage(HttpStatusCode.OK);
-        var task = Task.FromResult(Result.Ok<HttpResponseMessage>(response));
-
-        var act = async () => await task.ReadJsonAsync<camelcasePerson>(jsonTypeInfo: null!, CancellationToken.None);
-
-        await act.Should().ThrowAsync<ArgumentNullException>();
-    }
-
-    [Fact]
     public async Task Null_jsonTypeInfo_on_Ok_disposes_response_before_throwing()
     {
         // Inspection finding M-H2: the response was awaited and held in `message`,

@@ -323,16 +323,6 @@ public class LazyStateMachineTests
         machine.CanFire(Trigger.Ship).Should().BeFalse();
     }
 
-    [Fact]
-    public void Machine_CanBeUsedDirectlyForCanFire()
-    {
-        var status = State.Draft;
-        var lazy = CreateLazyMachine(() => status, s => status = s);
-
-        lazy.Machine.CanFire(Trigger.Submit).Should().BeTrue();
-        lazy.Machine.CanFire(Trigger.Ship).Should().BeFalse();
-    }
-
     #endregion
 
     private static LazyStateMachine<State, Trigger> CreateLazyMachine(
