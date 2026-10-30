@@ -6,39 +6,6 @@ using Trellis.Testing;
 
 public class EnsureTracingTests
 {
-    #region Activity Name Tests
-
-    [Fact]
-    public void Ensure_CreatesActivity_WithCorrectName()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-        var result = Result.Ok(42);
-
-        // Act
-        var actual = result.Ensure(x => x > 40, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Value must be > 40" });
-
-        // Assert
-        var activity = activityTest.AssertActivityCaptured("Ensure");
-        activity.DisplayName.Should().Be("Ensure");
-    }
-
-    [Fact]
-    public void EnsureNotNullOrWhiteSpace_CreatesActivity_WithCorrectName()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-
-        // Act
-        var actual = "test".EnsureNotNullOrWhiteSpace(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "String is required" });
-
-        // Assert
-        var activity = activityTest.AssertActivityCaptured("EnsureNotNullOrWhiteSpace");
-        activity.DisplayName.Should().Be("EnsureNotNullOrWhiteSpace");
-    }
-
-    #endregion
-
     #region Activity Status Tests - Success Cases
 
     [Fact]

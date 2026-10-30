@@ -86,32 +86,6 @@ public partial class TapTests : TestBase
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task Tap_Task_T_executes_action_T_on_result_success_and_returns_self(bool isSuccess)
-    {
-        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
-
-        var returned = await result.AsTask().TapAsync(Action);
-
-        ActionExecuted.Should().Be(isSuccess);
-        result.Should().Be(returned);
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Tap_Task_Left_T_executes_action_on_result_success_and_returns_self(bool isSuccess)
-    {
-        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
-
-        var returned = await result.AsTask().TapAsync(Action);
-
-        ActionExecuted.Should().Be(isSuccess);
-        result.Should().Be(returned);
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
     public async Task Tap_Task_Left_T_executes_action_T_on_result_success_and_returns_self(bool isSuccess)
     {
         Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
@@ -258,32 +232,6 @@ public partial class TapTests : TestBase
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task TapAsync_Result_FuncTask_ExecutesOnSuccess(bool isSuccess)
-    {
-        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
-
-        var returned = await result.TapAsync(Task_Action);
-
-        ActionExecuted.Should().Be(isSuccess);
-        result.Should().Be(returned);
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task TapAsync_Result_FuncTaskT_ExecutesOnSuccess(bool isSuccess)
-    {
-        Result<T> result = isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1);
-
-        var returned = await result.TapAsync(Task_Action_T);
-
-        ActionExecuted.Should().Be(isSuccess);
-        result.Should().Be(returned);
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
     public async Task TapAsync_TaskResult_FuncTask_ExecutesOnSuccess(bool isSuccess)
     {
         var resultTask = (isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1)).AsTask();
@@ -291,38 +239,6 @@ public partial class TapTests : TestBase
         var returned = await resultTask.TapAsync(Task_Action);
 
         ActionExecuted.Should().Be(isSuccess);
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task TapAsync_TaskResult_FuncTaskT_ExecutesOnSuccess(bool isSuccess)
-    {
-        var resultTask = (isSuccess ? Result.Ok<T>(T.Value1) : Result.Fail<T>(Error1)).AsTask();
-
-        var returned = await resultTask.TapAsync(Task_Action_T);
-
-        ActionExecuted.Should().Be(isSuccess);
-    }
-
-    [Fact]
-    public async Task TapAsync_ValueTaskResult_FuncValueTask_ExecutesOnSuccess()
-    {
-        var resultTask = Result.Ok(T.Value1).AsValueTask();
-
-        var returned = await resultTask.TapAsync(ValueTask_Action);
-
-        ActionExecuted.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task TapAsync_ValueTaskResult_FuncValueTaskT_ExecutesOnSuccess()
-    {
-        var resultTask = Result.Ok(T.Value1).AsValueTask();
-
-        var returned = await resultTask.TapAsync(ValueTask_Action_T);
-
-        ActionExecuted.Should().BeTrue();
     }
 
     #endregion

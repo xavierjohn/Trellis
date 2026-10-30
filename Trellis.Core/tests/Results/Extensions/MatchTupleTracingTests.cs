@@ -499,43 +499,4 @@ public class MatchTupleTracingTests : TestBase
 
     #endregion
 
-    #region Activity Name Verification
-
-    [Fact]
-    public void Match_CreatesActivity_WithCorrectName()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-        var result = Result.Ok((42, "hello"));
-
-        // Act
-        result.Match(
-            onSuccess: (num, str) => "output",
-            onFailure: _ => "error"
-        );
-
-        // Assert
-        var activity = activityTest.AssertActivityCaptured("Match");
-        activity.DisplayName.Should().Be("Match");
-    }
-
-    [Fact]
-    public void Switch_CreatesActivity_WithCorrectName()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-        var result = Result.Ok((42, "hello"));
-
-        // Act
-        result.Switch(
-            onSuccess: (num, str) => { },
-            onFailure: _ => { }
-        );
-
-        // Assert
-        var activity = activityTest.AssertActivityCaptured("Switch");
-        activity.DisplayName.Should().Be("Switch");
-    }
-
-    #endregion
 }

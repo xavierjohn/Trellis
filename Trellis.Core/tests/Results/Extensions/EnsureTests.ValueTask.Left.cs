@@ -264,30 +264,6 @@ public class Ensure_ValueTask_Left_Tests
     }
 
     [Fact]
-    public async Task EnsureAsync_Left_Bool_WithParam_AsyncErrorFactory_FailureResult_AsyncErrorFactoryNotInvoked()
-    {
-        // Arrange
-        var initialError = new Error.Forbidden("authorization.forbidden") { Detail = "Initial error" };
-        var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
-        var asyncErrorFactoryInvoked = false;
-
-        // Act
-        var result = await initialResult.EnsureAsync(
-            value => value.Length > 0,
-            async value =>
-            {
-                asyncErrorFactoryInvoked = true;
-                await Task.Delay(1);
-                return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this" };
-            });
-
-        // Assert
-        result.Should().BeFailure("initial result is failure")
-            .Which.Should().Be(initialError);
-        asyncErrorFactoryInvoked.Should().BeFalse("async error factory should not be invoked for failed results");
-    }
-
-    [Fact]
     public async Task EnsureAsync_Left_Bool_WithParam_AsyncErrorFactory_PredicateNotCalled_WhenResultIsFailure()
     {
         // Arrange

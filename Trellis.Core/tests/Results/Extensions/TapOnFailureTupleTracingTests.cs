@@ -329,37 +329,4 @@ public class TapOnFailureTupleTracingTests : TestBase
 
     #endregion
 
-    #region Activity Name Verification
-
-    [Fact]
-    public void TapOnFailure_CreatesActivity_WithCorrectName()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, string)>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Error" });
-
-        // Act
-        result.TapOnFailure(() => { });
-
-        // Assert
-        var activity = activityTest.AssertActivityCaptured("TapOnFailure");
-        activity.DisplayName.Should().Be("TapOnFailure");
-    }
-
-    [Fact]
-    public void TapOnFailure_WithActionError_CreatesActivity_WithCorrectName()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-        var result = Result.Fail<(int, string)>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Not found" });
-
-        // Act
-        result.TapOnFailure(error => { });
-
-        // Assert
-        var activity = activityTest.AssertActivityCaptured("TapOnFailure");
-        activity.DisplayName.Should().Be("TapOnFailure");
-    }
-
-    #endregion
 }

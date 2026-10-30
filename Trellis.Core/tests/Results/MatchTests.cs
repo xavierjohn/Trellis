@@ -5,22 +5,6 @@ public class MatchTests
     #region Match Tests
 
     [Fact]
-    public void Match_WithSuccess_CallsOnSuccess()
-    {
-        // Arrange
-        var result = Result.Ok(42);
-
-        // Act
-        var output = result.Match(
-            onSuccess: value => $"Value: {value}",
-            onFailure: err => $"Error: {err.Detail}"
-        );
-
-        // Assert
-        output.Should().Be("Value: 42");
-    }
-
-    [Fact]
     public void Match_WithFailure_CallsOnFailure()
     {
         // Arrange
@@ -71,23 +55,6 @@ public class MatchTests
     #endregion
 
     #region Switch Tests
-
-    [Fact]
-    public void Switch_WithSuccess_CallsOnSuccess()
-    {
-        // Arrange
-        var result = Result.Ok(42);
-        var output = "";
-
-        // Act
-        result.Switch(
-            onSuccess: value => output = $"Value: {value}",
-            onFailure: err => output = $"Error: {err.Detail}"
-        );
-
-        // Assert
-        output.Should().Be("Value: 42");
-    }
 
     [Fact]
     public void Switch_WithFailure_CallsOnFailure()

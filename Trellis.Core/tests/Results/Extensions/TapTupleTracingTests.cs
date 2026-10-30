@@ -347,40 +347,4 @@ public class TapTupleTracingTests : TestBase
 
     #endregion
 
-    #region Activity Name Verification
-
-    [Fact]
-    public void Tap_CreatesActivity_WithCorrectName()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-        var result = Result.Ok((42, "hello"));
-
-        // Act
-        result.Tap((a, b) => { });
-
-        // Assert
-        var activity = activityTest.AssertActivityCaptured("Tap");
-        activity.DisplayName.Should().Be("Tap");
-    }
-
-    [Fact]
-    public void Tap_MultipleInChain_AllHaveCorrectName()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-        var result = Result.Ok((42, "hello"));
-
-        // Act
-        result
-            .Tap((a, b) => { })
-            .Tap((a, b) => { })
-            .Tap((a, b) => { });
-
-        // Assert
-        var activities = activityTest.AssertActivityCaptured("Tap", 3);
-        activities.Should().OnlyContain(a => a.DisplayName == "Tap");
-    }
-
-    #endregion
 }

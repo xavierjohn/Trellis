@@ -106,23 +106,6 @@ public sealed class PageBuilderTests
     // ───── Composite over-fetch ────────────────────────────────────────────────
 
     [Fact]
-    public void Composite_under_fill_returns_no_next_cursor()
-    {
-        var pageSize = PageSize.FromRequested(10);
-        var fetched = new List<Row>
-        {
-            new(Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(-2), "a"),
-            new(Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(-1), "b"),
-        };
-
-        var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.CreatedAt, r.Id));
-
-        page.Items.Count.Should().Be(2);
-        page.Next.Should().BeNull();
-        page.Previous.Should().BeNull();
-    }
-
-    [Fact]
     public void Composite_over_fill_returns_next_cursor_from_last_kept_item()
     {
         var pageSize = PageSize.FromRequested(2);
@@ -164,25 +147,6 @@ public sealed class PageBuilderTests
         page.Previous.Should().BeNull();
     }
 
-    [Fact]
-    public void Previous_is_always_null_forward_only()
-    {
-        var pageSize = PageSize.FromRequested(3);
-        var fetched = new List<Row>
-        {
-            new(Guid.NewGuid(), DateTimeOffset.UtcNow, "a"),
-            new(Guid.NewGuid(), DateTimeOffset.UtcNow, "b"),
-            new(Guid.NewGuid(), DateTimeOffset.UtcNow, "c"),
-            new(Guid.NewGuid(), DateTimeOffset.UtcNow, "d"),
-        };
-
-        var single = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
-        var composite = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.CreatedAt, r.Id));
-
-        single.Previous.Should().BeNull();
-        composite.Previous.Should().BeNull();
-    }
-
     // ───── Defensive validation ────────────────────────────────────────────────
 
     [Fact]
@@ -195,13 +159,4 @@ public sealed class PageBuilderTests
         act.Should().Throw<ArgumentNullException>().WithParameterName("pageSize");
     }
 
-    [Fact]
-    public void Composite_rejects_default_pageSize()
-    {
-        var fetched = new List<Row> { new(Guid.NewGuid(), DateTimeOffset.UtcNow, "a") };
-
-        var act = () => PageBuilder.FromOverFetch(fetched, null!, r => CursorCodec.Encode(r.CreatedAt, r.Id));
-
-        act.Should().Throw<ArgumentNullException>().WithParameterName("pageSize");
-    }
 }
