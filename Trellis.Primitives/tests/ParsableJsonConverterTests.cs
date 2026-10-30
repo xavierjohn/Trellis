@@ -10,14 +10,14 @@ using Trellis.Testing;
 /// </summary>
 public class ParsableJsonConverterTests
 {
-    // The converter throws JsonException for every other failure (bad token type, null for a
-    // non-nullable target). A parse failure must not leak IParsable's FormatException, which
-    // callers catching JsonException around JsonSerializer would miss.
     [Fact]
     public void Deserializing_a_value_that_fails_validation_throws_JsonException() =>
         FluentActions.Invoking(() => JsonSerializer.Deserialize<Percentage>("\"150\""))
             .Should().Throw<JsonException>();
 
+    // The converter throws JsonException for every other failure (bad token type, null for a
+    // non-nullable target). A parse failure must not leak IParsable's FormatException, which
+    // callers catching JsonException around JsonSerializer would miss.
     [Fact]
     public void JsonException_from_a_parse_failure_preserves_the_underlying_cause() =>
         FluentActions.Invoking(() => JsonSerializer.Deserialize<TicketNumber>("\"not-a-number\""))
