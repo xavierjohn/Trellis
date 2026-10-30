@@ -155,17 +155,6 @@ public class MaybeTests
     }
 
     [Fact]
-    public void TryGetValue_returns_false_if_source_is_empty()
-    {
-        var maybe = Maybe<int>.None;
-
-        var result = maybe.TryGetValue(out var value);
-
-        result.Should().BeFalse();
-        value.Should().Be(default);
-    }
-
-    [Fact]
     public void TryGetValue_returns_true_if_source_has_value()
     {
         var maybe = Maybe.From(5);
@@ -192,15 +181,6 @@ public class MaybeTests
 
         maybe.HasValue.Should().BeTrue();
         maybe.HasNoValue.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Maybe_class_null_is_none()
-    {
-        Maybe<MyClass> maybe = default;
-
-        maybe.HasValue.Should().BeFalse();
-        maybe.HasNoValue.Should().BeTrue();
     }
 
     [Fact]

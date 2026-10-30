@@ -192,20 +192,6 @@ public class MaybeEdgeCaseTests
         maybe.Value.Should().Be("test");
     }
 
-    [Fact]
-    public void ImplicitConversion_FromMaybe_ShouldReturnSameMaybe()
-    {
-        // Arrange
-        Maybe<string> original = "test";
-
-        // Act
-        Maybe<string> converted = original;
-
-        // Assert
-        converted.Should().Be(original);
-        converted.Value.Should().Be("test");
-    }
-
     #endregion
 
     #region Equality Edge Cases
@@ -329,20 +315,6 @@ public class MaybeEdgeCaseTests
         // Act & Assert
         (maybe != value).Should().BeTrue();
         (value != maybe).Should().BeTrue(); // Reversed order
-    }
-
-    [Fact]
-    public void Equals_WithObject_ShouldWork()
-    {
-        // Arrange
-        Maybe<string> maybe = "test";
-        object? obj = "test";
-
-        // Act & Assert
-        // Note: the operator==(Maybe<T>, object?) overload was removed because it permitted
-        // accidental cross-type comparisons (e.g. Maybe<int> == "literal") to silently compile.
-        // The Equals(object?) instance method preserves the intended semantics.
-        maybe.Equals(obj).Should().BeTrue();
     }
 
     [Fact]

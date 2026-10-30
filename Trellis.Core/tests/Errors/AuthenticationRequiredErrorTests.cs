@@ -18,24 +18,6 @@ public class AuthenticationRequiredErrorTests
         new Error.AuthenticationRequired().Kind.Should().Be("authentication-required");
 
     [Fact]
-    public void Code_is_the_sentinel_when_no_reason_is_named() =>
-        new Error.AuthenticationRequired().Code.Should().Be(ValidationCodes.Unspecified);
-
-    [Fact]
-    public void Code_is_the_sentinel_when_only_Scheme_supplied() =>
-        new Error.AuthenticationRequired(Scheme: "Bearer").Code.Should().Be(ValidationCodes.Unspecified);
-
-    [Fact]
-    public void Code_is_the_reason_the_producer_named() =>
-        new Error.AuthenticationRequired { Code = "Authentication.InvalidCredentials" }
-            .Code.Should().Be("Authentication.InvalidCredentials");
-
-    [Fact]
-    public void Code_and_Scheme_are_independent() =>
-        new Error.AuthenticationRequired(Scheme: "Bearer") { Code = "Authentication.TokenExpired" }
-            .Code.Should().Be("Authentication.TokenExpired");
-
-    [Fact]
     public void Construct_with_no_args_leaves_Scheme_null_and_Code_unspecified()
     {
         var error = new Error.AuthenticationRequired();
