@@ -43,21 +43,6 @@ public class AuthorizedResourceAccessorRegistrationTests
     }
 
     [Fact]
-    public void AddResourceAuthorization_typed_resolves_holder_via_accessor_interface()
-    {
-        var services = new ServiceCollection();
-        services.AddResourceAuthorization<RegTestDirectCommand, RegTestResource, Result<string>>();
-
-        using var sp = services.BuildServiceProvider();
-        using var scope = sp.CreateScope();
-
-        var accessor = scope.ServiceProvider
-            .GetRequiredService<IAuthorizedResource<RegTestDirectCommand, RegTestResource>>();
-
-        accessor.Should().BeOfType<AuthorizedResourceHolder<RegTestDirectCommand, RegTestResource>>();
-    }
-
-    [Fact]
     public void AddResourceAuthorization_typed_accessor_reads_pushed_resource()
     {
         // End-to-end DI proof: resolve via the interface, push via the static helper on the
@@ -70,6 +55,8 @@ public class AuthorizedResourceAccessorRegistrationTests
         using var scope = sp.CreateScope();
         var accessor = scope.ServiceProvider
             .GetRequiredService<IAuthorizedResource<RegTestDirectCommand, RegTestResource>>();
+
+        accessor.Should().BeOfType<AuthorizedResourceHolder<RegTestDirectCommand, RegTestResource>>();
 
         var resource = new RegTestResource("r");
         using (AuthorizedResourceHolder<RegTestDirectCommand, RegTestResource>.Push(resource))
