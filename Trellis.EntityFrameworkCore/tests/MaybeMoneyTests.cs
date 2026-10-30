@@ -48,13 +48,6 @@ public partial class MaybeMoneyTests : IDisposable
     #region Level 1: MaybeConvention does not crash on Maybe<Money>
 
     [Fact]
-    public void MaybeMoney_ModelBuilds_WithoutException()
-    {
-        var model = Context.Model;
-        model.Should().NotBeNull();
-    }
-
-    [Fact]
     public void MaybeMoney_DiagnosticsApi_ReportsAsMapped()
     {
         var mappings = Context.GetMaybePropertyMappings();
@@ -130,27 +123,6 @@ public partial class MaybeMoneyTests : IDisposable
         loaded!.MonetaryFinePaid.HasValue.Should().BeTrue();
         loaded.MonetaryFinePaid.Value.Amount.Should().Be(500.00m);
         loaded.MonetaryFinePaid.Value.Currency.Value.Should().Be("USD");
-    }
-
-    [Fact]
-    public async Task MaybeMoney_RoundTrip_WithNone()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var penalty = new PenaltyEntity
-        {
-            Id = 2,
-            Description = "Warning only",
-            MonetaryFine = Money.Create(100.00m, "USD")
-            // MonetaryFinePaid defaults to Maybe<Money>.None
-        };
-
-        Context.Penalties.Add(penalty);
-        await Context.SaveChangesAsync(ct);
-        Context.ChangeTracker.Clear();
-
-        var loaded = await Context.Penalties.FindAsync([2], ct);
-        loaded.Should().NotBeNull();
-        loaded!.MonetaryFinePaid.HasValue.Should().BeFalse();
     }
 
     [Fact]

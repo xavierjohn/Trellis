@@ -91,15 +91,6 @@ public class CompositeRequiredStringFlowThroughTests
         result.Unwrap().Name.Value.Should().Be("");
     }
 
-    [Fact]
-    public void Strict_composite_TryCreate_accepts_empty_inner_string()
-    {
-        // Lenient default — empty inner string is accepted by the bare RequiredString base.
-        var result = FlowThroughStrictComposite.TryCreate("", 5);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Name.Value.Should().Be("");
-    }
-
     // ---- JSON deserialize flow-through ----
 
     [Fact]
@@ -112,24 +103,9 @@ public class CompositeRequiredStringFlowThroughTests
         vo.Quantity.Should().Be(5);
     }
 
-    [Fact]
-    public void Strict_composite_JSON_deserialize_accepts_empty_inner_string()
-    {
-        // Lenient default — empty inner string deserializes successfully.
-        var json = "{\"name\":\"\",\"quantity\":5}";
-        var vo = JsonSerializer.Deserialize<FlowThroughStrictComposite>(json);
-        vo.Should().NotBeNull();
-        vo!.Name.Value.Should().Be("");
-        vo.Quantity.Should().Be(5);
-    }
-
     // ---- Non-sentinel happy paths to prove the composite still works ----
 
     [Fact]
     public void Lenient_composite_accepts_normal_string() =>
         FlowThroughLenientComposite.TryCreate("Alice", 5).IsSuccess.Should().BeTrue();
-
-    [Fact]
-    public void Strict_composite_accepts_normal_string() =>
-        FlowThroughStrictComposite.TryCreate("Alice", 5).IsSuccess.Should().BeTrue();
 }

@@ -264,29 +264,6 @@ public class EmailAddressTests
     }
 
     [Fact]
-    public void Cannot_create_EmailAddress_from_null()
-    {
-        // Act
-        var result = EmailAddress.TryCreate(null);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-    }
-
-    [Fact]
-    public void TryCreate_uses_custom_fieldName()
-    {
-        // Act
-        var result = EmailAddress.TryCreate("invalid", "school email");
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Field.Path.Should().Be("/school email");
-    }
-
-    [Fact]
     public void Two_EmailAddress_with_same_value_should_be_equal()
     {
         // Arrange

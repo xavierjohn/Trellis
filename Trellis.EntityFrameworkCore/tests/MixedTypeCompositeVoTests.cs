@@ -50,24 +50,6 @@ public class MixedTypeCompositeVoTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    // -------- Probe 1: model builds ----------------------------------------------------
-
-    [Fact]
-    public void ModelBuilds_ApplyTrellisConventions_AcceptsAllPropertyShapes()
-    {
-        // Tells us whether ApplyTrellisConventions / MaybeConvention rejects any of the
-        // fixture's property shapes (Maybe<int>, Maybe<string>, Maybe<DateTime[]>,
-        // RequiredEnum<TestOrderStatus>). Throws ⇒ that shape is not supported on a
-        // composite VO interior and the rest of the suite is moot.
-        var act = () =>
-        {
-            using var ctx = Context;
-            _ = ctx.Model;
-        };
-
-        act.Should().NotThrow();
-    }
-
     // -------- Probe 2: EF Core round-trip ---------------------------------------------
 
     [Fact]

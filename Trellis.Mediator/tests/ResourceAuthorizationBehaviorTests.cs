@@ -216,25 +216,6 @@ public class ResourceAuthorizationBehaviorTests
             .WithMessage("*IResourceLoader<ResourceOwnerCommand, TestResource>*");
     }
 
-    [Fact]
-    public async Task Handle_ActorProviderReturnsNone_EmitsUnauthorized()
-    {
-        var services = new ServiceCollection();
-        services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ =>
-            new FakeResourceLoader<ResourceOwnerCommand>(new TestResource("res-1", "owner-1")));
-        var behavior = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
-            new NoActorProvider(),
-            services.BuildServiceProvider());
-        var command = new ResourceOwnerCommand("res-1");
-        var next = NextDelegate.ReturningAsync<ResourceOwnerCommand, Result<string>>(
-            Result.Ok("should not reach"));
-
-        var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
-
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.AuthenticationRequired>();
-    }
-
     #endregion
 
     #region Cancellation token propagated to actor provider

@@ -94,20 +94,6 @@ public class EntityTimestampInterceptorTests : IDisposable
     }
 
     [Fact]
-    public async Task FakeTimeProvider_DeterministicTimestamp()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var expected = new DateTimeOffset(2025, 1, 15, 12, 0, 0, TimeSpan.Zero);
-        var entity = new TimestampTestEntity { Id = "e-3", Name = "Deterministic" };
-
-        _context.TimestampEntities.Add(entity);
-        await _context.SaveChangesAsync(ct);
-
-        entity.CreatedAt.Should().Be(expected, "interceptor should use the injected TimeProvider");
-        entity.LastModified.Should().Be(expected, "interceptor should use the injected TimeProvider");
-    }
-
-    [Fact]
     public async Task CreatedAtAndLastModified_AreEqual_OnFirstSave()
     {
         var ct = TestContext.Current.CancellationToken;

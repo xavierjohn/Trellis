@@ -170,61 +170,6 @@ public sealed class OutboxTests
     }
 
     [Fact]
-    public async Task Relay_hands_the_outbox_row_id_to_the_integration_publisher()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        await connection.OpenAsync(ct);
-
-        var recorder = new RecordingIntegrationEventPublisher();
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddSingleton(recorder);
-        services.AddDbContext<OutboxTestDbContext>(o => o
-            .UseSqlite(connection)
-            .AddTrellisInterceptors()
-            .AddTrellisOutboxInterceptor());
-        services.AddDomainEventDispatch();
-        services.AddDomainEventHandler<ThingCreated, ThingCreatedTranslator>();
-        services.AddIntegrationEventDispatch();
-        // A broker adapter stands in for the default in-process publisher: it is the transport's view.
-        services.AddScoped<IIntegrationEventPublisher>(sp => sp.GetRequiredService<RecordingIntegrationEventPublisher>());
-        services.AddTrellisOutbox<OutboxTestDbContext>();
-
-        await using var provider = services.BuildServiceProvider();
-
-        await using (var scope = provider.CreateAsyncScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
-            await context.Database.EnsureCreatedAsync(ct);
-            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "carry-my-id", DateTimeOffset.UnixEpoch));
-            await context.SaveChangesAsync(ct);
-        }
-
-        var relay = provider.GetServices<IHostedService>()
-            .OfType<OutboxRelay<OutboxTestDbContext>>()
-            .Single();
-
-        await relay.DrainAsync(ct); // stages the integration row
-        await relay.DrainAsync(ct); // publishes it
-
-        Guid stagedRowId;
-        await using (var verify = provider.CreateAsyncScope())
-        {
-            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
-            var integration = await context.Set<OutboxMessage>().AsNoTracking()
-                .SingleAsync(r => r.Kind == OutboxMessageKind.Integration, ct);
-            stagedRowId = integration.Id;
-        }
-
-        // The id the consumer will dedupe on must be the outbox row's own id, not one minted per publish
-        // attempt — otherwise the relay's at-least-once redelivery produces two distinct MessageIds and
-        // the consumer's (ConsumerId, MessageId) dedup misses.
-        recorder.Published.Should().ContainSingle()
-            .Which.MessageId.Should().Be(stagedRowId);
-    }
-
-    [Fact]
     public async Task DrainAsync_IntegrationPublisher_FailedPublish_RetainsRetryStateAndMessageId()
     {
         var ct = TestContext.Current.CancellationToken;

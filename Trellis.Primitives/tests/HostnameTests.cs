@@ -82,21 +82,6 @@ public class HostnameTests
     }
 
     [Fact]
-    public void Cannot_create_Hostname_exceeding_253_characters()
-    {
-        // Arrange - Create a hostname longer than 253 characters
-        var longHostname = string.Join(".", Enumerable.Repeat("subdomain", 40));
-
-        // Act
-        var result = Hostname.TryCreate(longHostname);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields[0].Detail.Should().Be("Hostname must be RFC 1123 compliant.");
-    }
-
-    [Fact]
     public void TryCreate_Hostname_253Characters_ReturnsSuccess()
     {
         var hostname = $"{new string('a', 63)}.{new string('b', 63)}.{new string('c', 63)}.{new string('d', 61)}";

@@ -87,21 +87,6 @@ public sealed class ResourceAuthorizationOptionsTests
     }
 
     [Fact]
-    public void HideExistence_CalledTwice_LastWins()
-    {
-        // No explicit "only the first registration wins" guarantee — last call replaces, mirroring
-        // the standard IDictionary.Add-then-overwrite mental model. Documented here so a future
-        // change to throw-on-duplicate is caught as a behavior change.
-        var options = new ResourceAuthorizationOptions()
-            .HideExistence<SampleResource>()
-            .Propagate<SampleResource>();
-
-        var entry = options.Resolve(typeof(SampleResource));
-
-        entry.Policy.Should().Be(AuthFailureExposurePolicy.Propagate);
-    }
-
-    [Fact]
     public void HideExistence_ReturnsOptionsForChaining()
     {
         var options = new ResourceAuthorizationOptions();

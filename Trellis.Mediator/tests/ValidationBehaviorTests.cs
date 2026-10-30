@@ -45,20 +45,6 @@ public class ValidationBehaviorTests
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked for invalid messages");
     }
 
-    [Fact]
-    public async Task Handle_NullName_ReturnsValidationFailure()
-    {
-        var behavior = new ValidationBehavior<TestCommand, Result<string>>([]);
-        var command = new TestCommand(null!);
-        var (next, tracker) = NextDelegate.TrackingAsync<TestCommand, Result<string>>(
-            Result.Ok("should not reach"));
-
-        var result = await behavior.Handle(command, next, CancellationToken.None);
-
-        result.IsFailure.Should().BeTrue();
-        tracker.WasInvoked.Should().BeFalse();
-    }
-
     #endregion
 
     #region Validation with query

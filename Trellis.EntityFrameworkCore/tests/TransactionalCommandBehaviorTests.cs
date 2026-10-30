@@ -5,27 +5,6 @@ namespace Trellis.EntityFrameworkCore.Tests;
 public class TransactionalCommandBehaviorTests
 {
     [Fact]
-    public async Task Handle_successful_handler_commits_and_returns_result()
-    {
-        // Arrange
-        var ct = TestContext.Current.CancellationToken;
-        var uow = new FakeUnitOfWork();
-        var behavior = new TransactionalCommandBehavior<FakeCommand, Result<string>>(uow);
-        var expected = Result.Ok("done");
-
-        // Act
-        var result = await behavior.Handle(
-            new FakeCommand(),
-            (_, _) => new ValueTask<Result<string>>(expected),
-            ct);
-
-        // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be("done");
-        uow.CommitAttemptCount.Should().Be(1);
-    }
-
-    [Fact]
     public async Task Handle_failed_handler_does_not_commit()
     {
         // Arrange

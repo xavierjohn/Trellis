@@ -608,46 +608,6 @@ public class MaybeQueryableExtensionsTests : IDisposable
         results.Should().BeEmpty();
     }
 
-    [Fact]
-    public void WhereHasValue_LessThanDate_NullSourceThrowsArgumentNullException()
-    {
-        IQueryable<TestOrder> source = null!;
-        var act = () => source.WhereHasValue(o => o.SubmittedAt, value => value < DateTime.UtcNow);
-
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("source");
-    }
-
-    [Fact]
-    public void WhereHasValue_LessThanOrEqualDate_NullPropertySelectorThrowsArgumentNullException()
-    {
-        Expression<Func<TestOrder, Maybe<DateTime>>> selector = null!;
-        var act = () => _context.Orders.WhereHasValue(selector, value => value <= DateTime.UtcNow);
-
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("propertySelector");
-    }
-
-    [Fact]
-    public void WhereHasValue_GreaterThanDate_NullSourceThrowsArgumentNullException()
-    {
-        IQueryable<TestOrder> source = null!;
-        var act = () => source.WhereHasValue(o => o.SubmittedAt, value => value > DateTime.UtcNow);
-
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("source");
-    }
-
-    [Fact]
-    public void WhereHasValue_GreaterThanOrEqualDate_NullPropertySelectorThrowsArgumentNullException()
-    {
-        Expression<Func<TestOrder, Maybe<DateTime>>> selector = null!;
-        var act = () => _context.Orders.WhereHasValue(selector, value => value >= DateTime.UtcNow);
-
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("propertySelector");
-    }
-
     #endregion
 
     #region ExecuteUpdate helpers

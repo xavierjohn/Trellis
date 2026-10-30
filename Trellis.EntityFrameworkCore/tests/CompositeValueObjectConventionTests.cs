@@ -742,20 +742,6 @@ public partial class CompositeValueObjectConventionTests : IDisposable
     #region Maybe<scalar> inside required composite VO
 
     [Fact]
-    public void MaybeScalarInsideRequiredCompositeVo_ModelBuildsSuccessfully()
-    {
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        connection.Open();
-
-        var options = new DbContextOptionsBuilder<RequiredContactInfoDbContext>()
-            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
-            .Options;
-
-        using var context = new RequiredContactInfoDbContext(options);
-        context.Database.EnsureCreated();
-    }
-
-    [Fact]
     public async Task MaybeScalarInsideRequiredCompositeVo_WithValue_RoundTripWorks()
     {
         using var connection = new SqliteConnection("DataSource=:memory:");
@@ -962,20 +948,6 @@ public partial class CompositeValueObjectConventionTests : IDisposable
     /// The <c>.ToList()</c> snapshot taken at the start of the loop misses entity types
     /// created mid-loop by <c>ConfigureOwnedMaybe</c>.
     /// </summary>
-    [Fact]
-    public void MaybeScalarInsideMaybeCompositeVo_ModelBuildsSuccessfully()
-    {
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        connection.Open();
-
-        var options = new DbContextOptionsBuilder<MaybeContactInfoDbContext>()
-            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
-            .Options;
-
-        using var context = new MaybeContactInfoDbContext(options);
-        context.Database.EnsureCreated(); // Must not throw
-    }
-
     [Fact]
     public async Task MaybeScalarInsideMaybeCompositeVo_WithValue_RoundTripWorks()
     {

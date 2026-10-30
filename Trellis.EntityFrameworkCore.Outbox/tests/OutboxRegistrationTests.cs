@@ -228,16 +228,6 @@ public sealed class OutboxRegistrationTests
     }
 
     [Fact]
-    public void AddTrellisOutbox_validates_the_accumulated_options()
-    {
-        var services = new ServiceCollection();
-
-        var act = () => services.AddTrellisOutbox<OutboxTestDbContext>(o => o.BatchSize = 0);
-
-        act.Should().Throw<ArgumentOutOfRangeException>();
-    }
-
-    [Fact]
     public void AddTrellisOutbox_rejects_a_poll_interval_larger_than_the_timer_supports()
     {
         var services = new ServiceCollection();

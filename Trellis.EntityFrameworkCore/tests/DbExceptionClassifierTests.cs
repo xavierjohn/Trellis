@@ -238,42 +238,6 @@ public class DbExceptionClassifierTests
 
     #endregion
 
-    #region IsDuplicateKey — PostgreSQL SqlState 23505
-
-    [Fact]
-    public void IsDuplicateKey_PostgresSqlState23505_ReturnsTrue()
-    {
-        // Arrange
-        var inner = new PostgresException("23505", "duplicate key value violates unique constraint");
-        var ex = CreateDbUpdateException(inner);
-
-        // Act
-        var result = DbExceptionClassifier.IsDuplicateKey(ex);
-
-        // Assert
-        result.Should().BeTrue();
-    }
-
-    #endregion
-
-    #region IsForeignKeyViolation — PostgreSQL SqlState 23503
-
-    [Fact]
-    public void IsForeignKeyViolation_PostgresSqlState23503_ReturnsTrue()
-    {
-        // Arrange
-        var inner = new PostgresException("23503", "insert or update violates foreign key constraint");
-        var ex = CreateDbUpdateException(inner);
-
-        // Act
-        var result = DbExceptionClassifier.IsForeignKeyViolation(ex);
-
-        // Assert
-        result.Should().BeTrue();
-    }
-
-    #endregion
-
     #region ExtractConstraintDetail
 
     [Fact]

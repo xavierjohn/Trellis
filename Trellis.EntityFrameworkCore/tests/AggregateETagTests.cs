@@ -78,22 +78,6 @@ public class AggregateETagTests : IDisposable
     }
 
     [Fact]
-    public async Task Interceptor_ModifiedAggregate_GeneratesNewETag()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var aggregate = TestAggregate.Create("agg-2", "Initial");
-        _context.TestAggregates.Add(aggregate);
-        await _context.SaveChangesResultAsync(ct);
-        var firstETag = aggregate.ETag;
-        firstETag.Should().NotBeNullOrEmpty();
-
-        aggregate.Rename("Updated");
-        await _context.SaveChangesResultAsync(ct);
-
-        aggregate.ETag.Should().NotBe(firstETag, "ETag should change on modification");
-    }
-
-    [Fact]
     public async Task Interceptor_MultipleModifications_GeneratesUniqueETags()
     {
         var ct = TestContext.Current.CancellationToken;

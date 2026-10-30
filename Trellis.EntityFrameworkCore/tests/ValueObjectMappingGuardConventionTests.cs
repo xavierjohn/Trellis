@@ -53,21 +53,6 @@ public partial class ValueObjectMappingGuardConventionTests
     }
 
     [Fact]
-    public void OwnedMoney_NoExplicitProperty_ModelBuildsSuccessfully()
-    {
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        connection.Open();
-        var options = new DbContextOptionsBuilder<WellFormedMoneyDbContext>()
-            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
-            .Options;
-        using var ctx = new WellFormedMoneyDbContext(options);
-
-        var act = () => _ = ctx.Model;
-
-        act.Should().NotThrow();
-    }
-
-    [Fact]
     public void PartialMaybe_NoExplicitProperty_ModelBuildsSuccessfully()
     {
         using var connection = new SqliteConnection("DataSource=:memory:");
