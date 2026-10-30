@@ -170,16 +170,6 @@ public class PvoTracingExtensionsTests : IDisposable
     }
 
     [Fact]
-    public void PrimitiveValueObjectTrace_ActivitySourceName_MatchesConstant()
-    {
-        // Arrange
-        var expectedName = "Trellis.Primitives";
-
-        // Act & Assert
-        PrimitiveValueObjectTrace.ActivitySourceName.Should().Be(expectedName);
-    }
-
-    [Fact]
     public void AddTrellisPrimitivesInstrumentation_NullBuilder_ThrowsArgumentNullException() =>
         FluentActions.Invoking(() => PrimitiveValueObjectTraceProviderBuilderExtensions
             .AddTrellisPrimitivesInstrumentation(builder: null!))

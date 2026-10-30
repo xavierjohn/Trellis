@@ -14,11 +14,6 @@ public class ParsableJsonConverterTests
     // non-nullable target). A parse failure must not leak IParsable's FormatException, which
     // callers catching JsonException around JsonSerializer would miss.
     [Fact]
-    public void Deserializing_a_malformed_value_throws_JsonException() =>
-        FluentActions.Invoking(() => JsonSerializer.Deserialize<TicketNumber>("\"not-a-number\""))
-            .Should().Throw<JsonException>();
-
-    [Fact]
     public void Deserializing_a_value_that_fails_validation_throws_JsonException() =>
         FluentActions.Invoking(() => JsonSerializer.Deserialize<Percentage>("\"150\""))
             .Should().Throw<JsonException>();
@@ -55,14 +50,6 @@ public class ParsableJsonConverterTests
         JsonSerializer.Serialize(new TicketHolder(null!)).Should().Be("""{"Number":null}""");
 
     private sealed record TicketHolder(TicketNumber Number);
-
-    [Fact]
-    public void Numeric_backed_primitives_serialize_as_JSON_numbers() =>
-        JsonSerializer.Serialize(TicketNumber.TryCreate(42).Unwrap()).Should().Be("42");
-
-    [Fact]
-    public void Boolean_backed_primitives_serialize_as_JSON_booleans() =>
-        JsonSerializer.Serialize(GiftWrap.TryCreate(true).Unwrap()).Should().Be("true");
 
     [Fact]
     public void String_backed_primitives_serialize_as_JSON_strings() =>

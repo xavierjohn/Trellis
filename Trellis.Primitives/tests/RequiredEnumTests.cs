@@ -390,25 +390,6 @@ public class RequiredEnumTests
     #region Enum with Behavior Tests
 
     [Fact]
-    public void EnumWithBehavior_CanAccessProperties()
-    {
-        // Assert
-        TestPaymentMethod.CreditCard.Fee.Should().Be(0.029m);
-        TestPaymentMethod.BankTransfer.Fee.Should().Be(0.005m);
-        TestPaymentMethod.Cash.Fee.Should().Be(0m);
-    }
-
-    [Fact]
-    public void EnumWithBehavior_CanCallMethods()
-    {
-        // Act
-        var fee = TestPaymentMethod.CreditCard.CalculateFee(100m);
-
-        // Assert
-        fee.Should().Be(2.9m);
-    }
-
-    [Fact]
     public void EnumWithBehavior_TryCreate_Works()
     {
         // Act

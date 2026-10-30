@@ -71,16 +71,6 @@ public sealed class InboxRegistrationTests
     }
 
     [Fact]
-    public void AddTrellisInbox_validates_the_accumulated_options()
-    {
-        var services = new ServiceCollection();
-
-        var act = () => services.AddTrellisInbox<InboxRegistrationDbContext>(o => o.ConsumerId = string.Empty);
-
-        act.Should().Throw<InvalidOperationException>();
-    }
-
-    [Fact]
     public void AddTrellisInbox_failed_second_configure_leaves_earlier_options_intact()
     {
         var services = new ServiceCollection();

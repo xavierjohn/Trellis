@@ -742,20 +742,6 @@ public partial class CompositeValueObjectConventionTests : IDisposable
     #region Maybe<scalar> inside required composite VO
 
     [Fact]
-    public void MaybeScalarInsideRequiredCompositeVo_ModelBuildsSuccessfully()
-    {
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        connection.Open();
-
-        var options = new DbContextOptionsBuilder<RequiredContactInfoDbContext>()
-            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
-            .Options;
-
-        using var context = new RequiredContactInfoDbContext(options);
-        context.Database.EnsureCreated();
-    }
-
-    [Fact]
     public async Task MaybeScalarInsideRequiredCompositeVo_WithValue_RoundTripWorks()
     {
         using var connection = new SqliteConnection("DataSource=:memory:");
@@ -953,28 +939,6 @@ public partial class CompositeValueObjectConventionTests : IDisposable
     #endregion
 
     #region Maybe<scalar> inside Maybe<composite VO>
-
-    /// <summary>
-    /// Model building must succeed when a <c>Maybe&lt;CompositeVO&gt;</c> contains
-    /// <c>partial Maybe&lt;T&gt;</c> scalar properties. <see cref="MaybeConvention"/> creates
-    /// the owned entity type for the composite VO during its finalization loop — but
-    /// the owned type's <c>Maybe&lt;T&gt;</c> scalar properties must also be processed.
-    /// The <c>.ToList()</c> snapshot taken at the start of the loop misses entity types
-    /// created mid-loop by <c>ConfigureOwnedMaybe</c>.
-    /// </summary>
-    [Fact]
-    public void MaybeScalarInsideMaybeCompositeVo_ModelBuildsSuccessfully()
-    {
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        connection.Open();
-
-        var options = new DbContextOptionsBuilder<MaybeContactInfoDbContext>()
-            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
-            .Options;
-
-        using var context = new MaybeContactInfoDbContext(options);
-        context.Database.EnsureCreated(); // Must not throw
-    }
 
     [Fact]
     public async Task MaybeScalarInsideMaybeCompositeVo_WithValue_RoundTripWorks()

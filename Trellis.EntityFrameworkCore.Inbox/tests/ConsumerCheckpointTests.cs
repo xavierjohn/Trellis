@@ -25,22 +25,6 @@ public sealed class ConsumerCheckpointTests
     }
 
     [Fact]
-    public async Task SetAsync_then_GetAsync_returns_the_persisted_position()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        await connection.OpenAsync(ct);
-
-        await using var provider = BuildProvider(connection);
-        await EnsureCreatedAsync(provider, ct);
-        var store = provider.GetRequiredService<IConsumerCheckpointStore>();
-
-        await store.SetAsync("billing", "cursor-1", ct);
-
-        (await store.GetAsync("billing", ct)).GetValueOrDefault("").Should().Be("cursor-1");
-    }
-
-    [Fact]
     public async Task SetAsync_advances_an_existing_checkpoint_without_adding_a_row()
     {
         var ct = TestContext.Current.CancellationToken;

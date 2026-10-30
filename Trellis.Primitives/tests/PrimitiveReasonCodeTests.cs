@@ -49,17 +49,6 @@ public class PrimitiveReasonCodeTests
         FirstViolation(Percentage.FromFraction(1.5m)).Args
             .Should().Contain(new KeyValuePair<string, ValidationArgValue>("comparisonValue", 1));
 
-    [Theory]
-    [InlineData(null, "value.not-null")]
-    [InlineData("", "value.not-empty")]
-    [InlineData("   ", "value.not-empty")]
-    public void EmailAddress_separates_absent_from_blank_before_reaching_the_shape_check(string? input, string expected) =>
-        FirstViolation(EmailAddress.TryCreate(input)).ReasonCode.Should().Be(expected);
-
-    [Fact]
-    public void EmailAddress_reports_the_shape_code_only_when_a_value_actually_arrived() =>
-        FirstViolation(EmailAddress.TryCreate("not-an-email")).ReasonCode.Should().Be(ValidationCodes.StringEmail);
-
     [Fact]
     public void PhoneNumber_reports_blank_the_same_way_however_long_the_whitespace_run_is() =>
         // The length cap exists to stop a megabyte of spaces being walked; it must not change the

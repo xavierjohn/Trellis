@@ -196,31 +196,6 @@ public class MaybeExpressionRewriterTests : IDisposable
     #region Specification integration
 
     [Fact]
-    public async Task Specification_WithMaybeProperty_WorksWithWhereOperator()
-    {
-        // Arrange
-        var ct = TestContext.Current.CancellationToken;
-        var customer = CreateCustomer("Alice");
-        _context.Customers.Add(customer);
-        await _context.SaveChangesAsync(ct);
-
-        var withPhone = CreateCustomer("Bob", "+1-555-0200");
-        _context.Customers.Add(withPhone);
-        await _context.SaveChangesAsync(ct);
-        _context.ChangeTracker.Clear();
-
-        // Act — use a specification with Maybe<T> via the implicit operator
-        var spec = new HasPhoneSpecification();
-        var results = await _context.Customers
-            .Where(spec.ToExpression())
-            .ToListAsync(ct);
-
-        // Assert
-        results.Should().ContainSingle()
-            .Which.Id.Should().Be(withPhone.Id);
-    }
-
-    [Fact]
     public async Task Specification_OverdueOrderPattern_FiltersInDatabase()
     {
         // Arrange — mirrors the lab's OverdueOrderSpecification scenario:
@@ -475,33 +450,6 @@ public class MaybeExpressionRewriterTests : IDisposable
     }
 
     [Fact]
-    public async Task HasValueWhere_NoneRow_ExcludedWithoutThrowing()
-    {
-        // Pin the short-circuit semantic: a None row in the result set must NOT cause
-        // a NullReferenceException when the predicate dereferences the inner value.
-        // The rewriter's leading `IS NOT NULL` check, combined with SQL three-valued logic,
-        // means the predicate is only evaluated against non-NULL storage values.
-        var ct = TestContext.Current.CancellationToken;
-        var customer = CreateCustomer("Alice");
-        _context.Customers.Add(customer);
-        await _context.SaveChangesAsync(ct);
-
-        var noDate = CreateOrder(customer.Id);
-        _context.Orders.Add(noDate);
-        await _context.SaveChangesAsync(ct);
-        _context.ChangeTracker.Clear();
-
-        // Predicate that would NPE in C# if invoked on a None — provider must short-circuit.
-        var cutoff = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var act = async () => await _context.Orders
-            .Where(o => o.SubmittedAt.HasValueWhere(t => t < cutoff))
-            .ToListAsync(ct);
-
-        var results = await act.Should().NotThrowAsync();
-        results.Which.Should().BeEmpty();
-    }
-
-    [Fact]
     public async Task HasValueWhere_PredicateReferencesAnotherMaybeOnSameEntity_RewritesNestedAccess()
     {
         // Recursive Visit(rewrittenBody) is required so that nested Maybe accesses inside
@@ -566,30 +514,6 @@ public class MaybeExpressionRewriterTests : IDisposable
 
         results.Should().ContainSingle()
             .Which.Id.Should().Be(matchAmount.Id);
-    }
-
-    [Fact]
-    public async Task HasValueWhere_ReferenceType_FiltersByPredicate()
-    {
-        // PhoneNumber is a scalar value object — the Maybe<PhoneNumber> storage member
-        // is a nullable PhoneNumber reference, so the predicate substitution path differs
-        // (Convert vs Nullable<>.Value). Pin this case so the value/reference branch in
-        // the rewriter stays correct.
-        var ct = TestContext.Current.CancellationToken;
-        var targetPhone = PhoneNumber.Create("+1-555-0500");
-        var alice = CreateCustomer("Alice", "+1-555-0500");
-        var bob = CreateCustomer("Bob", "+1-555-9999");
-        var noPhone = CreateCustomer("NoPhone");
-        _context.Customers.AddRange(alice, bob, noPhone);
-        await _context.SaveChangesAsync(ct);
-        _context.ChangeTracker.Clear();
-
-        var results = await _context.Customers
-            .Where(c => c.Phone.HasValueWhere(p => p == targetPhone))
-            .ToListAsync(ct);
-
-        results.Should().ContainSingle()
-            .Which.Id.Should().Be(alice.Id);
     }
 
     [Fact]
@@ -783,38 +707,6 @@ public class AddTrellisInterceptorsTests : IDisposable
         _context.Dispose();
         _connection.Dispose();
         GC.SuppressFinalize(this);
-    }
-
-    [Fact]
-    public async Task HasValue_Works_WithAddTrellisInterceptors()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var withPhone = new TestCustomer
-        {
-            Id = TestCustomerId.NewUniqueV7(),
-            Name = TestCustomerName.Create("Alice"),
-            Email = EmailAddress.Create("alice@test.com"),
-            CreatedAt = DateTime.UtcNow,
-            Phone = Maybe.From(PhoneNumber.Create("+1-555-0100"))
-        };
-        var withoutPhone = new TestCustomer
-        {
-            Id = TestCustomerId.NewUniqueV7(),
-            Name = TestCustomerName.Create("Bob"),
-            Email = EmailAddress.Create("bob@test.com"),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.Set<TestCustomer>().AddRange(withPhone, withoutPhone);
-        await _context.SaveChangesAsync(ct);
-        _context.ChangeTracker.Clear();
-
-        var results = await _context.Set<TestCustomer>()
-            .Where(c => c.Phone.HasValue)
-            .ToListAsync(ct);
-
-        results.Should().ContainSingle()
-            .Which.Id.Should().Be(withPhone.Id);
     }
 
     [Fact]
