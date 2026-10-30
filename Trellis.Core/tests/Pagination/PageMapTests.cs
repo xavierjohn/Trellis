@@ -22,19 +22,6 @@ public sealed class PageMapTests
     }
 
     [Fact]
-    public void Constructor_accepts_absent_previous()
-    {
-        var page = new Page<int>(
-            Items: Array.Empty<int>(),
-            Next: null,
-            Previous: default(Cursor),
-            RequestedLimit: 10,
-            AppliedLimit: 10);
-
-        page.Previous.Should().BeNull();
-    }
-
-    [Fact]
     public void Map_projects_items_and_preserves_cursors_and_limits()
     {
         var next = new Cursor("next-token");

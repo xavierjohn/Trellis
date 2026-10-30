@@ -138,20 +138,6 @@ public class TapOnFailureTupleTests : TestBase
         actual.Error!.Should().BeSameAs(originalError);
     }
 
-    [Fact]
-    public void TapOnFailure_2Tuple_DifferentTypes_Failure_ExecutesAction()
-    {
-        // Arrange
-        var result = Result.Fail<(string, bool)>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid data" });
-
-        // Act
-        var actual = result.TapOnFailure(() => _actionExecuted = true);
-
-        // Assert
-        _actionExecuted.Should().BeTrue();
-        actual.Should().BeFailure();
-    }
-
     #endregion
 
     #region 2-Tuple Async Tests

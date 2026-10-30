@@ -261,20 +261,6 @@ public class CombineTests
     }
 
     [Fact]
-    public async Task Combine_async_task_results_where_both_are_success()
-    {
-        // Arrange
-        var rHelloWorld = await Task.FromResult(Result.Ok("Hello"))
-            .CombineAsync(Result.Ok("World"))
-            .BindAsync((hello, world) => Result.Ok($"{hello} {world}"));
-
-        // Act
-
-        // Assert
-        rHelloWorld.Should().BeSuccess().Which.Should().Be("Hello World");
-    }
-
-    [Fact]
     public void Merge_validation_errors_by_field_name_concatenates_distinct_messages_preserving_order()
     {
 

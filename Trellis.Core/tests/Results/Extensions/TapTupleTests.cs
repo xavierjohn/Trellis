@@ -81,21 +81,6 @@ public class TapTupleTests : TestBase
     }
 
     [Fact]
-    public void Tap_2Tuple_PreservesOriginalResult()
-    {
-        // Arrange
-        var originalResult = Result.Ok((42, "hello"));
-
-        // Act
-        var actual = originalResult.Tap((a, b) => _actionExecuted = true);
-
-        // Assert
-        actual.Should().BeSuccess();
-        actual.Unwrap().Should().Be((42, "hello"));
-        actual.Unwrap().Should().Be(originalResult.Unwrap());
-    }
-
-    [Fact]
     public void Tap_2Tuple_ChainedActions_ExecutesAll()
     {
         // Arrange

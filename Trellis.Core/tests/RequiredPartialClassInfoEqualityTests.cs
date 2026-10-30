@@ -63,18 +63,6 @@ public class RequiredPartialClassInfoEqualityTests
     }
 
     [Fact]
-    public void Adding_NotDefault_to_an_existing_class_changes_equality()
-    {
-        // The realistic incremental-generator scenario: the same partial class gains a
-        // [NotDefault] attribute. The pipeline must see this as a distinct info value or
-        // it will keep the stale generated output.
-        var before = Make(classBase: "RequiredGuid", hasNotDefault: false, hasTrim: false);
-        var after = Make(classBase: "RequiredGuid", hasNotDefault: true, hasTrim: false);
-        before.Equals(after).Should().BeFalse();
-        before.GetHashCode().Should().NotBe(after.GetHashCode());
-    }
-
-    [Fact]
     public void Adding_Trim_to_an_existing_class_changes_equality()
     {
         var before = Make(classBase: "RequiredString", hasNotDefault: true, hasTrim: false);

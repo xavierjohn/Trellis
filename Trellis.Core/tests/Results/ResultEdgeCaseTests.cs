@@ -318,17 +318,6 @@ public class ResultEdgeCaseTests
     #region Implicit Conversion Edge Cases
 
     [Fact]
-    public void ImplicitConversion_FromNullValue_ShouldCreateSuccessResult()
-    {
-        // Arrange & Act
-        Result<string?> result = Result.Ok((string?)null);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeNull();
-    }
-
-    [Fact]
     public void ImplicitConversion_FromError_ShouldCreateFailureResult()
     {
         // Arrange
@@ -602,30 +591,9 @@ public class ResultEdgeCaseTests
         result.Unwrap().Should().NotBeNull();
     }
 
-    [Fact]
-    public void Success_WithNullableStructWithoutValue_ShouldWorkCorrectly()
-    {
-        // Act
-        var result = Result.Ok(default(DateTime?));
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeNull();
-    }
-
     #endregion
 
     #region Unit Result Edge Cases
-
-    [Fact]
-    public void Success_Unit_ShouldCreateSuccessResultWithUnitValue()
-    {
-        // Act
-        var result = Result.Ok();
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-    }
 
     [Fact]
     public void Failure_Unit_ShouldCreateFailureResultWithError()

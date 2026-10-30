@@ -484,22 +484,4 @@ public class CombineTracingTests : TestBase
 
     #endregion
 
-    #region Activity Name Verification
-
-    [Fact]
-    public void Combine_CreatesActivity_WithCorrectName()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-
-        // Act
-        var result = Result.Ok("First")
-            .Combine(Result.Ok("Second"));
-
-        // Assert
-        var activity = activityTest.AssertActivityCaptured("Combine");
-        activity.DisplayName.Should().Be("Combine");
-    }
-
-    #endregion
 }

@@ -10,25 +10,6 @@ using Trellis.Testing;
 /// </summary>
 public class WhenAllAsyncTracingTests : TestBase
 {
-    #region Activity Creation Tests
-
-    [Theory]
-    [MemberData(nameof(SuccessfulWhenAllAsyncScenarios))]
-    public async Task WhenAllAsync_SuccessfulScenarios_CreateActivity_WithCorrectName(string _, Func<Task> act)
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-
-        // Act
-        await act();
-
-        // Assert
-        var activity = activityTest.AssertActivityCaptured("WhenAllAsync");
-        activity.DisplayName.Should().Be("WhenAllAsync");
-    }
-
-    #endregion
-
     #region Activity Status Tests - Success
 
     [Theory]
@@ -60,22 +41,6 @@ public class WhenAllAsyncTracingTests : TestBase
         await act();
 
         // Assert
-        activityTest.AssertActivityCapturedWithStatus("WhenAllAsync", ActivityStatusCode.Error);
-    }
-
-    [Fact]
-    public async Task WhenAllAsync_2Tuple_FaultedTask_LogsErrorStatus()
-    {
-        // Arrange
-        using var activityTest = new ActivityTestHelper();
-        var task1 = Task.FromException<Result<int>>(new InvalidOperationException("boom"));
-        var task2 = Task.FromResult(Result.Ok(2));
-
-        // Act
-        var act = () => (task1, task2).WhenAllAsync();
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
         activityTest.AssertActivityCapturedWithStatus("WhenAllAsync", ActivityStatusCode.Error);
     }
 

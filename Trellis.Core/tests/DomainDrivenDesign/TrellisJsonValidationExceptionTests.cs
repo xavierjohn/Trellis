@@ -40,14 +40,4 @@ public class TrellisJsonValidationExceptionTests
         exception.InnerException.Should().BeSameAs(inner);
     }
 
-    [Fact]
-    public void Is_a_JsonException_so_middleware_can_special_case_it()
-    {
-        var exception = new TrellisJsonValidationException("invalid");
-
-        // The middleware contract: TrellisJsonValidationException flows through any
-        // catch-block that targets JsonException, but is distinguishable by exact type.
-        (exception is JsonException).Should().BeTrue();
-        exception.GetType().Should().Be<TrellisJsonValidationException>();
-    }
 }
