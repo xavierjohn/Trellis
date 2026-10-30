@@ -62,6 +62,11 @@ public class RequiredStringLengthTests
         var validation = (Error.InvalidInput)result.UnwrapError();
         validation.Fields[0].Field.Path.Should().Be("/shortCode");
         validation.Fields[0].Detail.Should().Be("Short Code must be 10 characters or fewer.");
+
+        // A client rendering "must be at most 10 characters" in its own locale needs the bound as
+        // data; recovering it by parsing the English message is the failure mode args exist to end.
+        validation.Fields[0].ReasonCode.Should().Be(ValidationCodes.StringMaxLength);
+        validation.Fields[0].Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("maxLength", 10));
     }
 
     [Fact]
@@ -127,6 +132,8 @@ public class RequiredStringLengthTests
         var validation = (Error.InvalidInput)result.UnwrapError();
         validation.Fields[0].Field.Path.Should().Be("/userName");
         validation.Fields[0].Detail.Should().Be("User Name must be at least 3 characters.");
+        validation.Fields[0].ReasonCode.Should().Be(ValidationCodes.StringMinLength);
+        validation.Fields[0].Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("minLength", 3));
     }
 
     [Fact]
@@ -261,23 +268,4 @@ public class RequiredStringLengthTests
 
     #endregion
 
-    [Fact]
-    public void TryCreate_TooLong_CarriesTheBoundAsAnArgument()
-    {
-        var violation = ((Error.InvalidInput)ShortCode.TryCreate("12345678901").UnwrapError()).Fields[0];
-
-        // A client rendering "must be at most 10 characters" in its own locale needs the bound as
-        // data; recovering it by parsing the English message is the failure mode args exist to end.
-        violation.ReasonCode.Should().Be(ValidationCodes.StringMaxLength);
-        violation.Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("maxLength", 10));
-    }
-
-    [Fact]
-    public void TryCreate_TooShort_CarriesTheBoundAsAnArgument()
-    {
-        var violation = ((Error.InvalidInput)UserName.TryCreate("ab").UnwrapError()).Fields[0];
-
-        violation.ReasonCode.Should().Be(ValidationCodes.StringMinLength);
-        violation.Args.Should().Contain(new KeyValuePair<string, ValidationArgValue>("minLength", 3));
-    }
 }
