@@ -1209,12 +1209,6 @@ internal sealed class ContextMutatingHandler(OutboxTestDbContext context) : IDom
     }
 }
 
-internal sealed class ThrowingHandler : IDomainEventHandler<ThingCreated>
-{
-    public ValueTask HandleAsync(ThingCreated domainEvent, CancellationToken cancellationToken) =>
-        throw new InvalidOperationException("handler boom");
-}
-
 internal sealed class FakeLogger<T>(List<(LogLevel Level, EventId EventId, string Message, Exception? Exception)> entries)
     : ILogger<T>
 {
