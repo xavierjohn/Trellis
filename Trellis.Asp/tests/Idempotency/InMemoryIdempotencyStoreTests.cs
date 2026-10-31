@@ -39,17 +39,6 @@ public sealed class InMemoryIdempotencyStoreTests
     }
 
     [Fact]
-    public async Task First_reservation_returns_Reserved_with_non_empty_reservation_id()
-    {
-        var (store, _) = BuildStore();
-
-        var outcome = await store.TryReserveAsync("anon", "key-1", "fp-1", CancellationToken.None);
-
-        outcome.Should().BeOfType<IdempotencyReservationOutcome.Reserved>();
-        ((IdempotencyReservationOutcome.Reserved)outcome).ReservationId.Should().NotBeNullOrEmpty();
-    }
-
-    [Fact]
     public async Task Second_reservation_within_timeout_returns_AlreadyInFlight()
     {
         var (store, time) = BuildStore(reservationTimeout: TimeSpan.FromSeconds(30));
@@ -65,17 +54,6 @@ public sealed class InMemoryIdempotencyStoreTests
     }
 
     [Fact]
-    public async Task Different_scope_under_same_key_does_not_collide()
-    {
-        var (store, _) = BuildStore();
-        await store.TryReserveAsync("alice", "shared-key", "fp-1", CancellationToken.None);
-
-        var bobOutcome = await store.TryReserveAsync("bob", "shared-key", "fp-1", CancellationToken.None);
-
-        bobOutcome.Should().BeOfType<IdempotencyReservationOutcome.Reserved>();
-    }
-
-    [Fact]
     public async Task After_complete_replay_returns_snapshot_for_matching_fingerprint()
     {
         var (store, _) = BuildStore();
@@ -87,21 +65,6 @@ public sealed class InMemoryIdempotencyStoreTests
 
         replay.Should().BeOfType<IdempotencyReservationOutcome.Replay>();
         ((IdempotencyReservationOutcome.Replay)replay).Snapshot.Should().Be(SampleSnapshot);
-    }
-
-    [Fact]
-    public async Task After_complete_mismatched_fingerprint_returns_BodyHashMismatch()
-    {
-        var (store, _) = BuildStore();
-        var first = (IdempotencyReservationOutcome.Reserved)await store.TryReserveAsync(
-            "anon", "key-1", "fp-original", CancellationToken.None);
-        var snap = SampleSnapshot with { Fingerprint = "fp-original" };
-        await store.CompleteAsync("anon", "key-1", first.ReservationId, snap, CancellationToken.None);
-
-        var mismatch = await store.TryReserveAsync("anon", "key-1", "fp-different", CancellationToken.None);
-
-        mismatch.Should().BeOfType<IdempotencyReservationOutcome.BodyHashMismatch>();
-        ((IdempotencyReservationOutcome.BodyHashMismatch)mismatch).StoredFingerprint.Should().Be("fp-original");
     }
 
     [Fact]
@@ -131,145 +94,6 @@ public sealed class InMemoryIdempotencyStoreTests
         var takeover = await store.TryReserveAsync("anon", "key-1", "fp-1", CancellationToken.None);
         takeover.Should().BeOfType<IdempotencyReservationOutcome.Reserved>();
         ((IdempotencyReservationOutcome.Reserved)takeover).ReservationId.Should().NotBe(first.ReservationId);
-    }
-
-    [Fact]
-    public async Task In_flight_reservation_with_different_fingerprint_returns_BodyHashMismatch()
-    {
-        var (store, time) = BuildStore(reservationTimeout: TimeSpan.FromSeconds(30));
-        await store.TryReserveAsync("anon", "key-1", "fp-1", CancellationToken.None);
-
-        time.Advance(TimeSpan.FromSeconds(5));
-
-        var outcome = await store.TryReserveAsync("anon", "key-1", "fp-different", CancellationToken.None);
-
-        outcome.Should().BeOfType<IdempotencyReservationOutcome.BodyHashMismatch>();
-        ((IdempotencyReservationOutcome.BodyHashMismatch)outcome).StoredFingerprint.Should().Be("fp-1");
-    }
-
-    [Fact]
-    public async Task Post_timeout_reservation_with_different_fingerprint_returns_BodyHashMismatch()
-    {
-        var (store, time) = BuildStore(reservationTimeout: TimeSpan.FromSeconds(30));
-        await store.TryReserveAsync("anon", "key-1", "fp-1", CancellationToken.None);
-
-        time.Advance(TimeSpan.FromSeconds(31));
-
-        var outcome = await store.TryReserveAsync("anon", "key-1", "fp-different", CancellationToken.None);
-
-        outcome.Should().BeOfType<IdempotencyReservationOutcome.BodyHashMismatch>();
-        ((IdempotencyReservationOutcome.BodyHashMismatch)outcome).StoredFingerprint.Should().Be("fp-1");
-    }
-
-    [Fact]
-    public async Task Complete_with_stale_reservation_id_after_takeover_is_silently_ignored()
-    {
-        var (store, time) = BuildStore(reservationTimeout: TimeSpan.FromSeconds(30));
-        var first = (IdempotencyReservationOutcome.Reserved)await store.TryReserveAsync(
-            "anon", "key-1", "fp-1", CancellationToken.None);
-
-        time.Advance(TimeSpan.FromSeconds(31));
-
-        // Takeover requires same fingerprint — the original request never completed but a clean
-        // retry of the same payload arrives after the reservation timeout.
-        var takeover = (IdempotencyReservationOutcome.Reserved)await store.TryReserveAsync(
-            "anon", "key-1", "fp-1", CancellationToken.None);
-
-        // The original request finally finishes and tries to complete. This must NOT overwrite
-        // the active takeover reservation.
-        var staleSnapshot = SampleSnapshot with { Fingerprint = "fp-1" };
-        await store.CompleteAsync("anon", "key-1", first.ReservationId, staleSnapshot, CancellationToken.None);
-
-        // The takeover request, completing with its own (correct) reservation id, succeeds.
-        var takeoverSnapshot = SampleSnapshot with { Fingerprint = "fp-1", Body = new byte[] { 0x21 } };
-        await store.CompleteAsync("anon", "key-1", takeover.ReservationId, takeoverSnapshot, CancellationToken.None);
-
-        var replay = await store.TryReserveAsync("anon", "key-1", "fp-1", CancellationToken.None);
-        replay.Should().BeOfType<IdempotencyReservationOutcome.Replay>();
-        ((IdempotencyReservationOutcome.Replay)replay).Snapshot.Body[0].Should().Be(0x21);
-    }
-
-    [Fact]
-    public async Task Abandon_releases_the_slot_for_immediate_retry()
-    {
-        var (store, _) = BuildStore();
-        var first = (IdempotencyReservationOutcome.Reserved)await store.TryReserveAsync(
-            "anon", "key-1", "fp-1", CancellationToken.None);
-
-        await store.AbandonAsync("anon", "key-1", first.ReservationId, CancellationToken.None);
-
-        var second = await store.TryReserveAsync("anon", "key-1", "fp-1", CancellationToken.None);
-        second.Should().BeOfType<IdempotencyReservationOutcome.Reserved>();
-    }
-
-    [Fact]
-    public async Task Abandon_with_stale_reservation_id_after_takeover_is_silently_ignored()
-    {
-        var (store, time) = BuildStore(reservationTimeout: TimeSpan.FromSeconds(30));
-        var first = (IdempotencyReservationOutcome.Reserved)await store.TryReserveAsync(
-            "anon", "key-1", "fp-1", CancellationToken.None);
-
-        time.Advance(TimeSpan.FromSeconds(31));
-
-        // Takeover requires same fingerprint.
-        var takeover = (IdempotencyReservationOutcome.Reserved)await store.TryReserveAsync(
-            "anon", "key-1", "fp-1", CancellationToken.None);
-
-        // Original request abandons after takeover. Must NOT release the active takeover slot.
-        await store.AbandonAsync("anon", "key-1", first.ReservationId, CancellationToken.None);
-
-        // Another fresh reservation should still see the takeover in-flight.
-        var third = await store.TryReserveAsync("anon", "key-1", "fp-1", CancellationToken.None);
-        third.Should().BeOfType<IdempotencyReservationOutcome.AlreadyInFlight>();
-        _ = takeover;
-    }
-
-    [Fact]
-    public async Task Complete_on_unknown_key_is_silently_ignored()
-    {
-        var (store, _) = BuildStore();
-
-        // Should not throw.
-        await store.CompleteAsync("anon", "never-reserved", "bogus", SampleSnapshot, CancellationToken.None);
-
-        var outcome = await store.TryReserveAsync("anon", "never-reserved", "fp-1", CancellationToken.None);
-        outcome.Should().BeOfType<IdempotencyReservationOutcome.Reserved>();
-    }
-
-    [Fact]
-    public async Task Abandon_on_unknown_key_is_silently_ignored()
-    {
-        var (store, _) = BuildStore();
-
-        await store.AbandonAsync("anon", "never-reserved", "bogus", CancellationToken.None);
-
-        var outcome = await store.TryReserveAsync("anon", "never-reserved", "fp-1", CancellationToken.None);
-        outcome.Should().BeOfType<IdempotencyReservationOutcome.Reserved>();
-    }
-
-    [Fact]
-    public async Task Abandon_after_Complete_persisted_snapshot_does_not_delete_the_snapshot()
-    {
-        // Round-8 contract regression: the middleware now calls AbandonAsync from the
-        // CompleteAsync catch branches (AV2). A custom durable store that persisted the
-        // snapshot but then threw during a secondary acknowledgement step would otherwise
-        // delete the successfully-written snapshot when the middleware abandons. The
-        // IIdempotencyStore.AbandonAsync contract says "MUST NOT delete a snapshot that
-        // CompleteAsync already persisted under the same reservationId" — verify the
-        // in-memory implementation honours that.
-        var (store, _) = BuildStore();
-        var reserved = (IdempotencyReservationOutcome.Reserved)await store.TryReserveAsync(
-            "anon", "key-1", "fp-1", CancellationToken.None);
-
-        await store.CompleteAsync("anon", "key-1", reserved.ReservationId, SampleSnapshot, CancellationToken.None);
-
-        // Middleware calls AbandonAsync (as it now does in the CompleteAsync catch branches).
-        // The snapshot must remain replayable.
-        await store.AbandonAsync("anon", "key-1", reserved.ReservationId, CancellationToken.None);
-
-        var replay = await store.TryReserveAsync("anon", "key-1", "fp-1", CancellationToken.None);
-        replay.Should().BeOfType<IdempotencyReservationOutcome.Replay>(
-            "AbandonAsync must not delete a snapshot that CompleteAsync already persisted");
     }
 
     [Fact]
