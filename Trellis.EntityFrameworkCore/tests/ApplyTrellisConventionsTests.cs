@@ -25,50 +25,21 @@ public class ApplyTrellisConventionsTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    #region RequiredGuid property converter
+    #region Customer property round-trip
 
     [Fact]
-    public async Task RequiredGuidProperty_RoundTripWorks()
+    public async Task ApplyTrellisConventions_Customer_RoundTrip_PreservesIdNameEmailAndCreatedAt()
     {
         // Arrange
         var ct = TestContext.Current.CancellationToken;
         var customerId = TestCustomerId.NewUniqueV4();
+        var createdAt = new DateTime(2024, 6, 15, 12, 0, 0, DateTimeKind.Utc);
         var customer = new TestCustomer
         {
             Id = customerId,
-            Name = TestCustomerName.Create("Alice"),
-            Email = EmailAddress.Create("alice@example.com"),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Act
-        _context.Customers.Add(customer);
-        await _context.SaveChangesAsync(ct);
-
-        _context.ChangeTracker.Clear();
-
-        var loaded = await _context.Customers.FindAsync([customerId], ct);
-
-        // Assert
-        loaded.Should().NotBeNull();
-        loaded!.Id.Should().Be(customerId);
-    }
-
-    #endregion
-
-    #region RequiredString property converter
-
-    [Fact]
-    public async Task RequiredStringProperty_RoundTripWorks()
-    {
-        // Arrange
-        var ct = TestContext.Current.CancellationToken;
-        var customer = new TestCustomer
-        {
-            Id = TestCustomerId.NewUniqueV4(),
             Name = TestCustomerName.Create("Bob Smith"),
             Email = EmailAddress.Create("bob@example.com"),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = createdAt
         };
 
         // Act
@@ -81,7 +52,10 @@ public class ApplyTrellisConventionsTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.Name.Value.Should().Be("Bob Smith");
+        loaded!.Id.Should().Be(customerId);
+        loaded.Name.Value.Should().Be("Bob Smith");
+        loaded.Email.Value.Should().Be("bob@example.com");
+        loaded.CreatedAt.Should().Be(createdAt);
     }
 
     #endregion
@@ -197,32 +171,6 @@ public class ApplyTrellisConventionsTests : IDisposable
     #region Built-in EmailAddress converter
 
     [Fact]
-    public async Task BuiltInEmailAddress_RoundTripWorks()
-    {
-        // Arrange
-        var ct = TestContext.Current.CancellationToken;
-        var customer = new TestCustomer
-        {
-            Id = TestCustomerId.NewUniqueV4(),
-            Name = TestCustomerName.Create("Charlie"),
-            Email = EmailAddress.Create("charlie@example.com"),
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Act
-        _context.Customers.Add(customer);
-        await _context.SaveChangesAsync(ct);
-
-        _context.ChangeTracker.Clear();
-
-        var loaded = await _context.Customers.FindAsync([customer.Id], ct);
-
-        // Assert
-        loaded.Should().NotBeNull();
-        loaded!.Email.Value.Should().Be("charlie@example.com");
-    }
-
-    [Fact]
     public async Task ScalarValueProperty_InvalidPersistedValue_ThrowsClearMappingException()
     {
         // Arrange
@@ -322,36 +270,6 @@ public class ApplyTrellisConventionsTests : IDisposable
                 b.Property(c => c.Email).HasMaxLength(254);
                 b.Property(c => c.CreatedAt).IsRequired();
             });
-    }
-
-    #endregion
-
-    #region Non-Trellis properties ignored
-
-    [Fact]
-    public async Task NonTrellisProperties_Ignored()
-    {
-        // Arrange
-        var ct = TestContext.Current.CancellationToken;
-        var customer = new TestCustomer
-        {
-            Id = TestCustomerId.NewUniqueV4(),
-            Name = TestCustomerName.Create("Dave"),
-            Email = EmailAddress.Create("dave@example.com"),
-            CreatedAt = new DateTime(2024, 6, 15, 12, 0, 0, DateTimeKind.Utc)
-        };
-
-        // Act — standard DateTime and decimal properties should not be affected
-        _context.Customers.Add(customer);
-        await _context.SaveChangesAsync(ct);
-
-        _context.ChangeTracker.Clear();
-
-        var loaded = await _context.Customers.FindAsync([customer.Id], ct);
-
-        // Assert
-        loaded.Should().NotBeNull();
-        loaded!.CreatedAt.Should().Be(new DateTime(2024, 6, 15, 12, 0, 0, DateTimeKind.Utc));
     }
 
     #endregion
