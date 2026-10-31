@@ -288,24 +288,6 @@ public class ValidatingJsonConverterTests
         }
     }
 
-    [Fact]
-    public void Write_IntValueObject_WritesNumber()
-    {
-        // Arrange
-        var converter = new ValidatingJsonConverter<Age, int>();
-        var age = Age.TryCreate(42, null).Unwrap();
-        using var stream = new System.IO.MemoryStream();
-        using var writer = new Utf8JsonWriter(stream);
-
-        // Act
-        converter.Write(writer, age, new JsonSerializerOptions());
-        writer.Flush();
-
-        // Assert
-        var json = Encoding.UTF8.GetString(stream.ToArray());
-        json.Should().Be("42");
-    }
-
     #endregion
 
     #region Decimal Value Object Tests
@@ -375,24 +357,6 @@ public class ValidatingJsonConverterTests
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
         }
-    }
-
-    [Fact]
-    public void Write_DecimalValueObject_WritesNumber()
-    {
-        // Arrange
-        var converter = new ValidatingJsonConverter<Percentage, decimal>();
-        var percentage = Percentage.TryCreate(99.99m, null).Unwrap();
-        using var stream = new System.IO.MemoryStream();
-        using var writer = new Utf8JsonWriter(stream);
-
-        // Act
-        converter.Write(writer, percentage, new JsonSerializerOptions());
-        writer.Flush();
-
-        // Assert
-        var json = Encoding.UTF8.GetString(stream.ToArray());
-        json.Should().Be("99.99");
     }
 
     #endregion

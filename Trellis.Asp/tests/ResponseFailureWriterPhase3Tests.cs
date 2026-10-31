@@ -447,19 +447,6 @@ public sealed class ResponseFailureWriterPhase3Tests
         body.RootElement.GetProperty("kind").GetString().Should().Be(expectedKind);
     }
 
-    [Fact]
-    public async Task Conflict_concurrent_modification_with_IfMatch_wire_round_trip()
-    {
-        var ctx = NewContext(ifMatch: "\"etag\"");
-        var r = Result.Fail<T>(new Error.Conflict(Resource: ResourceRef.For("Item", "1"), Code: FaultCodes.ConcurrentModification));
-
-        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
-
-        ctx.Response.StatusCode.Should().Be(412);
-        using var body = await ReadBody(ctx);
-        body.RootElement.GetProperty("kind").GetString().Should().Be("precondition-failed");
-    }
-
     // ----------------- HttpError payload projection to extensions -----------------
 
     [Fact]

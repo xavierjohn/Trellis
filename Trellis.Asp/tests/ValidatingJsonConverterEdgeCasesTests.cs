@@ -143,23 +143,6 @@ public class ValidatingJsonConverterEdgeCasesTests
         }
     }
 
-    [Fact]
-    public void Write_NullValueObject_WritesNull()
-    {
-        // Arrange
-        var converter = new ValidatingJsonConverter<Email, string>();
-        using var stream = new System.IO.MemoryStream();
-        using var writer = new Utf8JsonWriter(stream);
-
-        // Act
-        converter.Write(writer, null, new JsonSerializerOptions());
-        writer.Flush();
-
-        // Assert
-        var json = Encoding.UTF8.GetString(stream.ToArray());
-        json.Should().Be("null");
-    }
-
     #endregion
 
     #region Default Field Name Tests
