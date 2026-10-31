@@ -67,6 +67,9 @@ public class MaybePartialPropertyGeneratorTests
         diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
             .Should().BeEmpty("the generated code with set accessor should compile");
 
+        diagnostics.Where(d => d.Id == "TRLS035")
+            .Should().BeEmpty("partial Maybe<T> is correct usage");
+
         generatedSources.Should().Contain(s => s.Contains("set =>"),
             "the generator should emit 'set' accessor when the property declaration uses 'set'");
     }
@@ -139,32 +142,6 @@ public class MaybePartialPropertyGeneratorTests
         diagnostics.Where(d => d.Id == "TRLS035")
             .Should().ContainSingle()
             .Which.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Phone");
-    }
-
-    /// <summary>
-    /// A partial Maybe&lt;T&gt; property should NOT emit TRLS035 (correct usage).
-    /// </summary>
-    [Fact]
-    public void Partial_MaybeProperty_Should_Not_Emit_TRLS035()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            public partial class Customer
-            {
-                public int Id { get; set; }
-                public partial Maybe<string> Phone { get; set; }
-            }
-            """;
-
-        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
-
-        diagnostics.Where(d => d.Id == "TRLS035")
-            .Should().BeEmpty("partial Maybe<T> is correct usage");
     }
 
     /// <summary>
