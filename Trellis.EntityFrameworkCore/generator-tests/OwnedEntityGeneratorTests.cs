@@ -12,10 +12,11 @@ public class OwnedEntityGeneratorTests
     #region TRLS038 — does not inherit from ValueObject
 
     /// <summary>
-    /// A plain class decorated with [OwnedEntity] — not inheriting ValueObject — must emit TRLS038.
+    /// A plain class decorated with [OwnedEntity] must report one TRLS038 error naming the type
+    /// and skip source generation.
     /// </summary>
     [Fact]
-    public void OwnedEntity_On_NonValueObject_Class_Should_Emit_TRLS038()
+    public void OwnedEntity_On_NonValueObject_Class_Should_Emit_TRLS038_Error_And_Skip_Generation()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -34,94 +35,12 @@ public class OwnedEntityGeneratorTests
             }
             """;
 
-        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
+        var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
 
-        diagnostics.Where(d => d.Id == "TRLS038")
-            .Should().ContainSingle()
-            .Which.GetMessage(CultureInfo.InvariantCulture).Should().Contain("PlainClass");
-    }
-
-    /// <summary>
-    /// TRLS038 message must name the type that does not inherit from ValueObject.
-    /// </summary>
-    [Fact]
-    public void TRLS038_Message_Should_Include_TypeName()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            namespace Trellis { public abstract class ValueObject { } }
-            namespace Trellis.EntityFrameworkCore { public sealed class OwnedEntityAttribute : System.Attribute { } }
-
-            namespace TestNamespace;
-
-            [Trellis.EntityFrameworkCore.OwnedEntity]
-            public partial class NotAValueObject
-            {
-                public NotAValueObject(string x) { }
-            }
-            """;
-
-        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
-
-        diagnostics.Where(d => d.Id == "TRLS038")
-            .Should().ContainSingle()
-            .Which.GetMessage(CultureInfo.InvariantCulture).Should().Contain("NotAValueObject");
-    }
-
-    /// <summary>
-    /// TRLS038 must be an error, not a warning.
-    /// </summary>
-    [Fact]
-    public void TRLS038_Should_Be_Error_Severity()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            namespace Trellis { public abstract class ValueObject { } }
-            namespace Trellis.EntityFrameworkCore { public sealed class OwnedEntityAttribute : System.Attribute { } }
-
-            namespace TestNamespace;
-
-            [Trellis.EntityFrameworkCore.OwnedEntity]
-            public partial class PlainClass
-            {
-                public PlainClass(string name) { }
-            }
-            """;
-
-        var (_, diagnostics, _) = RunGenerator(source, cancellationToken);
-
-        diagnostics.Where(d => d.Id == "TRLS038")
-            .Should().ContainSingle()
-            .Which.Severity.Should().Be(DiagnosticSeverity.Error);
-    }
-
-    /// <summary>
-    /// When TRLS038 fires, no source should be generated (generation is skipped).
-    /// </summary>
-    [Fact]
-    public void OwnedEntity_On_NonValueObject_Should_Not_Generate_Constructor()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            namespace Trellis { public abstract class ValueObject { } }
-            namespace Trellis.EntityFrameworkCore { public sealed class OwnedEntityAttribute : System.Attribute { } }
-
-            namespace TestNamespace;
-
-            [Trellis.EntityFrameworkCore.OwnedEntity]
-            public partial class PlainClass
-            {
-                public string Name { get; private set; } = null!;
-
-                public PlainClass(string name) { Name = name; }
-            }
-            """;
-
-        var (generatedSources, _, _) = RunGenerator(source, cancellationToken);
-
+        var diagnostic = diagnostics.Where(d => d.Id == "TRLS038")
+            .Should().ContainSingle().Subject;
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("PlainClass");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         generatedSources.Should().BeEmpty("generation must be skipped when TRLS038 fires");
     }
 

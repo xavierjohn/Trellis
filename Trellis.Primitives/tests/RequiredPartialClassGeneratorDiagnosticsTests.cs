@@ -423,10 +423,12 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
         var diagnostic = diagnostics.Single(d => d.Id == "TRLS061");
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("Widget");
+        diagnostics.Should().NotContain(d => d.Id == "TRLS062",
+            "TRLS061 already rejects dual validation hooks, so a four-argument migration hint would be misleading");
     }
 
     [Fact]
-    public void SingleValidateAdditionalOverload_ReportsNothing()
+    public void FourArgValidateAdditional_CompilesWithoutErrorsOrHookDiagnostics()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -446,6 +448,9 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
         var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
 
         diagnostics.Should().NotContain(d => d.Id == "TRLS061");
+        diagnostics.Should().NotContain(d => d.Id == "TRLS062");
+        diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty("the four-argument validation hook should compile");
     }
 
     [Fact]
@@ -474,29 +479,6 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
     }
 
     [Fact]
-    public void FourArgValidateAdditional_ReportsNo_TRLS062()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            public partial class Widget : RequiredString<Widget>
-            {
-                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
-                {
-                }
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().NotContain(d => d.Id == "TRLS062");
-    }
-
-    [Fact]
     public void NoValidateAdditional_ReportsNo_TRLS062()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -510,35 +492,6 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
 
             public partial class Widget : RequiredString<Widget>
             {
-            }
-            """;
-
-        var diagnostics = RunGeneratorAndGetDiagnostics(source, cancellationToken);
-
-        diagnostics.Should().NotContain(d => d.Id == "TRLS062");
-    }
-
-    [Fact]
-    public void BothValidateAdditionalOverloads_ReportsNo_TRLS062()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        // TRLS061 already says the declaration is wrong and must be reduced to one. Adding a hint
-        // that the four-argument form is available would be advice on code that does not compile.
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            public partial class Widget : RequiredString<Widget>
-            {
-                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage)
-                {
-                }
-
-                static partial void ValidateAdditional(string value, string fieldName, ref string? errorMessage, ref string? errorCode)
-                {
-                }
             }
             """;
 
