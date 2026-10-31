@@ -12,10 +12,11 @@ public class OwnedEntityGeneratorTests
     #region TRLS038 — does not inherit from ValueObject
 
     /// <summary>
-    /// A plain class decorated with [OwnedEntity] — not inheriting ValueObject — must emit TRLS038.
+    /// A plain class decorated with [OwnedEntity] must report one TRLS038 error naming the type
+    /// and skip source generation.
     /// </summary>
     [Fact]
-    public void OwnedEntity_On_NonValueObject_Class_Should_Emit_TRLS038()
+    public void OwnedEntity_On_NonValueObject_Class_Should_Emit_TRLS038_Error_And_Skip_Generation()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
@@ -36,10 +37,10 @@ public class OwnedEntityGeneratorTests
 
         var (generatedSources, diagnostics, _) = RunGenerator(source, cancellationToken);
 
-        diagnostics.Where(d => d.Id == "TRLS038")
-            .Should().ContainSingle()
-            .Which.GetMessage(CultureInfo.InvariantCulture).Should().Contain("PlainClass");
-        diagnostics.Single(d => d.Id == "TRLS038").Severity.Should().Be(DiagnosticSeverity.Error);
+        var diagnostic = diagnostics.Where(d => d.Id == "TRLS038")
+            .Should().ContainSingle().Subject;
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("PlainClass");
+        diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         generatedSources.Should().BeEmpty("generation must be skipped when TRLS038 fires");
     }
 

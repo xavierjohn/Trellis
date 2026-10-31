@@ -26,17 +26,25 @@ public class ServiceBusMessageFormatterTests
     }
 
     [Fact]
+    public void ToServiceBusMessage_SetsTheWireHeadersAndSerializesTheRuntimeEvent()
+    {
+        var original = SampleEvent();
+        var sent = ServiceBusMessageFormatter.ToServiceBusMessage(
+            new OutboundIntegrationMessage(Guid.CreateVersion7(), original), OrderPlaced.WireName, "orders-service", Json);
+
+        sent.Subject.Should().Be(OrderPlaced.WireName);
+        sent.ContentType.Should().Be(ServiceBusMessageFormat.JsonContentType);
+        using var body = JsonDocument.Parse(Encoding.UTF8.GetString(sent.Body.ToArray()));
+        body.RootElement.GetProperty("orderNumber").GetString().Should().Be(original.OrderNumber);
+    }
+
+    [Fact]
     public void RoundTrip_PreservesTheMessageIdEventAndSource()
     {
         var outboxId = Guid.CreateVersion7();
         var original = SampleEvent();
         var sent = ServiceBusMessageFormatter.ToServiceBusMessage(
             new OutboundIntegrationMessage(outboxId, original), OrderPlaced.WireName, "orders-service", Json);
-
-        sent.Subject.Should().Be(OrderPlaced.WireName);
-        sent.ContentType.Should().Be(ServiceBusMessageFormat.JsonContentType);
-        using var body = JsonDocument.Parse(Encoding.UTF8.GetString(sent.Body.ToArray()));
-        body.RootElement.GetProperty("orderNumber").GetString().Should().Be(original.OrderNumber);
 
         var received = Receive(sent);
 
