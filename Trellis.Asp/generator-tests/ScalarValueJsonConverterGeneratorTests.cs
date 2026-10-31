@@ -96,30 +96,6 @@ public class ScalarValueJsonConverterGeneratorTests
     }
 
     /// <summary>
-    /// Value objects inheriting from RequiredInt&lt;T&gt; must be discovered and produce a generated JSON converter.
-    /// </summary>
-    [Fact]
-    public void RequiredInt_Derivative_Is_Discovered()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            public partial class Quantity : RequiredInt<Quantity>
-            {
-            }
-            """;
-
-        var generatedSources = RunGenerator(source, cancellationToken);
-
-        generatedSources.Should().Contain(s => s.Contains("QuantityJsonConverter"),
-            "the generator should discover Quantity : RequiredInt<Quantity> and emit a converter");
-    }
-
-    /// <summary>
     /// Every <c>Required*&lt;TSelf&gt;</c> scalar primitive base wraps a primitive that is already in the
     /// AOT-safe reader/writer set, so each must be discovered by the syntax predicate and emit a converter.
     /// The predicate previously hard-coded a subset of base names, silently skipping RequiredLong,
@@ -230,34 +206,6 @@ public class ScalarValueJsonConverterGeneratorTests
             "the diagnostic message must name the offending value object and primitive");
     }
 
-    /// <summary>
-    /// Regression guard for inspection finding M-2: the AOT-generated converter must integrate
-    /// with <c>ValidationErrorsContext</c> so semantic validation failures surface as 422
-    /// errors instead of being silently swallowed to <c>null</c>. Match runtime behavior
-    /// bit-for-bit with <c>ScalarValueJsonConverterBase.Read</c>.
-    /// </summary>
-    [Fact]
-    public void Generated_Converter_Reads_Field_Name_From_ValidationErrorsContext()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            public partial class OrderId : RequiredGuid<OrderId>
-            {
-            }
-            """;
-
-        var generatedSources = RunGenerator(source, cancellationToken);
-        var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
-
-        converter.Should().Contain("Inner.Read(ref reader, typeToConvert, options)",
-            "the shared reader resolves the live JSON property name");
-    }
-
     [Fact]
     public void Generated_Converter_Passes_NonNull_FieldName_To_TryCreate()
     {
@@ -280,28 +228,6 @@ public class ScalarValueJsonConverterGeneratorTests
             "M-2: TryCreate must receive the resolved fieldName, not a literal null, so failures carry an actionable field reference");
         converter.Should().Contain("Inner.Read(ref reader, typeToConvert, options)",
             "the shared reader supplies TryCreate with the resolved field name");
-    }
-
-    [Fact]
-    public void Generated_Converter_Records_Validation_Failure_In_ValidationErrorsContext()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        const string source = """
-            using Trellis;
-
-            namespace TestNamespace;
-
-            public partial class OrderId : RequiredGuid<OrderId>
-            {
-            }
-            """;
-
-        var generatedSources = RunGenerator(source, cancellationToken);
-        var converter = generatedSources.Should().ContainSingle(s => s.Contains("OrderIdJsonConverter")).Subject;
-
-        converter.Should().Contain("Inner.Read(ref reader, typeToConvert, options)",
-            "the shared reader collects structured body failures rather than silently returning null");
     }
 
     [Fact]

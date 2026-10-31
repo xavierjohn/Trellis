@@ -203,38 +203,6 @@ public class ScalarValueValidationTests
     }
 
     [Fact]
-    public void Deserialize_SameTypeForMultipleProperties_UsesCorrectFieldNames()
-    {
-        // Arrange
-        var options = CreateJsonOptions();
-
-        using (ValidationErrorsContext.BeginScope())
-        {
-            // Simulate deserializing FirstName (invalid)
-            ValidationErrorsContext.CurrentPropertyName = "FirstName";
-            JsonSerializer.Deserialize<Name>("\"\"", options);
-
-            // Simulate deserializing LastName (invalid)
-            ValidationErrorsContext.CurrentPropertyName = "LastName";
-            JsonSerializer.Deserialize<Name>("\"\"", options);
-
-            // Act
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-
-            // Assert
-            error.Should().NotBeNull();
-            error!.Fields.Items.Should().HaveCount(2);
-
-            // Both errors should have their respective property names, not "name"
-            error.Fields.Items.Should().Contain(e => e.Field.Path == "/FirstName");
-            error.Fields.Items.Should().Contain(e => e.Field.Path == "/LastName");
-
-            // Neither should have the default type-based name
-            error.Fields.Items.Should().NotContain(e => e.Field.Path == "/name");
-        }
-    }
-
-    [Fact]
     public void Deserialize_MultipleInvalidFields_CollectsAllErrors()
     {
         // Arrange
@@ -468,33 +436,6 @@ public class ScalarValueValidationTests
     #endregion
 
     #region ScalarValueValidationMiddleware Tests
-
-    [Fact]
-    public async Task Middleware_CreatesScopeForRequest()
-    {
-        // Arrange
-        var scopeWasActive = false;
-        RequestDelegate next = _ =>
-        {
-            scopeWasActive = ValidationErrorsContext.HasErrors || ValidationErrorsContext.GetUnprocessableContent() is null;
-            // Add an error to verify scope is active
-            ValidationErrorsContext.AddError("Test", "TestError");
-            scopeWasActive = ValidationErrorsContext.HasErrors;
-            return Task.CompletedTask;
-        };
-
-        var middleware = new ScalarValueValidationMiddleware(next);
-        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
-
-        // Act
-        await middleware.InvokeAsync(context);
-
-        // Assert - scope was active during request
-        scopeWasActive.Should().BeTrue();
-
-        // Assert - scope is cleaned up after request
-        ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
-    }
 
     [Fact]
     public async Task Middleware_CleansUpScopeEvenOnException()

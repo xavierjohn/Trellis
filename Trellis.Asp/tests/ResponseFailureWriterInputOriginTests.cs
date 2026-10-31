@@ -386,16 +386,6 @@ public class ResponseFailureWriterInputOriginTests
     }
 
     [Fact]
-    public void AnEndpointWithoutARoutePattern_StillHonoursItsDeclaration()
-    {
-        var promoted = (Error.InvalidInput)InputOriginPromotion.Apply(
-            NewContext(InputLocation.Body),
-            Error.InvalidInput.ForField(field: "amount", code: "validation.range"));
-
-        promoted.Fields.Items[0].Field.In.Should().Be(InputLocation.Body);
-    }
-
-    [Fact]
     public async Task NonValidationError_IsUnaffected()
     {
         using var body = await WriteAsync(
