@@ -23,8 +23,11 @@ public sealed class InboxTests
         var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
         var envelope = Envelope();
 
-        await dispatcher.DispatchAsync(envelope, ct);
-        await dispatcher.DispatchAsync(envelope, ct); // redelivery of the same message
+        var first = await dispatcher.DispatchAsync(envelope, ct);
+        var second = await dispatcher.DispatchAsync(envelope, ct); // redelivery of the same message
+
+        first.Should().Be(InboxDispatchOutcome.Processed, "the first delivery runs the handlers");
+        second.Should().Be(InboxDispatchOutcome.SkippedDuplicate, "the redelivery is a recognized no-op");
 
         await using var scope = provider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<InboxTestDbContext>();
@@ -222,25 +225,6 @@ public sealed class InboxTests
             (await db.Set<InboxMessage>().CountAsync(ct)).Should().Be(0, "a failed message is not marked processed");
             (await db.Ledgers.CountAsync(ct)).Should().Be(1, "the duplicate ledger row rolled back with the dedup row");
         }
-    }
-
-    [Fact]
-    public async Task Dispatch_returns_Processed_for_a_new_message_then_SkippedDuplicate_for_a_redelivery()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        await connection.OpenAsync(ct);
-
-        await using var provider = BuildProvider(connection, "billing");
-        await EnsureCreatedAsync(provider, ct);
-        var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
-        var envelope = Envelope();
-
-        var first = await dispatcher.DispatchAsync(envelope, ct);
-        var second = await dispatcher.DispatchAsync(envelope, ct); // redelivery of the same message
-
-        first.Should().Be(InboxDispatchOutcome.Processed, "the first delivery runs the handlers");
-        second.Should().Be(InboxDispatchOutcome.SkippedDuplicate, "the redelivery is a recognized no-op");
     }
 
     [Fact]

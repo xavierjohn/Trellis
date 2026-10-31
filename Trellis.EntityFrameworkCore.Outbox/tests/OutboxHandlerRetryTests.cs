@@ -128,7 +128,25 @@ public sealed class OutboxHandlerRetryTests
         await SeedThingAsync(provider, ct);
         var relay = Relay(provider);
 
-        await relay.DrainAsync(ct);
+        var drained = await relay.DrainAsync(ct);
+
+        // Delivery is not "handed to the publisher" — it is "every handler completed". A throwing handler
+        // leaves the message pending so the durable retry can re-run it, rather than silently dropping the
+        // work with a log line nobody reads.
+        drained.Should().Be(1);
+        await using (var verify = provider.CreateAsyncScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+            var row = await context.Set<OutboxMessage>().SingleAsync(ct);
+            row.ProcessedAt.Should().BeNull("the handler failed, so the message is not delivered");
+            row.Attempts.Should().Be(1);
+            row.LastError.Should().Contain("downstream unavailable");
+            row.CompletedHandlers.Should().BeEmpty("the only handler failed");
+        }
+
+        // On-call must see the failure: the whole point of the change is that it is no longer silent.
+        logs.Where(e => e.EventId.Name == "OutboxRelay.RelayAttemptFailed").Should().ContainSingle();
+
         time.Advance(TimeSpan.FromMinutes(5));
         await relay.DrainAsync(ct);
 

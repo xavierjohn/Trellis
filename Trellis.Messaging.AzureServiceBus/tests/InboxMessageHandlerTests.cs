@@ -20,11 +20,13 @@ public class InboxMessageHandlerTests
     [Fact]
     public async Task Processed_CompletesTheMessage()
     {
-        var (settler, dispatcher) = await HandleAsync(ValidMessage(), InboxDispatchOutcome.Processed);
+        var messageId = Guid.CreateVersion7();
+        var (settler, dispatcher) = await HandleAsync(ValidMessage(messageId), InboxDispatchOutcome.Processed);
 
         settler.Completed.Should().BeTrue();
         settler.DeadLetterReason.Should().BeNull();
-        dispatcher.Dispatched.Should().ContainSingle();
+        // This is the whole point of the transport: the id the producer staged is the id the inbox dedups on.
+        dispatcher.Dispatched.Should().ContainSingle().Which.MessageId.Should().Be(messageId);
     }
 
     [Fact]
@@ -126,18 +128,6 @@ public class InboxMessageHandlerTests
         settler.DeadLetterDescription.Should().Contain(ServiceBusMessageFormat.CausationIdProperty);
         settler.Completed.Should().BeFalse();
         dispatcher.Dispatched.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task TheEnvelopeHandedToTheInboxCarriesTheServiceBusMessageId()
-    {
-        var messageId = Guid.CreateVersion7();
-        var message = ValidMessage(messageId);
-
-        var (_, dispatcher) = await HandleAsync(message, InboxDispatchOutcome.Processed);
-
-        // This is the whole point of the transport: the id the producer staged is the id the inbox dedups on.
-        dispatcher.Dispatched.Should().ContainSingle().Which.MessageId.Should().Be(messageId);
     }
 
     private static async Task<(RecordingSettler Settler, RecordingDispatcher Dispatcher)> HandleAsync(

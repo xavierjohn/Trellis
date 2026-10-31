@@ -34,6 +34,14 @@ public sealed class OutboxRelayBackoffTests
         // First drain fails the poison once and leases it forward by the backoff.
         (await relay.DrainAsync(ct)).Should().Be(1);
 
+        var row = await SingleRowAsync(provider, ct);
+        row.Attempts.Should().Be(1, "the failed relay attempt was recorded");
+        row.ProcessedAt.Should().BeNull("a failed message stays pending");
+        // The failure backs the lease off (first-attempt backoff = RetryBackoff) instead of releasing
+        // it, so the message is not re-claimed in a tight loop that would hammer the database.
+        row.LockedUntil.Should().Be(Start.UtcDateTime.AddSeconds(30));
+        row.LockedBy.Should().BeNull("a backoff gates eligibility but is not an active claim");
+
         // A burst of immediate drains must NOT reclaim it: with a high MaxAttempts and no backoff the old
         // design would spin the attempt count up in a tight loop that hammers the database (a DoS).
         for (var i = 0; i < 5; i++)
