@@ -178,25 +178,16 @@ public sealed class OutboxRegistrationTests
     }
 
     [Fact]
-    public void AddTrellisOutbox_called_twice_registers_a_single_relay()
-    {
-        var services = new ServiceCollection();
-
-        services.AddTrellisOutbox<OutboxTestDbContext>();
-        services.AddTrellisOutbox<OutboxTestDbContext>();
-
-        services.Count(d => d.ServiceType == typeof(IHostedService)
-            && d.ImplementationType == typeof(OutboxRelay<OutboxTestDbContext>))
-            .Should().Be(1);
-    }
-
-    [Fact]
     public void AddTrellisOutbox_called_twice_applies_the_second_configure()
     {
         var services = new ServiceCollection();
 
         services.AddTrellisOutbox<OutboxTestDbContext>(o => o.BatchSize = 11);
         services.AddTrellisOutbox<OutboxTestDbContext>(o => o.MaxAttempts = 7);
+
+        services.Count(d => d.ServiceType == typeof(IHostedService)
+            && d.ImplementationType == typeof(OutboxRelay<OutboxTestDbContext>))
+            .Should().Be(1);
 
         var options = services.BuildServiceProvider().GetRequiredService<OutboxOptions>();
 

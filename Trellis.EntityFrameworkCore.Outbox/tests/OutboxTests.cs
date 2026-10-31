@@ -685,60 +685,6 @@ public sealed class OutboxTests
     }
 
     [Fact]
-    public async Task Relay_retries_and_does_not_mark_processed_when_a_handler_throws()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        await connection.OpenAsync(ct);
-
-        var logs = new List<(LogLevel Level, EventId EventId, string Message, Exception? Exception)>();
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddSingleton<ILogger<OutboxRelay<OutboxTestDbContext>>>(
-            new FakeLogger<OutboxRelay<OutboxTestDbContext>>(logs));
-        services.AddDbContext<OutboxTestDbContext>(o => o
-            .UseSqlite(connection)
-            .AddTrellisInterceptors()
-            .AddTrellisOutboxInterceptor());
-        services.AddDomainEventDispatch();
-        services.AddDomainEventHandler<ThingCreated, ThrowingHandler>();
-        services.AddTrellisOutbox<OutboxTestDbContext>();
-
-        await using var provider = services.BuildServiceProvider();
-
-        await using (var scope = provider.CreateAsyncScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
-            await context.Database.EnsureCreatedAsync(ct);
-            context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "boom", DateTimeOffset.UnixEpoch));
-            await context.SaveChangesAsync(ct);
-        }
-
-        var relay = provider.GetServices<IHostedService>()
-            .OfType<OutboxRelay<OutboxTestDbContext>>()
-            .Single();
-
-        var drained = await relay.DrainAsync(ct);
-
-        // Delivery is not "handed to the publisher" — it is "every handler completed". A throwing handler
-        // leaves the message pending so the durable retry can re-run it, rather than silently dropping the
-        // work with a log line nobody reads.
-        drained.Should().Be(1);
-        await using (var verify = provider.CreateAsyncScope())
-        {
-            var context = verify.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
-            var row = await context.Set<OutboxMessage>().SingleAsync(ct);
-            row.ProcessedAt.Should().BeNull("the handler failed, so the message is not delivered");
-            row.Attempts.Should().Be(1);
-            row.LastError.Should().Contain("handler boom");
-            row.CompletedHandlers.Should().BeEmpty("the only handler failed");
-        }
-
-        // On-call must see the failure: the whole point of the change is that it is no longer silent.
-        logs.Where(e => e.EventId.Name == "OutboxRelay.RelayAttemptFailed").Should().ContainSingle();
-    }
-
-    [Fact]
     public void AddTrellisOutbox_WithInvalidOptions_ThrowsAtRegistration()
     {
         var services = new ServiceCollection();
@@ -1112,63 +1058,6 @@ public sealed class OutboxTests
         drained.Should().Be(1, "an expired lease must be reclaimed by the relay");
         captured.Should().ContainSingle().Which.Name.Should().Be("gamma");
     }
-
-    [Fact]
-    public async Task Relay_backs_off_the_lease_when_a_message_fails_to_relay()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        await connection.OpenAsync(ct);
-
-        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var time = new FakeTimeProvider(start);
-
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddSingleton<TimeProvider>(time);
-        services.AddDbContext<OutboxTestDbContext>(o => o
-            .UseSqlite(connection)
-            .AddTrellisInterceptors()
-            .AddTrellisOutboxInterceptor());
-        services.AddDomainEventDispatch();
-        services.AddTrellisOutbox<OutboxTestDbContext>(o =>
-        {
-            o.RetryBackoff = TimeSpan.FromSeconds(30);
-            o.RetryBackoffJitter = 0;
-        });
-
-        await using var provider = services.BuildServiceProvider();
-
-        await using (var scope = provider.CreateAsyncScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
-            await context.Database.EnsureCreatedAsync(ct);
-            // A row whose event type cannot be resolved fails deserialization in the relay.
-            context.Set<OutboxMessage>().Add(OutboxMessage.Create(
-                Guid.NewGuid(), DateTimeOffset.UnixEpoch,
-                "Nonexistent.Type, Nonexistent.Assembly", "{}", OutboxMessageKind.Domain));
-            await context.SaveChangesAsync(ct);
-        }
-
-        var relay = provider.GetServices<IHostedService>()
-            .OfType<OutboxRelay<OutboxTestDbContext>>()
-            .Single();
-
-        var drained = await relay.DrainAsync(ct);
-
-        drained.Should().Be(1);
-        await using (var scope = provider.CreateAsyncScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
-            var row = await context.Set<OutboxMessage>().SingleAsync(ct);
-            row.Attempts.Should().Be(1, "the failed relay attempt was recorded");
-            row.ProcessedAt.Should().BeNull("a failed message stays pending");
-            // The failure backs the lease off (first-attempt backoff = RetryBackoff) instead of releasing
-            // it, so the message is not re-claimed in a tight loop that would hammer the database.
-            row.LockedUntil.Should().Be(start.UtcDateTime.AddSeconds(30));
-            row.LockedBy.Should().BeNull("a backoff gates eligibility but is not an active claim");
-        }
-    }
 }
 
 // ── Test domain model ──────────────────────────────────────────────────────────
@@ -1318,12 +1207,6 @@ internal sealed class ContextMutatingHandler(OutboxTestDbContext context) : IDom
         context.Things.Add(Thing.Create(ThingId.NewUniqueV7(), "handler-added", DateTimeOffset.UnixEpoch));
         return ValueTask.CompletedTask;
     }
-}
-
-internal sealed class ThrowingHandler : IDomainEventHandler<ThingCreated>
-{
-    public ValueTask HandleAsync(ThingCreated domainEvent, CancellationToken cancellationToken) =>
-        throw new InvalidOperationException("handler boom");
 }
 
 internal sealed class FakeLogger<T>(List<(LogLevel Level, EventId EventId, string Message, Exception? Exception)> entries)

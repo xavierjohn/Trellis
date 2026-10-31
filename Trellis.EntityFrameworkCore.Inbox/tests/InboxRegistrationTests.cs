@@ -17,19 +17,10 @@ public sealed class InboxRegistrationTests
         services.AddTrellisInbox<InboxRegistrationDbContext>(o => o.ConsumerId = "first");
         services.AddTrellisInbox<InboxRegistrationDbContext>(o => o.ConsumerId = "second");
 
+        services.Count(d => d.ServiceType == typeof(InboxOptions)).Should().Be(1);
+
         services.BuildServiceProvider().GetRequiredService<InboxOptions>()
             .ConsumerId.Should().Be("second");
-    }
-
-    [Fact]
-    public void AddTrellisInbox_called_twice_registers_a_single_options_instance()
-    {
-        var services = new ServiceCollection();
-
-        services.AddTrellisInbox<InboxRegistrationDbContext>(o => o.ConsumerId = "first");
-        services.AddTrellisInbox<InboxRegistrationDbContext>(o => o.ConsumerId = "second");
-
-        services.Count(d => d.ServiceType == typeof(InboxOptions)).Should().Be(1);
     }
 
     [Fact]

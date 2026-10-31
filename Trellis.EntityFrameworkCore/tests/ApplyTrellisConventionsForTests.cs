@@ -50,27 +50,7 @@ public class ApplyTrellisConventionsForTests : IDisposable
         loaded.Should().NotBeNull();
         loaded!.Id.Should().Be(customer.Id);
         loaded.Name.Value.Should().Be("Alice");
-    }
-
-    [Fact]
-    public async Task BuiltInEmailAddress_RoundTripWorks()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var customer = new TestCustomer
-        {
-            Id = TestCustomerId.NewUniqueV4(),
-            Name = TestCustomerName.Create("Bob"),
-            Email = EmailAddress.Create("bob@example.com"),
-            CreatedAt = DateTime.UtcNow,
-        };
-
-        _context.Customers.Add(customer);
-        await _context.SaveChangesAsync(ct);
-        _context.ChangeTracker.Clear();
-
-        var loaded = await _context.Customers.FindAsync([customer.Id], ct);
-        loaded.Should().NotBeNull();
-        loaded!.Email.Value.Should().Be("bob@example.com");
+        loaded.Email.Value.Should().Be("alice@example.com");
     }
 
     [Fact]
