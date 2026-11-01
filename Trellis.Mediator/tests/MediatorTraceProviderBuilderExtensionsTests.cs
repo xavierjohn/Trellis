@@ -18,7 +18,7 @@ using Trellis.Mediator.Tests.Helpers;
 public class MediatorTraceProviderBuilderExtensionsTests
 {
     [Fact]
-    public async Task AddTrellisMediatorInstrumentation_makes_handler_spans_visible()
+    public async Task AddTrellisMediatorInstrumentation_captures_one_handler_span_from_the_production_source()
     {
         var captured = new List<Activity>();
 
@@ -29,12 +29,14 @@ public class MediatorTraceProviderBuilderExtensionsTests
 
         await RunOneRequestAsync();
 
-        captured.Should().ContainSingle()
-            .Which.DisplayName.Should().Be(nameof(TestCommand));
+        var activity = captured.Should().ContainSingle().Which;
+        activity.DisplayName.Should().Be(nameof(TestCommand));
+        activity.Source.Name.Should().Be(TracingBehavior<TestCommand, Result<string>>.ActivitySourceName,
+            "the SDK must subscribe to the source emitted by the tracing behavior");
     }
 
     /// <summary>
-    /// 
+    /// Without registration, the SDK does not observe handler spans.
     /// </summary>
     /// <remarks>
     /// The control for the test above. Without it, that test would still pass if the source were
@@ -54,30 +56,6 @@ public class MediatorTraceProviderBuilderExtensionsTests
         await RunOneRequestAsync();
 
         captured.Should().BeEmpty();
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <remarks>
-    /// Pins the helper to the constant the behaviour actually emits from. Were the extension to
-    /// register a hand-typed copy of the name, the two could drift and the helper would go quietly
-    /// inert — the same silent failure it was added to prevent, one level up.
-    /// </remarks>
-    [Fact]
-    public async Task AddTrellisMediatorInstrumentation_registers_the_source_the_behavior_emits_from()
-    {
-        var captured = new List<Activity>();
-
-        using var provider = Sdk.CreateTracerProviderBuilder()
-            .AddTrellisMediatorInstrumentation()
-            .AddProcessor(new CaptureProcessor(captured))
-            .Build();
-
-        await RunOneRequestAsync();
-
-        captured.Should().ContainSingle()
-            .Which.Source.Name.Should().Be(TracingBehavior<TestCommand, Result<string>>.ActivitySourceName);
     }
 
     [Fact]

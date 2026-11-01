@@ -172,9 +172,14 @@ public class SharedResourceLoaderTests
     #region Adapter resolves and delegates correctly
 
     [Fact]
-    public async Task Adapter_DelegatesToSharedLoader()
+    public async Task Adapter_ScannedRegistration_ForwardsOriginalTaskIdTokenAndResource()
     {
+        using var cts = new CancellationTokenSource();
+        var order = new SharedOrder("order-1", "owner-1");
+        var response = Task.FromResult(Result.Ok(order));
+        var inner = new RecordingSharedResourceLoader<SharedOrder, string>(response);
         var services = new ServiceCollection();
+        services.AddScoped<SharedResourceLoaderById<SharedOrder, string>>(_ => inner);
         services.AddResourceAuthorization(typeof(SharedCancelCommand).Assembly);
         await using var sp = services.BuildServiceProvider();
 
@@ -182,11 +187,17 @@ public class SharedResourceLoaderTests
         var loader = scope.ServiceProvider
             .GetRequiredService<IResourceLoader<SharedCancelCommand, SharedOrder>>();
 
-        var result = await loader.LoadAsync(
-            new SharedCancelCommand("order-1"), CancellationToken.None);
+        var forwarded = loader.LoadAsync(new SharedCancelCommand("order-1"), cts.Token);
 
+        forwarded.Should().BeSameAs(response);
+        inner.Calls.Should().Be(1);
+        inner.LastRequestedId.Should().Be("order-1");
+        inner.LastCancellationToken.Should().Be(cts.Token);
+        var result = await forwarded;
         result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Id.Should().Be("order-1");
+        var loaded = result.Unwrap();
+        loaded.Id.Should().Be("order-1");
+        loaded.Should().BeSameAs(order);
     }
 
     #endregion
@@ -208,11 +219,30 @@ public class SharedResourceLoaderTests
         descriptor!.Lifetime.Should().Be(ServiceLifetime.Scoped);
     }
 
-    [Fact]
-    public async Task AddSharedResourceLoader_ResolvedAdapterDelegatesToSharedLoader()
+    [Theory]
+    [InlineData(TaskStatus.RanToCompletion)]
+    [InlineData(TaskStatus.WaitingForActivation)]
+    [InlineData(TaskStatus.Faulted)]
+    [InlineData(TaskStatus.Canceled)]
+    public async Task AddSharedResourceLoader_ResolvedAdapter_ForwardsOriginalTaskIdAndToken(TaskStatus taskStatus)
     {
+        using var cts = new CancellationTokenSource();
+        var order = new SharedOrder("order-42", "owner-1");
+        var failure = new InvalidOperationException("loader failed");
+        var completion = new TaskCompletionSource<Result<SharedOrder>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (taskStatus == TaskStatus.Canceled)
+            cts.Cancel();
+        var response = taskStatus switch
+        {
+            TaskStatus.RanToCompletion => Task.FromResult(Result.Ok(order)),
+            TaskStatus.WaitingForActivation => completion.Task,
+            TaskStatus.Faulted => Task.FromException<Result<SharedOrder>>(failure),
+            TaskStatus.Canceled => Task.FromCanceled<Result<SharedOrder>>(cts.Token),
+            _ => throw new ArgumentOutOfRangeException(nameof(taskStatus))
+        };
+        var inner = new RecordingSharedResourceLoader<SharedOrder, string>(response);
         var services = new ServiceCollection();
-        services.AddScoped<SharedResourceLoaderById<SharedOrder, string>, TestSharedOrderLoader>();
+        services.AddScoped<SharedResourceLoaderById<SharedOrder, string>>(_ => inner);
         services.AddSharedResourceLoader<SharedCancelCommand, SharedOrder, string>();
         await using var sp = services.BuildServiceProvider();
 
@@ -220,11 +250,40 @@ public class SharedResourceLoaderTests
         var loader = scope.ServiceProvider
             .GetRequiredService<IResourceLoader<SharedCancelCommand, SharedOrder>>();
 
-        var result = await loader.LoadAsync(
-            new SharedCancelCommand("order-42"), CancellationToken.None);
+        var forwarded = loader.LoadAsync(new SharedCancelCommand("order-42"), cts.Token);
+        try
+        {
+            forwarded.Should().BeSameAs(response);
+            inner.Calls.Should().Be(1);
+            inner.LastRequestedId.Should().Be("order-42");
+            inner.LastCancellationToken.Should().Be(cts.Token);
+            if (taskStatus == TaskStatus.WaitingForActivation)
+                forwarded.IsCompleted.Should().BeFalse("the original pending task must be returned before it completes");
+        }
+        finally
+        {
+            completion.TrySetResult(Result.Ok(order));
+        }
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Id.Should().Be("order-42");
+        var act = async () => await forwarded;
+        if (taskStatus == TaskStatus.Faulted)
+        {
+            var thrown = await act.Should().ThrowAsync<InvalidOperationException>();
+            thrown.Which.Should().BeSameAs(failure);
+        }
+        else if (taskStatus == TaskStatus.Canceled)
+        {
+            var thrown = await act.Should().ThrowAsync<OperationCanceledException>();
+            thrown.Which.CancellationToken.Should().Be(cts.Token);
+        }
+        else
+        {
+            var result = await forwarded;
+            result.IsSuccess.Should().BeTrue();
+            var loaded = result.Unwrap();
+            loaded.Id.Should().Be("order-42");
+            loaded.Should().BeSameAs(order);
+        }
     }
 
     #endregion
@@ -259,6 +318,22 @@ public class SharedResourceLoaderTests
     #endregion
 
     #region Test helpers
+
+    private sealed class RecordingSharedResourceLoader<TResource, TId>(Task<Result<TResource>> response)
+        : SharedResourceLoaderById<TResource, TId>
+    {
+        public int Calls { get; private set; }
+        public TId? LastRequestedId { get; private set; }
+        public CancellationToken LastCancellationToken { get; private set; }
+
+        public override Task<Result<TResource>> GetByIdAsync(TId id, CancellationToken cancellationToken)
+        {
+            Calls++;
+            LastRequestedId = id;
+            LastCancellationToken = cancellationToken;
+            return response;
+        }
+    }
 
     public sealed record SharedOrder(string Id, string OwnerId);
 
