@@ -141,7 +141,7 @@ public class ProducerIndependenceTests
         ((Error.InvalidInput)error).Fields.Items[0].Args?["allowed"];
 
     /// <summary>
-    /// 
+    /// Unknown enum names carry the permitted members as typed arguments.
     /// </summary>
     /// <remarks>
     /// Query binding's detail is the generic "The value is not a recognized option." — it never
@@ -157,7 +157,7 @@ public class ProducerIndependenceTests
     }
 
     /// <summary>
-    /// 
+    /// Undefined numeric enum values carry the same permitted-member arguments.
     /// </summary>
     /// <remarks>
     /// The two enum codes are chosen by a ternary inside one branch, so covering only the
@@ -172,15 +172,6 @@ public class ProducerIndependenceTests
 
         CodeOf(result.Error!).Should().Be(ValidationCodes.EnumUndefined);
         AllowedOf(result.Error!).Should().Be(ValidationArgValue.ListOf("Green", "Red"));
-    }
-
-    [Fact]
-    public void Both_enum_failures_report_the_same_permitted_members()
-    {
-        var byName = PrimitiveConverter.ConvertToPrimitive<ProducerIndependenceColor>("mauve");
-        var byNumber = PrimitiveConverter.ConvertToPrimitive<ProducerIndependenceColor>("99");
-
-        AllowedOf(byName.Error!).Should().Be(AllowedOf(byNumber.Error!));
     }
 
     [Fact]
