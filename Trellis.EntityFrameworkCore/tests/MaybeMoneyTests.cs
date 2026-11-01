@@ -103,37 +103,14 @@ public partial class MaybeMoneyTests : IDisposable
     }
 
     [Fact]
-    public async Task MaybeMoney_RoundTrip_WithValue()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var penalty = new PenaltyEntity
-        {
-            Id = 1,
-            Description = "Late payment",
-            MonetaryFine = Money.Create(500.00m, "USD"),
-            MonetaryFinePaid = Maybe.From(Money.Create(500.00m, "USD"))
-        };
-
-        Context.Penalties.Add(penalty);
-        await Context.SaveChangesAsync(ct);
-        Context.ChangeTracker.Clear();
-
-        var loaded = await Context.Penalties.FindAsync([1], ct);
-        loaded.Should().NotBeNull();
-        loaded!.MonetaryFinePaid.HasValue.Should().BeTrue();
-        loaded.MonetaryFinePaid.Value.Amount.Should().Be(500.00m);
-        loaded.MonetaryFinePaid.Value.Currency.Value.Should().Be("USD");
-    }
-
-    [Fact]
-    public async Task MaybeMoney_RequiredAndOptional_RoundTrip()
+    public async Task MaybeMoney_RequiredAndOptional_RoundTrip_PreservesDistinctAmountsAndCurrencies()
     {
         var ct = TestContext.Current.CancellationToken;
         var penalty = new PenaltyEntity
         {
             Id = 3,
             Description = "Fine with partial payment",
-            MonetaryFine = Money.Create(1000.00m, "USD"),
+            MonetaryFine = Money.Create(1000.00m, "EUR"),
             MonetaryFinePaid = Maybe.From(Money.Create(250.00m, "USD"))
         };
 
@@ -144,8 +121,10 @@ public partial class MaybeMoneyTests : IDisposable
         var loaded = await Context.Penalties.FindAsync([3], ct);
         loaded.Should().NotBeNull();
         loaded!.MonetaryFine.Amount.Should().Be(1000.00m);
+        loaded.MonetaryFine.Currency.Value.Should().Be("EUR");
         loaded.MonetaryFinePaid.HasValue.Should().BeTrue();
         loaded.MonetaryFinePaid.Value.Amount.Should().Be(250.00m);
+        loaded.MonetaryFinePaid.Value.Currency.Value.Should().Be("USD");
     }
 
     [Fact]

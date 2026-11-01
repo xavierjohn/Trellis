@@ -108,29 +108,16 @@ public class ToPageAsyncTests : IDisposable
         page.Next.Should().BeNull();
     }
 
-    [Fact]
-    public async Task OverFetch_EmitsNextCursor_AndDropsExtra()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        await SeedOrdersAsync(7, ct);
-
-        var result = await _context.Orders.ToPageAsync(new PageSize(3, 3), cursor: null, o => o.Amount, cancellationToken: ct);
-
-        var page = result.Unwrap();
-        page.Items.Should().HaveCount(3);
-        page.Items.Select(o => o.Amount).Should().Equal(1m, 2m, 3m);
-        page.Next.Should().NotBeNull();
-    }
-
     // ───── Cursor round-trip (continuity) ───────────────────────────────────
 
     [Fact]
-    public async Task CursorRoundTrip_PaginatesEntireSet_NoGapsNoDuplicates()
+    public async Task CursorRoundTrip_PreservesEachPageAndEntireSet()
     {
         var ct = TestContext.Current.CancellationToken;
         await SeedOrdersAsync(7, ct);
 
         var pageSize = new PageSize(3, 3);
+        decimal[][] expectedPages = [[1m, 2m, 3m], [4m, 5m, 6m], [7m]];
         var collected = new List<decimal>();
         Cursor? cursor = null;
 
@@ -138,6 +125,13 @@ public class ToPageAsyncTests : IDisposable
         {
             var pageResult = await _context.Orders.ToPageAsync(pageSize, cursor, o => o.Amount, cancellationToken: ct);
             var page = pageResult.Unwrap();
+            pageIndex.Should().BeLessThan(expectedPages.Length);
+            page.Items.Should().HaveCount(expectedPages[pageIndex].Length);
+            page.Items.Select(o => o.Amount).Should().Equal(expectedPages[pageIndex]);
+            if (pageIndex < expectedPages.Length - 1)
+                page.Next.Should().NotBeNull();
+            else
+                page.Next.Should().BeNull();
             collected.AddRange(page.Items.Select(o => o.Amount));
             cursor = page.Next;
             if (cursor is null) break;
