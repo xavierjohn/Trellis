@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Primitives.Tests;
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
@@ -29,38 +30,41 @@ public class PvoTracingExtensionsTests : IDisposable
     }
 
     [Fact]
-    public void AddTrellisPrimitivesInstrumentation_EnablesActivityCapture()
+    public void AddTrellisPrimitivesInstrumentation_ChainedSources_AreCapturedBySdk()
     {
-        // Arrange
-        using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddTrellisPrimitivesInstrumentation()
-            .Build();
+        var captured = new ConcurrentQueue<Activity>();
+        using var extraSource = new ActivitySource($"TestSource-{Guid.NewGuid():N}");
+        var isolatedTestSource = PrimitiveValueObjectTrace.ActivitySource;
+        PrimitiveValueObjectTrace.ResetTestActivitySource();
 
-        // Act
-        var emailResult = EmailAddress.TryCreate("test@example.com");
+        try
+        {
+            var productionSource = PrimitiveValueObjectTrace.ActivitySource;
+            using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+                .AddTrellisPrimitivesInstrumentation()
+                .AddSource(extraSource.Name)
+                .AddProcessor(new CaptureProcessor(captured))
+                .Build();
 
-        // Assert
-        _activityHelper.WaitForActivityCount(1).Should().BeTrue("activity should be captured");
-        emailResult.IsSuccess.Should().BeTrue();
+            using var chainedActivity = extraSource.StartActivity("chained-source");
+            chainedActivity.Should().NotBeNull();
+            var emailResult = EmailAddress.TryCreate("test@example.com");
+            emailResult.IsSuccess.Should().BeTrue();
+            chainedActivity!.Stop();
 
-        var activities = _activityHelper.CapturedActivities;
-        activities.Should().ContainSingle();
-        var activity = activities[0];
-        activity.DisplayName.Should().Be("EmailAddress.TryCreate");
-        activity.Status.Should().Be(ActivityStatusCode.Ok);
-    }
-
-    [Fact]
-    public void AddTrellisPrimitivesInstrumentation_SupportsMethodChaining()
-    {
-        // Arrange & Act
-        using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddTrellisPrimitivesInstrumentation()
-            .AddSource("TestSource")  // Chain another call
-            .Build();
-
-        // Assert
-        tracerProvider.Should().NotBeNull();
+            var activities = captured.ToArray();
+            activities.Should().ContainSingle(activity => activity == chainedActivity);
+            var primitiveActivity = activities.Should().ContainSingle(activity =>
+                activity.Source == productionSource && activity.ParentSpanId == chainedActivity.SpanId).Subject;
+            primitiveActivity.DisplayName.Should().Be("EmailAddress.TryCreate");
+            primitiveActivity.Status.Should().Be(ActivityStatusCode.Ok);
+            primitiveActivity.Source.Name.Should().Be(PrimitiveValueObjectTrace.ActivitySourceName);
+            primitiveActivity.Source.Version.Should().Be(PrimitiveValueObjectTrace.Version.ToString());
+        }
+        finally
+        {
+            PrimitiveValueObjectTrace.SetTestActivitySource(isolatedTestSource);
+        }
     }
 
     [Fact]
@@ -289,6 +293,11 @@ public class PvoTracingExtensionsTests : IDisposable
         activities.Should().ContainSingle($"FromFraction must emit exactly one span; got {activities.Count}");
         activities[0].DisplayName.Should().Be("Percentage.FromFraction");
         activities[0].Status.Should().Be(ActivityStatusCode.Ok);
+    }
+
+    private sealed class CaptureProcessor(ConcurrentQueue<Activity> sink) : BaseProcessor<Activity>
+    {
+        public override void OnEnd(Activity data) => sink.Enqueue(data);
     }
 
     public void Dispose()
