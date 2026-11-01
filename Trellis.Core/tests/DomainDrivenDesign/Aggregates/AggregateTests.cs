@@ -243,32 +243,60 @@ public class AggregateTests
     [Fact]
     public void UncommittedEvents_ReturnsReadOnlyList()
     {
-        // Arrange
         var aggregate = TestAggregate.Create("1");
         aggregate.DoSomething();
 
-        // Act
         var events = aggregate.UncommittedEvents();
+        var original = events[0];
 
-        // Assert
         events.Should().BeAssignableTo<IReadOnlyList<IDomainEvent>>();
+        if (events is IList<IDomainEvent> list)
+        {
+            Action replaceEvent = () => list[0] = new TestEvent("replacement", default);
+            replaceEvent.Should().Throw<NotSupportedException>();
+        }
+
+        if (events is ICollection<IDomainEvent> collection)
+        {
+            Action addEvent = () => collection.Add(new TestEvent("added", default));
+            addEvent.Should().Throw<NotSupportedException>();
+        }
+
+        events.Should().HaveCount(1);
+        events[0].Should().BeSameAs(original);
+        aggregate.UncommittedEvents()[0].Should().BeSameAs(original);
     }
 
     [Fact]
     public void UncommittedEvents_ReturnsSnapshot_NotLiveView()
     {
-        // Arrange
         var aggregate = TestAggregate.Create("1");
         aggregate.DoSomething();
+        var first = aggregate.UncommittedEvents()[0];
+        aggregate.DoSomething();
+        var second = aggregate.UncommittedEvents()[1];
+
+        var events = aggregate.UncommittedEvents();
         aggregate.DoSomething();
 
-        // Act
-        var events = aggregate.UncommittedEvents();
+        first.Should().NotBeSameAs(second);
+        events.Should().HaveCount(2);
+        events[0].Should().BeSameAs(first);
+        events[1].Should().BeSameAs(second);
+        var current = aggregate.UncommittedEvents();
+        current.Should().HaveCount(3);
+        current[0].Should().BeSameAs(first);
+        current[1].Should().BeSameAs(second);
+        current[2].Should().NotBeSameAs(first).And.NotBeSameAs(second);
+        aggregate.IsChanged.Should().BeTrue();
+
         aggregate.AcceptChanges();
 
-        // Assert
         events.Should().HaveCount(2);
+        events[0].Should().BeSameAs(first);
+        events[1].Should().BeSameAs(second);
         aggregate.UncommittedEvents().Should().BeEmpty();
+        aggregate.IsChanged.Should().BeFalse();
     }
 
     #endregion
