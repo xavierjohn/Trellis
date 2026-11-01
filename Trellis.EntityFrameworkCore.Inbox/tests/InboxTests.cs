@@ -58,26 +58,6 @@ public sealed class InboxTests
     }
 
     [Fact]
-    public async Task Dispatch_rolls_back_and_rethrows_when_a_handler_fails()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        using var connection = new SqliteConnection("DataSource=:memory:");
-        await connection.OpenAsync(ct);
-
-        await using var provider = BuildProvider(connection, "billing", throwing: true);
-        await EnsureCreatedAsync(provider, ct);
-        var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
-
-        var act = async () => await dispatcher.DispatchAsync(Envelope(), ct);
-        await act.Should().ThrowAsync<InvalidOperationException>();
-
-        await using var scope = provider.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<InboxTestDbContext>();
-        (await db.Receipts.CountAsync(ct)).Should().Be(0, "the handler side effects rolled back with the transaction");
-        (await db.Set<InboxMessage>().CountAsync(ct)).Should().Be(0, "no dedup row is written for a failed message");
-    }
-
-    [Fact]
     public async Task Dispatch_without_a_registered_handler_throws_without_recording_the_message()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -144,28 +124,56 @@ public sealed class InboxTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*same unit of work*IInboxStore*");
     }
 
-    [Fact]
-    public async Task A_failed_message_is_reprocessed_on_redelivery()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dispatch_HandlerFails_NoWritesCommittedAndRedeliverySucceeds(bool failAsynchronously)
     {
         var ct = TestContext.Current.CancellationToken;
         using var connection = new SqliteConnection("DataSource=:memory:");
         await connection.OpenAsync(ct);
 
-        var gate = new FailFirstGate();
+        var gate = new FailFirstGate(failAsynchronously);
         await using var provider = BuildProvider(connection, "billing", gate: gate);
         await EnsureCreatedAsync(provider, ct);
         var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
         var envelope = Envelope();
 
-        var act = async () => await dispatcher.DispatchAsync(envelope, ct);
-        await act.Should().ThrowAsync<InvalidOperationException>("the first attempt fails transiently");
+        var firstAttempt = dispatcher.DispatchAsync(envelope, ct);
+        try
+        {
+            if (failAsynchronously)
+            {
+                await gate.AsynchronousFailureStarted.Task.WaitAsync(TimeSpan.FromSeconds(5), ct);
+                firstAttempt.IsCompleted.Should().BeFalse("dispatch must await the pending handler");
+            }
+        }
+        finally
+        {
+            if (failAsynchronously)
+                gate.PendingFailure.TrySetException(gate.Failure);
 
-        await dispatcher.DispatchAsync(envelope, ct); // redelivery succeeds
+            var act = async () => await firstAttempt;
+            var exception = await act.Should().ThrowAsync<InvalidOperationException>("the first attempt fails transiently");
+            exception.Which.Should().BeSameAs(gate.Failure);
+        }
+
+        await using (var failedScope = provider.CreateAsyncScope())
+        {
+            var db = failedScope.ServiceProvider.GetRequiredService<InboxTestDbContext>();
+            (await db.Receipts.CountAsync(ct)).Should().Be(0, "the first sibling's writes must not commit");
+            (await db.Ledgers.CountAsync(ct)).Should().Be(0, "the failing sibling's writes must not commit");
+            (await db.Set<InboxMessage>().CountAsync(ct)).Should().Be(0, "a failed message remains eligible for redelivery");
+        }
+
+        (await dispatcher.DispatchAsync(envelope, ct)).Should().Be(InboxDispatchOutcome.Processed);
 
         await using var scope = provider.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<InboxTestDbContext>();
-        (await db.Receipts.CountAsync(ct)).Should().Be(1, "the message is processed once it finally succeeds");
-        (await db.Set<InboxMessage>().CountAsync(ct)).Should().Be(1);
+        var committed = scope.ServiceProvider.GetRequiredService<InboxTestDbContext>();
+        (await committed.Receipts.CountAsync(ct)).Should().Be(1, "the first sibling commits only on successful redelivery");
+        (await committed.Ledgers.CountAsync(ct)).Should().Be(1, "the second sibling commits only on successful redelivery");
+        (await committed.Set<InboxMessage>().CountAsync(ct)).Should().Be(1);
+        gate.Calls.Should().Be(2);
     }
 
     [Fact]
@@ -572,7 +580,7 @@ public sealed class InboxTests
     }
 
     private static ServiceProvider BuildProvider(
-        SqliteConnection connection, string consumerId, bool throwing = false, FailFirstGate? gate = null,
+        SqliteConnection connection, string consumerId, FailFirstGate? gate = null,
         ProcessingProbe? probe = null, ProcessingCommitInterceptor? interceptor = null,
         ActivitySource? activitySource = null)
     {
@@ -593,11 +601,8 @@ public sealed class InboxTests
         else if (gate is not null)
         {
             services.AddSingleton(gate);
+            services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, ReceiptHandler>();
             services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, FailFirstHandler>();
-        }
-        else if (throwing)
-        {
-            services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, ThrowingReceiptHandler>();
         }
         else
         {
@@ -643,19 +648,13 @@ internal sealed class ReceiptHandler(InboxTestDbContext context) : IIntegrationE
     }
 }
 
-// Stages a side effect then throws — the dispatcher must roll both back and not record the message.
-internal sealed class ThrowingReceiptHandler(InboxTestDbContext context) : IIntegrationEventHandler<OrderPlacedIntegrationEvent>
-{
-    public ValueTask HandleAsync(OrderPlacedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
-    {
-        context.Receipts.Add(new Receipt { Id = Guid.NewGuid(), OrderId = integrationEvent.OrderId });
-        throw new InvalidOperationException("handler boom");
-    }
-}
-
-internal sealed class FailFirstGate
+internal sealed class FailFirstGate(bool failAsynchronously)
 {
     public int Calls;
+    public bool FailAsynchronously { get; } = failAsynchronously;
+    public InvalidOperationException Failure { get; } = new("transient boom");
+    public TaskCompletionSource AsynchronousFailureStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource PendingFailure { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 }
 
 internal sealed class IndependentInboxStore : IInboxStore
@@ -713,10 +712,16 @@ internal sealed class FailFirstHandler(InboxTestDbContext context, FailFirstGate
 {
     public ValueTask HandleAsync(OrderPlacedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
     {
-        context.Receipts.Add(new Receipt { Id = Guid.NewGuid(), OrderId = integrationEvent.OrderId });
-        if (gate.Calls++ == 0)
-            throw new InvalidOperationException("transient boom");
-        return ValueTask.CompletedTask;
+        context.Ledgers.Add(new Ledger { Id = Guid.NewGuid(), Entry = "redelivered" });
+        if (gate.Calls++ != 0)
+            return ValueTask.CompletedTask;
+        if (gate.FailAsynchronously)
+        {
+            gate.AsynchronousFailureStarted.SetResult();
+            return new ValueTask(gate.PendingFailure.Task);
+        }
+
+        throw gate.Failure;
     }
 }
 

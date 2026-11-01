@@ -12,21 +12,26 @@ public class ExceptionBehaviorTests
     #region Handler throws — catches and returns failure
 
     [Fact]
-    public async Task Handle_HandlerThrows_ReturnsUnexpectedError()
+    public async Task Handle_HandlerThrows_ReturnsUnexpectedErrorWithoutPrivateDetails()
     {
+        const string privateMarker = "diagnostic-private-marker";
         var logEntries = new List<(LogLevel Level, string Message, Exception? Ex)>();
         var logger = new FakeLogger<ExceptionBehavior<TestCommand, Result<string>>>(logEntries);
         var behavior = new ExceptionBehavior<TestCommand, Result<string>>(logger);
         var command = new TestCommand("Alice");
         var next = NextDelegate.Throwing<TestCommand, Result<string>>(
-            new InvalidOperationException("Something went wrong"));
+            new InvalidOperationException($"Something went wrong. Connection string: {privateMarker}"));
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Unexpected>();
-        result.UnwrapError().Detail.Should().NotContain("Something went wrong");
-        result.UnwrapError().Detail.Should().Be("An unexpected error occurred while processing the request.");
+        var error = result.UnwrapError().Should().BeOfType<Error.Unexpected>().Subject;
+        error.Detail.Should().NotContain("Something went wrong");
+        error.Detail.Should().NotContain(privateMarker,
+            "the exception's private diagnostic text must not be returned");
+        error.Detail.Should().NotContain("Connection string",
+            "internal infrastructure details must not be exposed in error details");
+        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
     }
 
     [Fact]
@@ -45,25 +50,6 @@ public class ExceptionBehaviorTests
         error.Code.Should().Be("unhandled-exception");
         error.FaultId.Should().NotBeNullOrWhiteSpace();
         Guid.TryParseExact(error.FaultId!, "N", out _).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task Handle_HandlerThrows_DoesNotLeakExceptionMessage()
-    {
-        var logEntries = new List<(LogLevel Level, string Message, Exception? Ex)>();
-        var logger = new FakeLogger<ExceptionBehavior<TestCommand, Result<string>>>(logEntries);
-        var behavior = new ExceptionBehavior<TestCommand, Result<string>>(logger);
-        var command = new TestCommand("Alice");
-        var next = NextDelegate.Throwing<TestCommand, Result<string>>(
-            new InvalidOperationException("Connection string: Server=prod-db;Password=s3cret"));
-
-        var result = await behavior.Handle(command, next, CancellationToken.None);
-
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Detail.Should().NotContain("s3cret",
-            "exception messages may contain credentials and must not be exposed in error details");
-        result.UnwrapError().Detail.Should().NotContain("Connection string",
-            "internal infrastructure details must not be exposed in error details");
     }
 
     #endregion
