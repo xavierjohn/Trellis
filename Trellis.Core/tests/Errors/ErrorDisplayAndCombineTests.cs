@@ -96,5 +96,16 @@ public class ErrorDisplayAndCombineTests
 
         ((Error?)a).Combine(b).Cause.Should().Be(cause);
         ((Error?)b).Combine(a).Cause.Should().Be(cause);
+
+        var otherCause = new Error.NotFound(new ResourceRef("Order", "2"));
+        var bWithCause = b with { Cause = otherCause };
+
+        var leftFirst = ((Error?)a).Combine(bWithCause).Should().BeOfType<Error.InvalidInput>().Which;
+        var rightFirst = ((Error?)bWithCause).Combine(a).Should().BeOfType<Error.InvalidInput>().Which;
+
+        leftFirst.Cause.Should().BeSameAs(cause);
+        rightFirst.Cause.Should().BeSameAs(otherCause);
+        leftFirst.Fields.Items.Should().Equal([a.Fields[0], bWithCause.Fields[0]]);
+        rightFirst.Fields.Items.Should().Equal([bWithCause.Fields[0], a.Fields[0]]);
     }
 }
