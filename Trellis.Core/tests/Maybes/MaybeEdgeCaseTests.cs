@@ -364,18 +364,52 @@ public class MaybeEdgeCaseTests
     }
 
     [Fact]
-    public void GetHashCode_MaybeWithValueAndMaybeWithoutValue_ShouldHaveDifferentHashCodes()
+    public void GetHashCode_MaybeWithValueAndMaybeWithoutValue_RemainDistinctInHashedCollections()
     {
-        // Arrange
         Maybe<string> maybe1 = "test";
         Maybe<string> maybe2 = Maybe<string>.None;
 
-        // Act
         int hash1 = maybe1.GetHashCode();
         int hash2 = maybe2.GetHashCode();
 
-        // Assert
-        hash1.Should().NotBe(hash2);
+        hash1.Should().Be(maybe1.GetHashCode());
+        hash2.Should().Be(maybe2.GetHashCode());
+        maybe1.Equals(maybe2).Should().BeFalse();
+
+        HashSet<Maybe<string>> values = [maybe1, maybe2];
+        values.Should().HaveCount(2);
+        values.Should().Contain(maybe1);
+        values.Should().Contain(maybe2);
+
+        var lookup = new Dictionary<Maybe<string>, string>(
+            EqualityComparer<Maybe<string>>.Create(
+                static (left, right) => EqualityComparer<Maybe<string>>.Default.Equals(left, right),
+                static _ => 0))
+        {
+            [maybe1] = "first",
+            [maybe2] = "second",
+        };
+
+        lookup[maybe1].Should().Be("first");
+        lookup[maybe2].Should().Be("second");
+
+        Maybe<int> zero = 0;
+        var none = Maybe<int>.None;
+        zero.Equals(none).Should().BeFalse();
+
+        HashSet<Maybe<int>> zeroValues = [zero, none];
+        zeroValues.Should().HaveCount(2);
+        zeroValues.Should().Contain(zero);
+        zeroValues.Should().Contain(none);
+
+        var zeroLookup = new Dictionary<Maybe<int>, string>
+        {
+            [zero] = "present-zero",
+            [none] = "missing",
+        };
+
+        zeroLookup[(Maybe<int>)0].Should().Be("present-zero");
+        zeroLookup[Maybe<int>.None].Should().Be("missing");
     }
 
     [Fact]

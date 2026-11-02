@@ -37,9 +37,32 @@ public class ErrorCodeStorageTests
             .Should().NotBe(new Error.NotFound(Order) { Code = "order.purged" });
 
     [Fact]
-    public void Errors_differing_only_by_code_do_not_share_a_hash_code() =>
-        new Error.NotFound(Order) { Code = "order.archived" }.GetHashCode()
-            .Should().NotBe(new Error.NotFound(Order) { Code = "order.purged" }.GetHashCode());
+    public void Errors_differing_only_by_code_remain_distinct_in_hashed_collections()
+    {
+        Error left = new Error.NotFound(Order) { Code = "order.archived" };
+        Error right = new Error.NotFound(Order) { Code = "order.purged" };
+
+        left.Equals(right).Should().BeFalse();
+        left.GetHashCode().Should().Be(left.GetHashCode());
+        right.GetHashCode().Should().Be(right.GetHashCode());
+
+        HashSet<Error> values = [left, right];
+        values.Should().HaveCount(2);
+        values.Should().Contain(left with { });
+        values.Should().Contain(right with { });
+
+        var lookup = new Dictionary<Error, string>(
+            EqualityComparer<Error>.Create(
+                static (left, right) => EqualityComparer<Error>.Default.Equals(left, right),
+                static _ => 0))
+        {
+            [left] = "first",
+            [right] = "second",
+        };
+
+        lookup[left with { }].Should().Be("first");
+        lookup[right with { }].Should().Be("second");
+    }
 
     [Fact]
     public void Errors_agreeing_on_code_remain_equal() =>

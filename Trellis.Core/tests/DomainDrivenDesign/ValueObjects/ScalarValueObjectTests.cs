@@ -126,7 +126,25 @@ public class ScalarValueObjectTests
         password1.Equals(password2).Should().BeFalse();
         (password1 == password2).Should().BeFalse();
         (password1 != password2).Should().BeTrue();
-        password1.GetHashCode().Equals(password2.GetHashCode()).Should().BeFalse();
+        password1.GetHashCode().Should().Be(password1.GetHashCode());
+        password2.GetHashCode().Should().Be(password2.GetHashCode());
+
+        HashSet<PasswordSimple> values = [password1, password2];
+        values.Should().HaveCount(2);
+        values.Should().Contain(new PasswordSimple("Password1"));
+        values.Should().Contain(new PasswordSimple("Password2"));
+
+        var lookup = new Dictionary<PasswordSimple, string>(
+            EqualityComparer<PasswordSimple>.Create(
+                static (left, right) => EqualityComparer<PasswordSimple>.Default.Equals(left, right),
+                static _ => 0))
+        {
+            [password1] = "first",
+            [password2] = "second",
+        };
+
+        lookup[new PasswordSimple("Password1")].Should().Be("first");
+        lookup[new PasswordSimple("Password2")].Should().Be("second");
     }
 
     [Fact]
