@@ -4,13 +4,13 @@ using System.Text.Json;
 using Trellis;
 
 /// <summary>
-/// Pins down whether <see cref="Aggregate{TId}"/> leaks <c>DomainEvents</c> through
-/// System.Text.Json by default (CORE-DDD-015 candidate).
+/// Verifies that both System.Text.Json entry points preserve domain fields without
+/// serializing aggregate event bookkeeping.
 /// </summary>
 public class AggregateJsonSerializationTests
 {
     [Fact]
-    public void Serialize_AggregateWithRaisedEvents_DoesNotIncludeDomainEventsCollection()
+    public void Serialize_ConcreteAggregate_PreservesDomainFieldsWithoutEventBookkeeping()
     {
         // Arrange
         var aggregate = JsonTestAggregate.Create("agg-1", "name");
@@ -20,15 +20,27 @@ public class AggregateJsonSerializationTests
         // Act — default options (most realistic API leak path)
         var json = JsonSerializer.Serialize(aggregate);
 
+        aggregate.IsChanged.Should().BeTrue();
+        aggregate.UncommittedEvents().Should().HaveCount(2);
+
         // Assert
         json.Should().NotContain("DomainEvents",
             "Aggregate.DomainEvents is internal bookkeeping and must not surface in API responses.");
         json.Should().NotContain("JsonTestEvent",
             "Concrete event payloads must not leak in the aggregate's JSON shape.");
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        root.ValueKind.Should().Be(JsonValueKind.Object);
+        root.TryGetProperty("Id", out var id).Should().BeTrue();
+        id.GetString().Should().Be("agg-1");
+        root.TryGetProperty("Name", out var name).Should().BeTrue();
+        name.GetString().Should().Be("name_modified_modified");
+        root.TryGetProperty("IsChanged", out _).Should().BeFalse();
     }
 
     [Fact]
-    public void Serialize_AggregateWithRaisedEvents_DoesNotIncludeDomainEventsViaRuntimeType()
+    public void Serialize_RuntimeTypeAggregate_PreservesDomainFieldsWithoutEventBookkeeping()
     {
         // Arrange — System.Text.Json walks the runtime type's properties; this exercises that path.
         Aggregate<string> aggregate = JsonTestAggregate.Create("agg-2", "name");
@@ -37,9 +49,21 @@ public class AggregateJsonSerializationTests
         // Act
         var json = JsonSerializer.Serialize(aggregate, aggregate.GetType());
 
+        aggregate.IsChanged.Should().BeTrue();
+        aggregate.UncommittedEvents().Should().HaveCount(1);
+
         // Assert
         json.Should().NotContain("DomainEvents",
             "Even when serialized via runtime type, DomainEvents must remain hidden from JSON output.");
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        root.ValueKind.Should().Be(JsonValueKind.Object);
+        root.TryGetProperty("Id", out var id).Should().BeTrue();
+        id.GetString().Should().Be("agg-2");
+        root.TryGetProperty("Name", out var name).Should().BeTrue();
+        name.GetString().Should().Be("name_modified");
+        root.TryGetProperty("IsChanged", out _).Should().BeFalse();
     }
 }
 

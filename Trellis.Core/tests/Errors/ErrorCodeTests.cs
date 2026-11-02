@@ -144,17 +144,42 @@ public class ErrorCodeTests
     }
 
     [Fact]
-    public void TransportFault_carrying_a_coded_fault_publishes_the_faults_own_code()
+    public void TransportFault_carrying_a_coded_fault_snapshots_code_once_without_rereading()
     {
-        // A transport's code is the transport's word, and reaches a consumer exactly as the
-        // transport spelled it.
-        var error = new Error.TransportFault(new SampleCodedFault("precondition-failed", "upstream.precondition"));
+        var fault = new CountingCodedFault("precondition-failed", "upstream.precondition");
+        var error = new Error.TransportFault(fault);
+
+        fault.CodeReads.Should().Be(1);
+        error.Fault.Should().BeSameAs(fault);
+        error.Code.Should().Be("upstream.precondition");
+
+        fault.CurrentCode = "upstream.changed";
 
         error.Code.Should().Be("upstream.precondition");
+        var copy = error with { };
+        copy.Should().Be(error);
+        copy.Code.Should().Be("upstream.precondition");
+        fault.CodeReads.Should().Be(1);
     }
     private sealed record SampleTransportFault(string Name) : ITransportFault;
 
-    private sealed record SampleCodedFault(string Kind, string Code) : ICodedTransportFault;
+    private sealed class CountingCodedFault(string kind, string code) : ICodedTransportFault
+    {
+        public string Kind => kind;
+
+        public string CurrentCode { get; set; } = code;
+
+        public int CodeReads { get; private set; }
+
+        public string Code
+        {
+            get
+            {
+                CodeReads++;
+                return CurrentCode;
+            }
+        }
+    }
 
     private static List<Error> SampleOfEveryCase()
     {

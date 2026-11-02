@@ -31,27 +31,12 @@ public sealed class RequiredEnumAllowedArgsTests
         var result = AllowedArgsShade.TryCreate("mauve");
 
         result.IsFailure.Should().BeTrue();
-        AllowedOf(result.Error!).Should().Be(ValidationArgValue.ListOf("Amber", "Zinc"));
+        AllowedOf(result.Error!).Should().Be(ValidationArgValue.ListOf("Amber", "Zinc"),
+            "permitted members must be ordinally sorted, not follow the fixture's Zinc-before-Amber declaration");
     }
 
     /// <summary>
-    /// 
-    /// </summary>
-    /// <remarks>
-    /// The fixture declares <c>Zinc</c> before <c>Amber</c> deliberately. Registry order is an
-    /// implementation detail of where the members happen to sit in the file; a wire contract a
-    /// client diffs across producers cannot inherit it.
-    /// </remarks>
-    [Fact]
-    public void The_permitted_members_are_ordinally_sorted_not_declaration_ordered()
-    {
-        var result = AllowedArgsShade.TryCreate("mauve");
-
-        AllowedOf(result.Error!).Should().Be(ValidationArgValue.ListOf("Amber", "Zinc"));
-    }
-
-    /// <summary>
-    /// 
+    /// Blank enum input does not carry an undefined-name remedy list.
     /// </summary>
     /// <remarks>
     /// A blank value reports <c>value.not-empty</c>, not <c>enum.name-undefined</c> — the caller
@@ -92,7 +77,7 @@ public sealed class RequiredEnumAllowedArgsTests
     }
 
     /// <summary>
-    /// 
+    /// The JSON converter preserves permitted members for an undefined name.
     /// </summary>
     /// <remarks>
     /// The JSON converter is a fourth producer, and it curates its own message rather than
@@ -117,7 +102,7 @@ public sealed class RequiredEnumAllowedArgsTests
     }
 
     /// <summary>
-    /// 
+    /// The JSON converter omits permitted members when the input is blank.
     /// </summary>
     /// <remarks>
     /// The converter deliberately reports the <em>producer's</em> code, so a blank value arrives
@@ -150,7 +135,7 @@ public sealed class AllowedArgsShade :
     public static readonly AllowedArgsShade Amber = new();
 
     /// <summary>
-    /// 
+    /// Enums wider than the member cap report a count rather than a partial list.
     /// </summary>
     /// <remarks>
     /// <para>
