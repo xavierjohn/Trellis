@@ -54,17 +54,39 @@ public class SpecificationTests
     }
 
     [Fact]
-    public void IsSatisfiedBy_WhenExpressionSnapshotsCurrentState_UsesLatestExpression()
+    public void IsSatisfiedBy_WhenCompilationCachingIsDisabled_RebuildsExpressionForEachEvaluation()
     {
         var spec = new SnapshottingPriceAboveSpec(50m);
         var product = new Product("Widget", 60m, "Electronics");
 
+        spec.ExpressionCalls.Should().Be(0);
         spec.IsSatisfiedBy(product).Should().BeTrue();
+        spec.ExpressionCalls.Should().Be(1);
 
         spec.Threshold = 70m;
 
         spec.IsSatisfiedBy(product).Should().BeFalse(
             "IsSatisfiedBy should evaluate the current ToExpression semantics on each call");
+        spec.ExpressionCalls.Should().Be(2);
+    }
+
+    [Fact]
+    public void IsSatisfiedBy_DefaultCache_EvaluatesLazilyAndReusesFirstExpressionSnapshot()
+    {
+        var spec = new CachedSnapshottingPriceAboveSpec(70m);
+        var product = new Product("Widget", 60m, "Electronics");
+
+        spec.ExpressionCalls.Should().Be(0);
+        spec.Threshold = 50m;
+
+        spec.IsSatisfiedBy(product).Should().BeTrue();
+        spec.ExpressionCalls.Should().Be(1);
+
+        spec.Threshold = 70m;
+
+        spec.IsSatisfiedBy(product).Should().BeTrue();
+        spec.IsSatisfiedBy(product with { Price = 40m }).Should().BeFalse();
+        spec.ExpressionCalls.Should().Be(1);
     }
 
     #endregion
@@ -157,10 +179,27 @@ file class SnapshottingPriceAboveSpec(decimal threshold) : Specification<Product
 {
     public decimal Threshold { get; set; } = threshold;
 
+    public int ExpressionCalls { get; private set; }
+
     protected override bool CacheCompilation => false;
 
     public override Expression<Func<Product, bool>> ToExpression()
     {
+        ExpressionCalls++;
+        var currentThreshold = Threshold;
+        return p => p.Price > currentThreshold;
+    }
+}
+
+file class CachedSnapshottingPriceAboveSpec(decimal threshold) : Specification<Product>
+{
+    public decimal Threshold { get; set; } = threshold;
+
+    public int ExpressionCalls { get; private set; }
+
+    public override Expression<Func<Product, bool>> ToExpression()
+    {
+        ExpressionCalls++;
         var currentThreshold = Threshold;
         return p => p.Price > currentThreshold;
     }
