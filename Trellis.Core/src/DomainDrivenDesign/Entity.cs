@@ -204,7 +204,7 @@ public abstract class Entity<TId> : IEntity
     /// <returns>A hash code combining the entity type and its identifier.</returns>
     /// <remarks>
     /// The hash code is based on both the entity type and its ID to ensure proper behavior in collections.
-    /// Entities with the same ID but different types will have different hash codes.
+    /// Entities with different types or IDs can still have the same hash code.
     /// </remarks>
     public override int GetHashCode() => HashCode.Combine(GetType(), Id);
 }

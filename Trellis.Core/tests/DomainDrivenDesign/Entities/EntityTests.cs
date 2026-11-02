@@ -455,10 +455,11 @@ internal class TestEntityWithDefaultableId : Entity<Guid>
     public static TestEntityWithDefaultableId Create(Guid id) => new(id);
 }
 
-#endregion
 file sealed class IntIdentityEntity(int id) : Entity<int>(id);
 
 file sealed class CollidingIntIdentityEntity(int id) : Entity<int>(id)
 {
     public override int GetHashCode() => 0;
 }
+
+#endregion
