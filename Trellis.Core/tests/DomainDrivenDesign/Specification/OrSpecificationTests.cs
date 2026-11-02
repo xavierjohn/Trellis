@@ -53,6 +53,51 @@ public class OrSpecificationTests
 
     #endregion
 
+    #region Evaluation
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Or_Evaluation_SelectedRight_ExecutesPredicatesOnceInOrder(bool rightResult)
+    {
+        List<string> calls = [];
+        var left = new PredicateSpec(_ =>
+        {
+            calls.Add("left");
+            return false;
+        });
+        var right = new PredicateSpec(_ =>
+        {
+            calls.Add("right");
+            return rightResult;
+        });
+        var spec = left.Or(right);
+        var product = new Product("Widget", 100m, "Electronics");
+
+        spec.IsSatisfiedBy(product).Should().Be(rightResult);
+        calls.Should().Equal(["left", "right"]);
+    }
+
+    [Fact]
+    public void Or_LeftTrue_ThrowingRight_IsNotEvaluated()
+    {
+        var spec = new AlwaysTrueSpec().Or(
+            new PredicateSpec(_ => throw new InvalidOperationException("Right predicate evaluated.")));
+        var product = new Product("Widget", 100m, "Electronics");
+
+        spec.IsSatisfiedBy(product).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Or_NullOperand_PublicCombinator_ThrowsArgumentNullException()
+    {
+        var act = () => new AlwaysTrueSpec().Or(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("other");
+    }
+
+    #endregion
+
     #region Business Rule Composition
 
     [Fact]

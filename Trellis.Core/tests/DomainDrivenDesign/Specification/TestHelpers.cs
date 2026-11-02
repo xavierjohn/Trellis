@@ -52,3 +52,9 @@ internal class AlwaysFalseSpec : Specification<Product>
     public override Expression<Func<Product, bool>> ToExpression() =>
         _ => false;
 }
+
+internal sealed class PredicateSpec(Func<Product, bool> predicate) : Specification<Product>
+{
+    public override Expression<Func<Product, bool>> ToExpression() =>
+        product => predicate(product);
+}
