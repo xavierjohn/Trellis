@@ -17,7 +17,7 @@ public class EntityTests
         var hashCode = entity.GetHashCode();
 
         // Assert
-        hashCode.Should().NotBe(0);
+        hashCode.Should().Be(entity.GetHashCode());
     }
 
     [Fact]
@@ -50,33 +50,87 @@ public class EntityTests
     }
 
     [Fact]
-    public void Entity_GetHashCode_DifferentIds_DifferentHashCodes()
+    public void Entity_DifferentIds_RemainDistinctInHashedCollectionsEvenWhenHashesCollide()
     {
-        // Arrange
         var entity1 = TestEntity.Create("123");
         var entity2 = TestEntity.Create("456");
 
-        // Act
         var hash1 = entity1.GetHashCode();
         var hash2 = entity2.GetHashCode();
 
-        // Assert
-        hash1.Should().NotBe(hash2);
+        hash1.Should().Be(entity1.GetHashCode());
+        hash2.Should().Be(entity2.GetHashCode());
+        entity1.Equals(entity2).Should().BeFalse();
+        entity2.Equals(entity1).Should().BeFalse();
+
+        HashSet<TestEntity> entities = [entity1, entity2];
+        entities.Should().HaveCount(2);
+        Dictionary<TestEntity, string> values = new()
+        {
+            [entity1] = "first",
+            [entity2] = "second"
+        };
+        values[TestEntity.Create("123")].Should().Be("first");
+        values[TestEntity.Create("456")].Should().Be("second");
+
+        var colliding1 = new CollidingIntIdentityEntity(1);
+        var colliding2 = new CollidingIntIdentityEntity(2);
+        colliding1.Equals(colliding2).Should().BeFalse();
+
+        HashSet<CollidingIntIdentityEntity> collisions = [colliding1, colliding2, new(1)];
+        collisions.Should().HaveCount(2);
+        Dictionary<CollidingIntIdentityEntity, string> collisionValues = new()
+        {
+            [colliding1] = "first",
+            [colliding2] = "second"
+        };
+        collisionValues[new CollidingIntIdentityEntity(1)].Should().Be("first");
+        collisionValues[new CollidingIntIdentityEntity(2)].Should().Be("second");
     }
 
     [Fact]
-    public void Entity_GetHashCode_SameIdDifferentTypes_DifferentHashCodes()
+    public void Entity_SameIdDifferentTypes_RemainDistinctInHashedCollections()
     {
-        // Arrange
         var entity1 = TestEntity.Create("123");
         var entity2 = OtherTestEntity.Create("123");
 
-        // Act
         var hash1 = entity1.GetHashCode();
         var hash2 = entity2.GetHashCode();
 
-        // Assert - Same ID but different types should have different hash codes
-        hash1.Should().NotBe(hash2);
+        hash1.Should().Be(entity1.GetHashCode());
+        hash2.Should().Be(entity2.GetHashCode());
+        entity1.Equals(entity2).Should().BeFalse();
+        entity2.Equals(entity1).Should().BeFalse();
+
+        HashSet<Entity<string>> entities = [entity1, entity2];
+        entities.Should().HaveCount(2);
+        Dictionary<Entity<string>, string> values = new()
+        {
+            [entity1] = "first",
+            [entity2] = "second"
+        };
+        values[TestEntity.Create("123")].Should().Be("first");
+        values[OtherTestEntity.Create("123")].Should().Be("second");
+    }
+
+    [Fact]
+    public void Entity_DefaultId_SameInstanceIsEqualAndDistinctInstancesAreNotEqual()
+    {
+        var entity = new IntIdentityEntity(default);
+        var sameReference = entity;
+        var other = new IntIdentityEntity(default);
+
+        entity.Equals(sameReference).Should().BeTrue();
+        ((object)entity).Equals(sameReference).Should().BeTrue();
+        (entity == sameReference).Should().BeTrue();
+        (entity != sameReference).Should().BeFalse();
+        entity.GetHashCode().Should().Be(entity.GetHashCode());
+
+        entity.Equals(other).Should().BeFalse();
+        other.Equals(entity).Should().BeFalse();
+        ((object)entity).Equals(other).Should().BeFalse();
+        (entity == other).Should().BeFalse();
+        (entity != other).Should().BeTrue();
     }
 
     [Fact]
@@ -399,6 +453,13 @@ internal class TestEntityWithDefaultableId : Entity<Guid>
     private TestEntityWithDefaultableId(Guid id) : base(id) { }
 
     public static TestEntityWithDefaultableId Create(Guid id) => new(id);
+}
+
+file sealed class IntIdentityEntity(int id) : Entity<int>(id);
+
+file sealed class CollidingIntIdentityEntity(int id) : Entity<int>(id)
+{
+    public override int GetHashCode() => 0;
 }
 
 #endregion

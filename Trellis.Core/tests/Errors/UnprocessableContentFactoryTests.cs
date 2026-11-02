@@ -56,6 +56,14 @@ public class UnprocessableContentFactoryTests
         var error = Error.InvalidInput.ForField(field: string.Empty, code: "object_invalid");
 
         error.Fields[0].Field.Should().Be(InputPointer.Root);
+
+        var nullFieldError = Error.InvalidInput.ForField(field: (string?)null, code: "object_invalid");
+        var nullField = nullFieldError.Fields.Items.Should().ContainSingle().Which;
+        nullField.Field.Should().Be(InputPointer.Root);
+        nullField.ReasonCode.Should().Be("object_invalid");
+        nullField.Args.Should().BeNull();
+        nullField.Detail.Should().BeNull();
+        nullFieldError.Rules.Items.Should().BeEmpty();
     }
 
     // ── ForField with an input pointer ─────────────────────────────────────
