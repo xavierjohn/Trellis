@@ -58,13 +58,30 @@ public class PageTests
     }
 
     [Fact]
-    public void Constructor_defensively_copies_items()
+    public void Constructor_defensively_copies_items_and_exposes_immutable_snapshot()
     {
         var items = new List<int> { 1, 2 };
         var page = new Page<int>(items, null, null, RequestedLimit: 10, AppliedLimit: 10);
 
         items.Add(3);
 
+        page.Items.Should().Equal([1, 2]);
+        page.DeliveredCount.Should().Be(2);
+
+        var snapshot = page.Items;
+        if (snapshot is IList<int> list)
+        {
+            Action replaceItem = () => list[0] = 99;
+            replaceItem.Should().Throw<NotSupportedException>();
+        }
+
+        if (snapshot is ICollection<int> collection)
+        {
+            Action addItem = () => collection.Add(99);
+            addItem.Should().Throw<NotSupportedException>();
+        }
+
+        snapshot.Should().Equal([1, 2]);
         page.Items.Should().Equal([1, 2]);
         page.DeliveredCount.Should().Be(2);
     }
@@ -120,12 +137,27 @@ public class PageTests
     }
 
     [Fact]
-    public void Empty_provider_page_preserves_continuation()
+    public void Empty_provider_page_preserves_continuation_without_invoking_mapper()
     {
         var next = new Cursor("provider-token");
         var page = new Page<int>([], next, null, 10, 10);
         page.Items.Should().BeEmpty();
         page.Next.Should().Be(next);
-        page.Map(i => i + 1).Next.Should().Be(next);
+        var mapperCalls = 0;
+        Func<int, int> mapper = i =>
+        {
+            mapperCalls++;
+            return i + 1;
+        };
+        var mapped = page.Map(mapper);
+
+        mapped.Next.Should().Be(next);
+        mapped.Items.Should().BeEmpty();
+        mapped.Previous.Should().BeNull();
+        mapped.RequestedLimit.Should().Be(10);
+        mapped.AppliedLimit.Should().Be(10);
+        mapped.DeliveredCount.Should().Be(0);
+        mapped.WasCapped.Should().BeFalse();
+        mapperCalls.Should().Be(0);
     }
 }
