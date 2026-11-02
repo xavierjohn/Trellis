@@ -76,20 +76,6 @@ public class StateMachineExtensionsTests
     #region Invalid transitions
 
     [Fact]
-    public void FireResult_InvalidTransition_DoesNotChangeState()
-    {
-        // Arrange
-        var machine = new StateMachine<State, Trigger>(State.Idle);
-        machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
-
-        // Act
-        _ = machine.FireResult(Trigger.Pause);
-
-        // Assert
-        machine.State.Should().Be(State.Idle);
-    }
-
-    [Fact]
     public void FireResult_InvalidTransition_ErrorCodeIsStateMachineInvalidTransition()
     {
         // Arrange
@@ -137,7 +123,7 @@ public class StateMachineExtensionsTests
     }
 
     [Fact]
-    public void FireResult_TransitionNotPermitted_ReturnsErrorWithCurrentStateAndTriggerInfo()
+    public void FireResult_TransitionNotPermitted_ReturnsErrorWithStateAndTriggerInfoWithoutChangingState()
     {
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle).Permit(Trigger.Start, State.Running);
@@ -151,6 +137,7 @@ public class StateMachineExtensionsTests
         var invariant = err!.Should().BeOfType<Error.InvariantViolation>().Subject;
         invariant.Detail.Should().Contain("Pause");
         invariant.Detail.Should().Contain("Idle");
+        machine.State.Should().Be(State.Idle);
     }
 
     [Fact]

@@ -63,7 +63,7 @@ public class ValidationArgsTests
         ValidationArgs.Allowed(["red", "green"]).Should().ContainKey("allowed");
 
     /// <summary>
-    /// 
+    /// The permitted member list has a stable ordinal order across producers.
     /// </summary>
     /// <remarks>
     /// The whole point of routing every producer through one helper: query binding reads its
@@ -83,7 +83,7 @@ public class ValidationArgsTests
                 [new ValidationArgValue.Text("red")])));
 
     /// <summary>
-    /// 
+    /// An empty permitted member set is published as an empty list.
     /// </summary>
     /// <remarks>
     /// An enum with no members is degenerate but reachable, and an empty array is the honest
@@ -146,7 +146,7 @@ public class ValidationArgsTests
     }
 
     /// <summary>
-    /// 
+    /// Every permitted member is published when the list is exactly at the cap.
     /// </summary>
     /// <remarks>
     /// A list a client cannot act on is not worth the bytes it costs. 248 country names serialize
@@ -155,7 +155,7 @@ public class ValidationArgsTests
     /// merely waste.
     /// </remarks>
     [Fact]
-    public void A_member_list_at_the_cap_is_still_published()
+    public void A_member_list_at_the_cap_publishes_all_64_names_in_ordinal_order()
     {
         var names = Enumerable.Range(1, ValidationArgs.MaxAllowedMembers)
             .Select(i => i.ToString("D3", CultureInfo.InvariantCulture));
@@ -164,10 +164,17 @@ public class ValidationArgsTests
 
         args.Should().ContainKey("allowed");
         args.Should().NotContainKey("allowedCount");
+
+        var allowed = args["allowed"].Should().BeOfType<ValidationArgValue.List>().Which;
+        var expected = Enumerable.Range(1, 64)
+            .Select(i => (ValidationArgValue)new ValidationArgValue.Text(i.ToString("D3", CultureInfo.InvariantCulture)));
+
+        allowed.Items.Items.Should().HaveCount(64);
+        allowed.Items.Items.Should().Equal(expected);
     }
 
     /// <summary>
-    /// 
+    /// Oversized permitted member lists are omitted whole rather than truncated.
     /// </summary>
     /// <remarks>
     /// The list is dropped whole rather than truncated. A truncated list is a false statement: it
