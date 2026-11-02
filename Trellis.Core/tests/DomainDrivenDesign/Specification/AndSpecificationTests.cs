@@ -53,6 +53,51 @@ public class AndSpecificationTests
 
     #endregion
 
+    #region Evaluation
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void And_Evaluation_SelectedRight_ExecutesPredicatesOnceInOrder(bool rightResult)
+    {
+        List<string> calls = [];
+        var left = new PredicateSpec(_ =>
+        {
+            calls.Add("left");
+            return true;
+        });
+        var right = new PredicateSpec(_ =>
+        {
+            calls.Add("right");
+            return rightResult;
+        });
+        var spec = left.And(right);
+        var product = new Product("Widget", 100m, "Electronics");
+
+        spec.IsSatisfiedBy(product).Should().Be(rightResult);
+        calls.Should().Equal(["left", "right"]);
+    }
+
+    [Fact]
+    public void And_LeftFalse_ThrowingRight_IsNotEvaluated()
+    {
+        var spec = new AlwaysFalseSpec().And(
+            new PredicateSpec(_ => throw new InvalidOperationException("Right predicate evaluated.")));
+        var product = new Product("Widget", 100m, "Electronics");
+
+        spec.IsSatisfiedBy(product).Should().BeFalse();
+    }
+
+    [Fact]
+    public void And_NullOperand_PublicCombinator_ThrowsArgumentNullException()
+    {
+        var act = () => new AlwaysTrueSpec().And(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("other");
+    }
+
+    #endregion
+
     #region Business Rule Composition
 
     [Fact]
