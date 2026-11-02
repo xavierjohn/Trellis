@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Core.Tests.DomainDrivenDesign.ValueObjects;
 
 using System.Collections.Concurrent;
+using System.Globalization;
 using FluentAssertions;
 using Xunit;
 
@@ -212,6 +213,49 @@ public class ValueObjectTests
 
         Math.Sign(number.CompareTo(text)).Should().Be(expectedSign);
         Math.Sign(text.CompareTo(number)).Should().Be(-expectedSign);
+    }
+
+    [Theory]
+    [InlineData(0, 8)]
+    [InlineData(8, 9)]
+    [InlineData(9, 17)]
+    public void CompareTo_ComponentCounts_MatchingPrefix_SortsShorterFirst(int shorterCount, int longerCount)
+    {
+        var shorter = new WideValueObject(shorterCount);
+        var longer = new WideValueObject(longerCount);
+
+        shorter.Equals(longer).Should().BeFalse();
+        longer.Equals(shorter).Should().BeFalse();
+        shorter.CompareTo(longer).Should().BeNegative();
+        longer.CompareTo(shorter).Should().BePositive();
+
+        SortedSet<WideValueObject> values = [longer, shorter];
+        values.Should().Equal([shorter, longer]);
+    }
+
+    [Fact]
+    public void CompareTo_StringComponents_DifferingCurrentCulture_UsesOrdinalOrdering()
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+            CultureInfo.CurrentCulture.CompareInfo.Compare("z", "\u00e4").Should().BePositive(
+                "the input must distinguish linguistic ordering from ordinal ordering");
+
+            var left = new ConditionallyTypedComponentValueObject("z");
+            var right = new ConditionallyTypedComponentValueObject("\u00e4");
+
+            left.CompareTo(right).Should().BeNegative();
+            right.CompareTo(left).Should().BePositive();
+
+            SortedSet<ConditionallyTypedComponentValueObject> values = [right, left];
+            values.Should().Equal([left, right]);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
     }
 
     #endregion
@@ -603,19 +647,43 @@ public class ValueObjectTests
         MeasureAllocations(() => left.CompareTo(right)).Should().Be(0);
     }
 
-    [Fact]
-    public void Value_objects_with_more_components_than_the_inline_buffer_still_compare_correctly()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(8)]
+    [InlineData(9)]
+    [InlineData(12)]
+    [InlineData(17)]
+    public void EqualsAndCompareTo_BufferBoundaries_EqualAndChangedComponents_PreserveValueSemantics(int componentCount)
     {
-        var left = new WideValueObject(12);
-        var right = new WideValueObject(12);
-        var different = new WideValueObject(12, differentAtIndex: 11);
+        var left = new WideValueObject(componentCount);
+        var right = new WideValueObject(componentCount);
 
         left.Equals(right).Should().BeTrue();
         left.GetHashCode().Should().Be(right.GetHashCode());
         left.CompareTo(right).Should().Be(0);
 
+        HashSet<WideValueObject> values = [left, right];
+        values.Should().HaveCount(1);
+        values.Contains(new WideValueObject(componentCount)).Should().BeTrue();
+
+        if (componentCount == 0)
+            return;
+
+        var different = new WideValueObject(componentCount, differentAtIndex: componentCount - 1);
         left.Equals(different).Should().BeFalse();
         left.CompareTo(different).Should().BeNegative();
+        different.CompareTo(left).Should().BePositive();
+
+        values.Add(different).Should().BeTrue();
+        values.Contains(new WideValueObject(componentCount, differentAtIndex: componentCount - 1)).Should().BeTrue();
+
+        Dictionary<WideValueObject, string> lookup = new()
+        {
+            [left] = "original",
+            [different] = "changed"
+        };
+        lookup[new WideValueObject(componentCount)].Should().Be("original");
+        lookup[new WideValueObject(componentCount, differentAtIndex: componentCount - 1)].Should().Be("changed");
     }
 
     /// <summary>Keeps measured results alive without boxing, so the JIT cannot elide the call.</summary>
@@ -651,8 +719,7 @@ public class ValueObjectTests
 }
 
 /// <summary>
-/// Value object with more components than the base class's inline buffer holds, so the
-/// pooled-growth path is exercised.
+/// Value object with a configurable component count for inline and pooled buffer-boundary tests.
 /// </summary>
 internal sealed class WideValueObject : ValueObject
 {
