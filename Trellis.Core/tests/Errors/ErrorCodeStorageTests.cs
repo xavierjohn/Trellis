@@ -114,4 +114,48 @@ public class ErrorCodeStorageTests
         moved.PolicyId.Should().Be("orders.admin");
         moved.Code.Should().Be("orders.admin");
     }
+
+    [Fact]
+    public void Cause_DifferentChains_EqualSurface_PreservesEqualityHashAndKeys()
+    {
+        Error baseline = new Error.NotFound(Order) { Code = "order.archived", Detail = "Order archived." };
+        var firstCause = new Error.Unexpected("storage.timeout")
+        {
+            Cause = new Error.Unexpected("network.timeout")
+        };
+        var secondCause = new Error.Unexpected("cache.miss");
+        var first = baseline with { Cause = firstCause };
+        var second = baseline with { Cause = secondCause };
+
+        baseline.Cause.Should().BeNull();
+        first.Cause.Should().BeSameAs(firstCause);
+        second.Cause.Should().BeSameAs(secondCause);
+        baseline.Equals(first).Should().BeTrue();
+        first.Equals(baseline).Should().BeTrue();
+        first.Equals(second).Should().BeTrue();
+        second.Equals(first).Should().BeTrue();
+        first.GetHashCode().Should().Be(baseline.GetHashCode());
+        second.GetHashCode().Should().Be(baseline.GetHashCode());
+
+        HashSet<Error> values = [baseline, first, second];
+        values.Should().HaveCount(1);
+
+        var lookup = new Dictionary<Error, string> { [baseline] = "archived" };
+        lookup[first].Should().Be("archived");
+        lookup[second].Should().Be("archived");
+    }
+
+    [Fact]
+    public void Cause_EqualSurfaceNodes_AcyclicChain_PreservesReferences()
+    {
+        var inner = new Error.NotFound(Order) { Code = "order.archived", Detail = "Order archived." };
+        var middle = inner with { Cause = inner };
+        var outer = inner with { Cause = middle };
+
+        outer.Cause.Should().BeSameAs(middle);
+        middle.Cause.Should().BeSameAs(inner);
+        inner.Cause.Should().BeNull();
+        outer.Should().NotBeSameAs(middle);
+        middle.Should().NotBeSameAs(inner);
+    }
 }
