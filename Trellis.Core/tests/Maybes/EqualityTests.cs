@@ -34,13 +34,30 @@ public class EqualityTests
         var equals2 = ((object)maybe1).Equals(maybe2);
         var equals3 = maybe1 == maybe2;
         var equals4 = maybe1 != maybe2;
-        var equals5 = maybe1.GetHashCode() == maybe2.GetHashCode();
 
         equals1.Should().BeFalse();
         equals2.Should().BeFalse();
         equals3.Should().BeFalse();
         equals4.Should().BeTrue();
-        equals5.Should().BeFalse();
+        maybe1.GetHashCode().Should().Be(maybe1.GetHashCode());
+        maybe2.GetHashCode().Should().Be(maybe2.GetHashCode());
+
+        HashSet<Maybe<MyClass>> values = [maybe1, maybe2];
+        values.Should().HaveCount(2);
+        values.Should().Contain(maybe1);
+        values.Should().Contain(maybe2);
+
+        var lookup = new Dictionary<Maybe<MyClass>, string>(
+            EqualityComparer<Maybe<MyClass>>.Create(
+                static (left, right) => EqualityComparer<Maybe<MyClass>>.Default.Equals(left, right),
+                static _ => 0))
+        {
+            [maybe1] = "first",
+            [maybe2] = "second",
+        };
+
+        lookup[maybe1].Should().Be("first");
+        lookup[maybe2].Should().Be("second");
     }
 
     [Fact]
@@ -72,13 +89,30 @@ public class EqualityTests
         var equals2 = ((object)maybe1).Equals(maybe2);
         var equals3 = maybe1 == maybe2;
         var equals4 = maybe1 != maybe2;
-        var equals5 = maybe1.GetHashCode() == maybe2.GetHashCode();
 
         equals1.Should().BeFalse();
         equals2.Should().BeFalse();
         equals3.Should().BeFalse();
         equals4.Should().BeTrue();
-        equals5.Should().BeFalse();
+        maybe1.GetHashCode().Should().Be(maybe1.GetHashCode());
+        maybe2.GetHashCode().Should().Be(maybe2.GetHashCode());
+
+        HashSet<Maybe<MyClass>> values = [maybe1, maybe2];
+        values.Should().HaveCount(2);
+        values.Should().Contain(maybe1);
+        values.Should().Contain(maybe2);
+
+        var lookup = new Dictionary<Maybe<MyClass>, string>(
+            EqualityComparer<Maybe<MyClass>>.Create(
+                static (left, right) => EqualityComparer<Maybe<MyClass>>.Default.Equals(left, right),
+                static _ => 0))
+        {
+            [maybe1] = "first",
+            [maybe2] = "second",
+        };
+
+        lookup[maybe1].Should().Be("first");
+        lookup[maybe2].Should().Be("second");
     }
 
     [Fact]

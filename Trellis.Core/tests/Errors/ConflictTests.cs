@@ -61,7 +61,25 @@ public sealed class ConflictTests
         var right = new Error.Conflict(Resource: null, Code: "duplicate.key") { ConstraintName = "IX_B" };
 
         left.Equals(right).Should().BeFalse();
-        left.GetHashCode().Should().NotBe(right.GetHashCode());
+        left.GetHashCode().Should().Be(left.GetHashCode());
+        right.GetHashCode().Should().Be(right.GetHashCode());
+
+        HashSet<Error.Conflict> values = [left, right];
+        values.Should().HaveCount(2);
+        values.Should().Contain(left with { });
+        values.Should().Contain(right with { });
+
+        var lookup = new Dictionary<Error.Conflict, string>(
+            EqualityComparer<Error.Conflict>.Create(
+                static (left, right) => EqualityComparer<Error.Conflict>.Default.Equals(left, right),
+                static _ => 0))
+        {
+            [left] = "first",
+            [right] = "second",
+        };
+
+        lookup[left with { }].Should().Be("first");
+        lookup[right with { }].Should().Be("second");
     }
 
     [Fact]
@@ -71,7 +89,25 @@ public sealed class ConflictTests
         var right = new Error.Conflict(Resource: null, Code: "duplicate.key") { ConstraintTableName = "dbo.Subscriptions" };
 
         left.Equals(right).Should().BeFalse();
-        left.GetHashCode().Should().NotBe(right.GetHashCode());
+        left.GetHashCode().Should().Be(left.GetHashCode());
+        right.GetHashCode().Should().Be(right.GetHashCode());
+
+        HashSet<Error.Conflict> values = [left, right];
+        values.Should().HaveCount(2);
+        values.Should().Contain(left with { });
+        values.Should().Contain(right with { });
+
+        var lookup = new Dictionary<Error.Conflict, string>(
+            EqualityComparer<Error.Conflict>.Create(
+                static (left, right) => EqualityComparer<Error.Conflict>.Default.Equals(left, right),
+                static _ => 0))
+        {
+            [left] = "first",
+            [right] = "second",
+        };
+
+        lookup[left with { }].Should().Be("first");
+        lookup[right with { }].Should().Be("second");
     }
 
     [Fact]
