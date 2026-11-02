@@ -375,6 +375,91 @@ public class ScalarValueObjectTests
 
     #endregion
 
+    #region Conversion Boundaries
+
+    [Fact]
+    public void IConvertible_ExplicitProvider_DifferingCurrentCulture_UsesProvider()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("en-US");
+            var provider = new CultureInfo("de-DE");
+            var password = new PasswordSimple("1,5");
+            var money = new MoneySimple(1.5m);
+
+            ((IConvertible)password).ToDecimal(provider).Should().Be(1.5m);
+            ((IConvertible)password).ToType(typeof(decimal), provider).Should().BeOfType<decimal>().Which.Should().Be(1.5m);
+            ((IConvertible)money).ToString(provider).Should().Be("1,5");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void IConvertible_NullProvider_GermanCurrentCulture_UsesCurrentCulture()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+            var password = new PasswordSimple("1,5");
+            var money = new MoneySimple(1.5m);
+
+            ((IConvertible)password).ToDecimal(null).Should().Be(1.5m);
+            ((IConvertible)password).ToType(typeof(decimal), null).Should().BeOfType<decimal>().Which.Should().Be(1.5m);
+            ((IConvertible)money).ToString(null).Should().Be("1,5");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(256)]
+    public void ToByte_IConvertible_OutOfRange_ThrowsOverflowException(int value)
+    {
+        var quantity = new Quantity(value);
+        var act = () => ((IConvertible)quantity).ToByte(CultureInfo.InvariantCulture);
+
+        act.Should().ThrowExactly<OverflowException>();
+    }
+
+    [Fact]
+    public void ToDecimal_IConvertible_MalformedString_ThrowsFormatException()
+    {
+        var password = new PasswordSimple("not-a-number");
+        var act = () => ((IConvertible)password).ToDecimal(CultureInfo.InvariantCulture);
+
+        act.Should().ThrowExactly<FormatException>();
+    }
+
+    [Fact]
+    public void ToDateTime_IConvertible_NumericValue_ThrowsInvalidCastException()
+    {
+        var quantity = new Quantity(42);
+        var act = () => ((IConvertible)quantity).ToDateTime(CultureInfo.InvariantCulture);
+
+        act.Should().ThrowExactly<InvalidCastException>();
+    }
+
+    [Theory]
+    [InlineData(typeof(Guid))]
+    [InlineData(typeof(Quantity))]
+    public void ToType_IConvertible_UnsupportedTarget_ThrowsInvalidCastException(Type conversionType)
+    {
+        var quantity = new Quantity(42);
+        var act = () => ((IConvertible)quantity).ToType(conversionType, CultureInfo.InvariantCulture);
+
+        act.Should().ThrowExactly<InvalidCastException>();
+    }
+
+    #endregion
+
     #region HashSet and Dictionary Usage
 
     [Fact]
