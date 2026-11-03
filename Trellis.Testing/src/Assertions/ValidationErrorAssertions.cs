@@ -31,6 +31,107 @@ public class ValidationErrorAssertions : ReferenceTypeAssertions<Error.InvalidIn
     /// <inheritdoc/>
     protected override string Identifier => "validationError";
 
+    private bool RequireNonNullSubject(string because, object[] becauseArgs) =>
+        Execute.Assertion
+            .BecauseOf(because, becauseArgs)
+            .ForCondition(Subject is not null)
+            .FailWith("Expected {context:validationError} to not be <null>{reason}.");
+
+    /// <summary>Asserts that exactly one violation matches the full pointer and reason code.</summary>
+    /// <param name="field">The expected pointer, including its input location.</param>
+    /// <param name="reasonCode">The expected machine-readable reason code.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    /// <returns>The original matching violation for further payload assertions.</returns>
+    public AndWhichConstraint<ValidationErrorAssertions, FieldViolation> HaveFieldViolation(
+        InputPointer field, string reasonCode, string because = "", params object[] becauseArgs)
+    {
+        if (!RequireNonNullSubject(because, becauseArgs))
+            return new(this, default(FieldViolation)!);
+
+        var matches = Subject.Fields.Items.Where(violation => violation.Field == field && violation.ReasonCode == reasonCode).ToArray();
+        Execute.Assertion
+            .BecauseOf(because, becauseArgs)
+            .ForCondition(matches.Length == 1)
+            .FailWith("Expected {context:validationError} to contain exactly one field violation at {0} with reason code {1}{reason}, but found {2}. Violations: {3}",
+                field, reasonCode, matches.Length, Subject.Fields.Items);
+
+        return new(this, matches.Length == 1 ? matches[0] : default!);
+    }
+
+    /// <summary>Asserts that exactly one rule violation matches the reason code.</summary>
+    /// <param name="reasonCode">The expected machine-readable reason code.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    /// <returns>The original matching violation for further payload assertions.</returns>
+    public AndWhichConstraint<ValidationErrorAssertions, RuleViolation> HaveRuleViolation(
+        string reasonCode, string because = "", params object[] becauseArgs)
+    {
+        if (!RequireNonNullSubject(because, becauseArgs))
+            return new(this, default(RuleViolation)!);
+
+        var matches = Subject.Rules.Items.Where(violation => violation.ReasonCode == reasonCode).ToArray();
+        Execute.Assertion
+            .BecauseOf(because, becauseArgs)
+            .ForCondition(matches.Length == 1)
+            .FailWith("Expected {context:validationError} to contain exactly one rule violation with reason code {0}{reason}, but found {1}. Violations: {2}",
+                reasonCode, matches.Length, Subject.Rules.Items);
+
+        return new(this, matches.Length == 1 ? matches[0] : default!);
+    }
+
+    /// <summary>Asserts the number of field violations, including duplicate paths.</summary>
+    /// <param name="expectedCount">The expected number of violations.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    public AndConstraint<ValidationErrorAssertions> HaveFieldViolationCount(
+        int expectedCount, string because = "", params object[] becauseArgs)
+    {
+        if (RequireNonNullSubject(because, becauseArgs))
+            Subject.Fields.Items.Should().HaveCount(expectedCount, because, becauseArgs);
+        return new(this);
+    }
+
+    /// <summary>Asserts the number of rule violations, including duplicates.</summary>
+    /// <param name="expectedCount">The expected number of violations.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    public AndConstraint<ValidationErrorAssertions> HaveRuleViolationCount(
+        int expectedCount, string because = "", params object[] becauseArgs)
+    {
+        if (RequireNonNullSubject(because, becauseArgs))
+            Subject.Rules.Items.Should().HaveCount(expectedCount, because, becauseArgs);
+        return new(this);
+    }
+
+    /// <summary>Asserts an unordered multiset of field violations using domain value equality.</summary>
+    /// <param name="expected">The exact payloads, including typed arguments, detail, location and duplicate multiplicity.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    public AndConstraint<ValidationErrorAssertions> HaveOnlyFieldViolations(
+        IEnumerable<FieldViolation> expected, string because = "", params object[] becauseArgs)
+    {
+        ArgumentNullException.ThrowIfNull(expected);
+        if (RequireNonNullSubject(because, becauseArgs))
+            Subject.Fields.Items.Should().BeEquivalentTo(expected,
+                options => options.WithoutStrictOrdering().ComparingByValue<FieldViolation>(), because, becauseArgs);
+        return new(this);
+    }
+
+    /// <summary>Asserts an unordered multiset of rule violations using domain value equality.</summary>
+    /// <param name="expected">The exact payloads; related field order and duplicate multiplicity remain significant.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    public AndConstraint<ValidationErrorAssertions> HaveOnlyRuleViolations(
+        IEnumerable<RuleViolation> expected, string because = "", params object[] becauseArgs)
+    {
+        ArgumentNullException.ThrowIfNull(expected);
+        if (RequireNonNullSubject(because, becauseArgs))
+            Subject.Rules.Items.Should().BeEquivalentTo(expected,
+                options => options.WithoutStrictOrdering().ComparingByValue<RuleViolation>(), because, becauseArgs);
+        return new(this);
+    }
+
     /// <summary>
     /// Asserts that the error contains a field violation for the specified field.
     /// </summary>

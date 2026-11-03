@@ -7,6 +7,95 @@ using FluentAssertions;
 /// </summary>
 public static class ResultAssertionsAsyncExtensions
 {
+    /// <summary>Asserts success within a bounded wait, without canceling the source operation.</summary>
+    /// <typeparam name="TValue">The result value type.</typeparam>
+    /// <param name="resultTask">The source task.</param>
+    /// <param name="timeout">The maximum wait; TimeoutException propagates on expiry.</param>
+    /// <param name="cancellationToken">Cancels only this assertion's wait.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    /// <returns>The original success value constraint.</returns>
+    public static async Task<AndWhichConstraint<ResultAssertions<TValue>, TValue>> BeSuccessAsync<TValue>(
+        this Task<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+        string because = "", params object[] becauseArgs)
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return await resultTask.WaitAsync(timeout, cancellationToken).BeSuccessAsync(because, becauseArgs).ConfigureAwait(false);
+    }
+
+    /// <summary>Asserts failure within a bounded wait, without canceling the source operation.</summary>
+    /// <typeparam name="TValue">The result value type.</typeparam>
+    /// <param name="resultTask">The source task.</param>
+    /// <param name="timeout">The maximum wait; TimeoutException propagates on expiry.</param>
+    /// <param name="cancellationToken">Cancels only this assertion's wait.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    /// <returns>The original error constraint.</returns>
+    public static async Task<AndWhichConstraint<ResultAssertions<TValue>, Error>> BeFailureAsync<TValue>(
+        this Task<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+        string because = "", params object[] becauseArgs)
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return await resultTask.WaitAsync(timeout, cancellationToken).BeFailureAsync(because, becauseArgs).ConfigureAwait(false);
+    }
+
+    /// <summary>Asserts the failure type within a bounded wait, without canceling the source operation.</summary>
+    /// <typeparam name="TValue">The result value type.</typeparam>
+    /// <typeparam name="TError">The expected error type.</typeparam>
+    /// <param name="resultTask">The source task.</param>
+    /// <param name="timeout">The maximum wait; TimeoutException propagates on expiry.</param>
+    /// <param name="cancellationToken">Cancels only this assertion's wait.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    /// <returns>The original typed error constraint.</returns>
+    public static async Task<AndWhichConstraint<ResultAssertions<TValue>, TError>> BeFailureOfTypeAsync<TValue, TError>(
+        this Task<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+        string because = "", params object[] becauseArgs) where TError : Error
+    {
+        ArgumentNullException.ThrowIfNull(resultTask);
+        return await resultTask.WaitAsync(timeout, cancellationToken).BeFailureOfTypeAsync<TValue, TError>(because, becauseArgs).ConfigureAwait(false);
+    }
+
+    /// <summary>Asserts success within a bounded wait, consuming the ValueTask once.</summary>
+    /// <typeparam name="TValue">The result value type.</typeparam>
+    /// <param name="resultTask">The source ValueTask.</param>
+    /// <param name="timeout">The maximum wait; TimeoutException propagates on expiry.</param>
+    /// <param name="cancellationToken">Cancels only this assertion's wait, not the source operation.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    /// <returns>The original success value constraint.</returns>
+    public static async ValueTask<AndWhichConstraint<ResultAssertions<TValue>, TValue>> BeSuccessAsync<TValue>(
+        this ValueTask<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+        string because = "", params object[] becauseArgs) =>
+        await resultTask.AsTask().BeSuccessAsync(timeout, cancellationToken, because, becauseArgs).ConfigureAwait(false);
+
+    /// <summary>Asserts failure within a bounded wait, consuming the ValueTask once.</summary>
+    /// <typeparam name="TValue">The result value type.</typeparam>
+    /// <param name="resultTask">The source ValueTask.</param>
+    /// <param name="timeout">The maximum wait; TimeoutException propagates on expiry.</param>
+    /// <param name="cancellationToken">Cancels only this assertion's wait, not the source operation.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    /// <returns>The original error constraint.</returns>
+    public static async ValueTask<AndWhichConstraint<ResultAssertions<TValue>, Error>> BeFailureAsync<TValue>(
+        this ValueTask<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+        string because = "", params object[] becauseArgs) =>
+        await resultTask.AsTask().BeFailureAsync(timeout, cancellationToken, because, becauseArgs).ConfigureAwait(false);
+
+    /// <summary>Asserts the failure type within a bounded wait, consuming the ValueTask once.</summary>
+    /// <typeparam name="TValue">The result value type.</typeparam>
+    /// <typeparam name="TError">The expected error type.</typeparam>
+    /// <param name="resultTask">The source ValueTask.</param>
+    /// <param name="timeout">The maximum wait; TimeoutException propagates on expiry.</param>
+    /// <param name="cancellationToken">Cancels only this assertion's wait, not the source operation.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    /// <returns>The original typed error constraint.</returns>
+    public static async ValueTask<AndWhichConstraint<ResultAssertions<TValue>, TError>> BeFailureOfTypeAsync<TValue, TError>(
+        this ValueTask<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+        string because = "", params object[] becauseArgs) where TError : Error =>
+        await resultTask.AsTask().BeFailureOfTypeAsync<TValue, TError>(timeout, cancellationToken, because, becauseArgs).ConfigureAwait(false);
+
     /// <summary>
     /// Asserts that the async result is a success.
     /// </summary>
