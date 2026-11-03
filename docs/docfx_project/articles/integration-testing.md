@@ -19,6 +19,9 @@ audience: [developer]
 | Assert a `Maybe<T>` carries / is empty | `maybe.Should().HaveValue()` / `.BeNone()` | [Maybe assertions](#maybe-assertions) |
 | Assert error code / detail / payload type | `error.Should().HaveCode(...)` / `.HaveDetailContaining(...)` / `.BeOfType<TError>()` | [Error assertions](#error-assertions) |
 | Assert a validation field violation | `unprocessable.Should().HaveFieldError(...)` | [Validation error assertions](#validation-error-assertions) |
+| Assert stable validation codes, input locations, typed arguments and exact violation sets | `HaveFieldViolation` / `HaveOnlyFieldViolations` and rule variants | [Validation error assertions](#validation-error-assertions) |
+| Record callback counts/arguments and control pending async receivers | `CallbackRecorder<TArgument>` / `ControlledAsync<T>` | [Callback and async helpers](#callback-and-async-helpers) |
+| Assert persistence intent without interface casts | `result.Should().HavePersistOnFailure(expected)` | [Result assertions](#result-assertions) |
 | Stub a repository with unique-constraint and not-found semantics | `new FakeRepository<TAggregate, TId>().WithUniqueConstraint(...)` | [FakeRepository](#fakerepository) |
 | Test commit decisions and nested ownership without a database | `new FakeUnitOfWork()` | [FakeUnitOfWork](#fakeunitofwork) |
 | Provide an actor inside a unit test | `new TestActorProvider(id, perms)` / `.WithActor(...)` scope | [TestActorProvider](#testactorprovider) |
@@ -155,6 +158,7 @@ Every command returns `Result<Unit>`. Assert on results directly instead of unpa
 | `BeFailureOfType<TError>()` | `Result<T>` via `.Should()` | Asserts the closed-ADT case (e.g. `Error.NotFound`). |
 | `HaveValue(expected)` / `HaveValueMatching(predicate)` / `HaveValueEquivalentTo(expected)` | `Result<T>` via `.Should()` | Value-shape checks without `.Which`. |
 | `HaveErrorCode(code)` / `HaveErrorDetail(text)` / `HaveErrorDetailContaining(substring)` | `Result<T>` via `.Should()` | Error-shape checks. |
+| `HavePersistOnFailure(expected)` | `Result<T>` or `IResult` via `.Should()` | Checks per-instance intent, not actual persistence or success/failure state. |
 | `BeSuccessAsync()` / `BeFailureAsync()` / `BeFailureOfTypeAsync<TError>()` | `Task<Result<T>>` **or** `ValueTask<Result<T>>` directly | **Not** an extension on `ResultAssertions<T>` — see warning below. |
 
 ```csharp
@@ -242,6 +246,60 @@ error.Should().HaveFieldCount(1);
 ```
 
 `HaveFieldError` accepts either `"email"` or `"/email"` — the field name is normalized via `InputPointer.ForProperty`.
+
+For stable machine-readable assertions, use `HaveFieldViolation(pointer, reasonCode)` or
+`HaveRuleViolation(reasonCode)`. Both require a unique match and return the original violation:
+
+```csharp
+var field = InputPointer.ForBody("/items/0/quantity");
+var invalid = Error.InvalidInput.ForField("quantity.minimum", field,
+    args: ValidationArgs.Of("min", 2));
+
+invalid.Should().HaveFieldViolation(field, "quantity.minimum")
+    .Which.Args.Should().Equal(ValidationArgs.Of("min", 2));
+invalid.Should().HaveFieldViolationCount(1).And.HaveOnlyRuleViolations([]);
+```
+
+The full input location matters: body and query pointers with the same path are different.
+`HaveOnlyFieldViolations(expected)` and `HaveOnlyRuleViolations(expected)` assert unordered
+multisets using domain equality, including typed arguments, detail and duplicate multiplicity.
+Assert both categories to exclude all extras. `HaveFieldViolationCount` and
+`HaveRuleViolationCount` count entries; `HaveFieldCount` continues to count distinct paths.
+
+## Callback and async helpers
+
+```csharp
+var calls = new CallbackRecorder<int>();
+var validate = calls.Wrap((int value) => Result.Ok(value * 2));
+
+validate(3).Should().HaveValue(6);
+calls.CallCount.Should().Be(1);
+calls.Arguments.Should().Equal([3]);
+
+var source = new ControlledAsync<Result<int>>();
+try
+{
+    source.Task.IsCompleted.Should().BeFalse();
+}
+finally
+{
+    source.TryComplete(Result.Ok(42));
+}
+
+(await source.Task.BeSuccessAsync(TimeSpan.FromSeconds(5), CancellationToken.None))
+    .Which.Should().Be(42);
+```
+
+Use parameterless `CallbackRecorder` for error factories and tuple arguments for multi-input
+callbacks. Recording is thread-safe and occurs before invocation, even when the callback throws;
+callbacks are not serialized and returned Task/ValueTask values are not consumed.
+
+`ControlledAsync<T>` can also fault (`TryFail`) or cancel (`TryCancel`) with original exceptions
+and tokens. Its ValueTask receiver is Task-backed, not a single-consumption source probe. Always
+release gates in `finally`. Bounded async assertions require both timeout and cancellation token,
+leaving existing assertion calls unchanged. A timeout or canceled wait does not cancel or complete
+the operation under test. Pass the test runner's token explicitly when available; the library
+does not depend on xUnit or infer a global timeout.
 
 ## FakeRepository
 

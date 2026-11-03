@@ -2,6 +2,22 @@
 
 public class ResultAssertionsTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HavePersistOnFailure_PerInstanceIntent_ReportsOppositeExpectation(bool persist)
+    {
+        var error = new Error.Forbidden("test.denied");
+        var result = persist ? Result.FailAfterCommit<int>(error) : Result.Fail<int>(error);
+
+        result.Should().BeFailure().And.HavePersistOnFailure(persist);
+        using var scope = new FluentAssertions.Execution.AssertionScope();
+
+        result.Should().HavePersistOnFailure(!persist, "commit intent matters");
+
+        scope.Discard().Should().ContainSingle().Which.Should().Contain("commit intent matters");
+    }
+
     [Fact]
     public void BeSuccess_Should_Pass_When_Result_Is_Success()
     {

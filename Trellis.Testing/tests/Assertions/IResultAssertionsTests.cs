@@ -10,6 +10,59 @@ using System;
 /// </summary>
 public class IResultAssertionsTests
 {
+    [Fact]
+    public void HavePersistOnFailure_ResultWithoutOptionalInterface_HasNoOptIn()
+    {
+        IResult result = new PlainFailure(new Error.Forbidden("test.denied"));
+
+        result.Should().HavePersistOnFailure(false);
+        using var scope = new FluentAssertions.Execution.AssertionScope();
+
+        result.Should().HavePersistOnFailure(true);
+
+        scope.Discard().Should().ContainSingle();
+    }
+
+    private sealed class PlainFailure(Error error) : IResult
+    {
+        public bool IsSuccess => false;
+        public bool IsFailure => true;
+        public Error? Error => error;
+
+        public bool TryGetError([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Error? failure)
+        {
+            failure = error;
+            return true;
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HavePersistOnFailure_InterfaceReceiver_UsesPerInstanceIntent(bool persist)
+    {
+        var error = new Error.Forbidden("test.denied");
+        IResult result = persist ? Result.FailAfterCommit<int>(error) : Result.Fail<int>(error);
+
+        result.Should().HavePersistOnFailure(persist);
+        using var scope = new FluentAssertions.Execution.AssertionScope();
+
+        result.Should().HavePersistOnFailure(!persist);
+
+        scope.Discard().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void HavePersistOnFailure_NullReceiver_RecordsAssertionFailure()
+    {
+        IResult? result = null;
+        using var scope = new FluentAssertions.Execution.AssertionScope();
+
+        result.Should().HavePersistOnFailure(false);
+
+        scope.Discard().Should().ContainSingle().Which.Should().Contain("<null>");
+    }
+
     // BeSuccess
 
     [Fact]

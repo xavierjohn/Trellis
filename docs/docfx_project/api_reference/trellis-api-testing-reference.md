@@ -1,9 +1,9 @@
 ﻿---
 package: Trellis.Testing
 namespaces: [Trellis.Testing]
-types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", FakeUnitOfWork, TestActorProvider, TestActorScope, ActorIdentityAssertionsExtensions, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator]
+types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", FakeUnitOfWork, TestActorProvider, TestActorScope, ActorIdentityAssertionsExtensions, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator, CallbackRecorder, "CallbackRecorder<TArgument>", "ControlledAsync<T>"]
 version: v3
-last_verified: 2026-10-22
+last_verified: 2026-11-03
 audience: [llm]
 agent_usage: onDemand
 agent_description: "Open when writing unit or handler tests: Result/Maybe/error assertions, fake repositories, fake unit-of-work commits and scopes, and test actor providers (Trellis.Testing)."
@@ -31,6 +31,11 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-hand
 | Assert a generic result succeeded | `result.Should().BeSuccess()` / `.HaveValue(...)` | [`ResultAssertions<TValue>`](#resultassertionstvalue) |
 | Assert a result failed with a specific error case | `result.Should().BeFailureOfType<TError>()` | [`ResultAssertions<TValue>`](#resultassertionstvalue) |
 | Assert error code/detail | `.HaveErrorCode(...)`, `.HaveErrorDetail(...)`, `.HaveErrorDetailContaining(...)` | [`ResultAssertions<TValue>`](#resultassertionstvalue) |
+| Assert a full validation pointer/reason or exact typed violation payloads | `.HaveFieldViolation(pointer, code)`, `.HaveOnlyFieldViolations(expected)` and corresponding rule assertions | [`ValidationErrorAssertions`](#validationerrorassertions) |
+| Assert persistence intent without claiming a database commit | `.HavePersistOnFailure(expected)` on typed or interface result assertions | [Persistence intent](#persistence-intent) |
+| Record callback counts and ordered arguments | `CallbackRecorder` / `CallbackRecorder<TArgument>` | [Callback recorders](#callback-recorders) |
+| Control a genuinely pending Task/ValueTask receiver | `ControlledAsync<T>` | [`ControlledAsync<T>`](#controlledasynct) |
+| Bound an async assertion without canceling its source | `BeSuccessAsync(timeout, cancellationToken)` and failure variants | [Bounded async assertions](#bounded-async-assertions) |
 | Assert against `IResult` (e.g., `IAuthorizeResource<T>.Authorize` return value) | `result.Should().BeSuccess()` / `.BeFailureOfType<TError>()` — same surface, no `.HaveValue` since the non-generic interface carries no typed value | [`IResultAssertions`](#iresultassertions) |
 | Extract success value in tests only | `result.Unwrap()` | [Usage notes](#usage-notes) |
 | Extract error in tests only | `result.UnwrapError()` | [Usage notes](#usage-notes) |
@@ -188,6 +193,22 @@ public class IResultAssertions : ReferenceTypeAssertions<IResult, IResultAsserti
 #### `UnwrapError(this Result<Unit>)`
 The `UnwrapError` extension also has a `Result<Unit>`-specific overload at `Trellis.Testing.UnwrapExtensions.UnwrapError(this Result<Unit>)` for tests asserting on no-payload results.
 
+#### Persistence intent
+
+Both `ResultAssertions<TValue>` and `IResultAssertions` provide `HavePersistOnFailure`:
+
+```csharp
+public AndConstraint<ResultAssertions<TValue>> HavePersistOnFailure(
+    bool expected, string because = "", params object[] becauseArgs);
+public AndConstraint<IResultAssertions> HavePersistOnFailure(
+    bool expected, string because = "", params object[] becauseArgs);
+```
+
+Checks the per-instance `IPersistOnFailure.PersistOnFailure` flag, not merely whether the interface
+exists. An `IResult` without that optional interface has no opt-in (`false`); a null receiver is an
+assertion failure, including inside `AssertionScope`. The assertion does not assert success/failure
+or prove a commit, rollback, or database atomicity. Chain a state assertion separately.
+
 #### `ResultAssertionsAsyncExtensions`
 ```csharp
 public static class ResultAssertionsAsyncExtensions
@@ -225,6 +246,39 @@ public static class ResultAssertionsAsyncExtensions
         where TError : Error;
 }
 ```
+
+#### Bounded async assertions
+
+The existing names also accept a required timeout **and** cancellation token. Requiring both leaves
+existing single-argument `because`/`default` calls unambiguous. These overloads are extensions on the
+awaitable, not on `.Should()`.
+
+```csharp
+public static Task<AndWhichConstraint<ResultAssertions<TValue>, TValue>> BeSuccessAsync<TValue>(
+    this Task<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+    string because = "", params object[] becauseArgs);
+public static Task<AndWhichConstraint<ResultAssertions<TValue>, Error>> BeFailureAsync<TValue>(
+    this Task<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+    string because = "", params object[] becauseArgs);
+public static Task<AndWhichConstraint<ResultAssertions<TValue>, TError>> BeFailureOfTypeAsync<TValue, TError>(
+    this Task<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+    string because = "", params object[] becauseArgs) where TError : Error;
+public static ValueTask<AndWhichConstraint<ResultAssertions<TValue>, TValue>> BeSuccessAsync<TValue>(
+    this ValueTask<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+    string because = "", params object[] becauseArgs);
+public static ValueTask<AndWhichConstraint<ResultAssertions<TValue>, Error>> BeFailureAsync<TValue>(
+    this ValueTask<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+    string because = "", params object[] becauseArgs);
+public static ValueTask<AndWhichConstraint<ResultAssertions<TValue>, TError>> BeFailureOfTypeAsync<TValue, TError>(
+    this ValueTask<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
+    string because = "", params object[] becauseArgs) where TError : Error;
+```
+
+`TimeoutException`, source exceptions and cancellation propagate unchanged. The token and timeout
+bound only the assertion wait; they do not complete or cancel the source operation. Use `finally`
+to release controlled sources. Timeout validation follows `Task.WaitAsync` (including infinite
+timeouts). Each ValueTask is converted to Task once; do not consume the original again. No xUnit,
+test-runner token, or global timeout is inferred by the library.
 
 #### `MaybeAssertionsExtensions`
 ```csharp
@@ -370,8 +424,45 @@ public class ValidationErrorAssertions : ReferenceTypeAssertions<Error.InvalidIn
         int expectedCount,                             // counts distinct field paths
         string because = "",
         params object[] becauseArgs);
+
+    public AndWhichConstraint<ValidationErrorAssertions, FieldViolation> HaveFieldViolation(
+        InputPointer field, string reasonCode, string because = "", params object[] becauseArgs);
+    public AndWhichConstraint<ValidationErrorAssertions, RuleViolation> HaveRuleViolation(
+        string reasonCode, string because = "", params object[] becauseArgs);
+    public AndConstraint<ValidationErrorAssertions> HaveFieldViolationCount(
+        int expectedCount, string because = "", params object[] becauseArgs);
+    public AndConstraint<ValidationErrorAssertions> HaveRuleViolationCount(
+        int expectedCount, string because = "", params object[] becauseArgs);
+    public AndConstraint<ValidationErrorAssertions> HaveOnlyFieldViolations(
+        IEnumerable<FieldViolation> expected, string because = "", params object[] becauseArgs);
+    public AndConstraint<ValidationErrorAssertions> HaveOnlyRuleViolations(
+        IEnumerable<RuleViolation> expected, string because = "", params object[] becauseArgs);
 }
 ```
+
+`HaveFieldViolation` matches the entire `InputPointer`, including `In`, and the reason code;
+`HaveRuleViolation` matches the reason code. Both require **exactly one** match and expose the
+original object through `.Which`, so its typed `Args`, related `Fields` and optional `Detail` can
+be asserted without reconstructing the error. They do not assert that other violations are absent.
+
+`HaveFieldViolationCount` and `HaveRuleViolationCount` count all entries, including duplicates.
+Count mismatches report the validation-error context, category, expected/actual counts and that category's violations.
+The existing `HaveFieldCount` still counts distinct paths and ignores input location.
+
+`HaveOnlyFieldViolations` and `HaveOnlyRuleViolations` compare **unordered multisets**, preserving
+duplicate multiplicity, even when FluentAssertions is globally configured for strict ordering.
+They use the violation records' domain equality: full pointers/locations,
+reason codes, typed argument contents and `Detail` all matter; a number is not equal to text.
+Related pointers *inside* a rule retain their domain-significant order. Each method asserts only
+its own category; assert both categories (including an empty collection) to exclude all extras.
+Null and empty argument dictionaries follow domain equality and compare equal. Constructing
+expected violation records still records validation metrics, just as ordinary record construction
+does; create expectations before starting a measurement probe when testing telemetry.
+
+All six structured assertions report a null subject through FluentAssertions rather than
+dereferencing it, including inside `AssertionScope`. Failed unique-match assertions return a
+default `.Which` inside a collecting scope: do not dereference it after a failed prerequisite.
+Null expected collections throw `ArgumentNullException`.
 
 #### `UnwrapExtensions`
 ```csharp
@@ -401,6 +492,60 @@ public sealed class UnwrapFailedException : Exception
     public UnwrapFailedException(string message, Exception innerException);
 }
 ```
+
+#### Callback recorders
+
+```csharp
+public sealed class CallbackRecorder
+{
+    public CallbackRecorder();
+    public int CallCount { get; }
+    public void Record();
+    public Action Wrap(Action callback);
+    public Func<TResult> Wrap<TResult>(Func<TResult> callback);
+}
+
+public sealed class CallbackRecorder<TArgument>
+{
+    public CallbackRecorder();
+    public int CallCount { get; }
+    public IReadOnlyList<TArgument> Arguments { get; }
+    public void Record(TArgument argument);
+    public Action<TArgument> Wrap(Action<TArgument> callback);
+    public Func<TArgument, TResult> Wrap<TResult>(Func<TArgument, TResult> callback);
+}
+```
+
+Recording happens at callback entry, even when the callback throws. Returned values and original
+exceptions pass through unchanged; Task/ValueTask results are **not** awaited or consumed. Recording
+is thread-safe, but callbacks are not serialized. `Arguments` is a snapshot in recording order,
+not completion order; argument objects are not cloned. Use a tuple argument for multiple inputs.
+Use one recorder per test; there is no shared global state or reset lifecycle. Null callbacks
+throw `ArgumentNullException` before recording.
+
+#### `ControlledAsync<T>`
+
+```csharp
+public sealed class ControlledAsync<T>
+{
+    public ControlledAsync();
+    public Task<T> Task { get; }
+    public ValueTask<T> ValueTask { get; }
+    public bool TryComplete(T value);
+    public bool TryFail(Exception exception);
+    public bool TryCancel(CancellationToken cancellationToken = default);
+}
+```
+
+Starts genuinely pending and uses `RunContinuationsAsynchronously`. All receivers share one
+terminal outcome: the first successful transition returns true; subsequent transitions return
+false without changing it. Values, exception objects and cancellation tokens are preserved.
+`TryCancel` associates a token with the canceled source; it does not cancel the caller's token.
+`TryFail(null)` always throws `ArgumentNullException`.
+
+`ValueTask` is explicitly **Task-backed**, not a custom single-consumption `IValueTaskSource`
+probe. No implicit timeout, disposal or cleanup is performed. Release pending sources in `finally`
+and bound assertion waits explicitly; a failed assertion must not strand the operation.
 
 #### `AggregateTestMutator`
 ```csharp

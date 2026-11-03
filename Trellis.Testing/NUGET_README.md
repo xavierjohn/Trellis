@@ -31,6 +31,11 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 - **FakeUnitOfWork** — Configurable commit results, call/attempt counters, and deferred nested commits
 - **TestActorProvider** — Mutable actor/identity provider with shared async-flow scoping
 - **Identity agreement** — `await actorProvider.ShouldHaveConsistentActorIdentityAsync(identityProvider, ct)` compares sequential resolutions with provider-specific diagnostics
+- **Structured validation** — Match full pointers/reason codes, count violations, or assert exact field/rule payload multisets with typed arguments
+- **Persistence intent** — `HavePersistOnFailure(bool)` on typed and interface result assertions
+- **Callback recording** — `CallbackRecorder` / `CallbackRecorder<TArgument>` record counts and ordered argument snapshots without changing callback outcomes
+- **Controlled async sources** — `ControlledAsync<T>` exposes pending Task/Task-backed ValueTask receivers with explicit completion, fault and cancellation
+- **Bounded async assertions** — Existing success/failure assertions accept an explicit timeout and cancellation token without canceling the source operation
 
 `FakeUnitOfWork` implements provider-neutral `IUnitOfWork` without EF Core or Mediator.
 It tests commit decisions and scope ownership, not persistence atomicity or rollback.

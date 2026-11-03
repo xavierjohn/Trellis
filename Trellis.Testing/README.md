@@ -34,6 +34,57 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 - **Identity agreement** — `await actorProvider.ShouldHaveConsistentActorIdentityAsync(identityProvider, ct)` asserts the full actor's ID matches identity-only resolution, sequentially and with provider-specific diagnostics
 - **AggregateTestMutator** — Reflection helpers for setting `Maybe<T>` backing fields in tests
 
+## Structured validation and pipeline assertions
+
+Assert stable payloads rather than rendered English messages:
+
+```csharp
+var field = InputPointer.ForBody("/items/0/quantity");
+var error = Error.InvalidInput.ForField("quantity.minimum", field,
+    args: ValidationArgs.Of("min", 2));
+
+error.Should().HaveFieldViolation(field, "quantity.minimum")
+    .Which.Args.Should().Equal(ValidationArgs.Of("min", 2));
+error.Should().HaveFieldViolationCount(1).And.HaveOnlyRuleViolations([]);
+Result.FailAfterCommit<int>(error).Should().HavePersistOnFailure(true);
+```
+
+`HaveFieldViolation` and `HaveRuleViolation` return a unique original match. The
+`HaveOnlyFieldViolations` / `HaveOnlyRuleViolations` assertions compare exact unordered
+payload multisets, including typed arguments, input locations, detail and duplicate
+multiplicity. `HaveFieldCount` keeps its existing distinct-path meaning; the new
+violation-count assertions count every entry. Persistence intent is not proof of a commit.
+
+## Callback recording and controlled async sources
+
+```csharp
+var factory = new CallbackRecorder();
+var source = new ControlledAsync<Maybe<int>>();
+var conversion = source.Task.ToResultAsync(
+    factory.Wrap(() => new Error.Forbidden("test.absent")));
+
+try
+{
+    conversion.IsCompleted.Should().BeFalse();
+    factory.CallCount.Should().Be(0);
+}
+finally
+{
+    source.TryComplete(Maybe<int>.None);
+}
+
+await conversion.BeFailureAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
+factory.CallCount.Should().Be(1);
+```
+
+Use `CallbackRecorder<TArgument>` for ordered argument snapshots (`Arguments`), including
+tuple arguments. Recording is thread-safe; callback outcomes and awaitables pass through
+unchanged. `ControlledAsync<T>` also exposes a Task-backed `ValueTask` and explicit
+`TryFail` / `TryCancel` transitions. It is not a custom single-consumption ValueTask probe.
+Bounded success/failure/typed-failure assertions accept both timeout and cancellation token;
+they stop only the assertion wait, not the source operation. Always release pending sources.
+The helpers remain test-runner-agnostic.
+
 ## FakeUnitOfWork
 
 Use `FakeUnitOfWork` when a test exercises the real transactional command behavior

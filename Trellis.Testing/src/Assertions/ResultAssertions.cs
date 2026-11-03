@@ -31,6 +31,21 @@ public class ResultAssertions<TValue> : ReferenceTypeAssertions<Result<TValue>, 
     /// <inheritdoc/>
     protected override string Identifier => "result";
 
+    /// <summary>Asserts the per-instance persistence intent without asserting the result state or a database commit.</summary>
+    /// <param name="expected">Whether the result should opt into persistence on failure.</param>
+    /// <param name="because">A formatted explanation of the assertion.</param>
+    /// <param name="becauseArgs">Arguments for the explanation.</param>
+    public AndConstraint<ResultAssertions<TValue>> HavePersistOnFailure(
+        bool expected, string because = "", params object[] becauseArgs)
+    {
+        var actual = Subject is IPersistOnFailure { PersistOnFailure: true };
+        Execute.Assertion
+            .BecauseOf(because, becauseArgs)
+            .ForCondition(actual == expected)
+            .FailWith("Expected {context:result} to have PersistOnFailure {0}{reason}, but found {1}.", expected, actual);
+        return new(this);
+    }
+
     /// <summary>
     /// Asserts that the result is a success.
     /// </summary>
