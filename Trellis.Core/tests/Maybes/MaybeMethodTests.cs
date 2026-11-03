@@ -411,11 +411,11 @@ public class MaybeMethodTests
     public void HasValueWhere_WhenNone_ShouldNotEvaluatePredicate()
     {
         var sut = Maybe<int>.None;
-        var invocations = 0;
+        var invocations = new Trellis.Testing.CallbackRecorder<int>();
 
-        sut.HasValueWhere(_ => { invocations++; return true; });
+        sut.HasValueWhere(invocations.Wrap(_ => true));
 
-        invocations.Should().Be(0);
+        invocations.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -468,70 +468,50 @@ public class MaybeMethodTests
     public void Map_ReferenceProjection_NullResult_ReturnsNone()
     {
         var sut = Maybe.From("source");
-        var invocations = 0;
-        string? suppliedValue = null;
+        var invocations = new Trellis.Testing.CallbackRecorder<string>();
 
-        var result = sut.Map<string>(value =>
-        {
-            invocations++;
-            suppliedValue = value;
-            return null!;
-        });
+        var result = sut.Map<string>(invocations.Wrap<string>(_ => null!));
 
         result.HasNoValue.Should().BeTrue();
-        suppliedValue.Should().Be("source");
-        invocations.Should().Be(1);
+        invocations.Arguments.Should().Equal(["source"]);
+        invocations.CallCount.Should().Be(1);
     }
 
     [Fact]
     public void Map_AbsentSource_ThrowingSelector_SkipsSelector()
     {
         var sut = Maybe<string>.None;
-        var invocations = 0;
+        var invocations = new Trellis.Testing.CallbackRecorder<string>();
 
-        string ThrowIfInvoked(string _)
-        {
-            invocations++;
-            throw new InvalidOperationException("selector-must-not-run");
-        }
-
-        var result = sut.Map(ThrowIfInvoked);
+        var result = sut.Map(invocations.Wrap<string>(_ => throw new InvalidOperationException("selector-must-not-run")));
 
         result.HasNoValue.Should().BeTrue();
-        invocations.Should().Be(0);
+        invocations.CallCount.Should().Be(0);
     }
 
     [Fact]
     public void Map_ScalarProjection_ZeroResult_PreservesSome()
     {
         var sut = Maybe.From(5);
-        var invocations = 0;
+        var invocations = new Trellis.Testing.CallbackRecorder<int>();
 
-        var result = sut.Map(value =>
-        {
-            invocations++;
-            return value - 5;
-        });
+        var result = sut.Map(invocations.Wrap(value => value - 5));
 
         result.TryGetValue(out var projected).Should().BeTrue();
         projected.Should().Be(0);
-        invocations.Should().Be(1);
+        invocations.CallCount.Should().Be(1);
     }
 
     [Fact]
     public void Map_ScalarProjection_FalseResult_PreservesSome()
     {
         var sut = Maybe.From(5);
-        var invocations = 0;
+        var invocations = new Trellis.Testing.CallbackRecorder<int>();
 
-        var result = sut.Map(value =>
-        {
-            invocations++;
-            return value < 0;
-        });
+        var result = sut.Map(invocations.Wrap(value => value < 0));
 
         result.TryGetValue(out var projected).Should().BeTrue();
         projected.Should().BeFalse();
-        invocations.Should().Be(1);
+        invocations.CallCount.Should().Be(1);
     }
 }

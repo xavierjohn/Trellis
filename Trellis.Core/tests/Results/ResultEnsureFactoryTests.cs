@@ -18,16 +18,16 @@ public class ResultEnsureFactoryTests
     public async Task Ensure_Factory_Condition_InvokesFactoryOnlyOnFailure(GuardForm form, bool condition)
     {
         using var tracing = new ActivityTestHelper();
-        var calls = 0;
+        var calls = new CallbackRecorder();
         var error = new Error.Forbidden("guard.denied");
 
-        var result = await Evaluate(form, condition, () => { calls++; return error; });
+        var result = await Evaluate(form, condition, calls.Wrap<Error>(() => error));
 
         if (condition)
             result.Should().BeSuccess().Which.Should().Be(Unit.Default);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.Should().Be(condition ? 0 : 1);
+        calls.CallCount.Should().Be(condition ? 0 : 1);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("Ensure",
             condition ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
@@ -96,34 +96,34 @@ public class ResultEnsureFactoryTests
     [Fact]
     public void Ensure_PredicateFactory_NullFactory_DoesNotInvokePredicate()
     {
-        var calls = 0;
-        var act = () => Result.Ensure(() => { calls++; return true; }, errorFactory: null!);
+        var calls = new CallbackRecorder();
+        var act = () => Result.Ensure(calls.Wrap(() => true), errorFactory: null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
     public void Ensure_PredicateFactory_NullPredicate_DoesNotInvokeFactory()
     {
-        var calls = 0;
+        var calls = new CallbackRecorder();
         var act = () => Result.Ensure((Func<bool>)null!,
-            () => { calls++; return new Error.Forbidden("guard.denied"); });
+            calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("predicate");
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
     public void Ensure_PredicateFactory_ThrownPredicate_DoesNotInvokeFactory()
     {
         var exception = new InvalidOperationException("predicate failed");
-        var calls = 0;
+        var calls = new CallbackRecorder();
         var act = () => Result.Ensure((Func<bool>)(() => throw exception),
-            () => { calls++; return new Error.Forbidden("guard.denied"); });
+            calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
         act.Should().Throw<InvalidOperationException>().Which.Should().BeSameAs(exception);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Theory]
@@ -131,44 +131,48 @@ public class ResultEnsureFactoryTests
     [InlineData(false)]
     public async Task EnsureAsync_Factory_PendingPredicate_WaitsBeforeCreatingError(bool condition)
     {
-        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var predicateCalls = 0;
-        var factoryCalls = 0;
+        var completion = new ControlledAsync<bool>();
+        var predicateCalls = new CallbackRecorder();
+        var factoryCalls = new CallbackRecorder();
         var pending = Result.EnsureAsync(
-            () => { predicateCalls++; return completion.Task; },
-            () => { factoryCalls++; return new Error.Forbidden("guard.denied"); });
+            predicateCalls.Wrap(() => completion.Task),
+            factoryCalls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
-        predicateCalls.Should().Be(1);
-        factoryCalls.Should().Be(0);
-        pending.IsCompleted.Should().BeFalse();
-        completion.SetResult(condition);
+        var result = await pending.ShouldBePendingThenReleaseAsync(
+            () => completion.TryComplete(condition),
+            TimeSpan.FromSeconds(30),
+            TestContext.Current.CancellationToken,
+            whilePending: () =>
+            {
+                predicateCalls.CallCount.Should().Be(1);
+                factoryCalls.CallCount.Should().Be(0);
+            });
 
-        var result = await pending.WaitAsync(TestContext.Current.CancellationToken);
         result.IsSuccess.Should().Be(condition);
-        predicateCalls.Should().Be(1);
-        factoryCalls.Should().Be(condition ? 0 : 1);
+        predicateCalls.CallCount.Should().Be(1);
+        factoryCalls.CallCount.Should().Be(condition ? 0 : 1);
     }
 
     [Fact]
     public async Task EnsureAsync_Factory_NullFactory_DoesNotInvokePredicate()
     {
-        var calls = 0;
+        var calls = new CallbackRecorder();
         var act = () => Result.EnsureAsync(
-            () => { calls++; return Task.FromResult(true); }, errorFactory: null!);
+            calls.Wrap(() => Task.FromResult(true)), errorFactory: null!);
 
         await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task EnsureAsync_Factory_NullPredicate_DoesNotInvokeFactory()
     {
-        var calls = 0;
+        var calls = new CallbackRecorder();
         var act = () => Result.EnsureAsync((Func<Task<bool>>)null!,
-            () => { calls++; return new Error.Forbidden("guard.denied"); });
+            calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
         await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("predicate");
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Theory]
@@ -177,27 +181,28 @@ public class ResultEnsureFactoryTests
     public async Task EnsureAsync_Factory_PredicateException_DoesNotInvokeFactory(bool throwSynchronously)
     {
         var exception = new InvalidOperationException("predicate failed");
-        var calls = 0;
+        var calls = new CallbackRecorder();
         Func<Task<bool>> predicate = throwSynchronously
             ? () => throw exception
             : () => Task.FromException<bool>(exception);
         var act = () => Result.EnsureAsync(predicate,
-            () => { calls++; return new Error.Forbidden("guard.denied"); });
+            calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(exception);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task EnsureAsync_Factory_CancelledPredicate_PropagatesCancellationWithoutFactory()
     {
-        var token = new CancellationToken(canceled: true);
-        var calls = 0;
-        var act = () => Result.EnsureAsync(() => Task.FromCanceled<bool>(token),
-            () => { calls++; return new Error.Forbidden("guard.denied"); });
+        using var canceled = CanceledToken.Create();
+        var calls = new CallbackRecorder();
 
-        (await act.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(token);
-        calls.Should().Be(0);
+        await Result.EnsureAsync(canceled.ToTask<bool>,
+            calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")))
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]

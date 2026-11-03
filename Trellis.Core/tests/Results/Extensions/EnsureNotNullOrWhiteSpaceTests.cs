@@ -18,23 +18,20 @@ public class EnsureNotNullOrWhiteSpaceTests
     [InlineData(GuardForm.Field, " Ada ")]
     public void EnsureNotNullOrWhiteSpace_AllForms_ValidValue_ReturnsSameString(GuardForm form, string value)
     {
-        var calls = 0;
+        var calls = new CallbackRecorder();
         using var tracing = new ActivityTestHelper();
 
         var (result, violations) = MeasureValidation(() => form switch
         {
             GuardForm.Error => value.EnsureNotNullOrWhiteSpace(new Error.Unexpected("unused")),
-            GuardForm.Factory => value.EnsureNotNullOrWhiteSpace(() =>
-            {
-                calls++;
-                return Error.InvalidInput.ForField(ValidationCodes.ValueNotEmpty, "name");
-            }),
+            GuardForm.Factory => value.EnsureNotNullOrWhiteSpace(
+                calls.Wrap<Error>(() => Error.InvalidInput.ForField(ValidationCodes.ValueNotEmpty, "name"))),
             GuardForm.Field => value.EnsureNotNullOrWhiteSpace("name", "Name is required."),
             _ => throw new ArgumentOutOfRangeException(nameof(form)),
         });
 
         result.Should().BeSuccess().Which.Should().BeSameAs(value);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
         violations.Should().Be(0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Ok);
@@ -49,13 +46,13 @@ public class EnsureNotNullOrWhiteSpaceTests
     public void EnsureNotNullOrWhiteSpace_Factory_BlankValue_InvokesOnceAndPreservesError(string? value)
     {
         var error = new Error.Forbidden("name.denied");
-        var calls = 0;
+        var calls = new CallbackRecorder();
         using var tracing = new ActivityTestHelper();
 
-        var result = value.EnsureNotNullOrWhiteSpace(() => { calls++; return error; });
+        var result = value.EnsureNotNullOrWhiteSpace(calls.Wrap<Error>(() => error));
 
         result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Error);
     }

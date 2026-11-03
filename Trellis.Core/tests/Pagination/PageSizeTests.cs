@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Pagination;
 
 using System;
+using Trellis.Testing;
 
 /// <summary>
 /// Unit tests for the <see cref="PageSize"/> request/applied pair carrying both the
@@ -202,9 +203,7 @@ public class PageSizeTests
         var size = PageSize.FromRequested(200);
         var page = new Page<int>([1, 2, 3], Next: null, Previous: null, RequestedLimit: size.Requested, AppliedLimit: size.Applied);
 
-        page.RequestedLimit.Should().Be(200);
-        page.AppliedLimit.Should().Be(PageSize.Max);
-        page.WasCapped.Should().BeTrue();
+        page.Should().HaveRequestedLimit(200).And.HaveAppliedLimit(PageSize.Max).And.BeCapped();
     }
 
     [Theory]

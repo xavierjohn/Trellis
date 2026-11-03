@@ -19,13 +19,13 @@ public class ResultEnsureNotNullTests
     {
         var value = present ? new object() : null;
         var error = Error.InvalidInput.ForField(ValidationCodes.ValueNotNull, "field", detail: "Required.");
-        var calls = 0;
+        var calls = new CallbackRecorder();
         using var tracing = new ActivityTestHelper();
 
         var result = form switch
         {
             GuardForm.Error => Result.EnsureNotNull(value, error),
-            GuardForm.Factory => Result.EnsureNotNull(value, () => { calls++; return error; }),
+            GuardForm.Factory => Result.EnsureNotNull(value, calls.Wrap<Error>(() => error)),
             GuardForm.Required => Result.EnsureNotNull(value, "field", "Required."),
             _ => throw new ArgumentOutOfRangeException(nameof(form)),
         };
@@ -36,7 +36,7 @@ public class ResultEnsureNotNullTests
             result.Should().BeFailure().Which.Should().Be(error);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNull",
             present ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
@@ -53,13 +53,13 @@ public class ResultEnsureNotNullTests
     {
         int? value = present ? 0 : null;
         var error = Error.InvalidInput.ForField(ValidationCodes.ValueNotNull, "field", detail: "Required.");
-        var calls = 0;
+        var calls = new CallbackRecorder();
         using var tracing = new ActivityTestHelper();
 
         var result = form switch
         {
             GuardForm.Error => Result.EnsureNotNull(value, error),
-            GuardForm.Factory => Result.EnsureNotNull(value, () => { calls++; return error; }),
+            GuardForm.Factory => Result.EnsureNotNull(value, calls.Wrap<Error>(() => error)),
             GuardForm.Required => Result.EnsureNotNull(value, "field", "Required."),
             _ => throw new ArgumentOutOfRangeException(nameof(form)),
         };
@@ -70,7 +70,7 @@ public class ResultEnsureNotNullTests
             result.Should().BeFailure().Which.Should().Be(error);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNull",
             present ? ActivityStatusCode.Ok : ActivityStatusCode.Error);

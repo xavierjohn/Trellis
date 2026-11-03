@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Trellis.Testing;
 
 public sealed class PageBuilderTests
 {
@@ -22,11 +23,8 @@ public sealed class PageBuilderTests
 
         var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
-        page.Items.Count.Should().Be(2);
-        page.Next.Should().BeNull();
-        page.Previous.Should().BeNull();
-        page.RequestedLimit.Should().Be(10);
-        page.AppliedLimit.Should().Be(10);
+        page.Should().HaveCount(2).And.BeLastPage().And.BeFirstPage()
+            .And.HaveRequestedLimit(10).And.HaveAppliedLimit(10);
     }
 
     [Fact]
@@ -42,9 +40,7 @@ public sealed class PageBuilderTests
 
         var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
-        page.Items.Count.Should().Be(3);
-        page.Next.Should().BeNull();
-        page.Previous.Should().BeNull();
+        page.Should().HaveCount(3).And.BeLastPage().And.BeFirstPage();
     }
 
     [Fact]
@@ -63,11 +59,10 @@ public sealed class PageBuilderTests
 
         var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
-        page.Items.Count.Should().Be(3);
-        page.Next.Should().NotBeNull();
-        page.Previous.Should().BeNull();
+        page.Should().HaveCount(3).And.BeFirstPage();
+        var next = page.Should().HaveNextCursor().Which;
 
-        var decoded = CursorCodec.TryDecode<Guid>(page.Next!);
+        var decoded = CursorCodec.TryDecode<Guid>(next);
         decoded.IsSuccess.Should().BeTrue();
         decoded.TryGetValue(out var decodedId).Should().BeTrue();
         decodedId.Should().Be(lastKeptId);
@@ -81,9 +76,7 @@ public sealed class PageBuilderTests
 
         var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
-        page.Items.Count.Should().Be(0);
-        page.Next.Should().BeNull();
-        page.Previous.Should().BeNull();
+        page.Should().BeEmpty().And.BeLastPage().And.BeFirstPage();
     }
 
     [Fact]
@@ -96,11 +89,8 @@ public sealed class PageBuilderTests
 
         var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.Id));
 
-        page.Items.Count.Should().Be(100);
-        page.RequestedLimit.Should().Be(1000);
-        page.AppliedLimit.Should().Be(100);
-        page.WasCapped.Should().BeTrue();
-        page.Next.Should().NotBeNull();
+        page.Should().HaveCount(100).And.HaveRequestedLimit(1000).And.HaveAppliedLimit(100).And.BeCapped()
+            .And.HaveNextCursor();
     }
 
     // ───── Composite over-fetch ────────────────────────────────────────────────
@@ -123,11 +113,10 @@ public sealed class PageBuilderTests
 
         var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.CreatedAt, r.Id));
 
-        page.Items.Count.Should().Be(2);
-        page.Next.Should().NotBeNull();
-        page.Previous.Should().BeNull();
+        page.Should().HaveCount(2).And.BeFirstPage();
+        var next = page.Should().HaveNextCursor().Which;
 
-        var decoded = CursorCodec.TryDecodeComposite<Guid>(page.Next!);
+        var decoded = CursorCodec.TryDecodeComposite<Guid>(next);
         decoded.IsSuccess.Should().BeTrue();
         decoded.TryGetValue(out var pair).Should().BeTrue();
         pair.CreatedAt.Should().Be(lastKeptCreated);
@@ -142,9 +131,7 @@ public sealed class PageBuilderTests
 
         var page = PageBuilder.FromOverFetch(fetched, pageSize, r => CursorCodec.Encode(r.CreatedAt, r.Id));
 
-        page.Items.Count.Should().Be(0);
-        page.Next.Should().BeNull();
-        page.Previous.Should().BeNull();
+        page.Should().BeEmpty().And.BeLastPage().And.BeFirstPage();
     }
 
     // ───── Defensive validation ────────────────────────────────────────────────
