@@ -1,6 +1,8 @@
 ﻿namespace Trellis.Core.Tests.Errors;
 
+using System.Buffers;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Trellis;
@@ -182,5 +184,66 @@ public class ValidationArgValueTests
     {
         ValidationArgValue converted = "abc";
         converted.Should().Be(new ValidationArgValue.Text("abc"));
+    }
+
+    [Fact]
+    public void Reading_SegmentedNumber_ExactValue_PreservesValue() =>
+        ReadSegmentedNumber("1", "e2").Should().BeOfType<ValidationArgValue.Number>()
+            .Which.Value.Should().Be(100m);
+
+    [Theory]
+    [InlineData("1", ".00000000000000000000000000001")]
+    [InlineData("1", "E+100")]
+    public void Reading_SegmentedNumber_UnrepresentableValue_ThrowsJsonException(string first, string second)
+    {
+        var read = () => ReadSegmentedNumber(first, second);
+
+        read.Should().ThrowExactly<JsonException>();
+    }
+
+    [Fact]
+    public void Reading_SegmentedNestedList_ExactNumber_PreservesValue()
+    {
+        var reader = new Utf8JsonReader(JsonSequenceSegment.Create("[[1", "e2]]"), isFinalBlock: true, state: default);
+        reader.Read().Should().BeTrue();
+        reader.TokenType.Should().Be(JsonTokenType.StartArray);
+
+        var numericReader = reader;
+        numericReader.Read().Should().BeTrue();
+        numericReader.TokenType.Should().Be(JsonTokenType.StartArray);
+        numericReader.Read().Should().BeTrue();
+        numericReader.TokenType.Should().Be(JsonTokenType.Number);
+        numericReader.HasValueSequence.Should().BeTrue();
+
+        var value = new ValidationArgValueJsonConverter().Read(ref reader, typeof(ValidationArgValue), new JsonSerializerOptions());
+
+        value.Should().Be(ValidationArgValue.ListOf(ValidationArgValue.ListOf(100m)));
+    }
+
+    private static ValidationArgValue? ReadSegmentedNumber(string first, string second)
+    {
+        var reader = new Utf8JsonReader(JsonSequenceSegment.Create(first, second), isFinalBlock: true, state: default);
+        reader.Read().Should().BeTrue();
+        reader.TokenType.Should().Be(JsonTokenType.Number);
+        reader.HasValueSequence.Should().BeTrue();
+
+        return new ValidationArgValueJsonConverter().Read(ref reader, typeof(ValidationArgValue), new JsonSerializerOptions());
+    }
+
+    private sealed class JsonSequenceSegment : ReadOnlySequenceSegment<byte>
+    {
+        private JsonSequenceSegment(string json) => Memory = Encoding.UTF8.GetBytes(json);
+
+        public static ReadOnlySequence<byte> Create(string first, string second)
+        {
+            var head = new JsonSequenceSegment(first);
+            var tail = new JsonSequenceSegment(second)
+            {
+                RunningIndex = head.Memory.Length,
+            };
+            head.Next = tail;
+
+            return new ReadOnlySequence<byte>(head, 0, tail, tail.Memory.Length);
+        }
     }
 }
