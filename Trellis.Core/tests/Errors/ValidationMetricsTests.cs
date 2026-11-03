@@ -1,6 +1,9 @@
 ﻿namespace Trellis.Core.Tests.Errors;
 
 using System.Diagnostics.Metrics;
+using System.Reflection;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
 using Trellis.Testing;
 
 /// <summary>
@@ -175,10 +178,15 @@ public class ValidationMetricsTests
     [Fact]
     public void Every_framework_code_is_tagged_under_its_own_name()
     {
-        ValidationMetrics.Bucket(ValidationCodes.MoneyCurrencyMismatch)
-            .Should().Be(ValidationCodes.MoneyCurrencyMismatch);
-        ValidationMetrics.Bucket(ValidationCodes.EnumNameUndefined)
-            .Should().Be(ValidationCodes.EnumNameUndefined);
+        var codes = typeof(ValidationCodes)
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
+            .Select(field => (string)field.GetRawConstantValue()!)
+            .ToArray();
+        codes.Should().NotBeEmpty();
+
+        foreach (var code in codes)
+            ValidationMetrics.Bucket(code).Should().Be(code);
         ValidationMetrics.Bucket(null).Should().Be(ValidationMetrics.OtherCode);
     }
 
@@ -190,6 +198,22 @@ public class ValidationMetricsTests
         var act = () => builder.AddTrellisValidationInstrumentation();
 
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void AddTrellisValidationInstrumentation_RealProvider_RecordedViolation_CollectsCounter()
+    {
+        var builder = Sdk.CreateMeterProviderBuilder();
+        var configured = builder.AddTrellisValidationInstrumentation();
+        configured.Should().BeSameAs(builder);
+        var exporter = new ValidationMetricExporter();
+        var reader = new BaseExportingMetricReader(exporter);
+        using var provider = configured.AddReader(reader).Build();
+
+        _ = Error.InvalidInput.ForField(code: ValidationCodes.FormatGuid, field: "id");
+
+        reader.Collect(timeoutMilliseconds: 10_000).Should().BeTrue();
+        exporter.ObservedValidationCounter.Should().BeTrue();
     }
 
     /// <summary>
@@ -253,6 +277,29 @@ public class ValidationMetricsTests
             }
 
             _measurements.Add((code, violation, measurement));
+        }
+    }
+
+    private sealed class ValidationMetricExporter : BaseExporter<Metric>
+    {
+        public bool ObservedValidationCounter { get; private set; }
+
+        public override ExportResult Export(in Batch<Metric> batch)
+        {
+            foreach (var metric in batch)
+            {
+                if (metric.MeterName != "Trellis.Validation"
+                    || metric.Name != "trellis.validation.failures"
+                    || metric.Unit != "{failure}"
+                    || metric.MetricType != MetricType.LongSum)
+                    continue;
+
+                foreach (var point in metric.GetMetricPoints())
+                    if (point.GetSumLong() > 0)
+                        ObservedValidationCounter = true;
+            }
+
+            return ExportResult.Success;
         }
     }
 }

@@ -8,6 +8,7 @@
 		<ProjectReference Include="..\..\docs\docfx_project\api_reference\audit-completeness\audit-completeness.csproj" />
 		<PackageReference Include="Markdig" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+		<PackageReference Include="OpenTelemetry" />
 	</ItemGroup>
 
 </Project>
