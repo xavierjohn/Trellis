@@ -92,4 +92,26 @@ public class OptionalTests
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("function");
     }
+
+    [Fact]
+    public void Optional_Reference_NullInputAndFunction_ThrowsForFunction()
+    {
+        string? value = null;
+        Func<string, Result<string>> function = null!;
+
+        var act = () => Maybe.Optional<string, string>(value, function);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("function");
+    }
+
+    [Fact]
+    public void Optional_Value_NullInputAndFunction_ThrowsForFunction()
+    {
+        int? value = null;
+        Func<int, Result<string>> function = null!;
+
+        var act = () => Maybe.Optional<int, string>(value, function);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("function");
+    }
 }

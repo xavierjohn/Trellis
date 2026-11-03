@@ -16,13 +16,19 @@ public class MaybeOptionalTests
     {
         // Arrange
         string? nullString = null;
+        var calls = 0;
 
         // Act
-        var result = Maybe.Optional(nullString, str => Result.Ok(str.ToUpperInvariant()));
+        var result = Maybe.Optional(nullString, str =>
+        {
+            calls++;
+            return Result.Ok(str.ToUpperInvariant());
+        });
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().HasValue.Should().BeFalse();
+        calls.Should().Be(0);
     }
 
     [Fact]
@@ -30,13 +36,19 @@ public class MaybeOptionalTests
     {
         // Arrange
         int? nullInt = null;
+        var calls = 0;
 
         // Act - Return a non-nullable wrapper type
-        var result = Maybe.Optional<int, WrappedInt>(nullInt, num => Result.Ok(new WrappedInt(num * 2)));
+        var result = Maybe.Optional<int, WrappedInt>(nullInt, num =>
+        {
+            calls++;
+            return Result.Ok(new WrappedInt(num * 2));
+        });
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().HasValue.Should().BeFalse();
+        calls.Should().Be(0);
     }
 
     [Fact]
