@@ -88,7 +88,11 @@ public class ValidationErrorAssertions : ReferenceTypeAssertions<Error.InvalidIn
         int expectedCount, string because = "", params object[] becauseArgs)
     {
         if (RequireNonNullSubject(because, becauseArgs))
-            Subject.Fields.Items.Should().HaveCount(expectedCount, because, becauseArgs);
+            Execute.Assertion
+                .BecauseOf(because, becauseArgs)
+                .ForCondition(Subject.Fields.Items.Length == expectedCount)
+                .FailWith("Expected {context:validationError} to contain {0} field violations{reason}, but found {1}. Violations: {2}",
+                    expectedCount, Subject.Fields.Items.Length, Subject.Fields.Items);
         return new(this);
     }
 
@@ -100,7 +104,11 @@ public class ValidationErrorAssertions : ReferenceTypeAssertions<Error.InvalidIn
         int expectedCount, string because = "", params object[] becauseArgs)
     {
         if (RequireNonNullSubject(because, becauseArgs))
-            Subject.Rules.Items.Should().HaveCount(expectedCount, because, becauseArgs);
+            Execute.Assertion
+                .BecauseOf(because, becauseArgs)
+                .ForCondition(Subject.Rules.Items.Length == expectedCount)
+                .FailWith("Expected {context:validationError} to contain {0} rule violations{reason}, but found {1}. Violations: {2}",
+                    expectedCount, Subject.Rules.Items.Length, Subject.Rules.Items);
         return new(this);
     }
 

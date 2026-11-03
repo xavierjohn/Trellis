@@ -6,6 +6,31 @@ public class ValidationErrorAssertionsTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public void HaveViolationCount_Diagnostics_CountMismatch_ReportsCategoryAndPayload(bool fieldViolations)
+    {
+        var error = new Error.InvalidInput(
+            EquatableArray.Create(new FieldViolation(InputPointer.ForBody("/quantity"), "test.minimum")),
+            EquatableArray.Create(new RuleViolation("test.range")));
+        var category = fieldViolations ? "field" : "rule";
+        using var scope = new FluentAssertions.Execution.AssertionScope();
+
+        if (fieldViolations)
+            error.Should().HaveFieldViolationCount(2, "the {0} payload must match", category);
+        else
+            error.Should().HaveRuleViolationCount(2, "the {0} payload must match", category);
+
+        scope.Discard().Should().ContainSingle().Which.Should()
+            .Contain("validationError")
+            .And.Contain($"2 {category} violations")
+            .And.Contain("found 1")
+            .And.Contain($"the {category} payload must match")
+            .And.Contain(fieldViolations ? "test.minimum" : "test.range")
+            .And.NotContain(fieldViolations ? "test.range" : "test.minimum");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public void HaveOnlyViolations_GlobalStrictOrdering_ReorderedPayloads_Passes(bool fieldViolations)
     {
         var previous = new FluentAssertions.Equivalency.EquivalencyAssertionOptions();

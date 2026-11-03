@@ -11,7 +11,7 @@ public class ResultAssertionsAsyncTests
     [InlineData(1, true)]
     [InlineData(2, false)]
     [InlineData(2, true)]
-    public async Task BoundedAssertions_WrongOutcome_ReportsAssertionFailure(int kind, bool valueTask)
+    public async Task BoundedAssertions_AllOverloads_WrongOutcome_ReportsAssertionFailure(int kind, bool valueTask)
     {
         var result = kind == 0 ? Result.Fail<int>(new Error.Forbidden("test.denied")) : Result.Ok(42);
         Func<Task> act = async () =>
@@ -36,7 +36,8 @@ public class ResultAssertionsAsyncTests
                 await Task.FromResult(result).BeFailureOfTypeAsync<int, Error.Forbidden>(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         };
 
-        await act.Should().ThrowAsync<Exception>().WithMessage("*Expected*");
+        await act.Should().ThrowAsync<Xunit.Sdk.XunitException>()
+            .WithMessage(kind == 0 ? "*to be success*" : "*to be failure*");
     }
 
     [Theory]

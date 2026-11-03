@@ -446,6 +446,7 @@ original object through `.Which`, so its typed `Args`, related `Fields` and opti
 be asserted without reconstructing the error. They do not assert that other violations are absent.
 
 `HaveFieldViolationCount` and `HaveRuleViolationCount` count all entries, including duplicates.
+Count mismatches report the validation-error context, category, expected/actual counts and that category's violations.
 The existing `HaveFieldCount` still counts distinct paths and ignores input location.
 
 `HaveOnlyFieldViolations` and `HaveOnlyRuleViolations` compare **unordered multisets**, preserving
