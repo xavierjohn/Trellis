@@ -631,4 +631,115 @@ public class MaybeInvariantTests
     }
 
     #endregion
+
+    [Fact]
+    public void MutuallyExclusive_FourValues_FourthOnly_ReturnsSuccess()
+    {
+        var a = Maybe<string>.None;
+        var b = Maybe<int>.None;
+        var c = Maybe<bool>.None;
+        var d = Maybe.From(3.14);
+
+        var result = MaybeInvariant.MutuallyExclusive(a, b, c, d, "a", "b", "c", "d");
+
+        result.Should().BeSuccess();
+    }
+
+    [Fact]
+    public void MutuallyExclusive_FourValues_FirstAndFourthPresent_ReturnsExactFieldsAndCodes()
+    {
+        var a = Maybe.From("hello");
+        var b = Maybe<int>.None;
+        var c = Maybe<bool>.None;
+        var d = Maybe.From(3.14);
+
+        var result = MaybeInvariant.MutuallyExclusive(a, b, c, d, "a", "b", "c", "d");
+
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/d"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsMutuallyExclusive);
+    }
+
+    [Fact]
+    public void ExactlyOne_FourValues_FourthOnly_ReturnsSuccess()
+    {
+        var a = Maybe<string>.None;
+        var b = Maybe<int>.None;
+        var c = Maybe<bool>.None;
+        var d = Maybe.From(3.14);
+
+        var result = MaybeInvariant.ExactlyOne(a, b, c, d, "a", "b", "c", "d");
+
+        result.Should().BeSuccess();
+    }
+
+    [Fact]
+    public void ExactlyOne_FourValues_AllNone_ReturnsExactFieldsAndCodes()
+    {
+        var a = Maybe<string>.None;
+        var b = Maybe<int>.None;
+        var c = Maybe<bool>.None;
+        var d = Maybe<double>.None;
+
+        var result = MaybeInvariant.ExactlyOne(a, b, c, d, "a", "b", "c", "d");
+
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/b", "/c", "/d"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsExactlyOne);
+    }
+
+    [Fact]
+    public void ExactlyOne_FourValues_FirstAndFourthPresent_ReturnsExactFieldsAndCodes()
+    {
+        var a = Maybe.From("hello");
+        var b = Maybe<int>.None;
+        var c = Maybe<bool>.None;
+        var d = Maybe.From(3.14);
+
+        var result = MaybeInvariant.ExactlyOne(a, b, c, d, "a", "b", "c", "d");
+
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/d"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsOnlyOne);
+    }
+
+    [Fact]
+    public void AtLeastOne_FourValues_FourthOnly_ReturnsSuccess()
+    {
+        var a = Maybe<string>.None;
+        var b = Maybe<int>.None;
+        var c = Maybe<bool>.None;
+        var d = Maybe.From(3.14);
+
+        var result = MaybeInvariant.AtLeastOne(a, b, c, d, "a", "b", "c", "d");
+
+        result.Should().BeSuccess();
+    }
+
+    [Fact]
+    public void AtLeastOne_FourValues_AllNone_ReturnsExactFieldsAndCodes()
+    {
+        var a = Maybe<string>.None;
+        var b = Maybe<int>.None;
+        var c = Maybe<bool>.None;
+        var d = Maybe<double>.None;
+
+        var result = MaybeInvariant.AtLeastOne(a, b, c, d, "a", "b", "c", "d");
+
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/b", "/c", "/d"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAtLeastOne);
+    }
+
+    [Fact]
+    public void AtLeastOne_TwoValues_SecondOnly_ReturnsSuccess()
+    {
+        var first = Maybe<string>.None;
+        var second = Maybe.From(42);
+
+        var result = MaybeInvariant.AtLeastOne(first, second, "first", "second");
+
+        result.Should().BeSuccess();
+    }
+
 }
