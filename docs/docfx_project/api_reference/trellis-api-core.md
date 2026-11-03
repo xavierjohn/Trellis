@@ -907,7 +907,13 @@ Values are `ValidationArgValue`, a **closed union** with four cases. Because it 
 | `ValidationArgValue.Bool` | `sealed record Bool(bool Value)` | `true` |
 | `ValidationArgValue.List` | `sealed record List(EquatableArray<ValidationArgValue> Items)` | `["red","green"]` |
 
-The cases are JSON's self-describing values: its three scalars, plus a list of them. JSON's other two constructs are deliberately absent. `null` would give the dictionary two spellings of the same thing, because an arg with no value is an arg that is simply not there — omit the key. An object would mean a client needs a schema per reason code to know what it is looking at, which gives up the property that makes the union worth having (the shape follows from the case) and turns args into an open-ended payload, which is a poor thing to echo back to a caller. Both are rejected with `JsonException` on read.
+The cases are JSON's self-describing values: its three scalars, plus a list of them. JSON's other two constructs are deliberately absent. `null` would give the dictionary two spellings of the same thing, because an arg with no value is an arg that is simply not there — omit the key. An object would mean a client needs a schema per reason code to know what it is looking at, which gives up the property that makes the union worth having (the shape follows from the case) and turns args into an open-ended payload, which is a poor thing to echo back to a caller. Null and object tokens that reach the converter's read path are rejected with `JsonException`, including manually parsed list elements.
+
+> [!NOTE]
+> `System.Text.Json` bypasses this converter for null reference values by default, both at the root
+> and as dictionary values. That can yield a null CLR reference, not a null union case. It does not
+> validate every `Args` operand or remove a dictionary key; a missing operand must still be omitted
+> by leaving out its key. The converter does not override `HandleNull`.
 
 > [!IMPORTANT]
 > A numeric operand reaches the wire as a **JSON number**, not a quoted string: `{"maxLength": 50}`, not `{"maxLength": "50"}`. A client comparing a bound against a length no longer has to parse it back out and guess at the format.
