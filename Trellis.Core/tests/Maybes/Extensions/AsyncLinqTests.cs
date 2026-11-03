@@ -1,4 +1,5 @@
-﻿using Trellis.Testing;
+﻿using System.Threading.Tasks.Sources;
+using Trellis.Testing;
 
 namespace Trellis.Core.Tests.Maybes.Extensions.Linq;
 
@@ -235,12 +236,21 @@ public class AsyncLinqTests : TestBase
     [Fact]
     public async Task SelectMany_ValueTaskValueTask_FirstNone_ShortCircuits()
     {
+        var collectionSelectorInvocations = 0;
+
         var combined = await (
             from a in NoneValueTaskAsync()
-            from b in SomeValueTaskAsync(3)
+            from b in ThrowIfInvoked()
             select a + b);
 
         combined.HasNoValue.Should().BeTrue();
+        collectionSelectorInvocations.Should().Be(0);
+
+        ValueTask<Maybe<int>> ThrowIfInvoked()
+        {
+            collectionSelectorInvocations++;
+            throw new InvalidOperationException("collection-selector-must-not-run");
+        }
     }
 
     [Fact]
@@ -368,5 +378,155 @@ public class AsyncLinqTests : TestBase
     }
 
     #endregion
+
+    [Fact]
+    public async Task Select_Task_PendingSource_DefersProjection()
+    {
+        var source = new TaskCompletionSource<Maybe<int>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var invocations = 0;
+        var projected = source.Task.Select(value =>
+        {
+            invocations++;
+            return value * 2;
+        });
+
+        try
+        {
+            projected.IsCompleted.Should().BeFalse();
+            invocations.Should().Be(0);
+        }
+        finally
+        {
+            source.SetResult(Maybe.From(5));
+        }
+
+        var result = await projected.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        result.TryGetValue(out var value).Should().BeTrue();
+        value.Should().Be(10);
+        invocations.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Select_ValueTask_PendingSingleUseSource_ConsumesOnce()
+    {
+        var source = new SingleUseSource<Maybe<int>>();
+        var invocations = 0;
+        var projected = source.Task.Select(value =>
+        {
+            invocations++;
+            return value * 2;
+        }).AsTask();
+
+        try
+        {
+            projected.IsCompleted.Should().BeFalse();
+            invocations.Should().Be(0);
+            source.ResultReads.Should().Be(0);
+        }
+        finally
+        {
+            source.Complete(Maybe.From(5));
+        }
+
+        var result = await projected.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        result.TryGetValue(out var value).Should().BeTrue();
+        value.Should().Be(10);
+        invocations.Should().Be(1);
+        source.ResultReads.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Select_Task_FaultedSource_PreservesException()
+    {
+        var exception = new InvalidOperationException("source-fault");
+        var source = Task.FromException<Maybe<int>>(exception);
+        var invocations = 0;
+        Func<Task> act = async () => _ = await source.Select(value =>
+        {
+            invocations++;
+            return value * 2;
+        });
+
+        var failure = await act.Should().ThrowAsync<InvalidOperationException>();
+
+        failure.Which.Should().BeSameAs(exception);
+        invocations.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Select_ValueTask_FaultedSource_PreservesException()
+    {
+        var exception = new InvalidOperationException("source-fault");
+        var source = ValueTask.FromException<Maybe<int>>(exception);
+        var invocations = 0;
+        Func<Task> act = async () => _ = await source.Select(value =>
+        {
+            invocations++;
+            return value * 2;
+        });
+
+        var failure = await act.Should().ThrowAsync<InvalidOperationException>();
+
+        failure.Which.Should().BeSameAs(exception);
+        invocations.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Select_Task_CanceledSource_PreservesToken()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var source = Task.FromCanceled<Maybe<int>>(cancellation.Token);
+        var invocations = 0;
+        Func<Task> act = async () => _ = await source.Select(value =>
+        {
+            invocations++;
+            return value * 2;
+        });
+
+        var failure = await act.Should().ThrowAsync<OperationCanceledException>();
+
+        failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        invocations.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Select_ValueTask_CanceledSource_PreservesToken()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var source = ValueTask.FromCanceled<Maybe<int>>(cancellation.Token);
+        var invocations = 0;
+        Func<Task> act = async () => _ = await source.Select(value =>
+        {
+            invocations++;
+            return value * 2;
+        });
+
+        var failure = await act.Should().ThrowAsync<OperationCanceledException>();
+
+        failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        invocations.Should().Be(0);
+    }
+
+    private sealed class SingleUseSource<T> : IValueTaskSource<T>
+    {
+        private ManualResetValueTaskSourceCore<T> _core = new() { RunContinuationsAsynchronously = true };
+        public int ResultReads { get; private set; }
+        public ValueTask<T> Task => new(this, _core.Version);
+        public void Complete(T value) => _core.SetResult(value);
+        public T GetResult(short token)
+        {
+            ResultReads++;
+            if (ResultReads > 1)
+                throw new InvalidOperationException("multiple-value-task-consumption");
+            return _core.GetResult(token);
+        }
+        public ValueTaskSourceStatus GetStatus(short token) => _core.GetStatus(token);
+        public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) =>
+            _core.OnCompleted(continuation, state, token, flags);
+    }
 }
 #pragma warning restore CA2012
