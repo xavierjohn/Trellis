@@ -48,7 +48,8 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/second"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAllOrNone);
     }
 
     [Fact]
@@ -63,7 +64,8 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAllOrNone);
     }
 
     #endregion
@@ -113,9 +115,8 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/b");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/c");
-        validation.Fields.Items.Should().NotContain(fe => fe.Field.Path == "/a");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/b", "/c"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAllOrNone);
     }
 
     #endregion
@@ -168,7 +169,8 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().ContainSingle(fe => fe.Field.Path == "/c");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/c"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAllOrNone);
     }
 
     #endregion
@@ -216,7 +218,8 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Should().ContainSingle(fe => fe.Field.Path == "/required");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/required"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsRequiredWith);
     }
 
     [Fact]
@@ -292,8 +295,8 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first", "/second"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsMutuallyExclusive);
     }
 
     #endregion
@@ -343,9 +346,8 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/a");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/c");
-        validation.Fields.Items.Should().NotContain(fe => fe.Field.Path == "/b");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/c"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsMutuallyExclusive);
     }
 
     #endregion
@@ -393,8 +395,8 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first", "/second"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsExactlyOne);
     }
 
     [Fact]
@@ -409,8 +411,8 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first", "/second"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsOnlyOne);
     }
 
     #endregion
@@ -444,7 +446,9 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(a, b, c, "a", "b", "c");
 
         // Assert
-        result.Should().BeFailureOfType<Error.InvalidInput>();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/b", "/c"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsExactlyOne);
     }
 
     [Fact]
@@ -464,6 +468,7 @@ public class MaybeInvariantTests
         // Only a and b should be listed, not c (which is absent)
         error.Fields.Items.Should().HaveCount(2);
         error.Fields.Items.Select(e => e.Field.Path).Should().BeEquivalentTo(["/a", "/b"]);
+        error.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsOnlyOne);
     }
 
     #endregion
@@ -511,8 +516,8 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/first");
-        validation.Fields.Items.Should().Contain(fe => fe.Field.Path == "/second");
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first", "/second"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAtLeastOne);
     }
 
     #endregion
@@ -546,7 +551,9 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AtLeastOne(a, b, c, "a", "b", "c");
 
         // Assert
-        result.Should().BeFailureOfType<Error.InvalidInput>();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/b", "/c"]);
+        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAtLeastOne);
     }
 
     #endregion
