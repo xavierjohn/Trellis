@@ -198,4 +198,180 @@ public class MatchAsyncTests : TestBase
     }
 
     #endregion
+
+    [Fact]
+    public async Task MatchAsync_Task_SyncBranches_PendingReceiver_DefersBranchSelection()
+    {
+        var source = new TaskCompletionSource<Maybe<int>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var someInvocations = 0;
+        var noneInvocations = 0;
+        var matchTask = source.Task.MatchAsync<int, int>(
+            some: value =>
+            {
+                someInvocations++;
+                return value * 2;
+            },
+            none: () =>
+            {
+                noneInvocations++;
+                return -1;
+            });
+
+        try
+        {
+            matchTask.IsCompleted.Should().BeFalse();
+            someInvocations.Should().Be(0);
+            noneInvocations.Should().Be(0);
+        }
+        finally
+        {
+            source.SetResult(Maybe.From(7));
+        }
+
+        var result = await matchTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        result.Should().Be(14);
+        someInvocations.Should().Be(1);
+        noneInvocations.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MatchAsync_ValueTask_AsyncBranches_PendingReceiver_DefersBranchSelection()
+    {
+        var source = new TaskCompletionSource<Maybe<int>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var someInvocations = 0;
+        var noneInvocations = 0;
+        var matchTask = new ValueTask<Maybe<int>>(source.Task).MatchAsync<int, int>(
+            some: value =>
+            {
+                someInvocations++;
+                return new ValueTask<int>(value * 2);
+            },
+            none: () =>
+            {
+                noneInvocations++;
+                return new ValueTask<int>(-42);
+            }).AsTask();
+
+        try
+        {
+            matchTask.IsCompleted.Should().BeFalse();
+            someInvocations.Should().Be(0);
+            noneInvocations.Should().Be(0);
+        }
+        finally
+        {
+            source.SetResult(Maybe<int>.None);
+        }
+
+        var result = await matchTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        result.Should().Be(-42);
+        someInvocations.Should().Be(0);
+        noneInvocations.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MatchAsync_Task_AsyncBranches_FaultedReceiver_PreservesException()
+    {
+        var exception = new InvalidOperationException("receiver-source-fault");
+        var source = Task.FromException<Maybe<int>>(exception);
+        var someInvocations = 0;
+        var noneInvocations = 0;
+        Func<Task> act = async () => await source.MatchAsync<int, int>(
+            some: value =>
+            {
+                someInvocations++;
+                return Task.FromResult(value * 2);
+            },
+            none: () =>
+            {
+                noneInvocations++;
+                return Task.FromResult(-1);
+            });
+
+        var failure = await act.Should().ThrowAsync<InvalidOperationException>();
+
+        failure.Which.Should().BeSameAs(exception);
+        someInvocations.Should().Be(0);
+        noneInvocations.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MatchAsync_ValueTask_SyncBranches_FaultedReceiver_PreservesException()
+    {
+        var exception = new InvalidOperationException("receiver-source-fault");
+        var someInvocations = 0;
+        var noneInvocations = 0;
+        Func<Task> act = async () => await ValueTask.FromException<Maybe<int>>(exception).MatchAsync<int, int>(
+            some: value =>
+            {
+                someInvocations++;
+                return value * 2;
+            },
+            none: () =>
+            {
+                noneInvocations++;
+                return -1;
+            });
+
+        var failure = await act.Should().ThrowAsync<InvalidOperationException>();
+
+        failure.Which.Should().BeSameAs(exception);
+        someInvocations.Should().Be(0);
+        noneInvocations.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MatchAsync_Task_SyncBranches_CanceledReceiver_PreservesToken()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var source = Task.FromCanceled<Maybe<int>>(cancellation.Token);
+        var someInvocations = 0;
+        var noneInvocations = 0;
+        Func<Task> act = async () => await source.MatchAsync<int, int>(
+            some: value =>
+            {
+                someInvocations++;
+                return value * 2;
+            },
+            none: () =>
+            {
+                noneInvocations++;
+                return -1;
+            });
+
+        var failure = await act.Should().ThrowAsync<OperationCanceledException>();
+
+        failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        someInvocations.Should().Be(0);
+        noneInvocations.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MatchAsync_ValueTask_AsyncBranches_CanceledReceiver_PreservesToken()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var someInvocations = 0;
+        var noneInvocations = 0;
+        Func<Task> act = async () => await ValueTask.FromCanceled<Maybe<int>>(cancellation.Token).MatchAsync<int, int>(
+            some: value =>
+            {
+                someInvocations++;
+                return new ValueTask<int>(value * 2);
+            },
+            none: () =>
+            {
+                noneInvocations++;
+                return new ValueTask<int>(-42);
+            });
+
+        var failure = await act.Should().ThrowAsync<OperationCanceledException>();
+
+        failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        someInvocations.Should().Be(0);
+        noneInvocations.Should().Be(0);
+    }
 }
