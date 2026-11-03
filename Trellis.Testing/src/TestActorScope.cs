@@ -7,14 +7,14 @@
 /// </summary>
 public sealed class TestActorScope : IAsyncDisposable, IDisposable
 {
-    private readonly AsyncLocal<Authorization.Actor?> _asyncLocal;
-    private readonly Authorization.Actor? _previousActor;
+    private readonly AsyncLocal<TestActorProvider.ActorSelection?> _asyncLocal;
+    private readonly TestActorProvider.ActorSelection? _previousSelection;
     private bool _disposed;
 
-    internal TestActorScope(AsyncLocal<Authorization.Actor?> asyncLocal, Authorization.Actor? previousActor)
+    internal TestActorScope(AsyncLocal<TestActorProvider.ActorSelection?> asyncLocal, TestActorProvider.ActorSelection? previousSelection)
     {
         _asyncLocal = asyncLocal;
-        _previousActor = previousActor;
+        _previousSelection = previousSelection;
     }
 
     /// <summary>Restores the previous actor on the <see cref="TestActorProvider"/>.</summary>
@@ -31,6 +31,6 @@ public sealed class TestActorScope : IAsyncDisposable, IDisposable
             return;
 
         _disposed = true;
-        _asyncLocal.Value = _previousActor;
+        _asyncLocal.Value = _previousSelection;
     }
 }

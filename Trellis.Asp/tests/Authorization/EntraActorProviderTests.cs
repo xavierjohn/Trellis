@@ -231,9 +231,9 @@ public class EntraActorProviderTests
         var actor = (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 
         actor.Id.Value.Should().Be("real-user-oid", "should read from authenticated identity, not spoofed");
-        actor.HasPermission("Documents.Read").Should().BeTrue();
-        actor.HasPermission("GlobalAdmin").Should().BeFalse("should NOT have permissions from unauthenticated identity");
-        actor.HasPermission("Documents.Delete").Should().BeFalse("should NOT have permissions from unauthenticated identity");
+        actor.Should().HavePermission("Documents.Read");
+        actor.Should().NotHavePermission("GlobalAdmin", "should NOT have permissions from unauthenticated identity");
+        actor.Should().NotHavePermission("Documents.Delete", "should NOT have permissions from unauthenticated identity");
         actor.GetAttribute(ActorAttributes.TenantId).Should().Be("real-tenant", "attributes should come from authenticated identity only");
     }
 
@@ -261,8 +261,8 @@ public class EntraActorProviderTests
         var actor = (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 
         actor.Id.Value.Should().Be("real-user-oid", "should ignore unauthenticated identity even when listed first");
-        actor.HasPermission("Documents.Read").Should().BeTrue();
-        actor.HasPermission("GlobalAdmin").Should().BeFalse("should NOT have permissions from unauthenticated identity");
+        actor.Should().HavePermission("Documents.Read");
+        actor.Should().NotHavePermission("GlobalAdmin", "should NOT have permissions from unauthenticated identity");
         actor.GetAttribute(ActorAttributes.TenantId).Should().Be("real-tenant");
     }
 
@@ -382,7 +382,7 @@ public class EntraActorProviderTests
         var actor = (await CreateProvider(user, options).GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 
         actor.ForbiddenPermissions.Should().Contain("Documents.Read");
-        actor.HasPermission("Documents.Read").Should().BeFalse("deny overrides allow");
+        actor.Should().NotHavePermission("Documents.Read", "deny overrides allow");
     }
 
     [Fact]

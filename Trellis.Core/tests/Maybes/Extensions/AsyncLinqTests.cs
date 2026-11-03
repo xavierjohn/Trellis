@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks.Sources;
-using Trellis.Testing;
+﻿using Trellis.Testing;
 
 namespace Trellis.Core.Tests.Maybes.Extensions.Linq;
 
@@ -384,19 +383,12 @@ public class AsyncLinqTests : TestBase
     {
         var source = new ControlledAsync<Maybe<int>>();
         var invocations = new CallbackRecorder<int>();
-        var projected = source.Task.Select(invocations.Wrap(value => value * 2));
 
-        try
-        {
-            projected.IsCompleted.Should().BeFalse();
-            invocations.CallCount.Should().Be(0);
-        }
-        finally
-        {
-            source.TryComplete(Maybe.From(5));
-        }
-
-        var result = await projected.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        var result = await source.Task.Select(invocations.Wrap(value => value * 2)).ShouldBePendingThenReleaseAsync(
+            () => source.TryComplete(Maybe.From(5)),
+            TimeSpan.FromSeconds(30),
+            TestContext.Current.CancellationToken,
+            whilePending: () => invocations.CallCount.Should().Be(0));
 
         result.TryGetValue(out var value).Should().BeTrue();
         value.Should().Be(10);
@@ -406,40 +398,34 @@ public class AsyncLinqTests : TestBase
     [Fact]
     public async Task Select_ValueTask_PendingSingleUseSource_ConsumesOnce()
     {
-        var source = new SingleUseSource<Maybe<int>>();
+        var source = ControlledAsync.SingleUse<Maybe<int>>();
         var invocations = new CallbackRecorder<int>();
-        var projected = source.Task.Select(invocations.Wrap(value => value * 2)).AsTask();
 
-        try
-        {
-            projected.IsCompleted.Should().BeFalse();
-            invocations.CallCount.Should().Be(0);
-            source.ResultReads.Should().Be(0);
-        }
-        finally
-        {
-            source.Complete(Maybe.From(5));
-        }
-
-        var result = await projected.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        var result = await source.ValueTask.Select(invocations.Wrap(value => value * 2)).ShouldBePendingThenReleaseAsync(
+            () => source.TryComplete(Maybe.From(5)),
+            TimeSpan.FromSeconds(30),
+            TestContext.Current.CancellationToken,
+            whilePending: () =>
+            {
+                invocations.CallCount.Should().Be(0);
+                source.ResultReadCount.Should().Be(0);
+            });
 
         result.TryGetValue(out var value).Should().BeTrue();
         value.Should().Be(10);
         invocations.CallCount.Should().Be(1);
-        source.ResultReads.Should().Be(1);
+        source.ResultReadCount.Should().Be(1);
     }
 
     [Fact]
     public async Task Select_Task_FaultedSource_PreservesException()
     {
         var exception = new InvalidOperationException("source-fault");
-        var source = Task.FromException<Maybe<int>>(exception);
         var invocations = new CallbackRecorder<int>();
-        Func<Task> act = async () => _ = await source.Select(invocations.Wrap(value => value * 2));
 
-        var failure = await act.Should().ThrowAsync<InvalidOperationException>();
+        await Task.FromException<Maybe<int>>(exception).Select(invocations.Wrap(value => value * 2))
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        failure.Which.Should().BeSameAs(exception);
         invocations.CallCount.Should().Be(0);
     }
 
@@ -447,62 +433,36 @@ public class AsyncLinqTests : TestBase
     public async Task Select_ValueTask_FaultedSource_PreservesException()
     {
         var exception = new InvalidOperationException("source-fault");
-        var source = ValueTask.FromException<Maybe<int>>(exception);
         var invocations = new CallbackRecorder<int>();
-        Func<Task> act = async () => _ = await source.Select(invocations.Wrap(value => value * 2));
 
-        var failure = await act.Should().ThrowAsync<InvalidOperationException>();
+        await ValueTask.FromException<Maybe<int>>(exception).Select(invocations.Wrap(value => value * 2))
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        failure.Which.Should().BeSameAs(exception);
         invocations.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task Select_Task_CanceledSource_PreservesToken()
     {
-        using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
-        var source = Task.FromCanceled<Maybe<int>>(cancellation.Token);
+        using var canceled = CanceledToken.Create();
         var invocations = new CallbackRecorder<int>();
-        Func<Task> act = async () => _ = await source.Select(invocations.Wrap(value => value * 2));
 
-        var failure = await act.Should().ThrowAsync<OperationCanceledException>();
+        await canceled.ToTask<Maybe<int>>().Select(invocations.Wrap(value => value * 2))
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        failure.Which.CancellationToken.Should().Be(cancellation.Token);
         invocations.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task Select_ValueTask_CanceledSource_PreservesToken()
     {
-        using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
-        var source = ValueTask.FromCanceled<Maybe<int>>(cancellation.Token);
+        using var canceled = CanceledToken.Create();
         var invocations = new CallbackRecorder<int>();
-        Func<Task> act = async () => _ = await source.Select(invocations.Wrap(value => value * 2));
 
-        var failure = await act.Should().ThrowAsync<OperationCanceledException>();
+        await canceled.ToValueTask<Maybe<int>>().Select(invocations.Wrap(value => value * 2))
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        failure.Which.CancellationToken.Should().Be(cancellation.Token);
         invocations.CallCount.Should().Be(0);
-    }
-
-    private sealed class SingleUseSource<T> : IValueTaskSource<T>
-    {
-        private ManualResetValueTaskSourceCore<T> _core = new() { RunContinuationsAsynchronously = true };
-        public int ResultReads { get; private set; }
-        public ValueTask<T> Task => new(this, _core.Version);
-        public void Complete(T value) => _core.SetResult(value);
-        public T GetResult(short token)
-        {
-            ResultReads++;
-            if (ResultReads > 1)
-                throw new InvalidOperationException("multiple-value-task-consumption");
-            return _core.GetResult(token);
-        }
-        public ValueTaskSourceStatus GetStatus(short token) => _core.GetStatus(token);
-        public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) =>
-            _core.OnCompleted(continuation, state, token, flags);
     }
 }
 #pragma warning restore CA2012

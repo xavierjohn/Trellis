@@ -50,20 +50,15 @@ public class MaybeToResultTests
         var source = new ControlledAsync<Maybe<object>>();
         var expected = new object();
         var calls = new CallbackRecorder();
-        var conversion = source.Task.ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")));
 
-        try
-        {
-            conversion.IsCompleted.Should().BeFalse();
-            calls.CallCount.Should().Be(0);
-        }
-        finally
-        {
-            source.TryComplete(Maybe.From(expected));
-        }
+        var result = await source.Task.ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")))
+            .ShouldBePendingThenReleaseAsync(
+                () => source.TryComplete(Maybe.From(expected)),
+                TimeSpan.FromSeconds(30),
+                TestContext.Current.CancellationToken,
+                whilePending: () => calls.CallCount.Should().Be(0));
 
-        (await conversion.BeSuccessAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken))
-            .Which.Should().BeSameAs(expected);
+        result.Should().BeSuccess().Which.Should().BeSameAs(expected);
         calls.CallCount.Should().Be(0);
     }
 
@@ -73,20 +68,15 @@ public class MaybeToResultTests
         var source = new ControlledAsync<Maybe<int>>();
         var expected = new Error.Forbidden("test.absent");
         var calls = new CallbackRecorder();
-        var conversion = source.ValueTask.ToResultAsync(calls.Wrap<Error>(() => expected)).AsTask();
 
-        try
-        {
-            conversion.IsCompleted.Should().BeFalse();
-            calls.CallCount.Should().Be(0);
-        }
-        finally
-        {
-            source.TryComplete(Maybe<int>.None);
-        }
+        var result = await source.ValueTask.ToResultAsync(calls.Wrap<Error>(() => expected))
+            .ShouldBePendingThenReleaseAsync(
+                () => source.TryComplete(Maybe<int>.None),
+                TimeSpan.FromSeconds(30),
+                TestContext.Current.CancellationToken,
+                whilePending: () => calls.CallCount.Should().Be(0));
 
-        (await conversion.BeFailureAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken))
-            .Which.Should().BeSameAs(expected);
+        result.Should().BeFailure().Which.Should().BeSameAs(expected);
         calls.CallCount.Should().Be(1);
     }
 
@@ -95,29 +85,24 @@ public class MaybeToResultTests
     {
         var exception = new InvalidOperationException("receiver-source-fault");
         var calls = new CallbackRecorder();
-        var conversion = Task.FromException<Maybe<int>>(exception)
-            .ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")));
-        var act = async () => await conversion.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        var failure = await act.Should().ThrowAsync<InvalidOperationException>();
+        await Task.FromException<Maybe<int>>(exception)
+            .ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")))
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        failure.Which.Should().BeSameAs(exception);
         calls.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task ToResultAsync_ValueTask_Factory_CanceledReceiver_PreservesTokenWithoutFactory()
     {
-        using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
+        using var canceled = CanceledToken.Create();
         var calls = new CallbackRecorder();
-        var conversion = ValueTask.FromCanceled<Maybe<int>>(cancellation.Token)
-            .ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent"))).AsTask();
-        var act = async () => await conversion.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        var failure = await act.Should().ThrowAsync<OperationCanceledException>();
+        await canceled.ToValueTask<Maybe<int>>()
+            .ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")))
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        failure.Which.CancellationToken.Should().Be(cancellation.Token);
         calls.CallCount.Should().Be(0);
     }
 
@@ -125,40 +110,32 @@ public class MaybeToResultTests
     public async Task ToResultAsync_ValueTask_Error_FaultedReceiver_PreservesException()
     {
         var exception = new InvalidOperationException("receiver-source-fault");
-        var conversion = ValueTask.FromException<Maybe<int>>(exception)
-            .ToResultAsync(new Error.Forbidden("test.absent")).AsTask();
-        var act = async () => await conversion.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        var failure = await act.Should().ThrowAsync<InvalidOperationException>();
-
-        failure.Which.Should().BeSameAs(exception);
+        await ValueTask.FromException<Maybe<int>>(exception)
+            .ToResultAsync(new Error.Forbidden("test.absent"))
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
     }
 
     [Fact]
     public async Task ToResultAsync_Task_Error_CanceledReceiver_PreservesToken()
     {
-        using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
-        var conversion = Task.FromCanceled<Maybe<int>>(cancellation.Token)
-            .ToResultAsync(new Error.Forbidden("test.absent"));
-        var act = async () => await conversion.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        using var canceled = CanceledToken.Create();
 
-        var failure = await act.Should().ThrowAsync<OperationCanceledException>();
-
-        failure.Which.CancellationToken.Should().Be(cancellation.Token);
+        await canceled.ToTask<Maybe<int>>()
+            .ToResultAsync(new Error.Forbidden("test.absent"))
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
     }
 
     [Fact]
     public async Task ToResultAsync_Task_Factory_PendingReceiver_RejectsNullFactoryBeforeAwait()
     {
         var source = new ControlledAsync<Maybe<int>>();
-        var conversion = source.Task.ToResultAsync((Func<Error>)null!);
-
         try
         {
-            var act = async () => await conversion.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            Func<Task> start = () => source.Task.ToResultAsync((Func<Error>)null!);
 
-            await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("ferror");
+            await start.ShouldRejectNullBeforeAwaitAsync("ferror");
+
             source.Task.IsCompleted.Should().BeFalse();
         }
         finally
@@ -171,13 +148,12 @@ public class MaybeToResultTests
     public async Task ToResultAsync_ValueTask_Factory_PendingReceiver_RejectsNullFactoryBeforeAwait()
     {
         var source = new ControlledAsync<Maybe<int>>();
-        var conversion = source.ValueTask.ToResultAsync((Func<Error>)null!).AsTask();
-
         try
         {
-            var act = async () => await conversion.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            Func<Task> start = () => source.ValueTask.ToResultAsync((Func<Error>)null!).AsTask();
 
-            await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("ferror");
+            await start.ShouldRejectNullBeforeAwaitAsync("ferror");
+
             source.Task.IsCompleted.Should().BeFalse();
         }
         finally

@@ -1,12 +1,12 @@
 ﻿---
 package: Trellis.Testing
 namespaces: [Trellis.Testing]
-types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", FakeUnitOfWork, TestActorProvider, TestActorScope, ActorIdentityAssertionsExtensions, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator, CallbackRecorder, "CallbackRecorder<TArgument>", "ControlledAsync<T>"]
+types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", FakeUnitOfWork, TestActorProvider, TestActorScope, ActorIdentityAssertionsExtensions, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator, CallbackRecorder, "CallbackRecorder<TArgument>", "ControlledAsync<T>", ControlledAsync, CanceledToken, PendingOperationAssertionsExtensions, PropagationAssertionsExtensions, ArgumentNullAssertionsExtensions, DomainEventAssertionsExtensions, PageAssertionsExtensions, "PageAssertions<T>", SpecificationAssertionsExtensions, "SpecificationAssertions<T>", ActorAssertionsExtensions, ActorAssertions, AuthorizeMessageAssertionsExtensions]
 version: v3
 last_verified: 2026-11-03
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when writing unit or handler tests: Result/Maybe/error assertions, fake repositories, fake unit-of-work commits and scopes, and test actor providers (Trellis.Testing)."
+agent_description: "Open when writing unit or handler tests: Result/Maybe/error, domain-event, page, specification and actor assertions, async-source helpers, fakes and test actors (Trellis.Testing)."
 ---
 # Trellis.Testing — API Reference
 
@@ -36,6 +36,17 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-hand
 | Record callback counts and ordered arguments | `CallbackRecorder` / `CallbackRecorder<TArgument>` | [Callback recorders](#callback-recorders) |
 | Control a genuinely pending Task/ValueTask receiver | `ControlledAsync<T>` | [`ControlledAsync<T>`](#controlledasynct) |
 | Bound an async assertion without canceling its source | `BeSuccessAsync(timeout, cancellationToken)` and failure variants | [Bounded async assertions](#bounded-async-assertions) |
+| Prove a ValueTask consumer reads its result exactly once | `ControlledAsync.SingleUse<T>()`, then `ResultReadCount` | [`ControlledAsync<T>`](#controlledasynct) |
+| Assert an operation is still pending, then release it and await with a bound | `operation.ShouldBePendingThenReleaseAsync(release, timeout, token, whilePending)` | [Pending-operation assertions](#pending-operation-assertions) |
+| Assert the original exception or cancellation token propagates unchanged | `operation.ShouldPropagateExceptionAsync(exception)` / `.ShouldPropagateCancellationAsync(token)` | [Propagation assertions](#propagation-assertions) |
+| Create an already-canceled token with its own identity | `CanceledToken.Create()` with `Token`, `ToTask`, `ToValueTask` | [`CanceledToken`](#canceledtoken) |
+| Assert a null guard names the right parameter, or fires before awaiting a pending source | `act.ShouldRejectNull(paramName)`, `.ShouldRejectNullAsync(...)`, `.ShouldRejectNullBeforeAwaitAsync(...)` | [Argument-null assertions](#argument-null-assertions) |
+| Assert which domain events an aggregate or `FakeRepository` raised | `aggregate.UncommittedEvents().Should().HaveRaised<TEvent>()` and siblings | [Domain-event assertions](#domain-event-assertions) |
+| Assert a `Page<T>`: items, cursors and applied limits | `page.Should().HaveItems(...)`, `.HaveNextCursor()`, `.BeLastPage()`, `.BeCapped()` | [`PageAssertions<T>`](#pageassertionst) |
+| Assert a specification accepts or rejects candidates | `spec.Should().BeSatisfiedBy(x)` / `.NotBeSatisfiedBy(x)` | [`SpecificationAssertions<T>`](#specificationassertionst) |
+| Assert an actor's effective permissions, identity or attributes | `actor.Should().HavePermission(...)`, `.NotHavePermission(...)`, `.BeOwnerOf(...)` | [`ActorAssertions`](#actorassertions) |
+| Test denied paths for an `IAuthorize` message without the pipeline | `message.ShouldBeAuthorizedFor(actor)` / `.ShouldNotBeAuthorizedFor(actor)` | [`IAuthorize` message assertions](#iauthorize-message-assertions) |
+| Test the unauthenticated path | `TestActorProvider.Anonymous()` or `provider.WithoutActor()` | [`TestActorProvider`](#testactorprovider) |
 | Assert against `IResult` (e.g., `IAuthorizeResource<T>.Authorize` return value) | `result.Should().BeSuccess()` / `.BeFailureOfType<TError>()` — same surface, no `.HaveValue` since the non-generic interface carries no typed value | [`IResultAssertions`](#iresultassertions) |
 | Extract success value in tests only | `result.Unwrap()` | [Usage notes](#usage-notes) |
 | Extract error in tests only | `result.UnwrapError()` | [Usage notes](#usage-notes) |
@@ -528,24 +539,267 @@ throw `ArgumentNullException` before recording.
 ```csharp
 public sealed class ControlledAsync<T>
 {
-    public ControlledAsync();
-    public Task<T> Task { get; }
+    public ControlledAsync();                       // Task-backed, shared outcome
+    public bool IsSingleUse { get; }
+    public Task<T> Task { get; }                    // throws InvalidOperationException when single-use
     public ValueTask<T> ValueTask { get; }
+    public int ResultReadCount { get; }             // single-use reads; always 0 when Task-backed
     public bool TryComplete(T value);
     public bool TryFail(Exception exception);
     public bool TryCancel(CancellationToken cancellationToken = default);
 }
+
+public static class ControlledAsync
+{
+    public static ControlledAsync<T> SingleUse<T>();
+}
 ```
 
-Starts genuinely pending and uses `RunContinuationsAsynchronously`. All receivers share one
-terminal outcome: the first successful transition returns true; subsequent transitions return
-false without changing it. Values, exception objects and cancellation tokens are preserved.
-`TryCancel` associates a token with the canceled source; it does not cancel the caller's token.
-`TryFail(null)` always throws `ArgumentNullException`.
+One type, two modes. `new ControlledAsync<T>()` is Task-backed: every receiver shares one task, which may be
+awaited repeatedly. `ControlledAsync.SingleUse<T>()` backs `ValueTask` with an `IValueTaskSource`: a second
+consumption throws `InvalidOperationException` and is counted, so `ResultReadCount` proves an implementation
+consumed the ValueTask exactly once. Reading `Task` on a single-use source throws; use `ValueTask`.
 
-`ValueTask` is explicitly **Task-backed**, not a custom single-consumption `IValueTaskSource`
-probe. No implicit timeout, disposal or cleanup is performed. Release pending sources in `finally`
-and bound assertion waits explicitly; a failed assertion must not strand the operation.
+Both modes start genuinely pending, run continuations asynchronously, and share one terminal outcome: the first
+successful transition returns true; later transitions return false without changing it, including under
+concurrent attempts. Values, exception objects and cancellation tokens are preserved. `TryCancel` associates a
+token with the canceled source; it does not cancel the caller's token. `TryFail(null)` always throws
+`ArgumentNullException`. No implicit timeout, disposal or cleanup is performed. Release pending sources in
+`finally` (or use `ShouldBePendingThenReleaseAsync`) and bound assertion waits explicitly.
+
+#### Pending-operation assertions
+
+```csharp
+public static class PendingOperationAssertionsExtensions
+{
+    public static Task<TResult> ShouldBePendingThenReleaseAsync<TResult>(
+        this Task<TResult> operation, Action release, TimeSpan timeout, CancellationToken cancellationToken,
+        Action? whilePending = null);
+    public static Task ShouldBePendingThenReleaseAsync(
+        this Task operation, Action release, TimeSpan timeout, CancellationToken cancellationToken,
+        Action? whilePending = null);
+    public static ValueTask<TResult> ShouldBePendingThenReleaseAsync<TResult>(
+        this ValueTask<TResult> operation, Action release, TimeSpan timeout, CancellationToken cancellationToken,
+        Action? whilePending = null);
+}
+```
+
+Asserts the operation has not completed, runs `whilePending` checks (callback counts, source reads), then **always**
+runs `release` (even when the pending assertion or a check fails, so a failed check cannot leave the gate
+closed) and awaits the operation with `timeout`/`cancellationToken`, returning its result. When the pending
+assertion or a check fails, the failure propagates immediately: the released operation is not awaited, so its
+own outcome is not observed. `TimeoutException`,
+operation exceptions and cancellation propagate unchanged; the bound never cancels the operation. A ValueTask is
+consumed exactly once. This replaces the hand-written `try { assert pending } finally { release }` scaffold.
+
+#### Propagation assertions
+
+```csharp
+public static class PropagationAssertionsExtensions
+{
+    public static Task ShouldPropagateExceptionAsync(
+        this Task operation, Exception expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateExceptionAsync(
+        this ValueTask operation, Exception expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateExceptionAsync<T>(
+        this ValueTask<T> operation, Exception expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateCancellationAsync(
+        this Task operation, CancellationToken expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateCancellationAsync(
+        this ValueTask operation, CancellationToken expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateCancellationAsync<T>(
+        this ValueTask<T> operation, CancellationToken expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+}
+```
+
+`timeout` and `cancellationToken` bound only the assertion's wait. With neither supplied the operation is awaited
+**without a bound**, so pass them whenever the operation could be stranded on a pending source: an expired
+`timeout` fails the assertion ("did not complete within ...") instead of hanging, and a canceled
+`cancellationToken` throws `OperationCanceledException`. Neither completes or cancels the operation.
+
+`ShouldPropagateExceptionAsync` requires the operation to fault with exactly the `expected` instance
+(reference equality, no wrapping); an equal-looking different instance fails. `ShouldPropagateCancellationAsync`
+requires cancellation carrying exactly the expected token. Failures name what happened instead (a different
+exception type, a different token, a fault where cancellation was expected, or successful completion). A
+`Task<T>` binds to the `Task` overload.
+
+#### `CanceledToken`
+
+```csharp
+public sealed class CanceledToken : IDisposable
+{
+    public static CanceledToken Create();
+    public CancellationToken Token { get; }
+    public Task ToTask();
+    public Task<T> ToTask<T>();
+    public ValueTask ToValueTask();
+    public ValueTask<T> ToValueTask<T>();
+    public void Dispose();
+}
+```
+
+Each `Create()` owns a distinct `CancellationTokenSource`, so a test can prove an operation preserved *this*
+token rather than substituting another canceled one (all `new CancellationToken(true)` values are equal). The
+`ToTask`/`ToValueTask` methods return canceled awaitables carrying `Token`. Dispose it with `using`.
+
+#### Argument-null assertions
+
+```csharp
+public static class ArgumentNullAssertionsExtensions
+{
+    public static void ShouldRejectNull(this Action act, string paramName);
+    public static Task ShouldRejectNullAsync(this Func<Task> act, string paramName);
+    public static Task ShouldRejectNullBeforeAwaitAsync(this Func<Task> start, string paramName);
+}
+```
+
+All three require `ArgumentNullException` whose `ParamName` is exactly `paramName`, so a guard cannot pass
+for the wrong parameter. `ShouldRejectNullAsync` accepts a synchronous throw or a faulted task.
+`ShouldRejectNullBeforeAwaitAsync` additionally proves the guard is eager: the call must throw synchronously or
+return an already-faulted task, so a still-pending source was never awaited. If the returned task is still
+pending the assertion fails immediately without waiting.
+
+#### Domain-event assertions
+
+```csharp
+public static class DomainEventAssertionsExtensions
+{
+    public static AndWhichConstraint<GenericCollectionAssertions<IDomainEvent>, TEvent> HaveRaised<TEvent>(
+        this GenericCollectionAssertions<IDomainEvent> assertions,
+        Func<TEvent, bool>? predicate = null, string because = "", params object[] becauseArgs)
+        where TEvent : IDomainEvent;
+    public static AndConstraint<GenericCollectionAssertions<IDomainEvent>> NotHaveRaised<TEvent>(
+        this GenericCollectionAssertions<IDomainEvent> assertions, string because = "", params object[] becauseArgs)
+        where TEvent : IDomainEvent;
+    public static AndConstraint<GenericCollectionAssertions<IDomainEvent>> HaveRaisedCount<TEvent>(
+        this GenericCollectionAssertions<IDomainEvent> assertions, int expected,
+        string because = "", params object[] becauseArgs)
+        where TEvent : IDomainEvent;
+    public static AndConstraint<GenericCollectionAssertions<IDomainEvent>> HaveRaisedExactlyInOrder(
+        this GenericCollectionAssertions<IDomainEvent> assertions, params Type[] eventTypes);
+}
+```
+
+These extend the collection assertions from `aggregate.UncommittedEvents().Should()` and
+`FakeRepository.PublishedEvents.Should()`. There is deliberately no `Should()` on aggregates, so existing
+`aggregate.Should()` calls keep binding to FluentAssertions. `HaveRaised<TEvent>` requires **exactly one**
+matching event (optionally narrowed by `predicate`) and exposes it through `.Which`; zero or several matches fail
+and list every raised event type. `HaveRaisedCount` asserts an exact count, `NotHaveRaised` absence, and
+`HaveRaisedExactlyInOrder` the exact runtime-type sequence. `HaveRaised`, `NotHaveRaised` and
+`HaveRaisedCount` match with `OfType<TEvent>()`, so subtypes and interface implementations count;
+`HaveRaisedExactlyInOrder` compares exact runtime types and takes no `because` arguments. To also assert payloads, keep
+`UncommittedEvents().Should().Equal(...)` (record equality). Use `BeEmpty()` for "nothing raised".
+
+#### `PageAssertions<T>`
+
+```csharp
+public static class PageAssertionsExtensions
+{
+    public static PageAssertions<T> Should<T>(this Page<T> page);
+}
+
+public class PageAssertions<T> : ReferenceTypeAssertions<Page<T>, PageAssertions<T>>
+{
+    public AndConstraint<PageAssertions<T>> Be(Page<T> expected, string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> HaveItems(IEnumerable<T> expected, string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> HaveCount(int expected, string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> BeEmpty(string because = "", params object[] becauseArgs);
+    public AndWhichConstraint<PageAssertions<T>, Cursor> HaveNextCursor(string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> HaveNoNextCursor(string because = "", params object[] becauseArgs);
+    public AndWhichConstraint<PageAssertions<T>, Cursor> HavePreviousCursor(string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> HaveNoPreviousCursor(string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> BeLastPage(string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> BeFirstPage(string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> HaveRequestedLimit(int expected, string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> HaveAppliedLimit(int expected, string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> BeCapped(string because = "", params object[] becauseArgs);
+    public AndConstraint<PageAssertions<T>> NotBeCapped(string because = "", params object[] becauseArgs);
+}
+```
+
+For the domain `Page<T>` returned by query handlers (not the HTTP wire shape). `HaveItems` compares in order;
+`HaveCount` uses `DeliveredCount`. `HaveNextCursor`/`HavePreviousCursor` expose the original `Cursor` through
+`.Which` (cursor tokens are opaque; assert presence or pass it into the next `PageRequest`). `BeLastPage` means no
+next cursor and `BeFirstPage` no previous cursor. `BeCapped` means the applied limit is below the requested limit.
+`Be` compares by record equality. A null page reports an assertion failure.
+
+#### `SpecificationAssertions<T>`
+
+```csharp
+public static class SpecificationAssertionsExtensions
+{
+    public static SpecificationAssertions<T> Should<T>(this Specification<T> specification);
+}
+
+public class SpecificationAssertions<T> : ReferenceTypeAssertions<Specification<T>, SpecificationAssertions<T>>
+{
+    public AndConstraint<SpecificationAssertions<T>> BeSatisfiedBy(T candidate, string because = "", params object[] becauseArgs);
+    public AndConstraint<SpecificationAssertions<T>> NotBeSatisfiedBy(T candidate, string because = "", params object[] becauseArgs);
+    public AndConstraint<SpecificationAssertions<T>> BeSatisfiedByAll(IEnumerable<T> candidates, string because = "", params object[] becauseArgs);
+    public AndConstraint<SpecificationAssertions<T>> BeSatisfiedByNone(IEnumerable<T> candidates, string because = "", params object[] becauseArgs);
+    public AndConstraint<SpecificationAssertions<T>> SelectExactly(IEnumerable<T> candidates, IEnumerable<T> expected, string because = "", params object[] becauseArgs);
+}
+```
+
+Replaces `spec.IsSatisfiedBy(x).Should().BeTrue()`. Failures name the candidate and the specification's
+expression; `BeSatisfiedByAll` and `BeSatisfiedByNone` list **every** offending candidate, not just the first.
+`SelectExactly` asserts the candidates the specification accepts equal `expected` in candidate order. Composed
+specifications (`And`, `Or`, `Not`) are asserted like any other. A null `candidates` argument throws
+`ArgumentNullException`.
+
+#### `ActorAssertions`
+
+```csharp
+public static class ActorAssertionsExtensions
+{
+    public static ActorAssertions Should(this Actor? actor);
+}
+
+public class ActorAssertions : ReferenceTypeAssertions<Actor, ActorAssertions>
+{
+    public AndConstraint<ActorAssertions> Be(Actor expected, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> HavePermission(string permission, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> HaveScopedPermission(string permission, string scope, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> NotHavePermission(string permission, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> HaveAllPermissions(IEnumerable<string> permissions, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> HaveAnyPermission(IEnumerable<string> permissions, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> HaveId(ActorId expected, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> HaveId(string expected, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> BeOwnerOf(ActorId resourceOwnerId, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> HaveAttribute(string key, string because = "", params object[] becauseArgs);
+    public AndConstraint<ActorAssertions> HaveAttributeValue(string key, string value, string because = "", params object[] becauseArgs);
+}
+```
+
+Permission assertions follow the pipeline rule (`Actor.HasPermission`): an explicitly forbidden permission
+overrides a granted one. `HavePermission` failures say whether the permission was **forbidden** or **never
+granted**; `HaveAllPermissions` lists every missing permission. `HaveScopedPermission` builds
+`permission:scope` using `Actor.PermissionScopeSeparator`. `NotHavePermission` passes for both absent and
+forbidden permissions. Scope, attribute-value and permission methods have distinct names on purpose: an overload
+`HaveAttribute(key, value)` would silently bind to the `because` parameter.
+
+#### `IAuthorize` message assertions
+
+```csharp
+public static class AuthorizeMessageAssertionsExtensions
+{
+    public static void ShouldRequirePermissions(this IAuthorize message, params string[] permissions);
+    public static void ShouldBeAuthorizedFor(this IAuthorize message, Actor actor);
+    public static void ShouldNotBeAuthorizedFor(this IAuthorize message, Actor actor);
+}
+```
+
+`ShouldRequirePermissions` asserts the message requires exactly that set of permissions, ignoring order, and
+reports missing and unexpected entries. `ShouldBeAuthorizedFor` and `ShouldNotBeAuthorizedFor` apply the same
+`HasAllPermissions` rule as the Mediator authorization behavior, so denied paths need no pipeline. These are
+explicit methods rather than a `Should()` entry point so commands and queries keep binding to FluentAssertions.
+Resource-based checks return `IResult`; assert them with `IResultAssertions`.
+
+> **Source-breaking `Should()` overloads.** `Should()` on `Page<T>`, `Specification<T>` and `Actor` now binds to
+> `PageAssertions<T>`, `SpecificationAssertions<T>` and `ActorAssertions` instead of FluentAssertions' object
+> assertions. `PageAssertions<T>` and `ActorAssertions` keep `Be`, but `BeEquivalentTo`, `NotBe` and other
+> object-assertion members are not available on these types; compare the members you care about, or use
+> `Should().BeSameAs(...)`, which `ReferenceTypeAssertions` provides.
 
 #### `AggregateTestMutator`
 ```csharp
@@ -688,8 +942,16 @@ public sealed class TestActorProvider : IActorProvider, IActorIdentityProvider
 
     public TestActorScope WithActor(Actor actor);
     public TestActorScope WithActor(string userId, params string[] permissions);
+
+    public static TestActorProvider Anonymous();
+    public TestActorScope WithoutActor();
 }
 ```
+
+`Anonymous()` creates a provider that resolves no actor and no identity (`Maybe.None` from both
+`GetCurrentActorAsync` and `GetCurrentActorIdAsync`) until a `WithActor` scope is opened, for testing
+unauthenticated and 401 paths. `WithoutActor()` makes the current async flow anonymous for the scope's
+duration, then restores the previous actor; it nests with `WithActor` and is isolated across parallel flows.
 
 #### `TestActorScope`
 ```csharp

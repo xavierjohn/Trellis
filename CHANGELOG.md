@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Trellis.Testing helpers for async, events, pages, specifications and actors
+
+`ControlledAsync<T>` gains a single-use mode (`ControlledAsync.SingleUse<T>()`, `ResultReadCount`) that proves a
+`ValueTask` is consumed exactly once. New assertions: `ShouldBePendingThenReleaseAsync`,
+`ShouldPropagateExceptionAsync` / `ShouldPropagateCancellationAsync`, `ShouldRejectNull*`, `CanceledToken`,
+domain-event assertions (`HaveRaised<TEvent>` and siblings, on `UncommittedEvents().Should()`),
+`Page<T>` / `Specification<T>` / `Actor` assertions, `IAuthorize` `ShouldBeAuthorizedFor` /
+`ShouldNotBeAuthorizedFor`, and `TestActorProvider.Anonymous()` / `WithoutActor()`.
+
+**Source-breaking:** `Should()` on `Page<T>`, `Specification<T>` and `Actor` now returns the new assertion
+classes. Calls that relied on FluentAssertions' object assertions there (`BeEquivalentTo`, `NotBe`) no longer
+compile; `Be` is kept on `PageAssertions<T>` and `ActorAssertions`.
+
 ### Added - provider-neutral unit-of-work test double
 
 `FakeUnitOfWork` in `Trellis.Testing` provides configurable `CommitResult`,

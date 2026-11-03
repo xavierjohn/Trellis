@@ -2,6 +2,7 @@
 
 using System;
 using System.Linq;
+using Trellis.Testing;
 
 public sealed class PageMapTests
 {
@@ -18,7 +19,7 @@ public sealed class PageMapTests
             RequestedLimit: 10,
             AppliedLimit: 10);
 
-        page.Next.Should().BeNull();
+        page.Should().HaveNoNextCursor();
     }
 
     [Fact]
@@ -37,13 +38,10 @@ public sealed class PageMapTests
             return new Dest($"v{s.N}");
         });
 
-        mapped.Items.Should().HaveCount(3);
         mapped.Items.Select(d => d.Label).Should().Equal("v1", "v2", "v3");
-        mapped.Next.Should().Be(next);
-        mapped.Previous.Should().Be(prev);
-        mapped.RequestedLimit.Should().Be(50);
-        mapped.AppliedLimit.Should().Be(10);
-        mapped.WasCapped.Should().BeTrue();
+        mapped.Should().HaveCount(3).And.HaveRequestedLimit(50).And.HaveAppliedLimit(10).And.BeCapped();
+        mapped.Should().HaveNextCursor().Which.Should().Be(next);
+        mapped.Should().HavePreviousCursor().Which.Should().Be(prev);
 
         visited.Should().Equal([1, 2, 3]);
     }
@@ -55,12 +53,8 @@ public sealed class PageMapTests
 
         var mapped = source.Map(s => new Dest($"v{s.N}"));
 
-        mapped.Items.Should().BeEmpty();
-        mapped.Next.Should().BeNull();
-        mapped.Previous.Should().BeNull();
-        mapped.RequestedLimit.Should().Be(25);
-        mapped.AppliedLimit.Should().Be(25);
-        mapped.WasCapped.Should().BeFalse();
+        mapped.Should().BeEmpty().And.HaveNoNextCursor().And.HaveNoPreviousCursor()
+            .And.HaveRequestedLimit(25).And.HaveAppliedLimit(25).And.NotBeCapped();
     }
 
     [Fact]
@@ -72,8 +66,7 @@ public sealed class PageMapTests
 
         var mapped = source.Map(s => new Dest($"v{s.N}"));
 
-        mapped.Next.Should().BeNull();
-        mapped.Previous.Should().BeNull();
+        mapped.Should().HaveNoNextCursor().And.HaveNoPreviousCursor();
         mapped.Items.Single().Label.Should().Be("v7");
     }
 

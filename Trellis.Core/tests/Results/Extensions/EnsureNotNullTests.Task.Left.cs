@@ -1,7 +1,6 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions;
 
 using System.Diagnostics;
-using System.Threading.Tasks.Sources;
 using Trellis.Core.Tests.Helpers;
 using Trellis.Testing;
 using static Trellis.Core.Tests.Results.ResultEnsureNotNullTests;
@@ -260,21 +259,21 @@ public class EnsureNotNullAsyncTests
     [InlineData(GuardForm.Required, false)]
     public async Task EnsureNotNullAsync_ValueTask_SingleUseSource_IsConsumedOnce(GuardForm form, bool present)
     {
-        var referenceSource = new SingleUseSource<string?>();
-        var scalarSource = new SingleUseSource<int?>();
+        var referenceSource = ControlledAsync.SingleUse<string?>();
+        var scalarSource = ControlledAsync.SingleUse<int?>();
         var error = new Error.Forbidden("guard.denied");
-        var reference = Reference(form, referenceSource.Task, error, () => error).AsTask();
-        var scalar = Scalar(form, scalarSource.Task, error, () => error).AsTask();
+        var reference = Reference(form, referenceSource.ValueTask, error, () => error).AsTask();
+        var scalar = Scalar(form, scalarSource.ValueTask, error, () => error).AsTask();
         reference.IsCompleted.Should().BeFalse();
         scalar.IsCompleted.Should().BeFalse();
 
-        referenceSource.Complete(present ? "value" : null);
-        scalarSource.Complete(present ? 0 : null);
+        referenceSource.TryComplete(present ? "value" : null);
+        scalarSource.TryComplete(present ? 0 : null);
 
         (await reference.WaitAsync(TestContext.Current.CancellationToken)).IsSuccess.Should().Be(present);
         (await scalar.WaitAsync(TestContext.Current.CancellationToken)).IsSuccess.Should().Be(present);
-        referenceSource.ResultReads.Should().Be(1);
-        scalarSource.ResultReads.Should().Be(1);
+        referenceSource.ResultReadCount.Should().Be(1);
+        scalarSource.ResultReadCount.Should().Be(1);
     }
 
     [Fact]
@@ -325,20 +324,4 @@ public class EnsureNotNullAsyncTests
             GuardForm.Required => source.EnsureNotNullAsync("field", "Required."),
             _ => throw new ArgumentOutOfRangeException(nameof(form)),
         };
-
-    private sealed class SingleUseSource<T> : IValueTaskSource<T>
-    {
-        private ManualResetValueTaskSourceCore<T> _core = new() { RunContinuationsAsynchronously = true };
-        public int ResultReads { get; private set; }
-        public ValueTask<T> Task => new(this, _core.Version);
-        public void Complete(T value) => _core.SetResult(value);
-        public T GetResult(short token)
-        {
-            ResultReads++;
-            return _core.GetResult(token);
-        }
-        public ValueTaskSourceStatus GetStatus(short token) => _core.GetStatus(token);
-        public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) =>
-            _core.OnCompleted(continuation, state, token, flags);
-    }
 }

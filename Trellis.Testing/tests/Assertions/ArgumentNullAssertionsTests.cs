@@ -1,0 +1,115 @@
+﻿namespace Trellis.Testing.Tests;
+
+using Xunit.Sdk;
+
+public class ArgumentNullAssertionsTests
+{
+    [Fact]
+    public void ShouldRejectNull_MatchingParamName_Passes()
+    {
+        Action act = () => throw new ArgumentNullException("selector");
+
+        act.ShouldRejectNull("selector");
+    }
+
+    [Fact]
+    public void ShouldRejectNull_WrongParamName_Fails()
+    {
+        Action act = () => throw new ArgumentNullException("other");
+
+        var assertion = () => act.ShouldRejectNull("selector");
+
+        assertion.Should().Throw<XunitException>().WithMessage("*selector*");
+    }
+
+    [Fact]
+    public void ShouldRejectNull_NothingThrown_Fails()
+    {
+        var assertion = () => ((Action)(() => { })).ShouldRejectNull("selector");
+
+        assertion.Should().Throw<XunitException>();
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullAsync_FaultedTaskWithMatchingParamName_Passes()
+    {
+        Func<Task> act = () => Task.FromException(new ArgumentNullException("factory"));
+
+        await act.ShouldRejectNullAsync("factory");
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullAsync_WrongParamName_Fails()
+    {
+        Func<Task> act = () => Task.FromException(new ArgumentNullException("other"));
+        Func<Task> assertion = () => act.ShouldRejectNullAsync("factory");
+
+        await assertion.Should().ThrowAsync<XunitException>().WithMessage("*factory*");
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullBeforeAwaitAsync_AlreadyFaulted_PassesWhileSourceStaysPending()
+    {
+        var source = new ControlledAsync<int>();
+        try
+        {
+            Func<Task> start = async () =>
+            {
+                ArgumentNullException.ThrowIfNull((object?)null, "factory");
+                await source.Task;
+            };
+
+            await start.ShouldRejectNullBeforeAwaitAsync("factory");
+
+            source.Task.IsCompleted.Should().BeFalse();
+        }
+        finally
+        {
+            source.TryComplete(0);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullBeforeAwaitAsync_SynchronousThrow_Passes()
+    {
+        Func<Task> start = () => throw new ArgumentNullException("factory");
+
+        await start.ShouldRejectNullBeforeAwaitAsync("factory");
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullBeforeAwaitAsync_StillPending_FailsWithoutHanging()
+    {
+        var source = new ControlledAsync<int>();
+        try
+        {
+            Func<Task> start = () => source.Task;
+            Func<Task> assertion = () => start.ShouldRejectNullBeforeAwaitAsync("factory");
+
+            await assertion.Should().ThrowAsync<XunitException>().WithMessage("*before awaiting*");
+        }
+        finally
+        {
+            source.TryComplete(0);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullBeforeAwaitAsync_WrongParamName_Fails()
+    {
+        Func<Task> start = () => Task.FromException(new ArgumentNullException("other"));
+        Func<Task> assertion = () => start.ShouldRejectNullBeforeAwaitAsync("factory");
+
+        await assertion.Should().ThrowAsync<XunitException>().WithMessage("*factory*");
+    }
+
+    [Fact]
+    public void ShouldRejectNull_NullArguments_Throw()
+    {
+        var nullAction = () => ((Action)null!).ShouldRejectNull("x");
+        var nullName = () => ((Action)(() => { })).ShouldRejectNull(null!);
+
+        nullAction.Should().Throw<ArgumentNullException>().WithParameterName("act");
+        nullName.Should().Throw<ArgumentNullException>().WithParameterName("paramName");
+    }
+}

@@ -38,7 +38,7 @@ public class CachingActorProviderTests
         var result = (await caching.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 
         result.Id.Value.Should().Be("user-1");
-        result.HasPermission("Write").Should().BeTrue();
+        result.Should().HavePermission("Write");
     }
 
     [Theory]
@@ -52,7 +52,7 @@ public class CachingActorProviderTests
         var caching = new CachingActorProvider(inner, s_nullAccessor);
         var token = TestContext.Current.CancellationToken;
         var previouslyResolved = (await caching.GetCurrentActorAsync(token)).Unwrap();
-        previouslyResolved.HasPermission("Read").Should().BeTrue();
+        previouslyResolved.Should().HavePermission("Read");
 
         using var changedScope = inner.WithActor(changed);
         (await inner.GetCurrentActorAsync(token)).Unwrap().Should().BeSameAs(changed);
@@ -60,8 +60,8 @@ public class CachingActorProviderTests
         var result = await caching.RequireActorAsync(token);
 
         result.Should().BeSameAs(previouslyResolved);
-        result.HasPermission("Read").Should().BeTrue();
-        result.HasPermission("Write").Should().BeFalse();
+        result.Should().HavePermission("Read");
+        result.Should().NotHavePermission("Write");
     }
 
     [Fact]

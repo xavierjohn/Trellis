@@ -1,6 +1,5 @@
 ﻿namespace Trellis.Asp.Authorization.Tests;
 
-using System.Threading.Tasks.Sources;
 using Microsoft.AspNetCore.Http;
 using Trellis.Authorization;
 using Trellis.Testing;
@@ -76,17 +75,17 @@ public class ActorIdentityCachingTests
     [Fact]
     public async Task GetCurrentActorIdAsync_SingleConsumptionValueTask_ConvertsAndConsumesOnlyOnce()
     {
-        var source = new SingleConsumptionIdentitySource();
-        var provider = new DelegateProvider(_ => source.CreateValueTask());
+        var source = ControlledAsync.SingleUse<Maybe<ActorId>>();
+        var provider = new DelegateProvider(_ => source.ValueTask);
         var cache = new CachingActorProvider(provider, new HttpContextAccessor());
         var first = cache.GetCurrentActorIdAsync(Token).AsTask();
         var second = cache.GetCurrentActorIdAsync(Token).AsTask();
-        source.Complete(ActorId.Create("single-use"));
+        source.TryComplete(Maybe.From(ActorId.Create("single-use")));
 
         (await first).Unwrap().Value.Should().Be("single-use");
         (await second).Unwrap().Value.Should().Be("single-use");
         (await cache.GetCurrentActorIdAsync(Token)).Unwrap().Value.Should().Be("single-use");
-        source.Consumptions.Should().Be(1);
+        source.ResultReadCount.Should().Be(1);
         provider.ActorCalls.Should().Be(0);
     }
 
@@ -188,26 +187,6 @@ public class ActorIdentityCachingTests
         provider.ActorCalls.Should().Be(0);
         calls.Should().Be(1);
         (await cache.GetCurrentActorAsync(Token)).Should().BeNone();
-    }
-
-    private sealed class SingleConsumptionIdentitySource : IValueTaskSource<Maybe<ActorId>>
-    {
-        private ManualResetValueTaskSourceCore<Maybe<ActorId>> _source = new() { RunContinuationsAsynchronously = true };
-        public int Consumptions { get; private set; }
-        public ValueTask<Maybe<ActorId>> CreateValueTask() => new(this, _source.Version);
-        public void Complete(ActorId id) => _source.SetResult(Maybe.From(id));
-
-        public Maybe<ActorId> GetResult(short token)
-        {
-            Consumptions++;
-            if (Consumptions > 1)
-                throw new InvalidOperationException("This ValueTask may only be consumed once.");
-            return _source.GetResult(token);
-        }
-
-        public ValueTaskSourceStatus GetStatus(short token) => _source.GetStatus(token);
-        public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) =>
-            _source.OnCompleted(continuation, state, token, flags);
     }
 
     private sealed class DelegateProvider(

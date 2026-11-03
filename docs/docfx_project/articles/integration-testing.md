@@ -21,6 +21,8 @@ audience: [developer]
 | Assert a validation field violation | `unprocessable.Should().HaveFieldError(...)` | [Validation error assertions](#validation-error-assertions) |
 | Assert stable validation codes, input locations, typed arguments and exact violation sets | `HaveFieldViolation` / `HaveOnlyFieldViolations` and rule variants | [Validation error assertions](#validation-error-assertions) |
 | Record callback counts/arguments and control pending async receivers | `CallbackRecorder<TArgument>` / `ControlledAsync<T>` | [Callback and async helpers](#callback-and-async-helpers) |
+| Assert pending-then-release, exact exception/token propagation, or named null guards | `ShouldBePendingThenReleaseAsync`, `ShouldPropagateExceptionAsync`, `ShouldRejectNull*` | [Callback and async helpers](#callback-and-async-helpers) |
+| Assert domain events, pages, specifications and actors | `HaveRaised<TEvent>()`, `page.Should()`, `spec.Should()`, `actor.Should()` | [Domain, page, specification and actor assertions](#domain-page-specification-and-actor-assertions) |
 | Assert persistence intent without interface casts | `result.Should().HavePersistOnFailure(expected)` | [Result assertions](#result-assertions) |
 | Stub a repository with unique-constraint and not-found semantics | `new FakeRepository<TAggregate, TId>().WithUniqueConstraint(...)` | [FakeRepository](#fakerepository) |
 | Test commit decisions and nested ownership without a database | `new FakeUnitOfWork()` | [FakeUnitOfWork](#fakeunitofwork) |
@@ -277,29 +279,88 @@ calls.CallCount.Should().Be(1);
 calls.Arguments.Should().Equal([3]);
 
 var source = new ControlledAsync<Result<int>>();
-try
-{
-    source.Task.IsCompleted.Should().BeFalse();
-}
-finally
-{
-    source.TryComplete(Result.Ok(42));
-}
+var result = await Pipeline(source.Task).ShouldBePendingThenReleaseAsync(
+    () => source.TryComplete(Result.Ok(42)),
+    TimeSpan.FromSeconds(5),
+    TestContext.Current.CancellationToken,
+    whilePending: () => calls.CallCount.Should().Be(1));
 
-(await source.Task.BeSuccessAsync(TimeSpan.FromSeconds(5), CancellationToken.None))
-    .Which.Should().Be(42);
+result.Should().BeSuccess().Which.Should().Be(42);
 ```
 
 Use parameterless `CallbackRecorder` for error factories and tuple arguments for multi-input
 callbacks. Recording is thread-safe and occurs before invocation, even when the callback throws;
 callbacks are not serialized and returned Task/ValueTask values are not consumed.
 
-`ControlledAsync<T>` can also fault (`TryFail`) or cancel (`TryCancel`) with original exceptions
-and tokens. Its ValueTask receiver is Task-backed, not a single-consumption source probe. Always
-release gates in `finally`. Bounded async assertions require both timeout and cancellation token,
-leaving existing assertion calls unchanged. A timeout or canceled wait does not cancel or complete
-the operation under test. Pass the test runner's token explicitly when available; the library
-does not depend on xUnit or infer a global timeout.
+`ShouldBePendingThenReleaseAsync` replaces the hand-written `try { assert pending } finally { release }`
+scaffold: it asserts the operation is still pending, runs your pending-state checks, **always** releases
+the gate (so a failed check cannot leave it closed), then awaits with an explicit bound. If a check fails, the
+failure propagates immediately and the released operation is not awaited. A timeout
+or canceled wait does not cancel or complete the operation under test, and the library does not depend
+on xUnit or infer a global timeout, so pass the runner's token.
+
+`ControlledAsync<T>` is one type with two modes. The default is Task-backed; `ControlledAsync.SingleUse<T>()`
+backs `ValueTask` with an `IValueTaskSource` that throws on a second consumption and counts reads in
+`ResultReadCount`, so a test can prove a consumer awaits a ValueTask exactly once. Either mode can fault
+(`TryFail`) or cancel (`TryCancel`) with original exceptions and tokens.
+
+Prove an operation surfaces the source's original failure rather than a wrapper:
+
+```csharp
+await Task.FromException<int>(failure).Pipeline().ShouldPropagateExceptionAsync(failure);
+
+using var canceled = CanceledToken.Create();
+await canceled.ToValueTask<int>().Pipeline().ShouldPropagateCancellationAsync(canceled.Token);
+```
+
+`ShouldPropagateExceptionAsync` requires the *same instance*; an equal-looking copy fails.
+Pass a `timeout` and the runner's token (`ShouldPropagateExceptionAsync(failure, TimeSpan.FromSeconds(30), token)`)
+when the operation could be stranded on a pending source; unbounded, a stranded operation hangs the test.
+`CanceledToken.Create()` gives each test a canceled token with its own identity, because every
+`new CancellationToken(true)` compares equal and would let a substituted token pass.
+
+Null guards should name the offending parameter, and eager guards should fire before a pending source is
+awaited:
+
+```csharp
+Action sync = () => items.Select((Func<int, int>)null!);
+sync.ShouldRejectNull("selector");
+
+Func<Task> start = () => pendingSource.Task.ToResultAsync((Func<Error>)null!);
+await start.ShouldRejectNullBeforeAwaitAsync("ferror");
+```
+
+## Domain, page, specification and actor assertions
+
+```csharp
+// Domain events: extend the collection assertions, not the aggregate.
+order.UncommittedEvents().Should().HaveRaised<OrderPlaced>(placed => placed.Total > 0).Which.OrderId.Should().Be(id);
+order.UncommittedEvents().Should().HaveRaisedExactlyInOrder(typeof(OrderPlaced), typeof(OrderShipped));
+repository.PublishedEvents.Should().NotHaveRaised<OrderCancelled>();
+
+// Pagination (the domain Page<T>, not the HTTP wire shape).
+page.Should().HaveItems([first, second]).And.HaveAppliedLimit(2).And.NotBeCapped();
+page.Should().HaveNextCursor().Which.Token.Should().NotBeEmpty();
+lastPage.Should().BeLastPage();
+
+// Specifications: failures name every offending candidate.
+new OverdueSpecification(today).Should().BeSatisfiedByAll(overdueOrders).And.BeSatisfiedByNone(currentOrders);
+
+// Actors and authorization.
+actor.Should().HavePermission("Orders.Read").And.NotHavePermission("Orders.Write");
+new CancelOrderCommand(id).ShouldNotBeAuthorizedFor(readOnlyActor);
+```
+
+`HaveRaised<TEvent>` requires exactly one matching event and exposes it through `.Which`; to also assert
+payloads, keep `UncommittedEvents().Should().Equal(...)` with record equality. Actor permission assertions
+follow the pipeline rule that an explicitly forbidden permission overrides a granted one, and
+`HavePermission` says whether the permission was forbidden or never granted. `ShouldBeAuthorizedFor` and
+`ShouldNotBeAuthorizedFor` apply the same all-permissions rule as the Mediator authorization behavior, so
+denied paths need no pipeline.
+
+For the unauthenticated path, `TestActorProvider.Anonymous()` resolves no actor and no identity, and
+`provider.WithoutActor()` makes an existing provider anonymous for a scope. Both nest with `WithActor`
+and are isolated across parallel tests.
 
 ## FakeRepository
 

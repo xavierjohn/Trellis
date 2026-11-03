@@ -34,7 +34,12 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 - **Structured validation** — Match full pointers/reason codes, count violations, or assert exact field/rule payload multisets with typed arguments
 - **Persistence intent** — `HavePersistOnFailure(bool)` on typed and interface result assertions
 - **Callback recording** — `CallbackRecorder` / `CallbackRecorder<TArgument>` record counts and ordered argument snapshots without changing callback outcomes
-- **Controlled async sources** — `ControlledAsync<T>` exposes pending Task/Task-backed ValueTask receivers with explicit completion, fault and cancellation
+- **Controlled async sources** — `ControlledAsync<T>` is a pending source you complete, fault or cancel; `ControlledAsync.SingleUse<T>()` also proves a ValueTask is consumed exactly once
+- **Async assertions** — `ShouldBePendingThenReleaseAsync` (pending check, guaranteed release, bounded wait), `ShouldPropagateExceptionAsync` / `ShouldPropagateCancellationAsync` (original exception or token unchanged), `CanceledToken`, and null-guard checks that name the parameter (`ShouldRejectNull*`)
+- **Domain events** — `aggregate.UncommittedEvents().Should().HaveRaised<TEvent>()`, `NotHaveRaised`, `HaveRaisedCount`, `HaveRaisedExactlyInOrder`
+- **Pagination** — `page.Should().HaveItems(...)`, `HaveNextCursor()`, `BeLastPage()`, `HaveAppliedLimit(...)`, `BeCapped()`
+- **Specifications** — `spec.Should().BeSatisfiedBy(x)`, `BeSatisfiedByAll`, `SelectExactly` with failures that name every offending candidate
+- **Actors and authorization** — `actor.Should().HavePermission(...)` (forbidden overrides granted), `IAuthorize` `ShouldBeAuthorizedFor` / `ShouldNotBeAuthorizedFor`, and `TestActorProvider.Anonymous()` / `WithoutActor()` for unauthenticated paths
 - **Bounded async assertions** — Existing success/failure assertions accept an explicit timeout and cancellation token without canceling the source operation
 
 `FakeUnitOfWork` implements provider-neutral `IUnitOfWork` without EF Core or Mediator.
