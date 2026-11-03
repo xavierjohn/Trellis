@@ -205,4 +205,17 @@ public class InputPointerLocationTests
         pointer.Path.Should().Be("/Email");
         pointer.In.Should().Be(InputLocation.Body);
     }
+
+    [Fact]
+    public void Path_WithExpression_ValidPointer_PreservesLocation()
+    {
+        var original = InputPointer.ForHeader("If-Match");
+
+        var updated = original with { Path = "/other~1name" };
+
+        updated.Path.Should().Be("/other~1name");
+        updated.In.Should().Be(InputLocation.Header);
+        original.Path.Should().Be("/If-Match");
+        original.In.Should().Be(InputLocation.Header);
+    }
 }

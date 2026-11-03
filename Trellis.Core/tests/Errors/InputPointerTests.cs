@@ -182,4 +182,25 @@ public class InputPointerTests
 
         act.Should().Throw<ArgumentException>().WithParameterName("Path");
     }
+
+    [Theory]
+    [InlineData("email")]
+    [InlineData("/bad~2")]
+    public void Path_ObjectInitializer_MalformedPointer_ThrowsArgumentException(string path)
+    {
+        var act = () => new InputPointer { Path = path };
+
+        act.Should().ThrowExactly<ArgumentException>().WithParameterName("Path");
+    }
+
+    [Theory]
+    [InlineData("email")]
+    [InlineData("/bad~2")]
+    public void Path_WithExpression_MalformedPointer_ThrowsArgumentException(string path)
+    {
+        var pointer = InputPointer.ForQuery("id");
+        var act = () => pointer with { Path = path };
+
+        act.Should().ThrowExactly<ArgumentException>().WithParameterName("Path");
+    }
 }
