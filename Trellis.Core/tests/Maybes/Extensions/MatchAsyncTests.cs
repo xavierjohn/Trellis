@@ -247,7 +247,7 @@ public class MatchAsyncTests : TestBase
 
         await Task.FromException<Maybe<int>>(exception).MatchAsync<int, int>(
             some: someInvocations.Wrap(value => Task.FromResult(value * 2)),
-            none: noneInvocations.Wrap(() => Task.FromResult(-1))).ShouldPropagateExceptionAsync(exception);
+            none: noneInvocations.Wrap(() => Task.FromResult(-1))).ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         someInvocations.CallCount.Should().Be(0);
         noneInvocations.CallCount.Should().Be(0);
@@ -262,7 +262,7 @@ public class MatchAsyncTests : TestBase
 
         await ValueTask.FromException<Maybe<int>>(exception).MatchAsync<int, int>(
             some: someInvocations.Wrap(value => value * 2),
-            none: noneInvocations.Wrap(() => -1)).ShouldPropagateExceptionAsync(exception);
+            none: noneInvocations.Wrap(() => -1)).ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         someInvocations.CallCount.Should().Be(0);
         noneInvocations.CallCount.Should().Be(0);
@@ -277,7 +277,7 @@ public class MatchAsyncTests : TestBase
 
         await canceled.ToTask<Maybe<int>>().MatchAsync<int, int>(
             some: someInvocations.Wrap(value => value * 2),
-            none: noneInvocations.Wrap(() => -1)).ShouldPropagateCancellationAsync(canceled.Token);
+            none: noneInvocations.Wrap(() => -1)).ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         someInvocations.CallCount.Should().Be(0);
         noneInvocations.CallCount.Should().Be(0);
@@ -292,7 +292,7 @@ public class MatchAsyncTests : TestBase
 
         await canceled.ToValueTask<Maybe<int>>().MatchAsync<int, int>(
             some: someInvocations.Wrap(value => new ValueTask<int>(value * 2)),
-            none: noneInvocations.Wrap<ValueTask<int>>(() => new ValueTask<int>(-42))).ShouldPropagateCancellationAsync(canceled.Token);
+            none: noneInvocations.Wrap<ValueTask<int>>(() => new ValueTask<int>(-42))).ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         someInvocations.CallCount.Should().Be(0);
         noneInvocations.CallCount.Should().Be(0);

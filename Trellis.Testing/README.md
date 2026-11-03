@@ -85,8 +85,17 @@ single.TryComplete(42);
 single.ResultReadCount.Should().Be(1);
 
 // A null guard must name the right parameter, and fire before a pending source is awaited.
-Func<Task> start = () => source.Task.ToResultAsync((Func<Error>)null!);
-await start.ShouldRejectNullBeforeAwaitAsync("ferror");
+// Use a fresh source that is still pending: a completed one would let a misplaced guard pass.
+var pending = new ControlledAsync<Maybe<int>>();
+try
+{
+    Func<Task> start = () => pending.Task.ToResultAsync((Func<Error>)null!);
+    await start.ShouldRejectNullBeforeAwaitAsync("ferror");
+}
+finally
+{
+    pending.TryComplete(Maybe<int>.None);
+}
 ```
 
 `ControlledAsync<T>` is one type with two modes: Task-backed by default, or

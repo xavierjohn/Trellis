@@ -597,14 +597,25 @@ consumed exactly once. This replaces the hand-written `try { assert pending } fi
 ```csharp
 public static class PropagationAssertionsExtensions
 {
-    public static Task ShouldPropagateExceptionAsync(this Task operation, Exception expected);
-    public static Task ShouldPropagateExceptionAsync(this ValueTask operation, Exception expected);
-    public static Task ShouldPropagateExceptionAsync<T>(this ValueTask<T> operation, Exception expected);
-    public static Task ShouldPropagateCancellationAsync(this Task operation, CancellationToken expected);
-    public static Task ShouldPropagateCancellationAsync(this ValueTask operation, CancellationToken expected);
-    public static Task ShouldPropagateCancellationAsync<T>(this ValueTask<T> operation, CancellationToken expected);
+    public static Task ShouldPropagateExceptionAsync(
+        this Task operation, Exception expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateExceptionAsync(
+        this ValueTask operation, Exception expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateExceptionAsync<T>(
+        this ValueTask<T> operation, Exception expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateCancellationAsync(
+        this Task operation, CancellationToken expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateCancellationAsync(
+        this ValueTask operation, CancellationToken expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    public static Task ShouldPropagateCancellationAsync<T>(
+        this ValueTask<T> operation, CancellationToken expected, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
 }
 ```
+
+`timeout` and `cancellationToken` bound only the assertion's wait. With neither supplied the operation is awaited
+**without a bound**, so pass them whenever the operation could be stranded on a pending source: an expired
+`timeout` fails the assertion ("did not complete within ...") instead of hanging, and a canceled
+`cancellationToken` throws `OperationCanceledException`. Neither completes or cancels the operation.
 
 `ShouldPropagateExceptionAsync` requires the operation to fault with exactly the `expected` instance
 (reference equality, no wrapping); an equal-looking different instance fails. `ShouldPropagateCancellationAsync`

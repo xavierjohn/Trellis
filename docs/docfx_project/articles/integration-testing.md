@@ -314,6 +314,8 @@ await canceled.ToValueTask<int>().Pipeline().ShouldPropagateCancellationAsync(ca
 ```
 
 `ShouldPropagateExceptionAsync` requires the *same instance*; an equal-looking copy fails.
+Pass a `timeout` and the runner's token (`ShouldPropagateExceptionAsync(failure, TimeSpan.FromSeconds(30), token)`)
+when the operation could be stranded on a pending source; unbounded, a stranded operation hangs the test.
 `CanceledToken.Create()` gives each test a canceled token with its own identity, because every
 `new CancellationToken(true)` compares equal and would let a substituted token pass.
 

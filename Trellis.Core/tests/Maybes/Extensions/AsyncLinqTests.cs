@@ -424,7 +424,7 @@ public class AsyncLinqTests : TestBase
         var invocations = new CallbackRecorder<int>();
 
         await Task.FromException<Maybe<int>>(exception).Select(invocations.Wrap(value => value * 2))
-            .ShouldPropagateExceptionAsync(exception);
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         invocations.CallCount.Should().Be(0);
     }
@@ -436,7 +436,7 @@ public class AsyncLinqTests : TestBase
         var invocations = new CallbackRecorder<int>();
 
         await ValueTask.FromException<Maybe<int>>(exception).Select(invocations.Wrap(value => value * 2))
-            .ShouldPropagateExceptionAsync(exception);
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         invocations.CallCount.Should().Be(0);
     }
@@ -448,7 +448,7 @@ public class AsyncLinqTests : TestBase
         var invocations = new CallbackRecorder<int>();
 
         await canceled.ToTask<Maybe<int>>().Select(invocations.Wrap(value => value * 2))
-            .ShouldPropagateCancellationAsync(canceled.Token);
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         invocations.CallCount.Should().Be(0);
     }
@@ -460,7 +460,7 @@ public class AsyncLinqTests : TestBase
         var invocations = new CallbackRecorder<int>();
 
         await canceled.ToValueTask<Maybe<int>>().Select(invocations.Wrap(value => value * 2))
-            .ShouldPropagateCancellationAsync(canceled.Token);
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         invocations.CallCount.Should().Be(0);
     }

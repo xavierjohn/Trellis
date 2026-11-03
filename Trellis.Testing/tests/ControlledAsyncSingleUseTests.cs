@@ -53,7 +53,7 @@ public class ControlledAsyncSingleUseTests
         var exception = new InvalidOperationException("single-use.fault");
         source.TryFail(exception).Should().BeTrue();
 
-        await source.ValueTask.ShouldPropagateExceptionAsync(exception);
+        await source.ValueTask.ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         source.ResultReadCount.Should().Be(1);
     }
@@ -65,7 +65,7 @@ public class ControlledAsyncSingleUseTests
         var source = ControlledAsync.SingleUse<int>();
         source.TryCancel(canceled.Token).Should().BeTrue();
 
-        await source.ValueTask.ShouldPropagateCancellationAsync(canceled.Token);
+        await source.ValueTask.ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         source.ResultReadCount.Should().Be(1);
     }

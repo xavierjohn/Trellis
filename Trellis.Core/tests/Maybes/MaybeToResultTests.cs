@@ -88,7 +88,7 @@ public class MaybeToResultTests
 
         await Task.FromException<Maybe<int>>(exception)
             .ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")))
-            .ShouldPropagateExceptionAsync(exception);
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         calls.CallCount.Should().Be(0);
     }
@@ -101,7 +101,7 @@ public class MaybeToResultTests
 
         await canceled.ToValueTask<Maybe<int>>()
             .ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")))
-            .ShouldPropagateCancellationAsync(canceled.Token);
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         calls.CallCount.Should().Be(0);
     }
@@ -113,7 +113,7 @@ public class MaybeToResultTests
 
         await ValueTask.FromException<Maybe<int>>(exception)
             .ToResultAsync(new Error.Forbidden("test.absent"))
-            .ShouldPropagateExceptionAsync(exception);
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class MaybeToResultTests
 
         await canceled.ToTask<Maybe<int>>()
             .ToResultAsync(new Error.Forbidden("test.absent"))
-            .ShouldPropagateCancellationAsync(canceled.Token);
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
     }
 
     [Fact]
