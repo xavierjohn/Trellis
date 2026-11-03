@@ -3,6 +3,7 @@
 using System;
 using System.Threading.Tasks;
 using Trellis;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for the asynchronous <c>MatchAsync</c> extension methods on
@@ -96,30 +97,42 @@ public class MatchAsyncTests : TestBase
     [Fact]
     public async Task MatchAsync_Task_AsyncBranches_HasValue_AwaitsSomeBranch()
     {
-        var tcs = new TaskCompletionSource<int>();
+        var source = new ControlledAsync<int>();
         var matchTask = SomeTask(5).MatchAsync(
-            some: async v => { await tcs.Task; return v + 100; },
+            some: async v => { await source.Task; return v + 100; },
             none: () => Task.FromResult(-1));
 
-        matchTask.IsCompleted.Should().BeFalse("the some branch should be awaited");
-        tcs.SetResult(0);
+        try
+        {
+            matchTask.IsCompleted.Should().BeFalse("the some branch should be awaited");
+        }
+        finally
+        {
+            source.TryComplete(0);
+        }
 
-        var result = await matchTask;
+        var result = await matchTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         result.Should().Be(105);
     }
 
     [Fact]
     public async Task MatchAsync_Task_AsyncBranches_HasNoValue_AwaitsNoneBranch()
     {
-        var tcs = new TaskCompletionSource<int>();
+        var source = new ControlledAsync<int>();
         var matchTask = NoneTask().MatchAsync(
             some: v => Task.FromResult(v),
-            none: async () => { await tcs.Task; return -42; });
+            none: async () => { await source.Task; return -42; });
 
-        matchTask.IsCompleted.Should().BeFalse("the none branch should be awaited");
-        tcs.SetResult(0);
+        try
+        {
+            matchTask.IsCompleted.Should().BeFalse("the none branch should be awaited");
+        }
+        finally
+        {
+            source.TryComplete(0);
+        }
 
-        var result = await matchTask;
+        var result = await matchTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         result.Should().Be(-42);
     }
 
@@ -150,30 +163,42 @@ public class MatchAsyncTests : TestBase
     [Fact]
     public async Task MatchAsync_ValueTask_AsyncBranches_HasValue_AwaitsSomeBranch()
     {
-        var tcs = new TaskCompletionSource<int>();
+        var source = new ControlledAsync<int>();
         var matchTask = SomeValueTask(5).MatchAsync(
-            some: async v => { await tcs.Task; return v + 100; },
+            some: async v => { await source.Task; return v + 100; },
             none: () => new ValueTask<int>(-1)).AsTask();
 
-        matchTask.IsCompleted.Should().BeFalse("the some branch should be awaited");
-        tcs.SetResult(0);
+        try
+        {
+            matchTask.IsCompleted.Should().BeFalse("the some branch should be awaited");
+        }
+        finally
+        {
+            source.TryComplete(0);
+        }
 
-        var result = await matchTask;
+        var result = await matchTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         result.Should().Be(105);
     }
 
     [Fact]
     public async Task MatchAsync_ValueTask_AsyncBranches_HasNoValue_AwaitsNoneBranch()
     {
-        var tcs = new TaskCompletionSource<int>();
+        var source = new ControlledAsync<int>();
         var matchTask = NoneValueTask().MatchAsync(
             some: v => new ValueTask<int>(v),
-            none: async () => { await tcs.Task; return -42; }).AsTask();
+            none: async () => { await source.Task; return -42; }).AsTask();
 
-        matchTask.IsCompleted.Should().BeFalse("the none branch should be awaited");
-        tcs.SetResult(0);
+        try
+        {
+            matchTask.IsCompleted.Should().BeFalse("the none branch should be awaited");
+        }
+        finally
+        {
+            source.TryComplete(0);
+        }
 
-        var result = await matchTask;
+        var result = await matchTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         result.Should().Be(-42);
     }
 
@@ -202,73 +227,57 @@ public class MatchAsyncTests : TestBase
     [Fact]
     public async Task MatchAsync_Task_SyncBranches_PendingReceiver_DefersBranchSelection()
     {
-        var source = new TaskCompletionSource<Maybe<int>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var someInvocations = 0;
-        var noneInvocations = 0;
+        var source = new ControlledAsync<Maybe<int>>();
+        var someInvocations = new CallbackRecorder<int>();
+        var noneInvocations = new CallbackRecorder();
         var matchTask = source.Task.MatchAsync<int, int>(
-            some: value =>
-            {
-                someInvocations++;
-                return value * 2;
-            },
-            none: () =>
-            {
-                noneInvocations++;
-                return -1;
-            });
+            some: someInvocations.Wrap(value => value * 2),
+            none: noneInvocations.Wrap(() => -1));
 
         try
         {
             matchTask.IsCompleted.Should().BeFalse();
-            someInvocations.Should().Be(0);
-            noneInvocations.Should().Be(0);
+            someInvocations.CallCount.Should().Be(0);
+            noneInvocations.CallCount.Should().Be(0);
         }
         finally
         {
-            source.SetResult(Maybe.From(7));
+            source.TryComplete(Maybe.From(7));
         }
 
         var result = await matchTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         result.Should().Be(14);
-        someInvocations.Should().Be(1);
-        noneInvocations.Should().Be(0);
+        someInvocations.CallCount.Should().Be(1);
+        noneInvocations.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task MatchAsync_ValueTask_AsyncBranches_PendingReceiver_DefersBranchSelection()
     {
-        var source = new TaskCompletionSource<Maybe<int>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var someInvocations = 0;
-        var noneInvocations = 0;
-        var matchTask = new ValueTask<Maybe<int>>(source.Task).MatchAsync<int, int>(
-            some: value =>
-            {
-                someInvocations++;
-                return new ValueTask<int>(value * 2);
-            },
-            none: () =>
-            {
-                noneInvocations++;
-                return new ValueTask<int>(-42);
-            }).AsTask();
+        var source = new ControlledAsync<Maybe<int>>();
+        var someInvocations = new CallbackRecorder<int>();
+        var noneInvocations = new CallbackRecorder();
+        var matchTask = source.ValueTask.MatchAsync<int, int>(
+            some: someInvocations.Wrap(value => new ValueTask<int>(value * 2)),
+            none: noneInvocations.Wrap<ValueTask<int>>(() => new ValueTask<int>(-42))).AsTask();
 
         try
         {
             matchTask.IsCompleted.Should().BeFalse();
-            someInvocations.Should().Be(0);
-            noneInvocations.Should().Be(0);
+            someInvocations.CallCount.Should().Be(0);
+            noneInvocations.CallCount.Should().Be(0);
         }
         finally
         {
-            source.SetResult(Maybe<int>.None);
+            source.TryComplete(Maybe<int>.None);
         }
 
         var result = await matchTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         result.Should().Be(-42);
-        someInvocations.Should().Be(0);
-        noneInvocations.Should().Be(1);
+        someInvocations.CallCount.Should().Be(0);
+        noneInvocations.CallCount.Should().Be(1);
     }
 
     [Fact]
@@ -276,50 +285,34 @@ public class MatchAsyncTests : TestBase
     {
         var exception = new InvalidOperationException("receiver-source-fault");
         var source = Task.FromException<Maybe<int>>(exception);
-        var someInvocations = 0;
-        var noneInvocations = 0;
+        var someInvocations = new CallbackRecorder<int>();
+        var noneInvocations = new CallbackRecorder();
         Func<Task> act = async () => await source.MatchAsync<int, int>(
-            some: value =>
-            {
-                someInvocations++;
-                return Task.FromResult(value * 2);
-            },
-            none: () =>
-            {
-                noneInvocations++;
-                return Task.FromResult(-1);
-            });
+            some: someInvocations.Wrap(value => Task.FromResult(value * 2)),
+            none: noneInvocations.Wrap(() => Task.FromResult(-1)));
 
         var failure = await act.Should().ThrowAsync<InvalidOperationException>();
 
         failure.Which.Should().BeSameAs(exception);
-        someInvocations.Should().Be(0);
-        noneInvocations.Should().Be(0);
+        someInvocations.CallCount.Should().Be(0);
+        noneInvocations.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task MatchAsync_ValueTask_SyncBranches_FaultedReceiver_PreservesException()
     {
         var exception = new InvalidOperationException("receiver-source-fault");
-        var someInvocations = 0;
-        var noneInvocations = 0;
+        var someInvocations = new CallbackRecorder<int>();
+        var noneInvocations = new CallbackRecorder();
         Func<Task> act = async () => await ValueTask.FromException<Maybe<int>>(exception).MatchAsync<int, int>(
-            some: value =>
-            {
-                someInvocations++;
-                return value * 2;
-            },
-            none: () =>
-            {
-                noneInvocations++;
-                return -1;
-            });
+            some: someInvocations.Wrap(value => value * 2),
+            none: noneInvocations.Wrap(() => -1));
 
         var failure = await act.Should().ThrowAsync<InvalidOperationException>();
 
         failure.Which.Should().BeSameAs(exception);
-        someInvocations.Should().Be(0);
-        noneInvocations.Should().Be(0);
+        someInvocations.CallCount.Should().Be(0);
+        noneInvocations.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -328,25 +321,17 @@ public class MatchAsyncTests : TestBase
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         var source = Task.FromCanceled<Maybe<int>>(cancellation.Token);
-        var someInvocations = 0;
-        var noneInvocations = 0;
+        var someInvocations = new CallbackRecorder<int>();
+        var noneInvocations = new CallbackRecorder();
         Func<Task> act = async () => await source.MatchAsync<int, int>(
-            some: value =>
-            {
-                someInvocations++;
-                return value * 2;
-            },
-            none: () =>
-            {
-                noneInvocations++;
-                return -1;
-            });
+            some: someInvocations.Wrap(value => value * 2),
+            none: noneInvocations.Wrap(() => -1));
 
         var failure = await act.Should().ThrowAsync<OperationCanceledException>();
 
         failure.Which.CancellationToken.Should().Be(cancellation.Token);
-        someInvocations.Should().Be(0);
-        noneInvocations.Should().Be(0);
+        someInvocations.CallCount.Should().Be(0);
+        noneInvocations.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -354,24 +339,16 @@ public class MatchAsyncTests : TestBase
     {
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
-        var someInvocations = 0;
-        var noneInvocations = 0;
+        var someInvocations = new CallbackRecorder<int>();
+        var noneInvocations = new CallbackRecorder();
         Func<Task> act = async () => await ValueTask.FromCanceled<Maybe<int>>(cancellation.Token).MatchAsync<int, int>(
-            some: value =>
-            {
-                someInvocations++;
-                return new ValueTask<int>(value * 2);
-            },
-            none: () =>
-            {
-                noneInvocations++;
-                return new ValueTask<int>(-42);
-            });
+            some: someInvocations.Wrap(value => new ValueTask<int>(value * 2)),
+            none: noneInvocations.Wrap<ValueTask<int>>(() => new ValueTask<int>(-42)));
 
         var failure = await act.Should().ThrowAsync<OperationCanceledException>();
 
         failure.Which.CancellationToken.Should().Be(cancellation.Token);
-        someInvocations.Should().Be(0);
-        noneInvocations.Should().Be(0);
+        someInvocations.CallCount.Should().Be(0);
+        noneInvocations.CallCount.Should().Be(0);
     }
 }
