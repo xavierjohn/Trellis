@@ -1,7 +1,5 @@
 ﻿namespace Trellis.Testing.Tests.Assertions;
 
-using System.Threading.Tasks.Sources;
-
 public class ResultAssertionsAsyncTests
 {
     [Theory]
@@ -180,8 +178,9 @@ public class ResultAssertionsAsyncTests
     {
         var expected = new Error.Forbidden("test.denied");
         var result = kind == 0 ? Result.Ok(42) : Result.Fail<int>(expected);
-        var source = new SingleUseSource(result);
-        var valueTask = new ValueTask<Result<int>>(source, source.Version);
+        var source = ControlledAsync.SingleUse<Result<int>>();
+        source.TryComplete(result);
+        var valueTask = source.ValueTask;
 
         if (kind == 0)
             (await valueTask.BeSuccessAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken)).Which.Should().Be(42);
@@ -190,29 +189,7 @@ public class ResultAssertionsAsyncTests
         else
             (await valueTask.BeFailureOfTypeAsync<int, Error.Forbidden>(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken)).Which.Should().BeSameAs(expected);
 
-        source.Consumptions.Should().Be(1);
-    }
-
-    private sealed class SingleUseSource : IValueTaskSource<Result<int>>
-    {
-        private ManualResetValueTaskSourceCore<Result<int>> _source;
-
-        public SingleUseSource(Result<int> result) => _source.SetResult(result);
-
-        public int Consumptions { get; private set; }
-        public short Version => _source.Version;
-
-        public Result<int> GetResult(short token)
-        {
-            if (++Consumptions != 1)
-                throw new InvalidOperationException("The source was consumed more than once.");
-            return _source.GetResult(token);
-        }
-
-        public ValueTaskSourceStatus GetStatus(short token) => _source.GetStatus(token);
-
-        public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) =>
-            _source.OnCompleted(continuation, state, token, flags);
+        source.ResultReadCount.Should().Be(1);
     }
 
     [Fact]

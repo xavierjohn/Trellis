@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Core.Tests.DomainDrivenDesign.Specification;
 
+using Trellis.Testing;
+
 /// <summary>
 /// Tests for the And composition of <see cref="Trellis.Specification{T}"/>.
 /// </summary>
@@ -15,7 +17,7 @@ public class AndSpecificationTests
         var product = new Product("Widget", 100m, "Electronics");
 
         // Act & Assert
-        spec.IsSatisfiedBy(product).Should().BeTrue();
+        spec.Should().BeSatisfiedBy(product);
     }
 
     [Fact]
@@ -26,7 +28,7 @@ public class AndSpecificationTests
         var product = new Product("Widget", 100m, "Electronics");
 
         // Act & Assert
-        spec.IsSatisfiedBy(product).Should().BeFalse();
+        spec.Should().NotBeSatisfiedBy(product);
     }
 
     [Fact]
@@ -37,7 +39,7 @@ public class AndSpecificationTests
         var product = new Product("Widget", 100m, "Electronics");
 
         // Act & Assert
-        spec.IsSatisfiedBy(product).Should().BeFalse();
+        spec.Should().NotBeSatisfiedBy(product);
     }
 
     [Fact]
@@ -48,7 +50,7 @@ public class AndSpecificationTests
         var product = new Product("Widget", 100m, "Electronics");
 
         // Act & Assert
-        spec.IsSatisfiedBy(product).Should().BeFalse();
+        spec.Should().NotBeSatisfiedBy(product);
     }
 
     #endregion
@@ -85,7 +87,7 @@ public class AndSpecificationTests
             new PredicateSpec(_ => throw new InvalidOperationException("Right predicate evaluated.")));
         var product = new Product("Widget", 100m, "Electronics");
 
-        spec.IsSatisfiedBy(product).Should().BeFalse();
+        spec.Should().NotBeSatisfiedBy(product);
     }
 
     [Fact]
@@ -108,7 +110,7 @@ public class AndSpecificationTests
         var product = new Product("Laptop", 999m, "Electronics");
 
         // Act & Assert
-        spec.IsSatisfiedBy(product).Should().BeTrue();
+        spec.Should().BeSatisfiedBy(product);
     }
 
     [Fact]
@@ -119,7 +121,7 @@ public class AndSpecificationTests
         var product = new Product("Jacket", 200m, "Clothing");
 
         // Act & Assert
-        spec.IsSatisfiedBy(product).Should().BeFalse();
+        spec.Should().NotBeSatisfiedBy(product);
     }
 
     [Fact]
@@ -130,7 +132,7 @@ public class AndSpecificationTests
         var product = new Product("Cable", 5m, "Electronics");
 
         // Act & Assert
-        spec.IsSatisfiedBy(product).Should().BeFalse();
+        spec.Should().NotBeSatisfiedBy(product);
     }
 
     #endregion

@@ -61,7 +61,7 @@ public class BankAccountTests
 
         result.IsSuccess.Should().BeTrue();
         account.Balance.Amount.Should().Be(150m);
-        account.UncommittedEvents().OfType<MoneyDeposited>().Should().HaveCount(1);
+        account.UncommittedEvents().Should().HaveRaisedCount<MoneyDeposited>(1);
     }
 
     [Fact]
@@ -217,6 +217,6 @@ public class BankAccountTests
         result.IsSuccess.Should().BeTrue();
         from.Balance.Amount.Should().Be(60m);
         to.Balance.Amount.Should().Be(40m);
-        from.UncommittedEvents().OfType<TransferCompleted>().Should().HaveCount(1);
+        from.UncommittedEvents().Should().HaveRaisedCount<TransferCompleted>(1);
     }
 }

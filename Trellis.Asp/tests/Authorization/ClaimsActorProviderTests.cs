@@ -636,9 +636,9 @@ public class ClaimsActorProviderTests
 
         // Assert — actor should ONLY have claims from the authenticated identity
         actor.Id.Value.Should().Be("real-user-123", "should read from authenticated identity, not spoofed");
-        actor.HasPermission("orders:read").Should().BeTrue();
-        actor.HasPermission("admin").Should().BeFalse("should NOT have permissions from unauthenticated identity");
-        actor.HasPermission("orders:delete").Should().BeFalse("should NOT have permissions from unauthenticated identity");
+        actor.Should().HavePermission("orders:read");
+        actor.Should().NotHavePermission("admin", "should NOT have permissions from unauthenticated identity");
+        actor.Should().NotHavePermission("orders:delete", "should NOT have permissions from unauthenticated identity");
     }
 
     [Fact]
@@ -667,9 +667,9 @@ public class ClaimsActorProviderTests
 
         // Assert
         actor.Id.Value.Should().Be("real-user-123", "should ignore unauthenticated identity even when listed first");
-        actor.HasPermission("orders:read").Should().BeTrue();
-        actor.HasPermission("admin").Should().BeFalse("should NOT have permissions from unauthenticated identity");
-        actor.HasPermission("orders:delete").Should().BeFalse("should NOT have permissions from unauthenticated identity");
+        actor.Should().HavePermission("orders:read");
+        actor.Should().NotHavePermission("admin", "should NOT have permissions from unauthenticated identity");
+        actor.Should().NotHavePermission("orders:delete", "should NOT have permissions from unauthenticated identity");
     }
 
     #endregion

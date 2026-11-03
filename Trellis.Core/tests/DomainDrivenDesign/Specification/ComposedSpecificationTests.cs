@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Core.Tests.DomainDrivenDesign.Specification;
 
+using Trellis.Testing;
+
 /// <summary>
 /// Tests for complex composed specifications — triple composition,
 /// deep nesting, IQueryable compatibility, and immutability.
@@ -22,10 +24,10 @@ public class ComposedSpecificationTests
         var cheapClothing = new Product("Shirt", 25m, "Clothing");
 
         // Act & Assert
-        spec.IsSatisfiedBy(expensiveElectronics).Should().BeTrue("expensive electronics matches AND clause");
-        spec.IsSatisfiedBy(cheapElectronics).Should().BeFalse("cheap electronics fails AND; no 'Pro' in name");
-        spec.IsSatisfiedBy(proClothing).Should().BeTrue("'Pro' in name matches OR clause");
-        spec.IsSatisfiedBy(cheapClothing).Should().BeFalse("neither clause is satisfied");
+        spec.Should().BeSatisfiedBy(expensiveElectronics, "expensive electronics matches AND clause");
+        spec.Should().NotBeSatisfiedBy(cheapElectronics, "cheap electronics fails AND; no 'Pro' in name");
+        spec.Should().BeSatisfiedBy(proClothing, "'Pro' in name matches OR clause");
+        spec.Should().NotBeSatisfiedBy(cheapClothing, "neither clause is satisfied");
     }
 
     #endregion
@@ -47,10 +49,10 @@ public class ComposedSpecificationTests
         var cheapItem = new Product("Cheap Widget", 100m, "General");
 
         // Act & Assert
-        spec.IsSatisfiedBy(expensiveElectronics).Should().BeTrue("expensive + Electronics → both clauses pass");
-        spec.IsSatisfiedBy(expensiveClothing).Should().BeTrue("expensive + NOT 'Cheap' in name → passes");
+        spec.Should().BeSatisfiedBy(expensiveElectronics, "expensive + Electronics → both clauses pass");
+        spec.Should().BeSatisfiedBy(expensiveClothing, "expensive + NOT 'Cheap' in name → passes");
         // "Cheap Widget" has price > 50, category != Electronics, name contains "Cheap" → inner OR is false
-        spec.IsSatisfiedBy(cheapItem).Should().BeFalse("name contains 'Cheap' and not Electronics → inner OR fails");
+        spec.Should().NotBeSatisfiedBy(cheapItem, "name contains 'Cheap' and not Electronics → inner OR fails");
     }
 
     #endregion
@@ -126,15 +128,15 @@ public class ComposedSpecificationTests
         var expensiveClothing = new Product("Jacket", 200m, "Clothing");
 
         // Assert — original specs still work independently
-        priceSpec.IsSatisfiedBy(cheapElectronics).Should().BeFalse("price spec: 5 is not > 50");
-        priceSpec.IsSatisfiedBy(expensiveClothing).Should().BeTrue("price spec: 200 > 50");
+        priceSpec.Should().NotBeSatisfiedBy(cheapElectronics, "price spec: 5 is not > 50");
+        priceSpec.Should().BeSatisfiedBy(expensiveClothing, "price spec: 200 > 50");
 
-        categorySpec.IsSatisfiedBy(cheapElectronics).Should().BeTrue("category spec: Electronics");
-        categorySpec.IsSatisfiedBy(expensiveClothing).Should().BeFalse("category spec: not Electronics");
+        categorySpec.Should().BeSatisfiedBy(cheapElectronics, "category spec: Electronics");
+        categorySpec.Should().NotBeSatisfiedBy(expensiveClothing, "category spec: not Electronics");
 
         // Composed spec has its own behavior
-        composedSpec.IsSatisfiedBy(cheapElectronics).Should().BeFalse("composed: price fails");
-        composedSpec.IsSatisfiedBy(expensiveClothing).Should().BeFalse("composed: category fails");
+        composedSpec.Should().NotBeSatisfiedBy(cheapElectronics, "composed: price fails");
+        composedSpec.Should().NotBeSatisfiedBy(expensiveClothing, "composed: category fails");
     }
 
     [Fact]
@@ -148,8 +150,8 @@ public class ComposedSpecificationTests
         var cheapElectronics = new Product("Cable", 5m, "Electronics");
 
         // Act & Assert — And and Or produce different results
-        andSpec.IsSatisfiedBy(cheapElectronics).Should().BeFalse("AND: price fails");
-        orSpec.IsSatisfiedBy(cheapElectronics).Should().BeTrue("OR: category passes");
+        andSpec.Should().NotBeSatisfiedBy(cheapElectronics, "AND: price fails");
+        orSpec.Should().BeSatisfiedBy(cheapElectronics, "OR: category passes");
     }
 
     #endregion

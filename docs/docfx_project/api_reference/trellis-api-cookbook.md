@@ -912,6 +912,13 @@ public class PlaceOrderHandlerTests
 
 **What it shows.** `ResultAssertions<TValue>.HaveValue(expected)` asserts the success value **equals** `expected` (use `HaveValueEquivalentTo` for member-wise structural equivalence); `UnwrapError()` is the safe accessor that *only* returns the error and is intended for use after `Should().BeFailure...`. Calling `.Should()` on an `Error.InvalidInput` returns the specialized `ValidationErrorAssertions` (with `HaveFieldError`, `HaveFieldErrorWithDetail`, `HaveFieldCount`). Async assertions have two valid shapes: await the pipeline first and assert the resulting `Result<T>`, or call `BeSuccessAsync` / `BeFailureAsync` directly on `Task<Result<T>>` or `ValueTask<Result<T>>`. The unsupported shape is `await result.Should().BeSuccessAsync()` because `.Should()` returns synchronous `ResultAssertions<TValue>`.
 
+Beyond Result assertions, `Trellis.Testing` covers the other things handler and domain tests check:
+`aggregate.UncommittedEvents().Should().HaveRaised<TEvent>()` for raised domain events,
+`page.Should().HaveNextCursor()` / `.BeLastPage()` for a `Page<T>`, `spec.Should().BeSatisfiedBy(x)` for
+specifications, and `actor.Should().HavePermission(...)` plus `message.ShouldNotBeAuthorizedFor(actor)` for
+denied paths without the pipeline. `TestActorProvider.Anonymous()` supplies the unauthenticated case. See the
+[Testing reference](trellis-api-testing-reference.md#patterns-index) for every helper.
+
 ---
 
 ## Recipe 11 — Anti-pattern → fix gallery (the analyzers in action)

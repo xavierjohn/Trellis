@@ -138,7 +138,7 @@ public class DevelopmentActorProviderTests
         var actor = (await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken)).Unwrap();
 
         actor.ForbiddenPermissions.Should().Contain("orders:delete");
-        actor.HasPermission("orders:delete").Should().BeFalse("deny overrides allow");
+        actor.Should().NotHavePermission("orders:delete", "deny overrides allow");
     }
 
     [Fact]

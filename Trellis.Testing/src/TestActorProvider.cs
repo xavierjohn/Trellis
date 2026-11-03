@@ -20,8 +20,8 @@ using Trellis.Authorization;
 /// </example>
 public sealed class TestActorProvider : IActorProvider, IActorIdentityProvider
 {
-    private readonly Actor _defaultActor;
-    private readonly AsyncLocal<Actor?> _asyncLocalActor = new();
+    private readonly Actor? _defaultActor;
+    private readonly AsyncLocal<ActorSelection?> _asyncLocalSelection = new();
 
     /// <summary>
     /// Initializes a new <see cref="TestActorProvider"/> with the specified <see cref="Actor"/>.
@@ -33,6 +33,17 @@ public sealed class TestActorProvider : IActorProvider, IActorIdentityProvider
         ArgumentNullException.ThrowIfNull(actor);
         _defaultActor = actor;
     }
+
+    private TestActorProvider()
+    {
+    }
+
+    /// <summary>
+    /// Creates a provider that resolves no actor and no identity until a
+    /// <see cref="WithActor(Actor)"/> scope is opened, for testing the unauthenticated path.
+    /// </summary>
+    /// <returns>An anonymous provider.</returns>
+    public static TestActorProvider Anonymous() => new();
 
     /// <summary>
     /// Initializes a new <see cref="TestActorProvider"/> with an actor created from the specified user ID and permissions.
@@ -46,13 +57,13 @@ public sealed class TestActorProvider : IActorProvider, IActorIdentityProvider
 
     /// <inheritdoc />
     public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)
-        => Task.FromResult(Maybe.From(_asyncLocalActor.Value ?? _defaultActor));
+        => Task.FromResult(Current() is { } actor ? Maybe.From(actor) : Maybe<Actor>.None);
 
     /// <inheritdoc />
     public ValueTask<Maybe<ActorId>> GetCurrentActorIdAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(Maybe.From((_asyncLocalActor.Value ?? _defaultActor).Id));
+        return ValueTask.FromResult(Current() is { } actor ? Maybe.From(actor.Id) : Maybe<ActorId>.None);
     }
 
     /// <summary>
@@ -65,10 +76,15 @@ public sealed class TestActorProvider : IActorProvider, IActorIdentityProvider
     public TestActorScope WithActor(Actor actor)
     {
         ArgumentNullException.ThrowIfNull(actor);
-        var previous = _asyncLocalActor.Value;
-        _asyncLocalActor.Value = actor;
-        return new TestActorScope(_asyncLocalActor, previous);
+        return Select(new ActorSelection(actor));
     }
+
+    /// <summary>
+    /// Temporarily makes the current async flow anonymous: no actor and no identity resolve.
+    /// Returns a <see cref="TestActorScope"/> that restores the previous actor on dispose.
+    /// </summary>
+    /// <returns>A disposable scope that restores the previous actor.</returns>
+    public TestActorScope WithoutActor() => Select(new ActorSelection(null));
 
     /// <summary>
     /// Temporarily replaces the current actor with one created from the specified user ID and permissions.
@@ -79,4 +95,15 @@ public sealed class TestActorProvider : IActorProvider, IActorIdentityProvider
     /// <returns>A disposable scope that restores the previous actor.</returns>
     public TestActorScope WithActor(string userId, params string[] permissions) =>
         WithActor(Actor.Create(userId, new HashSet<string>(permissions)));
+
+    private Actor? Current() => _asyncLocalSelection.Value is { } selection ? selection.Actor : _defaultActor;
+
+    private TestActorScope Select(ActorSelection selection)
+    {
+        var previous = _asyncLocalSelection.Value;
+        _asyncLocalSelection.Value = selection;
+        return new TestActorScope(_asyncLocalSelection, previous);
+    }
+
+    internal sealed record ActorSelection(Actor? Actor);
 }

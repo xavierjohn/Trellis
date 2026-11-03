@@ -55,35 +55,68 @@ payload multisets, including typed arguments, input locations, detail and duplic
 multiplicity. `HaveFieldCount` keeps its existing distinct-path meaning; the new
 violation-count assertions count every entry. Persistence intent is not proof of a commit.
 
-## Callback recording and controlled async sources
+## Async test helpers
 
 ```csharp
-var factory = new CallbackRecorder();
+var calls = new CallbackRecorder();
 var source = new ControlledAsync<Maybe<int>>();
-var conversion = source.Task.ToResultAsync(
-    factory.Wrap(() => new Error.Forbidden("test.absent")));
 
-try
-{
-    conversion.IsCompleted.Should().BeFalse();
-    factory.CallCount.Should().Be(0);
-}
-finally
-{
-    source.TryComplete(Maybe<int>.None);
-}
+// Assert the operation is pending, always release the gate, then await with a bound.
+var result = await source.Task
+    .ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")))
+    .ShouldBePendingThenReleaseAsync(
+        () => source.TryComplete(Maybe<int>.None),
+        TimeSpan.FromSeconds(5),
+        TestContext.Current.CancellationToken,
+        whilePending: () => calls.CallCount.Should().Be(0));
 
-await conversion.BeFailureAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
-factory.CallCount.Should().Be(1);
+result.Should().BeFailure();
+calls.CallCount.Should().Be(1);
+
+// Prove the original exception or token comes through, not a wrapper or a lookalike.
+await Task.FromException<Maybe<int>>(failure).ToResultAsync(error).ShouldPropagateExceptionAsync(failure);
+using var canceled = CanceledToken.Create();
+await canceled.ToTask<Maybe<int>>().ToResultAsync(error).ShouldPropagateCancellationAsync(canceled.Token);
+
+// Prove a ValueTask consumer reads its result exactly once.
+var single = ControlledAsync.SingleUse<int>();
+single.TryComplete(42);
+(await consumer(single.ValueTask)).Should().Be(42);
+single.ResultReadCount.Should().Be(1);
+
+// A null guard must name the right parameter, and fire before a pending source is awaited.
+Func<Task> start = () => source.Task.ToResultAsync((Func<Error>)null!);
+await start.ShouldRejectNullBeforeAwaitAsync("ferror");
 ```
 
-Use `CallbackRecorder<TArgument>` for ordered argument snapshots (`Arguments`), including
-tuple arguments. Recording is thread-safe; callback outcomes and awaitables pass through
-unchanged. `ControlledAsync<T>` also exposes a Task-backed `ValueTask` and explicit
-`TryFail` / `TryCancel` transitions. It is not a custom single-consumption ValueTask probe.
-Bounded success/failure/typed-failure assertions accept both timeout and cancellation token;
-they stop only the assertion wait, not the source operation. Always release pending sources.
-The helpers remain test-runner-agnostic.
+`ControlledAsync<T>` is one type with two modes: Task-backed by default, or
+`ControlledAsync.SingleUse<T>()`, whose `ValueTask` throws on a second consumption and counts reads in
+`ResultReadCount`. `CallbackRecorder<TArgument>` records ordered argument snapshots (`Arguments`).
+Bounded success/failure assertions take a timeout and token; they stop only the assertion wait, never the
+operation. The helpers are test-runner-agnostic.
+
+## Domain event, page, specification and actor assertions
+
+```csharp
+order.UncommittedEvents().Should().HaveRaised<OrderPlaced>().Which.OrderId.Should().Be(id);
+repository.PublishedEvents.Should().NotHaveRaised<OrderShipped>();
+
+page.Should().HaveItems([first, second]).And.HaveRequestedLimit(50).And.BeCapped();
+page.Should().HaveNextCursor().Which.Token.Should().NotBeEmpty();
+
+new OverdueSpecification(today).Should().BeSatisfiedByAll(overdueOrders);
+
+actor.Should().HavePermission("Orders.Read").And.NotHavePermission("Orders.Write");
+new CancelOrderCommand(id).ShouldNotBeAuthorizedFor(readOnlyActor);
+
+var anonymous = TestActorProvider.Anonymous();               // resolves no actor and no identity
+await using var scope = actorProvider.WithoutActor();        // or switch an existing provider
+```
+
+Event assertions extend `aggregate.UncommittedEvents().Should()` rather than adding `Should()` to
+aggregates. Permission assertions follow the pipeline rule: an explicitly forbidden permission overrides a
+granted one, and the failure message says which. `ShouldBeAuthorizedFor` applies the same all-permissions
+rule as the Mediator authorization behavior, so denied paths need no pipeline.
 
 ## FakeUnitOfWork
 
