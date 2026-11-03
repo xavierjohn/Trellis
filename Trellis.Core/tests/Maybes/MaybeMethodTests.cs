@@ -463,4 +463,75 @@ public class MaybeMethodTests
     }
 
     #endregion
+
+    [Fact]
+    public void Map_ReferenceProjection_NullResult_ReturnsNone()
+    {
+        var sut = Maybe.From("source");
+        var invocations = 0;
+        string? suppliedValue = null;
+
+        var result = sut.Map<string>(value =>
+        {
+            invocations++;
+            suppliedValue = value;
+            return null!;
+        });
+
+        result.HasNoValue.Should().BeTrue();
+        suppliedValue.Should().Be("source");
+        invocations.Should().Be(1);
+    }
+
+    [Fact]
+    public void Map_AbsentSource_ThrowingSelector_SkipsSelector()
+    {
+        var sut = Maybe<string>.None;
+        var invocations = 0;
+
+        string ThrowIfInvoked(string _)
+        {
+            invocations++;
+            throw new InvalidOperationException("selector-must-not-run");
+        }
+
+        var result = sut.Map(ThrowIfInvoked);
+
+        result.HasNoValue.Should().BeTrue();
+        invocations.Should().Be(0);
+    }
+
+    [Fact]
+    public void Map_ScalarProjection_ZeroResult_PreservesSome()
+    {
+        var sut = Maybe.From(5);
+        var invocations = 0;
+
+        var result = sut.Map(value =>
+        {
+            invocations++;
+            return value - 5;
+        });
+
+        result.TryGetValue(out var projected).Should().BeTrue();
+        projected.Should().Be(0);
+        invocations.Should().Be(1);
+    }
+
+    [Fact]
+    public void Map_ScalarProjection_FalseResult_PreservesSome()
+    {
+        var sut = Maybe.From(5);
+        var invocations = 0;
+
+        var result = sut.Map(value =>
+        {
+            invocations++;
+            return value < 0;
+        });
+
+        result.TryGetValue(out var projected).Should().BeTrue();
+        projected.Should().BeFalse();
+        invocations.Should().Be(1);
+    }
 }
