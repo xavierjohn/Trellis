@@ -382,46 +382,38 @@ public class AsyncLinqTests : TestBase
     [Fact]
     public async Task Select_Task_PendingSource_DefersProjection()
     {
-        var source = new TaskCompletionSource<Maybe<int>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var invocations = 0;
-        var projected = source.Task.Select(value =>
-        {
-            invocations++;
-            return value * 2;
-        });
+        var source = new ControlledAsync<Maybe<int>>();
+        var invocations = new CallbackRecorder<int>();
+        var projected = source.Task.Select(invocations.Wrap(value => value * 2));
 
         try
         {
             projected.IsCompleted.Should().BeFalse();
-            invocations.Should().Be(0);
+            invocations.CallCount.Should().Be(0);
         }
         finally
         {
-            source.SetResult(Maybe.From(5));
+            source.TryComplete(Maybe.From(5));
         }
 
         var result = await projected.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
         result.TryGetValue(out var value).Should().BeTrue();
         value.Should().Be(10);
-        invocations.Should().Be(1);
+        invocations.CallCount.Should().Be(1);
     }
 
     [Fact]
     public async Task Select_ValueTask_PendingSingleUseSource_ConsumesOnce()
     {
         var source = new SingleUseSource<Maybe<int>>();
-        var invocations = 0;
-        var projected = source.Task.Select(value =>
-        {
-            invocations++;
-            return value * 2;
-        }).AsTask();
+        var invocations = new CallbackRecorder<int>();
+        var projected = source.Task.Select(invocations.Wrap(value => value * 2)).AsTask();
 
         try
         {
             projected.IsCompleted.Should().BeFalse();
-            invocations.Should().Be(0);
+            invocations.CallCount.Should().Be(0);
             source.ResultReads.Should().Be(0);
         }
         finally
@@ -433,7 +425,7 @@ public class AsyncLinqTests : TestBase
 
         result.TryGetValue(out var value).Should().BeTrue();
         value.Should().Be(10);
-        invocations.Should().Be(1);
+        invocations.CallCount.Should().Be(1);
         source.ResultReads.Should().Be(1);
     }
 
@@ -442,17 +434,13 @@ public class AsyncLinqTests : TestBase
     {
         var exception = new InvalidOperationException("source-fault");
         var source = Task.FromException<Maybe<int>>(exception);
-        var invocations = 0;
-        Func<Task> act = async () => _ = await source.Select(value =>
-        {
-            invocations++;
-            return value * 2;
-        });
+        var invocations = new CallbackRecorder<int>();
+        Func<Task> act = async () => _ = await source.Select(invocations.Wrap(value => value * 2));
 
         var failure = await act.Should().ThrowAsync<InvalidOperationException>();
 
         failure.Which.Should().BeSameAs(exception);
-        invocations.Should().Be(0);
+        invocations.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -460,17 +448,13 @@ public class AsyncLinqTests : TestBase
     {
         var exception = new InvalidOperationException("source-fault");
         var source = ValueTask.FromException<Maybe<int>>(exception);
-        var invocations = 0;
-        Func<Task> act = async () => _ = await source.Select(value =>
-        {
-            invocations++;
-            return value * 2;
-        });
+        var invocations = new CallbackRecorder<int>();
+        Func<Task> act = async () => _ = await source.Select(invocations.Wrap(value => value * 2));
 
         var failure = await act.Should().ThrowAsync<InvalidOperationException>();
 
         failure.Which.Should().BeSameAs(exception);
-        invocations.Should().Be(0);
+        invocations.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -479,17 +463,13 @@ public class AsyncLinqTests : TestBase
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         var source = Task.FromCanceled<Maybe<int>>(cancellation.Token);
-        var invocations = 0;
-        Func<Task> act = async () => _ = await source.Select(value =>
-        {
-            invocations++;
-            return value * 2;
-        });
+        var invocations = new CallbackRecorder<int>();
+        Func<Task> act = async () => _ = await source.Select(invocations.Wrap(value => value * 2));
 
         var failure = await act.Should().ThrowAsync<OperationCanceledException>();
 
         failure.Which.CancellationToken.Should().Be(cancellation.Token);
-        invocations.Should().Be(0);
+        invocations.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -498,17 +478,13 @@ public class AsyncLinqTests : TestBase
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         var source = ValueTask.FromCanceled<Maybe<int>>(cancellation.Token);
-        var invocations = 0;
-        Func<Task> act = async () => _ = await source.Select(value =>
-        {
-            invocations++;
-            return value * 2;
-        });
+        var invocations = new CallbackRecorder<int>();
+        Func<Task> act = async () => _ = await source.Select(invocations.Wrap(value => value * 2));
 
         var failure = await act.Should().ThrowAsync<OperationCanceledException>();
 
         failure.Which.CancellationToken.Should().Be(cancellation.Token);
-        invocations.Should().Be(0);
+        invocations.CallCount.Should().Be(0);
     }
 
     private sealed class SingleUseSource<T> : IValueTaskSource<T>
