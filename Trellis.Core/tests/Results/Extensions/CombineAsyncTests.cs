@@ -34,14 +34,17 @@ public class CombineAsyncTests
     [Fact]
     public async Task CombineAsync_Task_Both_NullRightTask_ThrowsBeforeAwaitingLeftTask()
     {
-        var left = new TaskCompletionSource<Result<string>>();
+        var left = new ControlledAsync<Result<string>>();
+        try
+        {
+            var combined = left.Task.CombineAsync((Task<Result<string>>)null!);
 
-        var combined = left.Task.CombineAsync((Task<Result<string>>)null!);
-        var completed = await Task.WhenAny(combined, Task.Delay(TimeSpan.FromMilliseconds(250), TestContext.Current.CancellationToken));
-
-        completed.Should().Be(combined);
-        var act = async () => await combined;
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("tt2");
+            await combined.ShouldRejectNullBeforeAwaitAsync("tt2");
+        }
+        finally
+        {
+            left.TryComplete(Result.Ok("left"));
+        }
     }
 
     [Fact]
