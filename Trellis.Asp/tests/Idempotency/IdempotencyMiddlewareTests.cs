@@ -216,12 +216,12 @@ public sealed class IdempotencyMiddlewareTests
     public async Task InvokeAsync_NonBodyFingerprintMismatch_PreservesCodeAndExplainsRequestIdentity(
         string method, string path, int mismatchStatusCode)
     {
-        var executions = 0;
+        var executions = new CallbackRecorder();
         using var host = await BuildHost(
             configureEndpoints: endpoints =>
                 endpoints.MapMethods("/fingerprint/{id}", ["POST", "PATCH"], async context =>
                 {
-                    executions++;
+                    executions.Record();
                     context.Response.StatusCode = 201;
                     await context.Response.WriteAsync("created", context.RequestAborted);
                 }).WithMetadata(new IdempotentAttribute()),
@@ -243,14 +243,14 @@ public sealed class IdempotencyMiddlewareTests
         problem.RootElement.GetProperty("code").GetString().Should().Be("idempotency.key_reused_with_different_body");
         problem.RootElement.GetProperty("detail").GetString().Should().Be(
             "The Idempotency-Key value was reused with a different request fingerprint (method, path, query, headers, or body).");
-        executions.Should().Be(1);
+        executions.CallCount.Should().Be(1);
 
         using var retry = new HttpRequestMessage(HttpMethod.Post, "/fingerprint/A") { Content = JsonBody("{}") };
         retry.Headers.Add(KeyHeader, QuoteKey(key));
         using var replay = await client.SendAsync(retry, TestContext.Current.CancellationToken);
         replay.StatusCode.Should().Be(HttpStatusCode.Created);
         replay.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
-        executions.Should().Be(1);
+        executions.CallCount.Should().Be(1);
     }
 
     [Fact]
@@ -282,12 +282,12 @@ public sealed class IdempotencyMiddlewareTests
     public async Task InvokeAsync_IdempotencyKey_InvalidItem_Returns400WithoutExecutingHandler(string raw)
     {
         string? received = null;
-        var executions = 0;
+        var executions = new CallbackRecorder();
         using var host = await BuildHost(
             configureEndpoints: endpoints =>
                 endpoints.MapPost("/string-key", context =>
                 {
-                    executions++;
+                    executions.Record();
                     context.Response.StatusCode = 201;
                     return Task.CompletedTask;
                 }).WithMetadata(new IdempotentAttribute()),
@@ -302,7 +302,7 @@ public sealed class IdempotencyMiddlewareTests
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
             .Should().Contain("idempotency.key_invalid");
-        executions.Should().Be(0);
+        executions.CallCount.Should().Be(0);
     }
 
     [Theory]
@@ -316,13 +316,13 @@ public sealed class IdempotencyMiddlewareTests
     public async Task InvokeAsync_StringItem_SpacesAndParameters_PreserveReplayIdentity(
         string firstHeader, string retryHeader)
     {
-        var executions = 0;
+        var executions = new CallbackRecorder();
         var received = new List<string>();
         using var host = await BuildHost(
             configureEndpoints: endpoints =>
                 endpoints.MapPost("/string-key", async context =>
                 {
-                    executions++;
+                    executions.Record();
                     context.Response.StatusCode = 201;
                     await context.Response.WriteAsync("created", context.RequestAborted);
                 }).WithMetadata(new IdempotentAttribute()),
@@ -341,7 +341,7 @@ public sealed class IdempotencyMiddlewareTests
         replay.StatusCode.Should().Be(HttpStatusCode.Created);
         replay.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
         (await replay.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("created");
-        executions.Should().Be(1);
+        executions.CallCount.Should().Be(1);
     }
 
     [Fact]
@@ -687,11 +687,11 @@ public sealed class IdempotencyMiddlewareTests
     [Fact]
     public async Task Server_error_response_is_abandoned_and_retry_re_executes_handler()
     {
-        var executions = 0;
+        var executions = new CallbackRecorder();
         using var host = await BuildHost(configureEndpoints: endpoints =>
             endpoints.MapPost("/server-error", async ctx =>
             {
-                Interlocked.Increment(ref executions);
+                executions.Record();
                 ctx.Response.StatusCode = 503;
                 ctx.Response.ContentType = "application/problem+json";
                 await ctx.Response.WriteAsync("{\"detail\":\"transient\"}", ctx.RequestAborted);
@@ -712,17 +712,17 @@ public sealed class IdempotencyMiddlewareTests
             "transient 5xx responses must not be cached");
         secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse(
             "the retry must hit the handler again, not replay the original 5xx");
-        executions.Should().Be(2, "the handler must execute on each retry of a 5xx outcome");
+        executions.CallCount.Should().Be(2, "the handler must execute on each retry of a 5xx outcome");
     }
 
     [Fact]
     public async Task Bodyless_server_error_is_abandoned_and_retry_re_executes_handler()
     {
-        var executions = 0;
+        var executions = new CallbackRecorder();
         using var host = await BuildHost(configureEndpoints: endpoints =>
             endpoints.MapPost("/server-error-empty", ctx =>
             {
-                Interlocked.Increment(ref executions);
+                executions.Record();
                 ctx.Response.StatusCode = 500;
                 return Task.CompletedTask;
             }).WithMetadata(new IdempotentAttribute()));
@@ -741,17 +741,17 @@ public sealed class IdempotencyMiddlewareTests
         secondResp.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
         secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse(
             "5xx detection must work even when the handler never flushed the response body");
-        executions.Should().Be(2);
+        executions.CallCount.Should().Be(2);
     }
 
     [Fact]
     public async Task Client_error_response_is_cached_and_replayed()
     {
-        var executions = 0;
+        var executions = new CallbackRecorder();
         using var host = await BuildHost(configureEndpoints: endpoints =>
             endpoints.MapPost("/client-error", async ctx =>
             {
-                Interlocked.Increment(ref executions);
+                executions.Record();
                 ctx.Response.StatusCode = 422;
                 ctx.Response.ContentType = "application/problem+json";
                 await ctx.Response.WriteAsync("{\"detail\":\"invalid input\"}", ctx.RequestAborted);
@@ -771,17 +771,17 @@ public sealed class IdempotencyMiddlewareTests
         secondResp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         secondResp.Headers.GetValues("Idempotent-Replayed").Should().Contain("true",
             "deterministic 4xx outcomes are still cached because retries will produce the same answer");
-        executions.Should().Be(1, "the handler must run only once when a 4xx outcome was cached");
+        executions.CallCount.Should().Be(1, "the handler must run only once when a 4xx outcome was cached");
     }
 
     [Fact]
     public async Task Response_with_trailers_is_abandoned_and_retry_re_executes_handler()
     {
-        var executions = 0;
+        var executions = new CallbackRecorder();
         using var host = await BuildHost(configureEndpoints: endpoints =>
             endpoints.MapPost("/with-trailers", async ctx =>
             {
-                Interlocked.Increment(ref executions);
+                executions.Record();
                 ctx.Response.StatusCode = 200;
                 ctx.Response.ContentType = "application/json";
                 var trailers = ctx.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpResponseTrailersFeature>();
@@ -806,7 +806,7 @@ public sealed class IdempotencyMiddlewareTests
         secondResp.StatusCode.Should().Be(HttpStatusCode.OK);
         secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse(
             "responses that wrote trailers cannot be replayed by the snapshot writer, so they must not be cached");
-        executions.Should().Be(2, "the handler must execute on each retry when trailers were written");
+        executions.CallCount.Should().Be(2, "the handler must execute on each retry when trailers were written");
     }
 
     [Fact]
@@ -985,13 +985,13 @@ public sealed class IdempotencyMiddlewareTests
     [InlineData(false)]
     public async Task InvokeAsync_EmptyStringKey_ExecutesReplaysAndRejectsDifferentRequest(bool requireKey)
     {
-        var executions = 0;
+        var executions = new CallbackRecorder();
         var received = new List<string>();
         using var host = await BuildHost(
             configureEndpoints: endpoints =>
                 endpoints.MapPost("/empty-key", async context =>
                 {
-                    executions++;
+                    executions.Record();
                     context.Response.StatusCode = 201;
                     await context.Response.WriteAsync("created", context.RequestAborted);
                 }).WithMetadata(new IdempotentAttribute()),
@@ -1004,7 +1004,7 @@ public sealed class IdempotencyMiddlewareTests
         received.Should().Equal(["\"\""]);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         firstResponse.Headers.Contains("Idempotent-Replayed").Should().BeFalse();
-        executions.Should().Be(1);
+        executions.CallCount.Should().Be(1);
 
         using var retry = new HttpRequestMessage(HttpMethod.Post, "/empty-key") { Content = JsonBody("{\"x\":1}") };
         retry.Headers.TryAddWithoutValidation(KeyHeader, "\"\"").Should().BeTrue();
@@ -1020,7 +1020,7 @@ public sealed class IdempotencyMiddlewareTests
         (await mismatch.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
             .Should().Contain("idempotency.key_reused_with_different_body");
         received.Should().Equal(["\"\"", "\"\"", "\"\""]);
-        executions.Should().Be(1);
+        executions.CallCount.Should().Be(1);
     }
 
     [Fact]
@@ -1251,14 +1251,14 @@ public sealed class IdempotencyMiddlewareTests
         Func<Exception> completeExceptionFactory,
         string expectedLogMessage)
     {
-        var executions = 0;
+        var executions = new CallbackRecorder();
         var store = new ThrowingCompleteIdempotencyStore(completeExceptionFactory);
         using var loggerProvider = new CapturingLoggerProvider();
         using var host = await BuildHost(
             configureEndpoints: endpoints =>
                 endpoints.MapPost("/complete-failure", async ctx =>
                 {
-                    Interlocked.Increment(ref executions);
+                    executions.Record();
                     ctx.Response.StatusCode = 201;
                     ctx.Response.ContentType = "application/json";
                     await ctx.Response.WriteAsync("{\"created\":true}", ctx.RequestAborted);
@@ -1292,7 +1292,7 @@ public sealed class IdempotencyMiddlewareTests
             "the immediate retry must be able to re-reserve the abandoned key instead of receiving idempotency.in_flight");
         secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse(
             "CompleteAsync failed, so there is no persisted snapshot to replay");
-        executions.Should().Be(2, "the retry must execute the handler after the first reservation is abandoned");
+        executions.CallCount.Should().Be(2, "the retry must execute the handler after the first reservation is abandoned");
     }
 
     private sealed class CapturingLoggerProvider : ILoggerProvider

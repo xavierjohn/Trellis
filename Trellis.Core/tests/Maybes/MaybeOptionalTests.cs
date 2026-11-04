@@ -16,19 +16,15 @@ public class MaybeOptionalTests
     {
         // Arrange
         string? nullString = null;
-        var calls = 0;
+        var calls = new CallbackRecorder<string>();
 
         // Act
-        var result = Maybe.Optional(nullString, str =>
-        {
-            calls++;
-            return Result.Ok(str.ToUpperInvariant());
-        });
+        var result = Maybe.Optional(nullString, calls.Wrap(str => Result.Ok(str.ToUpperInvariant())));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().HasValue.Should().BeFalse();
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -36,19 +32,15 @@ public class MaybeOptionalTests
     {
         // Arrange
         int? nullInt = null;
-        var calls = 0;
+        var calls = new CallbackRecorder<int>();
 
         // Act - Return a non-nullable wrapper type
-        var result = Maybe.Optional<int, WrappedInt>(nullInt, num =>
-        {
-            calls++;
-            return Result.Ok(new WrappedInt(num * 2));
-        });
+        var result = Maybe.Optional<int, WrappedInt>(nullInt, calls.Wrap(num => Result.Ok(new WrappedInt(num * 2))));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Unwrap().HasValue.Should().BeFalse();
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]

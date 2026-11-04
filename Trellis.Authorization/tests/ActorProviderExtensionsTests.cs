@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Authorization.Tests;
 
+using Trellis.Testing;
+
 public class ActorProviderExtensionsTests
 {
     [Fact]
@@ -7,20 +9,14 @@ public class ActorProviderExtensionsTests
     {
         var actor = Actor.Create("user-1", new HashSet<string>());
         using var cancellation = new CancellationTokenSource();
-        var calls = 0;
-        CancellationToken received = default;
-        IActorProvider provider = new DelegateActorProvider(token =>
-        {
-            calls++;
-            received = token;
-            return Task.FromResult(Maybe.From(actor));
-        });
+        var calls = new CallbackRecorder<CancellationToken>();
+        IActorProvider provider = new DelegateActorProvider(calls.Wrap(_ => Task.FromResult(Maybe.From(actor))));
 
         var result = await provider.RequireActorAsync(cancellation.Token);
 
         result.Should().BeSameAs(actor);
-        received.Should().Be(cancellation.Token);
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
+        calls.Arguments.Should().ContainSingle().Which.Should().Be(cancellation.Token);
     }
 
     [Fact]
@@ -67,13 +63,13 @@ public class ActorProviderExtensionsTests
     public async Task RequireActorAsync_DeferredResolution_WaitsForProvider(bool hasActor)
     {
         var actor = Actor.Create("user-1", new HashSet<string>());
-        var completion = new TaskCompletionSource<Maybe<Actor>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new ControlledAsync<Maybe<Actor>>();
         var provider = new DelegateActorProvider(_ => completion.Task);
-
-        var pending = provider.RequireActorAsync(TestContext.Current.CancellationToken);
-
-        pending.IsCompleted.Should().BeFalse();
-        completion.SetResult(hasActor ? Maybe.From(actor) : Maybe<Actor>.None);
+        var pending = provider.RequireActorAsync(TestContext.Current.CancellationToken)
+            .ShouldBePendingThenReleaseAsync(
+                () => completion.TryComplete(hasActor ? Maybe.From(actor) : Maybe<Actor>.None),
+                TimeSpan.FromSeconds(30),
+                TestContext.Current.CancellationToken);
 
         if (hasActor)
             (await pending).Should().BeSameAs(actor);
