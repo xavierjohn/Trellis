@@ -30,8 +30,10 @@ public class CombineTests
 
         // Assert
         var validation = rHelloWorld.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().ContainSingle();
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("key"), ValidationCodes.Unspecified) { Detail = "Bad World" });
+        var violation = validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("key"), ValidationCodes.Unspecified).Which;
+        violation.Args.Should().BeNull();
+        violation.Detail.Should().Be("Bad World");
     }
 
     [Fact]
@@ -60,8 +62,10 @@ public class CombineTests
 
         // Assert
         var validation = rHelloWorld.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().ContainSingle();
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("key"), ValidationCodes.Unspecified) { Detail = "Bad World" });
+        var violation = validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("key"), ValidationCodes.Unspecified).Which;
+        violation.Args.Should().BeNull();
+        violation.Detail.Should().Be("Bad World");
     }
 
     [Fact]
@@ -76,8 +80,10 @@ public class CombineTests
 
         // Assert
         var validation = rHelloWorld.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().ContainSingle();
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("key"), ValidationCodes.Unspecified) { Detail = "Bad World" });
+        var violation = validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("key"), ValidationCodes.Unspecified).Which;
+        violation.Args.Should().BeNull();
+        violation.Detail.Should().Be("Bad World");
     }
 
     [Fact]
@@ -108,8 +114,10 @@ public class CombineTests
 
         // Assert
         var validation = rHelloWorld.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().ContainSingle();
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("key"), ValidationCodes.Unspecified) { Detail = "Bad World" });
+        var violation = validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("key"), ValidationCodes.Unspecified).Which;
+        violation.Args.Should().BeNull();
+        violation.Detail.Should().Be("Bad World");
     }
 
     [Fact]
@@ -140,9 +148,14 @@ public class CombineTests
 
         // Assert
         var validation = rHelloWorld.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("First"), ValidationCodes.Unspecified) { Detail = "Bad First" });
-        validation.Fields.Items[1].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("Last"), ValidationCodes.Unspecified) { Detail = "Bad Last" });
+        validation.Should().HaveFieldViolationCount(2);
+        validation.Fields.Items.Select(field => field.Field.Path).Should().Equal(["/First", "/Last"]);
+        var firstViolation = validation.Should().HaveFieldViolation(InputPointer.ForProperty("First"), ValidationCodes.Unspecified).Which;
+        firstViolation.Args.Should().BeNull();
+        firstViolation.Detail.Should().Be("Bad First");
+        var lastViolation = validation.Should().HaveFieldViolation(InputPointer.ForProperty("Last"), ValidationCodes.Unspecified).Which;
+        lastViolation.Args.Should().BeNull();
+        lastViolation.Detail.Should().Be("Bad Last");
     }
 
     [Fact]
@@ -185,7 +198,7 @@ public class CombineTests
 
         // Assert
         var validation = rHelloWorld.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().BeEmpty();
+        validation.Should().HaveFieldViolationCount(0);
         validation.Detail.Should().Be("Bad 9");
     }
 
@@ -209,8 +222,8 @@ public class CombineTests
         // Assert
         // V6 Combine of two UnprocessableContent merges Fields/Rules and concatenates wrapper Detail.
         var validation = rHelloWorld.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().BeEmpty();
-        validation.Rules.Items.Should().BeEmpty();
+        validation.Should().HaveFieldViolationCount(0)
+            .And.HaveRuleViolationCount(0);
         validation.Detail.Should().Be("Bad 3; Bad 9");
     }
 
@@ -305,7 +318,7 @@ public class CombineTests
         // V6 Combine concatenates UnprocessableContent.Fields without deduplication;
         // dedup/merge is left to the boundary renderer.
         var validation = merged.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(9);
+        validation.Should().HaveFieldViolationCount(9);
 
         validation.Fields.Items.Select(f => (f.Field.Path, f.Detail)).Should().BeEquivalentTo(
             new[]
@@ -368,7 +381,7 @@ public class CombineTests
         var result = Result.Combine(r1, r2);
 
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
+        validation.Should().HaveFieldViolationCount(2);
     }
 
     [Fact]
@@ -450,7 +463,7 @@ public class CombineTests
             Result.Fail<int>(new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("f3"), ValidationCodes.Unspecified) { Detail = "e3" }))));
 
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(3);
+        validation.Should().HaveFieldViolationCount(3);
     }
 
     [Fact]

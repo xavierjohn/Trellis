@@ -81,8 +81,10 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().ContainSingle();
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" });
+        var violation = validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified).Which;
+        violation.Args.Should().BeNull();
+        violation.Detail.Should().Be("Bad left");
     }
 
     [Fact]
@@ -94,8 +96,10 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().ContainSingle();
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" });
+        var violation = validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified).Which;
+        violation.Args.Should().BeNull();
+        violation.Detail.Should().Be("Bad right");
     }
 
     [Fact]
@@ -107,9 +111,14 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified) { Detail = "Bad left" });
-        validation.Fields.Items[1].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified) { Detail = "Bad right" });
+        validation.Should().HaveFieldViolationCount(2);
+        validation.Fields.Items.Select(field => field.Field.Path).Should().Equal(["/left", "/right"]);
+        var leftViolation = validation.Should().HaveFieldViolation(InputPointer.ForProperty("left"), ValidationCodes.Unspecified).Which;
+        leftViolation.Args.Should().BeNull();
+        leftViolation.Detail.Should().Be("Bad left");
+        var rightViolation = validation.Should().HaveFieldViolation(InputPointer.ForProperty("right"), ValidationCodes.Unspecified).Which;
+        rightViolation.Args.Should().BeNull();
+        rightViolation.Detail.Should().Be("Bad right");
     }
 
     [Fact]
@@ -194,7 +203,7 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
+        validation.Should().HaveFieldViolationCount(2);
     }
 
     #endregion
@@ -232,7 +241,7 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
+        validation.Should().HaveFieldViolationCount(2);
     }
 
     [Fact]
@@ -292,7 +301,7 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
+        validation.Should().HaveFieldViolationCount(2);
     }
 
     #endregion
@@ -330,7 +339,7 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
+        validation.Should().HaveFieldViolationCount(2);
     }
 
     [Fact]
@@ -392,7 +401,7 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
+        validation.Should().HaveFieldViolationCount(2);
     }
 
     #endregion
@@ -419,7 +428,7 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
+        validation.Should().HaveFieldViolationCount(2);
     }
 
     #endregion
@@ -498,7 +507,7 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(3);
+        validation.Should().HaveFieldViolationCount(3);
     }
 
     [Fact]
@@ -689,9 +698,14 @@ public class CombineAsyncTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Should().HaveCount(2);
-        validation.Fields.Items[0].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("firstName"), ValidationCodes.Unspecified) { Detail = "First name required" });
-        validation.Fields.Items[1].Should().BeEquivalentTo(new FieldViolation(InputPointer.ForProperty("lastName"), ValidationCodes.Unspecified) { Detail = "Last name required" });
+        validation.Should().HaveFieldViolationCount(2);
+        validation.Fields.Items.Select(field => field.Field.Path).Should().Equal(["/firstName", "/lastName"]);
+        var firstNameViolation = validation.Should().HaveFieldViolation(InputPointer.ForProperty("firstName"), ValidationCodes.Unspecified).Which;
+        firstNameViolation.Args.Should().BeNull();
+        firstNameViolation.Detail.Should().Be("First name required");
+        var lastNameViolation = validation.Should().HaveFieldViolation(InputPointer.ForProperty("lastName"), ValidationCodes.Unspecified).Which;
+        lastNameViolation.Args.Should().BeNull();
+        lastNameViolation.Detail.Should().Be("Last name required");
     }
 
     [Fact]
