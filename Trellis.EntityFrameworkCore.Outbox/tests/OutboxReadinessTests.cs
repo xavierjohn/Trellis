@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Trellis.Mediator;
+using Trellis.Testing;
 
 #pragma warning disable CA1707
 
@@ -404,25 +405,23 @@ public sealed partial class OutboxReadinessTests
         bool metadataOnly)
     {
         await using var fixture = await Fixture.CreateAsync(SelectProfile(metadataOnly));
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         fixture.Probe.BeforeRead = async (number, token) =>
         {
             if (number != 1)
                 return;
-            entered.SetResult();
-            await release.Task.WaitAsync(token);
+            await gate.ArriveAsync(token);
         };
         using var caller = CancellationTokenSource.CreateLinkedTokenSource(Cancellation);
         var cancelledWaiter = fixture.CheckAsync(caller.Token);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
+        await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), Cancellation);
         var otherWaiter = fixture.CheckAsync();
 
         await caller.CancelAsync();
         var cancellation = () => cancelledWaiter;
         await cancellation.Should().ThrowAsync<OperationCanceledException>();
         otherWaiter.IsCompleted.Should().BeFalse();
-        release.SetResult();
+        gate.Release();
         var result = await otherWaiter;
         var cached = await fixture.CheckAsync();
 
@@ -450,17 +449,15 @@ public sealed partial class OutboxReadinessTests
     public async Task CheckHealthAsync_ProbeTimeout_IsUnhealthyEvenWhenProviderIgnoresCancellation(bool ignoreCancellation)
     {
         await using var fixture = await Fixture.CreateAsync();
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         fixture.Probe.BeforeRead = async (number, token) =>
         {
             if (number != 1)
                 return;
-            entered.SetResult();
-            await release.Task.WaitAsync(ignoreCancellation ? CancellationToken.None : token);
+            await gate.ArriveAsync(ignoreCancellation ? CancellationToken.None : token);
         };
         var check = fixture.CheckAsync();
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
+        await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), Cancellation);
 
         fixture.Time.Advance(TimeSpan.FromSeconds(2));
         var result = await check.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
@@ -476,7 +473,7 @@ public sealed partial class OutboxReadinessTests
             fixture.Probe.Commands.Should().ContainSingle();
         }
 
-        release.TrySetResult();
+        gate.Release();
         await fixture.Probe.Completed.Task.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
     }
 
@@ -484,19 +481,19 @@ public sealed partial class OutboxReadinessTests
     public async Task CheckHealthAsync_TwoQueries_ShareOneProbeBudgetAndKeepSeparateSampleTimes()
     {
         await using var fixture = await Fixture.CreateAsync();
-        var secondEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var secondRead = new TestGate();
         fixture.Probe.BeforeRead = async (number, token) =>
         {
             if (number == 1)
                 fixture.Time.Advance(TimeSpan.FromSeconds(1));
             else
             {
-                secondEntered.SetResult();
+                secondRead.Signal();
                 await Task.Delay(Timeout.Infinite, token);
             }
         };
         var check = fixture.CheckAsync();
-        await secondEntered.Task.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
+        await secondRead.WaitForArrivalAsync(TimeSpan.FromSeconds(30), Cancellation);
 
         fixture.Time.Advance(TimeSpan.FromSeconds(1));
         var result = await check.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);

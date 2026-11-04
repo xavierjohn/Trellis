@@ -3,6 +3,7 @@
 using DotNet.Testcontainers.Containers;
 using Microsoft.Data.SqlClient;
 using Moq;
+using Trellis.Testing;
 using Trellis.TestSupport;
 
 public class SqlServerTestcontainersFixtureTests
@@ -107,12 +108,11 @@ public class SqlServerTestcontainersFixtureTests
     public async Task DisposeAsync_FailedStartup_PendingCleanup_AwaitsCleanupAndPreservesFailure()
     {
         var failure = new InvalidOperationException("Container startup failed.");
-        var cleanupEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var releaseCleanup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cleanupGate = new TestGate();
         var container = new Mock<IDatabaseContainer>(MockBehavior.Strict);
         container.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).ThrowsAsync(failure);
-        container.Setup(c => c.DisposeAsync()).Callback(cleanupEntered.SetResult)
-            .Returns(() => new ValueTask(releaseCleanup.Task));
+        container.Setup(c => c.DisposeAsync()).Callback(cleanupGate.Signal)
+            .Returns(() => new ValueTask(cleanupGate.WaitUntilReleasedAsync()));
         var fixture = new SqlServerTestcontainersFixture(true, () => container.Object);
         Task? cleanup = null;
 
@@ -127,12 +127,12 @@ public class SqlServerTestcontainersFixtureTests
             container.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
 
             cleanup = fixture.DisposeAsync().AsTask();
-            await cleanupEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await cleanupGate.WaitForArrivalAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             cleanup.IsCompleted.Should().BeFalse();
         }
         finally
         {
-            releaseCleanup.TrySetResult();
+            cleanupGate.Release();
             if (cleanup is null)
                 await fixture.DisposeAsync();
             else

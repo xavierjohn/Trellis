@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Mediator.Tests;
 
+using Trellis.Testing;
+
 /// <summary>
 /// Tests for the default <see cref="IIntegrationEventCollector"/> (<see cref="IntegrationEventCollector"/>).
 /// </summary>
@@ -58,19 +60,19 @@ public class IntegrationEventCollectorTests
     public async Task Add_ChildExecutionContextOutlivesTranslation_Throws()
     {
         var collector = new IntegrationEventCollector();
-        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var resume = new TestGate();
         Task child;
         using (collector.BeginTranslation())
         {
             child = Task.Run(async () =>
             {
-                await resume.Task;
+                await resume.WaitUntilReleasedAsync();
                 var act = () => collector.Add(new CollectorTestEvent(1, DateTimeOffset.UnixEpoch));
                 act.Should().Throw<InvalidOperationException>();
             }, TestContext.Current.CancellationToken);
         }
 
-        resume.SetResult();
+        resume.Release();
         await child;
     }
 

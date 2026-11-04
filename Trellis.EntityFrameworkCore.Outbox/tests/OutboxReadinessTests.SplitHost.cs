@@ -6,6 +6,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 using Trellis.Mediator;
+using Trellis.Testing;
 
 public sealed partial class OutboxReadinessTests
 {
@@ -279,18 +280,14 @@ public sealed partial class OutboxReadinessTests
             fixture.Probe.Reset();
         }
 
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         fixture.Probe.BeforeRead = async (number, _) =>
         {
             if (number == 1)
-            {
-                entered.SetResult();
-                await release.Task;
-            }
+                await gate.ArriveAsync(CancellationToken.None);
         };
         var check = fixture.CheckAsync();
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
+        await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), Cancellation);
         fixture.Time.Advance(TimeSpan.FromSeconds(2));
         var result = await check.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
 
@@ -301,7 +298,7 @@ public sealed partial class OutboxReadinessTests
             result.Data["pendingSampledAt"].Should().Be(cached.Data["pendingSampledAt"]);
         else
             result.Data.Should().NotContainKey("pendingSampledAt");
-        release.SetResult();
+        gate.Release();
         await fixture.Probe.Completed.Task.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
         (await fixture.CheckAsync()).Status.Should().Be(HealthStatus.Unhealthy);
     }

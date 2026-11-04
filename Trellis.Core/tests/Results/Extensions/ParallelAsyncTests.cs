@@ -245,16 +245,14 @@ public class ParallelAsyncTests : TestBase
         // sequential implementation can never complete (the first would wait forever) while a parallel one
         // completes regardless of how loaded the machine is. The previous wall-clock assertion failed on a
         // busy agent even though the code was correct.
-        var started = 0;
-        var allStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var barrier = new TestGate();
 
         async Task<Result<int>> Operation(int value)
         {
-            if (Interlocked.Increment(ref started) == 3)
-                allStarted.SetResult();
+            barrier.Signal();
 
             // The timeout converts a sequential regression into a clear failure rather than a hung run.
-            await allStarted.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+            await barrier.WaitForArrivalsAsync(3, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
             return Result.Ok(value);
         }
 
@@ -265,7 +263,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         result.Should().BeSuccess();
-        started.Should().Be(3, "every operation must have been started before any of them completed");
+        barrier.ArrivalCount.Should().Be(3, "every operation must have been started before any of them completed");
     }
 
     [Fact]

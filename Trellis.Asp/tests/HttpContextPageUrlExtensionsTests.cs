@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
+using Trellis.Testing;
 
 public sealed class HttpContextPageUrlExtensionsTests
 {
@@ -577,10 +578,10 @@ public sealed class HttpContextPageUrlExtensionsTests
             .Should().EndWith("/widgets");
         var readsAfterLinkGeneratorWarmup = dataSource.EndpointReads;
         var candidates = new ConcurrentBag<IReadOnlyList<Endpoint>>();
-        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var start = new TestGate();
         var calls = Enumerable.Range(0, 16).Select(async index =>
         {
-            await start.Task;
+            await start.WaitUntilReleasedAsync();
             return CreateContext(services).PageUrl(RouteName,
                 (cursor, _) => new() { ["cursor"] = cursor.Token }, route =>
                 {
@@ -589,7 +590,7 @@ public sealed class HttpContextPageUrlExtensionsTests
                 })(new Cursor($"next-{index}"), 2);
         }).ToArray();
 
-        start.SetResult();
+        start.Release();
         var urls = await Task.WhenAll(calls);
 
         urls.Should().HaveCount(16).And.OnlyContain(url => url.Contains("/widgets?cursor=next-", StringComparison.Ordinal));
