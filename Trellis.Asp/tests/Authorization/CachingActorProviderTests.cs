@@ -16,16 +16,16 @@ public class CachingActorProviderTests
     [Fact]
     public async Task GetCurrentActorAsync_CachesResultAcrossCalls()
     {
-        var callCount = 0;
+        var calls = new CallbackRecorder();
         var actor = Actor.Create("user-1", new HashSet<string>(["Read"]));
-        var inner = new CountingActorProvider(actor, () => callCount++);
+        var inner = new CountingActorProvider(actor, calls.Record);
         var caching = new CachingActorProvider(inner, s_nullAccessor);
 
         var result1 = await caching.GetCurrentActorAsync(TestContext.Current.CancellationToken);
         var result2 = await caching.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         result1.Unwrap().Should().BeSameAs(result2.Unwrap());
-        callCount.Should().Be(1, "inner provider should only be called once");
+        calls.CallCount.Should().Be(1, "inner provider should only be called once");
     }
 
     [Fact]
@@ -113,10 +113,10 @@ public class CachingActorProviderTests
         // re-run expensive prerequisites (e.g. DB lookups) that already failed. Synchronous
         // throws (typical of providers that validate prerequisites before returning a Task)
         // must be cached the same way as faulted Tasks.
-        var callCount = 0;
+        var calls = new CallbackRecorder();
         var inner = new ThrowingSyncProvider(() =>
         {
-            callCount++;
+            calls.Record();
             throw new InvalidOperationException("boom");
         });
         var caching = new CachingActorProvider(inner, s_nullAccessor);
@@ -127,7 +127,7 @@ public class CachingActorProviderTests
         await act1.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
         await act2.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
 
-        callCount.Should().Be(1,
+        calls.CallCount.Should().Be(1,
             "synchronous failures from the inner provider must be cached for the request scope, "
             + "matching the contract documented on CachingActorProvider");
     }
