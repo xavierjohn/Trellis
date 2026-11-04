@@ -9,7 +9,7 @@
 /// Replaces the hand-written <c>entered</c>/<c>release</c> <see cref="TaskCompletionSource"/> pair. Arrivals are
 /// counted and never throw when repeated, waiting for an arrival always requires a timeout and token, and
 /// <see cref="Dispose"/> releases the gate, so <c>using var gate = new TestGate();</c> never strands a background
-/// flow when an assertion fails.
+/// flow when an assertion fails; it also fails any barrier wait whose arrivals can no longer happen.
 /// </para>
 /// <para>
 /// By default <see cref="Release"/> is permanent: later arrivals pass straight through, so a flow that re-enters
@@ -91,6 +91,7 @@ public sealed class TestGate : IDisposable
             if (_arrivals >= count)
                 return;
 
+            ObjectDisposedException.ThrowIf(_disposed, this);
             _arrivalWaiters.Add((count, signal));
         }
 
@@ -126,17 +127,26 @@ public sealed class TestGate : IDisposable
         released.TrySetResult();
     }
 
-    /// <summary>Permanently opens the gate so no caller can remain stranded. Safe to call more than once.</summary>
+    /// <summary>
+    /// Permanently opens the gate so no caller can remain stranded, and fails every pending
+    /// <see cref="WaitForArrivalsAsync"/> whose count was not reached with <see cref="ObjectDisposedException"/>, so a
+    /// barrier whose participant never arrived ends at cleanup instead of at its timeout. Safe to call more than once.
+    /// </summary>
     public void Dispose()
     {
         TaskCompletionSource released;
+        TaskCompletionSource[] unreachable;
         lock (_lock)
         {
             _disposed = true;
             released = _released;
+            unreachable = [.. _arrivalWaiters.Select(waiter => waiter.Signal)];
+            _arrivalWaiters.Clear();
         }
 
         released.TrySetResult();
+        foreach (var signal in unreachable)
+            signal.TrySetException(new ObjectDisposedException(nameof(TestGate)));
     }
 
     private TaskCompletionSource RecordArrival()

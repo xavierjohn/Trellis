@@ -676,7 +676,9 @@ background flow when an assertion fails. Declare the gate after any fixture it b
 `Release()` is **permanent by default** (`ReleaseIsPermanent` is true): later arrivals pass straight through, so
 a flow that re-enters after release cannot hang. Construct with `permanentRelease: false` for a gate that frees
 only the callers currently waiting and closes again for later arrivals. `Dispose()` always opens the gate
-permanently. `Signal()` records an arrival without waiting, and `WaitUntilReleasedAsync` waits without
+permanently, and fails any `WaitForArrivalsAsync` still waiting for arrivals that did not happen (and any later
+one whose count is unmet) with `ObjectDisposedException`, so a barrier with a missing participant ends at cleanup
+rather than at its timeout. `Signal()` records an arrival without waiting, and `WaitUntilReleasedAsync` waits without
 recording one. Together with `WaitForArrivalsAsync(count, ...)` they also express a barrier: each of N
 concurrent flows calls `Signal()` and then `WaitForArrivalsAsync(N, ...)`, replacing a counter plus a
 `TaskCompletionSource`. A canceled token cancels only that wait, and a canceled `ArriveAsync` still counts as an

@@ -141,6 +141,40 @@ public class TestGateTests
     }
 
     [Fact]
+    public async Task Dispose_WhileWaitingForArrivals_FailsTheBarrierWaiterImmediately()
+    {
+        var gate = new TestGate();
+        gate.Signal();
+        var barrier = gate.WaitForArrivalsAsync(2, TimeSpan.FromMinutes(5), Token);
+
+        gate.Dispose();
+
+        await barrier.Invoking(b => b.WaitAsync(Wait, Token)).Should().ThrowAsync<ObjectDisposedException>();
+    }
+
+    [Fact]
+    public async Task WaitForArrivalsAsync_AfterDispose_CountNotReached_FailsImmediately()
+    {
+        var gate = new TestGate();
+        gate.Signal();
+        gate.Dispose();
+
+        Func<Task> act = () => gate.WaitForArrivalsAsync(2, TimeSpan.FromMinutes(5), Token).WaitAsync(Wait, Token);
+
+        await act.Should().ThrowAsync<ObjectDisposedException>();
+    }
+
+    [Fact]
+    public async Task WaitForArrivalsAsync_AfterDispose_CountAlreadyReached_Completes()
+    {
+        var gate = new TestGate();
+        gate.Signal();
+        gate.Dispose();
+
+        await gate.WaitForArrivalsAsync(1, TimeSpan.FromMinutes(5), Token).WaitAsync(Wait, Token);
+    }
+
+    [Fact]
     public async Task WaitUntilReleasedAsync_CanceledToken_ThrowsWithoutReleasing()
     {
         using var gate = new TestGate();
