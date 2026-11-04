@@ -18,10 +18,9 @@ public class UnprocessableContentFactoryTests
     {
         var error = Error.InvalidInput.ForField(field: "email", code: "invalid_format");
 
-        error.Fields.Length.Should().Be(1);
-        error.Fields[0].Field.Should().Be(InputPointer.ForProperty("email"));
-        error.Fields[0].ReasonCode.Should().Be("invalid_format");
-        error.Fields[0].Detail.Should().BeNull();
+        var violation = error.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("email"), "invalid_format").Which;
+        violation.Detail.Should().BeNull();
     }
 
     [Fact]
@@ -29,7 +28,7 @@ public class UnprocessableContentFactoryTests
     {
         var error = Error.InvalidInput.ForField(field: "email", code: "invalid_format", detail: "must contain @");
 
-        error.Fields.Length.Should().Be(1);
+        error.Should().HaveFieldViolationCount(1);
         error.Fields[0].Detail.Should().Be("must contain @");
     }
 
@@ -38,7 +37,7 @@ public class UnprocessableContentFactoryTests
     {
         var error = Error.InvalidInput.ForField(field: "name", code: "required");
 
-        error.Rules.Length.Should().Be(0);
+        error.Should().HaveRuleViolationCount(0);
     }
 
     [Fact]
@@ -58,12 +57,11 @@ public class UnprocessableContentFactoryTests
         error.Fields[0].Field.Should().Be(InputPointer.Root);
 
         var nullFieldError = Error.InvalidInput.ForField(field: (string?)null, code: "object_invalid");
-        var nullField = nullFieldError.Fields.Items.Should().ContainSingle().Which;
-        nullField.Field.Should().Be(InputPointer.Root);
-        nullField.ReasonCode.Should().Be("object_invalid");
+        var nullField = nullFieldError.Should().HaveFieldViolationCount(1)
+            .And.HaveRuleViolationCount(0)
+            .And.HaveFieldViolation(InputPointer.Root, "object_invalid").Which;
         nullField.Args.Should().BeNull();
         nullField.Detail.Should().BeNull();
-        nullFieldError.Rules.Items.Should().BeEmpty();
     }
 
     // ── ForField with an input pointer ─────────────────────────────────────
@@ -74,10 +72,9 @@ public class UnprocessableContentFactoryTests
         var pointer = new InputPointer("/items/0/quantity");
         var error = Error.InvalidInput.ForField(field: pointer, code: "out_of_range");
 
-        error.Fields.Length.Should().Be(1);
-        error.Fields[0].Field.Should().Be(pointer);
-        error.Fields[0].ReasonCode.Should().Be("out_of_range");
-        error.Fields[0].Detail.Should().BeNull();
+        var violation = error.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(pointer, "out_of_range").Which;
+        violation.Detail.Should().BeNull();
     }
 
     [Fact]
@@ -104,10 +101,10 @@ public class UnprocessableContentFactoryTests
     {
         var error = Error.InvalidInput.ForRule(code: "passwords_must_match");
 
-        error.Fields.Length.Should().Be(0);
-        error.Rules.Length.Should().Be(1);
-        error.Rules[0].ReasonCode.Should().Be("passwords_must_match");
-        error.Rules[0].Detail.Should().BeNull();
+        var rule = error.Should().HaveFieldViolationCount(0)
+            .And.HaveRuleViolationCount(1)
+            .And.HaveRuleViolation("passwords_must_match").Which;
+        rule.Detail.Should().BeNull();
     }
 
     [Fact]
@@ -131,11 +128,11 @@ public class UnprocessableContentFactoryTests
         fields.Clear();
 
         error.Code.Should().Be(ValidationCodes.Unspecified);
-        error.Fields.Items.Should().BeEmpty();
-        var rule = error.Rules.Items.Should().ContainSingle().Which;
+        var rule = error.Should().HaveFieldViolationCount(0)
+            .And.HaveRuleViolationCount(1)
+            .And.HaveRuleViolation("period.end-after-start").Which;
         rule.Fields.Items.Should().Equal([start, end]);
         rule.Args.Should().BeSameAs(args);
-        rule.ReasonCode.Should().Be("period.end-after-start");
         rule.Detail.Should().Be("End must follow start.");
         error.Detail.Should().Be(rule.Detail);
     }
@@ -148,10 +145,10 @@ public class UnprocessableContentFactoryTests
             code: ValidationCodes.ValueGreaterThan, field: InputPointer.ForQuery("a/b"), args: args, detail: "Positive only.");
         var named = Error.InvalidInput.ForField(ValidationCodes.ValueGreaterThan, "a/b", args, "Positive only.");
 
-        var field = located.Fields.Items.Should().ContainSingle().Which;
+        var field = located.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForQuery("a/b"), ValidationCodes.ValueGreaterThan).Which;
         field.Field.In.Should().Be(InputLocation.Query);
         field.Field.Path.Should().Be("/a~1b");
-        field.ReasonCode.Should().Be(ValidationCodes.ValueGreaterThan);
         field.Args.Should().BeSameAs(args);
         field.Detail.Should().Be("Positive only.");
         named.Fields[0].Field.Path.Should().Be(field.Field.Path);
