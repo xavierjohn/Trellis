@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Errors;
 
 using System.Text.Json;
+using Trellis.Testing;
 
 public class RequiredFactoryTests
 {
@@ -23,8 +24,10 @@ public class RequiredFactoryTests
         JsonSerializer.Serialize(error).Should().Be(JsonSerializer.Serialize(expected));
         error.Code.Should().Be(ValidationCodes.Unspecified);
         error.Detail.Should().BeNull();
-        error.Rules.Items.Should().BeEmpty();
-        error.Fields.Items.Should().ContainSingle().Which.Should().Be(violation);
+        error.Should().HaveRuleViolationCount(0)
+            .And.HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(new InputPointer(path), ValidationCodes.ValueNotNull)
+            .Which.Should().Be(violation);
         violation.Field.Path.Should().Be(path);
         violation.Field.In.Should().Be(InputLocation.Unspecified);
         violation.ReasonCode.Should().Be(ValidationCodes.ValueNotNull);
@@ -51,8 +54,10 @@ public class RequiredFactoryTests
         JsonSerializer.Serialize(error).Should().Be(JsonSerializer.Serialize(expected));
         error.Code.Should().Be(ValidationCodes.Unspecified);
         error.Detail.Should().BeNull();
-        error.Rules.Items.Should().BeEmpty();
-        error.Fields.Items.Should().ContainSingle().Which.Should().Be(violation);
+        error.Should().HaveRuleViolationCount(0)
+            .And.HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(field, ValidationCodes.ValueNotNull)
+            .Which.Should().Be(violation);
         violation.Should().Be(new FieldViolation(field, ValidationCodes.ValueNotNull, Detail: "Required."));
         violation.Field.Should().Be(field);
         violation.Args.Should().BeNull();
@@ -64,8 +69,10 @@ public class RequiredFactoryTests
         var error = Error.InvalidInput.Required(default(InputPointer));
         var violation = FieldViolation.Required(default(InputPointer));
 
-        error.Should().Be(Error.InvalidInput.ForField(ValidationCodes.ValueNotNull, InputPointer.Root));
-        error.Fields.Items.Should().ContainSingle().Which.Should().Be(violation);
+        ((Error)error).Should().Be(Error.InvalidInput.ForField(ValidationCodes.ValueNotNull, InputPointer.Root));
+        error.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.Root, ValidationCodes.ValueNotNull)
+            .Which.Should().Be(violation);
         violation.Field.Should().Be(InputPointer.Root);
         violation.Detail.Should().BeNull();
     }
