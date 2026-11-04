@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Trellis;
 using Trellis.Primitives;
+using Trellis.Testing;
 
 /// <summary>
 /// Pins that every read-path rejection in <see cref="CompositeValueObjectJsonConverter{T}"/>
@@ -36,7 +37,8 @@ public sealed class CompositeValueObjectJsonConverterViolationTests
 
         result.IsFailure.Should().BeTrue();
         var error = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
-        error.Fields.Items.Should().ContainSingle().Which.Field.Path.Should().Be(expectedPath);
+        error.Should().HaveFieldViolationCount(1);
+        error.Fields[0].Field.Path.Should().Be(expectedPath);
         reader.TokenType.Should().Be(JsonTokenType.EndObject);
         reader.BytesConsumed.Should().Be(System.Text.Encoding.UTF8.GetByteCount(json));
     }
@@ -46,7 +48,8 @@ public sealed class CompositeValueObjectJsonConverterViolationTests
     {
         var ex = Deserialize("42");
 
-        var violation = ex.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
+        var violation = ex.InvalidInput!.Fields[0];
         violation.Field.Path.Should().BeEmpty("the whole value, not one of its properties, is wrong");
         violation.Detail.Should().Be(ex.Message);
     }
@@ -68,8 +71,8 @@ public sealed class CompositeValueObjectJsonConverterViolationTests
     {
         var ex = Deserialize("""{"name": null, "count": 1, "label": "l"}""");
 
-        ex.InvalidInput!.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/name");
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
+        ex.InvalidInput!.Fields[0].Field.Path.Should().Be("/name");
     }
 
     [Fact]
@@ -77,8 +80,8 @@ public sealed class CompositeValueObjectJsonConverterViolationTests
     {
         var ex = Deserialize("""{"name": "n", "count": null, "label": "l"}""");
 
-        ex.InvalidInput!.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/count");
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
+        ex.InvalidInput!.Fields[0].Field.Path.Should().Be("/count");
     }
 
     [Fact]
@@ -86,8 +89,8 @@ public sealed class CompositeValueObjectJsonConverterViolationTests
     {
         var ex = Deserialize("""{"name": "n", "count": "not-a-number", "label": "l"}""");
 
-        ex.InvalidInput!.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/count");
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
+        ex.InvalidInput!.Fields[0].Field.Path.Should().Be("/count");
     }
 
     [Fact]
@@ -95,8 +98,8 @@ public sealed class CompositeValueObjectJsonConverterViolationTests
     {
         var ex = Deserialize("""{"name": "", "count": 1, "label": "l"}""");
 
-        ex.InvalidInput!.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/name");
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
+        ex.InvalidInput!.Fields[0].Field.Path.Should().Be("/name");
     }
 
     public sealed record ViolationBox(ViolationComposite Value);
