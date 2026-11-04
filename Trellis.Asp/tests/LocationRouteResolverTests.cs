@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Trellis.Testing;
 
 public sealed class LocationRouteResolverTests
 {
@@ -25,7 +26,7 @@ public sealed class LocationRouteResolverTests
     public async Task WithLocationRouteResolver_Execute_ReceivesDestinationAndClonedResolvedValues(bool writeOutcome)
     {
         var shared = new RouteValueDictionary { ["id"] = 42, ["remove"] = "stale" };
-        var calls = 0;
+        var calls = new CallbackRecorder();
         using var host = CreateHost(options => options
             .CreatedAtRoute("Destination", _ => shared)
             .WithRouteValueResolver("tenant", _ => "legacy")
@@ -39,7 +40,7 @@ public sealed class LocationRouteResolverTests
                 context.RouteValues["tenant"].Should().Be("legacy");
                 context.RouteValues.Remove("remove");
                 context.RouteValues["tenant"] = "resolved";
-                calls++;
+                calls.Record();
             }), writeOutcome);
         using var client = host.GetTestClient();
 
@@ -49,7 +50,7 @@ public sealed class LocationRouteResolverTests
         response.Headers.Location!.OriginalString.Should().Be("/destination/42?tenant=resolved");
         shared.Should().HaveCount(2);
         shared["remove"].Should().Be("stale");
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
     }
 
     [Theory]

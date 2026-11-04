@@ -76,7 +76,7 @@ public class TraverseAllIndexedAsyncTests
     [InlineData(AsyncForm.UnitTask)]
     public async Task TraverseAllAsync_Indexed_PendingSelector_DoesNotStartNextItem(AsyncForm form)
     {
-        var completion = new TaskCompletionSource<Result<int>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new ControlledAsync<Result<int>>();
         var visited = new List<int>();
         var error = new Error.Forbidden("denied");
         var pending = RunAsync(form, [7, 7, 7], (value, index, _) =>
@@ -85,11 +85,12 @@ public class TraverseAllIndexedAsyncTests
             return index == 0 ? completion.Task : Task.FromResult(Result.Ok(value));
         }, TestContext.Current.CancellationToken);
 
-        pending.IsCompleted.Should().BeFalse();
-        visited.Should().Equal([0]);
-        completion.SetResult(Result.Fail<int>(error));
+        var result = await pending.ShouldBePendingThenReleaseAsync(
+            () => completion.TryComplete(Result.Fail<int>(error)),
+            TimeSpan.FromSeconds(30),
+            TestContext.Current.CancellationToken,
+            whilePending: () => visited.Should().Equal([0]));
 
-        var result = await pending.WaitAsync(TestContext.Current.CancellationToken);
         result.Should().BeFailure().Which.Should().BeSameAs(error);
         visited.Should().Equal([0, 1, 2]);
     }
