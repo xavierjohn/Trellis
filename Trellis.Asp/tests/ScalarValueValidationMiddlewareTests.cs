@@ -21,6 +21,7 @@ using Microsoft.Extensions.Hosting;
 using Moq;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -57,7 +58,7 @@ public class ScalarValueValidationMiddlewareTests
         {
             // Verify scope is clean
             ValidationErrorsContext.HasErrors.Should().BeFalse();
-            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!.Should().BeNull();
             await Task.CompletedTask;
         });
 
@@ -78,10 +79,9 @@ public class ScalarValueValidationMiddlewareTests
 
             // Verify it's accessible
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/TestField");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/TestField");
 
             await Task.CompletedTask;
         });
@@ -159,8 +159,8 @@ public class ScalarValueValidationMiddlewareTests
             requestCount++;
             ValidationErrorsContext.AddError($"Field{requestCount}", $"Error {requestCount}");
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle("each request should have isolated scope");
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1, "each request should have isolated scope");
             error.Fields[0].Field.Path.Should().Be($"/Field{requestCount}");
 
             await Task.CompletedTask;
@@ -190,9 +190,9 @@ public class ScalarValueValidationMiddlewareTests
             await Task.Delay(10);
 
             // Verify this scope only has this thread's error
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle("scope should be isolated per async context");
+            error!.Should().HaveFieldViolationCount(1, "scope should be isolated per async context");
         });
 
         // Act - Process 10 concurrent requests
@@ -224,8 +224,7 @@ public class ScalarValueValidationMiddlewareTests
                 // Inner scope should not see outer errors (new scope)
                 ValidationErrorsContext.AddError("InnerField", "Inner error");
                 var innerError = ValidationErrorsContext.GetUnprocessableContent();
-                innerError!.Fields.Items.Should().ContainSingle()
-                    .Which.Field.Path.Should().Be("/InnerField");
+                innerError!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/InnerField");
 
                 await Task.CompletedTask;
             });
@@ -234,8 +233,7 @@ public class ScalarValueValidationMiddlewareTests
 
             // After inner scope, outer scope should still have its error
             var outerError = ValidationErrorsContext.GetUnprocessableContent();
-            outerError!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/OuterField");
+            outerError!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/OuterField");
         });
 
         var context = new DefaultHttpContext();
@@ -303,9 +301,9 @@ public class ScalarValueValidationMiddlewareTests
             ValidationErrorsContext.AddError("Field3", "Error 3");
             ValidationErrorsContext.AddError("Field1", "Error 1b"); // Another error for Field1
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().HaveCount(4);
+            error!.Should().HaveFieldViolationCount(4);
 
             // Field1 should appear twice (2 distinct messages on Field1)
             var field1Errors = error.Fields.Items.Where(f => f.Field.Path == "/Field1").ToList();
@@ -451,7 +449,7 @@ public class ScalarValueValidationMiddlewareTests
         var context = CreateContextWithEndpointMetadata(parameter, "code", fromRoute ? "INVALID" : null);
         context.Request.Path = "/middleware-binding-structure";
         context.Request.QueryString = new QueryString(fromRoute ? "?code=ORD-123" : "?code=INVALID");
-        BoundViolationCollector.GetError(context).Should().BeNull();
+        BoundViolationCollector.GetError(context)!.Should().BeNull();
 
         var middleware = new ScalarValueValidationMiddleware(_ =>
             throw new BadHttpRequestException("Parameter binding failed.", 400));

@@ -6,6 +6,7 @@ using System.Text.Json.Serialization.Metadata;
 using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -106,9 +107,8 @@ public class NullAndMissingPropertyValidationTests
 
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Quantity");
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Quantity");
             error.Fields[0].Detail.Should().Contain("Quantity cannot be null.");
         }
     }
@@ -128,9 +128,8 @@ public class NullAndMissingPropertyValidationTests
 
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Price");
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Price");
             error.Fields[0].Detail.Should().Contain("Price cannot be null.");
         }
     }
@@ -150,9 +149,8 @@ public class NullAndMissingPropertyValidationTests
 
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Counter");
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Counter");
             error.Fields[0].Detail.Should().Contain("Counter cannot be null.");
         }
     }
@@ -172,9 +170,8 @@ public class NullAndMissingPropertyValidationTests
 
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Active");
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Active");
             error.Fields[0].Detail.Should().Contain("IsActive cannot be null.");
         }
     }
@@ -200,8 +197,7 @@ public class NullAndMissingPropertyValidationTests
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an explicit JSON null for a required int VO should produce a validation error");
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Quantity");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Quantity");
         }
     }
 
@@ -221,8 +217,7 @@ public class NullAndMissingPropertyValidationTests
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an explicit JSON null for a required decimal VO should produce a validation error");
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Price");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Price");
         }
     }
 
@@ -242,8 +237,7 @@ public class NullAndMissingPropertyValidationTests
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an explicit JSON null for a required long VO should produce a validation error");
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Counter");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Counter");
         }
     }
 
@@ -263,8 +257,7 @@ public class NullAndMissingPropertyValidationTests
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an explicit JSON null for a required bool VO should produce a validation error");
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Active");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Active");
         }
     }
 
@@ -282,8 +275,8 @@ public class NullAndMissingPropertyValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "all null VO properties should produce validation errors");
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().HaveCount(5,
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(5,
                 "each null scalar VO property should produce a separate field error");
 
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/Name");
@@ -450,8 +443,8 @@ public class NullAndMissingPropertyValidationTests
             dto.Counter.Should().BeNull();
 
             ValidationErrorsContext.HasErrors.Should().BeTrue();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().HaveCount(2);
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(2);
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/Price");
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/Counter");
             error.Fields.Items.Should().NotContain(e => e.Field.Path == "/Name");

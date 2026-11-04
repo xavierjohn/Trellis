@@ -95,8 +95,7 @@ public class PropertyNameAwareConverterTests
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent();
             error!.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle()
-    .Which.Field.Path.Should().Be("/PrimaryEmail", "wrapper should set property name");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/PrimaryEmail", "wrapper should set property name");
         }
     }
 
@@ -264,8 +263,7 @@ public class PropertyNameAwareConverterTests
             var error = ValidationErrorsContext.GetUnprocessableContent();
             error!.Should().NotBeNull();
             // Empty string should still be set as property name
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("");
         }
     }
 
@@ -289,8 +287,7 @@ public class PropertyNameAwareConverterTests
             // Assert
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/" + longName);
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/" + longName);
         }
     }
 
@@ -314,8 +311,7 @@ public class PropertyNameAwareConverterTests
             // Assert
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/" + specialName);
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/" + specialName);
         }
     }
 
@@ -337,10 +333,9 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error!.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
-            error.Fields.Items[0].Field.Path.Should().Be("/Email");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Email");
             error.Fields.Items[0].Detail.Should().Be("DomainOnlyEmail is invalid.");
         }
     }

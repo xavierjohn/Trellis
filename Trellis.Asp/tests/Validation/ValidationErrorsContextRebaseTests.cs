@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Asp.Tests.Validation;
 
 using System.Collections.Immutable;
+using Trellis.Testing;
 
 /// <summary>
 /// Guard tests for the single body-context rebase rule and the <c>AddBodyError</c> overloads.
@@ -32,12 +33,10 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddBodyError(
             Error.InvalidInput.ForField(field: "displayName", code: UnspecifiedCode, detail: "too short"));
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
         error.Should().NotBeNull();
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/displayName");
-        violation.Field.In.Should().Be(InputLocation.Body);
+        error!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/displayName", InputLocation.Body)]);
     }
 
     [Fact]
@@ -51,9 +50,7 @@ public class ValidationErrorsContextRebaseTests
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/customer/displayName");
-        violation.Field.In.Should().Be(InputLocation.Body);
+        error!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/customer/displayName", InputLocation.Body)]);
     }
 
     [Fact]
@@ -65,9 +62,7 @@ public class ValidationErrorsContextRebaseTests
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/displayName");
-        violation.Field.In.Should().Be(InputLocation.Body);
+        error!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/displayName", InputLocation.Body)]);
     }
 
     [Fact]
@@ -103,9 +98,7 @@ public class ValidationErrorsContextRebaseTests
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/page");
-        violation.Field.In.Should().Be(InputLocation.Query);
+        error!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/page", InputLocation.Query)]);
     }
 
     /// <summary>
@@ -123,9 +116,7 @@ public class ValidationErrorsContextRebaseTests
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/a~1b");
-        violation.Field.In.Should().Be(InputLocation.Query);
+        error!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/a~1b", InputLocation.Query)]);
     }
 
     [Fact]
@@ -165,9 +156,7 @@ public class ValidationErrorsContextRebaseTests
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/customer/street");
-        violation.Field.In.Should().Be(InputLocation.Body);
+        error!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/customer/street", InputLocation.Body)]);
     }
 
     // --- rule violations follow the same rule ---
@@ -219,8 +208,7 @@ public class ValidationErrorsContextRebaseTests
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.In.Should().Be(InputLocation.Unspecified);
+        error!.Fields.Items.Select(v => v.Field.In).Should().Equal([InputLocation.Unspecified]);
     }
 
     [Fact]
@@ -234,9 +222,7 @@ public class ValidationErrorsContextRebaseTests
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/page");
-        violation.Field.In.Should().Be(InputLocation.Query);
+        error!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/page", InputLocation.Query)]);
     }
 
     // --- de-duplication still works once In is part of identity ---
@@ -256,7 +242,7 @@ public class ValidationErrorsContextRebaseTests
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
-        error!.Fields.Items.Should().ContainSingle();
+        error!.Should().HaveFieldViolationCount(1);
     }
 
     [Fact]
@@ -271,6 +257,6 @@ public class ValidationErrorsContextRebaseTests
 
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
-        error!.Fields.Items.Should().HaveCount(2);
+        error!.Should().HaveFieldViolationCount(2);
     }
 }

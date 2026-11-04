@@ -99,9 +99,8 @@ public class EnsureAllTests
             (v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email" }))),
             (v => true, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Always passes" }));
 
-        result.Should().BeFailure();
-        var validationError = result.Error!.Should().BeOfType<Error.InvalidInput>().Subject;
-        validationError.Fields.Items.Should().HaveCount(2);
+        var validationError = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validationError.Should().HaveFieldViolationCount(2);
     }
 
     [Fact]

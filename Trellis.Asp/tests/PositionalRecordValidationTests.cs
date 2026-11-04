@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -142,8 +143,8 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "all null VO properties in a positional record should produce validation errors");
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().HaveCount(3,
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(3,
                 "each null scalar VO constructor parameter should produce a separate field error");
             error.Fields.Items.Should().Contain(e =>
                 e.Field.Path == "/name" && e.Detail!.Contains("ProductName cannot be null."));
@@ -205,8 +206,8 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an empty JSON object for a positional record with required VOs should produce validation errors");
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().HaveCount(3);
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(3);
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/name");
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/quantity");
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/price");
@@ -250,8 +251,7 @@ public class PositionalRecordValidationTests
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an invalid value object in a positional record should produce a validation error");
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/name");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/name");
         }
     }
 
@@ -282,8 +282,8 @@ public class PositionalRecordValidationTests
         }
 
         // Both should produce the same validation errors
-        propertyError.Should().NotBeNull("property-syntax record should collect validation errors");
-        positionalError.Should().NotBeNull("positional record should collect validation errors");
+        propertyError!.Should().NotBeNull("property-syntax record should collect validation errors");
+        positionalError!.Should().NotBeNull("positional record should collect validation errors");
 
         positionalError!.Fields.Items.Should().HaveSameCount(propertyError!.Fields.Items,
             "positional and property-syntax records should produce the same number of validation errors");
@@ -333,8 +333,7 @@ public class PositionalRecordValidationTests
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "explicit null for a single-param positional record should produce a validation error");
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/name");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/name");
         }
     }
 
@@ -351,8 +350,7 @@ public class PositionalRecordValidationTests
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "missing property for a single-param positional record should produce a validation error");
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/name");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/name");
         }
     }
 
@@ -462,9 +460,8 @@ public class PositionalRecordValidationTests
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "missing non-nullable VO should produce a validation error");
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle(
-                "only the non-nullable required VO should produce a validation error, not the nullable one")
-                .Which.Field.Path.Should().Be("/name");
+            error!.Should().HaveFieldViolationCount(1)
+                .And.HaveFieldError("/name", "only the non-nullable required VO should produce a validation error, not the nullable one");
         }
     }
 

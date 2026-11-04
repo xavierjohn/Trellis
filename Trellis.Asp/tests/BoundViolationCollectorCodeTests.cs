@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -61,7 +62,7 @@ public sealed class BoundViolationCollectorCodeTests
         var result = BoundViolationCollector.GetError(context)!;
         result.Code.Should().Be(source.Code);
         result.Detail.Should().Be(source.Detail);
-        result.Cause.Should().BeSameAs(source.Cause);
+        ((object?)result.Cause).Should().BeSameAs(source.Cause);
         var pointer = location == InputLocation.Query
             ? InputPointer.ForQuery("code")
             : InputPointer.ForBody("/value");
@@ -96,9 +97,9 @@ public sealed class BoundViolationCollectorCodeTests
         var result = BoundViolationCollector.GetError(context)!;
         result.Code.Should().Be(original.Code);
         result.Detail.Should().Be(original.Detail);
-        result.Cause.Should().BeSameAs(original.Cause);
-        result.Fields.Items.Should().HaveCount(rulesOnly ? 0 : 1);
-        result.Rules.Items.Should().ContainSingle();
+        ((object?)result.Cause).Should().BeSameAs(original.Cause);
+        result.Should().HaveFieldViolationCount(rulesOnly ? 0 : 1);
+        result.Should().HaveRuleViolationCount(1);
     }
 
     [Theory]
@@ -118,8 +119,8 @@ public sealed class BoundViolationCollectorCodeTests
         var result = BoundViolationCollector.GetError(context)!;
         result.Code.Should().Be(original.Code);
         result.Detail.Should().Be(original.Detail);
-        result.Cause.Should().BeSameAs(original.Cause);
-        result.Fields.Length.Should().Be(rulesOnly ? 0 : 1);
+        ((object?)result.Cause).Should().BeSameAs(original.Cause);
+        result.Should().HaveFieldViolationCount(rulesOnly ? 0 : 1);
         var pointer = location switch
         {
             InputLocation.Path => InputPointer.ForPath("code"),
@@ -288,7 +289,7 @@ public sealed class BoundViolationCollectorCodeTests
         var context = new DefaultHttpContext();
         var first = BoundErrorMetadataTests.MetadataCode.CreateError("code") with { Cause = CreateCause("First context.") };
         var second = first with { Cause = CreateCause("Second context.") };
-        first.Should().Be(second);
+        ((Error)first).Should().Be(second);
 
         BoundViolationCollector.AddFrom(context, first, "code", InputLocation.Query);
         BoundViolationCollector.AddFrom(context, second, "code", InputLocation.Query);
@@ -349,7 +350,7 @@ public sealed class BoundViolationCollectorCodeTests
 
     [Fact]
     public void GetError_NoBoundFailureWithOtherFailures_ReturnsNull() =>
-        BoundViolationCollector.GetError(new DefaultHttpContext(), hasOtherFailures: true).Should().BeNull();
+        BoundViolationCollector.GetError(new DefaultHttpContext(), hasOtherFailures: true)!.Should().BeNull();
 
     [Fact]
     public void GetError_NonValidationFailure_RetainsTheOriginalAsCause()

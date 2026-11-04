@@ -70,8 +70,7 @@ public class CursorCodecTests
 
         decoded.IsFailure.Should().BeTrue();
         var invalid = decoded.Error.Should().BeOfType<Error.InvalidInput>().Subject;
-        invalid.Fields.Length.Should().Be(1);
-        invalid.Fields[0].ReasonCode.Should().Be("cursor.malformed");
+        invalid.Fields.Items.Select(v => v.ReasonCode).Should().Equal(["cursor.malformed"]);
         sw.ElapsedMilliseconds.Should().BeLessThan(100);
     }
 

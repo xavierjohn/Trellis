@@ -16,8 +16,7 @@ public class GeoBoundsTests
         var error = GeoBounds.TryCreate(GeoCoordinate.Create(0, 0), radiusMeters)
             .Should().BeFailureOfType<Error.InvalidInput>().Which;
 
-        error.Fields.Items.Should().ContainSingle();
-        error.Fields[0].Field.Path.Should().Be("/radiusMeters");
+        error.Should().HaveFieldViolationCount(1).And.HaveFieldError("/radiusMeters");
         error.Fields[0].ReasonCode.Should().Be(reasonCode);
         if (reasonCode == ValidationCodes.ValueGreaterThanOrEqual)
             error.Fields[0].Args.Should().BeEquivalentTo(ValidationArgs.Of("comparisonValue", 0));

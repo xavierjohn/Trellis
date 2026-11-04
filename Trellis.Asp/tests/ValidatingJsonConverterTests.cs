@@ -173,9 +173,8 @@ public class ValidatingJsonConverterTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue("null values should produce a validation error for required value objects");
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Email");
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Email");
             error.Fields[0].Detail.Should().Contain("Email cannot be null.");
         }
     }

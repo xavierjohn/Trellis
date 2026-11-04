@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -74,11 +75,11 @@ public class ScalarValueValidationTests
             ValidationErrorsContext.AddError("field1", "Error 1");
             ValidationErrorsContext.AddError("field2", "Error 2");
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
             // Assert
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().HaveCount(2);
+            error!.Should().HaveFieldViolationCount(2);
             error.Fields[0].Field.Path.Should().Be("/field1");
             error.Fields[0].Detail.Should().Be("Error 1");
             error.Fields[1].Field.Path.Should().Be("/field2");
@@ -93,7 +94,7 @@ public class ScalarValueValidationTests
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
         // Assert
-        error.Should().BeNull();
+        error!.Should().BeNull();
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public class ScalarValueValidationTests
         var error = ValidationErrorsContext.GetUnprocessableContent();
 
         // Assert
-        error.Should().BeNull();
+        error!.Should().BeNull();
     }
 
     [Fact]
@@ -174,7 +175,7 @@ public class ScalarValueValidationTests
             // Assert
             result.Should().NotBeNull();
             result!.Value.Should().Be("John");
-            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!.Should().BeNull();
         }
     }
 
@@ -194,10 +195,9 @@ public class ScalarValueValidationTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().HaveCount(1);
-            error.Fields[0].Field.Path.Should().Be("/FirstName");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/FirstName");
             error.Fields[0].Detail.Should().Be("Name cannot be empty.");
         }
     }
@@ -223,11 +223,11 @@ public class ScalarValueValidationTests
             JsonSerializer.Deserialize<TestEmail>("\"not-an-email\"", options);
 
             // Act
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
             // Assert
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().HaveCount(3);
+            error!.Should().HaveFieldViolationCount(3);
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/FirstName" && e.Detail == "Name cannot be empty.");
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/LastName" && e.Detail == "Name cannot be empty.");
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/Email" && e.Detail == "Email must contain @.");
@@ -455,7 +455,7 @@ public class ScalarValueValidationTests
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
-        ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
+        ValidationErrorsContext.GetUnprocessableContent()!.Should().BeNull();
     }
 
     #endregion

@@ -46,9 +46,8 @@ public class JsonValidationPathRebaseTests
 
         var rebased = JsonValidationPathRebase.Rebase(CompositeRelativeFailure());
 
-        var violation = rebased.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/members/0/address/postalCode");
-        violation.Field.In.Should().Be(InputLocation.Body);
+        rebased.InvalidInput!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should()
+            .Equal([("/members/0/address/postalCode", InputLocation.Body)]);
     }
 
     [Fact]
@@ -82,8 +81,7 @@ public class JsonValidationPathRebaseTests
         var twice = JsonValidationPathRebase.RebaseIfUnmarked(once);
 
         twice.Should().BeSameAs(once);
-        twice.InvalidInput!.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/members/0/postalCode");
+        twice.InvalidInput!.Fields.Items.Select(v => v.Field.Path).Should().Equal(["/members/0/postalCode"]);
     }
 
     /// <summary>
@@ -105,8 +103,7 @@ public class JsonValidationPathRebaseTests
 
         var rebased = JsonValidationPathRebase.Rebase(failure);
 
-        rebased.InvalidInput!.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/members/members");
+        rebased.InvalidInput!.Fields.Items.Select(v => v.Field.Path).Should().Equal(["/members/members"]);
     }
 
     [Fact]
@@ -116,9 +113,7 @@ public class JsonValidationPathRebaseTests
 
         var rebased = JsonValidationPathRebase.Rebase(CompositeRelativeFailure());
 
-        var violation = rebased.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/postalCode");
-        violation.Field.In.Should().Be(InputLocation.Body);
+        rebased.InvalidInput!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/postalCode", InputLocation.Body)]);
     }
 
     /// <summary>
@@ -139,9 +134,7 @@ public class JsonValidationPathRebaseTests
 
         var rebased = JsonValidationPathRebase.Rebase(failure);
 
-        var violation = rebased.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
-        violation.Field.Path.Should().Be("/page");
-        violation.Field.In.Should().Be(InputLocation.Query);
+        rebased.InvalidInput!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/page", InputLocation.Query)]);
     }
 
     [Fact]

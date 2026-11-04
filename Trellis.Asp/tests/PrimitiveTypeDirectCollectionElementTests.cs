@@ -103,8 +103,7 @@ public sealed class PrimitiveTypeDirectCollectionElementTests
 
             var error = ValidationErrorsContext.GetUnprocessableContent();
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
-            error.Fields[0].Field.Path.Should().Be(expectedPath);
+            error!.Fields.Items.Select(v => v.Field.Path).Should().Equal([expectedPath]);
         }
     }
 
