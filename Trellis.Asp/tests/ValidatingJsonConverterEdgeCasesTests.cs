@@ -112,8 +112,7 @@ public class ValidatingJsonConverterEdgeCasesTests
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue("null values should produce a validation error for required value objects");
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/email");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/email");
             error.Fields[0].Detail.Should().Contain("Email cannot be null.");
         }
     }
@@ -138,8 +137,7 @@ public class ValidatingJsonConverterEdgeCasesTests
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue("null value should produce a validation error");
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/UserEmail");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/UserEmail");
             error.Fields[0].Detail.Should().Contain("Email cannot be null.");
         }
     }
@@ -169,8 +167,7 @@ public class ValidatingJsonConverterEdgeCasesTests
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
             // Should use "email" (camelCase of type name)
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/email");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/email");
         }
     }
 
@@ -212,8 +209,7 @@ public class ValidatingJsonConverterEdgeCasesTests
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/url");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/url");
         }
     }
 
@@ -229,7 +225,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         Action deserialize = () => JsonSerializer.Deserialize<Email>("\"\"", options);
 
         deserialize.Should().Throw<TrellisJsonValidationException>()
-            .Which.InvalidInput!.Should().HaveFieldViolationCount(1);
+            .Which.InvalidInput!.Fields.Items.Should().ContainSingle();
         ValidationErrorsContext.Current.Should().BeNull();
     }
 
@@ -440,11 +436,8 @@ public class ValidatingJsonConverterEdgeCasesTests
 
         converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions()).Should().BeNull();
 
-        var error = ValidationErrorsContext.GetUnprocessableContent()!;
-        error.Should().HaveFieldViolationCount(1);
-        var violation = error.Fields.Items[0];
-        violation.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
-        violation.Field.Should().Be(InputPointer.ForBody("/mode"));
+        ValidationErrorsContext.GetUnprocessableContent()!.Fields.Items.Select(v => (v.ReasonCode, v.Field)).Should()
+            .Equal([(ValidationCodes.FormatInteger, InputPointer.ForBody("/mode"))]);
     }
 
     [Fact]
@@ -494,8 +487,7 @@ public class ValidatingJsonConverterEdgeCasesTests
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error.Fields[0].Field.Path.Should().Be("/Test");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Test");
             error.Fields[0].Detail.Should().Contain("Unexpected error");
         }
     }
@@ -577,8 +569,7 @@ public class ValidatingJsonConverterEdgeCasesTests
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/Age");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Age");
         }
     }
 

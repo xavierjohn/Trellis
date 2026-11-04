@@ -1,7 +1,6 @@
 ﻿namespace Trellis.Asp.Tests;
 
 using Microsoft.AspNetCore.Http;
-using Trellis.Testing;
 
 public sealed class HttpRequestPaginationExtensionsTests
 {
@@ -259,7 +258,6 @@ public sealed class HttpRequestPaginationExtensionsTests
     {
         result.IsFailure.Should().BeTrue();
         var invalid = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
-        invalid.Should().HaveFieldViolationCount(1);
-        return invalid.Fields.Items[0];
+        return invalid.Fields.Items.Should().ContainSingle().Which;
     }
 }

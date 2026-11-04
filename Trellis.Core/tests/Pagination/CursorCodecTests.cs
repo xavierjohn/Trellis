@@ -2,7 +2,6 @@
 
 using System;
 using System.Globalization;
-using Trellis.Testing;
 
 /// <summary>
 /// Unit tests for the <see cref="CursorCodec"/> helpers that encode and decode opaque
@@ -71,8 +70,7 @@ public class CursorCodecTests
 
         decoded.IsFailure.Should().BeTrue();
         var invalid = decoded.Error.Should().BeOfType<Error.InvalidInput>().Subject;
-        invalid.Should().HaveFieldViolationCount(1);
-        invalid.Fields[0].ReasonCode.Should().Be("cursor.malformed");
+        invalid.Fields.Items.Select(v => v.ReasonCode).Should().Equal(["cursor.malformed"]);
         sw.ElapsedMilliseconds.Should().BeLessThan(100);
     }
 

@@ -197,8 +197,7 @@ public class ScalarValueValidationTests
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error.Fields[0].Field.Path.Should().Be("/FirstName");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/FirstName");
             error.Fields[0].Detail.Should().Be("Name cannot be empty.");
         }
     }

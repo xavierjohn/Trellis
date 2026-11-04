@@ -29,8 +29,8 @@ public class ValidationErrorsContextPreservationTests
 
             ValidationErrorsContext.AddError(source);
 
-            var aggregated = ValidationErrorsContext.GetUnprocessableContent();
-            aggregated!.Should().NotBeNull();
+            var aggregated = ValidationErrorsContext.GetUnprocessableContent()!;
+            aggregated.Should().NotBeNull();
             var violation = aggregated!.Fields.Items.Single();
             violation.Field.Path.Should().Be("/name");
             violation.ReasonCode.Should().Be("length_out_of_range");
@@ -74,7 +74,7 @@ public class ValidationErrorsContextPreservationTests
             ValidationErrorsContext.AddError(source);
             ValidationErrorsContext.AddError(source);
 
-            var aggregated = ValidationErrorsContext.GetUnprocessableContent()!;
+            var aggregated = ValidationErrorsContext.GetUnprocessableContent();
             aggregated!.Should().HaveFieldViolationCount(1);
         }
     }

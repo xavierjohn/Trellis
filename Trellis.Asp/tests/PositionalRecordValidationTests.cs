@@ -250,9 +250,8 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "an invalid value object in a positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetUnprocessableContent()!;
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/name");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/name");
         }
     }
 
@@ -333,9 +332,8 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "explicit null for a single-param positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetUnprocessableContent()!;
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/name");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/name");
         }
     }
 
@@ -351,9 +349,8 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "missing property for a single-param positional record should produce a validation error");
-            var error = ValidationErrorsContext.GetUnprocessableContent()!;
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/name");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/name");
         }
     }
 
@@ -417,9 +414,9 @@ public class PositionalRecordValidationTests
 
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "explicit JSON null for a scalar VO should produce a validation error even when the property is nullable");
-            var error = ValidationErrorsContext.GetUnprocessableContent()!;
-            error!.Should().HaveFieldViolationCount(1);
-            var fieldError = error!.Fields.Items[0];
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var fieldError = error!.Fields.Items.Should().ContainSingle()
+                .Which;
             fieldError.Field.Path.Should().Be("/optionalPrice");
             fieldError.Detail.Should().Contain("Price cannot be null.",
                 "explicit null should be caught by the converter, not the OnDeserialized fallback");
@@ -462,10 +459,9 @@ public class PositionalRecordValidationTests
             // OptionalPrice (nullable) should NOT produce a validation error
             ValidationErrorsContext.HasErrors.Should().BeTrue(
                 "missing non-nullable VO should produce a validation error");
-            var error = ValidationErrorsContext.GetUnprocessableContent()!;
-            error!.Should().HaveFieldViolationCount(1,
-                "only the non-nullable required VO should produce a validation error, not the nullable one");
-            error!.Fields.Items[0].Field.Path.Should().Be("/name");
+            var error = ValidationErrorsContext.GetUnprocessableContent();
+            error!.Should().HaveFieldViolationCount(1)
+                .And.HaveFieldError("/name", "only the non-nullable required VO should produce a validation error, not the nullable one");
         }
     }
 

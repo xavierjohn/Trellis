@@ -81,8 +81,7 @@ public class ScalarValueValidationMiddlewareTests
             ValidationErrorsContext.HasErrors.Should().BeTrue();
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/TestField");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/TestField");
 
             await Task.CompletedTask;
         });
@@ -224,9 +223,8 @@ public class ScalarValueValidationMiddlewareTests
 
                 // Inner scope should not see outer errors (new scope)
                 ValidationErrorsContext.AddError("InnerField", "Inner error");
-                var innerError = ValidationErrorsContext.GetUnprocessableContent()!;
-                innerError!.Should().HaveFieldViolationCount(1);
-                innerError!.Fields.Items[0].Field.Path.Should().Be("/InnerField");
+                var innerError = ValidationErrorsContext.GetUnprocessableContent();
+                innerError!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/InnerField");
 
                 await Task.CompletedTask;
             });
@@ -234,9 +232,8 @@ public class ScalarValueValidationMiddlewareTests
             await innerMiddleware.InvokeAsync(httpContext);
 
             // After inner scope, outer scope should still have its error
-            var outerError = ValidationErrorsContext.GetUnprocessableContent()!;
-            outerError!.Should().HaveFieldViolationCount(1);
-            outerError!.Fields.Items[0].Field.Path.Should().Be("/OuterField");
+            var outerError = ValidationErrorsContext.GetUnprocessableContent();
+            outerError!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/OuterField");
         });
 
         var context = new DefaultHttpContext();
@@ -441,9 +438,8 @@ public class ScalarValueValidationMiddlewareTests
     {
         var source = StructuredOrderCode.TryCreate("INVALID", "code");
         source.TryGetError(out var sourceError).Should().BeTrue();
-        var sourceInvalidInput = sourceError.Should().BeOfType<Error.InvalidInput>().Which;
-        sourceInvalidInput.Should().HaveFieldViolationCount(1);
-        var sourceViolation = sourceInvalidInput.Fields.Items[0];
+        var sourceViolation = sourceError.Should().BeOfType<Error.InvalidInput>().Which
+            .Fields.Items.Should().ContainSingle().Which;
         sourceViolation.ReasonCode.Should().Be("order.code-prefix");
         sourceViolation.Args!["prefix"].Should().Be(new ValidationArgValue.Text("ORD-"));
 

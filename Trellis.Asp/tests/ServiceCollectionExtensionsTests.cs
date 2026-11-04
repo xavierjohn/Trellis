@@ -401,8 +401,7 @@ public class ServiceCollectionExtensionsTests
             result.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/Name");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Name");
         }
     }
 
@@ -524,8 +523,8 @@ public class ServiceCollectionExtensionsTests
             var result = JsonSerializer.Deserialize<NestedDto>(json, httpOptions.Value.SerializerOptions);
 
             // Assert
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Should().NotBeNull();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error.Should().NotBeNull();
             error!.Fields.Items.Should().HaveCountGreaterOrEqualTo(2);
             // Nested value objects now report the full path (container property + leaf), from the JSON
             // property names (camelCase), at parity with the FluentValidation integration.
@@ -556,7 +555,7 @@ public class ServiceCollectionExtensionsTests
             result.Email.Should().BeNull();
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull("explicit JSON null for scalar VOs should produce validation errors");
-            error!.Should().HaveFieldViolationCount(2);
+            error!.Fields.Items.Should().HaveCount(2);
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/name");
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/email");
         }

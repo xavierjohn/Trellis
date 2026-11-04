@@ -30,9 +30,7 @@ public sealed class BoundViolationCollectorCodeTests
             "orderId",
             InputLocation.Path);
 
-        var error = BoundViolationCollector.GetError(context)!;
-        error.Should().HaveFieldViolationCount(1);
-        var violation = error.Fields.Items[0];
+        var violation = BoundViolationCollector.GetError(context)!.Fields.Items.Should().ContainSingle().Subject;
         violation.ReasonCode.Should().Be(ValidationCodes.Unspecified);
     }
 
@@ -47,9 +45,7 @@ public sealed class BoundViolationCollectorCodeTests
             "quantity",
             InputLocation.Query);
 
-        var error = BoundViolationCollector.GetError(context)!;
-        error.Should().HaveFieldViolationCount(1);
-        var violation = error.Fields.Items[0];
+        var violation = BoundViolationCollector.GetError(context)!.Fields.Items.Should().ContainSingle().Subject;
         violation.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
     }
 
@@ -70,10 +66,8 @@ public sealed class BoundViolationCollectorCodeTests
         var pointer = location == InputLocation.Query
             ? InputPointer.ForQuery("code")
             : InputPointer.ForBody("/value");
-        result.Should().HaveFieldViolationCount(1);
-        result.Fields.Items[0].Field.Should().Be(pointer);
-        result.Should().HaveRuleViolationCount(1);
-        var rule = result.Rules.Items[0];
+        result.Fields.Items.Should().ContainSingle().Which.Field.Should().Be(pointer);
+        var rule = result.Rules.Items.Should().ContainSingle().Which;
         rule.Fields.Items.Should().Equal(pointer);
         rule.Args.Should().BeSameAs(source.Rules.Items[0].Args);
         source.Fields.Items[0].Field.In.Should().Be(InputLocation.Unspecified);
@@ -133,8 +127,7 @@ public sealed class BoundViolationCollectorCodeTests
             InputLocation.Header => InputPointer.ForHeader("code"),
             _ => InputPointer.ForQuery("code"),
         };
-        result.Should().HaveRuleViolationCount(1);
-        result.Rules.Items[0].Fields.Items.Should().Equal(pointer);
+        result.Rules.Items.Should().ContainSingle().Which.Fields.Items.Should().Equal(pointer);
     }
 
     [Theory]
@@ -213,9 +206,8 @@ public sealed class BoundViolationCollectorCodeTests
             InputLocation.Body => [InputPointer.ForBody("/first"), InputPointer.ForBody("/second")],
             _ => [first, second],
         };
-        var result = BoundViolationCollector.GetError(context)!;
-        result.Should().HaveRuleViolationCount(1);
-        result.Rules.Items[0].Fields.Items.Should().Equal(expected);
+        BoundViolationCollector.GetError(context)!.Rules.Items.Should().ContainSingle()
+            .Which.Fields.Items.Should().Equal(expected);
         source.Rules[0].Fields.Items.Should().Equal(first, second, first);
     }
 
@@ -237,9 +229,8 @@ public sealed class BoundViolationCollectorCodeTests
         var result = BoundViolationCollector.GetError(context)!;
         result.Code.Should().Be(ValidationCodes.Unspecified);
         result.Detail.Should().BeNull();
-        result.Should().HaveFieldViolationCount(0);
-        result.Should().HaveRuleViolationCount(1);
-        result.Rules.Items[0].Fields.Items.Should().BeEmpty();
+        result.Fields.Items.Should().BeEmpty();
+        result.Rules.Items.Should().ContainSingle().Which.Fields.Items.Should().BeEmpty();
         var originals = result.Cause.Should().BeOfType<Error.Aggregate>().Which.Errors.Items;
         originals.Should().HaveCount(2);
         originals[0].Should().BeSameAs(source);
@@ -377,7 +368,6 @@ public sealed class BoundViolationCollectorCodeTests
         result.Code.Should().Be(source.Code);
         result.Detail.Should().Be(source.Detail);
         result.Cause.Should().BeSameAs(source);
-        result.Should().HaveFieldViolationCount(1);
-        result.Fields.Items[0].ReasonCode.Should().Be(source.Code);
+        result.Fields.Items.Should().ContainSingle().Which.ReasonCode.Should().Be(source.Code);
     }
 }

@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Immutable;
 using Trellis.Asp.Validation;
-using Trellis.Testing;
 
 /// <summary>
 /// Guard tests for §8.2(c) — the "prefix exactly once, marked explicitly, never inferred" rule.
@@ -47,10 +46,8 @@ public class JsonValidationPathRebaseTests
 
         var rebased = JsonValidationPathRebase.Rebase(CompositeRelativeFailure());
 
-        rebased.InvalidInput!.Should().HaveFieldViolationCount(1);
-        var violation = rebased.InvalidInput!.Fields.Items[0];
-        violation.Field.Path.Should().Be("/members/0/address/postalCode");
-        violation.Field.In.Should().Be(InputLocation.Body);
+        rebased.InvalidInput!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should()
+            .Equal([("/members/0/address/postalCode", InputLocation.Body)]);
     }
 
     [Fact]
@@ -84,8 +81,7 @@ public class JsonValidationPathRebaseTests
         var twice = JsonValidationPathRebase.RebaseIfUnmarked(once);
 
         twice.Should().BeSameAs(once);
-        twice.InvalidInput!.Should().HaveFieldViolationCount(1);
-        twice.InvalidInput!.Fields.Items[0].Field.Path.Should().Be("/members/0/postalCode");
+        twice.InvalidInput!.Fields.Items.Select(v => v.Field.Path).Should().Equal(["/members/0/postalCode"]);
     }
 
     /// <summary>
@@ -107,8 +103,7 @@ public class JsonValidationPathRebaseTests
 
         var rebased = JsonValidationPathRebase.Rebase(failure);
 
-        rebased.InvalidInput!.Should().HaveFieldViolationCount(1);
-        rebased.InvalidInput!.Fields.Items[0].Field.Path.Should().Be("/members/members");
+        rebased.InvalidInput!.Fields.Items.Select(v => v.Field.Path).Should().Equal(["/members/members"]);
     }
 
     [Fact]
@@ -118,10 +113,7 @@ public class JsonValidationPathRebaseTests
 
         var rebased = JsonValidationPathRebase.Rebase(CompositeRelativeFailure());
 
-        rebased.InvalidInput!.Should().HaveFieldViolationCount(1);
-        var violation = rebased.InvalidInput!.Fields.Items[0];
-        violation.Field.Path.Should().Be("/postalCode");
-        violation.Field.In.Should().Be(InputLocation.Body);
+        rebased.InvalidInput!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/postalCode", InputLocation.Body)]);
     }
 
     /// <summary>
@@ -142,10 +134,7 @@ public class JsonValidationPathRebaseTests
 
         var rebased = JsonValidationPathRebase.Rebase(failure);
 
-        rebased.InvalidInput!.Should().HaveFieldViolationCount(1);
-        var violation = rebased.InvalidInput!.Fields.Items[0];
-        violation.Field.Path.Should().Be("/page");
-        violation.Field.In.Should().Be(InputLocation.Query);
+        rebased.InvalidInput!.Fields.Items.Select(v => (v.Field.Path, v.Field.In)).Should().Equal([("/page", InputLocation.Query)]);
     }
 
     [Fact]
@@ -167,8 +156,7 @@ public class JsonValidationPathRebaseTests
 
         var rebased = JsonValidationPathRebase.Rebase(failure);
 
-        rebased.InvalidInput!.Should().HaveRuleViolationCount(1);
-        var rule = rebased.InvalidInput!.Rules.Items[0];
+        var rule = rebased.InvalidInput!.Rules.Items.Should().ContainSingle().Subject;
         rule.Fields.Items.Should().SatisfyRespectively(
             first => first.Path.Should().Be("/address/postalCode"),
             second => second.Path.Should().Be("/address/region"));
@@ -236,7 +224,7 @@ public class JsonValidationPathRebaseTests
         var rebased = JsonValidationPathRebase.RebaseIfUnmarked(failure);
 
         rebased.Should().NotBeSameAs(failure);
-        rebased.InvalidInput!.Should().BeNull("there were no pointers to re-root");
+        rebased.InvalidInput.Should().BeNull("there were no pointers to re-root");
         rebased.Message.Should().Be(failure.Message, "the curated message is the whole payload here");
         rebased.InnerException.Should().BeSameAs(failure);
         JsonValidationPathRebase.RecordedAbsolutePath(rebased).Should().Be("/address");

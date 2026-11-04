@@ -116,8 +116,7 @@ public sealed class NestedPathValidationTests
 
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error.Fields[0].Field.Path.Should().Be("/members/0/email");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/members/0/email");
         }
     }
 
@@ -133,8 +132,7 @@ public sealed class NestedPathValidationTests
 
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error.Fields[0].Field.Path.Should().Be("/emails/1");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/emails/1");
         }
     }
 
@@ -150,10 +148,9 @@ public sealed class NestedPathValidationTests
 
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
             // NormalizeFieldName must preserve the empty-string "target the element itself" sentinel
             // rather than collapsing it to the "email" default, which would produce "/emails/1/email".
-            error.Fields[0].Field.Path.Should().Be("/emails/1");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/emails/1");
         }
     }
 
@@ -169,11 +166,10 @@ public sealed class NestedPathValidationTests
 
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
             // The dictionary-entry mirror of Direct_value_object_collection_element_reports_the_element_path:
             // a direct scalar dictionary value must report the key-precise pointer itself, not a synthetic
             // type-name leaf (e.g. "/prices/EUR/testEmail").
-            error.Fields[0].Field.Path.Should().Be("/prices/EUR");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/prices/EUR");
         }
     }
 
@@ -189,8 +185,7 @@ public sealed class NestedPathValidationTests
 
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error.Fields[0].Field.Path.Should().Be("/emails/0");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/emails/0");
         }
     }
 
@@ -206,8 +201,7 @@ public sealed class NestedPathValidationTests
 
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error.Fields[0].Field.Path.Should().Be("/contact/email");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/contact/email");
         }
     }
 
@@ -221,8 +215,8 @@ public sealed class NestedPathValidationTests
         {
             JsonSerializer.Deserialize<MemberDto>(json, options);
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Should().NotBeNull();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error.Should().NotBeNull();
             error!.Fields[0].Field.Path.Should().Be("/email");
         }
     }
@@ -239,8 +233,7 @@ public sealed class NestedPathValidationTests
 
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error.Fields[0].Field.Path.Should().Be("/child/email");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/child/email");
         }
     }
 
@@ -290,8 +283,8 @@ public sealed class NestedPathValidationTests
             {
                 JsonSerializer.Deserialize<TestEmail>("\"not-an-email\"", options);
 
-                var error = ValidationErrorsContext.GetUnprocessableContent();
-                error!.Should().NotBeNull();
+                var error = ValidationErrorsContext.GetUnprocessableContent()!;
+                error.Should().NotBeNull();
                 // A new scope starts at the document root: the stale leaf name must not leak into the path.
                 error!.Fields[0].Field.Path.Should().NotContain("stale");
             }
@@ -309,8 +302,8 @@ public sealed class NestedPathValidationTests
         {
             ValidationErrorsContext.AddError("/members/0/email", "bad");
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Should().NotBeNull();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error.Should().NotBeNull();
             // A value already starting with '/' is a fully-formed pointer; its slashes must not be escaped.
             error!.Fields[0].Field.Path.Should().Be("/members/0/email");
         }
@@ -323,8 +316,8 @@ public sealed class NestedPathValidationTests
         {
             ValidationErrorsContext.AddError(string.Empty, "bad");
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Should().NotBeNull();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error.Should().NotBeNull();
             error!.Fields[0].Field.Path.Should().Be(string.Empty);
         }
     }

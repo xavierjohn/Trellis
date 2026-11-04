@@ -36,9 +36,8 @@ public class GeoCoordinateTests
         var error = GeoCoordinate.TryCreate(latitude, longitude)
             .Should().BeFailureOfType<Error.InvalidInput>().Which;
 
-        error.Should().HaveFieldViolationCount(1);
+        error.Should().HaveFieldViolationCount(1).And.HaveFieldError(path);
         var violation = error.Fields[0];
-        violation.Field.Path.Should().Be(path);
         violation.ReasonCode.Should().Be(reason);
         violation.Args.Should().BeEquivalentTo(ValidationArgs.Of("comparisonValue", bound));
     }
@@ -55,8 +54,7 @@ public class GeoCoordinateTests
         var error = GeoCoordinate.TryCreate(latitude, longitude)
             .Should().BeFailureOfType<Error.InvalidInput>().Which;
 
-        error.Should().HaveFieldViolationCount(1);
-        error.Fields[0].Field.Path.Should().Be(path);
+        error.Should().HaveFieldViolationCount(1).And.HaveFieldError(path);
         error.Fields[0].ReasonCode.Should().Be(ValidationCodes.NumberFinite);
         error.Fields[0].Args.Should().BeNull();
     }

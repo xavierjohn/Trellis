@@ -78,8 +78,7 @@ public class ValidationErrorsContextConcurrencyTests
             // Assert
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Should().HaveFieldViolationCount(1);
-            error.Fields.Items[0].Field.Path.Should().Be("/" + fieldName);
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/" + fieldName);
             // Should only have one copy of the error message (no duplicates)
             error.Fields.Items[0].Detail.Should().Be(errorMessage);
         }
@@ -208,8 +207,7 @@ public class ValidationErrorsContextConcurrencyTests
                     // Verify this scope only has its error
                     var error = ValidationErrorsContext.GetUnprocessableContent()!;
                     error.Should().NotBeNull();
-                    error!.Should().HaveFieldViolationCount(1, "scope should be isolated");
-                    error.Fields[0].Field.Path.Should().Be($"/Scope{scopeId}");
+                    error!.Should().HaveFieldViolationCount(1).And.HaveFieldError($"/Scope{scopeId}", "scope should be isolated");
 
                     return true;
                 }
@@ -334,15 +332,13 @@ public class ValidationErrorsContextConcurrencyTests
                 ValidationErrorsContext.AddError("Inner", "Inner error");
 
                 // Inner scope should only have inner error
-                var innerError = ValidationErrorsContext.GetUnprocessableContent()!;
-                innerError!.Should().HaveFieldViolationCount(1);
-                innerError!.Fields.Items[0].Field.Path.Should().Be("/Inner");
+                var innerError = ValidationErrorsContext.GetUnprocessableContent();
+                innerError!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Inner");
             }
 
             // After inner scope disposed, outer scope should have outer error
-            var outerError = ValidationErrorsContext.GetUnprocessableContent()!;
-            outerError!.Should().HaveFieldViolationCount(1);
-            outerError!.Fields.Items[0].Field.Path.Should().Be("/Outer");
+            var outerError = ValidationErrorsContext.GetUnprocessableContent();
+            outerError!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Outer");
         }
     }
 

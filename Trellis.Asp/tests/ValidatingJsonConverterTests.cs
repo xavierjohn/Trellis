@@ -174,8 +174,7 @@ public class ValidatingJsonConverterTests
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue("null values should produce a validation error for required value objects");
             var error = ValidationErrorsContext.GetUnprocessableContent()!;
-            error!.Should().HaveFieldViolationCount(1);
-            error!.Fields.Items[0].Field.Path.Should().Be("/Email");
+            error!.Should().HaveFieldViolationCount(1).And.HaveFieldError("/Email");
             error.Fields[0].Detail.Should().Contain("Email cannot be null.");
         }
     }
@@ -442,7 +441,7 @@ public class ValidatingJsonConverterTests
         Action deserialize = () => JsonSerializer.Deserialize<Email>("\"invalid\"", options);
 
         deserialize.Should().Throw<TrellisJsonValidationException>()
-            .Which.InvalidInput!.Should().HaveFieldViolationCount(1);
+            .Which.InvalidInput!.Fields.Items.Should().ContainSingle();
         ValidationErrorsContext.Current.Should().BeNull();
     }
 

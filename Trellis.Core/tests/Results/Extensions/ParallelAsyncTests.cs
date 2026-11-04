@@ -210,9 +210,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
-        var validationError = (Error.InvalidInput)result.Error!;
+        var validationError = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validationError.Should().HaveFieldViolationCount(3);
         validationError.Fields.Items[0].Field.Path.Should().Be("/field1");
         validationError.Fields.Items[1].Field.Path.Should().Be("/field2");
@@ -537,9 +535,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
-        var validationError = (Error.InvalidInput)result.Error!;
+        var validationError = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validationError.Should().HaveFieldViolationCount(3);
     }
 
