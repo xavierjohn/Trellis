@@ -2,6 +2,7 @@
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Trellis.Testing;
 
 public sealed class RequiredEnumJsonConverterTests
 {
@@ -25,9 +26,8 @@ public sealed class RequiredEnumJsonConverterTests
 
         result.IsFailure.Should().BeTrue();
         var error = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
-        var violation = error.Fields.Items.Should().ContainSingle().Subject;
-        violation.ReasonCode.Should().Be(code);
-        violation.Field.Should().Be(InputPointer.Root);
+        error.Should().HaveFieldViolationCount(1);
+        var violation = error.Should().HaveFieldViolation(InputPointer.Root, code).Which;
         violation.Detail.Should().NotBeNullOrWhiteSpace();
         reader.BytesConsumed.Should().Be(System.Text.Encoding.UTF8.GetByteCount(json));
     }
@@ -84,7 +84,8 @@ public sealed class RequiredEnumJsonConverterTests
             "the boundary recognizes a structured validation failure only through this type")
             .Subject.Single();
 
-        var violation = ex.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
+        var violation = ex.InvalidInput!.Fields[0];
         violation.Field.Path.Should().BeEmpty("a scalar converter does not know where in the document it sits");
         violation.Detail.Should().Be(ex.Message,
             "the curated, sanitized message is the detail — propagating the producer's raw detail instead would silently drop the sanitization");
@@ -96,7 +97,7 @@ public sealed class RequiredEnumJsonConverterTests
         var act = () => JsonSerializer.Deserialize<RequiredEnumJsonConverterTestState>("null", _jsonOptions);
 
         var ex = act.Should().Throw<TrellisJsonValidationException>().Subject.Single();
-        ex.InvalidInput!.Fields.Items.Should().ContainSingle();
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
     }
 
     [Fact]
@@ -105,7 +106,7 @@ public sealed class RequiredEnumJsonConverterTests
         var act = () => JsonSerializer.Deserialize<RequiredEnumJsonConverterTestState>("42", _jsonOptions);
 
         var ex = act.Should().Throw<TrellisJsonValidationException>().Subject.Single();
-        ex.InvalidInput!.Fields.Items.Should().ContainSingle();
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
     }
 
     [Fact]
