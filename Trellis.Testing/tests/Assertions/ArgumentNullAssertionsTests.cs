@@ -112,4 +112,79 @@ public class ArgumentNullAssertionsTests
         nullAction.Should().Throw<ArgumentNullException>().WithParameterName("act");
         nullName.Should().Throw<ArgumentNullException>().WithParameterName("paramName");
     }
+
+    [Fact]
+    public async Task ShouldRejectNullBeforeAwaitAsync_StartedAndAlreadyFaulted_PassesWhileSourceStaysPending()
+    {
+        var source = new ControlledAsync<int>();
+        try
+        {
+            var started = StartGuardedBeforeAwait(source.Task);
+
+            await started.ShouldRejectNullBeforeAwaitAsync("factory");
+
+            source.Task.IsCompleted.Should().BeFalse();
+        }
+        finally
+        {
+            source.TryComplete(0);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullBeforeAwaitAsync_StartedButPending_FailsWithoutHanging()
+    {
+        var source = new ControlledAsync<int>();
+        try
+        {
+            Func<Task> assertion = () => source.Task.ShouldRejectNullBeforeAwaitAsync("factory");
+
+            await assertion.Should().ThrowAsync<XunitException>().WithMessage("*before awaiting*");
+        }
+        finally
+        {
+            source.TryComplete(0);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullBeforeAwaitAsync_StartedWithWrongParamName_Fails()
+    {
+        var started = Task.FromException(new ArgumentNullException("other"));
+        Func<Task> assertion = () => started.ShouldRejectNullBeforeAwaitAsync("factory");
+
+        await assertion.Should().ThrowAsync<XunitException>().WithMessage("*factory*");
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullBeforeAwaitAsync_StartedAndCompletedSuccessfully_Fails()
+    {
+        Func<Task> assertion = () => Task.CompletedTask.ShouldRejectNullBeforeAwaitAsync("factory");
+
+        await assertion.Should().ThrowAsync<XunitException>();
+    }
+
+    [Fact]
+    public void ShouldRejectNullBeforeAwaitAsync_SynchronousThrowWhileStarting_EscapesInsteadOfPassing()
+    {
+        Func<Task> start = () => throw new ArgumentNullException("factory");
+
+        Action act = () => _ = start().ShouldRejectNullBeforeAwaitAsync("factory");
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public async Task ShouldRejectNullBeforeAwaitAsync_NullStartedTask_Throws()
+    {
+        Func<Task> act = () => ((Task)null!).ShouldRejectNullBeforeAwaitAsync("factory");
+
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("operation");
+    }
+
+    private static async Task StartGuardedBeforeAwait(Task pending)
+    {
+        ArgumentNullException.ThrowIfNull((object?)null, "factory");
+        await pending;
+    }
 }

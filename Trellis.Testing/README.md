@@ -89,8 +89,8 @@ single.ResultReadCount.Should().Be(1);
 var pending = new ControlledAsync<Maybe<int>>();
 try
 {
-    Func<Task> start = () => pending.Task.ToResultAsync((Func<Error>)null!);
-    await start.ShouldRejectNullBeforeAwaitAsync("ferror");
+    var started = pending.Task.ToResultAsync((Func<Error>)null!);   // a synchronous throw here fails the test
+    await started.ShouldRejectNullBeforeAwaitAsync("ferror");
 }
 finally
 {

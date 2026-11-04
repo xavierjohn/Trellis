@@ -326,9 +326,12 @@ awaited:
 Action sync = () => items.Select((Func<int, int>)null!);
 sync.ShouldRejectNull("selector");
 
-Func<Task> start = () => pendingSource.Task.ToResultAsync((Func<Error>)null!);
-await start.ShouldRejectNullBeforeAwaitAsync("ferror");
+var started = pendingSource.Task.ToResultAsync((Func<Error>)null!);   // a synchronous throw here fails the test
+await started.ShouldRejectNullBeforeAwaitAsync("ferror");
 ```
+
+Pass the operation you started (the `Task` form) to require that the error arrives through the returned task. The
+`Func<Task>` form also accepts a synchronous throw.
 
 ## Domain, page, specification and actor assertions
 

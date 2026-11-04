@@ -650,14 +650,18 @@ public static class ArgumentNullAssertionsExtensions
     public static void ShouldRejectNull(this Action act, string paramName);
     public static Task ShouldRejectNullAsync(this Func<Task> act, string paramName);
     public static Task ShouldRejectNullBeforeAwaitAsync(this Func<Task> start, string paramName);
+    public static Task ShouldRejectNullBeforeAwaitAsync(this Task operation, string paramName);
 }
 ```
 
 All three require `ArgumentNullException` whose `ParamName` is exactly `paramName`, so a guard cannot pass
 for the wrong parameter. `ShouldRejectNullAsync` accepts a synchronous throw or a faulted task.
-`ShouldRejectNullBeforeAwaitAsync` additionally proves the guard is eager: the call must throw synchronously or
-return an already-faulted task, so a still-pending source was never awaited. If the returned task is still
-pending the assertion fails immediately without waiting.
+`ShouldRejectNullBeforeAwaitAsync` additionally proves the guard is eager, so a still-pending source was never
+awaited; if the returned task is still pending the assertion fails immediately without waiting. The `Func<Task>`
+form accepts a synchronous throw **or** an already-faulted task. The `Task` form takes an operation you already
+started and requires the error to arrive through that returned task: a synchronous throw while starting it escapes
+the test and fails it. Prefer the `Task` form for Trellis async extensions, which promise to report argument
+errors through the returned awaitable.
 
 #### Domain-event assertions
 

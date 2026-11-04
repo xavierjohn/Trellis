@@ -158,9 +158,9 @@ public class EnsureNotNullAsyncTests
         var scalarSource = new ControlledAsync<int?>();
         try
         {
-            Func<Task> reference = () => Reference(kind, GuardForm.Factory, referenceSource.Task,
+            var reference = Reference(kind, GuardForm.Factory, referenceSource.Task,
                 new Error.Forbidden("guard.denied"), null!);
-            Func<Task> scalar = () => Scalar(kind, GuardForm.Factory, scalarSource.Task,
+            var scalar = Scalar(kind, GuardForm.Factory, scalarSource.Task,
                 new Error.Forbidden("guard.denied"), null!);
 
             await reference.ShouldRejectNullBeforeAwaitAsync("errorFactory");

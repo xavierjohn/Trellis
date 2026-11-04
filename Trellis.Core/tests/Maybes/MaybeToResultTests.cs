@@ -132,9 +132,9 @@ public class MaybeToResultTests
         var source = new ControlledAsync<Maybe<int>>();
         try
         {
-            Func<Task> start = () => source.Task.ToResultAsync((Func<Error>)null!);
+            var started = source.Task.ToResultAsync((Func<Error>)null!);
 
-            await start.ShouldRejectNullBeforeAwaitAsync("ferror");
+            await started.ShouldRejectNullBeforeAwaitAsync("ferror");
 
             source.Task.IsCompleted.Should().BeFalse();
         }
@@ -150,9 +150,9 @@ public class MaybeToResultTests
         var source = new ControlledAsync<Maybe<int>>();
         try
         {
-            Func<Task> start = () => source.ValueTask.ToResultAsync((Func<Error>)null!).AsTask();
+            var started = source.ValueTask.ToResultAsync((Func<Error>)null!).AsTask();
 
-            await start.ShouldRejectNullBeforeAwaitAsync("ferror");
+            await started.ShouldRejectNullBeforeAwaitAsync("ferror");
 
             source.Task.IsCompleted.Should().BeFalse();
         }
