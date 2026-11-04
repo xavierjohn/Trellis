@@ -141,7 +141,7 @@ public class EnsureAllFactoryTests
             ? await new ValueTask<Result<string>>(Result.Ok("value")).EnsureAllAsync(checks)
             : await Task.FromResult(Result.Ok("value")).EnsureAllAsync(checks);
 
-        result.Should().BeFailureOfType<Error.InvalidInput>().Which.Fields.Items.Should().HaveCount(2);
+        result.Should().BeFailureOfType<Error.InvalidInput>().Which.Should().HaveFieldViolationCount(2);
         calls.CallCount.Should().Be(2);
     }
 

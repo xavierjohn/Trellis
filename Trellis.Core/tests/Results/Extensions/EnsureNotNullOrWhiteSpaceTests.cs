@@ -74,11 +74,9 @@ public class EnsureNotNullOrWhiteSpaceTests
         var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Code.Should().Be(ValidationCodes.Unspecified);
         error.Detail.Should().BeNull();
-        error.Rules.Items.Should().BeEmpty();
-        var field = error.Fields.Items.Should().ContainSingle().Which;
-        field.Field.Path.Should().Be("/name");
-        field.Field.In.Should().Be(InputLocation.Unspecified);
-        field.ReasonCode.Should().Be(expectedCode);
+        error.Should().HaveRuleViolationCount(0);
+        var field = error.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("name"), expectedCode).Which;
         field.Args.Should().BeNull();
         field.Detail.Should().Be("Name is required.");
         violations.Should().Be(1);
@@ -102,8 +100,9 @@ public class EnsureNotNullOrWhiteSpaceTests
         };
 
         result.Should().BeFailure().Which.Should().BeSameAs(error);
-        result.Should().BeFailureOfType<Error.InvalidInput>().Which.Fields.Items
-            .Should().ContainSingle().Which.ReasonCode.Should().Be(ValidationCodes.ValueNotEmpty);
+        result.Should().BeFailureOfType<Error.InvalidInput>().Which.Should()
+            .HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("name"), ValidationCodes.ValueNotEmpty);
     }
 
     [Theory]
@@ -116,9 +115,9 @@ public class EnsureNotNullOrWhiteSpaceTests
     {
         var result = ((string?)null).EnsureNotNullOrWhiteSpace(fieldName: fieldName);
 
-        var field = result.Should().BeFailureOfType<Error.InvalidInput>().Which.Fields.Items
-            .Should().ContainSingle().Which;
-        field.Field.Path.Should().Be(expectedPointer);
+        var field = result.Should().BeFailureOfType<Error.InvalidInput>().Which.Should()
+            .HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(new InputPointer(expectedPointer), ValidationCodes.ValueNotNull).Which;
         field.Detail.Should().BeNull();
     }
 
@@ -193,11 +192,12 @@ public class EnsureNotNullOrWhiteSpaceTests
                 .Combine(" ".EnsureNotNullOrWhiteSpace("code", "Code is required."))
                 .Map((name, code) => { mapCalls++; return $"{name}:{code}"; }));
 
-        var fields = result.Should().BeFailureOfType<Error.InvalidInput>().Which.Fields.Items;
-        fields.Select(field => field.Field.Path).Should().Equal(["/name", "/code"]);
-        fields.Select(field => field.ReasonCode).Should().Equal([
-            ValidationCodes.ValueNotNull, ValidationCodes.ValueNotEmpty]);
-        fields.Select(field => field.Detail).Should().Equal(["Name is required.", "Code is required."]);
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        error.Fields.Items.Select(field => field.Field.Path).Should().Equal(["/name", "/code"]);
+        error.Should().HaveFieldViolation(InputPointer.ForProperty("name"), ValidationCodes.ValueNotNull)
+            .Which.Detail.Should().Be("Name is required.");
+        error.Should().HaveFieldViolation(InputPointer.ForProperty("code"), ValidationCodes.ValueNotEmpty)
+            .Which.Detail.Should().Be("Code is required.");
         mapCalls.Should().Be(0);
         violations.Should().Be(2);
     }
