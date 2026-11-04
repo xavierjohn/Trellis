@@ -35,8 +35,7 @@ public sealed class CompositeValueObjectJsonConverterViolationTests
         var result = new CompositeValueObjectJsonConverter<ViolationComposite>()
             .TryRead(ref reader, typeof(ViolationComposite), new JsonSerializerOptions());
 
-        result.IsFailure.Should().BeTrue();
-        var error = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Should().HaveFieldViolationCount(1);
         error.Fields[0].Field.Path.Should().Be(expectedPath);
         reader.TokenType.Should().Be(JsonTokenType.EndObject);

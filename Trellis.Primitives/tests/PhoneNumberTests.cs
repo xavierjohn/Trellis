@@ -55,8 +55,7 @@ public class PhoneNumberTests
         var result = PhoneNumber.TryCreate(phone);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -66,8 +65,7 @@ public class PhoneNumberTests
         var result = PhoneNumber.TryCreate("");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Phone number is required.");
     }
 
@@ -78,8 +76,7 @@ public class PhoneNumberTests
         var result = PhoneNumber.TryCreate("555-1234");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Phone number must be in E.164 format (e.g., +14155551234).");
     }
 
@@ -92,8 +89,7 @@ public class PhoneNumberTests
         var result = PhoneNumber.TryCreate(oversized);
 
         sw.Stop();
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Phone number must be in E.164 format (e.g., +14155551234).");
         sw.ElapsedMilliseconds.Should().BeLessThan(100);
     }
@@ -131,8 +127,7 @@ public class PhoneNumberTests
 
         var result = PhoneNumber.TryCreate(oversized);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Phone number must be in E.164 format (e.g., +14155551234).");
     }
 
@@ -325,8 +320,7 @@ public class PhoneNumberTests
         var result = PhoneNumber.TryCreate("invalid", "contactPhone");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/contactPhone");
     }
 }

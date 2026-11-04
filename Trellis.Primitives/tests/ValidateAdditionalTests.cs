@@ -88,9 +88,7 @@ public class ValidateAdditionalTests
     public void Sku_InvalidPattern_ReturnsFailure()
     {
         var result = Sku.TryCreate("INVALID");
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Sku must match pattern SKU-XXXXXX.");
     }
 
@@ -99,8 +97,7 @@ public class ValidateAdditionalTests
     {
         // 11 chars — should fail StringLength before reaching ValidateAdditional
         var result = Sku.TryCreate("SKU-1234567");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Sku must be 10 characters or fewer.");
     }
 
@@ -108,8 +105,7 @@ public class ValidateAdditionalTests
     public void Sku_NullValue_FailsBuiltInValidation()
     {
         var result = Sku.TryCreate(null);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Sku cannot be null.");
     }
 
@@ -117,8 +113,7 @@ public class ValidateAdditionalTests
     public void Sku_CustomFieldName_PropagatedToAdditionalValidation()
     {
         var result = Sku.TryCreate("BAD", "itemSku");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/itemSku");
     }
 
@@ -127,8 +122,7 @@ public class ValidateAdditionalTests
     {
         // Lenient default — no auto-trim. " SKU-123456 " is 12 chars and exceeds StringLength(10).
         var result = Sku.TryCreate(" SKU-123456 ");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Sku must be 10 characters or fewer.");
     }
 
@@ -148,8 +142,7 @@ public class ValidateAdditionalTests
     public void EvenPercentage_OddInRange_ReturnsFailure()
     {
         var result = EvenPercentage.TryCreate(51);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Even Percentage must be an even number.");
     }
 
@@ -157,8 +150,7 @@ public class ValidateAdditionalTests
     public void EvenPercentage_OutOfRange_FailsRangeBeforeAdditional()
     {
         var result = EvenPercentage.TryCreate(102);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Even Percentage must be at most 100.");
     }
 
@@ -166,8 +158,7 @@ public class ValidateAdditionalTests
     public void EvenPercentage_FromNullableOdd_ReturnsFailure()
     {
         var result = EvenPercentage.TryCreate((int?)51);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Even Percentage must be an even number.");
     }
 
@@ -183,8 +174,7 @@ public class ValidateAdditionalTests
     public void EvenPercentage_FromStringOdd_ReturnsFailure()
     {
         var result = EvenPercentage.TryCreate("51");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Even Percentage must be an even number.");
     }
 
@@ -203,8 +193,7 @@ public class ValidateAdditionalTests
     public void PositiveScore_Negative_ReturnsFailure()
     {
         var result = PositiveScore.TryCreate(-1);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Positive Score must be positive.");
     }
 
@@ -221,8 +210,7 @@ public class ValidateAdditionalTests
     public void PositiveScore_FromNullableNegative_ReturnsFailure()
     {
         var result = PositiveScore.TryCreate((int?)-3);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Positive Score must be positive.");
     }
 
@@ -230,8 +218,7 @@ public class ValidateAdditionalTests
     public void PositiveScore_FromStringNegative_ReturnsFailure()
     {
         var result = PositiveScore.TryCreate("-5");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Positive Score must be positive.");
     }
 
@@ -251,8 +238,7 @@ public class ValidateAdditionalTests
     public void PreciseAmount_ThreeDecimalPlaces_ReturnsFailure()
     {
         var result = PreciseAmount.TryCreate(10.999m);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Precise Amount must have at most 2 decimal places.");
     }
 
@@ -276,8 +262,7 @@ public class ValidateAdditionalTests
     public void PreciseAmount_FromNullableInvalid_ReturnsFailure()
     {
         var result = PreciseAmount.TryCreate((decimal?)5.555m);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Precise Amount must have at most 2 decimal places.");
     }
 
@@ -292,8 +277,7 @@ public class ValidateAdditionalTests
     public void PreciseAmount_FromStringInvalid_ReturnsFailure()
     {
         var result = PreciseAmount.TryCreate("25.123");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Precise Amount must have at most 2 decimal places.");
     }
 
@@ -343,8 +327,7 @@ public class ValidateAdditionalTests
     public void EvenPercentage_CustomFieldName_PropagatedToAdditionalValidation()
     {
         var result = EvenPercentage.TryCreate(51, "discount");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/discount");
     }
 
@@ -352,8 +335,7 @@ public class ValidateAdditionalTests
     public void PreciseAmount_CustomFieldName_PropagatedToAdditionalValidation()
     {
         var result = PreciseAmount.TryCreate(1.999m, "price");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/price");
     }
 

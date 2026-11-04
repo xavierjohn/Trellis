@@ -37,9 +37,7 @@ public class RequiredBoolTests
     {
         var result = GiftWrap.TryCreate((bool?)null);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/giftWrap");
         validation.Fields[0].Detail.Should().Be("Gift Wrap cannot be empty.");
     }
@@ -177,8 +175,7 @@ public class RequiredBoolTests
     {
         var result = GiftWrap.TryCreate((bool?)null, "myField");
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 

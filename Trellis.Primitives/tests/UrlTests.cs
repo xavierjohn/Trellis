@@ -42,8 +42,7 @@ public class UrlTests
         var result = Url.TryCreate(url);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -53,8 +52,7 @@ public class UrlTests
         var result = Url.TryCreate("");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("URL is required.");
     }
 
@@ -65,8 +63,7 @@ public class UrlTests
         var result = Url.TryCreate("/path/to/resource");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         // Note: On some platforms, Uri.TryCreate treats "/path" as absolute with "file" scheme
         // So we check for either error message depending on platform behavior
         validation.Fields[0].Detail.Should().Match(e =>
@@ -81,8 +78,7 @@ public class UrlTests
         var result = Url.TryCreate("ftp://example.com/file");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("URL must use HTTP or HTTPS scheme.");
     }
 
@@ -316,8 +312,7 @@ public class UrlTests
         var result = Url.TryCreate("invalid", "webhookUrl");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/webhookUrl");
     }
 

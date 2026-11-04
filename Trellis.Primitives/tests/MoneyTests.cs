@@ -33,8 +33,7 @@ public class MoneyTests
         var result = Money.TryCreate(-50.00m, "USD");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Amount cannot be negative.");
     }
 
@@ -45,8 +44,7 @@ public class MoneyTests
         var result = Money.TryCreate(100.00m, "INVALID", "unitPrice");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/unitPrice/currency");
     }
 
@@ -128,8 +126,7 @@ public class MoneyTests
         var result = left.Add(right);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Cannot add EUR to USD.");
     }
 
@@ -159,8 +156,7 @@ public class MoneyTests
         var result = left.Subtract(right);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Subtraction would result in a negative amount.");
     }
 
@@ -175,8 +171,7 @@ public class MoneyTests
         var result = left.Subtract(right);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Cannot subtract GBP from USD.");
     }
 
@@ -220,12 +215,10 @@ public class MoneyTests
         var resultInt = money.Multiply(-3);
 
         // Assert
-        resultDecimal.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)resultDecimal.UnwrapError();
+        var validation = resultDecimal.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Multiplier cannot be negative.");
 
-        resultInt.IsFailure.Should().BeTrue();
-        var validationInt = (Error.InvalidInput)resultInt.UnwrapError();
+        var validationInt = resultInt.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validationInt.Fields[0].Detail.Should().Be("Quantity cannot be negative.");
     }
 
@@ -267,8 +260,7 @@ public class MoneyTests
         var result = money.Divide(0m);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Divisor must be positive.");
     }
 
@@ -282,8 +274,7 @@ public class MoneyTests
         var result = money.Divide(-2);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Divisor must be positive.");
     }
 
@@ -347,8 +338,7 @@ public class MoneyTests
         var result = money.Allocate();
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("At least one ratio required.");
     }
 
@@ -362,8 +352,7 @@ public class MoneyTests
         var result = money.Allocate(1, -2, 1);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("All ratios must be positive.");
     }
 
@@ -1009,8 +998,7 @@ public class MoneyTests
 
         var result = money.Allocate(int.MaxValue, int.MaxValue);
 
-        result.IsFailure.Should().BeTrue();
-        var err = (Error.InvalidInput)result.UnwrapError();
+        var err = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         err.Fields[0].Field.Path.Should().Be("/ratios", "ratio-sum overflow is a ratios-side failure");
         err.Fields[0].Detail.Should().Contain("overflow");
     }
@@ -1024,8 +1012,7 @@ public class MoneyTests
 
         var result = money.Multiply(3m);
 
-        result.IsFailure.Should().BeTrue();
-        var err = (Error.InvalidInput)result.UnwrapError();
+        var err = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         err.Fields[0].Detail.Should().Contain("overflow");
     }
 
@@ -1036,8 +1023,7 @@ public class MoneyTests
 
         var result = money.Multiply(3);
 
-        result.IsFailure.Should().BeTrue();
-        var err = (Error.InvalidInput)result.UnwrapError();
+        var err = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         err.Fields[0].Detail.Should().Contain("overflow");
     }
 
@@ -1049,8 +1035,7 @@ public class MoneyTests
 
         var result = money.Divide(0.0000000000000000000000000001m);
 
-        result.IsFailure.Should().BeTrue();
-        var err = (Error.InvalidInput)result.UnwrapError();
+        var err = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         err.Fields[0].Detail.Should().Contain("overflow");
     }
 
@@ -1118,8 +1103,7 @@ public class MoneyTests
         // amountInMinorUnits = 5e12; share-mul: 5e12 * 1e9 = 5e21 > long.MaxValue (9.2e18).
         var result = money.Allocate(1_000_000_000, 1_000_000_000);
 
-        result.IsFailure.Should().BeTrue();
-        var err = (Error.InvalidInput)result.UnwrapError();
+        var err = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         err.Fields[0].Field.Path.Should().Be("/amount", "share-arithmetic overflow is an amount-side failure");
         err.Fields[0].Detail.Should().Contain("overflow");
     }

@@ -127,8 +127,7 @@ public class RequiredLongTests
     public void TryCreate_WithRange_WithCustomFieldName_ReturnsCorrectFieldName()
     {
         var result = SequenceNumber.TryCreate(0L, "myField");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 

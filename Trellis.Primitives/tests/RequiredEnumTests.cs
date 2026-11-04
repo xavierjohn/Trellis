@@ -126,9 +126,7 @@ public class RequiredEnumTests
         var result = TestOrderState.TryCreate("InvalidState");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Contain("'InvalidState' is not a valid TestOrderState");
     }
 
@@ -139,8 +137,7 @@ public class RequiredEnumTests
         var result = TestOrderState.TryCreate(null, null);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -150,8 +147,7 @@ public class RequiredEnumTests
         var result = TestOrderState.TryCreate("");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -161,8 +157,7 @@ public class RequiredEnumTests
         var result = TestOrderState.TryCreate("Invalid", "orderStatus");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/orderStatus");
     }
 

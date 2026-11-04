@@ -18,9 +18,7 @@ public class RequiredStringTests
     public void Cannot_create_invalid_RequiredString(string? input, string expectedDetail)
     {
         var trackingId1 = TrackingId.TryCreate(input, null);
-        trackingId1.IsFailure.Should().BeTrue();
-        trackingId1.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)trackingId1.UnwrapError();
+        var validation = trackingId1.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/trackingId");
         validation.Fields[0].Detail.Should().Be(expectedDetail);
 

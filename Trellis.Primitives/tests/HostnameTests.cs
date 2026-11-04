@@ -51,8 +51,7 @@ public class HostnameTests
         var result = Hostname.TryCreate(hostname);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Hostname is required.");
     }
 
@@ -76,8 +75,7 @@ public class HostnameTests
         var result = Hostname.TryCreate(hostname);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Hostname must be RFC 1123 compliant.");
     }
 
@@ -120,8 +118,7 @@ public class HostnameTests
         var result = Hostname.TryCreate(hostname);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Hostname must be RFC 1123 compliant.");
     }
 
@@ -146,8 +143,7 @@ public class HostnameTests
         var result = Hostname.TryCreate("", "ServerName");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/serverName");
     }
 

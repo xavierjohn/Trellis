@@ -329,8 +329,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.TryCreate((string?)null);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -340,8 +339,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.TryCreate("");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -351,8 +349,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.TryCreate("  ");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Theory]
@@ -364,8 +361,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.TryCreate(input);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -375,8 +371,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.TryCreate((string?)null, "Price");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/price");
     }
 
@@ -387,8 +382,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.TryCreate("-5.00");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Amount cannot be negative.");
     }
 

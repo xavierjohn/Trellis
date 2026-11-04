@@ -89,8 +89,7 @@ public class IFormattableScalarValueTests
         var result = MonetaryAmount.TryCreate((string?)null, CultureInfo.InvariantCulture, "Price");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/price");
     }
 

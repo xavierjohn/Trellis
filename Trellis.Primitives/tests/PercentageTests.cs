@@ -35,9 +35,7 @@ public class PercentageTests
         var result = Percentage.TryCreate(value);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Percentage must be between 0 and 100.");
     }
 
@@ -48,8 +46,7 @@ public class PercentageTests
         var result = Percentage.TryCreate((decimal?)null);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Percentage is required.");
     }
 
@@ -164,8 +161,7 @@ public class PercentageTests
         var result = Percentage.FromFraction(1.5m, "discountRate");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Subject;
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/discountRate");
         validation.Fields[0].Detail.Should().Be("Fraction must be between 0 and 1.");
     }
@@ -428,8 +424,7 @@ public class PercentageTests
         var result = Percentage.TryCreate(-1m, "discountRate");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/discountRate");
     }
 
@@ -479,8 +474,7 @@ public class PercentageTests
         var result = Percentage.TryCreate((string?)null);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -490,8 +484,7 @@ public class PercentageTests
         var result = Percentage.TryCreate("");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -501,8 +494,7 @@ public class PercentageTests
         var result = Percentage.TryCreate("  ");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Theory]
@@ -514,8 +506,7 @@ public class PercentageTests
         var result = Percentage.TryCreate(input);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -525,8 +516,7 @@ public class PercentageTests
         var result = Percentage.TryCreate((string?)null, "DiscountRate");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/discountRate");
     }
 
@@ -537,8 +527,7 @@ public class PercentageTests
         var result = Percentage.TryCreate("150");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Percentage must be between 0 and 100.");
     }
 

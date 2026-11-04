@@ -57,9 +57,7 @@ public class RequiredStringLengthTests
     public void TryCreate_MaxLengthOnly_ExceedsMaxLength_ReturnsFailure()
     {
         var result = ShortCode.TryCreate("12345678901"); // 11 characters
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/shortCode");
         validation.Fields[0].Detail.Should().Be("Short Code must be 10 characters or fewer.");
 
@@ -73,8 +71,7 @@ public class RequiredStringLengthTests
     public void TryCreate_MaxLengthOnly_NullValue_ReturnsNullError()
     {
         var result = ShortCode.TryCreate(null);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Short Code cannot be null.");
     }
 
@@ -91,8 +88,7 @@ public class RequiredStringLengthTests
     public void TryCreate_MaxLengthOnly_CustomFieldName_UsesInErrorMessage()
     {
         var result = ShortCode.TryCreate("12345678901", "code");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/code");
     }
 
@@ -127,9 +123,7 @@ public class RequiredStringLengthTests
     public void TryCreate_MinAndMaxLength_BelowMinLength_ReturnsFailure()
     {
         var result = UserName.TryCreate("ab"); // 2 characters, min is 3
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/userName");
         validation.Fields[0].Detail.Should().Be("User Name must be at least 3 characters.");
         validation.Fields[0].ReasonCode.Should().Be(ValidationCodes.StringMinLength);
@@ -140,9 +134,7 @@ public class RequiredStringLengthTests
     public void TryCreate_MinAndMaxLength_ExceedsMaxLength_ReturnsFailure()
     {
         var result = UserName.TryCreate(new string('x', 51)); // 51 characters, max is 50
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("User Name must be 50 characters or fewer.");
     }
 
@@ -150,8 +142,7 @@ public class RequiredStringLengthTests
     public void TryCreate_MinAndMaxLength_NullValue_ReturnsNullError()
     {
         var result = UserName.TryCreate(null);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("User Name cannot be null.");
     }
 
