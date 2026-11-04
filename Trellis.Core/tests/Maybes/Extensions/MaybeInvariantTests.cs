@@ -48,8 +48,8 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/second"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAllOrNone);
+        validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("second"), ValidationCodes.FieldsAllOrNone);
     }
 
     [Fact]
@@ -64,8 +64,8 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAllOrNone);
+        validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("first"), ValidationCodes.FieldsAllOrNone);
     }
 
     #endregion
@@ -115,8 +115,9 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/b", "/c"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAllOrNone);
+        validation.Should().HaveFieldViolationCount(2)
+            .And.HaveFieldViolation(InputPointer.ForProperty("b"), ValidationCodes.FieldsAllOrNone)
+            .And.HaveFieldViolation(InputPointer.ForProperty("c"), ValidationCodes.FieldsAllOrNone);
     }
 
     #endregion
@@ -169,8 +170,8 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/c"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAllOrNone);
+        validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("c"), ValidationCodes.FieldsAllOrNone);
     }
 
     #endregion
@@ -218,8 +219,8 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/required"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsRequiredWith);
+        validation.Should().HaveFieldViolationCount(1)
+            .And.HaveFieldViolation(InputPointer.ForProperty("required"), ValidationCodes.FieldsRequiredWith);
     }
 
     [Fact]
@@ -295,8 +296,9 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first", "/second"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsMutuallyExclusive);
+        validation.Should().HaveFieldViolationCount(2)
+            .And.HaveFieldViolation(InputPointer.ForProperty("first"), ValidationCodes.FieldsMutuallyExclusive)
+            .And.HaveFieldViolation(InputPointer.ForProperty("second"), ValidationCodes.FieldsMutuallyExclusive);
     }
 
     #endregion
@@ -346,8 +348,9 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/c"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsMutuallyExclusive);
+        validation.Should().HaveFieldViolationCount(2)
+            .And.HaveFieldViolation(InputPointer.ForProperty("a"), ValidationCodes.FieldsMutuallyExclusive)
+            .And.HaveFieldViolation(InputPointer.ForProperty("c"), ValidationCodes.FieldsMutuallyExclusive);
     }
 
     #endregion
@@ -395,8 +398,9 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first", "/second"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsExactlyOne);
+        validation.Should().HaveFieldViolationCount(2)
+            .And.HaveFieldViolation(InputPointer.ForProperty("first"), ValidationCodes.FieldsExactlyOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("second"), ValidationCodes.FieldsExactlyOne);
     }
 
     [Fact]
@@ -411,8 +415,9 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first", "/second"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsOnlyOne);
+        validation.Should().HaveFieldViolationCount(2)
+            .And.HaveFieldViolation(InputPointer.ForProperty("first"), ValidationCodes.FieldsOnlyOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("second"), ValidationCodes.FieldsOnlyOne);
     }
 
     #endregion
@@ -447,8 +452,10 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/b", "/c"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsExactlyOne);
+        validation.Should().HaveFieldViolationCount(3)
+            .And.HaveFieldViolation(InputPointer.ForProperty("a"), ValidationCodes.FieldsExactlyOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("b"), ValidationCodes.FieldsExactlyOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("c"), ValidationCodes.FieldsExactlyOne);
     }
 
     [Fact]
@@ -463,12 +470,11 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(a, b, c, "a", "b", "c");
 
         // Assert
-        result.Should().BeFailureOfType<Error.InvalidInput>();
-        var error = (Error.InvalidInput)result.Error!;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         // Only a and b should be listed, not c (which is absent)
-        error.Fields.Items.Should().HaveCount(2);
-        error.Fields.Items.Select(e => e.Field.Path).Should().BeEquivalentTo(["/a", "/b"]);
-        error.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsOnlyOne);
+        error.Should().HaveFieldViolationCount(2)
+            .And.HaveFieldViolation(InputPointer.ForProperty("a"), ValidationCodes.FieldsOnlyOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("b"), ValidationCodes.FieldsOnlyOne);
     }
 
     #endregion
@@ -516,8 +522,9 @@ public class MaybeInvariantTests
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Kind.Should().Be("invalid-input");
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/first", "/second"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAtLeastOne);
+        validation.Should().HaveFieldViolationCount(2)
+            .And.HaveFieldViolation(InputPointer.ForProperty("first"), ValidationCodes.FieldsAtLeastOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("second"), ValidationCodes.FieldsAtLeastOne);
     }
 
     #endregion
@@ -552,8 +559,10 @@ public class MaybeInvariantTests
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/b", "/c"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAtLeastOne);
+        validation.Should().HaveFieldViolationCount(3)
+            .And.HaveFieldViolation(InputPointer.ForProperty("a"), ValidationCodes.FieldsAtLeastOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("b"), ValidationCodes.FieldsAtLeastOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("c"), ValidationCodes.FieldsAtLeastOne);
     }
 
     #endregion
@@ -663,8 +672,9 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.MutuallyExclusive(a, b, c, d, "a", "b", "c", "d");
 
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/d"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsMutuallyExclusive);
+        validation.Should().HaveFieldViolationCount(2)
+            .And.HaveFieldViolation(InputPointer.ForProperty("a"), ValidationCodes.FieldsMutuallyExclusive)
+            .And.HaveFieldViolation(InputPointer.ForProperty("d"), ValidationCodes.FieldsMutuallyExclusive);
     }
 
     [Fact]
@@ -691,8 +701,11 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(a, b, c, d, "a", "b", "c", "d");
 
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/b", "/c", "/d"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsExactlyOne);
+        validation.Should().HaveFieldViolationCount(4)
+            .And.HaveFieldViolation(InputPointer.ForProperty("a"), ValidationCodes.FieldsExactlyOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("b"), ValidationCodes.FieldsExactlyOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("c"), ValidationCodes.FieldsExactlyOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("d"), ValidationCodes.FieldsExactlyOne);
     }
 
     [Fact]
@@ -706,8 +719,9 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.ExactlyOne(a, b, c, d, "a", "b", "c", "d");
 
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/d"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsOnlyOne);
+        validation.Should().HaveFieldViolationCount(2)
+            .And.HaveFieldViolation(InputPointer.ForProperty("a"), ValidationCodes.FieldsOnlyOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("d"), ValidationCodes.FieldsOnlyOne);
     }
 
     [Fact]
@@ -734,8 +748,11 @@ public class MaybeInvariantTests
         var result = MaybeInvariant.AtLeastOne(a, b, c, d, "a", "b", "c", "d");
 
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        validation.Fields.Items.Select(violation => violation.Field.Path).Should().BeEquivalentTo(["/a", "/b", "/c", "/d"]);
-        validation.Fields.Items.Should().OnlyContain(violation => violation.ReasonCode == ValidationCodes.FieldsAtLeastOne);
+        validation.Should().HaveFieldViolationCount(4)
+            .And.HaveFieldViolation(InputPointer.ForProperty("a"), ValidationCodes.FieldsAtLeastOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("b"), ValidationCodes.FieldsAtLeastOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("c"), ValidationCodes.FieldsAtLeastOne)
+            .And.HaveFieldViolation(InputPointer.ForProperty("d"), ValidationCodes.FieldsAtLeastOne);
     }
 
     [Fact]
