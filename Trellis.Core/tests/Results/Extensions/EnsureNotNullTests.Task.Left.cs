@@ -36,10 +36,10 @@ public class EnsureNotNullAsyncTests
     {
         string? value = present ? new string('x', 3) : null;
         var error = Error.InvalidInput.ForField(ValidationCodes.ValueNotNull, "field", detail: "Required.");
-        var calls = 0;
+        var calls = new CallbackRecorder();
         using var tracing = new ActivityTestHelper();
 
-        var result = await Reference(kind, form, Task.FromResult(value), error, () => { calls++; return error; });
+        var result = await Reference(kind, form, Task.FromResult(value), error, calls.Wrap<Error>(() => error));
 
         if (present)
             result.Should().BeSuccess().Which.Should().BeSameAs(value);
@@ -47,7 +47,7 @@ public class EnsureNotNullAsyncTests
             result.Should().BeFailure().Which.Should().Be(error);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNull",
             present ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
@@ -60,10 +60,10 @@ public class EnsureNotNullAsyncTests
     {
         int? value = present ? 0 : null;
         var error = Error.InvalidInput.ForField(ValidationCodes.ValueNotNull, "field", detail: "Required.");
-        var calls = 0;
+        var calls = new CallbackRecorder();
         using var tracing = new ActivityTestHelper();
 
-        var result = await Scalar(kind, form, Task.FromResult(value), error, () => { calls++; return error; });
+        var result = await Scalar(kind, form, Task.FromResult(value), error, calls.Wrap<Error>(() => error));
 
         if (present)
             result.Should().BeSuccess().Which.Should().Be(0);
@@ -71,7 +71,7 @@ public class EnsureNotNullAsyncTests
             result.Should().BeFailure().Which.Should().Be(error);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNull",
             present ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
@@ -82,18 +82,19 @@ public class EnsureNotNullAsyncTests
     public async Task EnsureNotNullAsync_Reference_PendingSource_WaitsBeforeGuard(
         ReceiverKind kind, GuardForm form, bool present)
     {
-        var completion = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new ControlledAsync<string?>();
         var error = new Error.Forbidden("guard.denied");
-        var calls = 0;
-        var pending = Reference(kind, form, completion.Task, error, () => { calls++; return error; });
+        var calls = new CallbackRecorder();
 
-        pending.IsCompleted.Should().BeFalse();
-        calls.Should().Be(0);
-        completion.SetResult(present ? "value" : null);
+        var result = await Reference(kind, form, completion.Task, error, calls.Wrap<Error>(() => error))
+            .ShouldBePendingThenReleaseAsync(
+                () => completion.TryComplete(present ? "value" : null),
+                TimeSpan.FromSeconds(30),
+                TestContext.Current.CancellationToken,
+                whilePending: () => calls.CallCount.Should().Be(0));
 
-        var result = await pending.WaitAsync(TestContext.Current.CancellationToken);
         result.IsSuccess.Should().Be(present);
-        calls.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
     }
 
     [Theory]
@@ -101,18 +102,19 @@ public class EnsureNotNullAsyncTests
     public async Task EnsureNotNullAsync_Struct_PendingSource_WaitsBeforeGuard(
         ReceiverKind kind, GuardForm form, bool present)
     {
-        var completion = new TaskCompletionSource<int?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new ControlledAsync<int?>();
         var error = new Error.Forbidden("guard.denied");
-        var calls = 0;
-        var pending = Scalar(kind, form, completion.Task, error, () => { calls++; return error; });
+        var calls = new CallbackRecorder();
 
-        pending.IsCompleted.Should().BeFalse();
-        calls.Should().Be(0);
-        completion.SetResult(present ? 0 : null);
+        var result = await Scalar(kind, form, completion.Task, error, calls.Wrap<Error>(() => error))
+            .ShouldBePendingThenReleaseAsync(
+                () => completion.TryComplete(present ? 0 : null),
+                TimeSpan.FromSeconds(30),
+                TestContext.Current.CancellationToken,
+                whilePending: () => calls.CallCount.Should().Be(0));
 
-        var result = await pending.WaitAsync(TestContext.Current.CancellationToken);
         result.IsSuccess.Should().Be(present);
-        calls.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
     }
 
     [Theory]
@@ -121,32 +123,30 @@ public class EnsureNotNullAsyncTests
     {
         var exception = new InvalidOperationException("source failed");
         var error = new Error.Forbidden("guard.denied");
-        var calls = 0;
-        var reference = () => Reference(kind, form, Task.FromException<string?>(exception),
-            error, () => { calls++; return error; });
-        var scalar = () => Scalar(kind, form, Task.FromException<int?>(exception),
-            error, () => { calls++; return error; });
+        var calls = new CallbackRecorder();
 
-        (await reference.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(exception);
-        (await scalar.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(exception);
-        calls.Should().Be(0);
+        await Reference(kind, form, Task.FromException<string?>(exception), error, calls.Wrap<Error>(() => error))
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        await Scalar(kind, form, Task.FromException<int?>(exception), error, calls.Wrap<Error>(() => error))
+            .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        calls.CallCount.Should().Be(0);
     }
 
     [Theory]
     [MemberData(nameof(Forms))]
     public async Task EnsureNotNullAsync_Source_Cancellation_PropagatesWithoutFactory(ReceiverKind kind, GuardForm form)
     {
-        var token = new CancellationToken(canceled: true);
+        using var canceled = CanceledToken.Create();
         var error = new Error.Forbidden("guard.denied");
-        var calls = 0;
-        var reference = () => Reference(kind, form, Task.FromCanceled<string?>(token),
-            error, () => { calls++; return error; });
-        var scalar = () => Scalar(kind, form, Task.FromCanceled<int?>(token),
-            error, () => { calls++; return error; });
+        var calls = new CallbackRecorder();
 
-        (await reference.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(token);
-        (await scalar.Should().ThrowAsync<OperationCanceledException>()).Which.CancellationToken.Should().Be(token);
-        calls.Should().Be(0);
+        await Reference(kind, form, canceled.ToTask<string?>(), error, calls.Wrap<Error>(() => error))
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+        await Scalar(kind, form, canceled.ToTask<int?>(), error, calls.Wrap<Error>(() => error))
+            .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        calls.CallCount.Should().Be(0);
     }
 
     [Theory]
@@ -154,17 +154,23 @@ public class EnsureNotNullAsyncTests
     [InlineData(ReceiverKind.ValueTask)]
     public async Task EnsureNotNullAsync_Factory_NullFactory_ThrowsBeforeAwaiting(ReceiverKind kind)
     {
-        var reference = Reference(kind, GuardForm.Factory, new TaskCompletionSource<string?>().Task,
-            new Error.Forbidden("guard.denied"), null!);
-        var scalar = Scalar(kind, GuardForm.Factory, new TaskCompletionSource<int?>().Task,
-            new Error.Forbidden("guard.denied"), null!);
+        var referenceSource = new ControlledAsync<string?>();
+        var scalarSource = new ControlledAsync<int?>();
+        try
+        {
+            var reference = Reference(kind, GuardForm.Factory, referenceSource.Task,
+                new Error.Forbidden("guard.denied"), null!);
+            var scalar = Scalar(kind, GuardForm.Factory, scalarSource.Task,
+                new Error.Forbidden("guard.denied"), null!);
 
-        reference.IsCompleted.Should().BeTrue();
-        scalar.IsCompleted.Should().BeTrue();
-        var referenceAct = () => reference;
-        var scalarAct = () => scalar;
-        await referenceAct.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
-        await scalarAct.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
+            await reference.ShouldRejectNullBeforeAwaitAsync("errorFactory");
+            await scalar.ShouldRejectNullBeforeAwaitAsync("errorFactory");
+        }
+        finally
+        {
+            referenceSource.TryComplete(null);
+            scalarSource.TryComplete(null);
+        }
     }
 
     [Theory]
@@ -206,13 +212,13 @@ public class EnsureNotNullAsyncTests
     public async Task EnsureNotNullAsync_Task_NullSource_Throws(GuardForm form)
     {
         var error = new Error.Forbidden("guard.denied");
-        var calls = 0;
-        var reference = () => Reference(ReceiverKind.Task, form, null!, error, () => { calls++; return error; });
-        var scalar = () => Scalar(ReceiverKind.Task, form, null!, error, () => { calls++; return error; });
+        var calls = new CallbackRecorder();
+        var reference = () => Reference(ReceiverKind.Task, form, null!, error, calls.Wrap<Error>(() => error));
+        var scalar = () => Scalar(ReceiverKind.Task, form, null!, error, calls.Wrap<Error>(() => error));
 
         await reference.Should().ThrowAsync<ArgumentNullException>().WithParameterName("task");
         await scalar.Should().ThrowAsync<ArgumentNullException>().WithParameterName("task");
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]

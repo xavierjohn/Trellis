@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Trellis.Asp.Validation;
 using Trellis.Primitives;
+using Trellis.Testing;
 
 [Collection(nameof(AotPathTrackingTests))]
 public sealed class SemanticJsonBindingTests
@@ -29,9 +30,9 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_ApplicationOwnedBadRequest_WithoutStatusPages_PreservesTheEmptyResponse(
         string environment, string route)
     {
-        var calls = 0;
+        var calls = new CallbackRecorder();
         await using var app = await CreateAppAsync(
-            environment, false, () => calls++, formatBareResponses: false);
+            environment, false, calls.Record, formatBareResponses: false);
         using var client = app.GetTestClient();
 
         using var response = await client.GetAsync(route, TestContext.Current.CancellationToken);
@@ -39,7 +40,7 @@ public sealed class SemanticJsonBindingTests
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType.Should().BeNull();
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
     }
 
     [Theory]
@@ -52,15 +53,15 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_ApplicationOwnedBadRequest_WithStatusPages_UsesTheExplicitHostFormatter(
         string environment, string route)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, false, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, false, calls.Record);
         using var client = app.GetTestClient();
 
         using var response = await client.GetAsync(route, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("code").GetString().Should().Be("error.unspecified");
@@ -73,9 +74,9 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_MalformedJson_WithoutStatusPages_Preserves400WithoutExecutingTheHandler(
         string environment)
     {
-        var calls = 0;
+        var calls = new CallbackRecorder();
         await using var app = await CreateAppAsync(
-            environment, false, () => calls++, formatBareResponses: false);
+            environment, false, calls.Record, formatBareResponses: false);
         using var client = app.GetTestClient();
         using var content = new StringContent(
             """{"state":"Unknown","quantity":""", Encoding.UTF8, "application/json");
@@ -83,7 +84,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/semantic", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Theory]
@@ -94,9 +95,9 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_CollectedSemanticFailures_Returns422WithoutExecutingTheHandler(
         string environment, bool strictNullability)
     {
-        var calls = 0;
+        var calls = new CallbackRecorder();
         await using var app = await CreateAppAsync(environment, strictNullability,
-            () => calls++);
+            calls.Record);
         using var client = app.GetTestClient();
         using var content = new StringContent(
             """{"state":"Unknown","quantity":0,"amount":{"amount":-1,"currency":"USD"}}""",
@@ -105,7 +106,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/semantic", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("fieldViolations").EnumerateArray()
@@ -118,15 +119,15 @@ public sealed class SemanticJsonBindingTests
     [InlineData("Production")]
     public async Task Bind_RootSemanticFailureFollowedByMalformedJson_Preserves400(string environment)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record);
         using var client = app.GetTestClient();
         using var content = new StringContent("\"Unknown\" invalid", Encoding.UTF8, "application/json");
 
         using var response = await client.PostAsync("/scalar", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("kind").GetString().Should().Be("bad-request");
@@ -138,8 +139,8 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_SemanticFailureFollowedByMalformedJson_Returns400WithoutExecutingTheHandler(
         string environment)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, false, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, false, calls.Record);
         using var client = app.GetTestClient();
         using var content = new StringContent("""{"state":"Unknown","quantity":""",
             Encoding.UTF8, "application/json");
@@ -148,7 +149,7 @@ public sealed class SemanticJsonBindingTests
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("kind").GetString().Should().Be("bad-request");
@@ -162,15 +163,15 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_RequiredValueObjectsAreAbsent_Returns422WithoutExecutingTheHandler(
         string environment, string json)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record);
         using var client = app.GetTestClient();
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var response = await client.PostAsync("/semantic", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("fieldViolations").EnumerateArray()
@@ -185,15 +186,15 @@ public sealed class SemanticJsonBindingTests
     [InlineData("Production", """{"state":"Draft","quantity":1,"amount":{"amount":1,"currency":"USD"}}""")]
     public async Task Bind_NonValueObjectRequiredViolation_PreservesFramework400(string environment, string json)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record);
         using var client = app.GetTestClient();
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var response = await client.PostAsync("/strict", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -218,15 +219,15 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_InvalidRootValue_Returns422WithoutExecutingTheHandler(
         string environment, string route, string json)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record);
         using var client = app.GetTestClient();
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var response = await client.PostAsync(route, content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("fieldViolations").EnumerateArray()
@@ -244,22 +245,22 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_CallbackDto_InvalidRequiredValue_Returns422BeforeTheCallback(
         string environment, string json)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record);
         using var client = app.GetTestClient();
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var response = await client.PostAsync("/callback", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task Bind_CallbackDto_ValidRequiredValue_PreservesTheCallback()
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync("Production", true, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync("Production", true, calls.Record);
         using var client = app.GetTestClient();
         using var content = new StringContent(
             """{"amount":{"amount":3,"currency":"USD"}}""", Encoding.UTF8, "application/json");
@@ -267,7 +268,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/callback", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
         using var body = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         body.RootElement.GetDecimal().Should().Be(3m);
@@ -290,8 +291,8 @@ public sealed class SemanticJsonBindingTests
     [InlineData("Production")]
     public async Task Bind_CallbackDto_MissingNestedRequiredValue_SuppressesAncestorCallbacks(string environment)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record);
         using var client = app.GetTestClient();
         using var content = new StringContent("""{"nested":{}}""", Encoding.UTF8, "application/json");
 
@@ -299,7 +300,7 @@ public sealed class SemanticJsonBindingTests
             "/nested-callback", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -326,8 +327,8 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_CallbackDto_OutputOnlyValue_IsInitializedByTheCallback(
         string environment, bool generatedMetadata)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++, generatedMetadata);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record, generatedMetadata);
         using var client = app.GetTestClient();
         using var content = new StringContent("""{"rawQuantity":1}""", Encoding.UTF8, "application/json");
 
@@ -335,7 +336,7 @@ public sealed class SemanticJsonBindingTests
             "/derived-callback", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("1");
     }
 
@@ -380,8 +381,8 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_RuleOnlyCompositeFailure_DoesNotReportTheSuppliedValueAsMissing(
         string environment, bool omitRequired)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record);
         using var client = app.GetTestClient();
         var json = omitRequired
             ? """{"range":{"start":2,"end":1}}"""
@@ -391,7 +392,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/rule", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("ruleViolations").EnumerateArray()
@@ -413,8 +414,8 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_OptionalRootSemanticFailure_InvalidQuery_Preserves400(
         string environment, bool generatedMetadata)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++, generatedMetadata);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record, generatedMetadata);
         using var client = app.GetTestClient();
         using var content = new StringContent(
             """{"amount":-1,"currency":"USD"}""", Encoding.UTF8, "application/json");
@@ -423,7 +424,7 @@ public sealed class SemanticJsonBindingTests
             "/optional-composite?count=invalid", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Theory]
@@ -434,8 +435,8 @@ public sealed class SemanticJsonBindingTests
     public async Task Bind_RequiredRootBody_InvalidQuery_PreservesBindingPrecedence(
         string environment, bool invalidBody)
     {
-        var calls = 0;
-        await using var app = await CreateAppAsync(environment, true, () => calls++);
+        var calls = new CallbackRecorder();
+        await using var app = await CreateAppAsync(environment, true, calls.Record);
         using var client = app.GetTestClient();
         var amount = invalidBody ? -1 : 3;
         using var content = new StringContent(
@@ -447,7 +448,7 @@ public sealed class SemanticJsonBindingTests
         response.StatusCode.Should().Be(invalidBody
             ? HttpStatusCode.UnprocessableEntity
             : HttpStatusCode.BadRequest);
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     private static async Task<WebApplication> CreateAppAsync(

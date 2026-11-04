@@ -13,16 +13,12 @@ public class OptionalNonBlankTests
     [InlineData("\u2003")]
     public void OptionalNonBlank_BlankInput_ReturnsSuccessfulNoneWithoutInvokingFactory(string? input)
     {
-        var calls = 0;
+        var calls = new CallbackRecorder<string>();
 
-        var result = Maybe.OptionalNonBlank(input, value =>
-        {
-            calls++;
-            return Result.Ok(value);
-        });
+        var result = Maybe.OptionalNonBlank(input, calls.Wrap(value => Result.Ok(value)));
 
         result.Should().BeSuccess().Which.HasNoValue.Should().BeTrue();
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Theory]
@@ -33,19 +29,13 @@ public class OptionalNonBlankTests
     [InlineData("\0")]
     public void OptionalNonBlank_NonBlankInput_PassesOriginalStringToFactoryExactlyOnce(string input)
     {
-        var calls = 0;
-        string? received = null;
+        var calls = new CallbackRecorder<string>();
 
-        var result = Maybe.OptionalNonBlank(input, value =>
-        {
-            calls++;
-            received = value;
-            return Result.Ok(value);
-        });
+        var result = Maybe.OptionalNonBlank(input, calls.Wrap(value => Result.Ok(value)));
 
         result.Unwrap().Unwrap().Should().BeSameAs(input);
-        received.Should().BeSameAs(input);
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
+        calls.Arguments.Should().ContainSingle().Which.Should().BeSameAs(input);
     }
 
     [Fact]
@@ -70,19 +60,15 @@ public class OptionalNonBlankTests
     public void OptionalNonBlank_FactoryFailure_PreservesErrorAndPersistenceIntent(bool persistOnFailure)
     {
         var error = Error.InvalidInput.ForField(field: "name", code: "name.invalid");
-        var calls = 0;
+        var calls = new CallbackRecorder<string>();
 
-        var result = Maybe.OptionalNonBlank("invalid", _ =>
-        {
-            calls++;
-            return persistOnFailure
-                ? Result.FailAfterCommit<string>(error)
-                : Result.Fail<string>(error);
-        });
+        var result = Maybe.OptionalNonBlank("invalid", calls.Wrap(_ => persistOnFailure
+            ? Result.FailAfterCommit<string>(error)
+            : Result.Fail<string>(error)));
 
         result.Should().BeFailure().Which.Should().BeSameAs(error);
         ((IPersistOnFailure)result).PersistOnFailure.Should().Be(persistOnFailure);
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
     }
 
     [Theory]
@@ -114,15 +100,12 @@ public class OptionalNonBlankTests
     [InlineData("\u00A0")]
     public void Optional_BlankString_StillInvokesFactoryAndPreservesPresence(string input)
     {
-        var calls = 0;
+        var calls = new CallbackRecorder<string>();
 
-        var result = Maybe.Optional(input, value =>
-        {
-            calls++;
-            return Result.Ok(value);
-        });
+        var result = Maybe.Optional(input, calls.Wrap(value => Result.Ok(value)));
 
         result.Unwrap().Unwrap().Should().BeSameAs(input);
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
+        calls.Arguments.Should().ContainSingle().Which.Should().BeSameAs(input);
     }
 }

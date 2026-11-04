@@ -7,14 +7,14 @@ public class EnsureAllFactoryTests
     [Fact]
     public void EnsureAll_Factories_PassingChecks_DoNotCreateErrors()
     {
-        var calls = 0;
+        var calls = new CallbackRecorder<string>();
 
         var result = Result.Ok("valid").EnsureAll(
-            (value => value.Length > 0, _ => { calls++; return new Error.Unexpected("unused"); }
+            (value => value.Length > 0, calls.Wrap<Error>(_ => new Error.Unexpected("unused"))
         ));
 
         result.Should().BeSuccess().Which.Should().Be("valid");
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -58,15 +58,15 @@ public class EnsureAllFactoryTests
     {
         var error = new Error.Unexpected("upstream");
         var original = Result.FailAfterCommit<string>(error);
-        var calls = 0;
+        var calls = new CallbackRecorder<string>();
 
         var result = original.EnsureAll(
-            (_ => { calls++; return false; }, _ => { calls++; return new Error.Unexpected("unused"); }
+            (calls.Wrap(_ => false), calls.Wrap<Error>(_ => new Error.Unexpected("unused"))
         ));
 
         result.Should().BeFailure().Which.Should().Be(error);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeTrue();
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -129,12 +129,12 @@ public class EnsureAllFactoryTests
     [InlineData(true)]
     public async Task EnsureAllAsync_Factories_FailedChecks_AccumulateLazily(bool valueTask)
     {
-        var calls = 0;
+        var calls = new CallbackRecorder<string>();
         (Func<string, bool>, Func<string, Error>)[] checks =
         [
-            (_ => true, _ => { calls++; return new Error.Unexpected("unused"); }),
-            (_ => false, value => { calls++; return Error.InvalidInput.ForField(field: "first", code: "first.invalid", detail: value); }),
-            (_ => false, value => { calls++; return Error.InvalidInput.ForField(field: "second", code: "second.invalid", detail: value); })
+            (_ => true, calls.Wrap<Error>(_ => new Error.Unexpected("unused"))),
+            (_ => false, calls.Wrap<Error>(value => Error.InvalidInput.ForField(field: "first", code: "first.invalid", detail: value))),
+            (_ => false, calls.Wrap<Error>(value => Error.InvalidInput.ForField(field: "second", code: "second.invalid", detail: value)))
         ];
 
         var result = valueTask
@@ -142,7 +142,7 @@ public class EnsureAllFactoryTests
             : await Task.FromResult(Result.Ok("value")).EnsureAllAsync(checks);
 
         result.Should().BeFailureOfType<Error.InvalidInput>().Which.Fields.Items.Should().HaveCount(2);
-        calls.Should().Be(2);
+        calls.CallCount.Should().Be(2);
     }
 
     [Theory]
@@ -150,21 +150,24 @@ public class EnsureAllFactoryTests
     [InlineData(true)]
     public async Task EnsureAllAsync_Factories_DeferredReceiver_WaitsBeforeValidation(bool valueTask)
     {
-        var completion = new TaskCompletionSource<Result<string>>();
-        var calls = 0;
+        var completion = new ControlledAsync<Result<string>>();
+        var calls = new CallbackRecorder<string>();
         (Func<string, bool>, Func<string, Error>)[] checks =
         [
-            (value => { calls++; return value == "ready"; }, _ => new Error.Unexpected("unused"))
+            (calls.Wrap(value => value == "ready"), _ => new Error.Unexpected("unused"))
         ];
         var pending = valueTask
             ? new ValueTask<Result<string>>(completion.Task).EnsureAllAsync(checks).AsTask()
             : completion.Task.EnsureAllAsync(checks);
 
-        calls.Should().Be(0);
-        completion.SetResult(Result.Ok("ready"));
+        var result = await pending.ShouldBePendingThenReleaseAsync(
+            () => completion.TryComplete(Result.Ok("ready")),
+            TimeSpan.FromSeconds(30),
+            TestContext.Current.CancellationToken,
+            whilePending: () => calls.CallCount.Should().Be(0));
 
-        (await pending).Should().BeSuccess().Which.Should().Be("ready");
-        calls.Should().Be(1);
+        result.Should().BeSuccess().Which.Should().Be("ready");
+        calls.CallCount.Should().Be(1);
     }
 
     [Theory]
@@ -174,10 +177,10 @@ public class EnsureAllFactoryTests
     {
         var error = new Error.Unexpected("upstream");
         var original = Result.FailAfterCommit<string>(error);
-        var calls = 0;
+        var calls = new CallbackRecorder<string>();
         (Func<string, bool>, Func<string, Error>)[] checks =
         [
-            (_ => { calls++; return false; }, _ => { calls++; return new Error.Unexpected("unused"); })
+            (calls.Wrap(_ => false), calls.Wrap<Error>(_ => new Error.Unexpected("unused")))
         ];
 
         var result = valueTask
@@ -186,7 +189,7 @@ public class EnsureAllFactoryTests
 
         result.Should().BeFailure().Which.Should().Be(error);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeTrue();
-        calls.Should().Be(0);
+        calls.CallCount.Should().Be(0);
     }
 
     [Theory]

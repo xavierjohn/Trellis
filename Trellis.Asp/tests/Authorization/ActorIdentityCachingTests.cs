@@ -54,19 +54,15 @@ public class ActorIdentityCachingTests
     [Fact]
     public async Task GetCurrentActorIdAsync_InFlightValueTask_CallersShareOneTaskWithoutLoadingActor()
     {
-        var completion = new TaskCompletionSource<Maybe<ActorId>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var calls = 0;
-        var provider = new DelegateProvider(_ =>
-        {
-            calls++;
-            return new ValueTask<Maybe<ActorId>>(completion.Task);
-        });
+        var completion = new ControlledAsync<Maybe<ActorId>>();
+        var calls = new CallbackRecorder<CancellationToken>();
+        var provider = new DelegateProvider(calls.Wrap(_ => completion.ValueTask));
         var cache = new CachingActorProvider(provider, new HttpContextAccessor());
         var first = cache.GetCurrentActorIdAsync(Token).AsTask();
         var second = cache.GetCurrentActorIdAsync(Token).AsTask();
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
         provider.ActorCalls.Should().Be(0);
-        completion.SetResult(Maybe.From(ActorId.Create("shared")));
+        completion.TryComplete(Maybe.From(ActorId.Create("shared")));
 
         (await first).Should().HaveValueEqualTo(ActorId.Create("shared"));
         (await second).Should().HaveValueEqualTo(ActorId.Create("shared"));
@@ -92,15 +88,13 @@ public class ActorIdentityCachingTests
     [Fact]
     public async Task GetCurrentActorIdAsync_RequestAborted_CachesCancellationWithoutRetry()
     {
-        using var request = new CancellationTokenSource();
-        request.Cancel();
-        var calls = 0;
-        var provider = new DelegateProvider(token =>
+        using var request = CanceledToken.Create();
+        var calls = new CallbackRecorder<CancellationToken>();
+        var provider = new DelegateProvider(calls.Wrap(token =>
         {
-            calls++;
             token.ThrowIfCancellationRequested();
             return ValueTask.FromResult(Maybe<ActorId>.None);
-        });
+        }));
         var cache = new CachingActorProvider(provider, new HttpContextAccessor
         {
             HttpContext = new DefaultHttpContext { RequestAborted = request.Token },
@@ -111,7 +105,7 @@ public class ActorIdentityCachingTests
             await act.Should().ThrowAsync<OperationCanceledException>();
         }
 
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
         provider.ActorCalls.Should().Be(0);
     }
 
@@ -120,15 +114,9 @@ public class ActorIdentityCachingTests
     {
         using var requestCancellation = new CancellationTokenSource();
         using var callerCancellation = new CancellationTokenSource();
-        var completion = new TaskCompletionSource<Maybe<ActorId>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        CancellationToken observed = default;
-        var calls = 0;
-        var provider = new DelegateProvider(token =>
-        {
-            observed = token;
-            calls++;
-            return new ValueTask<Maybe<ActorId>>(completion.Task);
-        });
+        var completion = new ControlledAsync<Maybe<ActorId>>();
+        var calls = new CallbackRecorder<CancellationToken>();
+        var provider = new DelegateProvider(calls.Wrap(_ => completion.ValueTask));
         var cache = new CachingActorProvider(provider, new HttpContextAccessor
         {
             HttpContext = new DefaultHttpContext { RequestAborted = requestCancellation.Token },
@@ -138,11 +126,12 @@ public class ActorIdentityCachingTests
         callerCancellation.Cancel();
         var act = async () => await cancelled;
         await act.Should().ThrowAsync<OperationCanceledException>();
+        var observed = calls.Arguments.Should().ContainSingle().Which;
         observed.Should().Be(requestCancellation.Token);
         observed.IsCancellationRequested.Should().BeFalse();
-        completion.SetResult(Maybe.From(ActorId.Create("survivor")));
+        completion.TryComplete(Maybe.From(ActorId.Create("survivor")));
         (await survivor).Unwrap().Value.Should().Be("survivor");
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
     }
 
     [Theory]
@@ -150,15 +139,14 @@ public class ActorIdentityCachingTests
     [InlineData(true)]
     public async Task GetCurrentActorIdAsync_ProviderFailure_CachesWithoutRetrying(bool synchronous)
     {
-        var calls = 0;
+        var calls = new CallbackRecorder<CancellationToken>();
         var failure = new InvalidOperationException("identity failure");
-        var provider = new DelegateProvider(_ =>
+        var provider = new DelegateProvider(calls.Wrap(_ =>
         {
-            calls++;
             if (synchronous)
                 throw failure;
             return ValueTask.FromException<Maybe<ActorId>>(failure);
-        });
+        }));
         var cache = new CachingActorProvider(provider, new HttpContextAccessor());
 
         for (var i = 0; i < 2; i++)
@@ -167,25 +155,21 @@ public class ActorIdentityCachingTests
             (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
         }
 
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
         provider.ActorCalls.Should().Be(0);
     }
 
     [Fact]
     public async Task GetCurrentActorIdAsync_None_IsCachedIndependentlyOfFullActor()
     {
-        var calls = 0;
-        var provider = new DelegateProvider(_ =>
-        {
-            calls++;
-            return ValueTask.FromResult(Maybe<ActorId>.None);
-        });
+        var calls = new CallbackRecorder<CancellationToken>();
+        var provider = new DelegateProvider(calls.Wrap(_ => ValueTask.FromResult(Maybe<ActorId>.None)));
         var cache = new CachingActorProvider(provider, new HttpContextAccessor());
 
         (await cache.GetCurrentActorIdAsync(Token)).Should().BeNone();
         (await cache.GetCurrentActorIdAsync(Token)).Should().BeNone();
         provider.ActorCalls.Should().Be(0);
-        calls.Should().Be(1);
+        calls.CallCount.Should().Be(1);
         (await cache.GetCurrentActorAsync(Token)).Should().BeNone();
     }
 
