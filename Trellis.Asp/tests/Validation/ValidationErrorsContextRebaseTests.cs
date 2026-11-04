@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Asp.Tests.Validation;
 
 using System.Collections.Immutable;
+using Trellis.Testing;
 
 /// <summary>
 /// Guard tests for the single body-context rebase rule and the <c>AddBodyError</c> overloads.
@@ -32,10 +33,11 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddBodyError(
             Error.InvalidInput.ForField(field: "displayName", code: UnspecifiedCode, detail: "too short"));
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
         error.Should().NotBeNull();
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveFieldViolationCount(1);
+        var violation = error!.Fields.Items[0];
         violation.Field.Path.Should().Be("/displayName");
         violation.Field.In.Should().Be(InputLocation.Body);
     }
@@ -49,9 +51,10 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddBodyError(
             Error.InvalidInput.ForField(field: "displayName", code: UnspecifiedCode, detail: "too short"));
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveFieldViolationCount(1);
+        var violation = error!.Fields.Items[0];
         violation.Field.Path.Should().Be("/customer/displayName");
         violation.Field.In.Should().Be(InputLocation.Body);
     }
@@ -63,9 +66,10 @@ public class ValidationErrorsContextRebaseTests
 
         ValidationErrorsContext.AddBodyError("displayName", "too short");
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveFieldViolationCount(1);
+        var violation = error!.Fields.Items[0];
         violation.Field.Path.Should().Be("/displayName");
         violation.Field.In.Should().Be(InputLocation.Body);
     }
@@ -81,9 +85,10 @@ public class ValidationErrorsContextRebaseTests
             "too short",
             new Dictionary<string, ValidationArgValue> { ["min"] = 3 });
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveFieldViolationCount(1);
+        var violation = error!.Fields.Items[0];
         violation.Field.In.Should().Be(InputLocation.Body);
         violation.ReasonCode.Should().Be(UnspecifiedCode);
         violation.Detail.Should().Be("too short");
@@ -101,9 +106,10 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddBodyError(
             Error.InvalidInput.ForField(field: InputPointer.ForQuery("page"), code: UnspecifiedCode, detail: "out of range"));
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveFieldViolationCount(1);
+        var violation = error!.Fields.Items[0];
         violation.Field.Path.Should().Be("/page");
         violation.Field.In.Should().Be(InputLocation.Query);
     }
@@ -121,9 +127,10 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddBodyError(
             Error.InvalidInput.ForField(field: InputPointer.ForQuery("a/b"), code: UnspecifiedCode, detail: "bad"));
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveFieldViolationCount(1);
+        var violation = error!.Fields.Items[0];
         violation.Field.Path.Should().Be("/a~1b");
         violation.Field.In.Should().Be(InputLocation.Query);
     }
@@ -163,9 +170,10 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddBodyError(
             Error.InvalidInput.ForField(field: InputPointer.ForBody("street"), code: UnspecifiedCode, detail: "bad"));
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveFieldViolationCount(1);
+        var violation = error!.Fields.Items[0];
         violation.Field.Path.Should().Be("/customer/street");
         violation.Field.In.Should().Be(InputLocation.Body);
     }
@@ -186,9 +194,10 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddBodyError(
             new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Rules = ImmutableArray.Create(rule) });
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        var projected = error!.Rules.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveRuleViolationCount(1);
+        var projected = error!.Rules.Items[0];
         projected.Fields.Items.Should().SatisfyRespectively(
             body =>
             {
@@ -217,9 +226,10 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddError(
             Error.InvalidInput.ForField(field: "page", code: UnspecifiedCode, detail: "bad"));
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveFieldViolationCount(1);
+        var violation = error!.Fields.Items[0];
         violation.Field.In.Should().Be(InputLocation.Unspecified);
     }
 
@@ -232,9 +242,10 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddError(
             Error.InvalidInput.ForField(field: InputPointer.ForQuery("page"), code: UnspecifiedCode, detail: "bad"));
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        var violation = error!.Fields.Items.Should().ContainSingle().Subject;
+        error!.Should().HaveFieldViolationCount(1);
+        var violation = error!.Fields.Items[0];
         violation.Field.Path.Should().Be("/page");
         violation.Field.In.Should().Be(InputLocation.Query);
     }
@@ -254,9 +265,9 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddBodyError("displayName", "too short");
         ValidationErrorsContext.AddBodyError("displayName", "too short");
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        error!.Fields.Items.Should().ContainSingle();
+        error!.Should().HaveFieldViolationCount(1);
     }
 
     [Fact]
@@ -269,8 +280,8 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.AddError(
             Error.InvalidInput.ForField(field: InputPointer.ForPath("page"), code: UnspecifiedCode, detail: "bad"));
 
-        var error = ValidationErrorsContext.GetUnprocessableContent();
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
 
-        error!.Fields.Items.Should().HaveCount(2);
+        error!.Should().HaveFieldViolationCount(2);
     }
 }

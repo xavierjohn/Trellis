@@ -75,7 +75,7 @@ public class WeeklyScheduleTests
                 [Period(DayOfWeek.Monday, 9, 17), null!, Period(DayOfWeek.Monday, 10, 12)])
             .Should().BeFailureOfType<Error.InvalidInput>().Which;
 
-        error.Fields.Items.Should().ContainSingle();
+        error.Should().HaveFieldViolationCount(1);
         error.Fields[0].Field.Path.Should().Be("/periods/1");
         error.Fields[0].ReasonCode.Should().Be(ValidationCodes.ValueNotNull);
     }

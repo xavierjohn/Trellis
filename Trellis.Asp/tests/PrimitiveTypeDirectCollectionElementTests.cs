@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Trellis;
 using Trellis.Asp.Validation;
 using Trellis.Primitives;
+using Trellis.Testing;
 using Xunit;
 
 // ---- RequiredXxx<T> source-generated fixtures ----
@@ -101,9 +102,9 @@ public sealed class PrimitiveTypeDirectCollectionElementTests
         {
             JsonSerializer.Deserialize<TCommand>(json, options);
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
             error.Fields[0].Field.Path.Should().Be(expectedPath);
         }
     }

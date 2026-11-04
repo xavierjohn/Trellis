@@ -101,7 +101,7 @@ public class EnsureAllTests
 
         result.Should().BeFailure();
         var validationError = result.Error!.Should().BeOfType<Error.InvalidInput>().Subject;
-        validationError.Fields.Items.Should().HaveCount(2);
+        validationError.Should().HaveFieldViolationCount(2);
     }
 
     [Fact]

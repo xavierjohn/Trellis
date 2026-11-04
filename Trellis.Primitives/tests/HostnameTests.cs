@@ -105,7 +105,7 @@ public class HostnameTests
 
         result.IsFailure.Should().BeTrue();
         var validation = (Error.InvalidInput)result.UnwrapError();
-        validation.Fields.Items.Should().ContainSingle();
+        validation.Should().HaveFieldViolationCount(1);
         validation.Fields[0].Field.Path.Should().Be("/serverName");
         validation.Fields[0].ReasonCode.Should().Be(ValidationCodes.StringHostname);
         validation.Fields[0].Detail.Should().Be("Hostname must be RFC 1123 compliant.");

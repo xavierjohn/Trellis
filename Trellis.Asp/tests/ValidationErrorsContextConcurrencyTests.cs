@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Trellis;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -38,11 +39,11 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
 
             // Each thread uses a unique field name with errorsPerThread distinct messages
-            error!.Fields.Items.Should().HaveCount(threadCount * errorsPerThread);
+            error!.Should().HaveFieldViolationCount(threadCount * errorsPerThread);
             error.Fields.Items.GroupBy(fv => fv.Field.Path).Should().HaveCount(threadCount);
             foreach (var group in error.Fields.Items.GroupBy(fv => fv.Field.Path))
             {
@@ -75,9 +76,9 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
             error.Fields.Items[0].Field.Path.Should().Be("/" + fieldName);
             // Should only have one copy of the error message (no duplicates)
             error.Fields.Items[0].Detail.Should().Be(errorMessage);
@@ -104,9 +105,9 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().HaveCount(taskCount);
+            error!.Should().HaveFieldViolationCount(taskCount);
         }
     }
 
@@ -143,9 +144,9 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(addTask);
             await Task.WhenAll(readTasks);
 
-            var finalError = ValidationErrorsContext.GetUnprocessableContent();
+            var finalError = ValidationErrorsContext.GetUnprocessableContent()!;
             finalError.Should().NotBeNull();
-            finalError!.Fields.Items.Should().HaveCount(iterations);
+            finalError!.Should().HaveFieldViolationCount(iterations);
         }
     }
 
@@ -205,9 +206,9 @@ public class ValidationErrorsContextConcurrencyTests
                     await Task.Delay(5);
 
                     // Verify this scope only has its error
-                    var error = ValidationErrorsContext.GetUnprocessableContent();
+                    var error = ValidationErrorsContext.GetUnprocessableContent()!;
                     error.Should().NotBeNull();
-                    error!.Fields.Items.Should().ContainSingle("scope should be isolated");
+                    error!.Should().HaveFieldViolationCount(1, "scope should be isolated");
                     error.Fields[0].Field.Path.Should().Be($"/Scope{scopeId}");
 
                     return true;
@@ -274,10 +275,10 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
             // Should have 2 fields per task
-            error!.Fields.Items.Should().HaveCount(taskCount * 2);
+            error!.Should().HaveFieldViolationCount(taskCount * 2);
         }
     }
 
@@ -306,9 +307,9 @@ public class ValidationErrorsContextConcurrencyTests
             await Task.WhenAll(tasks);
 
             // Assert
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().HaveCount(fieldCount * errorsPerField);
+            error!.Should().HaveFieldViolationCount(fieldCount * errorsPerField);
 
             // Each field should appear errorsPerField times
             error.Fields.Items.GroupBy(fv => fv.Field.Path).Should().HaveCount(fieldCount);
@@ -333,15 +334,15 @@ public class ValidationErrorsContextConcurrencyTests
                 ValidationErrorsContext.AddError("Inner", "Inner error");
 
                 // Inner scope should only have inner error
-                var innerError = ValidationErrorsContext.GetUnprocessableContent();
-                innerError!.Fields.Items.Should().ContainSingle()
-                    .Which.Field.Path.Should().Be("/Inner");
+                var innerError = ValidationErrorsContext.GetUnprocessableContent()!;
+                innerError!.Should().HaveFieldViolationCount(1);
+                innerError!.Fields.Items[0].Field.Path.Should().Be("/Inner");
             }
 
             // After inner scope disposed, outer scope should have outer error
-            var outerError = ValidationErrorsContext.GetUnprocessableContent();
-            outerError!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Outer");
+            var outerError = ValidationErrorsContext.GetUnprocessableContent()!;
+            outerError!.Should().HaveFieldViolationCount(1);
+            outerError!.Fields.Items[0].Field.Path.Should().Be("/Outer");
         }
     }
 

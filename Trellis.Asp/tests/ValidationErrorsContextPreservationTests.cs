@@ -5,6 +5,7 @@ using System.Linq;
 using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -29,7 +30,7 @@ public class ValidationErrorsContextPreservationTests
             ValidationErrorsContext.AddError(source);
 
             var aggregated = ValidationErrorsContext.GetUnprocessableContent();
-            aggregated.Should().NotBeNull();
+            aggregated!.Should().NotBeNull();
             var violation = aggregated!.Fields.Items.Single();
             violation.Field.Path.Should().Be("/name");
             violation.ReasonCode.Should().Be("length_out_of_range");
@@ -53,9 +54,9 @@ public class ValidationErrorsContextPreservationTests
 
             ValidationErrorsContext.AddError(source);
 
-            var aggregated = ValidationErrorsContext.GetUnprocessableContent();
+            var aggregated = ValidationErrorsContext.GetUnprocessableContent()!;
             aggregated.Should().NotBeNull();
-            aggregated!.Rules.Items.Length.Should().Be(2);
+            aggregated!.Should().HaveRuleViolationCount(2);
             aggregated.Rules.Items[0].ReasonCode.Should().Be("passwords_must_match");
             aggregated.Rules.Items[0].Detail.Should().Be("Password and confirmation must match.");
             aggregated.Rules.Items[1].ReasonCode.Should().Be("order_must_have_items");
@@ -73,8 +74,8 @@ public class ValidationErrorsContextPreservationTests
             ValidationErrorsContext.AddError(source);
             ValidationErrorsContext.AddError(source);
 
-            var aggregated = ValidationErrorsContext.GetUnprocessableContent();
-            aggregated!.Fields.Items.Length.Should().Be(1);
+            var aggregated = ValidationErrorsContext.GetUnprocessableContent()!;
+            aggregated!.Should().HaveFieldViolationCount(1);
         }
     }
 
@@ -88,8 +89,8 @@ public class ValidationErrorsContextPreservationTests
             ValidationErrorsContext.AddError(new Error.InvalidInput(EquatableArray.Create(
                 new FieldViolation(InputPointer.ForProperty("password"), "missing_digit", Detail: "Password must contain a digit."))));
 
-            var aggregated = ValidationErrorsContext.GetUnprocessableContent();
-            aggregated!.Fields.Items.Length.Should().Be(2);
+            var aggregated = ValidationErrorsContext.GetUnprocessableContent()!;
+            aggregated!.Should().HaveFieldViolationCount(2);
             aggregated.Fields.Items.Select(f => f.ReasonCode).Should().BeEquivalentTo("too_short", "missing_digit");
         }
     }

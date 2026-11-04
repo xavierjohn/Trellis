@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Trellis;
 using Trellis.Asp.ModelBinding;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -423,7 +424,8 @@ public class ScalarValueTypeHelperTests
         var nativeResult = PrimitiveConverter.ConvertToPrimitive<byte>("256");
         nativeResult.TryGetError(out var nativeError).Should().BeTrue();
         var native = nativeError.Should().BeOfType<Error.InvalidInput>().Which;
-        var nativeViolation = native.Fields.Items.Should().ContainSingle().Which;
+        native.Should().HaveFieldViolationCount(1);
+        var nativeViolation = native.Fields.Items[0];
         nativeViolation.Field.Should().Be(InputPointer.Root);
         nativeViolation.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
         nativeViolation.Args.Should().HaveCount(2);
@@ -434,8 +436,9 @@ public class ScalarValueTypeHelperTests
             typeof(ScalarValueModelBinderPrimitiveTypesTests.ByteVO), "256", "level");
 
         var actual = error.Should().BeOfType<Error.InvalidInput>().Which;
-        actual.Fields.Items.Should().ContainSingle().Which.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
-        actual.Should().Be(native with
+        actual.Should().HaveFieldViolationCount(1);
+        actual.Fields.Items[0].ReasonCode.Should().Be(ValidationCodes.FormatInteger);
+        ((Error)actual).Should().Be(native with
         {
             Fields = EquatableArray.Create(nativeViolation with { Field = InputPointer.ForProperty("level") }),
         });
@@ -450,7 +453,8 @@ public class ScalarValueTypeHelperTests
         var nativeResult = PrimitiveConverter.ConvertToPrimitive<byte>(rawValue);
         nativeResult.TryGetError(out var nativeError).Should().BeTrue();
         var native = nativeError.Should().BeOfType<Error.InvalidInput>().Which;
-        var nativeViolation = native.Fields.Items.Should().ContainSingle().Which;
+        native.Should().HaveFieldViolationCount(1);
+        var nativeViolation = native.Fields.Items[0];
         nativeViolation.ReasonCode.Should().Be(expectedCode);
 
         var error = ScalarValueTypeHelper.GetValidationError(

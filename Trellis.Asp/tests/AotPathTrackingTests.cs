@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -128,8 +129,9 @@ public sealed class AotPathTrackingTests : IDisposable
         ValidationErrorsContext.CurrentPropertyName = "outside";
 
         ReadScalar<DcOrderState>(propertyName, "\"Unknown\""u8, options).Should().BeNull();
-        var violation = ValidationErrorsContext.GetUnprocessableContent()!
-            .Fields.Items.Should().ContainSingle().Subject;
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
+        error.Should().HaveFieldViolationCount(1);
+        var violation = error.Fields.Items[0];
         violation.Field.Path.Should().Be(expectedPath);
         violation.Field.In.Should().Be(InputLocation.Body);
         violation.ReasonCode.Should().Be("enum.name-undefined");
@@ -148,7 +150,8 @@ public sealed class AotPathTrackingTests : IDisposable
             InvalidInput = Error.InvalidInput.ForField(
                 "email.too-long", "email", ValidationArgs.Of("maxLength", 64), "Email is too long."),
         };
-        var originalViolation = original.InvalidInput.Fields.Items.Should().ContainSingle().Subject;
+        original.InvalidInput.Should().HaveFieldViolationCount(1);
+        var originalViolation = original.InvalidInput.Fields.Items[0];
         var options = BuildOptions();
         options.Converters.Clear();
         options.Converters.Add(new LegacyThrowingEmailConverter(original));
@@ -161,7 +164,8 @@ public sealed class AotPathTrackingTests : IDisposable
 
         Action readScalar = () => ReadScalar<Email>("contact/type~", "\"oversized\""u8, options);
         var exception = readScalar.Should().Throw<TrellisJsonValidationException>().Which;
-        var violation = exception.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
+        exception.InvalidInput!.Should().HaveFieldViolationCount(1);
+        var violation = exception.InvalidInput!.Fields.Items[0];
 
         violation.Field.Should().Be(InputPointer.ForBody("/members~1~0/1/contact~1type~0"));
         violation.ReasonCode.Should().Be(originalViolation.ReasonCode);
@@ -189,8 +193,9 @@ public sealed class AotPathTrackingTests : IDisposable
         options.Converters.Clear();
         ScalarValuePathTracking.RegisterScalar<DcInt, int>();
         Action readScalar = () => JsonSerializer.Deserialize<DcInt>("0", options);
-        var original = readScalar.Should().Throw<TrellisJsonValidationException>()
-            .Which.InvalidInput!.Fields.Items.Should().ContainSingle().Subject;
+        var originalError = readScalar.Should().Throw<TrellisJsonValidationException>().Which.InvalidInput!;
+        originalError.Should().HaveFieldViolationCount(1);
+        var original = originalError.Fields.Items[0];
 
         using var scope = ValidationErrorsContext.BeginScope();
         using var ancestor = ancestorName is null ? null : ValidationErrorsContext.PushPathSegment(ancestorName);
@@ -198,8 +203,9 @@ public sealed class AotPathTrackingTests : IDisposable
         ValidationErrorsContext.CurrentPropertyName = "outside";
 
         ReadScalar<DcInt>(propertyName, "0"u8, options).Should().BeNull();
-        var violation = ValidationErrorsContext.GetUnprocessableContent()!
-            .Fields.Items.Should().ContainSingle().Subject;
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
+        error.Should().HaveFieldViolationCount(1);
+        var violation = error.Fields.Items[0];
 
         violation.Field.Should().Be(InputPointer.ForBody(expectedPath));
         violation.ReasonCode.Should().Be(original.ReasonCode);
@@ -239,8 +245,9 @@ public sealed class AotPathTrackingTests : IDisposable
         ValidationErrorsContext.HasErrors.Should().Be(invalid);
         if (invalid)
         {
-            var violation = ValidationErrorsContext.GetUnprocessableContent()!
-                .Fields.Items.Should().ContainSingle().Subject;
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error.Should().HaveFieldViolationCount(1);
+            var violation = error.Fields.Items[0];
             violation.Field.Should().Be(InputPointer.ForBody("/state"));
             violation.ReasonCode.Should().Be(ValidationCodes.EnumNameUndefined);
             violation.Args.Should().ContainKey("allowed");
@@ -261,7 +268,7 @@ public sealed class AotPathTrackingTests : IDisposable
             JsonSerializer.Deserialize<AotTeamCommand>(json, options);
 
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error.Should().NotBeNull();
+            error!.Should().NotBeNull();
             error!.Fields[0].Field.Path.Should().Be(
                 "/email",
                 "this is the pre-#664 Native AOT behaviour the generated registrations exist to fix");
@@ -283,9 +290,9 @@ public sealed class AotPathTrackingTests : IDisposable
         {
             JsonSerializer.Deserialize<AotTeamCommand>(json, options);
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
             error.Fields[0].Field.Path.Should().Be("/members/1/email");
         }
     }
@@ -307,9 +314,9 @@ public sealed class AotPathTrackingTests : IDisposable
         {
             JsonSerializer.Deserialize<AotAliasedTeamCommand>(json, options);
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
             error.Fields[0].Field.Path.Should().Be("/members/0/primary_email");
         }
     }
@@ -375,9 +382,9 @@ public sealed class AotPathTrackingTests : IDisposable
         {
             JsonSerializer.Deserialize<AotEmailListCommand>(json, options);
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
             error.Fields[0].Field.Path.Should().Be(expectedPath);
         }
     }
@@ -398,9 +405,9 @@ public sealed class AotPathTrackingTests : IDisposable
         {
             JsonSerializer.Deserialize<AotEmailDictionaryCommand>(json, options);
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
             error.Fields[0].Field.Path.Should().Be("/prices/EUR");
         }
     }
@@ -420,9 +427,9 @@ public sealed class AotPathTrackingTests : IDisposable
         {
             JsonSerializer.Deserialize<AotPersonCommand>(json, options);
 
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
             error.Fields[0].Field.Path.Should().Be("/contact/email");
         }
     }

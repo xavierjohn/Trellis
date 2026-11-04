@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -29,7 +30,9 @@ public sealed class BoundViolationCollectorCodeTests
             "orderId",
             InputLocation.Path);
 
-        var violation = BoundViolationCollector.GetError(context)!.Fields.Items.Should().ContainSingle().Subject;
+        var error = BoundViolationCollector.GetError(context)!;
+        error.Should().HaveFieldViolationCount(1);
+        var violation = error.Fields.Items[0];
         violation.ReasonCode.Should().Be(ValidationCodes.Unspecified);
     }
 
@@ -44,7 +47,9 @@ public sealed class BoundViolationCollectorCodeTests
             "quantity",
             InputLocation.Query);
 
-        var violation = BoundViolationCollector.GetError(context)!.Fields.Items.Should().ContainSingle().Subject;
+        var error = BoundViolationCollector.GetError(context)!;
+        error.Should().HaveFieldViolationCount(1);
+        var violation = error.Fields.Items[0];
         violation.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
     }
 
@@ -61,12 +66,14 @@ public sealed class BoundViolationCollectorCodeTests
         var result = BoundViolationCollector.GetError(context)!;
         result.Code.Should().Be(source.Code);
         result.Detail.Should().Be(source.Detail);
-        result.Cause.Should().BeSameAs(source.Cause);
+        ((object?)result.Cause).Should().BeSameAs(source.Cause);
         var pointer = location == InputLocation.Query
             ? InputPointer.ForQuery("code")
             : InputPointer.ForBody("/value");
-        result.Fields.Items.Should().ContainSingle().Which.Field.Should().Be(pointer);
-        var rule = result.Rules.Items.Should().ContainSingle().Which;
+        result.Should().HaveFieldViolationCount(1);
+        result.Fields.Items[0].Field.Should().Be(pointer);
+        result.Should().HaveRuleViolationCount(1);
+        var rule = result.Rules.Items[0];
         rule.Fields.Items.Should().Equal(pointer);
         rule.Args.Should().BeSameAs(source.Rules.Items[0].Args);
         source.Fields.Items[0].Field.In.Should().Be(InputLocation.Unspecified);
@@ -96,9 +103,9 @@ public sealed class BoundViolationCollectorCodeTests
         var result = BoundViolationCollector.GetError(context)!;
         result.Code.Should().Be(original.Code);
         result.Detail.Should().Be(original.Detail);
-        result.Cause.Should().BeSameAs(original.Cause);
-        result.Fields.Items.Should().HaveCount(rulesOnly ? 0 : 1);
-        result.Rules.Items.Should().ContainSingle();
+        ((object?)result.Cause).Should().BeSameAs(original.Cause);
+        result.Should().HaveFieldViolationCount(rulesOnly ? 0 : 1);
+        result.Should().HaveRuleViolationCount(1);
     }
 
     [Theory]
@@ -118,15 +125,16 @@ public sealed class BoundViolationCollectorCodeTests
         var result = BoundViolationCollector.GetError(context)!;
         result.Code.Should().Be(original.Code);
         result.Detail.Should().Be(original.Detail);
-        result.Cause.Should().BeSameAs(original.Cause);
-        result.Fields.Length.Should().Be(rulesOnly ? 0 : 1);
+        ((object?)result.Cause).Should().BeSameAs(original.Cause);
+        result.Should().HaveFieldViolationCount(rulesOnly ? 0 : 1);
         var pointer = location switch
         {
             InputLocation.Path => InputPointer.ForPath("code"),
             InputLocation.Header => InputPointer.ForHeader("code"),
             _ => InputPointer.ForQuery("code"),
         };
-        result.Rules.Items.Should().ContainSingle().Which.Fields.Items.Should().Equal(pointer);
+        result.Should().HaveRuleViolationCount(1);
+        result.Rules.Items[0].Fields.Items.Should().Equal(pointer);
     }
 
     [Theory]
@@ -205,8 +213,9 @@ public sealed class BoundViolationCollectorCodeTests
             InputLocation.Body => [InputPointer.ForBody("/first"), InputPointer.ForBody("/second")],
             _ => [first, second],
         };
-        BoundViolationCollector.GetError(context)!.Rules.Items.Should().ContainSingle()
-            .Which.Fields.Items.Should().Equal(expected);
+        var result = BoundViolationCollector.GetError(context)!;
+        result.Should().HaveRuleViolationCount(1);
+        result.Rules.Items[0].Fields.Items.Should().Equal(expected);
         source.Rules[0].Fields.Items.Should().Equal(first, second, first);
     }
 
@@ -228,8 +237,9 @@ public sealed class BoundViolationCollectorCodeTests
         var result = BoundViolationCollector.GetError(context)!;
         result.Code.Should().Be(ValidationCodes.Unspecified);
         result.Detail.Should().BeNull();
-        result.Fields.Items.Should().BeEmpty();
-        result.Rules.Items.Should().ContainSingle().Which.Fields.Items.Should().BeEmpty();
+        result.Should().HaveFieldViolationCount(0);
+        result.Should().HaveRuleViolationCount(1);
+        result.Rules.Items[0].Fields.Items.Should().BeEmpty();
         var originals = result.Cause.Should().BeOfType<Error.Aggregate>().Which.Errors.Items;
         originals.Should().HaveCount(2);
         originals[0].Should().BeSameAs(source);
@@ -288,7 +298,7 @@ public sealed class BoundViolationCollectorCodeTests
         var context = new DefaultHttpContext();
         var first = BoundErrorMetadataTests.MetadataCode.CreateError("code") with { Cause = CreateCause("First context.") };
         var second = first with { Cause = CreateCause("Second context.") };
-        first.Should().Be(second);
+        ((Error)first).Should().Be(second);
 
         BoundViolationCollector.AddFrom(context, first, "code", InputLocation.Query);
         BoundViolationCollector.AddFrom(context, second, "code", InputLocation.Query);
@@ -349,7 +359,7 @@ public sealed class BoundViolationCollectorCodeTests
 
     [Fact]
     public void GetError_NoBoundFailureWithOtherFailures_ReturnsNull() =>
-        BoundViolationCollector.GetError(new DefaultHttpContext(), hasOtherFailures: true).Should().BeNull();
+        BoundViolationCollector.GetError(new DefaultHttpContext(), hasOtherFailures: true)!.Should().BeNull();
 
     [Fact]
     public void GetError_NonValidationFailure_RetainsTheOriginalAsCause()
@@ -367,6 +377,7 @@ public sealed class BoundViolationCollectorCodeTests
         result.Code.Should().Be(source.Code);
         result.Detail.Should().Be(source.Detail);
         result.Cause.Should().BeSameAs(source);
-        result.Fields.Items.Should().ContainSingle().Which.ReasonCode.Should().Be(source.Code);
+        result.Should().HaveFieldViolationCount(1);
+        result.Fields.Items[0].ReasonCode.Should().Be(source.Code);
     }
 }

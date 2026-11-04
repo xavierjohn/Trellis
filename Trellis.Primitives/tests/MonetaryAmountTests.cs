@@ -55,7 +55,8 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.TryCreate(-0.001m);
 
         var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        var violation = error.Fields.Items.Should().ContainSingle().Which;
+        error.Should().HaveFieldViolationCount(1);
+        var violation = error.Fields.Items[0];
         violation.Field.Path.Should().Be("/amount");
         violation.ReasonCode.Should().Be(ValidationCodes.ValueGreaterThanOrEqual);
     }

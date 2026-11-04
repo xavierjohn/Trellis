@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using Trellis;
 using Trellis.Asp.ModelBinding;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 using HttpJsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 using MvcJsonOptions = Microsoft.AspNetCore.Mvc.JsonOptions;
@@ -374,7 +375,7 @@ public class ServiceCollectionExtensionsTests
             // Assert
             result.Should().NotBeNull();
             result!.Value.Should().Be("John");
-            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!.Should().BeNull();
         }
     }
 
@@ -398,10 +399,10 @@ public class ServiceCollectionExtensionsTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Name");
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("/Name");
         }
     }
 
@@ -426,7 +427,7 @@ public class ServiceCollectionExtensionsTests
             result!.Name.Value.Should().Be("John");
             result.Email.Value.Should().Be("john@example.com");
             result.Age.Value.Should().Be(30);
-            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!.Should().BeNull();
         }
     }
 
@@ -447,9 +448,9 @@ public class ServiceCollectionExtensionsTests
             var result = JsonSerializer.Deserialize<MultipleValueObjectsDto>(json, httpOptions.Value.SerializerOptions);
 
             // Assert
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().HaveCount(3);
+            error!.Should().HaveFieldViolationCount(3);
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/name");
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/email");
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/age");
@@ -477,7 +478,7 @@ public class ServiceCollectionExtensionsTests
             result!.Name.Value.Should().Be("Product");
             result.Description.Should().Be("A great product");
             result.Count.Should().Be(5);
-            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!.Should().BeNull();
         }
     }
 
@@ -502,7 +503,7 @@ public class ServiceCollectionExtensionsTests
             result!.Name.Value.Should().Be("John");
             result.Address.Street.Value.Should().Be("123 Main St");
             result.Address.City.Value.Should().Be("New York");
-            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!.Should().BeNull();
         }
     }
 
@@ -524,7 +525,7 @@ public class ServiceCollectionExtensionsTests
 
             // Assert
             var error = ValidationErrorsContext.GetUnprocessableContent();
-            error.Should().NotBeNull();
+            error!.Should().NotBeNull();
             error!.Fields.Items.Should().HaveCountGreaterOrEqualTo(2);
             // Nested value objects now report the full path (container property + leaf), from the JSON
             // property names (camelCase), at parity with the FluentValidation integration.
@@ -553,9 +554,9 @@ public class ServiceCollectionExtensionsTests
             result.Should().NotBeNull();
             result!.Name.Should().BeNull();
             result.Email.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull("explicit JSON null for scalar VOs should produce validation errors");
-            error!.Fields.Items.Should().HaveCount(2);
+            error!.Should().HaveFieldViolationCount(2);
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/name");
             error.Fields.Items.Should().Contain(e => e.Field.Path == "/email");
         }
@@ -583,7 +584,7 @@ public class ServiceCollectionExtensionsTests
             result.Name!.Value.Should().Be("John");
             result.Email.Should().NotBeNull();
             result.Email!.Value.Should().Be("john@example.com");
-            ValidationErrorsContext.GetUnprocessableContent().Should().BeNull();
+            ValidationErrorsContext.GetUnprocessableContent()!.Should().BeNull();
         }
     }
 
@@ -604,9 +605,9 @@ public class ServiceCollectionExtensionsTests
             var result = JsonSerializer.Deserialize<NullableValueObjectDto>(json, httpOptions.Value.SerializerOptions);
 
             // Assert
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().HaveCount(2);
+            error!.Should().HaveFieldViolationCount(2);
         }
     }
 

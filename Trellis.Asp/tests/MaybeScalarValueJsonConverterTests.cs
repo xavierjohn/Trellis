@@ -609,7 +609,7 @@ public class MaybeScalarValueJsonConverterTests
         Action deserialize = () => JsonSerializer.Deserialize<Maybe<Email>>("\"invalid\"", options);
 
         deserialize.Should().Throw<TrellisJsonValidationException>()
-            .Which.InvalidInput!.Fields.Items.Should().ContainSingle();
+            .Which.InvalidInput!.Should().HaveFieldViolationCount(1);
         ValidationErrorsContext.Current.Should().BeNull();
     }
 

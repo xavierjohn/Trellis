@@ -93,10 +93,10 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error!.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle()
-    .Which.Field.Path.Should().Be("/PrimaryEmail", "wrapper should set property name");
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("/PrimaryEmail", "wrapper should set property name");
         }
     }
 
@@ -261,11 +261,11 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error!.Should().NotBeNull();
             // Empty string should still be set as property name
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("");
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("");
         }
     }
 
@@ -288,9 +288,9 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/" + longName);
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("/" + longName);
         }
     }
 
@@ -313,9 +313,9 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/" + specialName);
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("/" + specialName);
         }
     }
 
@@ -337,9 +337,9 @@ public class PropertyNameAwareConverterTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error!.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
             error.Fields.Items[0].Field.Path.Should().Be("/Email");
             error.Fields.Items[0].Detail.Should().Be("DomainOnlyEmail is invalid.");
         }

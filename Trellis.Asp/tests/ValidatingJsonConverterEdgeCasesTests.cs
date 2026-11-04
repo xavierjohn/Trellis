@@ -6,6 +6,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -110,9 +111,9 @@ public class ValidatingJsonConverterEdgeCasesTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue("null values should produce a validation error for required value objects");
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/email");
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("/email");
             error.Fields[0].Detail.Should().Contain("Email cannot be null.");
         }
     }
@@ -136,9 +137,9 @@ public class ValidatingJsonConverterEdgeCasesTests
             // Assert
             result.Should().BeNull();
             ValidationErrorsContext.HasErrors.Should().BeTrue("null value should produce a validation error");
-            var error = ValidationErrorsContext.GetUnprocessableContent();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/UserEmail");
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("/UserEmail");
             error.Fields[0].Detail.Should().Contain("Email cannot be null.");
         }
     }
@@ -165,11 +166,11 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
             // Should use "email" (camelCase of type name)
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/email");
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("/email");
         }
     }
 
@@ -209,10 +210,10 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/url");
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("/url");
         }
     }
 
@@ -228,7 +229,7 @@ public class ValidatingJsonConverterEdgeCasesTests
         Action deserialize = () => JsonSerializer.Deserialize<Email>("\"\"", options);
 
         deserialize.Should().Throw<TrellisJsonValidationException>()
-            .Which.InvalidInput!.Fields.Items.Should().ContainSingle();
+            .Which.InvalidInput!.Should().HaveFieldViolationCount(1);
         ValidationErrorsContext.Current.Should().BeNull();
     }
 
@@ -439,8 +440,9 @@ public class ValidatingJsonConverterEdgeCasesTests
 
         converter.Read(ref reader, typeof(ProcessingModeVO), new JsonSerializerOptions()).Should().BeNull();
 
-        var violation = ValidationErrorsContext.GetUnprocessableContent()!
-            .Fields.Items.Should().ContainSingle().Subject;
+        var error = ValidationErrorsContext.GetUnprocessableContent()!;
+        error.Should().HaveFieldViolationCount(1);
+        var violation = error.Fields.Items[0];
         violation.ReasonCode.Should().Be(ValidationCodes.FormatInteger);
         violation.Field.Should().Be(InputPointer.ForBody("/mode"));
     }
@@ -490,9 +492,9 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
             error.Fields[0].Field.Path.Should().Be("/Test");
             error.Fields[0].Detail.Should().Contain("Unexpected error");
         }
@@ -573,10 +575,10 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
-            error!.Fields.Items.Should().ContainSingle()
-                .Which.Field.Path.Should().Be("/Age");
+            error!.Should().HaveFieldViolationCount(1);
+            error!.Fields.Items[0].Field.Path.Should().Be("/Age");
         }
     }
 
@@ -761,10 +763,10 @@ public class ValidatingJsonConverterEdgeCasesTests
 
             // Assert
             result.Should().BeNull();
-            var error = ValidationErrorsContext.GetUnprocessableContent();
+            var error = ValidationErrorsContext.GetUnprocessableContent()!;
             error.Should().NotBeNull();
             // Only gets the first error (TryCreate returns on first failure)
-            error!.Fields.Items.Should().ContainSingle();
+            error!.Should().HaveFieldViolationCount(1);
         }
     }
 

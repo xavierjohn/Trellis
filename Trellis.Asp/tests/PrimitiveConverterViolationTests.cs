@@ -2,6 +2,7 @@
 
 using Trellis;
 using Trellis.Asp.ModelBinding;
+using Trellis.Testing;
 
 /// <summary>
 /// Pins that every <see cref="PrimitiveConverter"/> rejection carries a field violation.
@@ -26,7 +27,8 @@ public sealed class PrimitiveConverterViolationTests
         result.TryGetError(out var error).Should().BeTrue();
         var invalid = error.Should().BeOfType<Error.InvalidInput>().Subject;
 
-        var violation = invalid.Fields.Items.Should().ContainSingle().Subject;
+        invalid.Should().HaveFieldViolationCount(1);
+        var violation = invalid.Fields.Items[0];
         violation.Field.Path.Should().BeEmpty("a field-agnostic converter can only honestly point at the root");
         violation.Field.In.Should().Be(InputLocation.Unspecified);
         violation.Detail.Should().NotBeNullOrEmpty("the existing English is preserved verbatim");
