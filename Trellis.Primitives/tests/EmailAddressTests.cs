@@ -216,8 +216,7 @@ public class EmailAddressTests
         var result = EmailAddress.TryCreate(address);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -237,8 +236,7 @@ public class EmailAddressTests
         var result = EmailAddress.TryCreate($"{new string('a', 65)}@example.com");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     #endregion

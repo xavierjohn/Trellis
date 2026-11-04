@@ -68,8 +68,7 @@ public class IpAddressTests
         var result = IpAddress.TryCreate(ipAddress);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("IP address is required.");
     }
 
@@ -89,8 +88,7 @@ public class IpAddressTests
         var result = IpAddress.TryCreate(ipAddress);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("IP address must be a valid IPv4 or IPv6.");
     }
 
@@ -116,8 +114,7 @@ public class IpAddressTests
         var result = IpAddress.TryCreate("", "ClientIP");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/clientIP");
     }
 

@@ -50,8 +50,7 @@ public class SlugTests
         var result = Slug.TryCreate(slug);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Slug is required.");
     }
 
@@ -67,8 +66,7 @@ public class SlugTests
         var result = Slug.TryCreate(slug);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
@@ -82,8 +80,7 @@ public class SlugTests
         var result = Slug.TryCreate(slug);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
@@ -98,8 +95,7 @@ public class SlugTests
         var result = Slug.TryCreate(slug);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
@@ -116,8 +112,7 @@ public class SlugTests
         var result = Slug.TryCreate(slug);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Slug must contain lower-case letters, numbers, and hyphens, without leading/trailing hyphens.");
     }
 
@@ -128,8 +123,7 @@ public class SlugTests
         var result = Slug.TryCreate("", "ArticleSlug");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/articleSlug");
     }
 

@@ -27,8 +27,7 @@ public class RequiredGuidTests
         // Null still rejects under the lenient default; verify the custom field name flows through.
         var result = EmployeeId.TryCreate((string?)null, "myField");
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 
@@ -148,9 +147,7 @@ public class RequiredGuidTests
         var myGuidResult = EmployeeId.TryCreate(value);
 
         // Assert
-        myGuidResult.IsFailure.Should().BeTrue();
-        myGuidResult.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        Error.InvalidInput ve = (Error.InvalidInput)myGuidResult.UnwrapError();
+        Error.InvalidInput ve = myGuidResult.Should().BeFailureOfType<Error.InvalidInput>().Which;
         ve.Fields[0].Field.Path.Should().Be("/employeeId");
         ve.Fields[0].ReasonCode.Should().Be(ValidationCodes.FormatGuid);
         ve.Fields[0].Detail.Should().Be("Guid should contain 32 digits with 4 dashes (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)");
@@ -167,8 +164,7 @@ public class RequiredGuidTests
         // would tell them to fix a shape they never attempted.
         var myGuidResult = EmployeeId.TryCreate(value);
 
-        myGuidResult.IsFailure.Should().BeTrue();
-        Error.InvalidInput ve = (Error.InvalidInput)myGuidResult.UnwrapError();
+        Error.InvalidInput ve = myGuidResult.Should().BeFailureOfType<Error.InvalidInput>().Which;
         ve.Fields[0].Field.Path.Should().Be("/employeeId");
         ve.Fields[0].ReasonCode.Should().Be(ValidationCodes.ValueNotEmpty);
     }
@@ -179,8 +175,7 @@ public class RequiredGuidTests
         // Null string -> "cannot be empty" (the null-rejection message; consistent across the family).
         var myGuidResult = EmployeeId.TryCreate((string?)null);
 
-        myGuidResult.IsFailure.Should().BeTrue();
-        var ve = (Error.InvalidInput)myGuidResult.UnwrapError();
+        var ve = myGuidResult.Should().BeFailureOfType<Error.InvalidInput>().Which;
         ve.Fields[0].Field.Path.Should().Be("/employeeId");
         ve.Fields[0].Detail.Should().Be("Employee Id cannot be empty.");
     }

@@ -35,9 +35,7 @@ public class AgeTests
         var result = Age.TryCreate(ageValue);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Age must be non-negative.");
     }
 
@@ -51,9 +49,7 @@ public class AgeTests
         var result = Age.TryCreate(ageValue);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Age is unrealistically high.");
     }
 
@@ -64,8 +60,7 @@ public class AgeTests
         var result = Age.TryCreate(-5, "PersonAge");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/personAge");
     }
 
@@ -258,8 +253,7 @@ public class AgeTests
         var result = Age.TryCreate((string?)null);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -269,8 +263,7 @@ public class AgeTests
         var result = Age.TryCreate("");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -280,8 +273,7 @@ public class AgeTests
         var result = Age.TryCreate("  ");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Theory]
@@ -294,8 +286,7 @@ public class AgeTests
         var result = Age.TryCreate(input);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -305,8 +296,7 @@ public class AgeTests
         var result = Age.TryCreate((string?)null, "PersonAge");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/personAge");
     }
 
@@ -317,8 +307,7 @@ public class AgeTests
         var result = Age.TryCreate("200");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Age is unrealistically high.");
     }
 

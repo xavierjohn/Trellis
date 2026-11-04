@@ -65,8 +65,7 @@ public class LanguageCodeTests
         var result = LanguageCode.TryCreate(code);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Language code is required.");
     }
 
@@ -82,8 +81,7 @@ public class LanguageCodeTests
         var result = LanguageCode.TryCreate(code);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
     }
 
@@ -99,8 +97,7 @@ public class LanguageCodeTests
         var result = LanguageCode.TryCreate(code);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
     }
 
@@ -124,8 +121,7 @@ public class LanguageCodeTests
         }
         else
         {
-            result.IsFailure.Should().BeTrue();
-            var validation = (Error.InvalidInput)result.UnwrapError();
+            var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
             validation.Fields[0].Detail.Should().Be("Language code must be an ISO 639-1 alpha-2 code.");
         }
     }
@@ -137,8 +133,7 @@ public class LanguageCodeTests
         var result = LanguageCode.TryCreate("", "Language");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/language");
     }
 

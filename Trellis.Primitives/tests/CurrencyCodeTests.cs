@@ -48,8 +48,7 @@ public class CurrencyCodeTests
         var result = CurrencyCode.TryCreate(code);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Currency code is required.");
     }
 
@@ -63,8 +62,7 @@ public class CurrencyCodeTests
         var result = CurrencyCode.TryCreate(code);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Currency code must be a 3-letter ISO 4217 code.");
     }
 
@@ -78,8 +76,7 @@ public class CurrencyCodeTests
         var result = CurrencyCode.TryCreate(code);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Currency code must be a 3-letter ISO 4217 code.");
     }
 
@@ -94,8 +91,7 @@ public class CurrencyCodeTests
     {
         var result = CurrencyCode.TryCreate(code);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Currency code must be a 3-letter ISO 4217 code.");
     }
 
@@ -221,8 +217,7 @@ public class CurrencyCodeTests
         var result = CurrencyCode.TryCreate("", "paymentCurrency");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/paymentCurrency");
     }
 }

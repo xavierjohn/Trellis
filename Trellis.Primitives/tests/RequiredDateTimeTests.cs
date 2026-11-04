@@ -55,9 +55,7 @@ public class RequiredDateTimeTests
     {
         var result = OrderDate.TryCreate((DateTime?)null);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/orderDate");
         validation.Fields[0].Detail.Should().Be("Order Date cannot be empty.");
     }
@@ -189,8 +187,7 @@ public class RequiredDateTimeTests
     {
         var result = OrderDate.TryCreate((DateTime?)null, "myField");
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 

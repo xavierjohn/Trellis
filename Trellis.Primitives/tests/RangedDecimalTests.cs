@@ -44,8 +44,7 @@ public class RangedDecimalTests
     public void TryCreate_BelowMinimum_ReturnsFailure()
     {
         var result = TestPrice.TryCreate(0.5m);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Test Price must be at least 1.");
     }
 
@@ -53,8 +52,7 @@ public class RangedDecimalTests
     public void TryCreate_AboveMaximum_ReturnsFailure()
     {
         var result = TestPrice.TryCreate(1000m);
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Test Price must be at most 999.");
     }
 
@@ -158,8 +156,7 @@ public class RangedDecimalTests
     public void TryCreate_WithCustomFieldName_ReturnsCorrectFieldName()
     {
         var result = TestPrice.TryCreate(0m, "myField");
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 

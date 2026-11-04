@@ -26,9 +26,7 @@ public class RequiredDecimalTests
         var unitPrice = UnitPrice.TryCreate((decimal?)null);
 
         // Assert
-        unitPrice.IsFailure.Should().BeTrue();
-        unitPrice.UnwrapError().Should().BeOfType<Error.InvalidInput>();
-        var validation = (Error.InvalidInput)unitPrice.UnwrapError();
+        var validation = unitPrice.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/unitPrice");
         validation.Fields[0].Detail.Should().Be("Unit Price cannot be empty.");
     }
@@ -266,8 +264,7 @@ public class RequiredDecimalTests
         var result = UnitPrice.TryCreate((decimal?)null, "myField");
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Field.Path.Should().Be("/myField");
     }
 

@@ -37,8 +37,7 @@ public class RequiredDefaultsTests
     {
         var result = NotDefaultRequiredGuid.TryCreate(Guid.Empty);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Not Default Required Guid cannot be Guid.Empty.");
     }
 
@@ -47,8 +46,7 @@ public class RequiredDefaultsTests
     {
         var result = NotDefaultRequiredDateTime.TryCreate(DateTime.MinValue);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Not Default Required Date Time cannot be DateTime.MinValue.");
     }
 
@@ -57,8 +55,7 @@ public class RequiredDefaultsTests
     {
         var result = NotDefaultRequiredDateTimeOffset.TryCreate(DateTimeOffset.MinValue);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Not Default Required Date Time Offset cannot be DateTimeOffset.MinValue.");
     }
 
@@ -101,8 +98,7 @@ public class RequiredDefaultsTests
     {
         var result = NotDefaultRequiredInt.TryCreate(0);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Not Default Required Int cannot be zero.");
     }
 
@@ -111,8 +107,7 @@ public class RequiredDefaultsTests
     {
         var result = NotDefaultRequiredLong.TryCreate(0L);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Not Default Required Long cannot be zero.");
     }
 
@@ -121,8 +116,7 @@ public class RequiredDefaultsTests
     {
         var result = NotDefaultRequiredDecimal.TryCreate(0m);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Not Default Required Decimal cannot be zero.");
     }
 
@@ -131,8 +125,7 @@ public class RequiredDefaultsTests
     {
         var result = DefaultRangedInt.TryCreate(0);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Default Ranged Int must be at least 1.");
     }
 
@@ -141,8 +134,7 @@ public class RequiredDefaultsTests
     {
         var result = DefaultRangedInt.TryCreate((int?)0);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Default Ranged Int must be at least 1.");
     }
 
@@ -151,8 +143,7 @@ public class RequiredDefaultsTests
     {
         var result = DefaultRangedInt.TryCreate("0");
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Default Ranged Int must be at least 1.");
     }
 
@@ -161,8 +152,7 @@ public class RequiredDefaultsTests
     {
         var result = DefaultRangedLong.TryCreate(0L);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Default Ranged Long must be at least 1.");
     }
 
@@ -171,8 +161,7 @@ public class RequiredDefaultsTests
     {
         var result = DefaultRangedDecimal.TryCreate(0m);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Default Ranged Decimal must be at least 1.");
     }
 
@@ -181,15 +170,13 @@ public class RequiredDefaultsTests
     {
         var result = DefaultRangedInt.TryCreate(-5);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be("Default Ranged Int must be at least 1.");
     }
 
     private static void AssertStringFailure<T>(Result<T> result, string expectedDetail)
     {
-        result.IsFailure.Should().BeTrue();
-        var validation = (Error.InvalidInput)result.UnwrapError();
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields[0].Detail.Should().Be(expectedDetail);
     }
 }
