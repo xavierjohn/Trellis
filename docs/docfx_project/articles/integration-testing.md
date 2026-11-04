@@ -333,6 +333,46 @@ await started.ShouldRejectNullBeforeAwaitAsync("ferror");
 Pass the operation you started (the `Task` form) to require that the error arrives through the returned task. The
 `Func<Task>` form also accepts a synchronous throw.
 
+## Pausing code under test with `TestGate`
+
+When the code under test must stop at a known point so the test can assert about the paused state, use a
+`TestGate` instead of an `entered` / `release` pair of `TaskCompletionSource` values:
+
+```csharp
+using var gate = new TestGate();
+provider.BeforeRead = async (number, token) =>
+{
+    if (number == 1)
+        await gate.ArriveAsync(token);
+};
+
+var check = service.CheckAsync();
+await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+check.IsCompleted.Should().BeFalse();
+gate.Release();
+(await check).Status.Should().Be(HealthStatus.Healthy);
+```
+
+Waiting for an arrival requires a timeout and token, so a path that never reaches the gate fails with a
+`TimeoutException` that says how many arrivals were seen, instead of hanging the run. `Dispose()` releases the
+gate, so `using var` frees a blocked flow even when an assertion fails; declare the gate after any fixture it
+blocks so the gate is disposed first. `Release()` is permanent by default, so a flow that re-enters after release
+passes straight through; pass `permanentRelease: false` for a gate that frees only the callers currently waiting.
+
+`Signal()` followed by `WaitForArrivalsAsync(n, ...)` is an N-way barrier, for example to prove that several
+operations genuinely overlap:
+
+```csharp
+using var barrier = new TestGate();
+
+async Task<Result<int>> Operation(int value)
+{
+    barrier.Signal();
+    await barrier.WaitForArrivalsAsync(3, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+    return Result.Ok(value);
+}
+```
+
 ## Domain, page, specification and actor assertions
 
 ```csharp

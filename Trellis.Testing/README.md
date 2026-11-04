@@ -104,6 +104,26 @@ finally
 Bounded success/failure assertions take a timeout and token; they stop only the assertion wait, never the
 operation. The helpers are test-runner-agnostic.
 
+## Pausing code under test: `TestGate`
+
+```csharp
+using var gate = new TestGate();                    // Dispose() releases, so a failed assertion never strands the flow
+fixture.Probe.BeforeRead = async (number, token) =>
+{
+    if (number == 1)
+        await gate.ArriveAsync(token);              // code under test: signal arrival, then wait for release
+};
+
+var check = fixture.CheckAsync();
+await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), token);   // bounded: a missed arrival fails, never hangs
+check.IsCompleted.Should().BeFalse();
+gate.Release();                                     // permanent by default; new TestGate(permanentRelease: false) re-closes
+```
+
+`TestGate` replaces the hand-written `entered` / `release` `TaskCompletionSource` pair. Arrivals are counted and
+never throw when repeated, `WaitForArrivalsAsync(n, ...)` plus `Signal()` makes an N-way barrier, and waiting for
+an arrival always requires a timeout and token.
+
 ## Domain event, page, specification and actor assertions
 
 ```csharp

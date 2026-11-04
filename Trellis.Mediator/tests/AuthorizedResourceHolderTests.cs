@@ -3,6 +3,7 @@
 using global::Mediator;
 using Trellis.Authorization;
 using Trellis.Mediator.Tests.Helpers;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="AuthorizedResourceHolder{TMessage, TResource}"/>, the internal
@@ -259,7 +260,7 @@ public class AuthorizedResourceHolderTests
         var holder = new AuthorizedResourceHolder<HolderTestCommand, TestResource>();
         var resource = new TestResource("parent", "owner");
         var ct = TestContext.Current.CancellationToken;
-        var afterParentDisposed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var afterParentDisposed = new TestGate();
         var orphanFinished = new TaskCompletionSource<(bool found, TestResource? captured, bool getRequiredThrew)>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -274,7 +275,7 @@ public class AuthorizedResourceHolderTests
             // (the Frame reference). At fork time the captured frame is IsActive=true.
             orphan = Task.Run(async () =>
             {
-                await afterParentDisposed.Task;
+                await afterParentDisposed.WaitUntilReleasedAsync();
                 var found = holder.TryGetResource(out var r);
                 var threw = false;
                 try
@@ -292,7 +293,7 @@ public class AuthorizedResourceHolderTests
 
         // Parent has disposed — frame.IsActive=false, parent's AsyncLocal slot restored to previous.
         // Signal the orphan to read now.
-        afterParentDisposed.SetResult();
+        afterParentDisposed.Release();
 
         var (found, captured, getRequiredThrew) = await orphanFinished.Task;
         await orphan;

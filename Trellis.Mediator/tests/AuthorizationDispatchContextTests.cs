@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Mediator.Tests;
 
 using global::Mediator;
+using Trellis.Testing;
 using ConsumerOrder = ActorHandlers.Consumer.Order;
 using Folder = ActorHandlers.Consumer.Folder;
 using MultiResourceCommand = ActorHandlers.Consumer.MultiResourceCommand;
@@ -179,14 +180,12 @@ public class AuthorizationDispatchContextTests
             new("order", new(actor), new(actor)));
         await AuthorizationDispatchContext.ResolveActorAsync<MultiResourceCommand, Result<Observation>>(
             new CountingProvider(actor), TestContext.Current.CancellationToken);
-        var bothEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var entered = 0;
+        using var barrier = new TestGate();
 
         async Task Authorize<TResource>()
         {
-            if (Interlocked.Increment(ref entered) == 2)
-                bothEntered.SetResult();
-            await bothEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
+            barrier.Signal();
+            await barrier.WaitForArrivalsAsync(2, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
             AuthorizationDispatchContext.MarkResourceAuthorized<MultiResourceCommand, TResource, Result<Observation>>();
         }
 
@@ -205,8 +204,7 @@ public class AuthorizationDispatchContextTests
         using var outer = AuthorizationDispatchContext.Begin<StaticCommand, Result<string>>(new());
         await AuthorizeStatic(outerActor);
         var outerIdentity = AuthorizationDispatchContext.CurrentIdentity;
-        var bothEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var entered = 0;
+        using var barrier = new TestGate();
         var identities = new object?[2];
 
         await Task.WhenAll(Enumerable.Range(0, 2).Select(async index =>
@@ -215,9 +213,8 @@ public class AuthorizationDispatchContextTests
             var actor = CreateActor($"sibling-{index}");
             await AuthorizeStatic(actor);
             identities[index] = AuthorizationDispatchContext.CurrentIdentity;
-            if (Interlocked.Increment(ref entered) == 2)
-                bothEntered.SetResult();
-            await bothEntered.Task;
+            barrier.Signal();
+            await barrier.WaitForArrivalsAsync(2, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
             AuthorizationDispatchContext.GetRequiredActor<StaticCommand, Result<string>>().Should().BeSameAs(actor);
         }));
 
@@ -231,20 +228,20 @@ public class AuthorizationDispatchContextTests
     {
         using var outer = AuthorizationDispatchContext.Begin<StaticCommand, Result<string>>(new());
         await AuthorizeStatic(CreateActor("outer"));
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new TestGate();
         Task orphan;
         using (AuthorizationDispatchContext.Begin<StaticCommand, Result<string>>(new()))
         {
             await AuthorizeStatic(CreateActor("inner"));
             orphan = Task.Run(async () =>
             {
-                await release.Task;
+                await release.WaitUntilReleasedAsync();
                 var read = AuthorizationDispatchContext.GetRequiredActor<StaticCommand, Result<string>>;
                 read.Should().Throw<InvalidOperationException>().WithMessage("*StaticCommand*expired*");
             }, TestContext.Current.CancellationToken);
         }
 
-        release.SetResult();
+        release.Release();
         await orphan;
         AuthorizationDispatchContext.GetRequiredActor<StaticCommand, Result<string>>().Id.Value.Should().Be("outer");
     }

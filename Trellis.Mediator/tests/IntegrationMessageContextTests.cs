@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Mediator.Tests;
 
+using Trellis.Testing;
+
 public sealed class IntegrationMessageContextTests
 {
     [Fact]
@@ -90,7 +92,7 @@ public sealed class IntegrationMessageContextTests
     [Fact]
     public async Task BeginProcessing_DisposedScopeDoesNotLeakToOrphanChildTask()
     {
-        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         Task<(Guid?, string?)> child;
 
         using (IntegrationMessageContext.BeginProcessing(new IntegrationEnvelope(
@@ -101,12 +103,12 @@ public sealed class IntegrationMessageContextTests
         {
             child = Task.Run(async () =>
             {
-                await gate.Task;
+                await gate.WaitUntilReleasedAsync();
                 return (IntegrationMessageContext.CurrentMessageId, IntegrationMessageContext.CorrelationId);
             });
         }
 
-        gate.SetResult();
+        gate.Release();
         var observed = await child;
         observed.Item1.Should().BeNull();
         observed.Item2.Should().BeNull();
@@ -116,8 +118,7 @@ public sealed class IntegrationMessageContextTests
     public async Task BeginCorrelation_ChildScopeDoesNotRetainDisposedProcessingLineage()
     {
         const string traceParent = "00-ec304e482c83425f9792e53730758760-a0d5aaefcdebbf13-01";
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         Task<(Guid? MessageId, string? CorrelationId, string? MessageSource,
             string? TraceParent, string? TraceState)> child;
 
@@ -132,17 +133,16 @@ public sealed class IntegrationMessageContextTests
             {
                 using (IntegrationMessageContext.BeginCorrelation("nested", "child-source"))
                 {
-                    entered.SetResult();
-                    await resume.Task;
+                    await gate.ArriveAsync();
                     return (IntegrationMessageContext.CurrentMessageId,
                         IntegrationMessageContext.CorrelationId, IntegrationMessageContext.MessageSource,
                         IntegrationMessageContext.TraceParent, IntegrationMessageContext.TraceState);
                 }
             });
-            await entered.Task;
+            await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         }
 
-        resume.SetResult();
+        gate.Release();
         var observed = await child;
         observed.MessageId.Should().BeNull();
         observed.CorrelationId.Should().Be("nested");
@@ -154,8 +154,7 @@ public sealed class IntegrationMessageContextTests
     [Fact]
     public async Task BeginCorrelation_OrphanChildNestsFreshScopesWithoutLosingDisposalOrder()
     {
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         var nextMessageId = Guid.CreateVersion7();
         Task child;
 
@@ -169,8 +168,7 @@ public sealed class IntegrationMessageContextTests
             {
                 using (IntegrationMessageContext.BeginCorrelation("orphan"))
                 {
-                    entered.SetResult();
-                    await resume.Task;
+                    await gate.ArriveAsync();
                     IntegrationMessageContext.CurrentMessageId.Should().BeNull();
 
                     using (IntegrationMessageContext.BeginCorrelation("fresh-workflow"))
@@ -193,10 +191,10 @@ public sealed class IntegrationMessageContextTests
 
                 IntegrationMessageContext.CurrentMessageId.Should().BeNull();
             }, TestContext.Current.CancellationToken);
-            await entered.Task;
+            await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         }
 
-        resume.SetResult();
+        gate.Release();
         await child;
     }
 
@@ -206,8 +204,7 @@ public sealed class IntegrationMessageContextTests
     public async Task BeginProcessing_ChildRetainsOwnLineageAfterOuterCorrelationEnds(string? inboundCorrelationId)
     {
         const string traceParent = "00-ec304e482c83425f9792e53730758760-a0d5aaefcdebbf13-01";
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         var childMessageId = Guid.CreateVersion7();
         Task child;
 
@@ -223,8 +220,7 @@ public sealed class IntegrationMessageContextTests
                     TraceState = "vendor=child",
                 }))
                 {
-                    entered.SetResult();
-                    await resume.Task;
+                    await gate.ArriveAsync();
 
                     IntegrationMessageContext.CurrentMessageId.Should().Be(childMessageId);
                     IntegrationMessageContext.CorrelationId.Should().Be(inboundCorrelationId);
@@ -241,10 +237,10 @@ public sealed class IntegrationMessageContextTests
                     }
                 }
             }, TestContext.Current.CancellationToken);
-            await entered.Task;
+            await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         }
 
-        resume.SetResult();
+        gate.Release();
         await child;
     }
 

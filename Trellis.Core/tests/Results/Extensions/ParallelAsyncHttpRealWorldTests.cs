@@ -207,13 +207,13 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
     {
         // Arrange - service fails twice then succeeds
         var attemptCount = 0;
-        var releaseFirstAttempt = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseFirstAttempt = new TestGate();
 
         async Task<Result<PaymentResponse>> ValidatePaymentWithRetries(string paymentId)
         {
             attemptCount++;
             if (attemptCount == 1)
-                await releaseFirstAttempt.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+                await releaseFirstAttempt.WaitUntilReleasedAsync().WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
             if (attemptCount <= 2)
                 return Result.Fail<PaymentResponse>(new Error.Unavailable() { Detail = "Payment service timeout" });
@@ -234,7 +234,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         {
             attemptCount.Should().Be(1);
             resultTask.IsCompleted.Should().BeFalse();
-            releaseFirstAttempt.SetResult();
+            releaseFirstAttempt.Release();
 
             var result = await resultTask.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
@@ -244,7 +244,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         }
         finally
         {
-            releaseFirstAttempt.TrySetResult();
+            releaseFirstAttempt.Release();
             // Drain the released operation even when the test was cancelled.
             _ = await resultTask.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
         }

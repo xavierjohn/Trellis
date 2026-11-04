@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - `TestGate` rendezvous helper in Trellis.Testing
+
+`TestGate` replaces the hand-written `entered` / `release` `TaskCompletionSource` pair used to pause code under
+test: `ArriveAsync` / `Signal` / `WaitUntilReleasedAsync` for the code under test, and bounded
+`WaitForArrivalAsync` / `WaitForArrivalsAsync` plus `Release` for the test. Arrivals are counted and never throw,
+waiting for an arrival requires a timeout and token, and `Dispose` releases the gate so a failed assertion never
+strands a background flow. `Release` is permanent by default; `permanentRelease: false` re-closes the gate.
+`WaitForArrivalsAsync` with `Signal` also makes an N-way barrier.
+
 ### Added - Trellis.Testing helpers for async, events, pages, specifications and actors
 
 `ControlledAsync<T>` gains a single-use mode (`ControlledAsync.SingleUse<T>()`, `ResultReadCount`) that proves a

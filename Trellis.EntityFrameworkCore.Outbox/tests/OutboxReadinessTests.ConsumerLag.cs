@@ -3,6 +3,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Trellis.Testing;
 
 public sealed partial class OutboxReadinessTests
 {
@@ -304,8 +305,7 @@ public sealed partial class OutboxReadinessTests
     public async Task CheckHealthAsync_ConsumerLagProviderTimeout_PreservesFreshQueueEvidence(
         bool honorsCancellation, bool priorEvidence)
     {
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         var read = 0;
         var lag = new StubConsumerLagProvider(async token =>
         {
@@ -313,11 +313,11 @@ public sealed partial class OutboxReadinessTests
             if (priorEvidence && read == 1)
                 return Evidence();
 
-            entered.SetResult();
+            gate.Signal();
             if (honorsCancellation)
                 await Task.Delay(Timeout.InfiniteTimeSpan, token);
             else
-                await release.Task;
+                await gate.WaitUntilReleasedAsync(CancellationToken.None);
             return Evidence();
         });
         await using var fixture = await Fixture.CreateAsync(
@@ -335,7 +335,7 @@ public sealed partial class OutboxReadinessTests
         }
 
         var check = fixture.CheckAsync();
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
+        await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), Cancellation);
 
         fixture.Time.Advance(TimeSpan.FromSeconds(2));
         var result = await check.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
@@ -361,7 +361,7 @@ public sealed partial class OutboxReadinessTests
             blocked.Data["pendingSampledAt"].Should().Be(result.Data["pendingSampledAt"]);
             blocked.Data["parkedSampledAt"].Should().Be(result.Data["parkedSampledAt"]);
             lag.Calls.Should().Be(priorEvidence ? 2 : 1);
-            release.SetResult();
+            gate.Release();
         }
     }
 
@@ -436,26 +436,24 @@ public sealed partial class OutboxReadinessTests
     [Fact]
     public async Task CheckHealthAsync_CancelledLagWaiter_DoesNotCancelSharedProviderProbe()
     {
-        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         var lag = new StubConsumerLagProvider(async token =>
         {
-            entered.SetResult();
-            await release.Task.WaitAsync(token);
+            await gate.ArriveAsync(token);
             return Evidence();
         });
         await using var fixture = await Fixture.CreateAsync(
             LagProfile(), configure: services => services.AddSingleton<IConsumerLagProvider>(lag));
         using var caller = CancellationTokenSource.CreateLinkedTokenSource(Cancellation);
         var cancelled = fixture.CheckAsync(caller.Token);
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Cancellation);
+        await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), Cancellation);
         var survivor = fixture.CheckAsync();
 
         await caller.CancelAsync();
         Func<Task> cancelledAction = () => cancelled;
         await cancelledAction.Should().ThrowAsync<OperationCanceledException>();
         survivor.IsCompleted.Should().BeFalse();
-        release.SetResult();
+        gate.Release();
 
         (await survivor).Status.Should().Be(HealthStatus.Healthy);
         lag.Calls.Should().Be(1);

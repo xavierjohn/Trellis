@@ -1,7 +1,7 @@
 ﻿---
 package: Trellis.Testing
 namespaces: [Trellis.Testing]
-types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", FakeUnitOfWork, TestActorProvider, TestActorScope, ActorIdentityAssertionsExtensions, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator, CallbackRecorder, "CallbackRecorder<TArgument>", "ControlledAsync<T>", ControlledAsync, CanceledToken, PendingOperationAssertionsExtensions, PropagationAssertionsExtensions, ArgumentNullAssertionsExtensions, DomainEventAssertionsExtensions, PageAssertionsExtensions, "PageAssertions<T>", SpecificationAssertionsExtensions, "SpecificationAssertions<T>", ActorAssertionsExtensions, ActorAssertions, AuthorizeMessageAssertionsExtensions]
+types: ["FakeRepository<TAggregate, TId>", "FakeSharedResourceLoader<TResource, TId>", FakeUnitOfWork, TestActorProvider, TestActorScope, ActorIdentityAssertionsExtensions, "ResultAssertions<TValue>", ResultAssertionsExtensions, ResultAssertionsAsyncExtensions, IResultAssertions, IResultAssertionsExtensions, "MaybeAssertions<T>", MaybeAssertionsExtensions, ErrorAssertions, ErrorAssertionsExtensions, ValidationErrorAssertions, ValidationErrorAssertionsExtensions, UnwrapExtensions, UnwrapFailedException, AggregateTestMutator, CallbackRecorder, "CallbackRecorder<TArgument>", "ControlledAsync<T>", ControlledAsync, CanceledToken, TestGate, PendingOperationAssertionsExtensions, PropagationAssertionsExtensions, ArgumentNullAssertionsExtensions, DomainEventAssertionsExtensions, PageAssertionsExtensions, "PageAssertions<T>", SpecificationAssertionsExtensions, "SpecificationAssertions<T>", ActorAssertionsExtensions, ActorAssertions, AuthorizeMessageAssertionsExtensions]
 version: v3
 last_verified: 2026-11-03
 audience: [llm]
@@ -39,6 +39,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-hand
 | Prove a ValueTask consumer reads its result exactly once | `ControlledAsync.SingleUse<T>()`, then `ResultReadCount` | [`ControlledAsync<T>`](#controlledasynct) |
 | Assert an operation is still pending, then release it and await with a bound | `operation.ShouldBePendingThenReleaseAsync(release, timeout, token, whilePending)` | [Pending-operation assertions](#pending-operation-assertions) |
 | Assert the original exception or cancellation token propagates unchanged | `operation.ShouldPropagateExceptionAsync(exception)` / `.ShouldPropagateCancellationAsync(token)` | [Propagation assertions](#propagation-assertions) |
+| Pause code under test at a point, assert about the paused state, then release it (rendezvous or barrier) | `using var gate = new TestGate();` with `gate.ArriveAsync()` in the code under test, then `await gate.WaitForArrivalAsync(timeout, token)` and `gate.Release()` | [`TestGate`](#testgate) |
 | Create an already-canceled token with its own identity | `CanceledToken.Create()` with `Token`, `ToTask`, `ToValueTask` | [`CanceledToken`](#canceledtoken) |
 | Assert a null guard names the right parameter, or fires before awaiting a pending source | `act.ShouldRejectNull(paramName)`, `.ShouldRejectNullAsync(...)`, `.ShouldRejectNullBeforeAwaitAsync(...)` | [Argument-null assertions](#argument-null-assertions) |
 | Assert which domain events an aggregate or `FakeRepository` raised | `aggregate.UncommittedEvents().Should().HaveRaised<TEvent>()` and siblings | [Domain-event assertions](#domain-event-assertions) |
@@ -641,6 +642,45 @@ public sealed class CanceledToken : IDisposable
 Each `Create()` owns a distinct `CancellationTokenSource`, so a test can prove an operation preserved *this*
 token rather than substituting another canceled one (all `new CancellationToken(true)` values are equal). The
 `ToTask`/`ToValueTask` methods return canceled awaitables carrying `Token`. Dispose it with `using`.
+
+#### `TestGate`
+
+```csharp
+public sealed class TestGate : IDisposable
+{
+    public TestGate(bool permanentRelease = true);
+    public bool ReleaseIsPermanent { get; }
+    public int ArrivalCount { get; }
+
+    // Called by the code under test
+    public void Signal();
+    public Task WaitUntilReleasedAsync(CancellationToken cancellationToken = default);
+    public Task ArriveAsync(CancellationToken cancellationToken = default);   // Signal + WaitUntilReleased
+
+    // Called by the test
+    public Task WaitForArrivalAsync(TimeSpan timeout, CancellationToken cancellationToken);
+    public Task WaitForArrivalsAsync(int count, TimeSpan timeout, CancellationToken cancellationToken);
+    public void Release();
+    public void Dispose();
+}
+```
+
+A rendezvous between code under test and the test: the code under test reaches a point and waits there
+(`ArriveAsync`), the test waits for the arrival, asserts about the paused state, then calls `Release()`. It
+replaces the hand-written `entered` / `release` `TaskCompletionSource` pair, and fixes that pair's recurring
+defects: waiting for an arrival **requires a timeout and token**, so a missed arrival fails with a
+`TimeoutException` naming how many arrivals were seen instead of hanging; arrivals are **counted and never
+throw** when repeated; and `Dispose()` releases the gate, so `using var gate = new TestGate();` cannot strand a
+background flow when an assertion fails. Declare the gate after any fixture it blocks so it is disposed first.
+
+`Release()` is **permanent by default** (`ReleaseIsPermanent` is true): later arrivals pass straight through, so
+a flow that re-enters after release cannot hang. Construct with `permanentRelease: false` for a gate that frees
+only the callers currently waiting and closes again for later arrivals. `Dispose()` always opens the gate
+permanently. `Signal()` records an arrival without waiting, and `WaitUntilReleasedAsync` waits without
+recording one. Together with `WaitForArrivalsAsync(count, ...)` they also express a barrier: each of N
+concurrent flows calls `Signal()` and then `WaitForArrivalsAsync(N, ...)`, replacing a counter plus a
+`TaskCompletionSource`. A canceled token cancels only that wait, and a canceled `ArriveAsync` still counts as an
+arrival. `WaitForArrivalsAsync` rejects a `count` below one. All members are thread-safe.
 
 #### Argument-null assertions
 

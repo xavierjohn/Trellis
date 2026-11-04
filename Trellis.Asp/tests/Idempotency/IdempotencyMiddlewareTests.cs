@@ -19,6 +19,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Trellis.Asp.Idempotency;
+using Trellis.Testing;
 
 /// <summary>
 /// Integration tests for the full <see cref="IdempotencyMiddleware"/> pipeline driven through
@@ -905,16 +906,14 @@ public sealed class IdempotencyMiddlewareTests
     [Fact]
     public async Task Concurrent_same_key_in_flight_returns_409_with_Retry_After()
     {
-        var handlerEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         using var host = await BuildHost(configureEndpoints: endpoints =>
             endpoints.MapPost("/slow", async ctx =>
             {
                 // Signal AFTER reservation succeeds (handler only runs when TryReserveAsync
                 // returned Reserved) so the second request below can race the first
                 // deterministically rather than via Task.Delay.
-                handlerEntered.TrySetResult();
-                await gate.Task.WaitAsync(ctx.RequestAborted);
+                await gate.ArriveAsync(ctx.RequestAborted);
                 ctx.Response.StatusCode = 201;
                 ctx.Response.ContentType = "application/json";
                 await ctx.Response.WriteAsync("{\"created\":true}", ctx.RequestAborted);
@@ -931,7 +930,7 @@ public sealed class IdempotencyMiddlewareTests
 
             // Wait until the first handler is in the gate; this proves TryReserveAsync
             // returned Reserved before the second request fires.
-            await handlerEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
+            await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
             var second = JsonBody("{}");
             second.Headers.Add(KeyHeader, QuoteKey(key));
@@ -957,15 +956,16 @@ public sealed class IdempotencyMiddlewareTests
                 ProblemEnvelope.ProblemTypeForStatus(409),
                 "the in-flight document resolves type from the same helper as every other emitter");
 
-            gate.SetResult();
+            gate.Release();
             var firstResp = await firstTask;
             firstResp.StatusCode.Should().Be(HttpStatusCode.Created);
         }
         finally
         {
-            // Unblock the slow handler so the host can shut down cleanly even when an
-            // assertion above fails before the explicit SetResult.
-            gate.TrySetResult();
+            // Unblock the slow handler so the host can shut down cleanly even when an assertion
+            // above fails before the explicit Release. The gate is disposed after the host, so it
+            // must be released here first.
+            gate.Release();
             if (firstTask is not null)
             {
                 try
@@ -1201,14 +1201,12 @@ public sealed class IdempotencyMiddlewareTests
     [Fact]
     public async Task In_flight_problem_detail_uses_configured_HeaderName()
     {
-        var handlerEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var gate = new TestGate();
         using var host = await BuildHost(
             configureEndpoints: endpoints =>
                 endpoints.MapPost("/slow-custom", async ctx =>
                 {
-                    handlerEntered.TrySetResult();
-                    await gate.Task.WaitAsync(ctx.RequestAborted);
+                    await gate.ArriveAsync(ctx.RequestAborted);
                     ctx.Response.StatusCode = 201;
                     ctx.Response.ContentType = "application/json";
                     await ctx.Response.WriteAsync("{\"created\":true}", ctx.RequestAborted);
@@ -1224,7 +1222,7 @@ public sealed class IdempotencyMiddlewareTests
             first.Headers.Add(CustomKeyHeader, QuoteKey(key));
             firstTask = client.PostAsync("/slow-custom", first, TestContext.Current.CancellationToken);
 
-            await handlerEntered.Task.WaitAsync(TestContext.Current.CancellationToken);
+            await gate.WaitForArrivalAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
             var second = JsonBody("{}");
             second.Headers.Add(CustomKeyHeader, QuoteKey(key));
@@ -1235,12 +1233,12 @@ public sealed class IdempotencyMiddlewareTests
             body.Should().Contain("idempotency.in_flight");
             AssertProblemReferencesConfiguredHeader(body);
 
-            gate.SetResult();
+            gate.Release();
             await firstTask;
         }
         finally
         {
-            gate.TrySetResult();
+            gate.Release();
             if (firstTask is not null)
             {
                 try { (await firstTask).Dispose(); }
