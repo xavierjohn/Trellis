@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Trellis;
+using Trellis.Testing;
 
 /// <summary>
 /// Pins the two-hop carrier that lets a parse failure satisfy two contracts at once.
@@ -25,8 +26,8 @@ public sealed class ParsableJsonConverterCarrierTests
 
         ex.Should().BeAssignableTo<FormatException>();
         ex.Message.Should().Be("Value must not be 'bad'.", "the flattened message is unchanged");
-        ex.InvalidInput!.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/carrier");
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
+        ex.InvalidInput!.Fields[0].Field.Path.Should().Be("/carrier");
     }
 
     [Fact]
@@ -35,9 +36,9 @@ public sealed class ParsableJsonConverterCarrierTests
         var ex = Assert.Throws<TrellisJsonValidationException>(
             () => JsonSerializer.Deserialize<CarrierValue>("\"bad\""));
 
-        ex.InvalidInput.Should().NotBeNull("dropping it here is what left a per-field failure rendering as an untyped problem");
-        ex.InvalidInput!.Fields.Items.Should().ContainSingle()
-            .Which.Field.Path.Should().Be("/carrier");
+        ex.InvalidInput!.Should().NotBeNull("dropping it here is what left a per-field failure rendering as an untyped problem");
+        ex.InvalidInput!.Should().HaveFieldViolationCount(1);
+        ex.InvalidInput!.Fields[0].Field.Path.Should().Be("/carrier");
         ex.InnerException.Should().BeOfType<TrellisValidationFormatException>();
     }
 
