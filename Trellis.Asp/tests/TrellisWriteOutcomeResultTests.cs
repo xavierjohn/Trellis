@@ -149,17 +149,14 @@ public sealed class TrellisWriteOutcomeResultTests
     public async Task Created_UnresolvedBuilderLocation_ReturnsCodedFailureWithoutSuccessHeaders(string? location)
     {
         var ctx = NewContext();
-        var successSelectorRan = false;
+        var successSelectorCalls = new Trellis.Testing.CallbackRecorder<Item>();
         var outcome = WriteOutcome.Created(new Item(7, "n", "v", default), string.Empty);
 
         await Result.Ok(outcome).ToHttpResponse((HttpResponseOptionsBuilder<Item> options) => options
             .Created(_ => location!)
             .WithCacheControl(CacheControl.NoStore())
-            .WithCacheControl(_ =>
-            {
-                successSelectorRan = true;
-                return CacheControl.Public(TimeSpan.FromMinutes(1));
-            })
+            .WithCacheControl(successSelectorCalls
+                .Wrap<System.Net.Http.Headers.CacheControlHeaderValue?>(_ => CacheControl.Public(TimeSpan.FromMinutes(1))))
             .WithLink("describedby", "/items/schema"))
             .ExecuteAsync(ctx);
 
@@ -167,7 +164,7 @@ public sealed class TrellisWriteOutcomeResultTests
         ctx.Response.Headers.ContainsKey("Location").Should().BeFalse();
         ctx.Response.Headers.ContainsKey("Link").Should().BeFalse();
         ctx.Response.Headers.CacheControl.ToString().Should().Be("no-store");
-        successSelectorRan.Should().BeFalse();
+        successSelectorCalls.CallCount.Should().Be(0);
         ctx.Response.Body.Position = 0;
         using var body = await JsonDocument.ParseAsync(
             ctx.Response.Body, cancellationToken: TestContext.Current.CancellationToken);

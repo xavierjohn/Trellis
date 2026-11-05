@@ -433,16 +433,14 @@ public sealed class WithCacheControlTests
         var ctx = NewContext();
         var outcome = new WriteOutcome<StructTodo>.UpdatedNoContent();
         var r = Result.Ok<WriteOutcome<StructTodo>>(outcome);
-        var selectorCalled = false;
+        var selectorCalls = new Trellis.Testing.CallbackRecorder<StructTodo>();
 
-        await r.ToHttpResponse<StructTodo>(o => o.WithCacheControl(_ =>
-        {
-            selectorCalled = true;
-            return new CacheControlHeaderValue { Private = true, MaxAge = TimeSpan.FromMinutes(5) };
-        })).ExecuteAsync(ctx);
+        await r.ToHttpResponse<StructTodo>(o => o.WithCacheControl(selectorCalls
+            .Wrap<CacheControlHeaderValue?>(_ =>
+                new CacheControlHeaderValue { Private = true, MaxAge = TimeSpan.FromMinutes(5) }))).ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(204);
-        selectorCalled.Should().BeFalse(
+        selectorCalls.CallCount.Should().Be(0,
             "no-payload write outcomes (UpdatedNoContent / AcceptedNoContent) carry no TDomain — " +
             "a domain-dependent selector must never run against default(TDomain)");
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty(
@@ -455,16 +453,14 @@ public sealed class WithCacheControlTests
         var ctx = NewContext();
         var outcome = new WriteOutcome<StructTodo>.AcceptedNoContent();
         var r = Result.Ok<WriteOutcome<StructTodo>>(outcome);
-        var selectorCalled = false;
+        var selectorCalls = new Trellis.Testing.CallbackRecorder<StructTodo>();
 
-        await r.ToHttpResponse<StructTodo>(o => o.WithCacheControl(_ =>
-        {
-            selectorCalled = true;
-            return new CacheControlHeaderValue { Private = true, MaxAge = TimeSpan.FromMinutes(5) };
-        })).ExecuteAsync(ctx);
+        await r.ToHttpResponse<StructTodo>(o => o.WithCacheControl(selectorCalls
+            .Wrap<CacheControlHeaderValue?>(_ =>
+                new CacheControlHeaderValue { Private = true, MaxAge = TimeSpan.FromMinutes(5) }))).ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(202);
-        selectorCalled.Should().BeFalse();
+        selectorCalls.CallCount.Should().Be(0);
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
     }
 
@@ -497,15 +493,12 @@ public sealed class WithCacheControlTests
         var ctx = NewContext();
         var outcome = new WriteOutcome<Todo>.Created(null!, "/todos/orphan");
         var r = Result.Ok<WriteOutcome<Todo>>(outcome);
-        var selectorCalled = false;
+        var selectorCalls = new Trellis.Testing.CallbackRecorder<Todo>();
 
-        await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(_ =>
-        {
-            selectorCalled = true;
-            return CacheControl.Public(TimeSpan.FromMinutes(5));
-        })).ExecuteAsync(ctx);
+        await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(selectorCalls
+            .Wrap<CacheControlHeaderValue?>(_ => CacheControl.Public(TimeSpan.FromMinutes(5))))).ExecuteAsync(ctx);
 
-        selectorCalled.Should().BeFalse(
+        selectorCalls.CallCount.Should().Be(0,
             "a null Value on WriteOutcome.Created carries no usable domain; domain-dependent " +
             "selectors must not run against null");
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
@@ -518,15 +511,12 @@ public sealed class WithCacheControlTests
         var ctx = NewContext();
         var outcome = new WriteOutcome<Todo>.Updated(null!);
         var r = Result.Ok<WriteOutcome<Todo>>(outcome);
-        var selectorCalled = false;
+        var selectorCalls = new Trellis.Testing.CallbackRecorder<Todo>();
 
-        await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(_ =>
-        {
-            selectorCalled = true;
-            return CacheControl.Public(TimeSpan.FromMinutes(5));
-        })).ExecuteAsync(ctx);
+        await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(selectorCalls
+            .Wrap<CacheControlHeaderValue?>(_ => CacheControl.Public(TimeSpan.FromMinutes(5))))).ExecuteAsync(ctx);
 
-        selectorCalled.Should().BeFalse();
+        selectorCalls.CallCount.Should().Be(0);
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
         ctx.Response.Headers.ContentLanguage.ToString().Should().Be("en");
     }
@@ -537,15 +527,12 @@ public sealed class WithCacheControlTests
         var ctx = NewContext();
         var outcome = new WriteOutcome<Todo>.Accepted(null!);
         var r = Result.Ok<WriteOutcome<Todo>>(outcome);
-        var selectorCalled = false;
+        var selectorCalls = new Trellis.Testing.CallbackRecorder<Todo>();
 
-        await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(_ =>
-        {
-            selectorCalled = true;
-            return CacheControl.Public(TimeSpan.FromMinutes(5));
-        })).ExecuteAsync(ctx);
+        await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(selectorCalls
+            .Wrap<CacheControlHeaderValue?>(_ => CacheControl.Public(TimeSpan.FromMinutes(5))))).ExecuteAsync(ctx);
 
-        selectorCalled.Should().BeFalse();
+        selectorCalls.CallCount.Should().Be(0);
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
         ctx.Response.Headers.ContentLanguage.ToString().Should().Be("en");
     }
@@ -574,15 +561,12 @@ public sealed class WithCacheControlTests
     {
         var ctx = NewContext();
         var r = Result.Ok<Todo>(null!);
-        var selectorCalled = false;
+        var selectorCalls = new Trellis.Testing.CallbackRecorder<Todo>();
 
-        await r.ToHttpResponse(t => t, o => o.WithCacheControl(_ =>
-        {
-            selectorCalled = true;
-            return CacheControl.Public(TimeSpan.FromMinutes(5));
-        })).ExecuteAsync(ctx);
+        await r.ToHttpResponse(t => t, o => o.WithCacheControl(selectorCalls
+            .Wrap<CacheControlHeaderValue?>(_ => CacheControl.Public(TimeSpan.FromMinutes(5))))).ExecuteAsync(ctx);
 
-        selectorCalled.Should().BeFalse(
+        selectorCalls.CallCount.Should().Be(0,
             "Result.Ok<T>(null!) is legal — domain-dependent selectors must not run against null");
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
     }
@@ -652,23 +636,19 @@ public sealed class WithCacheControlTests
             Items: [new Todo(1, "a", "e1")],
             Next: null, Previous: null, RequestedLimit: 50, AppliedLimit: 50);
         var r = Result.Ok(page);
-        var selectorCalled = false;
+        var selectorCalls = new Trellis.Testing.CallbackRecorder<Page<Todo>>();
 
         var http = r.ToHttpResponse(
             (_, _) => "/next",
             t => t,
-            o => o.WithCacheControl(_ =>
-            {
-                selectorCalled = true;
-                return CacheControl.NoStore();
-            }));
+            o => o.WithCacheControl(selectorCalls.Wrap<CacheControlHeaderValue?>(_ => CacheControl.NoStore())));
 
-        selectorCalled.Should().BeFalse(
+        selectorCalls.CallCount.Should().Be(0,
             "selector must defer to IResult.ExecuteAsync, not run during ToHttpResponse(...)");
 
         await http.ExecuteAsync(ctx);
 
-        selectorCalled.Should().BeTrue();
+        selectorCalls.CallCount.Should().BeGreaterThan(0);
         ctx.Response.Headers.CacheControl.ToString().Should().Be("no-store");
     }
 

@@ -40,14 +40,12 @@ public class GptReviewRegressionTests
     [Fact]
     public async Task ResourceAuthorization_NoActor_DoesNotInvokeLoaderDIFactory()
     {
-        var factoryInvocations = 0;
+        var factoryInvocations = new CallbackRecorder<IServiceProvider>();
 
         var services = new ServiceCollection();
-        services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ =>
-        {
-            factoryInvocations++;
-            return new FakeResourceLoader<ResourceOwnerCommand>(new TestResource("res-1", "owner-1"));
-        });
+        services.AddScoped<IResourceLoader<ResourceOwnerCommand, TestResource>>(factoryInvocations
+            .Wrap<IResourceLoader<ResourceOwnerCommand, TestResource>>(_ =>
+                new FakeResourceLoader<ResourceOwnerCommand>(new TestResource("res-1", "owner-1"))));
 
         var behavior = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
             actorProvider: new NoActorProvider(),
@@ -60,7 +58,7 @@ public class GptReviewRegressionTests
 
         result.Should().BeFailureOfType<Error.AuthenticationRequired>();
 
-        factoryInvocations.Should().Be(0,
+        factoryInvocations.CallCount.Should().Be(0,
             "ga-11 requires that no I/O — including DI factory invocations — runs when the caller is unauthenticated. "
             + "Loader factories are arbitrary user code (a custom factory could open a DbContext, query a cache, etc.).");
     }

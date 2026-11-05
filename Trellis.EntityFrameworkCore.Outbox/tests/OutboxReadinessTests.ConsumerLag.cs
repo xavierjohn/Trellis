@@ -65,21 +65,18 @@ public sealed partial class OutboxReadinessTests
     [Fact]
     public async Task StartAsync_EnabledConsumerLag_DoesNotConstructProvider()
     {
-        var constructed = false;
+        var factoryCalls = new CallbackRecorder<IServiceProvider>();
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddScoped<OutboxTestDbContext>(
             _ => throw new InvalidOperationException("The context must not be constructed."));
-        builder.Services.AddScoped<IConsumerLagProvider>(_ =>
-        {
-            constructed = true;
-            throw new InvalidOperationException("The provider must not be constructed.");
-        });
+        builder.Services.AddScoped<IConsumerLagProvider>(factoryCalls
+            .Wrap<IConsumerLagProvider>(_ => throw new InvalidOperationException("The provider must not be constructed.")));
         builder.Services.AddTrellisOutboxReadiness<OutboxTestDbContext>(LagProfile());
         using var host = builder.Build();
 
         await host.StartAsync(Cancellation);
 
-        constructed.Should().BeFalse();
+        factoryCalls.CallCount.Should().Be(0);
         await host.StopAsync(Cancellation);
     }
 

@@ -228,12 +228,8 @@ public class WorkerActorTests
         // construct the HTTP-side provider (which may touch HttpContext in its ctor, or have
         // dependencies that are unavailable outside a request).
         var services = new ServiceCollection();
-        var innerConstructions = 0;
-        services.AddScoped<IActorProvider>(_ =>
-        {
-            innerConstructions++;
-            return new FakeInnerProvider();
-        });
+        var innerConstructions = new CallbackRecorder<IServiceProvider>();
+        services.AddScoped<IActorProvider>(innerConstructions.Wrap<IActorProvider>(_ => new FakeInnerProvider()));
         services.AddTrellisWorkerActor(SystemActor);
 
         using var sp = services.BuildServiceProvider();
@@ -243,19 +239,15 @@ public class WorkerActorTests
         var provider = scope.ServiceProvider.GetRequiredService<IActorProvider>();
         _ = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        innerConstructions.Should().Be(0, "worker tick must not construct the inner HTTP-side provider");
+        innerConstructions.CallCount.Should().Be(0, "worker tick must not construct the inner HTTP-side provider");
     }
 
     [Fact]
     public async Task HTTP_scope_materializes_inner_provider_exactly_once_per_wrapper_scope()
     {
         var services = new ServiceCollection();
-        var innerConstructions = 0;
-        services.AddScoped<IActorProvider>(_ =>
-        {
-            innerConstructions++;
-            return new FakeInnerProvider();
-        });
+        var innerConstructions = new CallbackRecorder<IServiceProvider>();
+        services.AddScoped<IActorProvider>(innerConstructions.Wrap<IActorProvider>(_ => new FakeInnerProvider()));
         services.AddTrellisWorkerActor(SystemActor);
 
         using var sp = services.BuildServiceProvider();
@@ -267,7 +259,7 @@ public class WorkerActorTests
         _ = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
         _ = ((IProvideActorVaryHeaders)provider).VaryByHeaders;
 
-        innerConstructions.Should().Be(1, "lazy inner must be materialized exactly once per wrapper scope");
+        innerConstructions.CallCount.Should().Be(1, "lazy inner must be materialized exactly once per wrapper scope");
     }
 
     [Fact]
