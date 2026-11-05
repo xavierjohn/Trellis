@@ -35,8 +35,7 @@ public class MapOnFailureTests : TestBase
 
         var mapped = original.MapOnFailure(e => new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" });
 
-        mapped.Should().BeFailure();
-        mapped.Error!.Should().Be(new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {Error1.Detail}" });
+        mapped.Should().BeFailure().Which.Should().Be(new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {Error1.Detail}" });
     }
 
     [Fact]

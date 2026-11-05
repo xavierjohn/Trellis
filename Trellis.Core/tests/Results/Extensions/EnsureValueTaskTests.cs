@@ -36,8 +36,7 @@ public class EnsureValueTaskTests
         success.Should().Be(source);
 
         var failure = await source.EnsureAsync(() => new ValueTask<bool>(false), error);
-        failure.IsFailure.Should().BeTrue();
-        failure.Error!.Should().Be(error);
+        failure.Should().BeFailure().Which.Should().Be(error);
     }
 
     [Fact]
@@ -95,8 +94,7 @@ public class EnsureValueTaskTests
             x => x.Length > 10,
             x => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"length {x.Length} is too short" });
 
-        actual.IsFailure.Should().BeTrue();
-        actual.Error!.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "length 4 is too short" });
+        actual.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "length 4 is too short" });
     }
 
     [Fact]
@@ -153,8 +151,7 @@ public class EnsureValueTaskTests
                 return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"length {x.Length} is too short" };
             });
 
-        actual.IsFailure.Should().BeTrue();
-        actual.Error!.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "length 4 is too short" });
+        actual.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "length 4 is too short" });
     }
 
     #endregion
@@ -168,8 +165,7 @@ public class EnsureValueTaskTests
 
         var actual = await source.EnsureAsync(x => Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"{x} is invalid" }));
 
-        actual.IsFailure.Should().BeTrue();
-        actual.Error!.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "test is invalid" });
+        actual.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "test is invalid" });
     }
 
     #endregion

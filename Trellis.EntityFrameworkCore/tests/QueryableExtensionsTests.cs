@@ -267,8 +267,7 @@ public class QueryableExtensionsTests : IDisposable
                 ct);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().Be(notFoundError);
+        result.Should().BeFailure().Which.Should().Be(notFoundError);
     }
 
     #endregion

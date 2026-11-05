@@ -132,8 +132,7 @@ public class TapOnFailureTupleTests : TestBase
         var actual = result.TapOnFailure(error => _actionExecuted = true);
 
         // Assert
-        actual.Should().BeFailure();
-        actual.Error!.Should().BeSameAs(originalError);
+        actual.Should().BeFailure().Which.Should().BeSameAs(originalError);
     }
 
     #endregion

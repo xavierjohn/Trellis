@@ -122,8 +122,7 @@ public class AddRelatedResourceAuthorizationTests
 
         var result = await behavior.HandleWithContext(new ExplicitCommand("l-1"), next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        var error = result.UnwrapError();
+        var error = result.Should().BeFailure().Which;
         error.Should().BeOfType<Error.Forbidden>();
         // The via behavior masks the hop's inner sentinel ("null-payload") with the generic
         // "load-failed" code so the response does not leak which hop failed; what matters

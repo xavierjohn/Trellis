@@ -34,8 +34,7 @@ public class TraverseAllTests : TestBase
         var result = items.TraverseAll(x =>
             x == 2 ? Result.Fail<int>(Error1) : Result.Ok(x));
 
-        result.Should().BeFailure();
-        result.Error.Should().NotBeOfType<Error.Aggregate>();
+        result.Should().BeFailure().Which.Should().NotBeOfType<Error.Aggregate>();
         result.Error.Should().BeSameAs(Error1);
     }
 
@@ -147,8 +146,7 @@ public class TraverseAllTests : TestBase
         var result = await items.TraverseAllAsync(x =>
             Task.FromResult(x == 2 ? Result.Fail<int>(Error1) : Result.Ok(x)));
 
-        result.Should().BeFailure();
-        result.Error.Should().NotBeOfType<Error.Aggregate>();
+        result.Should().BeFailure().Which.Should().NotBeOfType<Error.Aggregate>();
         result.Error.Should().BeSameAs(Error1);
     }
 
@@ -411,8 +409,7 @@ public class TraverseAllTests : TestBase
             (int x, CancellationToken _) => (x == 2 ? Result.Fail(Error1) : Result.Ok()).AsTask(),
             TestContext.Current.CancellationToken);
 
-        result.Should().BeFailure();
-        result.Error.Should().BeSameAs(Error1);
+        result.Should().BeFailure().Which.Should().BeSameAs(Error1);
     }
 
     [Fact]

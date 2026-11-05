@@ -57,8 +57,7 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Detail.Should().Be("Insufficient permissions.");
+        result.Should().BeFailure().Which.Detail.Should().Be("Insufficient permissions.");
         result.UnwrapError().Detail.Should().NotContain("Orders.Write");
         tracker.WasInvoked.Should().BeFalse();
     }

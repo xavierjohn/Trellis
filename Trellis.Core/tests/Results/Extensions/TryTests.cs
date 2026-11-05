@@ -63,8 +63,7 @@ public class TryTests
     {
         var r = Result.Try<int>(() => throw new Exception("HideMe"), ex => Error.InvalidInput.ForRule(code: "bad.request", detail: "Mapped"));
 
-        r.IsFailure.Should().BeTrue();
-        r.Error!.Should().Be(Error.InvalidInput.ForRule(code: "bad.request", detail: "Mapped"));
+        r.Should().BeFailure().Which.Should().Be(Error.InvalidInput.ForRule(code: "bad.request", detail: "Mapped"));
     }
 
     [Fact]

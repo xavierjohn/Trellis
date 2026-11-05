@@ -120,8 +120,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Detail.Should().Contain("Cannot modify another user's resource");
+        result.Should().BeFailure().Which.Detail.Should().Contain("Cannot modify another user's resource");
         tracker.WasInvoked.Should().BeFalse();
     }
 
@@ -140,8 +139,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Detail.Should().Contain("Order 'xyz' was not found.");
+        result.Should().BeFailure().Which.Detail.Should().Contain("Order 'xyz' was not found.");
     }
 
     #endregion
@@ -500,8 +498,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        var error = result.UnwrapError();
+        var error = result.Should().BeFailure().Which;
         error.Should().BeOfType<Error.Forbidden>();
         error.Code.Should().Be("resource.authorization.null-payload");
         tracker.WasInvoked.Should().BeFalse();

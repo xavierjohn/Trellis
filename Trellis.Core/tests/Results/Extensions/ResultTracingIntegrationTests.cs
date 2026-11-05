@@ -133,8 +133,7 @@ public class ResultTracingIntegrationTests
             .Bind(x => Result.Ok(x + 10));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Kind.Should().Be("unexpected");
+        result.Should().BeFailure().Which.Kind.Should().Be("unexpected");
 
         // Ensure should succeed
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Ok);
@@ -345,8 +344,7 @@ public class ResultTracingIntegrationTests
             .Tap(x => Console.WriteLine($"After: {x}")); // Error track (short-circuited)
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Kind.Should().Be("invalid-input");
+        result.Should().BeFailure().Which.Kind.Should().Be("invalid-input");
 
         // Get all activities by name
         var activities = activityTest.CapturedActivities;
@@ -492,8 +490,7 @@ public class ResultTracingIntegrationTests
             .Tap(x => Console.WriteLine($"Value: {x}"));                // Still on error track
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Kind.Should().Be("unexpected");
+        result.Should().BeFailure().Which.Kind.Should().Be("unexpected");
         result.Error!.Detail.Should().Be("Recovery failed");
 
         // Verify transition and failed recovery
