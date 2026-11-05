@@ -23,13 +23,13 @@ public class ArgumentValidationTests
     [Fact]
     public void AuthorizationBehavior_NullActorProvider_Throws() =>
         NullGuard.ShouldRejectNull(
-            () => _ = new AuthorizationBehavior<AdminCommand, Result<string>>(actorProvider: null!),
+            () => new AuthorizationBehavior<AdminCommand, Result<string>>(actorProvider: null!),
             "actorProvider");
 
     [Fact]
     public void ResourceAuthorizationBehavior_NullActorProvider_Throws() =>
         NullGuard.ShouldRejectNull(
-            () => _ = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            () => new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
                 actorProvider: null!,
                 serviceProvider: new ServiceCollection().BuildServiceProvider()),
             "actorProvider");
@@ -37,7 +37,7 @@ public class ArgumentValidationTests
     [Fact]
     public void ResourceAuthorizationBehavior_NullServiceProvider_Throws() =>
         NullGuard.ShouldRejectNull(
-            () => _ = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            () => new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
                 actorProvider: FakeActorProvider.NoPermissions(),
                 serviceProvider: null!),
             "serviceProvider");
@@ -45,28 +45,28 @@ public class ArgumentValidationTests
     [Fact]
     public void ValidationBehavior_NullValidators_Throws() =>
         NullGuard.ShouldRejectNull(
-            () => _ = new ValidationBehavior<TestCommand, Result<string>>(validators: null!),
+            () => new ValidationBehavior<TestCommand, Result<string>>(validators: null!),
             "validators");
 
     [Fact]
     public void LoggingBehavior_NullLogger_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new LoggingBehavior<TestCommand, Result<string>>(logger: null!), "logger");
+        NullGuard.ShouldRejectNull(() => new LoggingBehavior<TestCommand, Result<string>>(logger: null!), "logger");
 
     [Fact]
     public void ExceptionBehavior_NullLogger_Throws() =>
         NullGuard.ShouldRejectNull(
-            () => _ = new ExceptionBehavior<TestCommand, Result<string>>(logger: null!),
+            () => new ExceptionBehavior<TestCommand, Result<string>>(logger: null!),
             "logger");
 
     [Fact]
     public void DomainEventDispatchBehavior_NullPublisher_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
+        NullGuard.ShouldRejectNull(() => new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
             publisher: null!,
             logger: NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance), "publisher");
 
     [Fact]
     public void DomainEventDispatchBehavior_NullLogger_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
+        NullGuard.ShouldRejectNull(() => new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
             publisher: new InertPublisher(),
             logger: null!), "logger");
 
@@ -81,13 +81,13 @@ public class ArgumentValidationTests
     /// </summary>
     [Fact]
     public void MediatorDomainEventPublisher_NullServiceProvider_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new MediatorDomainEventPublisher(
+        NullGuard.ShouldRejectNull(() => new MediatorDomainEventPublisher(
             serviceProvider: null!,
             logger: NullLogger<MediatorDomainEventPublisher>.Instance), "serviceProvider");
 
     [Fact]
     public void MediatorDomainEventPublisher_NullLogger_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new MediatorDomainEventPublisher(
+        NullGuard.ShouldRejectNull(() => new MediatorDomainEventPublisher(
             serviceProvider: new ServiceCollection().BuildServiceProvider(),
             logger: null!), "logger");
 
@@ -122,7 +122,7 @@ public class ArgumentValidationTests
 
     [Fact]
     public void AddResourceLoaders_NullAssembly_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new ServiceCollection()
+        NullGuard.ShouldRejectNull(() => new ServiceCollection()
             .AddResourceLoaders(assembly: null!), "assembly");
 
     [Fact]

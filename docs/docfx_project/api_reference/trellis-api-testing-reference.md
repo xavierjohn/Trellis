@@ -690,14 +690,18 @@ arrival. `WaitForArrivalsAsync` rejects a `count` below one. All members are thr
 public static class ArgumentNullAssertionsExtensions
 {
     public static void ShouldRejectNull(this Action act, string paramName);
+    public static void ShouldRejectNull<T>(this Func<T> act, string paramName);
     public static Task ShouldRejectNullAsync(this Func<Task> act, string paramName);
     public static Task ShouldRejectNullBeforeAwaitAsync(this Func<Task> start, string paramName);
     public static Task ShouldRejectNullBeforeAwaitAsync(this Task operation, string paramName);
 }
 ```
 
-All three require `ArgumentNullException` whose `ParamName` is exactly `paramName`, so a guard cannot pass
-for the wrong parameter. `ShouldRejectNullAsync` accepts a synchronous throw or a faulted task.
+Every form requires `ArgumentNullException` whose `ParamName` is exactly `paramName`, so a guard cannot pass
+for the wrong parameter. The `Func<T>` overload of `ShouldRejectNull` takes a value-returning call
+(`() => new Actor(...)`, a property getter, or any expression that is not a statement) and discards the result, so
+the lambda needs no `_ =` discard; calling it statically with a lambda picks it over the `Action` form.
+`ShouldRejectNullAsync` accepts a synchronous throw or a faulted task.
 `ShouldRejectNullBeforeAwaitAsync` additionally proves the guard is eager, so a still-pending source was never
 awaited; if the returned task is still pending the assertion fails immediately without waiting. The `Func<Task>`
 form accepts a synchronous throw **or** an already-faulted task. The `Task` form takes an operation you already

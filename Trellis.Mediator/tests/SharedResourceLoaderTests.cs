@@ -298,7 +298,7 @@ public class SharedResourceLoaderTests
     [Fact]
     public void SharedResourceLoaderAdapter_NullInner_ThrowsArgumentNullException() =>
         NullGuard.ShouldRejectNull(
-            () => _ = new SharedResourceLoaderAdapter<SharedCancelCommand, SharedOrder, string>(inner: null!),
+            () => new SharedResourceLoaderAdapter<SharedCancelCommand, SharedOrder, string>(inner: null!),
             "inner");
 
     [Fact]

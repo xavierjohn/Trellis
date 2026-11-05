@@ -18,6 +18,20 @@ public static class ArgumentNullAssertionsExtensions
         act.Should().Throw<ArgumentNullException>().WithParameterName(paramName);
     }
 
+    /// <summary>
+    /// Asserts the value-returning call throws <see cref="ArgumentNullException"/> for exactly <paramref name="paramName"/>,
+    /// so a guard test can pass <c>() =&gt; new Actor(...)</c> or a property getter without a discard.
+    /// </summary>
+    /// <typeparam name="T">The type the call returns; the value is discarded.</typeparam>
+    /// <param name="act">The call under test.</param>
+    /// <param name="paramName">The parameter that must be reported.</param>
+    public static void ShouldRejectNull<T>(this Func<T> act, string paramName)
+    {
+        ArgumentNullException.ThrowIfNull(act);
+        ArgumentNullException.ThrowIfNull(paramName);
+        ((Action)(() => act())).ShouldRejectNull(paramName);
+    }
+
     /// <summary>Asserts the call throws or faults with <see cref="ArgumentNullException"/> for exactly <paramref name="paramName"/>.</summary>
     /// <param name="act">The call under test.</param>
     /// <param name="paramName">The parameter that must be reported.</param>

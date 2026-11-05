@@ -108,7 +108,7 @@ public class PageTests
     [Fact]
     public void Constructor_rejects_null_items()
     {
-        Action act = () => _ = new Page<int>(null!, null, null, 10, 10);
+        var act = () => new Page<int>(null!, null, null, 10, 10);
         act.ShouldRejectNull("Items");
     }
 

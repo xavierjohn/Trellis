@@ -7,7 +7,7 @@ public class OutboundIntegrationMessageTests
     [Fact]
     public void Ctor_NullEvent_Throws()
     {
-        Action act = () => _ = new OutboundIntegrationMessage(Guid.CreateVersion7(), null!);
+        var act = () => new OutboundIntegrationMessage(Guid.CreateVersion7(), null!);
 
         act.ShouldRejectNull("Event");
     }

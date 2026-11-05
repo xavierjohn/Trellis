@@ -31,6 +31,40 @@ public class ArgumentNullAssertionsTests
     }
 
     [Fact]
+    public void ShouldRejectNull_ValueReturningCall_MatchingParamName_Passes() =>
+        ArgumentNullAssertionsExtensions.ShouldRejectNull(
+            () => FailWith<int>(new ArgumentNullException("selector")),
+            "selector");
+
+    [Fact]
+    public void ShouldRejectNull_ValueReturningCall_WrongParamName_Fails()
+    {
+        var assertion = () => ArgumentNullAssertionsExtensions.ShouldRejectNull(
+            () => FailWith<int>(new ArgumentNullException("other")),
+            "selector");
+
+        assertion.Should().Throw<XunitException>().WithMessage("*selector*");
+    }
+
+    [Fact]
+    public void ShouldRejectNull_ValueReturningCall_NothingThrown_Fails()
+    {
+        var assertion = () => ArgumentNullAssertionsExtensions.ShouldRejectNull(() => 42, "selector");
+
+        assertion.Should().Throw<XunitException>();
+    }
+
+    [Fact]
+    public void ShouldRejectNull_ValueReturningCall_NullArguments_Throw()
+    {
+        var nullCall = () => ((Func<int>)null!).ShouldRejectNull("x");
+        var nullName = () => ((Func<int>)(() => 42)).ShouldRejectNull(null!);
+
+        nullCall.Should().Throw<ArgumentNullException>().WithParameterName("act");
+        nullName.Should().Throw<ArgumentNullException>().WithParameterName("paramName");
+    }
+
+    [Fact]
     public async Task ShouldRejectNullAsync_FaultedTaskWithMatchingParamName_Passes()
     {
         Func<Task> act = () => Task.FromException(new ArgumentNullException("factory"));
@@ -181,6 +215,8 @@ public class ArgumentNullAssertionsTests
 
         await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("operation");
     }
+
+    private static T FailWith<T>(Exception exception) => throw exception;
 
     private static async Task StartGuardedBeforeAwait(Task pending)
     {
