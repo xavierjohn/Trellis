@@ -1,6 +1,7 @@
 ﻿namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.EntityFrameworkCore;
+using Trellis.Testing;
 using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
@@ -164,9 +165,7 @@ public class ArgumentValidationTests
             _ = ctx.Model;
         };
 
-        act.Should().Throw<ArgumentException>()
-            .WithMessage("*[1]*")
-            .Where(exception => exception.ParamName == "assemblies");
+        act.ShouldRejectArgument("assemblies").WithMessage("*[1]*");
     }
 
     #endregion

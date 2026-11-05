@@ -117,8 +117,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
     {
         var act = () => _context.Orders.WhereHasValue(order => order.Customer.Phone);
 
-        act.Should().Throw<ArgumentException>()
-            .Where(exception => exception.ParamName == "propertySelector");
+        act.ShouldRejectArgument("propertySelector");
     }
 
     #endregion

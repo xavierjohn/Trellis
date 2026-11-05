@@ -41,7 +41,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-hand
 | Assert the original exception or cancellation token propagates unchanged | `operation.ShouldPropagateExceptionAsync(exception)` / `.ShouldPropagateCancellationAsync(token)` | [Propagation assertions](#propagation-assertions) |
 | Pause code under test at a point, assert about the paused state, then release it (rendezvous or barrier) | `using var gate = new TestGate();` with `gate.ArriveAsync()` in the code under test, then `await gate.WaitForArrivalAsync(timeout, token)` and `gate.Release()` | [`TestGate`](#testgate) |
 | Create an already-canceled token with its own identity | `CanceledToken.Create()` with `Token`, `ToTask`, `ToValueTask` | [`CanceledToken`](#canceledtoken) |
-| Assert a null guard names the right parameter, or fires before awaiting a pending source | `act.ShouldRejectNull(paramName)`, `.ShouldRejectNullAsync(...)`, `.ShouldRejectNullBeforeAwaitAsync(...)` | [Argument-null assertions](#argument-null-assertions) |
+| Assert a null guard names the right parameter, or fires before awaiting a pending source | `act.ShouldRejectNull(paramName)`, `act.ShouldRejectArgument(paramName)`, `.ShouldRejectNullAsync(...)`, `.ShouldRejectNullBeforeAwaitAsync(...)` | [Argument-null assertions](#argument-null-assertions) |
 | Assert which domain events an aggregate or `FakeRepository` raised | `aggregate.UncommittedEvents().Should().HaveRaised<TEvent>()` and siblings | [Domain-event assertions](#domain-event-assertions) |
 | Assert a `Page<T>`: items, cursors and applied limits | `page.Should().HaveItems(...)`, `.HaveNextCursor()`, `.BeLastPage()`, `.BeCapped()` | [`PageAssertions<T>`](#pageassertionst) |
 | Assert a specification accepts or rejects candidates | `spec.Should().BeSatisfiedBy(x)` / `.NotBeSatisfiedBy(x)` | [`SpecificationAssertions<T>`](#specificationassertionst) |
@@ -691,6 +691,8 @@ public static class ArgumentNullAssertionsExtensions
 {
     public static void ShouldRejectNull(this Action act, string paramName);
     public static void ShouldRejectNull<T>(this Func<T> act, string paramName);
+    public static ExceptionAssertions<ArgumentException> ShouldRejectArgument(this Action act, string paramName);
+    public static ExceptionAssertions<ArgumentException> ShouldRejectArgument<T>(this Func<T> act, string paramName);
     public static Task ShouldRejectNullAsync(this Func<Task> act, string paramName);
     public static Task ShouldRejectNullBeforeAwaitAsync(this Func<Task> start, string paramName);
     public static Task ShouldRejectNullBeforeAwaitAsync(this Task operation, string paramName);
@@ -701,6 +703,10 @@ Every form requires `ArgumentNullException` whose `ParamName` is exactly `paramN
 for the wrong parameter. The `Func<T>` overload of `ShouldRejectNull` takes a value-returning call
 (`() => new Actor(...)`, a property getter, or any expression that is not a statement) and discards the result, so
 the lambda needs no `_ =` discard; calling it statically with a lambda picks it over the `Action` form.
+`ShouldRejectArgument` is the `ArgumentException` counterpart: it accepts `ArgumentException` or a subtype
+(`ArgumentOutOfRangeException`, `ArgumentNullException`) for exactly `paramName`, and returns FluentAssertions' `ExceptionAssertions<ArgumentException>`
+so a message check can be chained, for example `act.ShouldRejectArgument("assemblies").WithMessage("*[1]*")`. Use
+`ShouldRejectNull` when the guard must be an `ArgumentNullException`.
 `ShouldRejectNullAsync` accepts a synchronous throw or a faulted task.
 `ShouldRejectNullBeforeAwaitAsync` additionally proves the guard is eager, so a still-pending source was never
 awaited; if the returned task is still pending the assertion fails immediately without waiting. The `Func<Task>`

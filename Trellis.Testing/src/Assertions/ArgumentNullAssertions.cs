@@ -2,6 +2,7 @@
 
 using FluentAssertions;
 using FluentAssertions.Execution;
+using FluentAssertions.Specialized;
 
 /// <summary>
 /// Null-guard assertions that always name the offending parameter.
@@ -30,6 +31,35 @@ public static class ArgumentNullAssertionsExtensions
         ArgumentNullException.ThrowIfNull(act);
         ArgumentNullException.ThrowIfNull(paramName);
         ((Action)(() => act())).ShouldRejectNull(paramName);
+    }
+
+    /// <summary>
+    /// Asserts the action throws <see cref="ArgumentException"/> (or a subtype such as
+    /// <see cref="ArgumentOutOfRangeException"/>) for exactly <paramref name="paramName"/>.
+    /// </summary>
+    /// <param name="act">The call under test.</param>
+    /// <param name="paramName">The parameter that must be reported.</param>
+    /// <returns>The exception assertions, so a message check can be chained.</returns>
+    public static ExceptionAssertions<ArgumentException> ShouldRejectArgument(this Action act, string paramName)
+    {
+        ArgumentNullException.ThrowIfNull(act);
+        ArgumentNullException.ThrowIfNull(paramName);
+        return act.Should().Throw<ArgumentException>().WithParameterName(paramName);
+    }
+
+    /// <summary>
+    /// Asserts the value-returning call throws <see cref="ArgumentException"/> (or a subtype) for exactly
+    /// <paramref name="paramName"/>.
+    /// </summary>
+    /// <typeparam name="T">The type the call returns; the value is discarded.</typeparam>
+    /// <param name="act">The call under test.</param>
+    /// <param name="paramName">The parameter that must be reported.</param>
+    /// <returns>The exception assertions, so a message check can be chained.</returns>
+    public static ExceptionAssertions<ArgumentException> ShouldRejectArgument<T>(this Func<T> act, string paramName)
+    {
+        ArgumentNullException.ThrowIfNull(act);
+        ArgumentNullException.ThrowIfNull(paramName);
+        return ((Action)(() => act())).ShouldRejectArgument(paramName);
     }
 
     /// <summary>Asserts the call throws or faults with <see cref="ArgumentNullException"/> for exactly <paramref name="paramName"/>.</summary>

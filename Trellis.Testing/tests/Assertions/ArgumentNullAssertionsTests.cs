@@ -216,6 +216,94 @@ public class ArgumentNullAssertionsTests
         await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("operation");
     }
 
+    [Fact]
+    public void ShouldRejectArgument_MatchingParamName_Passes()
+    {
+        Action act = () => throw new ArgumentException("bad", "values");
+
+        act.ShouldRejectArgument("values");
+    }
+
+    [Fact]
+    public void ShouldRejectArgument_DerivedArgumentException_Passes()
+    {
+        Action act = () => throw new ArgumentOutOfRangeException("index");
+
+        act.ShouldRejectArgument("index");
+    }
+
+    [Fact]
+    public void ShouldRejectArgument_WrongParamName_Fails()
+    {
+        Action act = () => throw new ArgumentException("bad", "other");
+
+        var assertion = () => act.ShouldRejectArgument("values");
+
+        assertion.Should().Throw<XunitException>().WithMessage("*values*");
+    }
+
+    [Fact]
+    public void ShouldRejectArgument_UnrelatedExceptionType_Fails()
+    {
+        Action act = () => throw new InvalidOperationException("values");
+
+        var assertion = () => act.ShouldRejectArgument("values");
+
+        assertion.Should().Throw<XunitException>();
+    }
+
+    [Fact]
+    public void ShouldRejectArgument_NothingThrown_Fails()
+    {
+        var assertion = () => ((Action)(() => { })).ShouldRejectArgument("values");
+
+        assertion.Should().Throw<XunitException>();
+    }
+
+    [Fact]
+    public void ShouldRejectArgument_ReturnsAssertionsSoMessageCanBeChained()
+    {
+        Action act = () => throw new ArgumentException("entry [1] is null", "values");
+
+        act.ShouldRejectArgument("values").WithMessage("*[1]*");
+    }
+
+    [Fact]
+    public void ShouldRejectArgument_ChainedMessageMismatch_Fails()
+    {
+        Action act = () => throw new ArgumentException("entry [1] is null", "values");
+
+        var assertion = () => act.ShouldRejectArgument("values").WithMessage("*[2]*");
+
+        assertion.Should().Throw<XunitException>();
+    }
+
+    [Fact]
+    public void ShouldRejectArgument_ValueReturningCall_MatchingParamName_Passes() =>
+        ArgumentNullAssertionsExtensions.ShouldRejectArgument(
+            () => FailWith<int>(new ArgumentException("bad", "values")),
+            "values");
+
+    [Fact]
+    public void ShouldRejectArgument_ValueReturningCall_NothingThrown_Fails()
+    {
+        var assertion = () => ArgumentNullAssertionsExtensions.ShouldRejectArgument(() => 42, "values");
+
+        assertion.Should().Throw<XunitException>();
+    }
+
+    [Fact]
+    public void ShouldRejectArgument_NullArguments_Throw()
+    {
+        var nullAction = () => ((Action)null!).ShouldRejectArgument("x");
+        var nullFunc = () => ((Func<int>)null!).ShouldRejectArgument("x");
+        var nullName = () => ((Action)(() => { })).ShouldRejectArgument(null!);
+
+        nullAction.Should().Throw<ArgumentNullException>().WithParameterName("act");
+        nullFunc.Should().Throw<ArgumentNullException>().WithParameterName("act");
+        nullName.Should().Throw<ArgumentNullException>().WithParameterName("paramName");
+    }
+
     private static T FailWith<T>(Exception exception) => throw exception;
 
     private static async Task StartGuardedBeforeAwait(Task pending)

@@ -262,7 +262,7 @@ public class EntityTagValueTests
     {
         var act = () => EntityTagValue.Strong("abc\"def");
 
-        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+        act.ShouldRejectArgument("opaqueTag");
     }
 
     [Fact]
@@ -280,7 +280,7 @@ public class EntityTagValueTests
         var controlChar = (char)0x01;
         var act = () => EntityTagValue.Strong($"abc{controlChar}def");
 
-        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+        act.ShouldRejectArgument("opaqueTag");
     }
 
     [Fact]
@@ -289,7 +289,7 @@ public class EntityTagValueTests
         // RFC 9110 §8.8.1: HTAB (0x09) is not a valid etagc character
         var act = () => EntityTagValue.Strong("abc\tdef");
 
-        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+        act.ShouldRejectArgument("opaqueTag");
     }
 
     [Fact]
@@ -298,7 +298,7 @@ public class EntityTagValueTests
         // RFC 9110 §8.8.1: DEL (0x7F) is not a valid etagc character
         var act = () => EntityTagValue.Strong("abc\u007Fdef");
 
-        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("opaqueTag");
+        act.ShouldRejectArgument("opaqueTag");
     }
 
     #endregion

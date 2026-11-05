@@ -465,8 +465,7 @@ public class MonetaryAmountTests
 
         var act = () => MonetaryAmount.Sum(items);
 
-        act.Should().Throw<ArgumentException>()
-            .Where(ex => ex.ParamName == "values");
+        act.ShouldRejectArgument("values");
     }
 
     #endregion
