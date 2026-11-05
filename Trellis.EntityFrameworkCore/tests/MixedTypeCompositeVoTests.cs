@@ -74,12 +74,9 @@ public class MixedTypeCompositeVoTests : IDisposable
 
         loaded.Should().NotBeNull();
         loaded!.Mixed.Status.Should().Be(TestOrderStatus.Confirmed);
-        loaded.Mixed.Count.HasValue.Should().BeTrue("Maybe<int> round-trips through MaybeConvention");
-        loaded.Mixed.Count.Value.Should().Be(42);
-        loaded.Mixed.Label.HasValue.Should().BeTrue("Maybe<string> round-trips through MaybeConvention");
-        loaded.Mixed.Label.Value.Should().Be("hello");
-        loaded.Mixed.Snapshots.HasValue.Should().BeTrue("Maybe<DateTime[]> round-trips if the underlying provider supports arrays");
-        loaded.Mixed.Snapshots.Value.Should().Equal(snapshots);
+        loaded.Mixed.Count.Should().HaveValue("Maybe<int> round-trips through MaybeConvention").Which.Should().Be(42);
+        loaded.Mixed.Label.Should().HaveValue("Maybe<string> round-trips through MaybeConvention").Which.Should().Be("hello");
+        loaded.Mixed.Snapshots.Should().HaveValue("Maybe<DateTime[]> round-trips if the underlying provider supports arrays").Which.Should().Equal(snapshots);
     }
 
     [Fact]
@@ -348,8 +345,7 @@ public class MixedTypeCompositeVoTests : IDisposable
         loaded!.Status.Should().Be(TestOrderStatus.Confirmed);
         loaded.Count.Should().HaveValueEqualTo(42);
         loaded.Label.Should().HaveValueEqualTo("hello");
-        loaded.Snapshots.HasValue.Should().BeTrue();
-        loaded.Snapshots.Value.Should().Equal(snapshots);
+        loaded.Snapshots.Should().HaveValue().Which.Should().Equal(snapshots);
     }
 
     [Fact]

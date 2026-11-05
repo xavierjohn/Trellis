@@ -2,6 +2,7 @@
 
 using Trellis;
 using Trellis.Core.Tests.Results;
+using Trellis.Testing;
 
 public class AsMaybeTests : TestBase
 {
@@ -33,7 +34,6 @@ public class AsMaybeTests : TestBase
     public void Class_maybe_conversion_some()
     {
         Maybe<T> maybeT = T.Value1.AsMaybe();
-        maybeT.HasValue.Should().BeTrue();
-        maybeT.Value.Should().Be(T.Value1);
+        maybeT.Should().HaveValue().Which.Should().Be(T.Value1);
     }
 }

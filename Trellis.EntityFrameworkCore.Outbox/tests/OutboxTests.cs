@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
+using Trellis.Testing;
 
 #pragma warning disable CA1707 // readable xUnit test names
 
@@ -906,8 +907,7 @@ public sealed class OutboxTests
         await relay.DrainAsync(ct);
 
         var tagged = captured.Should().ContainSingle().Subject;
-        tagged.OwningTeam.HasValue.Should().BeTrue();
-        tagged.OwningTeam.Value.Should().Be(teamId);
+        tagged.OwningTeam.Should().HaveValue().Which.Should().Be(teamId);
     }
 
     [Fact]

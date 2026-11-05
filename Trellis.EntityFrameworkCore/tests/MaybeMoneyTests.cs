@@ -3,6 +3,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Trellis.Primitives;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="Maybe{T}"/> with composite ValueObjects like <see cref="Money"/>.
@@ -122,8 +123,7 @@ public partial class MaybeMoneyTests : IDisposable
         loaded.Should().NotBeNull();
         loaded!.MonetaryFine.Amount.Should().Be(1000.00m);
         loaded.MonetaryFine.Currency.Value.Should().Be("EUR");
-        loaded.MonetaryFinePaid.HasValue.Should().BeTrue();
-        loaded.MonetaryFinePaid.Value.Amount.Should().Be(250.00m);
+        loaded.MonetaryFinePaid.Should().HaveValue().Which.Amount.Should().Be(250.00m);
         loaded.MonetaryFinePaid.Value.Currency.Value.Should().Be("USD");
     }
 
@@ -201,8 +201,7 @@ public partial class MaybeMoneyTests : IDisposable
 
         var reloaded = await Context.Penalties.FindAsync([6], ct);
         reloaded.Should().NotBeNull();
-        reloaded!.MonetaryFinePaid.HasValue.Should().BeTrue();
-        reloaded.MonetaryFinePaid.Value.Amount.Should().Be(300.00m);
+        reloaded!.MonetaryFinePaid.Should().HaveValue().Which.Amount.Should().Be(300.00m);
         reloaded.MonetaryFinePaid.Value.Currency.Value.Should().Be("GBP");
     }
 

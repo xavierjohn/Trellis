@@ -34,8 +34,7 @@ public class ReadJsonMaybeAsyncTests
         var result = await task.ReadJsonMaybeAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
         var maybe = result.Should().BeSuccess().Subject;
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.firstName.Should().Be("Maya");
+        maybe.Should().HaveValue().Which.firstName.Should().Be("Maya");
         tracker.Disposed.Should().BeTrue();
     }
 

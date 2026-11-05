@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 using Trellis.Primitives;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="ModelConfigurationBuilderExtensions.ApplyTrellisConventions"/>.
@@ -310,8 +311,7 @@ public class ApplyTrellisConventionsTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.TicketNumber.HasValue.Should().BeTrue();
-        loaded.TicketNumber.Value.Value.Should().Be(42);
+        loaded!.TicketNumber.Should().HaveValue().Which.Value.Should().Be(42);
     }
 
     #endregion
@@ -352,8 +352,7 @@ public class ApplyTrellisConventionsTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.UnitPrice.HasValue.Should().BeTrue();
-        loaded.UnitPrice.Value.Value.Should().Be(19.99m);
+        loaded!.UnitPrice.Should().HaveValue().Which.Value.Should().Be(19.99m);
     }
 
     #endregion
@@ -465,8 +464,7 @@ public class ApplyTrellisConventionsTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.GiftWrap.HasValue.Should().BeTrue();
-        loaded.GiftWrap.Value.Value.Should().BeTrue();
+        loaded!.GiftWrap.Should().HaveValue().Which.Value.Should().BeTrue();
     }
 
     [Fact]
@@ -503,8 +501,7 @@ public class ApplyTrellisConventionsTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.GiftWrap.HasValue.Should().BeTrue();
-        loaded.GiftWrap.Value.Value.Should().BeFalse();
+        loaded!.GiftWrap.Should().HaveValue().Which.Value.Should().BeFalse();
     }
 
     #endregion
@@ -546,8 +543,7 @@ public class ApplyTrellisConventionsTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.OrderDate.HasValue.Should().BeTrue();
-        loaded.OrderDate.Value.Value.Year.Should().Be(2026);
+        loaded!.OrderDate.Should().HaveValue().Which.Value.Year.Should().Be(2026);
         loaded.OrderDate.Value.Value.Month.Should().Be(1);
         loaded.OrderDate.Value.Value.Day.Should().Be(15);
     }

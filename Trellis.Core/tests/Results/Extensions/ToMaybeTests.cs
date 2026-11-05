@@ -16,8 +16,7 @@ public class ToMaybeTests
 
         var maybe = sut.ToMaybe();
 
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Should().Be("Hello");
+        maybe.Should().HaveValue().Which.Should().Be("Hello");
     }
 
     [Fact]
@@ -38,8 +37,7 @@ public class ToMaybeTests
 
         var maybe = sut.ToMaybe();
 
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Should().Be(value);
+        maybe.Should().HaveValue().Which.Should().Be(value);
     }
 
     #endregion
@@ -53,8 +51,7 @@ public class ToMaybeTests
 
         var maybe = await sut.ToMaybeAsync();
 
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Should().Be("Hello");
+        maybe.Should().HaveValue().Which.Should().Be("Hello");
     }
 
     [Fact]
@@ -88,8 +85,7 @@ public class ToMaybeTests
 
         var maybe = await sut.ToMaybeAsync();
 
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Should().Be("Hello");
+        maybe.Should().HaveValue().Which.Should().Be("Hello");
     }
 
     [Fact]

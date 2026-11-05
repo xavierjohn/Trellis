@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Trellis.Authorization;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="ServiceCollectionExtensions.AddTrellisWorkerActor(IServiceCollection, Actor)"/>
@@ -88,8 +89,7 @@ public class WorkerActorTests
         var provider = scope.ServiceProvider.GetRequiredService<IActorProvider>();
         var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        actor.HasValue.Should().BeTrue();
-        actor.Value.Id.Value.Should().Be("system");
+        actor.Should().HaveValue().Which.Id.Value.Should().Be("system");
         actor.Value.Permissions.Should().Contain("reminders:dispatch");
     }
 
@@ -109,8 +109,7 @@ public class WorkerActorTests
         var provider = scope.ServiceProvider.GetRequiredService<IActorProvider>();
         var actor = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        actor.HasValue.Should().BeTrue();
-        actor.Value.Id.Value.Should().Be("inner-user", "wrapper must delegate to inner when HttpContext is present");
+        actor.Should().HaveValue().Which.Id.Value.Should().Be("inner-user", "wrapper must delegate to inner when HttpContext is present");
     }
 
     [Fact]
