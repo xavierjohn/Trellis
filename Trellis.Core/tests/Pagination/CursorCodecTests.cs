@@ -131,8 +131,7 @@ public class CursorCodecTests
         // should reject the input up front against the right parameter name.
         var act = () => CursorCodec.Encode("");
 
-        act.Should().Throw<ArgumentException>()
-            .Which.ParamName.Should().Be("state");
+        act.ShouldRejectArgument("state");
     }
 
     [Fact]
@@ -166,8 +165,7 @@ public class CursorCodecTests
         // a "{date}|" payload that round-trips to an unparseable id for most TKey.
         var act = () => CursorCodec.Encode(DateTimeOffset.UtcNow, "");
 
-        act.Should().Throw<ArgumentException>()
-            .Which.ParamName.Should().Be("state");
+        act.ShouldRejectArgument("state");
     }
 
     [Fact]

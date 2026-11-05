@@ -45,8 +45,7 @@ public class ResourceRefTests
     {
         var act = () => ResourceRef.For(type!);
 
-        act.Should().Throw<ArgumentException>()
-            .Where(exception => exception.ParamName == "type");
+        act.ShouldRejectArgument(nameof(type));
     }
 
     [Fact]

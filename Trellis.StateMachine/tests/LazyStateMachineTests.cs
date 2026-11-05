@@ -277,8 +277,7 @@ public class LazyStateMachineTests
             _ => { },
             _ => { });
 
-        act.Should().Throw<ArgumentNullException>()
-            .And.ParamName.Should().Be("stateAccessor");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("stateAccessor");
     }
 
     [Fact]
@@ -289,8 +288,7 @@ public class LazyStateMachineTests
             null!,
             _ => { });
 
-        act.Should().Throw<ArgumentNullException>()
-            .And.ParamName.Should().Be("stateMutator");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("stateMutator");
     }
 
     [Fact]
@@ -301,8 +299,7 @@ public class LazyStateMachineTests
             _ => { },
             null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .And.ParamName.Should().Be("configure");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("configure");
     }
 
     #endregion

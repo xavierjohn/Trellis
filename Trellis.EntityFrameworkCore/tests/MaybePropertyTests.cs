@@ -431,8 +431,7 @@ public class MaybePropertyTests : IDisposable
 
         var act = () => context.Model;
 
-        act.Should().Throw<ArgumentException>()
-            .Where(exception => exception.ParamName == "propertySelector");
+        act.ShouldRejectArgument("propertySelector");
     }
 
     [Fact]
@@ -448,8 +447,7 @@ public class MaybePropertyTests : IDisposable
 
         var act = () => context.Model;
 
-        act.Should().Throw<ArgumentException>()
-            .Where(exception => exception.ParamName == "propertySelector");
+        act.ShouldRejectArgument("propertySelector");
     }
 
     #endregion

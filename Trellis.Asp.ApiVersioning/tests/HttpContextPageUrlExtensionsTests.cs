@@ -53,7 +53,7 @@ public sealed class HttpContextPageUrlExtensionsTests
     {
         var context = new DefaultHttpContext();
         Action act = () => context.PageUrl(null!, (_, _) => new RouteValueDictionary());
-        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("routeName");
+        act.ShouldRejectArgument("routeName");
     }
 
     [Theory]
@@ -63,7 +63,7 @@ public sealed class HttpContextPageUrlExtensionsTests
     {
         var context = new DefaultHttpContext();
         Action act = () => context.PageUrl(routeName, (_, _) => new RouteValueDictionary());
-        act.Should().Throw<ArgumentException>().And.ParamName.Should().Be("routeName");
+        act.ShouldRejectArgument(nameof(routeName));
     }
 
     [Fact]

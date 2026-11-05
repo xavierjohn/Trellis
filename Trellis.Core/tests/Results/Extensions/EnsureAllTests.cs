@@ -21,7 +21,7 @@ public class EnsureAllTests
         // ArgumentNullException.ParamName must be the actual parameter name ("checks") so callers
         // catching by ParamName work, and the message must identify the offending index/field.
         act.Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "checks")
+            .WithParameterName("checks")
             .And.Message.Should().Contain("checks[1]").And.Contain("predicate");
     }
 
@@ -35,7 +35,7 @@ public class EnsureAllTests
             (s => s.Length > 0, null!));
 
         act.Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "checks")
+            .WithParameterName("checks")
             .And.Message.Should().Contain("checks[1]").And.Contain("error");
     }
 

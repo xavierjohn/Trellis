@@ -143,7 +143,7 @@ public class TrellisServiceBuilderTests
             null!));
 
         act.Should().Throw<ArgumentException>()
-            .Where(ex => ex.ParamName == "assemblies")
+            .WithParameterName("assemblies")
             .And.Message.Should().Contain("[1]");
     }
 

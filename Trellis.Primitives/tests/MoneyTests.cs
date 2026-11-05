@@ -764,8 +764,7 @@ public class MoneyTests
 
         var act = () => Money.Sum(items);
 
-        act.Should().Throw<ArgumentException>()
-            .Where(ex => ex.ParamName == "values");
+        act.ShouldRejectArgument("values");
     }
 
     [Fact]
@@ -870,8 +869,7 @@ public class MoneyTests
 
         var act = () => Money.Sum(items, fallback);
 
-        act.Should().Throw<ArgumentException>()
-            .Where(ex => ex.ParamName == "values");
+        act.ShouldRejectArgument("values");
     }
 
     [Fact]

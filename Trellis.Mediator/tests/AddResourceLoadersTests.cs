@@ -212,9 +212,7 @@ public class AddResourceAuthorizationScanTests
 
         var act = () => services.AddResourceAuthorization(typeof(ScanTestCommand).Assembly, null!);
 
-        act.Should().Throw<ArgumentException>()
-            .Where(ex => ex.ParamName == "assemblies")
-            .And.Message.Should().Contain("[1]");
+        act.ShouldRejectArgument("assemblies").WithMessage("*[1]*");
     }
 
     [Fact]

@@ -119,8 +119,7 @@ public class Recipe18MonetaryBoundaryTests
     {
         Action action = () => _ = PaymentAmountBoundary.TryCreateMatchingQuote(1m, null!);
 
-        action.Should().Throw<ArgumentNullException>()
-            .Which.ParamName.Should().Be("quotedAmount");
+        action.ShouldRejectNull("quotedAmount");
     }
 
     [Fact]
