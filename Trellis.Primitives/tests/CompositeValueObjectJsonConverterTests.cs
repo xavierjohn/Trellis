@@ -222,7 +222,7 @@ public class CompositeValueObjectJsonConverterTests
         var vo = IntStringVo.Create(1, "x");
 
         Action nullWriter = () => converter.Write(null!, vo, new JsonSerializerOptions());
-        nullWriter.Should().Throw<ArgumentNullException>().WithParameterName("writer");
+        nullWriter.ShouldRejectNull("writer");
     }
 
     [Fact]
@@ -233,7 +233,7 @@ public class CompositeValueObjectJsonConverterTests
         using var writer = new Utf8JsonWriter(stream);
 
         Action nullValue = () => converter.Write(writer, null!, new JsonSerializerOptions());
-        nullValue.Should().Throw<ArgumentNullException>().WithParameterName("value");
+        nullValue.ShouldRejectNull("value");
     }
 
     [Fact]

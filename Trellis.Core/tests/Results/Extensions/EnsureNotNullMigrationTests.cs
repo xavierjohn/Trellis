@@ -345,9 +345,9 @@ public class EnsureNotNullMigrationTests
     {
         DateTime? value = null;
 
-        var act = () => Result.EnsureNotNull(value, (Func<Error>)null!);
+        Action act = () => Result.EnsureNotNull(value, (Func<Error>)null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
+        act.ShouldRejectNull("errorFactory");
     }
 
     [Fact]
@@ -356,9 +356,9 @@ public class EnsureNotNullMigrationTests
         // Validation runs before the HasValue check so the failure mode is consistent.
         DateTime? value = DateTime.UnixEpoch;
 
-        var act = () => Result.EnsureNotNull(value, (Func<Error>)null!);
+        Action act = () => Result.EnsureNotNull(value, (Func<Error>)null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
+        act.ShouldRejectNull("errorFactory");
     }
 
     [Fact]
@@ -366,9 +366,9 @@ public class EnsureNotNullMigrationTests
     {
         string? value = null;
 
-        var act = () => Result.EnsureNotNull(value, (Func<Error>)null!);
+        Action act = () => Result.EnsureNotNull(value, (Func<Error>)null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
+        act.ShouldRejectNull("errorFactory");
     }
 
     [Fact]
@@ -376,7 +376,7 @@ public class EnsureNotNullMigrationTests
     {
         var act = async () => await Task.FromResult<DateTime?>(null).EnsureNotNullAsync((Func<Error>)null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
+        await act.ShouldRejectNullAsync("errorFactory");
     }
 
     [Fact]
@@ -384,7 +384,7 @@ public class EnsureNotNullMigrationTests
     {
         var act = async () => await Task.FromResult<string?>(null).EnsureNotNullAsync((Func<Error>)null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
+        await act.ShouldRejectNullAsync("errorFactory");
     }
 
     #endregion

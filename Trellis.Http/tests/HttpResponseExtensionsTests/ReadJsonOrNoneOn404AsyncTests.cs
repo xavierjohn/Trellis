@@ -121,8 +121,7 @@ public class ReadJsonOrNoneOn404AsyncTests
 
         var act = async () => await task.ReadJsonOrNoneOn404Async(SourceGenerationContext.Default.camelcasePerson);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("response");
+        await act.ShouldRejectNullAsync("response");
     }
 
     [Fact]
@@ -139,8 +138,7 @@ public class ReadJsonOrNoneOn404AsyncTests
 
         var act = async () => await task.ReadJsonOrNoneOn404Async<camelcasePerson>(null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("jsonTypeInfo");
+        await act.ShouldRejectNullAsync("jsonTypeInfo");
         tracker.Disposed.Should().BeTrue("ReadJsonOrNoneOn404Async's disposal contract must hold even on the null-jsonTypeInfo path");
     }
 }

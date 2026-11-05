@@ -365,10 +365,9 @@ public class EntityTagValueTests
         var tag = EntityTagValue.Strong("abc123");
         EntityTagValue other = null!;
 
-        var act = () => tag.StrongEquals(other);
+        Action act = () => tag.StrongEquals(other);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("other");
+        act.ShouldRejectNull("other");
     }
 
     [Fact]
@@ -378,10 +377,9 @@ public class EntityTagValueTests
         var tag = EntityTagValue.Strong("abc123");
         EntityTagValue other = null!;
 
-        var act = () => tag.WeakEquals(other);
+        Action act = () => tag.WeakEquals(other);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("other");
+        act.ShouldRejectNull("other");
     }
 
     #endregion

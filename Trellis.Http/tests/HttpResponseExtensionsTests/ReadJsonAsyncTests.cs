@@ -168,7 +168,6 @@ public class ReadJsonAsyncTests
 
         var act = async () => await task.ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("response");
+        await act.ShouldRejectNullAsync("response");
     }
 }

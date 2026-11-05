@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Core.Tests.DomainDrivenDesign.Specification;
 
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+
 /// <summary>
 /// Tests for the Or composition of <see cref="Trellis.Specification{T}"/>.
 /// </summary>
@@ -91,9 +93,9 @@ public class OrSpecificationTests
     [Fact]
     public void Or_NullOperand_PublicCombinator_ThrowsArgumentNullException()
     {
-        var act = () => new AlwaysTrueSpec().Or(null!);
+        Action act = () => new AlwaysTrueSpec().Or(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("other");
+        act.ShouldRejectNull("other");
     }
 
     #endregion

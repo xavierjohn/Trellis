@@ -168,7 +168,7 @@ public class GeoCoordinateTests
 
         Action act = () => origin.DistanceMetersTo(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("other");
+        act.ShouldRejectNull("other");
     }
 
     [Fact]

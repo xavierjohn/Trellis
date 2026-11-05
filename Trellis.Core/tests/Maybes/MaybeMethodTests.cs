@@ -2,6 +2,7 @@
 
 using System.Globalization;
 using Trellis;
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
 /// Tests for Maybe instance methods: Bind, Or, Where, Tap, GetValueOrDefault(Func).
@@ -334,8 +335,8 @@ public class MaybeMethodTests
     public void Map_WithNullSelector_ThrowsArgumentNullException()
     {
         var sut = Maybe.From("x");
-        var act = () => sut.Map<int>(null!);
-        act.Should().Throw<ArgumentNullException>().WithParameterName("selector");
+        Action act = () => sut.Map<int>(null!);
+        act.ShouldRejectNull("selector");
     }
 
     [Fact]
@@ -343,24 +344,24 @@ public class MaybeMethodTests
     {
         // Validation runs before the value-set check so the failure mode is consistent.
         var sut = Maybe<string>.None;
-        var act = () => sut.Map<int>(null!);
-        act.Should().Throw<ArgumentNullException>().WithParameterName("selector");
+        Action act = () => sut.Map<int>(null!);
+        act.ShouldRejectNull("selector");
     }
 
     [Fact]
     public void Match_WithNullSome_ThrowsArgumentNullException()
     {
         var sut = Maybe.From("x");
-        var act = () => sut.Match<int>(null!, () => 0);
-        act.Should().Throw<ArgumentNullException>().WithParameterName("some");
+        Action act = () => sut.Match<int>(null!, () => 0);
+        act.ShouldRejectNull("some");
     }
 
     [Fact]
     public void Match_WithNullNone_ThrowsArgumentNullException()
     {
         var sut = Maybe.From("x");
-        var act = () => sut.Match<int>(s => s.Length, null!);
-        act.Should().Throw<ArgumentNullException>().WithParameterName("none");
+        Action act = () => sut.Match<int>(s => s.Length, null!);
+        act.ShouldRejectNull("none");
     }
 
     [Fact]
@@ -369,8 +370,8 @@ public class MaybeMethodTests
         // Both delegates are required regardless of HasValue so missing-delegate failures
         // surface immediately, not when the matching branch happens to fire.
         var sut = Maybe<string>.None;
-        var act = () => sut.Match<int>(null!, () => 0);
-        act.Should().Throw<ArgumentNullException>().WithParameterName("some");
+        Action act = () => sut.Match<int>(null!, () => 0);
+        act.ShouldRejectNull("some");
     }
 
     #endregion

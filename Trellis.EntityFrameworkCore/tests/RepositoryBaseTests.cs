@@ -114,7 +114,7 @@ public partial class RepositoryBaseTests : IDisposable
         var act = () => _repository.QueryAsync(null!);
 
         // Assert
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("specification");
+        await act.ShouldRejectNullAsync("specification");
     }
 
     #endregion
@@ -195,7 +195,7 @@ public partial class RepositoryBaseTests : IDisposable
         var act = () => _repository.ExistsAsync((Specification<TestItem>)null!);
 
         // Assert
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("specification");
+        await act.ShouldRejectNullAsync("specification");
     }
 
     #endregion
@@ -243,7 +243,7 @@ public partial class RepositoryBaseTests : IDisposable
         var act = () => _repository.CountAsync(null!);
 
         // Assert
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("specification");
+        await act.ShouldRejectNullAsync("specification");
     }
 
     #endregion
@@ -296,10 +296,10 @@ public partial class RepositoryBaseTests : IDisposable
     public void Add_null_aggregate_throws()
     {
         // Act
-        var act = () => _repository.Add(null!);
+        Action act = () => _repository.Add(null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("aggregate");
+        act.ShouldRejectNull("aggregate");
     }
 
     #endregion
@@ -333,10 +333,10 @@ public partial class RepositoryBaseTests : IDisposable
     public void Remove_null_aggregate_throws()
     {
         // Act
-        var act = () => _repository.Remove(null!);
+        Action act = () => _repository.Remove(null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("aggregate");
+        act.ShouldRejectNull("aggregate");
     }
 
     #endregion
@@ -394,10 +394,10 @@ public partial class RepositoryBaseTests : IDisposable
     public void Constructor_null_context_throws()
     {
         // Act
-        var act = () => new TestItemRepository(null!);
+        Action act = () => _ = new TestItemRepository(null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("context");
+        act.ShouldRejectNull("context");
     }
 
     #endregion
@@ -415,8 +415,7 @@ public partial class RepositoryBaseTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var act = async () => await _repository.FindByIdAsync(null!, ct);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("id");
+        await act.ShouldRejectNullAsync("id");
     }
 
     [Fact]
@@ -427,8 +426,7 @@ public partial class RepositoryBaseTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var act = async () => await _repository.ExistsAsync((TestItemId)null!, ct);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("id");
+        await act.ShouldRejectNullAsync("id");
     }
 
     [Fact]
@@ -440,8 +438,7 @@ public partial class RepositoryBaseTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var act = async () => await _repository.RemoveByIdAsync(null!, ct);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("id");
+        await act.ShouldRejectNullAsync("id");
     }
 
     #endregion

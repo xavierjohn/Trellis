@@ -141,9 +141,9 @@ public sealed class PageBuilderTests
     {
         var fetched = new List<Row> { new(Guid.NewGuid(), DateTimeOffset.UtcNow, "a") };
 
-        var act = () => PageBuilder.FromOverFetch(fetched, null!, r => CursorCodec.Encode(r.Id));
+        Action act = () => PageBuilder.FromOverFetch(fetched, null!, r => CursorCodec.Encode(r.Id));
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("pageSize");
+        act.ShouldRejectNull("pageSize");
     }
 
 }

@@ -71,10 +71,9 @@ public class OptionalTests
         string? zipCode = "92874";
         Func<string, Result<ZipCode>> function = null!;
 
-        var act = () => Maybe.Optional(zipCode, function);
+        Action act = () => Maybe.Optional(zipCode, function);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("function");
+        act.ShouldRejectNull("function");
     }
 
     [Fact]
@@ -84,10 +83,9 @@ public class OptionalTests
         int? quantity = 5;
         Func<int, Result<ZipCode>> function = null!;
 
-        var act = () => Maybe.Optional(quantity, function);
+        Action act = () => Maybe.Optional(quantity, function);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("function");
+        act.ShouldRejectNull("function");
     }
 
     [Fact]
@@ -96,9 +94,9 @@ public class OptionalTests
         string? value = null;
         Func<string, Result<string>> function = null!;
 
-        var act = () => Maybe.Optional<string, string>(value, function);
+        Action act = () => Maybe.Optional<string, string>(value, function);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("function");
+        act.ShouldRejectNull("function");
     }
 
     [Fact]
@@ -107,8 +105,8 @@ public class OptionalTests
         int? value = null;
         Func<int, Result<string>> function = null!;
 
-        var act = () => Maybe.Optional<int, string>(value, function);
+        Action act = () => Maybe.Optional<int, string>(value, function);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("function");
+        act.ShouldRejectNull("function");
     }
 }

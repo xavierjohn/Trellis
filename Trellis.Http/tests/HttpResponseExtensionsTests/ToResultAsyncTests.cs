@@ -226,8 +226,7 @@ public class ToResultAsyncTests
 
         var act = async () => await task.ToResultAsync();
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("response");
+        await act.ShouldRejectNullAsync("response");
     }
 
     [Fact]
@@ -239,8 +238,7 @@ public class ToResultAsyncTests
             (_, _) => Task.FromResult<Error?>(null),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("response");
+        await act.ShouldRejectNullAsync("response");
     }
 
     [Fact]
@@ -259,8 +257,7 @@ public class ToResultAsyncTests
             (Func<HttpResponseMessage, CancellationToken, Task<Error?>>)null!,
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("mapper");
+        await act.ShouldRejectNullAsync("mapper");
         tracker.Disposed.Should().BeTrue("body-aware overload's disposal contract must hold even on the null-mapper path");
     }
 

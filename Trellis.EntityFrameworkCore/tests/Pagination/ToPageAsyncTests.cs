@@ -234,8 +234,7 @@ public class ToPageAsyncTests : IDisposable
         IQueryable<TestOrder>? source = null;
         var act = () => source!.ToPageAsync(new PageSize(10, 10), null, o => o.Amount, cancellationToken: default);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("source");
+        await act.ShouldRejectNullAsync("source");
     }
 
     [Fact]
@@ -244,8 +243,7 @@ public class ToPageAsyncTests : IDisposable
         Expression<Func<TestOrder, decimal>>? keySelector = null;
         var act = () => _context.Orders.ToPageAsync(new PageSize(10, 10), null, keySelector!, cancellationToken: default);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("key");
+        await act.ShouldRejectNullAsync("key");
     }
 
     [Fact]
@@ -253,8 +251,7 @@ public class ToPageAsyncTests : IDisposable
     {
         var act = () => _context.Orders.ToPageAsync(null!, null, o => o.Amount, cancellationToken: default);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("pageSize");
+        await act.ShouldRejectNullAsync("pageSize");
     }
 
     // ───── DateTime key (Expression.GreaterThan path) ───────────────────────

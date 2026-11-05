@@ -67,9 +67,9 @@ public class AuthorizedResourceHolderTests
     [Fact]
     public void Push_NullResource_ThrowsArgumentNullException()
     {
-        var act = () => AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(null!);
+        Action act = () => AuthorizedResourceHolder<HolderTestCommand, TestResource>.Push(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("resource");
+        act.ShouldRejectNull("resource");
     }
 
     [Fact]

@@ -1,13 +1,15 @@
 ﻿namespace Trellis.Mediator.Tests;
 
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+
 public class OutboundIntegrationMessageTests
 {
     [Fact]
     public void Ctor_NullEvent_Throws()
     {
-        var act = () => new OutboundIntegrationMessage(Guid.CreateVersion7(), null!);
+        Action act = () => _ = new OutboundIntegrationMessage(Guid.CreateVersion7(), null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("Event");
+        act.ShouldRejectNull("Event");
     }
 
     [Fact]

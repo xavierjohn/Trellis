@@ -3,6 +3,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection;
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
 /// Focused tests for <see cref="EquatableArray{T}"/>. End-to-end use is covered indirectly by
@@ -140,10 +141,9 @@ public class EquatableArrayTests
         // from inside ToImmutableArray().
         string[] items = null!;
 
-        var act = () => EquatableArray<string>.Create(items);
+        Action act = () => EquatableArray<string>.Create(items);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("items");
+        act.ShouldRejectNull("items");
     }
 
     [Fact]
@@ -152,10 +152,9 @@ public class EquatableArrayTests
         // N-C-5 follow-up: EquatableArray<T>.From(IEnumerable<T> items) — same shape.
         IEnumerable<string> items = null!;
 
-        var act = () => EquatableArray<string>.From(items);
+        Action act = () => EquatableArray<string>.From(items);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("items");
+        act.ShouldRejectNull("items");
     }
 
     [Fact]
@@ -164,10 +163,9 @@ public class EquatableArrayTests
         // N-C-5 follow-up: non-generic companion EquatableArray.Create<T>(params T[] items).
         string[] items = null!;
 
-        var act = () => EquatableArray.Create<string>(items);
+        Action act = () => EquatableArray.Create<string>(items);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("items");
+        act.ShouldRejectNull("items");
     }
 
     [Fact]
@@ -176,9 +174,8 @@ public class EquatableArrayTests
         // N-C-5 follow-up: non-generic companion EquatableArray.From<T>(IEnumerable<T> items).
         IEnumerable<string> items = null!;
 
-        var act = () => EquatableArray.From<string>(items);
+        Action act = () => EquatableArray.From<string>(items);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("items");
+        act.ShouldRejectNull("items");
     }
 }

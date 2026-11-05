@@ -93,9 +93,9 @@ public class AndSpecificationTests
     [Fact]
     public void And_NullOperand_PublicCombinator_ThrowsArgumentNullException()
     {
-        var act = () => new AlwaysTrueSpec().And(null!);
+        Action act = () => new AlwaysTrueSpec().And(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("other");
+        act.ShouldRejectNull("other");
     }
 
     #endregion

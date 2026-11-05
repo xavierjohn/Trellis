@@ -59,8 +59,7 @@ public class HandleNotFoundAsyncTests
 
         var act = async () => await task.HandleNotFoundAsync(_notFound);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("response");
+        await act.ShouldRejectNullAsync("response");
     }
 
     [Fact]
@@ -74,7 +73,7 @@ public class HandleNotFoundAsyncTests
 
         var act = async () => await task.HandleNotFoundAsync(null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        await act.ShouldRejectNullAsync("error");
         tracker.Disposed.Should().BeTrue("HandleNotFoundAsync's disposal contract must hold even on the null-error throw path");
     }
 }

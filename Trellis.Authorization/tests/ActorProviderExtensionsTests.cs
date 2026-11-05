@@ -54,7 +54,7 @@ public class ActorProviderExtensionsTests
 
         var act = () => provider.RequireActorAsync(TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("actorProvider");
+        await act.ShouldRejectNullAsync("actorProvider");
     }
 
     [Theory]

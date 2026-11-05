@@ -142,9 +142,9 @@ public class EnsureNotNullOrWhiteSpaceTests
     [InlineData("value")]
     public void EnsureNotNullOrWhiteSpace_Factory_NullFactory_ThrowsEvenOnSuccess(string? value)
     {
-        var act = () => value.EnsureNotNullOrWhiteSpace(errorFactory: null!);
+        Action act = () => value.EnsureNotNullOrWhiteSpace(errorFactory: null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
+        act.ShouldRejectNull("errorFactory");
     }
 
     [Fact]
@@ -168,18 +168,18 @@ public class EnsureNotNullOrWhiteSpaceTests
     [InlineData(" ")]
     public void EnsureNotNullOrWhiteSpace_Factory_NullProducedError_Throws(string? value)
     {
-        var act = () => value.EnsureNotNullOrWhiteSpace(static () => null!);
+        Action act = () => value.EnsureNotNullOrWhiteSpace(static () => null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("error");
+        act.ShouldRejectNull("error");
     }
 
     [Fact]
     public void EnsureNotNullOrWhiteSpace_Error_NullLiteral_KeepsExistingBindingAndBehavior()
     {
         "value".EnsureNotNullOrWhiteSpace(null!).Should().BeSuccess();
-        var act = () => ((string?)null).EnsureNotNullOrWhiteSpace(null!);
+        Action act = () => ((string?)null).EnsureNotNullOrWhiteSpace(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("error");
+        act.ShouldRejectNull("error");
     }
 
     [Fact]
