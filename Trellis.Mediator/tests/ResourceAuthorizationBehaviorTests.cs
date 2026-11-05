@@ -26,8 +26,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("Done");
+        result.Should().BeSuccess().Which.Should().Be("Done");
         tracker.WasInvoked.Should().BeTrue();
     }
 

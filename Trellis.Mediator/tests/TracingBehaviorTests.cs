@@ -151,8 +151,7 @@ public class TracingBehaviorTests : IDisposable
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("Hello!");
+        result.Should().BeSuccess().Which.Should().Be("Hello!");
     }
 
     #endregion

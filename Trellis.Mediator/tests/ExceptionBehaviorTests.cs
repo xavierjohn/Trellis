@@ -124,8 +124,7 @@ public class ExceptionBehaviorTests
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("Hello, Alice!");
+        result.Should().BeSuccess().Which.Should().Be("Hello, Alice!");
         logEntries.Should().BeEmpty("no exception means no logging");
     }
 

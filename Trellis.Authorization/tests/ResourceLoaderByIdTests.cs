@@ -17,8 +17,7 @@ public class ResourceLoaderByIdTests
 
         var result = await loader.LoadAsync(message, CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeSameAs(order);
+        result.Should().BeSuccess().Which.Should().BeSameAs(order);
     }
 
     [Fact]

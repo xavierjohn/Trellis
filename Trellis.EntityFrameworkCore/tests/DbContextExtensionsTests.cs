@@ -45,8 +45,7 @@ public class DbContextExtensionsTests : IDisposable
         var result = await _context.SaveChangesResultAsync(ct);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(1);
+        result.Should().BeSuccess().Which.Should().Be(1);
     }
 
     [Fact]
@@ -73,8 +72,7 @@ public class DbContextExtensionsTests : IDisposable
         var result = await _context.SaveChangesResultAsync(ct);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(2);
+        result.Should().BeSuccess().Which.Should().Be(2);
     }
 
     #endregion
@@ -214,8 +212,7 @@ public class DbContextExtensionsTests : IDisposable
         var result = await _context.SaveChangesResultAsync(acceptAllChangesOnSuccess: true, ct);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(1);
+        result.Should().BeSuccess().Which.Should().Be(1);
     }
 
     [Fact]
@@ -235,8 +232,7 @@ public class DbContextExtensionsTests : IDisposable
         var result = await _context.SaveChangesResultAsync(acceptAllChangesOnSuccess: false, ct);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(1);
+        result.Should().BeSuccess().Which.Should().Be(1);
         _context.ChangeTracker.HasChanges().Should().BeTrue("acceptAllChangesOnSuccess: false should preserve tracker state");
     }
 

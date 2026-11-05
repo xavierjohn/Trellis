@@ -41,8 +41,7 @@ public sealed class DbContextIdempotencyExtensionsTests : IDisposable
 
         var result = await _context.TryInsertUniqueAsync(customer, ct);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeSameAs(customer);
+        result.Should().BeSuccess().Which.Should().BeSameAs(customer);
         (await _context.Customers.CountAsync(ct)).Should().Be(1);
     }
 
