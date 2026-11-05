@@ -46,8 +46,7 @@ public class TapOnFailureTupleTests : TestBase
 
         // Assert
         _actionExecuted.Should().BeTrue();
-        actual.Should().BeFailure();
-        actual.Error!.Should().BeOfType<Error.InvalidInput>();
+        actual.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]

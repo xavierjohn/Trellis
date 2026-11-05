@@ -59,8 +59,7 @@ public class MapOnFailureTests : TestBase
 
         var mapped = await original.MapOnFailureAsync(e => new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" });
 
-        mapped.Should().BeFailure();
-        mapped.Error!.Should().BeOfType<Error.Conflict>();
+        mapped.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -91,8 +90,7 @@ public class MapOnFailureTests : TestBase
 
         var mapped = await original.MapOnFailureAsync(mapper);
 
-        mapped.Should().BeFailure();
-        mapped.Error!.Should().BeOfType<Error.Conflict>();
+        mapped.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -127,8 +125,7 @@ public class MapOnFailureTests : TestBase
             return new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" };
         });
 
-        mapped.Should().BeFailure();
-        mapped.Error!.Should().BeOfType<Error.Conflict>();
+        mapped.Should().BeFailureOfType<Error.Conflict>();
     }
 
     #endregion
@@ -142,8 +139,7 @@ public class MapOnFailureTests : TestBase
 
         var mapped = await original.MapOnFailureAsync(e => new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" });
 
-        mapped.Should().BeFailure();
-        mapped.Error!.Should().BeOfType<Error.Conflict>();
+        mapped.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -169,8 +165,7 @@ public class MapOnFailureTests : TestBase
         var mapped = await original.MapOnFailureAsync(e =>
             ValueTask.FromResult<Error>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" }));
 
-        mapped.Should().BeFailure();
-        mapped.Error!.Should().BeOfType<Error.Conflict>();
+        mapped.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -197,8 +192,7 @@ public class MapOnFailureTests : TestBase
         var mapped = await original.MapOnFailureAsync(e =>
             ValueTask.FromResult<Error>(new Error.Conflict(Resource: null, Code: "conflict") { Detail = $"Wrapped: {e.Detail}" }));
 
-        mapped.Should().BeFailure();
-        mapped.Error!.Should().BeOfType<Error.Conflict>();
+        mapped.Should().BeFailureOfType<Error.Conflict>();
     }
 
     #endregion
@@ -215,8 +209,7 @@ public class MapOnFailureTests : TestBase
         var apiResult = domainResult.MapOnFailure(e => Error.InvalidInput.ForRule(code: "bad.request", detail: $"API Error: {e.Detail}"));
 
         // Assert
-        apiResult.Should().BeFailure();
-        apiResult.Error!.Should().BeOfType<Error.InvalidInput>();
+        apiResult.Should().BeFailureOfType<Error.InvalidInput>();
         apiResult.Error!.Detail.Should().Contain("Insufficient balance");
     }
 
@@ -231,8 +224,7 @@ public class MapOnFailureTests : TestBase
             new Error.NotFound(new ResourceRef("Resource", "user-123"?.ToString())) { Detail = $"User lookup failed: {e.Detail}" });
 
         // Assert
-        enriched.Should().BeFailure();
-        enriched.Error!.Should().BeOfType<Error.NotFound>().Which.Resource.Id.Should().Be("user-123");
+        enriched.Should().BeFailureOfType<Error.NotFound>().Which.Resource.Id.Should().Be("user-123");
     }
 
     [Fact]
@@ -246,8 +238,7 @@ public class MapOnFailureTests : TestBase
             .MapOnFailureAsync(e => new Error.Unavailable() { Detail = $"Service error: {e.Detail}" });
 
         // Assert
-        transformed.Should().BeFailure();
-        transformed.Error!.Should().BeOfType<Error.Unavailable>();
+        transformed.Should().BeFailureOfType<Error.Unavailable>();
     }
 
     [Fact]

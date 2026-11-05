@@ -55,8 +55,7 @@ public class TraverseAllTests : TestBase
             _ => Result.Ok(s),
         });
 
-        result.Should().BeFailure();
-        var aggregate = result.Error.Should().BeOfType<Error.Aggregate>().Subject;
+        var aggregate = result.Should().BeFailureOfType<Error.Aggregate>().Which;
         aggregate.Errors.Items.Should().Equal([unprocessable, conflict]);
     }
 
@@ -76,8 +75,7 @@ public class TraverseAllTests : TestBase
             _ => Result.Ok(s),
         });
 
-        result.Should().BeFailure();
-        var merged = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var merged = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         merged.Fields.Items.Select(f => f.Field.Path).Should().Equal(["/name", "/email"]);
         merged.Rules.Items.Select(r => r.ReasonCode).Should().Equal(["rule.one", "rule.two"]);
     }
@@ -171,8 +169,7 @@ public class TraverseAllTests : TestBase
                 _ => Result.Ok(x),
             }));
 
-        result.Should().BeFailure();
-        var aggregate = result.Error.Should().BeOfType<Error.Aggregate>().Subject;
+        var aggregate = result.Should().BeFailureOfType<Error.Aggregate>().Which;
         aggregate.Errors.Items.Should().Equal([Error1, Error2]);
     }
 
@@ -237,8 +234,7 @@ public class TraverseAllTests : TestBase
             (int x, CancellationToken _) => (x % 2 == 0 ? Result.Ok(x) : Result.Fail<int>(Error1)).AsTask(),
             TestContext.Current.CancellationToken);
 
-        result.Should().BeFailure();
-        result.Error.Should().BeOfType<Error.Aggregate>();
+        result.Should().BeFailureOfType<Error.Aggregate>();
     }
 
     [Fact]
@@ -301,8 +297,7 @@ public class TraverseAllTests : TestBase
         var result = await items.TraverseAllAsync((int x) =>
             (x == 2 ? Result.Ok(x) : Result.Fail<int>(Error1)).AsValueTask());
 
-        result.Should().BeFailure();
-        result.Error.Should().BeOfType<Error.Aggregate>();
+        result.Should().BeFailureOfType<Error.Aggregate>();
     }
 
     [Fact]
@@ -350,8 +345,7 @@ public class TraverseAllTests : TestBase
             (int x, CancellationToken _) => (x % 2 == 1 ? Result.Fail<int>(Error1) : Result.Ok(x)).AsValueTask(),
             TestContext.Current.CancellationToken);
 
-        result.Should().BeFailure();
-        result.Error.Should().BeOfType<Error.Aggregate>();
+        result.Should().BeFailureOfType<Error.Aggregate>();
     }
 
     [Fact]
@@ -437,8 +431,7 @@ public class TraverseAllTests : TestBase
             (int x, CancellationToken _) => (x % 2 == 1 ? Result.Fail(Error1) : Result.Ok()).AsTask(),
             TestContext.Current.CancellationToken);
 
-        result.Should().BeFailure();
-        result.Error.Should().BeOfType<Error.Aggregate>();
+        result.Should().BeFailureOfType<Error.Aggregate>();
     }
 
     [Fact]

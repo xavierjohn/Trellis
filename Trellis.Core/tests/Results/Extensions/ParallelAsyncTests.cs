@@ -47,8 +47,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.InvalidInput>()
+        result.Should().BeFailureOfType<Error.InvalidInput>()
             .Which.Detail.Should().Be("First failed");
     }
 
@@ -97,8 +96,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        var error = result.Error!.Should().BeOfType<Error.Unexpected>().Subject;
+        var error = result.Should().BeFailureOfType<Error.Unexpected>().Which;
         error.Code.Should().Be("unhandled-exception");
         error.FaultId.Should().NotBeNullOrWhiteSpace();
         error.Detail.Should().Be("An unexpected error occurred while processing the request.");
@@ -115,9 +113,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Aggregate>();
-        var aggregateError = (Error.Aggregate)result.Error!;
+        var aggregateError = result.Should().BeFailureOfType<Error.Aggregate>().Which;
         aggregateError.Errors.Items.Should().HaveCount(2);
         var firstError = aggregateError.Errors.Items[0].Should().BeOfType<Error.Unexpected>().Subject;
         firstError.Code.Should().Be("unhandled-exception");
@@ -162,8 +158,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.InvalidInput>()
+        result.Should().BeFailureOfType<Error.InvalidInput>()
             .Which.Detail.Should().Be("First failed");
     }
 
@@ -178,8 +173,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.NotFound>()
+        result.Should().BeFailureOfType<Error.NotFound>()
             .Which.Detail.Should().Be("Second not found");
     }
 
@@ -194,8 +188,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Forbidden>()
+        result.Should().BeFailureOfType<Error.Forbidden>()
             .Which.Detail.Should().Be("Third forbidden");
     }
 
@@ -228,9 +221,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Aggregate>();
-        var aggregateError = (Error.Aggregate)result.Error!;
+        var aggregateError = result.Should().BeFailureOfType<Error.Aggregate>().Which;
         aggregateError.Errors.Items.Should().HaveCount(2);
         aggregateError.Errors.Items[0].Should().BeOfType<Error.InvalidInput>();
         aggregateError.Errors.Items[1].Should().BeOfType<Error.NotFound>();
@@ -337,8 +328,7 @@ public class ParallelAsyncTests : TestBase
 
         // Assert
         bindCalled.Should().BeFalse();
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Unexpected>();
+        result.Should().BeFailureOfType<Error.Unexpected>();
     }
 
     #endregion
@@ -373,8 +363,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -489,8 +478,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     #endregion
@@ -550,8 +538,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert - Should fail if any check fails
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         result.Error!.Detail.Should().Contain("Suspicious location");
     }
 

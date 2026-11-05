@@ -94,8 +94,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         ).WhenAllAsync();
 
         // Assert - should fail with new Error.NotFound(new ResourceRef("Resource", null)) { Detail = permanent failure }
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
         result.Error!.Detail.Should().Contain("User not found");
     }
 
@@ -115,8 +114,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         ).WhenAllAsync();
 
         // Assert - should fail with new Error.Conflict(null, "conflict") { Detail = permanent business rule violation }
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
         result.Error!.Detail.Should().Contain("Out of stock");
     }
 
@@ -136,8 +134,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         ).WhenAllAsync();
 
         // Assert - should fail with Error.InvalidInput (permanent business rule)
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
         result.Error!.Detail.Should().Contain("expired");
     }
 
@@ -156,9 +153,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         ).WhenAllAsync();
 
         // Assert - should aggregate different error types
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Aggregate>();
-        var aggregateError = (Error.Aggregate)result.Error!;
+        var aggregateError = result.Should().BeFailureOfType<Error.Aggregate>().Which;
         aggregateError.Errors.Items.Should().HaveCount(3);
         aggregateError.Errors.Items.Should().ContainSingle(e => e is Error.NotFound);
         aggregateError.Errors.Items.Should().ContainSingle(e => e is Error.Conflict);
@@ -272,8 +267,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
                         funcAsync: () => CalculateShippingAlwaysFails("123 Main St")));
 
         // Assert - should fail after all retries exhausted
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Unavailable>();
+        result.Should().BeFailureOfType<Error.Unavailable>();
         attemptCount.Should().Be(3); // Initial + 2 retries
     }
 
@@ -379,8 +373,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         });
 
         // Assert - Stage 1 failed, Stage 2 never ran
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
         stage2Executed.Should().BeFalse();  // ✅ Stage 2 was skipped (short-circuit)
     }
 
@@ -410,8 +403,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         );
 
         // Assert - Stage 2 fraud check failed
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         result.Error!.Detail.Should().Contain("Suspicious transaction");
     }
 

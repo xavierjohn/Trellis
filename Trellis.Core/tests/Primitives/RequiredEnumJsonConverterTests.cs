@@ -24,8 +24,7 @@ public sealed class RequiredEnumJsonConverterTests
         var result = new RequiredEnumJsonConverter<RequiredEnumJsonConverterTestState>()
             .TryRead(ref reader, typeof(RequiredEnumJsonConverterTestState), _jsonOptions);
 
-        result.IsFailure.Should().BeTrue();
-        var error = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Should().HaveFieldViolationCount(1);
         var violation = error.Should().HaveFieldViolation(InputPointer.Root, code).Which;
         violation.Detail.Should().NotBeNullOrWhiteSpace();

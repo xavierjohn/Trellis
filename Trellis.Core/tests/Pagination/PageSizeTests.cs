@@ -149,8 +149,7 @@ public class PageSizeTests
     {
         var result = PageSize.TryCreate(requested);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -158,8 +157,7 @@ public class PageSizeTests
     {
         var result = PageSize.TryCreate(101, policy: PageSizeLimitPolicy.Reject);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -182,8 +180,7 @@ public class PageSizeTests
     {
         var result = PageSize.TryCreate(1000, fieldName: "limit", policy: PageSizeLimitPolicy.Reject);
 
-        result.IsFailure.Should().BeTrue();
-        var invalid = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var invalid = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         invalid.Fields.Items.Should().Contain(f => f.Field.ToString().Contains("limit"));
     }
 

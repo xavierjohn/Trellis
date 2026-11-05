@@ -179,8 +179,7 @@ public class OverloadResolutionPriorityTests : TestBase
 
         mapped.Should().BeAssignableTo<Task<Result<int>>>();
         var actual = await mapped;
-        actual.IsFailure.Should().BeTrue();
-        actual.Error.Should().BeOfType<Error.Forbidden>();
+        actual.Should().BeFailureOfType<Error.Forbidden>();
     }
 
     // Note on SelectMany: Roslyn does not honor [OverloadResolutionPriority] across distinct
