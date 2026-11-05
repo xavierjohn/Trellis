@@ -21,6 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Trellis;
 using Trellis.Asp;
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
 using HttpResult = Microsoft.AspNetCore.Http.IResult;
 
 /// <summary>
@@ -131,7 +132,7 @@ public sealed class HttpContextPageUrlExtensionsTests
                 context.PageUrl("X", routeValues);
         };
 
-        action.Should().Throw<ArgumentNullException>().WithParameterName("routeValues");
+        action.ShouldRejectNull("routeValues");
     }
 
     [Fact]

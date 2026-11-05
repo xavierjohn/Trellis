@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Errors;
 
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+
 /// <summary>
 /// Tests for <see cref="InputPointer"/>'s RFC 6901 (JSON Pointer) compliance.
 /// RFC 6901 §3 requires that the special characters '~' and '/' inside a property name
@@ -38,9 +40,9 @@ public class InputPointerTests
     [Fact]
     public void AppendProperty_NullName_Throws()
     {
-        var act = () => InputPointer.Root.AppendProperty(null!);
+        Action act = () => InputPointer.Root.AppendProperty(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("propertyName");
+        act.ShouldRejectNull("propertyName");
     }
 
     [Theory]

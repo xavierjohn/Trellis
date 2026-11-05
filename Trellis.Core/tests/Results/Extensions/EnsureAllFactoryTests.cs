@@ -83,9 +83,9 @@ public class EnsureAllFactoryTests
     {
         (Func<string, bool>, Func<string, Error>)[] checks = null!;
 
-        var act = () => Result.Ok("value").EnsureAll(checks);
+        Action act = () => Result.Ok("value").EnsureAll(checks);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("checks");
+        act.ShouldRejectNull("checks");
     }
 
     [Theory]
@@ -211,7 +211,7 @@ public class EnsureAllFactoryTests
 
         var act = async () => await task.EnsureAllAsync((_ => false, _ => new Error.Unexpected("unused")));
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Theory]
@@ -228,6 +228,6 @@ public class EnsureAllFactoryTests
             return await Task.FromResult(Result.Ok("value")).EnsureAllAsync(checks);
         };
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("checks");
+        await act.ShouldRejectNullAsync("checks");
     }
 }

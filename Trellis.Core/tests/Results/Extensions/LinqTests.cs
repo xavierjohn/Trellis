@@ -102,10 +102,9 @@ public class LinqTests : TestBase
         var r = Result.Ok(5);
         Func<int, int> selector = null!;
 
-        var act = () => r.Select(selector);
+        Action act = () => r.Select(selector);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("selector");
+        act.ShouldRejectNull("selector");
     }
 
     [Fact]
@@ -114,10 +113,9 @@ public class LinqTests : TestBase
         var r = Result.Ok(5);
         Func<int, Result<int>> collectionSelector = null!;
 
-        var act = () => r.SelectMany(collectionSelector, (a, b) => a + b);
+        Action act = () => r.SelectMany(collectionSelector, (a, b) => a + b);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("collectionSelector");
+        act.ShouldRejectNull("collectionSelector");
     }
 
     [Fact]
@@ -126,9 +124,8 @@ public class LinqTests : TestBase
         var r = Result.Ok(5);
         Func<int, int, int> resultSelector = null!;
 
-        var act = () => r.SelectMany(_ => Result.Ok(7), resultSelector);
+        Action act = () => r.SelectMany(_ => Result.Ok(7), resultSelector);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("resultSelector");
+        act.ShouldRejectNull("resultSelector");
     }
 }

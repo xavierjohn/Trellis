@@ -18,7 +18,7 @@ public class CombineAsyncTests
 
         var act = async () => await task.CombineAsync(Result.Ok("World"));
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("tt1");
+        await act.ShouldRejectNullAsync("tt1");
     }
 
     [Fact]
@@ -28,7 +28,7 @@ public class CombineAsyncTests
 
         var act = async () => await Result.Ok("Hello").CombineAsync(task);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("tt2");
+        await act.ShouldRejectNullAsync("tt2");
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class CombineAsyncTests
 
         var act = async () => await task.CombineAsync(Result.Ok("c"));
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("tt1");
+        await act.ShouldRejectNullAsync("tt1");
     }
 
     #endregion

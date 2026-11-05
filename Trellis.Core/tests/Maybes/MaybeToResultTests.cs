@@ -9,9 +9,9 @@ public class MaybeToResultTests
     {
         var maybe = Maybe.From(42);
 
-        var act = () => maybe.ToResult((Func<Error>)null!);
+        Action act = () => maybe.ToResult((Func<Error>)null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("ferror");
+        act.ShouldRejectNull("ferror");
     }
 
     [Fact]
@@ -19,9 +19,9 @@ public class MaybeToResultTests
     {
         var maybe = Maybe<int>.None;
 
-        var act = () => maybe.ToResult((Func<Error>)null!);
+        Action act = () => maybe.ToResult((Func<Error>)null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("ferror");
+        act.ShouldRejectNull("ferror");
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public class MaybeToResultTests
 
         var act = async () => await maybeTask.ToResultAsync((Func<Error>)null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("ferror");
+        await act.ShouldRejectNullAsync("ferror");
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class MaybeToResultTests
 
         var act = async () => await maybeTask.ToResultAsync((Func<Error>)null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("ferror");
+        await act.ShouldRejectNullAsync("ferror");
     }
 
     [Fact]

@@ -78,9 +78,9 @@ public class OptionalNonBlankTests
     [InlineData("value")]
     public void OptionalNonBlank_NullFactory_ThrowsEvenForAbsentInput(string? input)
     {
-        var act = () => Maybe.OptionalNonBlank<string>(input, null!);
+        Action act = () => Maybe.OptionalNonBlank<string>(input, null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("function");
+        act.ShouldRejectNull("function");
     }
 
     [Fact]

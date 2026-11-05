@@ -14,9 +14,8 @@ public class ResultsTraceProviderBuilderExtensionsTests
         // late.
         TracerProviderBuilder builder = null!;
 
-        var act = () => builder.AddTrellisResultsInstrumentation();
+        Action act = () => builder.AddTrellisResultsInstrumentation();
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("builder");
+        act.ShouldRejectNull("builder");
     }
 }

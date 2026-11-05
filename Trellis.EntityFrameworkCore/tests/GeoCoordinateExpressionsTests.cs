@@ -265,19 +265,19 @@ public sealed class GeoCoordinateExpressionsTests : IDisposable
         Expression<Func<GeoRow, double>> latitude = row => row.Latitude;
         Expression<Func<GeoRow, double>> longitude = row => row.Longitude;
 
-        var nullLatitude = () => GeoCoordinateExpressions.DistanceMetersTo<GeoRow>(
+        Action nullLatitude = () => GeoCoordinateExpressions.DistanceMetersTo<GeoRow>(
             null!, longitude, origin);
-        var nullLongitude = () => GeoCoordinateExpressions.DistanceMetersTo<GeoRow>(
+        Action nullLongitude = () => GeoCoordinateExpressions.DistanceMetersTo<GeoRow>(
             latitude, null!, origin);
-        var nullOrigin = () => GeoCoordinateExpressions.DistanceMetersTo<GeoRow>(
+        Action nullOrigin = () => GeoCoordinateExpressions.DistanceMetersTo<GeoRow>(
             latitude, longitude, null!);
-        var nullBounds = () => GeoCoordinateExpressions.WithinRadius<GeoRow>(
+        Action nullBounds = () => GeoCoordinateExpressions.WithinRadius<GeoRow>(
             latitude, longitude, null!);
 
-        nullLatitude.Should().Throw<ArgumentNullException>().WithParameterName("latitudeSelector");
-        nullLongitude.Should().Throw<ArgumentNullException>().WithParameterName("longitudeSelector");
-        nullOrigin.Should().Throw<ArgumentNullException>().WithParameterName("origin");
-        nullBounds.Should().Throw<ArgumentNullException>().WithParameterName("bounds");
+        nullLatitude.ShouldRejectNull("latitudeSelector");
+        nullLongitude.ShouldRejectNull("longitudeSelector");
+        nullOrigin.ShouldRejectNull("origin");
+        nullBounds.ShouldRejectNull("bounds");
     }
 
     private string BuildNearbyQuerySql(GeoCoordinate origin, double radiusMeters)

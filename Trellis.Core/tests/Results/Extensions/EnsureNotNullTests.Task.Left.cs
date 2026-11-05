@@ -183,8 +183,8 @@ public class EnsureNotNullAsyncTests
         var scalar = () => Scalar(kind, GuardForm.Factory, Task.FromResult<int?>(null),
             new Error.Forbidden("guard.denied"), () => null!);
 
-        await reference.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
-        await scalar.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        await reference.ShouldRejectNullAsync("error");
+        await scalar.ShouldRejectNullAsync("error");
     }
 
     [Theory]
@@ -216,8 +216,8 @@ public class EnsureNotNullAsyncTests
         var reference = () => Reference(ReceiverKind.Task, form, null!, error, calls.Wrap<Error>(() => error));
         var scalar = () => Scalar(ReceiverKind.Task, form, null!, error, calls.Wrap<Error>(() => error));
 
-        await reference.Should().ThrowAsync<ArgumentNullException>().WithParameterName("task");
-        await scalar.Should().ThrowAsync<ArgumentNullException>().WithParameterName("task");
+        await reference.ShouldRejectNullAsync("task");
+        await scalar.ShouldRejectNullAsync("task");
         calls.CallCount.Should().Be(0);
     }
 
@@ -233,10 +233,10 @@ public class EnsureNotNullAsyncTests
         var taskScalar = () => Task.FromResult<int?>(null).EnsureNotNullAsync(null!);
         var valueTaskReference = () => ValueTask.FromResult<string?>(null).EnsureNotNullAsync(null!).AsTask();
         var valueTaskScalar = () => ValueTask.FromResult<int?>(null).EnsureNotNullAsync(null!).AsTask();
-        await taskReference.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
-        await taskScalar.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
-        await valueTaskReference.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
-        await valueTaskScalar.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        await taskReference.ShouldRejectNullAsync("error");
+        await taskScalar.ShouldRejectNullAsync("error");
+        await valueTaskReference.ShouldRejectNullAsync("error");
+        await valueTaskScalar.ShouldRejectNullAsync("error");
     }
 
     [Theory]

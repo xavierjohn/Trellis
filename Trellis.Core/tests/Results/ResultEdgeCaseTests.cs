@@ -372,9 +372,9 @@ public class ResultEdgeCaseTests
         // Try<T>(Func<T>) consistently rejects null with ArgumentNullException, matching the
         // no-payload overload Try(Action). Programming errors fail loudly; runtime exceptions
         // from a non-null delegate are still mapped to Failure(InternalServerError).
-        var act = () => Result.Try<int>(null!);
+        Action act = () => Result.Try<int>(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("func");
+        act.ShouldRejectNull("func");
     }
 
     [Fact]
@@ -383,7 +383,7 @@ public class ResultEdgeCaseTests
         // Mirror of Try_WithNullFunction_ShouldThrowArgumentNullException for the async overload.
         var act = async () => await Result.TryAsync<int>(null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("func");
+        await act.ShouldRejectNullAsync("func");
     }
 
     [Fact]

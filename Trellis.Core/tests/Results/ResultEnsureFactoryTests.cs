@@ -52,7 +52,7 @@ public class ResultEnsureFactoryTests
     {
         var act = () => Evaluate(form, true, null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
+        await act.ShouldRejectNullAsync("errorFactory");
     }
 
     [Theory]
@@ -63,7 +63,7 @@ public class ResultEnsureFactoryTests
     {
         var act = () => Evaluate(form, false, () => null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        await act.ShouldRejectNullAsync("error");
     }
 
     [Theory]
@@ -97,9 +97,9 @@ public class ResultEnsureFactoryTests
     public void Ensure_PredicateFactory_NullFactory_DoesNotInvokePredicate()
     {
         var calls = new CallbackRecorder();
-        var act = () => Result.Ensure(calls.Wrap(() => true), errorFactory: null!);
+        Action act = () => Result.Ensure(calls.Wrap(() => true), errorFactory: null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
+        act.ShouldRejectNull("errorFactory");
         calls.CallCount.Should().Be(0);
     }
 
@@ -107,10 +107,10 @@ public class ResultEnsureFactoryTests
     public void Ensure_PredicateFactory_NullPredicate_DoesNotInvokeFactory()
     {
         var calls = new CallbackRecorder();
-        var act = () => Result.Ensure((Func<bool>)null!,
+        Action act = () => Result.Ensure((Func<bool>)null!,
             calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("predicate");
+        act.ShouldRejectNull("predicate");
         calls.CallCount.Should().Be(0);
     }
 
@@ -160,7 +160,7 @@ public class ResultEnsureFactoryTests
         var act = () => Result.EnsureAsync(
             calls.Wrap(() => Task.FromResult(true)), errorFactory: null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("errorFactory");
+        await act.ShouldRejectNullAsync("errorFactory");
         calls.CallCount.Should().Be(0);
     }
 
@@ -171,7 +171,7 @@ public class ResultEnsureFactoryTests
         var act = () => Result.EnsureAsync((Func<Task<bool>>)null!,
             calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("predicate");
+        await act.ShouldRejectNullAsync("predicate");
         calls.CallCount.Should().Be(0);
     }
 
@@ -212,13 +212,13 @@ public class ResultEnsureFactoryTests
         Result.Ensure(() => true, null!).Should().BeSuccess();
         (await Result.EnsureAsync(() => Task.FromResult(true), null!)).Should().BeSuccess();
 
-        var boolean = () => Result.Ensure(false, null!);
-        var predicate = () => Result.Ensure(() => false, null!);
+        Action boolean = () => Result.Ensure(false, null!);
+        Action predicate = () => Result.Ensure(() => false, null!);
         var asyncPredicate = () => Result.EnsureAsync(() => Task.FromResult(false), null!);
 
-        boolean.Should().Throw<ArgumentNullException>().WithParameterName("error");
-        predicate.Should().Throw<ArgumentNullException>().WithParameterName("error");
-        await asyncPredicate.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        boolean.ShouldRejectNull("error");
+        predicate.ShouldRejectNull("error");
+        await asyncPredicate.ShouldRejectNullAsync("error");
     }
 
     private static Task<Result<Unit>> Evaluate(GuardForm form, bool condition, Func<Error> errorFactory) =>

@@ -477,8 +477,7 @@ public class DbContextRetryExtensionsTests : IDisposable
             shouldRetry: _ => true,
             regenerate: (_, _, _) => ValueTask.FromResult(true));
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("db");
+        await act.ShouldRejectNullAsync("db");
     }
 
     [Fact]
@@ -488,8 +487,7 @@ public class DbContextRetryExtensionsTests : IDisposable
             shouldRetry: null!,
             regenerate: (_, _, _) => ValueTask.FromResult(true));
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("shouldRetry");
+        await act.ShouldRejectNullAsync("shouldRetry");
     }
 
     [Fact]
@@ -499,8 +497,7 @@ public class DbContextRetryExtensionsTests : IDisposable
             shouldRetry: _ => true,
             regenerate: null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("regenerate");
+        await act.ShouldRejectNullAsync("regenerate");
     }
 
     [Fact]

@@ -56,8 +56,7 @@ public class HandleUnauthorizedAsyncTests
 
         var act = async () => await task.HandleUnauthorizedAsync(_unauth);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("response");
+        await act.ShouldRejectNullAsync("response");
     }
 
     [Fact]
@@ -69,7 +68,7 @@ public class HandleUnauthorizedAsyncTests
 
         var act = async () => await task.HandleUnauthorizedAsync(null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        await act.ShouldRejectNullAsync("error");
         tracker.Disposed.Should().BeTrue("HandleUnauthorizedAsync's disposal contract must hold even on the null-error throw path");
     }
 }

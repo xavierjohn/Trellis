@@ -144,10 +144,9 @@ public class MaybeLinqTests
         var maybe = Maybe.From("hello");
         Func<string, int> selector = null!;
 
-        var act = () => maybe.Select(selector);
+        Action act = () => maybe.Select(selector);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("selector");
+        act.ShouldRejectNull("selector");
     }
 
     [Fact]
@@ -156,10 +155,9 @@ public class MaybeLinqTests
         var maybe = Maybe.From("hello");
         Func<string, Maybe<int>> collectionSelector = null!;
 
-        var act = () => maybe.SelectMany(collectionSelector, (a, b) => $"{a}{b}");
+        Action act = () => maybe.SelectMany(collectionSelector, (a, b) => $"{a}{b}");
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("collectionSelector");
+        act.ShouldRejectNull("collectionSelector");
     }
 
     [Fact]
@@ -168,10 +166,9 @@ public class MaybeLinqTests
         var maybe = Maybe.From("hello");
         Func<string, int, string> resultSelector = null!;
 
-        var act = () => maybe.SelectMany(_ => Maybe.From(7), resultSelector);
+        Action act = () => maybe.SelectMany(_ => Maybe.From(7), resultSelector);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("resultSelector");
+        act.ShouldRejectNull("resultSelector");
     }
 
     #endregion

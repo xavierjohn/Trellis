@@ -237,9 +237,9 @@ public class TraverseAllIndexedAsyncTests
         var valueTaskAct = () => valueTask.AsTask();
         var unitAct = () => unitTask;
 
-        await taskAct.Should().ThrowAsync<ArgumentNullException>().WithParameterName("selector");
-        await valueTaskAct.Should().ThrowAsync<ArgumentNullException>().WithParameterName("selector");
-        await unitAct.Should().ThrowAsync<ArgumentNullException>().WithParameterName("selector");
+        await taskAct.ShouldRejectNullAsync("selector");
+        await valueTaskAct.ShouldRejectNullAsync("selector");
+        await unitAct.ShouldRejectNullAsync("selector");
         enumerated.Should().BeFalse();
     }
 
@@ -256,7 +256,7 @@ public class TraverseAllIndexedAsyncTests
             return Task.FromResult(Result.Ok(value + index));
         }, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("source");
+        await act.ShouldRejectNullAsync("source");
         calls.Should().Be(0);
     }
 

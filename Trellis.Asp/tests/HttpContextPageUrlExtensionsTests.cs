@@ -392,8 +392,8 @@ public sealed class HttpContextPageUrlExtensionsTests
         Action nullContext = () => ((HttpContext)null!).PageUrl(RouteName, (_, _) => new());
         Action nullCallback = () => new DefaultHttpContext().PageUrl(RouteName, (Func<Cursor, int, RouteValueDictionary>)null!);
 
-        nullContext.Should().Throw<ArgumentNullException>().WithParameterName("httpContext");
-        nullCallback.Should().Throw<ArgumentNullException>().WithParameterName("routeValues");
+        nullContext.ShouldRejectNull("httpContext");
+        nullCallback.ShouldRejectNull("routeValues");
     }
 
     [Fact]

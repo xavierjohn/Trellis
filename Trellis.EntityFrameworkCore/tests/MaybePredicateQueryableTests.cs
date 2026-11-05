@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 public class MaybePredicateQueryableTests : IDisposable
 {
@@ -207,27 +208,27 @@ public class MaybePredicateQueryableTests : IDisposable
     public void WhereHasValue_PredicateOverload_NullSourceThrows()
     {
         IQueryable<MaybePredicateRow> source = null!;
-        var act = () => source.WhereHasValue(row => row.Number, value => value > 0);
+        Action act = () => source.WhereHasValue(row => row.Number, value => value > 0);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("source");
+        act.ShouldRejectNull("source");
     }
 
     [Fact]
     public void WhereHasValue_PredicateOverload_NullSelectorThrows()
     {
         Expression<Func<MaybePredicateRow, Maybe<int>>> selector = null!;
-        var act = () => _context.Rows.WhereHasValue(selector, value => value > 0);
+        Action act = () => _context.Rows.WhereHasValue(selector, value => value > 0);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("propertySelector");
+        act.ShouldRejectNull("propertySelector");
     }
 
     [Fact]
     public void WhereHasValue_PredicateOverload_NullPredicateThrows()
     {
         Expression<Func<int, bool>> predicate = null!;
-        var act = () => _context.Rows.WhereHasValue(row => row.Number, predicate);
+        Action act = () => _context.Rows.WhereHasValue(row => row.Number, predicate);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("predicate");
+        act.ShouldRejectNull("predicate");
     }
 
     [Fact]

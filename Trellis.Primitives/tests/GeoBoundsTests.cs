@@ -36,9 +36,9 @@ public class GeoBoundsTests
     [Fact]
     public void TryCreate_NullCenter_Throws()
     {
-        var act = () => GeoBounds.TryCreate(null!, 1);
+        Action act = () => GeoBounds.TryCreate(null!, 1);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("center");
+        act.ShouldRejectNull("center");
     }
 
     [Fact]
@@ -154,9 +154,9 @@ public class GeoBoundsTests
     {
         var bounds = GeoBounds.Create(GeoCoordinate.Create(0, 0), 100);
 
-        var act = () => bounds.Contains(null!);
+        Action act = () => bounds.Contains(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("coordinate");
+        act.ShouldRejectNull("coordinate");
     }
 
     [Theory]

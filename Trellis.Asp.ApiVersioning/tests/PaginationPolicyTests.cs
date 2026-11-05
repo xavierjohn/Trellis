@@ -9,6 +9,7 @@ using Trellis;
 using Trellis.Asp;
 using Trellis.Asp.ApiVersioning;
 using Trellis.ServiceDefaults;
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 public sealed class PaginationPolicyTests
 {
@@ -77,7 +78,7 @@ public sealed class PaginationPolicyTests
         TrellisAspOptions options = null!;
         Action action = () => options.UseVersionedPageUrls();
 
-        action.Should().Throw<ArgumentNullException>().WithParameterName(nameof(options));
+        action.ShouldRejectNull(nameof(options));
     }
 
     private static ServiceCollection CreateServices(Endpoint endpoint)

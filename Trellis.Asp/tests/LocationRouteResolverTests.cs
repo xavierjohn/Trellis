@@ -15,9 +15,9 @@ public sealed class LocationRouteResolverTests
     public void WithLocationRouteResolver_NullCallback_Throws()
     {
         var builder = new HttpResponseOptionsBuilder<int>();
-        var act = () => builder.WithLocationRouteResolver(null!);
+        Action act = () => builder.WithLocationRouteResolver(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("resolver");
+        act.ShouldRejectNull("resolver");
     }
 
     [Theory]

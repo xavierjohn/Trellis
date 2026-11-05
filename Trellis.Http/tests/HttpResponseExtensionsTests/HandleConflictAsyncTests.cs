@@ -56,8 +56,7 @@ public class HandleConflictAsyncTests
 
         var act = async () => await task.HandleConflictAsync(_conflict);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("response");
+        await act.ShouldRejectNullAsync("response");
     }
 
     [Fact]
@@ -69,7 +68,7 @@ public class HandleConflictAsyncTests
 
         var act = async () => await task.HandleConflictAsync(null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("error");
+        await act.ShouldRejectNullAsync("error");
         tracker.Disposed.Should().BeTrue("HandleConflictAsync's disposal contract must hold even on the null-error throw path");
     }
 }

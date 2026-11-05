@@ -94,11 +94,11 @@ public class ResultEnsureNotNullTests
     [InlineData(false)]
     public void EnsureNotNull_Factory_NullFactory_ThrowsEvenOnSuccess(bool present)
     {
-        var reference = () => Result.EnsureNotNull(present ? "value" : null, errorFactory: null!);
-        var scalar = () => Result.EnsureNotNull(present ? (int?)0 : null, errorFactory: null!);
+        Action reference = () => Result.EnsureNotNull(present ? "value" : null, errorFactory: null!);
+        Action scalar = () => Result.EnsureNotNull(present ? (int?)0 : null, errorFactory: null!);
 
-        reference.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
-        scalar.Should().Throw<ArgumentNullException>().WithParameterName("errorFactory");
+        reference.ShouldRejectNull("errorFactory");
+        scalar.ShouldRejectNull("errorFactory");
     }
 
     [Fact]
@@ -122,11 +122,11 @@ public class ResultEnsureNotNullTests
     [Fact]
     public void EnsureNotNull_Factory_NullProducedError_Throws()
     {
-        var reference = () => Result.EnsureNotNull<string>(null, () => null!);
-        var scalar = () => Result.EnsureNotNull<int>(null, () => null!);
+        Action reference = () => Result.EnsureNotNull<string>(null, () => null!);
+        Action scalar = () => Result.EnsureNotNull<int>(null, () => null!);
 
-        reference.Should().Throw<ArgumentNullException>().WithParameterName("error");
-        scalar.Should().Throw<ArgumentNullException>().WithParameterName("error");
+        reference.ShouldRejectNull("error");
+        scalar.ShouldRejectNull("error");
     }
 
     [Fact]
@@ -134,11 +134,11 @@ public class ResultEnsureNotNullTests
     {
         Result.EnsureNotNull("value", null!).Should().BeSuccess();
         Result.EnsureNotNull((int?)0, null!).Should().BeSuccess();
-        var reference = () => Result.EnsureNotNull<string>(null, null!);
-        var scalar = () => Result.EnsureNotNull<int>(null, null!);
+        Action reference = () => Result.EnsureNotNull<string>(null, null!);
+        Action scalar = () => Result.EnsureNotNull<int>(null, null!);
 
-        reference.Should().Throw<ArgumentNullException>().WithParameterName("error");
-        scalar.Should().Throw<ArgumentNullException>().WithParameterName("error");
+        reference.ShouldRejectNull("error");
+        scalar.ShouldRejectNull("error");
     }
 
     [Fact]

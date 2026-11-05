@@ -37,18 +37,17 @@ public class FluentValidationMessageValidatorAdapterTests
         // Without a guard the adapter NREs at the first foreach(validators) on
         // ValidateAsync. Defensive convention from PR #459/#461/#462: every public
         // constructor null-guards reference parameters.
-        var act = () => new FluentValidationMessageValidatorAdapter<CreateUserCommand>(null!);
+        Action act = () => _ = new FluentValidationMessageValidatorAdapter<CreateUserCommand>(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .WithParameterName("validators");
+        act.ShouldRejectNull("validators");
     }
 
     [Fact]
     public void Constructor_throws_ArgumentNullException_when_argsOptions_is_null()
     {
-        var act = () => new FluentValidationMessageValidatorAdapter<CreateUserCommand>([], null!);
+        Action act = () => _ = new FluentValidationMessageValidatorAdapter<CreateUserCommand>([], null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("argsOptions");
+        act.ShouldRejectNull("argsOptions");
     }
 
     [Fact]

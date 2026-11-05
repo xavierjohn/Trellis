@@ -158,7 +158,7 @@ public class TraverseAllIndexedTests
     public void TraverseAll_Indexed_NullArguments_ThrowBeforeEnumeration()
     {
         IEnumerable<int> source = null!;
-        var nullSource = () => source.TraverseAll((int value, int index) => Result.Ok(value + index));
+        Action nullSource = () => source.TraverseAll((int value, int index) => Result.Ok(value + index));
         var enumerated = false;
         IEnumerable<int> Source()
         {
@@ -166,19 +166,19 @@ public class TraverseAllIndexedTests
             yield return 1;
         }
 
-        var nullSelector = () => Source().TraverseAll((Func<int, int, Result<int>>)null!);
+        Action nullSelector = () => Source().TraverseAll((Func<int, int, Result<int>>)null!);
 
-        nullSource.Should().Throw<ArgumentNullException>().WithParameterName("source");
-        nullSelector.Should().Throw<ArgumentNullException>().WithParameterName("selector");
+        nullSource.ShouldRejectNull("source");
+        nullSelector.ShouldRejectNull("selector");
         enumerated.Should().BeFalse();
     }
 
     [Fact]
     public void TraverseAll_Unindexed_NullLiteral_RemainsUnambiguous()
     {
-        var act = () => Array.Empty<int>().TraverseAll<int, int>(null!);
+        Action act = () => Array.Empty<int>().TraverseAll<int, int>(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("selector");
+        act.ShouldRejectNull("selector");
     }
 
     [Theory]

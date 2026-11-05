@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Immutable;
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
 /// Unit tests for the <see cref="Page{T}"/> pagination envelope.
@@ -107,8 +108,8 @@ public class PageTests
     [Fact]
     public void Constructor_rejects_null_items()
     {
-        var act = () => new Page<int>(null!, null, null, 10, 10);
-        act.Should().Throw<ArgumentNullException>().WithParameterName("Items");
+        Action act = () => _ = new Page<int>(null!, null, null, 10, 10);
+        act.ShouldRejectNull("Items");
     }
 
     [Theory]

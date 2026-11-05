@@ -151,8 +151,7 @@ public class ReadJsonMaybeAsyncTests
 
         var act = async () => await task.ReadJsonMaybeAsync(SourceGenerationContext.Default.camelcasePerson);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("response");
+        await act.ShouldRejectNullAsync("response");
     }
 
     [Fact]

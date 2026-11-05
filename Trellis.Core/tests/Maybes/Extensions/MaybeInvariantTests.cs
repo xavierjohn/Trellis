@@ -573,77 +573,77 @@ public class MaybeInvariantTests
     public void AllOrNone2_null_first_field_name_throws()
     {
         // Act
-        var act = () => MaybeInvariant.AllOrNone(
+        Action act = () => MaybeInvariant.AllOrNone(
             Maybe.From("a"), Maybe.From(1), null!, "second");
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("firstFieldName");
+        act.ShouldRejectNull("firstFieldName");
     }
 
     [Fact]
     public void AllOrNone2_null_second_field_name_throws()
     {
         // Act
-        var act = () => MaybeInvariant.AllOrNone(
+        Action act = () => MaybeInvariant.AllOrNone(
             Maybe.From("a"), Maybe.From(1), "first", null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("secondFieldName");
+        act.ShouldRejectNull("secondFieldName");
     }
 
     [Fact]
     public void Requires_null_source_field_name_throws()
     {
         // Act
-        var act = () => MaybeInvariant.Requires(
+        Action act = () => MaybeInvariant.Requires(
             Maybe.From("a"), Maybe.From(1), null!, "required");
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("sourceFieldName");
+        act.ShouldRejectNull("sourceFieldName");
     }
 
     [Fact]
     public void Requires_null_required_field_name_throws()
     {
         // Act
-        var act = () => MaybeInvariant.Requires(
+        Action act = () => MaybeInvariant.Requires(
             Maybe.From("a"), Maybe.From(1), "source", null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("requiredFieldName");
+        act.ShouldRejectNull("requiredFieldName");
     }
 
     [Fact]
     public void MutuallyExclusive2_null_field_name_throws()
     {
         // Act
-        var act = () => MaybeInvariant.MutuallyExclusive(
+        Action act = () => MaybeInvariant.MutuallyExclusive(
             Maybe.From("a"), Maybe.From(1), null!, "second");
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("firstFieldName");
+        act.ShouldRejectNull("firstFieldName");
     }
 
     [Fact]
     public void ExactlyOne2_null_field_name_throws()
     {
         // Act
-        var act = () => MaybeInvariant.ExactlyOne(
+        Action act = () => MaybeInvariant.ExactlyOne(
             Maybe.From("a"), Maybe.From(1), null!, "second");
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("firstFieldName");
+        act.ShouldRejectNull("firstFieldName");
     }
 
     [Fact]
     public void AtLeastOne2_null_field_name_throws()
     {
         // Act
-        var act = () => MaybeInvariant.AtLeastOne(
+        Action act = () => MaybeInvariant.AtLeastOne(
             Maybe.From("a"), Maybe.From(1), null!, "second");
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().WithParameterName("firstFieldName");
+        act.ShouldRejectNull("firstFieldName");
     }
 
     #endregion

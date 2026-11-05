@@ -156,9 +156,9 @@ public class SharedResourceAuthorizationRegistrationTests
     {
         IServiceCollection services = null!;
 
-        var act = () => services.AddSharedResourceAuthorization<SharedCancelCommand, SharedOrder, string, Result<Unit>>();
+        Action act = () => services.AddSharedResourceAuthorization<SharedCancelCommand, SharedOrder, string, Result<Unit>>();
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("services");
+        act.ShouldRejectNull("services");
     }
 
     [Fact]
