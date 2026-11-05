@@ -225,8 +225,7 @@ public class AggregateETagTests : IDisposable
         aggregate.Rename("Modified by original process");
         var result = await _context.SaveChangesResultAsync(ct);
 
-        result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -248,8 +247,7 @@ public class AggregateETagTests : IDisposable
         aggregate.Rename("Modified by original process");
         var result = await _context.SaveChangesResultUnitAsync(ct);
 
-        result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     #endregion

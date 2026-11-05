@@ -39,8 +39,7 @@ public class ValidationBehaviorTests
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Which;
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields.Items.Should().Contain(fv => fv.Field.Path.Contains("Name"));
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked for invalid messages");
     }
@@ -74,8 +73,7 @@ public class ValidationBehaviorTests
 
         var result = await behavior.Handle(query, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        var validation = result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Which;
+        var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         validation.Fields.Items.Should().Contain(fv => fv.Field.Path.Contains("Id"));
         tracker.WasInvoked.Should().BeFalse();
     }
@@ -96,7 +94,7 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(new TestCommandNoValidation("anything"), next, CancellationToken.None);
 
         tracker.WasInvoked.Should().BeFalse();
-        var error = result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Which;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().ContainSingle()
             .Which.Detail.Should().Be("external rule");
     }
@@ -140,7 +138,7 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(new TestCommand("   "), next, CancellationToken.None);
 
         tracker.WasInvoked.Should().BeFalse();
-        var error = result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Which;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().HaveCount(2);
         error.Fields.Items.Should().Contain(fv => fv.Field.Path.Contains("Name"));
         error.Fields.Items.Should().Contain(fv => fv.Field.Path.Contains("Email"));
@@ -160,7 +158,7 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
 
         tracker.WasInvoked.Should().BeFalse();
-        var error = result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Which;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().HaveCount(2);
         error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/A");
         error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/B");
@@ -183,7 +181,7 @@ public class ValidationBehaviorTests
 
         tracker.WasInvoked.Should().BeFalse();
         secondInvoked.Should().BeFalse("non-UPC failure must short-circuit before subsequent validators");
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -198,7 +196,7 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(new TestCommand("   "), next, CancellationToken.None);
 
         tracker.WasInvoked.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
     }
 
     [Fact]
@@ -223,7 +221,7 @@ public class ValidationBehaviorTests
         var result = await bothBehavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
 
         tracker.WasInvoked.Should().BeFalse();
-        var error = result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Which;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().HaveCount(1);
         error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/Email");
         error.Rules.Items.Should().HaveCount(2);
@@ -245,7 +243,7 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
 
         tracker.WasInvoked.Should().BeFalse("rule-only UPC failures must still short-circuit");
-        var error = result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Which;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().BeEmpty();
         error.Rules.Items.Should().HaveCount(1);
         error.Rules.Items[0].ReasonCode.Should().Be("rule.only");
@@ -268,8 +266,7 @@ public class ValidationBehaviorTests
         var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
 
         tracker.WasInvoked.Should().BeFalse("empty UPC is still a failure and must short-circuit");
-        result.IsFailure.Should().BeTrue();
-        var error = result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Which;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields.Items.Should().BeEmpty();
         error.Rules.Items.Should().BeEmpty();
     }

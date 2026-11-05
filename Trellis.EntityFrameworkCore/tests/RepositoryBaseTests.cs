@@ -384,8 +384,7 @@ public partial class RepositoryBaseTests : IDisposable
         var result = await _repository.RemoveByIdAsync(id, ct);
 
         // Assert
-        result.Should().BeFailure();
-        result.UnwrapError().Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
     }
 
     #endregion

@@ -46,8 +46,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         result.UnwrapError().Detail.Should().Contain("Only the resource owner");
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked when authorization fails");
     }
@@ -66,8 +65,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked when resource is not found");
     }
 
@@ -171,8 +169,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.AuthenticationRequired>();
+        result.Should().BeFailureOfType<Error.AuthenticationRequired>();
         loader.WasCalled.Should().BeFalse();
     }
 
@@ -290,8 +287,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         tracker.WasInvoked.Should().BeFalse();
 
         new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>()
@@ -330,8 +326,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
         new AuthorizedResourceHolder<ResourceOwnerCommand, TestResource>()
             .TryGetResource(out _).Should().BeFalse(
                 "the using-block must pop the accessor even when the handler returns a failure result");

@@ -41,8 +41,7 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         result.UnwrapError().Detail.Should().Be("Insufficient permissions.");
         result.UnwrapError().Detail.Should().NotContain("Admin.Write");
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked when permissions are missing");
@@ -116,8 +115,7 @@ public class AuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.AuthenticationRequired>();
+        result.Should().BeFailureOfType<Error.AuthenticationRequired>();
         tracker.WasInvoked.Should().BeFalse();
     }
 

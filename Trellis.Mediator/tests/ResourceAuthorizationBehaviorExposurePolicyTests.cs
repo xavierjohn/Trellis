@@ -24,7 +24,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeHide(behavior, command);
 
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeHide(behavior, command);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Type.Should().Be("HiddenResource");
         notFound.Resource.Id.Should().Be("res-1");
     }
@@ -55,7 +55,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeHide(behavior, command);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Type.Should().Be("HiddenResource");
         notFound.Resource.Id.Should().Be("res-1");
     }
@@ -85,7 +85,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeHide(behavior, command);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Should().NotBeSameAs(loaderError);
         notFound.Resource.Should().Be(ResourceRef.For<HiddenResource>("res-1"));
         notFound.Code.Should().Be("error.unspecified");
@@ -192,7 +192,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeHide(behavior, command);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Should().Be(ResourceRef.For<HiddenResource>("res-1"));
         notFound.Code.Should().Be("resource.not-found");
         notFound.Detail.Should().Be("Resource not found.");
@@ -263,7 +263,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeProjection(behavior, new ProjectionAuthorizedCommand("public-id-42"));
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Should().Be(ResourceRef.For<PublicAggregate>("public-id-42"));
         notFound.Code.Should().Be("public.not-found");
         notFound.Detail.Should().Be("Public aggregate not found.");
@@ -307,7 +307,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeHide(behavior, command);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Type.Should().Be("HiddenResource");
     }
 
@@ -325,7 +325,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeHide(behavior, command);
 
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
     }
 
     [Fact]
@@ -338,7 +338,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeHide(behavior, command);
 
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
     }
 
     [Fact]
@@ -353,7 +353,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeOwner(behavior, command);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Type.Should().Be("TestResource");
         notFound.Resource.Id.Should().BeNull();
     }
@@ -372,7 +372,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeProjection(behavior, command);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Type.Should().Be("PublicAggregate");
         notFound.Resource.Id.Should().Be("public-id-42");
     }
@@ -396,7 +396,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeProjection(behavior, new ProjectionAuthorizedCommand("public-id-42"));
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Should().Be(ResourceRef.For<PublicAggregate>("public-id-42"));
         notFound.Code.Should().Be("error.unspecified");
         notFound.Detail.Should().BeNull();
@@ -415,7 +415,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var result = await InvokeHide(behavior, command);
 
-        result.UnwrapError().Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
     }
 
     [Fact]
@@ -444,7 +444,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         var typedBehavior = (ResourceAuthorizationBehavior<HideExistenceCommand, HiddenResource, Result<string>>)behavior;
         var result = await InvokeHide(typedBehavior, new HideExistenceCommand("res-1"));
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Type.Should().Be("HiddenResource");
         notFound.Resource.Id.Should().Be("res-1");
     }

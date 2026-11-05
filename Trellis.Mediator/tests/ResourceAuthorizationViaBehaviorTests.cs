@@ -55,8 +55,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         result.UnwrapError().Code.Should().Be("not_owner");
         tracker.WasInvoked.Should().BeFalse();
     }
@@ -77,8 +76,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
         tracker.WasInvoked.Should().BeFalse();
     }
 
@@ -205,8 +203,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         result.UnwrapError().Code.Should().Be("not_team_owner");
         tracker.WasInvoked.Should().BeFalse();
     }
@@ -250,8 +247,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         result.UnwrapError().Code.Should().Be("resource.authorization-via.load-failed");
         tracker.WasInvoked.Should().BeFalse();
     }
@@ -307,8 +303,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         tracker.WasInvoked.Should().BeFalse();
         new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>()
             .TryGetResource(out _).Should().BeFalse(
@@ -355,8 +350,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
         new AuthorizedResourceHolder<SingleHopCommand, TestLeaf>()
             .TryGetResource(out _).Should().BeFalse(
                 "the using-block must pop the accessor even when the handler returns a failure result");

@@ -225,8 +225,7 @@ public class QueryableExtensionsTests : IDisposable
             .FirstOrDefaultResultAsync(notFoundError, ct);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
         result.UnwrapError().Detail.Should().Be("Customer not found");
     }
 
