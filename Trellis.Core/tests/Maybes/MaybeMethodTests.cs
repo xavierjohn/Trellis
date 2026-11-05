@@ -424,10 +424,9 @@ public class MaybeMethodTests
     {
         var sut = Maybe.From(5);
 
-        var act = () => sut.HasValueWhere(null!);
+        Action act = () => sut.HasValueWhere(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "predicate");
+        act.ShouldRejectNull("predicate");
     }
 
     [Fact]
@@ -437,10 +436,9 @@ public class MaybeMethodTests
         // of the Maybe<T> instance surface (Map, Match, Bind, Where, Tap, Or).
         var sut = Maybe<int>.None;
 
-        var act = () => sut.HasValueWhere(null!);
+        Action act = () => sut.HasValueWhere(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "predicate");
+        act.ShouldRejectNull("predicate");
     }
 
     [Fact]

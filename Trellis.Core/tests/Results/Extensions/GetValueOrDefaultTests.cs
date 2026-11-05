@@ -57,10 +57,9 @@ public class GetValueOrDefaultTests
     {
         var sut = Result.Ok(42);
 
-        var act = () => sut.GetValueOrDefault((Func<int>)null!);
+        Action act = () => sut.GetValueOrDefault((Func<int>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "defaultFactory");
+        act.ShouldRejectNull("defaultFactory");
     }
 
     #endregion
@@ -95,10 +94,9 @@ public class GetValueOrDefaultTests
     {
         var sut = Result.Ok(42);
 
-        var act = () => sut.GetValueOrDefault((Func<Error, int>)null!);
+        Action act = () => sut.GetValueOrDefault((Func<Error, int>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "defaultFactory");
+        act.ShouldRejectNull("defaultFactory");
     }
 
     #endregion

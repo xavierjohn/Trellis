@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions.Tap;
 
+using Trellis.Testing;
+
 public partial class TapTests : TestBase
 {
     protected bool ActionExecuted { get; set; }
@@ -37,10 +39,9 @@ public partial class TapTests : TestBase
     {
         Result<T> result = Result.Ok(T.Value1);
 
-        var act = () => result.Tap((Action)null!);
+        Action act = () => result.Tap((Action)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "action");
+        act.ShouldRejectNull("action");
     }
 
     [Theory]
@@ -129,8 +130,7 @@ public partial class TapTests : TestBase
 
         var act = async () => await result.TapAsync((Func<Task>)null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        await act.ShouldRejectNullAsync("func");
     }
 
     [Theory]

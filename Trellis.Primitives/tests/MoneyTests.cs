@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text.Json;
 using Trellis;
 using Trellis.Testing;
+using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 public class MoneyTests
 {
@@ -845,10 +846,7 @@ public class MoneyTests
     {
         var fallback = Money.Create(0m, "USD");
 
-        var act = () => Money.Sum(null!, fallback);
-
-        act.Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "values");
+        NullGuard.ShouldRejectNull(() => Money.Sum(null!, fallback), "values");
     }
 
     [Fact]
@@ -856,10 +854,7 @@ public class MoneyTests
     {
         var items = new[] { Money.Create(10m, "USD") };
 
-        var act = () => Money.Sum(items, null!);
-
-        act.Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "fallback");
+        NullGuard.ShouldRejectNull(() => Money.Sum(items, null!), "fallback");
     }
 
     [Fact]
@@ -904,9 +899,7 @@ public class MoneyTests
         // Inspection finding M-1: arithmetic methods must reject null other.
         var money = Money.Create(10m, "USD");
 
-        FluentActions.Invoking(() => money.Add(null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "other");
+        NullGuard.ShouldRejectNull(() => money.Add(null!), "other");
     }
 
     [Fact]
@@ -914,9 +907,7 @@ public class MoneyTests
     {
         var money = Money.Create(10m, "USD");
 
-        FluentActions.Invoking(() => money.Subtract(null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "other");
+        NullGuard.ShouldRejectNull(() => money.Subtract(null!), "other");
     }
 
     [Fact]
@@ -924,9 +915,7 @@ public class MoneyTests
     {
         var money = Money.Create(10m, "USD");
 
-        FluentActions.Invoking(() => money.IsGreaterThan(null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "other");
+        NullGuard.ShouldRejectNull(() => money.IsGreaterThan(null!), "other");
     }
 
     [Fact]
@@ -934,9 +923,7 @@ public class MoneyTests
     {
         var money = Money.Create(10m, "USD");
 
-        FluentActions.Invoking(() => money.IsGreaterThanOrEqual(null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "other");
+        NullGuard.ShouldRejectNull(() => money.IsGreaterThanOrEqual(null!), "other");
     }
 
     [Fact]
@@ -944,9 +931,7 @@ public class MoneyTests
     {
         var money = Money.Create(10m, "USD");
 
-        FluentActions.Invoking(() => money.IsLessThan(null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "other");
+        NullGuard.ShouldRejectNull(() => money.IsLessThan(null!), "other");
     }
 
     [Fact]
@@ -954,9 +939,7 @@ public class MoneyTests
     {
         var money = Money.Create(10m, "USD");
 
-        FluentActions.Invoking(() => money.IsLessThanOrEqual(null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "other");
+        NullGuard.ShouldRejectNull(() => money.IsLessThanOrEqual(null!), "other");
     }
 
     [Fact]
@@ -966,9 +949,7 @@ public class MoneyTests
         // sugar makes a direct null-array call possible from non-params call sites).
         var money = Money.Create(100m, "USD");
 
-        FluentActions.Invoking(() => money.Allocate(null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "ratios");
+        NullGuard.ShouldRejectNull(() => money.Allocate(null!), "ratios");
     }
 
     [Fact]

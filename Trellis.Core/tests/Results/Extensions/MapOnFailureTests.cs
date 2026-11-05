@@ -11,10 +11,9 @@ public class MapOnFailureTests : TestBase
     {
         var original = Result.Fail<int>(Error1);
 
-        var act = () => original.MapOnFailure((Func<Error, Error>)null!);
+        Action act = () => original.MapOnFailure((Func<Error, Error>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "map");
+        act.ShouldRejectNull("map");
     }
 
     [Fact]
@@ -24,8 +23,7 @@ public class MapOnFailureTests : TestBase
 
         Func<Task<Result<int>>> act = () => original.MapOnFailureAsync(e => e);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Fact]

@@ -162,10 +162,9 @@ public class FluentTests
     {
         IValidator<string> validator = null!;
 
-        var act = () => validator.ValidateToResult("value");
+        Action act = () => validator.ValidateToResult("value");
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "validator");
+        act.ShouldRejectNull("validator");
     }
 
     #region ValidateToResultAsync Tests

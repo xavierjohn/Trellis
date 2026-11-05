@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Mediator.Tests;
 
 using Trellis.Mediator.Tests.Helpers;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="DomainEventPublisherExtensions.DispatchAggregateEventsAsync"/>.
@@ -223,7 +224,7 @@ public class DomainEventPublisherExtensionsTests
 
         var act = async () => await publisher.DispatchAggregateEventsAsync(aggregate, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().Where(e => e.ParamName == "publisher");
+        await act.ShouldRejectNullAsync("publisher");
     }
 
     [Fact]
@@ -233,7 +234,7 @@ public class DomainEventPublisherExtensionsTests
 
         var act = async () => await publisher.DispatchAggregateEventsAsync(null!, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentNullException>().Where(e => e.ParamName == "aggregate");
+        await act.ShouldRejectNullAsync("aggregate");
     }
 
     [Fact]

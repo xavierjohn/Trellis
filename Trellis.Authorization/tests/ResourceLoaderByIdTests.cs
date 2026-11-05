@@ -73,8 +73,7 @@ public class ResourceLoaderByIdTests
 
         var act = () => loader.LoadAsync(message: null!, CancellationToken.None);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "message");
+        await act.ShouldRejectNullAsync("message");
     }
 
     #endregion

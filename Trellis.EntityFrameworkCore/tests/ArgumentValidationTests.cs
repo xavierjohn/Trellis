@@ -1,6 +1,7 @@
 ﻿namespace Trellis.EntityFrameworkCore.Tests;
 
 using Microsoft.EntityFrameworkCore;
+using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
 /// Argument-null-guard tests for the public extension methods covered by the GPT-5.5 review's
@@ -16,10 +17,7 @@ public class ArgumentValidationTests
 
     [Fact]
     public void EfUnitOfWork_NullContext_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => new EfUnitOfWork<TestContext>(context: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "context");
+        NullGuard.ShouldRejectNull(() => _ = new EfUnitOfWork<TestContext>(context: null!), "context");
 
     #endregion
 
@@ -27,31 +25,25 @@ public class ArgumentValidationTests
 
     [Fact]
     public Task SaveChangesResultAsync_NullContext_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => DbContextExtensions.SaveChangesResultAsync(context: null!))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "context");
+        NullGuard.ShouldRejectNullAsync(() => DbContextExtensions.SaveChangesResultAsync(context: null!), "context");
 
     [Fact]
     public Task SaveChangesResultAsync_AcceptAllChanges_NullContext_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => DbContextExtensions.SaveChangesResultAsync(context: null!, acceptAllChangesOnSuccess: true))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "context");
+        NullGuard.ShouldRejectNullAsync(
+            () => DbContextExtensions.SaveChangesResultAsync(context: null!, acceptAllChangesOnSuccess: true),
+            "context");
 
     [Fact]
     public Task SaveChangesResultUnitAsync_NullContext_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => DbContextExtensions.SaveChangesResultUnitAsync(context: null!))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "context");
+        NullGuard.ShouldRejectNullAsync(
+            () => DbContextExtensions.SaveChangesResultUnitAsync(context: null!),
+            "context");
 
     [Fact]
     public Task SaveChangesResultUnitAsync_AcceptAllChanges_NullContext_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => DbContextExtensions.SaveChangesResultUnitAsync(context: null!, acceptAllChangesOnSuccess: true))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "context");
+        NullGuard.ShouldRejectNullAsync(
+            () => DbContextExtensions.SaveChangesResultUnitAsync(context: null!, acceptAllChangesOnSuccess: true),
+            "context");
 
     #endregion
 
@@ -59,33 +51,25 @@ public class ArgumentValidationTests
 
     [Fact]
     public void AddTrellisInterceptors_Generic_NullBuilder_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => DbContextOptionsBuilderExtensions.AddTrellisInterceptors<TestContext>(optionsBuilder: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "optionsBuilder");
+        NullGuard.ShouldRejectNull(
+            () => DbContextOptionsBuilderExtensions.AddTrellisInterceptors<TestContext>(optionsBuilder: null!),
+            "optionsBuilder");
 
     [Fact]
     public void AddTrellisInterceptors_NonGeneric_NullBuilder_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => DbContextOptionsBuilderExtensions.AddTrellisInterceptors(optionsBuilder: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "optionsBuilder");
+        NullGuard.ShouldRejectNull(
+            () => DbContextOptionsBuilderExtensions.AddTrellisInterceptors(optionsBuilder: null!),
+            "optionsBuilder");
 
     [Fact]
     public void AddTrellisInterceptors_Generic_TimeProvider_NullBuilder_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => DbContextOptionsBuilderExtensions
-                .AddTrellisInterceptors<TestContext>(optionsBuilder: null!, timeProvider: TimeProvider.System))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "optionsBuilder");
+        NullGuard.ShouldRejectNull(() => DbContextOptionsBuilderExtensions
+            .AddTrellisInterceptors<TestContext>(optionsBuilder: null!, timeProvider: TimeProvider.System), "optionsBuilder");
 
     [Fact]
     public void AddTrellisInterceptors_NonGeneric_TimeProvider_NullBuilder_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => DbContextOptionsBuilderExtensions
-                .AddTrellisInterceptors(optionsBuilder: null!, timeProvider: TimeProvider.System))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "optionsBuilder");
+        NullGuard.ShouldRejectNull(() => DbContextOptionsBuilderExtensions
+            .AddTrellisInterceptors(optionsBuilder: null!, timeProvider: TimeProvider.System), "optionsBuilder");
 
     #endregion
 
@@ -93,62 +77,50 @@ public class ArgumentValidationTests
 
     [Fact]
     public Task FirstOrDefaultMaybeAsync_NullQuery_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => QueryableExtensions.FirstOrDefaultMaybeAsync<string>(query: null!))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "query");
+        NullGuard.ShouldRejectNullAsync(
+            () => QueryableExtensions.FirstOrDefaultMaybeAsync<string>(query: null!),
+            "query");
 
     [Fact]
     public Task FirstOrDefaultMaybeAsync_Predicate_NullQuery_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => QueryableExtensions.FirstOrDefaultMaybeAsync<string>(query: null!, predicate: x => true))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "query");
+        NullGuard.ShouldRejectNullAsync(
+            () => QueryableExtensions.FirstOrDefaultMaybeAsync<string>(query: null!, predicate: x => true),
+            "query");
 
     [Fact]
     public Task FirstOrDefaultMaybeAsync_Predicate_NullPredicate_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => Array.Empty<string>().AsQueryable().FirstOrDefaultMaybeAsync(predicate: null!))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "predicate");
+        NullGuard.ShouldRejectNullAsync(
+            () => Array.Empty<string>().AsQueryable().FirstOrDefaultMaybeAsync(predicate: null!),
+            "predicate");
 
     [Fact]
     public Task SingleOrDefaultMaybeAsync_NullQuery_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => QueryableExtensions.SingleOrDefaultMaybeAsync<string>(query: null!))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "query");
+        NullGuard.ShouldRejectNullAsync(
+            () => QueryableExtensions.SingleOrDefaultMaybeAsync<string>(query: null!),
+            "query");
 
     [Fact]
     public Task SingleOrDefaultMaybeAsync_Predicate_NullPredicate_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => Array.Empty<string>().AsQueryable().SingleOrDefaultMaybeAsync(predicate: null!))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "predicate");
+        NullGuard.ShouldRejectNullAsync(
+            () => Array.Empty<string>().AsQueryable().SingleOrDefaultMaybeAsync(predicate: null!),
+            "predicate");
 
     [Fact]
     public Task FirstOrDefaultResultAsync_NullQuery_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => QueryableExtensions.FirstOrDefaultResultAsync<string>(
-                query: null!,
-                notFoundError: new Error.NotFound(ResourceRef.For<string>("x"))))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "query");
+        NullGuard.ShouldRejectNullAsync(() => QueryableExtensions.FirstOrDefaultResultAsync<string>(
+            query: null!,
+            notFoundError: new Error.NotFound(ResourceRef.For<string>("x"))), "query");
 
     [Fact]
     public Task FirstOrDefaultResultAsync_NullError_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => Array.Empty<string>().AsQueryable().FirstOrDefaultResultAsync(notFoundError: null!))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "notFoundError");
+        NullGuard.ShouldRejectNullAsync(
+            () => Array.Empty<string>().AsQueryable().FirstOrDefaultResultAsync(notFoundError: null!),
+            "notFoundError");
 
     [Fact]
     public Task FirstOrDefaultResultAsync_Predicate_NullError_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => Array.Empty<string>().AsQueryable()
-                .FirstOrDefaultResultAsync(predicate: x => true, notFoundError: null!))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "notFoundError");
+        NullGuard.ShouldRejectNullAsync(() => Array.Empty<string>().AsQueryable()
+            .FirstOrDefaultResultAsync(predicate: x => true, notFoundError: null!), "notFoundError");
 
     #endregion
 
@@ -156,19 +128,13 @@ public class ArgumentValidationTests
 
     [Fact]
     public void AddTrellisUnitOfWork_NullServices_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => UnitOfWorkServiceCollectionExtensions
-                .AddTrellisUnitOfWork<TestContext>(services: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "services");
+        NullGuard.ShouldRejectNull(() => UnitOfWorkServiceCollectionExtensions
+            .AddTrellisUnitOfWork<TestContext>(services: null!), "services");
 
     [Fact]
     public void AddTrellisUnitOfWorkWithoutBehavior_NullServices_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => UnitOfWorkServiceCollectionExtensions
-                .AddTrellisUnitOfWorkWithoutBehavior<TestContext>(services: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "services");
+        NullGuard.ShouldRejectNull(() => UnitOfWorkServiceCollectionExtensions
+            .AddTrellisUnitOfWorkWithoutBehavior<TestContext>(services: null!), "services");
 
     #endregion
 
@@ -176,11 +142,10 @@ public class ArgumentValidationTests
 
     [Fact]
     public void ApplyTrellisConventions_NullBuilder_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => ModelConfigurationBuilderExtensions
-                .ApplyTrellisConventions(configurationBuilder: null!, assemblies: typeof(ArgumentValidationTests).Assembly))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "configurationBuilder");
+        NullGuard.ShouldRejectNull(
+            () => ModelConfigurationBuilderExtensions
+                .ApplyTrellisConventions(configurationBuilder: null!, assemblies: typeof(ArgumentValidationTests).Assembly),
+            "configurationBuilder");
 
     /// <summary>
     /// The null-element-in-assemblies guard fires inside <c>ApplyTrellisConventions</c> after the

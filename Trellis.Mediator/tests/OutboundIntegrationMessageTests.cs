@@ -1,6 +1,6 @@
 ﻿namespace Trellis.Mediator.Tests;
 
-using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using Trellis.Testing;
 
 public class OutboundIntegrationMessageTests
 {

@@ -135,10 +135,9 @@ public class DebugTests : TestBase
     {
         var result = Result.Ok(T.Value1);
 
-        var act = () => result.DebugOnSuccess((Action<T>)null!);
+        Action act = () => result.DebugOnSuccess((Action<T>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "action");
+        act.ShouldRejectNull("action");
     }
 
     [Theory]
@@ -282,8 +281,7 @@ public class DebugTests : TestBase
 
         Func<Task<Result<T>>> act = () => resultTask.DebugOnSuccessAsync(_ => { });
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Theory]

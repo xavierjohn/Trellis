@@ -29,10 +29,9 @@ public class TapOnFailureTupleTests : TestBase
     {
         var result = Result.Fail<(int, string)>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Validation failed" });
 
-        var act = () => result.TapOnFailure((Action)null!);
+        Action act = () => result.TapOnFailure((Action)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "action");
+        act.ShouldRejectNull("action");
     }
 
     [Fact]
@@ -146,8 +145,7 @@ public class TapOnFailureTupleTests : TestBase
 
         Func<Task<Result<(int, string)>>> act = () => result.TapOnFailureAsync(() => { });
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Fact]

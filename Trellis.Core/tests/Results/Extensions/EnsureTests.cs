@@ -9,10 +9,9 @@ public class EnsureTests
     {
         var sut = Result.Ok("Hello");
 
-        var act = () => sut.Ensure((Func<bool>)null!, new Error.Unexpected("test") { Detail = "predicate failed" });
+        Action act = () => sut.Ensure((Func<bool>)null!, new Error.Unexpected("test") { Detail = "predicate failed" });
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "predicate");
+        act.ShouldRejectNull("predicate");
     }
 
     [Fact]
@@ -20,10 +19,9 @@ public class EnsureTests
     {
         var sut = Result.Ok("Hello");
 
-        var act = () => sut.Ensure(static _ => false, (Func<string, Error>)null!);
+        Action act = () => sut.Ensure(static _ => false, (Func<string, Error>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "errorPredicate");
+        act.ShouldRejectNull("errorPredicate");
     }
 
     [Fact]
@@ -93,8 +91,7 @@ public class EnsureTests
 
         var act = async () => await sut.EnsureAsync((Func<Task<bool>>)null!, new Error.Unexpected("test") { Detail = "predicate failed" });
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "predicate");
+        await act.ShouldRejectNullAsync("predicate");
     }
 
     [Fact]

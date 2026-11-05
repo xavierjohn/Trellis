@@ -11,10 +11,9 @@ public class MatchTests : TestBase
     {
         var result = Result.Ok(42);
 
-        var act = () => result.Match<int, string>((Func<int, string>)null!, _ => "error");
+        Action act = () => result.Match<int, string>((Func<int, string>)null!, _ => "error");
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "onSuccess");
+        act.ShouldRejectNull("onSuccess");
     }
 
     [Fact]
@@ -26,8 +25,7 @@ public class MatchTests : TestBase
             onSuccess: _ => "success",
             onFailure: _ => "error");
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Fact]

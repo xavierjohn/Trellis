@@ -20,10 +20,9 @@ public class TapOnFailureTests : TestBase
     {
         var result = Result.Fail<int>(Error1);
 
-        var act = () => result.TapOnFailure((Action)null!);
+        Action act = () => result.TapOnFailure((Action)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "action");
+        act.ShouldRejectNull("action");
     }
 
     [Fact]
@@ -111,8 +110,7 @@ public class TapOnFailureTests : TestBase
 
         Func<Task<Result<int>>> act = () => result.TapOnFailureAsync(() => { });
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Fact]
@@ -173,8 +171,7 @@ public class TapOnFailureTests : TestBase
 
         Func<Task<Result<int>>> act = () => result.TapOnFailureAsync((Func<Task>)null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        await act.ShouldRejectNullAsync("func");
     }
 
     [Fact]

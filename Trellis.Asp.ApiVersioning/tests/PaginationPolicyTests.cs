@@ -9,7 +9,7 @@ using Trellis;
 using Trellis.Asp;
 using Trellis.Asp.ApiVersioning;
 using Trellis.ServiceDefaults;
-using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using Trellis.Testing;
 
 public sealed class PaginationPolicyTests
 {

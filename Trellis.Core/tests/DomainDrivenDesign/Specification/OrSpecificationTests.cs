@@ -1,6 +1,6 @@
 ﻿namespace Trellis.Core.Tests.DomainDrivenDesign.Specification;
 
-using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for the Or composition of <see cref="Trellis.Specification{T}"/>.

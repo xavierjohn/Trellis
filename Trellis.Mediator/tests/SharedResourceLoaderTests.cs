@@ -5,6 +5,7 @@ using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis.Authorization;
 using Trellis.Mediator.Tests.Helpers;
+using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
 /// Tests for <see cref="SharedResourceLoaderById{TResource, TId}"/> integration with
@@ -296,10 +297,9 @@ public class SharedResourceLoaderTests
     /// </summary>
     [Fact]
     public void SharedResourceLoaderAdapter_NullInner_ThrowsArgumentNullException() =>
-        FluentActions
-            .Invoking(() => new SharedResourceLoaderAdapter<SharedCancelCommand, SharedOrder, string>(inner: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "inner");
+        NullGuard.ShouldRejectNull(
+            () => _ = new SharedResourceLoaderAdapter<SharedCancelCommand, SharedOrder, string>(inner: null!),
+            "inner");
 
     [Fact]
     public async Task SharedResourceLoaderAdapter_LoadAsync_NullMessage_ThrowsArgumentNullException()
@@ -307,10 +307,9 @@ public class SharedResourceLoaderTests
         var adapter = new SharedResourceLoaderAdapter<SharedCancelCommand, SharedOrder, string>(
             new TestSharedOrderLoader());
 
-        await FluentActions
-            .Invoking(() => adapter.LoadAsync(message: null!, CancellationToken.None))
-            .Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "message");
+        await NullGuard.ShouldRejectNullAsync(
+            () => adapter.LoadAsync(message: null!, CancellationToken.None),
+            "message");
     }
 
     #endregion

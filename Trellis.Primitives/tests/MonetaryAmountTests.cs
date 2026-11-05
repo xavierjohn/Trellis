@@ -2,6 +2,7 @@
 
 using Trellis.Primitives;
 using Trellis.Testing;
+using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
 /// Tests for <see cref="MonetaryAmount"/> — a single-currency monetary value.
@@ -441,9 +442,7 @@ public class MonetaryAmountTests
     {
         var amt = MonetaryAmount.Create(10m);
 
-        FluentActions.Invoking(() => amt.Add(null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "other");
+        NullGuard.ShouldRejectNull(() => amt.Add(null!), "other");
     }
 
     [Fact]
@@ -451,9 +450,7 @@ public class MonetaryAmountTests
     {
         var amt = MonetaryAmount.Create(10m);
 
-        FluentActions.Invoking(() => amt.Subtract(null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "other");
+        NullGuard.ShouldRejectNull(() => amt.Subtract(null!), "other");
     }
 
     [Fact]

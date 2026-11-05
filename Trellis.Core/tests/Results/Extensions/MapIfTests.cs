@@ -91,10 +91,9 @@ public class MapIfTests
     {
         var sut = Result.Ok(10);
 
-        var act = () => sut.MapIf(true, (Func<int, int>)null!);
+        Action act = () => sut.MapIf(true, (Func<int, int>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        act.ShouldRejectNull("func");
     }
 
     [Fact]
@@ -102,10 +101,9 @@ public class MapIfTests
     {
         var sut = Result.Ok(10);
 
-        var act = () => sut.MapIf((Func<int, bool>)null!, x => x * 2);
+        Action act = () => sut.MapIf((Func<int, bool>)null!, x => x * 2);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "predicate");
+        act.ShouldRejectNull("predicate");
     }
 
     #endregion

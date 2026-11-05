@@ -10,10 +10,9 @@ public partial class BindTests : TestBase
     {
         var result = Result.Ok(42);
 
-        var act = () => result.Bind<int, string>(null!);
+        Action act = () => result.Bind<int, string>(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        act.ShouldRejectNull("func");
     }
 
     [Fact]
@@ -140,8 +139,7 @@ public partial class BindTests : TestBase
 
         var act = async () => await result.BindAsync((Func<string, Task<Result<string>>>)null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        await act.ShouldRejectNullAsync("func");
     }
 
     [Fact]

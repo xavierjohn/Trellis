@@ -17,10 +17,9 @@ public class BindTsTests : TestBase
     {
         var result = Result.Ok((T.Value1, K.Value1));
 
-        var act = () => result.Bind<T, K, string>(null!);
+        Action act = () => result.Bind<T, K, string>(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        act.ShouldRejectNull("func");
     }
 
     [Fact]
@@ -112,8 +111,7 @@ public class BindTsTests : TestBase
 
         var act = async () => await result.BindAsync((Func<T, K, Task<Result<string>>>)null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        await act.ShouldRejectNullAsync("func");
     }
 
     [Fact]
@@ -121,8 +119,7 @@ public class BindTsTests : TestBase
     {
         var act = async () => await ((Task<Result<(T, K)>>)null!).BindAsync((t, k) => Result.Ok($"{t}-{k}"));
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Fact]
