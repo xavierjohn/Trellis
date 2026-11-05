@@ -17,8 +17,7 @@ public class TraverseTests : TestBase
         var result = items.Traverse(x => Result.Ok(x * 2));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().BeEmpty();
+        result.Should().BeSuccess().Which.Should().BeEmpty();
     }
 
     [Fact]
@@ -31,8 +30,7 @@ public class TraverseTests : TestBase
         var result = items.Traverse(x => Result.Ok(x * 2));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal(2, 4, 6, 8, 10);
+        result.Should().BeSuccess().Which.Should().Equal(2, 4, 6, 8, 10);
     }
 
     [Fact]
@@ -96,8 +94,7 @@ public class TraverseTests : TestBase
         var result = items.Traverse(s => Result.Ok(new Fruit { Name = s, Length = s.Length }));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().HaveCount(3);
+        result.Should().BeSuccess().Which.Should().HaveCount(3);
         result.Unwrap()[0].Name.Should().Be("apple");
     }
 
@@ -132,8 +129,7 @@ public class TraverseTests : TestBase
         var result = await items.TraverseAsync((int x) => Task.FromResult(Result.Ok(x * 2)));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().BeEmpty();
+        result.Should().BeSuccess().Which.Should().BeEmpty();
     }
 
     [Fact]
@@ -146,8 +142,7 @@ public class TraverseTests : TestBase
         var result = await items.TraverseAsync((int x) => Task.FromResult(Result.Ok(x * 2)));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal(2, 4, 6, 8, 10);
+        result.Should().BeSuccess().Which.Should().Equal(2, 4, 6, 8, 10);
     }
 
     [Fact]
@@ -240,8 +235,7 @@ public class TraverseTests : TestBase
         var result = await items.TraverseAsync((int x) => ValueTask.FromResult(Result.Ok(x * 2)));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal(2, 4, 6, 8, 10);
+        result.Should().BeSuccess().Which.Should().Equal(2, 4, 6, 8, 10);
     }
 
     [Fact]
@@ -274,8 +268,7 @@ public class TraverseTests : TestBase
             cts.Token);
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal(2, 4, 6);
+        result.Should().BeSuccess().Which.Should().Equal(2, 4, 6);
     }
 
     #endregion
@@ -295,8 +288,7 @@ public class TraverseTests : TestBase
                 : Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"Invalid email: {email}" }));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().AllSatisfy(e => e.Should().Contain("@"));
+        result.Should().BeSuccess().Which.Should().AllSatisfy(e => e.Should().Contain("@"));
     }
 
     [Fact]
@@ -327,8 +319,7 @@ public class TraverseTests : TestBase
             Task.FromResult(Result.Ok($"User{id}")));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal("User1", "User2", "User3");
+        result.Should().BeSuccess().Which.Should().Equal("User1", "User2", "User3");
     }
 
     [Fact]
@@ -359,8 +350,7 @@ public class TraverseTests : TestBase
             Task.FromResult(Result.Ok(x * 2)));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().HaveCount(100);
+        result.Should().BeSuccess().Which.Should().HaveCount(100);
         result.Unwrap().Should().Equal(Enumerable.Range(1, 100).Select(x => x * 2));
     }
 
@@ -377,8 +367,7 @@ public class TraverseTests : TestBase
                 : Result.Fail<Name>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Name cannot be empty" }));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().HaveCount(3);
+        result.Should().BeSuccess().Which.Should().HaveCount(3);
         result.Unwrap().Should().AllSatisfy(n => n.Value.Should().NotBeNullOrEmpty());
     }
 
@@ -396,8 +385,7 @@ public class TraverseTests : TestBase
         var result = items.Traverse(x => Result.Ok(x * 2));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().ContainSingle()
+        result.Should().BeSuccess().Which.Should().ContainSingle()
             .Which.Should().Be(84);
     }
 
@@ -435,8 +423,7 @@ public class TraverseTests : TestBase
         var result = items.Traverse(x => Result.Ok(x * 10));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal(50, 30, 80, 10, 90, 20);
+        result.Should().BeSuccess().Which.Should().Equal(50, 30, 80, 10, 90, 20);
     }
 
     #endregion
@@ -450,8 +437,7 @@ public class TraverseTests : TestBase
 
         var result = results.Sequence();
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().BeEmpty();
+        result.Should().BeSuccess().Which.Should().BeEmpty();
     }
 
     [Fact]
@@ -461,8 +447,7 @@ public class TraverseTests : TestBase
 
         var result = results.Sequence();
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal(1, 2, 3);
+        result.Should().BeSuccess().Which.Should().Equal(1, 2, 3);
     }
 
     [Fact]

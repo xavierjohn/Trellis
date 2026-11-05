@@ -11,8 +11,7 @@ public class SequenceAllTests : TestBase
 
         var result = results.SequenceAll();
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal([1, 2, 3]);
+        result.Should().BeSuccess().Which.Should().Equal([1, 2, 3]);
     }
 
     [Fact]
@@ -22,8 +21,7 @@ public class SequenceAllTests : TestBase
 
         var result = results.SequenceAll();
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().BeEmpty();
+        result.Should().BeSuccess().Which.Should().BeEmpty();
     }
 
     [Fact]

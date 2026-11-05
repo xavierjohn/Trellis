@@ -168,8 +168,7 @@ public class DebugTests : TestBase
             .Debug("After Bind")
             .Tap(s => s.Should().Be("Hello World"));
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("Hello World");
+        result.Should().BeSuccess().Which.Should().Be("Hello World");
     }
 
     #region Async Tests
@@ -358,8 +357,7 @@ public class DebugTests : TestBase
             .DebugAsync("After Bind")
             .TapAsync(s => s.Should().Be("Hello World"));
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("Hello World");
+        result.Should().BeSuccess().Which.Should().Be("Hello World");
     }
 
     #endregion

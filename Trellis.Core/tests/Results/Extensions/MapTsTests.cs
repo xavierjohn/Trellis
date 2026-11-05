@@ -97,8 +97,7 @@ public class MapTsTests : TestBase
         var actual = result.Map((name, age) => new Person(name, age));
 
         // Assert
-        actual.Should().BeSuccess();
-        actual.Unwrap().Name.Should().Be("John");
+        actual.Should().BeSuccess().Which.Name.Should().Be("John");
         actual.Unwrap().Age.Should().Be(42);
     }
 
@@ -470,8 +469,7 @@ public class MapTsTests : TestBase
         var actual = result.Map<string, int, string?>((s, i) => null);
 
         // Assert
-        actual.Should().BeSuccess();
-        actual.Unwrap().Should().BeNull();
+        actual.Should().BeSuccess().Which.Should().BeNull();
     }
 
     [Fact]
@@ -514,8 +512,7 @@ public class MapTsTests : TestBase
         var actual = result.Map((r1, r2) => new TestRecord($"{r1.Name}{r2.Name}", r1.Value + r2.Value));
 
         // Assert
-        actual.Should().BeSuccess();
-        actual.Unwrap().Name.Should().Be("AB");
+        actual.Should().BeSuccess().Which.Name.Should().Be("AB");
         actual.Unwrap().Value.Should().Be(3);
     }
 
@@ -536,8 +533,7 @@ public class MapTsTests : TestBase
             .Map((name, email) => new UserDto(name, email));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Name.Should().Be("John Doe");
+        result.Should().BeSuccess().Which.Name.Should().Be("John Doe");
         result.Unwrap().Email.Should().Be("john@example.com");
     }
 
@@ -556,8 +552,7 @@ public class MapTsTests : TestBase
             .Map((firstName, lastName, age) => new Person($"{firstName} {lastName}", age));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Name.Should().Be("John Doe");
+        result.Should().BeSuccess().Which.Name.Should().Be("John Doe");
         result.Unwrap().Age.Should().Be(30);
     }
 
@@ -570,8 +565,7 @@ public class MapTsTests : TestBase
             .MapAsync((email, password) => new AuthRequest(email, password));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Email.Should().Be("user@example.com");
+        result.Should().BeSuccess().Which.Email.Should().Be("user@example.com");
     }
 
     #endregion

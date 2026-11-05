@@ -67,8 +67,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         );
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().User.UserId.Should().Be("user-123");
+        result.Should().BeSuccess().Which.User.UserId.Should().Be("user-123");
         result.Unwrap().Inventory.Available.Should().BeTrue();
         result.Unwrap().Payment.IsValid.Should().BeTrue();
         result.Unwrap().Shipping.Rate.Should().BeGreaterThan(0);
@@ -290,8 +289,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             () => TrackedTask("shipping")
         ).WhenAllAsync();
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be(("user", "inventory", "payment", "shipping"));
+        result.Should().BeSuccess().Which.Should().Be(("user", "inventory", "payment", "shipping"));
         startGate.Started.Should().Be(4);
     }
 
@@ -337,8 +335,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         );
 
         // Assert - all stages completed successfully
-        result.Should().BeSuccess();
-        result.Unwrap().User.UserId.Should().Be("user-123");
+        result.Should().BeSuccess().Which.User.UserId.Should().Be("user-123");
         result.Unwrap().Inventory.Available.Should().BeTrue();
         result.Unwrap().Payment.IsValid.Should().BeTrue();
         result.Unwrap().FraudCheck.IsSafe.Should().BeTrue();
@@ -457,8 +454,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         );
 
         // Assert - all 3 stages completed
-        result.Should().BeSuccess();
-        result.Unwrap().User.UserId.Should().Be("user-123");
+        result.Should().BeSuccess().Which.User.UserId.Should().Be("user-123");
         result.Unwrap().Reservation.IsReserved.Should().BeTrue();
     }
 
@@ -481,8 +477,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
             ).WhenAllAsync()
         );
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be((new FraudCheckResponse(true, "Low"), new ShippingResponse("USPS", 12.99m)));
+        result.Should().BeSuccess().Which.Should().Be((new FraudCheckResponse(true, "Low"), new ShippingResponse("USPS", 12.99m)));
         fetchGate.Started.Should().Be(3);
         processGate.Started.Should().Be(2);
     }

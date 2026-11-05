@@ -15,8 +15,7 @@ public class OptionalTests
         var result = Maybe.Optional(zipCode, ZipCode.TryCreate);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeOfType<Maybe<ZipCode>>();
+        result.Should().BeSuccess().Which.Should().BeOfType<Maybe<ZipCode>>();
         result.Unwrap().Value.Zip.Should().Be(zipCode);
     }
 
@@ -30,8 +29,7 @@ public class OptionalTests
         var result = Maybe.Optional(zipCode, ZipCode.TryCreate);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeOfType<Maybe<ZipCode>>();
+        result.Should().BeSuccess().Which.Should().BeOfType<Maybe<ZipCode>>();
         result.Unwrap().HasNoValue.Should().BeTrue();
     }
 

@@ -729,8 +729,7 @@ public class WhenTests : TestBase
             o => Result.Ok(new Order { Amount = o.Amount * 0.9m, IsPremium = o.IsPremium }));
 
         // Assert
-        actual.Should().BeSuccess();
-        actual.Unwrap().Amount.Should().Be(90);
+        actual.Should().BeSuccess().Which.Amount.Should().Be(90);
     }
 
     [Fact]

@@ -25,8 +25,7 @@ public class TryTests
     {
         var r = Result.Try(() => 123);
 
-        r.IsSuccess.Should().BeTrue();
-        r.Unwrap().Should().Be(123);
+        r.Should().BeSuccess().Which.Should().Be(123);
     }
 
     [Fact]
@@ -55,8 +54,7 @@ public class TryTests
             return 7;
         });
 
-        r.IsSuccess.Should().BeTrue();
-        r.Unwrap().Should().Be(7);
+        r.Should().BeSuccess().Which.Should().Be(7);
     }
 
     [Fact]

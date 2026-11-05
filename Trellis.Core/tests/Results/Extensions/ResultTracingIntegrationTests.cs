@@ -103,8 +103,7 @@ public class ResultTracingIntegrationTests
             .Bind(x => Result.Ok(x + 10));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(110);
+        result.Should().BeSuccess().Which.Should().Be(110);
 
         // Verify activity counts
         var ensureActivities = activityTest.AssertActivityCaptured("Ensure", 2);
@@ -163,8 +162,7 @@ public class ResultTracingIntegrationTests
             .RecoverOnFailure(() => Result.Ok(999)); // Should not execute
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(50);
+        result.Should().BeSuccess().Which.Should().Be(50);
 
         // First RecoverOnFailure should execute and succeed
         var recoverActivities = activityTest.AssertActivityCaptured("RecoverOnFailure", 1);
@@ -267,8 +265,7 @@ public class ResultTracingIntegrationTests
             .Tap(user => Console.WriteLine($"Processing: {user}"));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("GUEST_USER");
+        result.Should().BeSuccess().Which.Should().Be("GUEST_USER");
 
         // Verify recovery was triggered
         activityTest.AssertActivityCaptured("Bind", 2);
@@ -294,8 +291,7 @@ public class ResultTracingIntegrationTests
             .TapAsync(x => Task.CompletedTask);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(84);
+        result.Should().BeSuccess().Which.Should().Be(84);
 
         // Verify activities were captured across async boundaries
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Ok);
@@ -322,8 +318,7 @@ public class ResultTracingIntegrationTests
             .BindAsync(x => Task.FromResult(Result.Ok(x + 5)));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(25);
+        result.Should().BeSuccess().Which.Should().Be(25);
 
         // Verify all operations were traced
         activityTest.AssertActivityCaptured("Ensure", 2);
@@ -386,8 +381,7 @@ public class ResultTracingIntegrationTests
             .Tap(x => Console.WriteLine($"Final: {x}")); // Success track
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(150);
+        result.Should().BeSuccess().Which.Should().Be(150);
 
         // Get all activities
         var activities = activityTest.CapturedActivities;
@@ -422,8 +416,7 @@ public class ResultTracingIntegrationTests
             .Bind(x => Result.Ok(x * 2));                         // Success track: 100
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(100);
+        result.Should().BeSuccess().Which.Should().Be(100);
 
         // Get all activities
         var activities = activityTest.CapturedActivities;
@@ -469,8 +462,7 @@ public class ResultTracingIntegrationTests
             .BindAsync(x => Task.FromResult(Result.Ok(x / 2))); // Success track: 100
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(100);
+        result.Should().BeSuccess().Which.Should().Be(100);
 
         // Get all activities
         var activities = activityTest.CapturedActivities;

@@ -41,8 +41,7 @@ public class RecoverOnFailureTests
         Result<string> output = input.RecoverOnFailure(GetErrorResult);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     /// <summary>
@@ -57,8 +56,7 @@ public class RecoverOnFailureTests
         Result<string> output = input.RecoverOnFailure(GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     /// <summary>
@@ -93,8 +91,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     #endregion
@@ -107,8 +104,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetErrorResult);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -118,8 +114,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -144,8 +139,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
     #endregion
 
@@ -157,8 +151,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetErrorResultAsync);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -168,8 +161,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetSuccessResultAsync);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -194,8 +186,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     #endregion
@@ -208,8 +199,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetErrorResultAsync);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -219,8 +209,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetSuccessResultAsync);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -245,8 +234,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
     #endregion
 
@@ -263,8 +251,7 @@ public class RecoverOnFailureTests
         Result<string> output = input.RecoverOnFailure(e => e is Error.NotFound, GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     /// <summary>
@@ -279,8 +266,7 @@ public class RecoverOnFailureTests
         Result<string> output = input.RecoverOnFailure(e => e is Error.NotFound, GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     /// <summary>
@@ -311,8 +297,7 @@ public class RecoverOnFailureTests
         Result<string> output = input.RecoverOnFailure(e => e.Kind == "not-found", GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     /// <summary>
@@ -331,8 +316,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     /// <summary>
@@ -361,8 +345,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -372,8 +355,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -398,8 +380,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -422,8 +403,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResultAsync);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -433,8 +413,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResultAsync);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -459,8 +438,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -484,8 +462,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResultAsync);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -495,8 +472,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResultAsync);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -521,8 +497,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -545,8 +520,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetErrorResult);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -556,8 +530,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -571,8 +544,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
     #endregion
 
@@ -584,8 +556,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetErrorResultValueTaskAsync);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -595,8 +566,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(GetSuccessResultValueTaskAsync);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -610,8 +580,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
     #endregion
 
@@ -623,8 +592,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -634,8 +602,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResult);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
@@ -660,8 +627,7 @@ public class RecoverOnFailureTests
         });
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
     #endregion
 
@@ -673,8 +639,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResultValueTaskAsync);
 
         _recoveryFunctionCalled.Should().BeFalse();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Success");
+        output.Should().BeSuccess().Which.Should().Be("Success");
     }
 
     [Fact]
@@ -684,8 +649,7 @@ public class RecoverOnFailureTests
         Result<string> output = await input.RecoverOnFailureAsync(e => e is Error.NotFound, GetSuccessResultValueTaskAsync);
 
         _recoveryFunctionCalled.Should().BeTrue();
-        output.IsSuccess.Should().BeTrue();
-        output.Unwrap().Should().Be("Recovered Success");
+        output.Should().BeSuccess().Which.Should().Be("Recovered Success");
     }
 
     [Fact]
