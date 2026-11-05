@@ -20,8 +20,7 @@ public class AggregateETagExtensionsTests
 
         var ensured = result.OptionalETag(Array.Empty<EntityTagValue>());
 
-        ensured.IsFailure.Should().BeTrue();
-        var error = ensured.UnwrapError().Should().BeOfType<Error.TransportFault>().Subject;
+        var error = ensured.Should().BeFailureOfType<Error.TransportFault>().Which;
         error.Detail.Should().Be("If-Match header is empty.");
         error.Fault.Should().BeOfType<HttpError.PreconditionFailed>()
             .Which.Condition.Should().Be(PreconditionKind.IfMatch);
@@ -36,8 +35,7 @@ public class AggregateETagExtensionsTests
 
         var ensured = result.OptionalETag([EntityTagValue.Weak("abc123"), EntityTagValue.Weak("def456")]);
 
-        ensured.IsFailure.Should().BeTrue();
-        var error = ensured.UnwrapError().Should().BeOfType<Error.TransportFault>().Subject;
+        var error = ensured.Should().BeFailureOfType<Error.TransportFault>().Which;
         error.Detail.Should().Be("If-Match contains only weak ETags. Strong comparison is required.");
         error.Fault.Should().BeOfType<HttpError.PreconditionFailed>();
     }
@@ -63,8 +61,7 @@ public class AggregateETagExtensionsTests
 
         var ensured = result.OptionalETag([EntityTagValue.Weak("current"), EntityTagValue.Strong("stale")]);
 
-        ensured.IsFailure.Should().BeTrue();
-        var error = ensured.UnwrapError().Should().BeOfType<Error.TransportFault>().Subject;
+        var error = ensured.Should().BeFailureOfType<Error.TransportFault>().Which;
         error.Detail.Should().Be("Resource has been modified. Please reload and retry.");
         error.Fault.Should().BeOfType<HttpError.PreconditionFailed>();
     }
@@ -90,8 +87,7 @@ public class AggregateETagExtensionsTests
 
         var ensured = result.RequireETag(Array.Empty<EntityTagValue>());
 
-        ensured.IsFailure.Should().BeTrue();
-        ensured.UnwrapError().Should().BeOfType<Error.TransportFault>()
+        ensured.Should().BeFailureOfType<Error.TransportFault>()
             .Which.Detail.Should().Be("If-Match header is empty.");
     }
 }

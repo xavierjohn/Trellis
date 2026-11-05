@@ -85,8 +85,7 @@ public class EnsureAllTests
             (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "Name required" }))),
             (v => true, new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Always passes" }));
 
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -112,8 +111,7 @@ public class EnsureAllTests
             (_ => false, new Error.Unexpected("test") { Detail = "unexpected" }),
             (_ => false, new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" }));
 
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.Aggregate>();
+        result.Should().BeFailureOfType<Error.Aggregate>();
     }
 
     [Fact]
@@ -150,8 +148,7 @@ public class EnsureAllTests
             (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "Name required" }))),
             (v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email" }))));
 
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -189,8 +186,7 @@ public class EnsureAllTests
             (v => v.Length > 0, new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("name"), ValidationCodes.Unspecified) { Detail = "Name required" }))),
             (v => v.Contains('@'), new Error.InvalidInput(EquatableArray.Create(new FieldViolation(InputPointer.ForProperty("email"), ValidationCodes.Unspecified) { Detail = "Invalid email" }))));
 
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     #endregion

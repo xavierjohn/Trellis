@@ -196,8 +196,7 @@ public class MaybeOptionalTests
                 : Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid email" }));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     #endregion
@@ -254,8 +253,7 @@ public class MaybeOptionalTests
             .Combine(Maybe.Optional(invalidValue, _ => Result.Fail<string>(validationError)));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     #endregion

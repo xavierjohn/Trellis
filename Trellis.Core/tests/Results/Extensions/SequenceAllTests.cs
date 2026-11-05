@@ -52,8 +52,7 @@ public class SequenceAllTests : TestBase
 
         var result = results.SequenceAll();
 
-        result.Should().BeFailure();
-        var aggregate = result.Error.Should().BeOfType<Error.Aggregate>().Subject;
+        var aggregate = result.Should().BeFailureOfType<Error.Aggregate>().Which;
         aggregate.Errors.Items.Should().HaveCount(2);
         aggregate.Errors.Items.Should().Contain(unprocessable);
         aggregate.Errors.Items.Should().Contain(conflict);
@@ -79,8 +78,7 @@ public class SequenceAllTests : TestBase
 
         var result = results.SequenceAll();
 
-        result.Should().BeFailure();
-        var merged = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var merged = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         merged.Fields.Items.Select(f => f.Field.Path).Should().Equal(["/name", "/email"]);
         merged.Rules.Items.Select(r => r.ReasonCode).Should().Equal(["rule.one", "rule.two"]);
     }
@@ -99,8 +97,7 @@ public class SequenceAllTests : TestBase
 
         var result = results.SequenceAll();
 
-        result.Should().BeFailure();
-        var aggregate = result.Error.Should().BeOfType<Error.Aggregate>().Subject;
+        var aggregate = result.Should().BeFailureOfType<Error.Aggregate>().Which;
         aggregate.Errors.Items.Should().Equal([Error1, Error2]);
     }
 
@@ -172,8 +169,7 @@ public class SequenceAllTests : TestBase
 
         var result = results.SequenceAll();
 
-        result.Should().BeFailure();
-        var aggregate = result.Error.Should().BeOfType<Error.Aggregate>().Subject;
+        var aggregate = result.Should().BeFailureOfType<Error.Aggregate>().Which;
         aggregate.Errors.Items.Should().Equal([Error1, Error2]);
     }
 
@@ -225,8 +221,7 @@ public class SequenceAllTests : TestBase
 
         // Accumulating: visits every item, folds both failures into an Aggregate.
         var accumulated = results.SequenceAll();
-        accumulated.Should().BeFailure();
-        var aggregate = accumulated.Error.Should().BeOfType<Error.Aggregate>().Subject;
+        var aggregate = accumulated.Should().BeFailureOfType<Error.Aggregate>().Which;
         aggregate.Errors.Items.Should().Equal([Error1, Error2]);
     }
 }

@@ -2,6 +2,7 @@
 
 using System.Globalization;
 using System.Text;
+using Trellis.Testing;
 
 public class TypedCursorTests
 {
@@ -58,8 +59,7 @@ public class TypedCursorTests
         var codec = CursorCodec.Scalar<double>();
         var token = Raw("1:s:" + raw);
         var result = codec.TryDecode(token, "after");
-        result.IsFailure.Should().BeTrue();
-        var error = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         error.Fields[0].Field.Path.Should().Be("/after");
         error.Fields[0].ReasonCode.Should().Be("cursor.malformed");
     }

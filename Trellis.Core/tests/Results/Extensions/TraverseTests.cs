@@ -344,8 +344,7 @@ public class TraverseTests : TestBase
                 : Result.Ok($"User{id}")));
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
         result.Error!.Detail.Should().Contain("999");
     }
 

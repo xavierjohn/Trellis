@@ -45,8 +45,7 @@ public class OptionalTests
         var result = Maybe.Optional(zipCode, ZipCode.TryCreate);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
         result.Error!.Detail.Should().Be("Invalid ZipCode.");
     }
 

@@ -2,6 +2,7 @@
 
 using System;
 using System.Globalization;
+using Trellis.Testing;
 
 /// <summary>
 /// Unit tests for the <see cref="CursorCodec"/> helpers that encode and decode opaque
@@ -54,8 +55,7 @@ public class CursorCodecTests
 
         var decoded = CursorCodec.TryDecode<Guid>(bogus);
 
-        decoded.IsFailure.Should().BeTrue();
-        decoded.Error.Should().BeOfType<Error.InvalidInput>();
+        decoded.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -68,8 +68,7 @@ public class CursorCodecTests
         var decoded = CursorCodec.TryDecode<string>(cursor, fieldName: "cursor");
         sw.Stop();
 
-        decoded.IsFailure.Should().BeTrue();
-        var invalid = decoded.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var invalid = decoded.Should().BeFailureOfType<Error.InvalidInput>().Which;
         invalid.Fields.Items.Select(v => v.ReasonCode).Should().Equal(["cursor.malformed"]);
         sw.ElapsedMilliseconds.Should().BeLessThan(100);
     }
@@ -81,8 +80,7 @@ public class CursorCodecTests
 
         var decoded = CursorCodec.TryDecode<Guid>(bogus);
 
-        decoded.IsFailure.Should().BeTrue();
-        decoded.Error.Should().BeOfType<Error.InvalidInput>();
+        decoded.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -98,8 +96,7 @@ public class CursorCodecTests
 
         var decoded = CursorCodec.TryDecode<string>(bogus);
 
-        decoded.IsFailure.Should().BeTrue();
-        decoded.Error.Should().BeOfType<Error.InvalidInput>();
+        decoded.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -109,8 +106,7 @@ public class CursorCodecTests
 
         var decoded = CursorCodec.TryDecode<Guid>(bogus, fieldName: "after");
 
-        decoded.IsFailure.Should().BeTrue();
-        var invalid = decoded.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var invalid = decoded.Should().BeFailureOfType<Error.InvalidInput>().Which;
         invalid.Fields.Items.Should().Contain(f => f.Field.ToString().Contains("after"));
     }
 
@@ -147,8 +143,7 @@ public class CursorCodecTests
         // caller, so the codec must surface this as Error.InvalidInput.
         var decoded = CursorCodec.TryDecode<Guid>(default);
 
-        decoded.IsFailure.Should().BeTrue();
-        decoded.Error.Should().BeOfType<Error.InvalidInput>();
+        decoded.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     private sealed class NonFormattableKey : IParsable<NonFormattableKey>
@@ -226,8 +221,7 @@ public class CursorCodecTests
 
         var decoded = CursorCodec.TryDecodeComposite<Guid>(bogus);
 
-        decoded.IsFailure.Should().BeTrue();
-        decoded.Error.Should().BeOfType<Error.InvalidInput>();
+        decoded.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -238,8 +232,7 @@ public class CursorCodecTests
 
         var decoded = CursorCodec.TryDecodeComposite<Guid>(noPipe);
 
-        decoded.IsFailure.Should().BeTrue();
-        decoded.Error.Should().BeOfType<Error.InvalidInput>();
+        decoded.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -253,8 +246,7 @@ public class CursorCodecTests
 
         var decoded = CursorCodec.TryDecodeComposite<Guid>(cursor);
 
-        decoded.IsFailure.Should().BeTrue();
-        decoded.Error.Should().BeOfType<Error.InvalidInput>();
+        decoded.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -267,8 +259,7 @@ public class CursorCodecTests
 
         var decoded = CursorCodec.TryDecodeComposite<Guid>(cursor);
 
-        decoded.IsFailure.Should().BeTrue();
-        decoded.Error.Should().BeOfType<Error.InvalidInput>();
+        decoded.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -297,8 +288,7 @@ public class CursorCodecTests
         // turn into an InvalidOperationException from Cursor.Token.
         var decoded = CursorCodec.TryDecodeComposite<Guid>(default);
 
-        decoded.IsFailure.Should().BeTrue();
-        decoded.Error.Should().BeOfType<Error.InvalidInput>();
+        decoded.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -308,8 +298,7 @@ public class CursorCodecTests
 
         var decoded = CursorCodec.TryDecodeComposite<Guid>(bogus, fieldName: "after");
 
-        decoded.IsFailure.Should().BeTrue();
-        var invalid = decoded.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var invalid = decoded.Should().BeFailureOfType<Error.InvalidInput>().Which;
         invalid.Fields.Items.Should().Contain(f => f.Field.ToString().Contains("after"));
     }
 
