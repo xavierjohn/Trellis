@@ -126,13 +126,14 @@ public sealed partial class OutboxReadinessTests
     [Fact]
     public async Task CheckHealthAsync_MetadataOnlyThrowingLocalDependencies_NeverResolvesThem()
     {
-        var resolutions = new CallbackRecorder<IServiceProvider>();
+        var optionsResolutions = new CallbackRecorder<IServiceProvider>();
+        var observationsResolutions = new CallbackRecorder<IServiceProvider>();
         await using var fixture = await Fixture.CreateAsync(
             OutboxReadinessOptions.CreateMetadataOnlyProfile(3), configure: services =>
             {
-                services.AddSingleton<OutboxOptions>(resolutions
+                services.AddSingleton<OutboxOptions>(optionsResolutions
                     .Wrap<OutboxOptions>(_ => throw new InvalidOperationException("Irrelevant local options must not be resolved.")));
-                services.AddSingleton<OutboxRelayObservations<OutboxTestDbContext>>(resolutions
+                services.AddSingleton<OutboxRelayObservations<OutboxTestDbContext>>(observationsResolutions
                     .Wrap<OutboxRelayObservations<OutboxTestDbContext>>(_ =>
                         throw new InvalidOperationException("Explicit local observations must not be resolved.")));
             });
@@ -143,7 +144,8 @@ public sealed partial class OutboxReadinessTests
         var result = await fixture.CheckAsync();
 
         result.Status.Should().Be(HealthStatus.Healthy);
-        resolutions.CallCount.Should().Be(0);
+        optionsResolutions.CallCount.Should().Be(0);
+        observationsResolutions.CallCount.Should().Be(0);
     }
 
     [Fact]
