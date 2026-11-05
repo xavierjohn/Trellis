@@ -239,19 +239,15 @@ public class TupleTracingTests : TestBase
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var actionCalled = false;
+        var actionCalls = new CallbackRecorder();
 
         // Act
         var result = await Result.Fail<(T, K)>(Error1)
-            .TapOnFailureAsync(() =>
-            {
-                actionCalled = true;
-                return Task.CompletedTask;
-            });
+            .TapOnFailureAsync(actionCalls.Wrap(() => Task.CompletedTask));
 
         // Assert
         result.Should().BeFailure();
-        actionCalled.Should().BeTrue();
+        actionCalls.CallCount.Should().BeGreaterThan(0);
         activityTest.AssertActivityCapturedWithStatus("TapOnFailure", ActivityStatusCode.Error);
     }
 

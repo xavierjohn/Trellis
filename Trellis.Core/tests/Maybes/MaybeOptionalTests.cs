@@ -250,17 +250,13 @@ public class MaybeOptionalTests
     {
         // Arrange
         string? emptyString = "";
-        var functionInvoked = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var result = Maybe.Optional(emptyString, str =>
-        {
-            functionInvoked = true;
-            return Result.Ok(str);
-        });
+        var result = Maybe.Optional(emptyString, functionCalls.Wrap(str => Result.Ok(str)));
 
         // Assert
-        functionInvoked.Should().BeTrue("empty string is not null, so function should be invoked");
+        functionCalls.CallCount.Should().BeGreaterThan(0, "empty string is not null, so function should be invoked");
         result.Should().BeSuccess().Which.Should().HaveValue().Which.Should().Be("");
     }
 
@@ -269,17 +265,13 @@ public class MaybeOptionalTests
     {
         // Arrange
         Guid? defaultGuid = Guid.Empty;
-        var functionInvoked = false;
+        var functionCalls = new CallbackRecorder<Guid>();
 
         // Act
-        var result = Maybe.Optional<Guid, string>(defaultGuid, g =>
-        {
-            functionInvoked = true;
-            return Result.Ok(g.ToString());
-        });
+        var result = Maybe.Optional<Guid, string>(defaultGuid, functionCalls.Wrap(g => Result.Ok(g.ToString())));
 
         // Assert
-        functionInvoked.Should().BeTrue("Guid.Empty is not null, so function should be invoked");
+        functionCalls.CallCount.Should().BeGreaterThan(0, "Guid.Empty is not null, so function should be invoked");
         result.IsSuccess.Should().BeTrue();
     }
 
@@ -288,17 +280,13 @@ public class MaybeOptionalTests
     {
         // Arrange
         int? zero = 0;
-        var functionInvoked = false;
+        var functionCalls = new CallbackRecorder<int>();
 
         // Act
-        var result = Maybe.Optional<int, WrappedInt>(zero, num =>
-        {
-            functionInvoked = true;
-            return Result.Ok(new WrappedInt(num));
-        });
+        var result = Maybe.Optional<int, WrappedInt>(zero, functionCalls.Wrap(num => Result.Ok(new WrappedInt(num))));
 
         // Assert
-        functionInvoked.Should().BeTrue("zero is not null, so function should be invoked");
+        functionCalls.CallCount.Should().BeGreaterThan(0, "zero is not null, so function should be invoked");
         result.Should().BeSuccess().Which.Unwrap().Value.Should().Be(0);
     }
 

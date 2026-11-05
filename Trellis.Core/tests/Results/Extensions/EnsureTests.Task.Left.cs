@@ -156,46 +156,40 @@ public class EnsureTests_Task_Left
     {
         var initialError = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "initial error message" };
         var tResult = Task.FromResult(Result.Fail<string>(initialError));
-        bool predicateCalled = false;
-        bool errorPredicateCalled = false;
+        var predicateCalls = new CallbackRecorder<string>();
+        var errorPredicateCalls = new CallbackRecorder<string>();
 
         var result = await tResult.EnsureAsync(
-            x =>
+            predicateCalls.Wrap(x => x != ""),
+            errorPredicateCalls.Wrap<Task<Error>>(async x =>
             {
-                predicateCalled = true;
-                return x != "";
-            },
-            async x =>
-            {
-                errorPredicateCalled = true;
                 await Task.Yield();
                 return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "new error message" };
-            });
+            }));
 
         result.Should().BeFailure("Input Result.Fail should be returned")
             .Which.Should().Be(initialError);
-        predicateCalled.Should().BeFalse("Predicate should not be called when initial result is failure");
-        errorPredicateCalled.Should().BeFalse("Error predicate should not be called when initial result is failure");
+        predicateCalls.CallCount.Should().Be(0, "Predicate should not be called when initial result is failure");
+        errorPredicateCalls.CallCount.Should().Be(0, "Error predicate should not be called when initial result is failure");
     }
 
     [Fact]
     public async Task Ensure_Task_Left_with_asyncErrorPredicate_predicate_passes()
     {
         var tResult = Task.FromResult(Result.Ok<string>("initial ok"));
-        bool errorPredicateCalled = false;
+        var errorPredicateCalls = new CallbackRecorder<string>();
 
         var result = await tResult.EnsureAsync(
             x => x != "",
-            async x =>
+            errorPredicateCalls.Wrap<Task<Error>>(async x =>
             {
-                errorPredicateCalled = true;
                 await Task.Yield();
                 return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "new error message: string should not be empty" };
-            });
+            }));
 
         result.Should().BeSuccess("Input Result passes predicate condition")
             .Which.Should().Be("initial ok");
-        errorPredicateCalled.Should().BeFalse("Error predicate should not be called when predicate passes");
+        errorPredicateCalls.CallCount.Should().Be(0, "Error predicate should not be called when predicate passes");
     }
 
     [Fact]

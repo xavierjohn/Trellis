@@ -36,33 +36,25 @@ public class CheckIfTests_ValueTask
     [Fact]
     public async Task CheckIfAsync_ValueTask_Bool_ConditionFalse_SkipsCheck()
     {
-        var checkInvoked = false;
+        var checkCalls = new CallbackRecorder<int>();
         var resultTask = new ValueTask<Result<int>>(Result.Ok(42));
 
-        var sut = await resultTask.CheckIfAsync(false, v =>
-        {
-            checkInvoked = true;
-            return new ValueTask<Result<string>>(Result.Ok("ok"));
-        });
+        var sut = await resultTask.CheckIfAsync(false, checkCalls.Wrap(v => new ValueTask<Result<string>>(Result.Ok("ok"))));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkInvoked.Should().BeFalse();
+        checkCalls.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task CheckIfAsync_ValueTask_Bool_FailureResult_CheckNotInvoked()
     {
-        var checkInvoked = false;
+        var checkCalls = new CallbackRecorder<int>();
         var resultTask = new ValueTask<Result<int>>(Result.Fail<int>(TestError));
 
-        var sut = await resultTask.CheckIfAsync(true, v =>
-        {
-            checkInvoked = true;
-            return new ValueTask<Result<string>>(Result.Ok("ok"));
-        });
+        var sut = await resultTask.CheckIfAsync(true, checkCalls.Wrap(v => new ValueTask<Result<string>>(Result.Ok("ok"))));
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
-        checkInvoked.Should().BeFalse();
+        checkCalls.CallCount.Should().Be(0);
     }
 
     #endregion
@@ -92,17 +84,13 @@ public class CheckIfTests_ValueTask
     [Fact]
     public async Task CheckIfAsync_ValueTask_Predicate_False_SkipsCheck()
     {
-        var checkInvoked = false;
+        var checkCalls = new CallbackRecorder<int>();
         var resultTask = new ValueTask<Result<int>>(Result.Ok(42));
 
-        var sut = await resultTask.CheckIfAsync(v => v < 0, v =>
-        {
-            checkInvoked = true;
-            return new ValueTask<Result<string>>(Result.Ok("ok"));
-        });
+        var sut = await resultTask.CheckIfAsync(v => v < 0, checkCalls.Wrap(v => new ValueTask<Result<string>>(Result.Ok("ok"))));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkInvoked.Should().BeFalse();
+        checkCalls.CallCount.Should().Be(0);
     }
 
     #endregion

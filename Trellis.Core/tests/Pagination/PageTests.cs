@@ -144,12 +144,8 @@ public class PageTests
         var page = new Page<int>([], next, null, 10, 10);
         page.Items.Should().BeEmpty();
         page.Next.Should().Be(next);
-        var mapperCalls = 0;
-        Func<int, int> mapper = i =>
-        {
-            mapperCalls++;
-            return i + 1;
-        };
+        var mapperCalls = new Trellis.Testing.CallbackRecorder<int>();
+        Func<int, int> mapper = mapperCalls.Wrap(i => i + 1);
         var mapped = page.Map(mapper);
 
         mapped.Next.Should().Be(next);
@@ -159,6 +155,6 @@ public class PageTests
         mapped.AppliedLimit.Should().Be(10);
         mapped.DeliveredCount.Should().Be(0);
         mapped.WasCapped.Should().BeFalse();
-        mapperCalls.Should().Be(0);
+        mapperCalls.CallCount.Should().Be(0);
     }
 }

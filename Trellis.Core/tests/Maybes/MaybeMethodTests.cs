@@ -94,16 +94,12 @@ public class MaybeMethodTests
     public void Or_Func_WhenHasValue_ShouldNotEvaluateFactory()
     {
         var sut = Maybe.From(5);
-        var evaluated = false;
+        var factoryCalls = new Trellis.Testing.CallbackRecorder();
 
-        var result = sut.Or(() =>
-        {
-            evaluated = true;
-            return 10;
-        });
+        var result = sut.Or(factoryCalls.Wrap(() => 10));
 
         result.Value.Should().Be(5);
-        evaluated.Should().BeFalse();
+        factoryCalls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -154,16 +150,12 @@ public class MaybeMethodTests
     public void Or_MaybeFunc_WhenHasValue_ShouldNotEvaluateFactory()
     {
         var sut = Maybe.From(5);
-        var evaluated = false;
+        var factoryCalls = new Trellis.Testing.CallbackRecorder();
 
-        var result = sut.Or(() =>
-        {
-            evaluated = true;
-            return Maybe.From(10);
-        });
+        var result = sut.Or(factoryCalls.Wrap(() => Maybe.From(10)));
 
         result.Value.Should().Be(5);
-        evaluated.Should().BeFalse();
+        factoryCalls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -306,15 +298,11 @@ public class MaybeMethodTests
     public void GetValueOrDefault_Func_WhenHasValue_ShouldNotCallFactory()
     {
         var sut = Maybe.From(5);
-        var called = false;
+        var callbackCalls = new Trellis.Testing.CallbackRecorder();
 
-        sut.GetValueOrDefault(() =>
-        {
-            called = true;
-            return 10;
-        });
+        sut.GetValueOrDefault(callbackCalls.Wrap(() => 10));
 
-        called.Should().BeFalse();
+        callbackCalls.CallCount.Should().Be(0);
     }
 
     [Fact]

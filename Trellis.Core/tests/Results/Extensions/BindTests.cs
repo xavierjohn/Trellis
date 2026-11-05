@@ -20,17 +20,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Ok<int>(42);
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<int>();
 
         // Act
-        var newResult = result.Bind(value =>
-        {
-            functionCalled = true;
-            return Result.Ok<string>($"Value: {value}");
-        });
+        var newResult = result.Bind(functionCalls.Wrap(value => Result.Ok<string>($"Value: {value}")));
 
         // Assert
-        functionCalled.Should().BeTrue();
+        functionCalls.CallCount.Should().BeGreaterThan(0);
         newResult.Should().BeSuccess()
             .Which.Should().Be("Value: 42");
     }
@@ -40,17 +36,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Fail<int>(Error1);
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<int>();
 
         // Act
-        var newResult = result.Bind(value =>
-        {
-            functionCalled = true;
-            return Result.Ok<string>($"Value: {value}");
-        });
+        var newResult = result.Bind(functionCalls.Wrap(value => Result.Ok<string>($"Value: {value}")));
 
         // Assert
-        functionCalled.Should().BeFalse();
+        functionCalls.CallCount.Should().Be(0);
         newResult.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -59,17 +51,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Ok("Hello").AsTask();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}");
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}")));
 
         // Assert
-        functionCalled.Should().BeTrue();
+        functionCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -79,17 +67,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Fail<string>(Error1).AsTask();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}");
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}")));
 
         // Assert
-        functionCalled.Should().BeFalse();
+        functionCalls.CallCount.Should().Be(0);
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -98,17 +82,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Ok("Hello");
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}").AsTask();
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsTask()));
 
         // Assert
-        functionCalled.Should().BeTrue();
+        functionCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -118,17 +98,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Fail<string>(Error1);
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}").AsTask();
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsTask()));
 
         // Assert
-        functionCalled.Should().BeFalse();
+        functionCalls.CallCount.Should().Be(0);
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -147,17 +123,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Ok("Hello").AsTask();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}").AsTask();
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsTask()));
 
         // Assert
-        functionCalled.Should().BeTrue();
+        functionCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -167,17 +139,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Fail<string>(Error1).AsTask();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}").AsTask();
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsTask()));
 
         // Assert
-        functionCalled.Should().BeFalse();
+        functionCalls.CallCount.Should().Be(0);
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -187,17 +155,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Ok("Hello").AsValueTask();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}");
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}")));
 
         // Assert
-        functionCalled.Should().BeTrue();
+        functionCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -207,17 +171,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Fail<string>(Error1).AsValueTask();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}");
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}")));
 
         // Assert
-        functionCalled.Should().BeFalse();
+        functionCalls.CallCount.Should().Be(0);
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -226,17 +186,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Ok("Hello");
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}").AsValueTask();
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsValueTask()));
 
         // Assert
-        functionCalled.Should().BeTrue();
+        functionCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -246,17 +202,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Fail<string>(Error1);
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}").AsValueTask();
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsValueTask()));
 
         // Assert
-        functionCalled.Should().BeFalse();
+        functionCalls.CallCount.Should().Be(0);
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -265,17 +217,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Ok("Hello").AsValueTask();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}").AsValueTask();
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsValueTask()));
 
         // Assert
-        functionCalled.Should().BeTrue();
+        functionCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -285,17 +233,13 @@ public partial class BindTests : TestBase
     {
         // Arrange
         var result = Result.Fail<string>(Error1).AsValueTask();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<string>();
 
         // Act
-        var actual = await result.BindAsync(str =>
-        {
-            functionCalled = true;
-            return Result.Ok($"{str}").AsValueTask();
-        });
+        var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsValueTask()));
 
         // Assert
-        functionCalled.Should().BeFalse();
+        functionCalls.CallCount.Should().Be(0);
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 

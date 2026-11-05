@@ -181,18 +181,14 @@ public class EnsureNotNullMigrationTests
     {
         // Arrange
         DateTime? date = DateTime.Now;
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = Result.EnsureNotNull(date, () =>
-        {
-            factoryInvoked = true;
-            return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." };
-        });
+        var result = Result.EnsureNotNull(date, factoryCalls.Wrap(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." }));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date.Value);
-        factoryInvoked.Should().BeFalse("error factory should not be invoked for success");
+        factoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for success");
     }
 
     [Fact]
@@ -200,18 +196,14 @@ public class EnsureNotNullMigrationTests
     {
         // Arrange
         DateTime? date = default;
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = Result.EnsureNotNull(date, () =>
-        {
-            factoryInvoked = true;
-            return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." };
-        });
+        var result = Result.EnsureNotNull(date, factoryCalls.Wrap(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." }));
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
-        factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
+        factoryCalls.CallCount.Should().BeGreaterThan(0, "error factory should be invoked for failure");
     }
 
     [Fact]
@@ -219,18 +211,14 @@ public class EnsureNotNullMigrationTests
     {
         // Arrange
         MyClass? myClass = new();
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = Result.EnsureNotNull(myClass, () =>
-        {
-            factoryInvoked = true;
-            return new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "MyClass not found" };
-        });
+        var result = Result.EnsureNotNull(myClass, factoryCalls.Wrap(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "MyClass not found" }));
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(myClass);
-        factoryInvoked.Should().BeFalse("error factory should not be invoked for success");
+        factoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for success");
     }
 
     [Fact]
@@ -238,18 +226,14 @@ public class EnsureNotNullMigrationTests
     {
         // Arrange
         MyClass? myClass = default;
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = Result.EnsureNotNull(myClass, () =>
-        {
-            factoryInvoked = true;
-            return new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "MyClass not found" };
-        });
+        var result = Result.EnsureNotNull(myClass, factoryCalls.Wrap(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "MyClass not found" }));
 
         // Assert
         result.Should().HaveErrorDetail("MyClass not found").And.BeFailureOfType<Error.NotFound>();
-        factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
+        factoryCalls.CallCount.Should().BeGreaterThan(0, "error factory should be invoked for failure");
     }
 
     #endregion
@@ -262,18 +246,14 @@ public class EnsureNotNullMigrationTests
         // Arrange
         MyClass? myClass = new();
         var nullableTask = Task.FromResult((MyClass?)myClass);
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = await nullableTask.EnsureNotNullAsync(() =>
-        {
-            factoryInvoked = true;
-            return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." };
-        });
+        var result = await nullableTask.EnsureNotNullAsync(factoryCalls.Wrap(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass is not set." }));
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(myClass);
-        factoryInvoked.Should().BeFalse("error factory should not be invoked for success");
+        factoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for success");
     }
 
     [Fact]
@@ -282,18 +262,14 @@ public class EnsureNotNullMigrationTests
         // Arrange
         DateTime? date = default;
         var nullableTask = Task.FromResult(date);
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = await nullableTask.EnsureNotNullAsync(() =>
-        {
-            factoryInvoked = true;
-            return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." };
-        });
+        var result = await nullableTask.EnsureNotNullAsync(factoryCalls.Wrap(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." }));
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
-        factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
+        factoryCalls.CallCount.Should().BeGreaterThan(0, "error factory should be invoked for failure");
     }
 
     [Fact]
@@ -302,18 +278,14 @@ public class EnsureNotNullMigrationTests
         // Arrange
         DateTime? date = DateTime.Now;
         var nullableTask = ValueTask.FromResult(date);
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = await nullableTask.EnsureNotNullAsync(() =>
-        {
-            factoryInvoked = true;
-            return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." };
-        });
+        var result = await nullableTask.EnsureNotNullAsync(factoryCalls.Wrap(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." }));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date.Value);
-        factoryInvoked.Should().BeFalse("error factory should not be invoked for success");
+        factoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for success");
     }
 
     [Fact]
@@ -322,18 +294,14 @@ public class EnsureNotNullMigrationTests
         // Arrange
         MyClass? myClass = default;
         var nullableTask = ValueTask.FromResult((MyClass?)myClass);
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = await nullableTask.EnsureNotNullAsync(() =>
-        {
-            factoryInvoked = true;
-            return new Error.Conflict(Resource: null, Code: "conflict") { Detail = "MyClass already exists." };
-        });
+        var result = await nullableTask.EnsureNotNullAsync(factoryCalls.Wrap(() => new Error.Conflict(Resource: null, Code: "conflict") { Detail = "MyClass already exists." }));
 
         // Assert
         result.Should().BeFailureOfType<Error.Conflict>();
-        factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
+        factoryCalls.CallCount.Should().BeGreaterThan(0, "error factory should be invoked for failure");
     }
 
     #endregion

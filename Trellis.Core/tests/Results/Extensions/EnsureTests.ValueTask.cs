@@ -45,21 +45,17 @@ public class Ensure_ValueTask_Tests
         // Arrange
         var initialError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Initial error" };
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
-        var predicateInvoked = false;
+        var predicateCalls = new CallbackRecorder<string>();
 
         // Act
         var result = await initialResult.EnsureAsync(
-            value =>
-            {
-                predicateInvoked = true;
-                return ValueTask.FromResult(true);
-            },
+            predicateCalls.Wrap(value => ValueTask.FromResult(true)),
             new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this error" });
 
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        predicateInvoked.Should().BeFalse("predicate should not be invoked for failed results");
+        predicateCalls.CallCount.Should().Be(0, "predicate should not be invoked for failed results");
     }
 
     [Fact]
@@ -124,21 +120,17 @@ public class Ensure_ValueTask_Tests
         // Arrange
         var initialError = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial error" };
         var initialResult = ValueTask.FromResult(Result.Fail<int>(initialError));
-        var errorFactoryInvoked = false;
+        var errorFactoryCalls = new CallbackRecorder<int>();
 
         // Act
         var result = await initialResult.EnsureAsync(
             value => ValueTask.FromResult(value > 0),
-            value =>
-            {
-                errorFactoryInvoked = true;
-                return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this" };
-            });
+            errorFactoryCalls.Wrap(value => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this" }));
 
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        errorFactoryInvoked.Should().BeFalse("error factory should not be invoked for failed results");
+        errorFactoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for failed results");
     }
 
     [Fact]
@@ -213,22 +205,21 @@ public class Ensure_ValueTask_Tests
         // Arrange
         var initialError = new Error.AuthenticationRequired() { Detail = "Initial error" };
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
-        var asyncErrorFactoryInvoked = false;
+        var asyncErrorFactoryCalls = new CallbackRecorder<string>();
 
         // Act
         var result = await initialResult.EnsureAsync(
             value => ValueTask.FromResult(value.Length > 0),
-            async value =>
+            asyncErrorFactoryCalls.Wrap<ValueTask<Error>>(async value =>
             {
-                asyncErrorFactoryInvoked = true;
                 await Task.Delay(1);
                 return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Should not see this" };
-            });
+            }));
 
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        asyncErrorFactoryInvoked.Should().BeFalse("async error factory should not be invoked for failed results");
+        asyncErrorFactoryCalls.CallCount.Should().Be(0, "async error factory should not be invoked for failed results");
     }
 
     [Fact]
@@ -295,20 +286,16 @@ public class Ensure_ValueTask_Tests
         // Arrange
         var initialError = new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "Initial error" };
         var initialResult = ValueTask.FromResult(Result.Fail<string>(initialError));
-        var predicateInvoked = false;
+        var predicateCalls = new CallbackRecorder();
 
         // Act
         var result = await initialResult.EnsureAsync(
-            () =>
-            {
-                predicateInvoked = true;
-                return ValueTask.FromResult(Result.Ok<string>("Should not reach"));
-            });
+            predicateCalls.Wrap(() => ValueTask.FromResult(Result.Ok<string>("Should not reach"))));
 
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        predicateInvoked.Should().BeFalse("predicate should not be invoked for failed results");
+        predicateCalls.CallCount.Should().Be(0, "predicate should not be invoked for failed results");
     }
 
     [Fact]
@@ -377,20 +364,16 @@ public class Ensure_ValueTask_Tests
         // Arrange
         var initialError = new Error.Conflict(Resource: null, Code: "conflict") { Detail = "Initial conflict" };
         var initialResult = ValueTask.FromResult(Result.Fail<int>(initialError));
-        var predicateInvoked = false;
+        var predicateCalls = new CallbackRecorder<int>();
 
         // Act
         var result = await initialResult.EnsureAsync(
-            value =>
-            {
-                predicateInvoked = true;
-                return ValueTask.FromResult(Result.Ok<int>(value));
-            });
+            predicateCalls.Wrap(value => ValueTask.FromResult(Result.Ok<int>(value))));
 
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        predicateInvoked.Should().BeFalse("predicate should not be invoked for failed results");
+        predicateCalls.CallCount.Should().Be(0, "predicate should not be invoked for failed results");
     }
 
     [Fact]

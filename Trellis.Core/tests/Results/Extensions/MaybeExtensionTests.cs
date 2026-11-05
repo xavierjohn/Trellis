@@ -186,18 +186,14 @@ public class MaybeExtensionTests
         // Arrange
         var date = DateTime.Now;
         Maybe<DateTime> maybe = date;
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = maybe.ToResult(() =>
-        {
-            factoryInvoked = true;
-            return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." };
-        });
+        var result = maybe.ToResult(factoryCalls.Wrap(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." }));
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date);
-        factoryInvoked.Should().BeFalse("error factory should not be invoked for success");
+        factoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for success");
     }
 
     [Fact]
@@ -205,18 +201,14 @@ public class MaybeExtensionTests
     {
         // Arrange
         Maybe<DateTime> maybe = default;
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = maybe.ToResult(() =>
-        {
-            factoryInvoked = true;
-            return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." };
-        });
+        var result = maybe.ToResult(factoryCalls.Wrap(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." }));
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
-        factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
+        factoryCalls.CallCount.Should().BeGreaterThan(0, "error factory should be invoked for failure");
     }
 
     [Fact]
@@ -257,18 +249,14 @@ public class MaybeExtensionTests
         var my = new MyClass();
         Maybe<MyClass> maybe = my;
         var maybeTask = Task.FromResult(maybe);
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = await maybeTask.ToResultAsync(() =>
-        {
-            factoryInvoked = true;
-            return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass not set." };
-        });
+        var result = await maybeTask.ToResultAsync(factoryCalls.Wrap(() => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "MyClass not set." }));
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(my);
-        factoryInvoked.Should().BeFalse();
+        factoryCalls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -277,18 +265,14 @@ public class MaybeExtensionTests
         // Arrange
         Maybe<MyClass> maybe = default;
         var maybeTask = Task.FromResult(maybe);
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = await maybeTask.ToResultAsync(() =>
-        {
-            factoryInvoked = true;
-            return new Error.Conflict(Resource: null, Code: "conflict") { Detail = "MyClass already exists." };
-        });
+        var result = await maybeTask.ToResultAsync(factoryCalls.Wrap(() => new Error.Conflict(Resource: null, Code: "conflict") { Detail = "MyClass already exists." }));
 
         // Assert
         result.Should().BeFailureOfType<Error.Conflict>();
-        factoryInvoked.Should().BeTrue();
+        factoryCalls.CallCount.Should().BeGreaterThan(0);
     }
 
     [Fact]
@@ -331,18 +315,14 @@ public class MaybeExtensionTests
         var my = new MyClass();
         Maybe<MyClass> maybe = my;
         var maybeTask = ValueTask.FromResult(maybe);
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = await maybeTask.ToResultAsync(() =>
-        {
-            factoryInvoked = true;
-            return new Error.AuthenticationRequired() { Detail = "Not authorized." };
-        });
+        var result = await maybeTask.ToResultAsync(factoryCalls.Wrap(() => new Error.AuthenticationRequired() { Detail = "Not authorized." }));
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(my);
-        factoryInvoked.Should().BeFalse();
+        factoryCalls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -351,18 +331,14 @@ public class MaybeExtensionTests
         // Arrange
         Maybe<MyClass> maybe = default;
         var maybeTask = ValueTask.FromResult(maybe);
-        var factoryInvoked = false;
+        var factoryCalls = new CallbackRecorder();
 
         // Act
-        var result = await maybeTask.ToResultAsync(() =>
-        {
-            factoryInvoked = true;
-            return new Error.Forbidden("authorization.forbidden") { Detail = "Access denied." };
-        });
+        var result = await maybeTask.ToResultAsync(factoryCalls.Wrap(() => new Error.Forbidden("authorization.forbidden") { Detail = "Access denied." }));
 
         // Assert
         result.Should().BeFailureOfType<Error.Forbidden>();
-        factoryInvoked.Should().BeTrue();
+        factoryCalls.CallCount.Should().BeGreaterThan(0);
     }
 
     [Fact]
