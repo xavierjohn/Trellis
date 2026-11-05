@@ -412,8 +412,7 @@ public class AggregateTests
         var result = Result.Fail<TestAggregate>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var ensured = result.RequireETag((EntityTagValue[]?)null);
-        ensured.IsSuccess.Should().BeFalse();
-        ensured.UnwrapError().Should().BeOfType<Error.NotFound>("existing failure should be preserved, not replaced by PreconditionRequired");
+        ensured.Should().BeFailure().Which.Should().BeOfType<Error.NotFound>("existing failure should be preserved, not replaced by PreconditionRequired");
     }
 
     [Fact]
@@ -422,8 +421,7 @@ public class AggregateTests
         var result = Result.Fail<TestAggregate>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var ensured = result.OptionalETag([EntityTagValue.Strong("abc123")]);
-        ensured.IsSuccess.Should().BeFalse();
-        ensured.UnwrapError().Should().BeOfType<Error.NotFound>("existing failure should be preserved, not replaced by PreconditionFailed");
+        ensured.Should().BeFailure().Which.Should().BeOfType<Error.NotFound>("existing failure should be preserved, not replaced by PreconditionFailed");
     }
 
     [Fact]
@@ -432,8 +430,7 @@ public class AggregateTests
         var result = Result.Fail<TestAggregate>(new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "not found" });
 
         var ensured = result.RequireETag([EntityTagValue.Strong("abc123")]);
-        ensured.IsSuccess.Should().BeFalse();
-        ensured.UnwrapError().Should().BeOfType<Error.NotFound>("existing failure should be preserved, not replaced by PreconditionFailed");
+        ensured.Should().BeFailure().Which.Should().BeOfType<Error.NotFound>("existing failure should be preserved, not replaced by PreconditionFailed");
     }
 
     [Fact]

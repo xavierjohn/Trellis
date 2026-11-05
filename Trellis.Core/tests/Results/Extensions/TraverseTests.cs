@@ -111,8 +111,7 @@ public class TraverseTests : TestBase
                 : Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"String too short: {s}" }));
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Detail.Should().Contain("String too short: a");
+        result.Should().BeFailure().Which.Detail.Should().Contain("String too short: a");
     }
 
     #endregion
@@ -304,8 +303,7 @@ public class TraverseTests : TestBase
                 : Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"Invalid email: {email}" }));
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Detail.Should().Contain("invalid-email");
+        result.Should().BeFailure().Which.Detail.Should().Contain("invalid-email");
     }
 
     [Fact]

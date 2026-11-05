@@ -40,8 +40,7 @@ public class MapTests : TestBase
         var result = i.Map(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     // Task
@@ -69,8 +68,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     [Fact]
@@ -96,8 +94,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedTask());
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     [Fact]
@@ -134,8 +131,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedTask());
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     // ValueTask
@@ -163,8 +159,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     [Fact]
@@ -190,8 +185,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedValueTask());
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     [Fact]
@@ -217,7 +211,6 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedValueTask());
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 }

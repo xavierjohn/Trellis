@@ -73,8 +73,7 @@ public class RequiredDateTimeOffsetAndNumericConvenienceTests
     public void TryCreate_StrictDateTimeOffset_RejectsMinValue()
     {
         var result = StrictOccurredAt.TryCreate(DateTimeOffset.MinValue);
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().GetDisplayMessage().Should().Contain("DateTimeOffset.MinValue");
+        result.Should().BeFailure().Which.GetDisplayMessage().Should().Contain("DateTimeOffset.MinValue");
     }
 
     [Fact]

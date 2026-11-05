@@ -31,8 +31,7 @@ public class SequenceAllTests : TestBase
 
         var result = results.SequenceAll();
 
-        result.Should().BeFailure();
-        result.Error.Should().NotBeOfType<Error.Aggregate>();
+        result.Should().BeFailure().Which.Should().NotBeOfType<Error.Aggregate>();
         result.Error.Should().BeSameAs(Error1);
     }
 
@@ -155,8 +154,7 @@ public class SequenceAllTests : TestBase
 
         var result = results.SequenceAll();
 
-        result.Should().BeFailure();
-        result.Error.Should().NotBeOfType<Error.Aggregate>();
+        result.Should().BeFailure().Which.Should().NotBeOfType<Error.Aggregate>();
         result.Error.Should().BeSameAs(Error1);
     }
 
@@ -213,8 +211,7 @@ public class SequenceAllTests : TestBase
 
         // Fail-fast: returns the first failure unchanged.
         var failFast = results.Sequence();
-        failFast.Should().BeFailure();
-        failFast.Error.Should().BeSameAs(Error1);
+        failFast.Should().BeFailure().Which.Should().BeSameAs(Error1);
         failFast.Error.Should().NotBeOfType<Error.Aggregate>();
 
         // Accumulating: visits every item, folds both failures into an Aggregate.

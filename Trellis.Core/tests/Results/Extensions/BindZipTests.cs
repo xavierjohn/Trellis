@@ -26,8 +26,7 @@ public class BindZipTests : TestBase
             .BindZip(_ => Result.Fail<int>(Error1));
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     [Fact]
@@ -42,8 +41,7 @@ public class BindZipTests : TestBase
 
         // Assert
         funcInvoked.Should().BeFalse();
-        result.Should().BeFailure();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     #endregion
@@ -72,8 +70,7 @@ public class BindZipTests : TestBase
             .BindZip((s, len) => Result.Ok(s.ToUpperInvariant()));
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     [Fact]
@@ -85,8 +82,7 @@ public class BindZipTests : TestBase
             .BindZip((s, len) => Result.Fail<string>(Error2));
 
         // Assert
-        result.Should().BeFailure();
-        result.Error!.Should().Be(Error2);
+        result.Should().BeFailure().Which.Should().Be(Error2);
     }
 
     [Fact]
@@ -104,8 +100,7 @@ public class BindZipTests : TestBase
         // Assert
         secondInvoked.Should().BeFalse();
         thirdInvoked.Should().BeFalse();
-        result.Should().BeFailure();
-        result.Error!.Should().Be(Error1);
+        result.Should().BeFailure().Which.Should().Be(Error1);
     }
 
     #endregion

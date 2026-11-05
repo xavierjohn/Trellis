@@ -96,8 +96,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        var error = result.UnwrapError();
+        var error = result.Should().BeFailure().Which;
         error.Should().BeOfType<Error.Forbidden>();
         error.Code.Should().Be("resource.authorization-via.load-failed");
         tracker.WasInvoked.Should().BeFalse();
@@ -127,8 +126,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        var error = result.UnwrapError();
+        var error = result.Should().BeFailure().Which;
         error.Should().BeOfType<Error.Forbidden>();
         error.Code.Should().Be("resource.authorization-via.null-payload");
         tracker.WasInvoked.Should().BeFalse();

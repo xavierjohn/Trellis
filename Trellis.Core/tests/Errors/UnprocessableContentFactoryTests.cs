@@ -195,8 +195,7 @@ public class UnprocessableContentFactoryTests
     {
         Result<int> result = Result.Fail<int>(Error.InvalidInput.ForField(field: "age", code: "out_of_range", detail: "must be >= 18"));
 
-        result.IsFailure.Should().BeTrue();
-        var err = result.UnwrapError();
+        var err = result.Should().BeFailure().Which;
         err.Should().BeOfType<Error.InvalidInput>();
         ((Error.InvalidInput)err).Fields[0].Detail.Should().Be("must be >= 18");
     }

@@ -116,8 +116,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional(value, str => Result.Fail<string>(expectedError));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().Be(expectedError);
+        result.Should().BeFailure().Which.Should().Be(expectedError);
     }
 
     [Fact]
@@ -134,8 +133,7 @@ public class MaybeOptionalTests
                 : Result.Fail<WrappedInt>(expectedError));
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Should().Be(expectedError);
+        result.Should().BeFailure().Which.Should().Be(expectedError);
     }
 
     #endregion

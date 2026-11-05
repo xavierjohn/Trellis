@@ -112,8 +112,7 @@ public class MapTsTests : TestBase
         var actual = result.Map((name, age) => new Person(name, age));
 
         // Assert
-        actual.Should().BeFailure();
-        actual.Error!.Should().Be(error);
+        actual.Should().BeFailure().Which.Should().Be(error);
     }
 
     [Fact]

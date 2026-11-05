@@ -166,8 +166,7 @@ public class TransactionalCommandBehaviorTests
             ct);
 
         // Assert
-        result.Should().BeFailure();
-        result.Error.Should().BeSameAs(error);
+        result.Should().BeFailure().Which.Should().BeSameAs(error);
         uow.CommitAttemptCount.Should().Be(1,
             "FailAfterCommit must trigger the post-handler commit so the staged failure-state row is persisted");
     }
@@ -192,8 +191,7 @@ public class TransactionalCommandBehaviorTests
             (_, _) => new ValueTask<Result<string>>(persistOnFailureResult),
             ct);
 
-        result.Should().BeFailure();
-        result.UnwrapError().Should().BeSameAs(commitError);
+        result.Should().BeFailure().Which.Should().BeSameAs(commitError);
         uow.CommitAttemptCount.Should().Be(1);
     }
 
@@ -216,8 +214,7 @@ public class TransactionalCommandBehaviorTests
             (_, _) => new ValueTask<Result<Unit>>(persistOnFailureResult),
             ct);
 
-        result.Should().BeFailure();
-        result.Error.Should().BeSameAs(error);
+        result.Should().BeFailure().Which.Should().BeSameAs(error);
         uow.CommitAttemptCount.Should().Be(1);
     }
 

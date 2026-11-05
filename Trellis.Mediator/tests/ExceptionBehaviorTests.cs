@@ -141,8 +141,7 @@ public class ExceptionBehaviorTests
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().GetDisplayMessage().Should().Be("Business rule failed.");
+        result.Should().BeFailure().Which.GetDisplayMessage().Should().Be("Business rule failed.");
         logEntries.Should().BeEmpty("failure results are not exceptions");
     }
 
