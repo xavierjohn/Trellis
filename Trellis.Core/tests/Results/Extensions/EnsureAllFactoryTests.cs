@@ -221,13 +221,18 @@ public class EnsureAllFactoryTests
     {
         (Func<string, bool>, Func<string, Error>)[] checks = null!;
 
-        var act = async () =>
+        var source = new ControlledAsync<Result<string>>();
+        try
         {
-            if (valueTask)
-                return await new ValueTask<Result<string>>(Result.Ok("value")).EnsureAllAsync(checks);
-            return await Task.FromResult(Result.Ok("value")).EnsureAllAsync(checks);
-        };
+            Func<Task> start = () => valueTask
+                ? source.ValueTask.EnsureAllAsync(checks).AsTask()
+                : source.Task.EnsureAllAsync(checks);
 
-        await act.ShouldRejectNullAsync("checks");
+            await start.ShouldRejectNullBeforeAwaitAsync("checks");
+        }
+        finally
+        {
+            source.TryComplete(Result.Ok("value"));
+        }
     }
 }
