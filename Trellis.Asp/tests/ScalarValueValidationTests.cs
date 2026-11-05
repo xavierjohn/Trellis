@@ -374,13 +374,9 @@ public class ScalarValueValidationTests
     {
         // Arrange
         var filter = new ScalarValueValidationEndpointFilter();
-        var nextCalled = false;
+        var nextCalls = new CallbackRecorder<EndpointFilterInvocationContext>();
 
-        EndpointFilterDelegate next = _ =>
-        {
-            nextCalled = true;
-            return ValueTask.FromResult<object?>("success");
-        };
+        EndpointFilterDelegate next = nextCalls.Wrap<ValueTask<object?>>(_ => ValueTask.FromResult<object?>("success")).Invoke;
 
         // Minimal EndpointFilterInvocationContext with an HttpContext so the filter can read
         // the request path for the RFC 9457 §3.1 ProblemDetails.instance value.
@@ -396,7 +392,7 @@ public class ScalarValueValidationTests
             var result = await filter.InvokeAsync(invocationContext, next);
 
             // Assert
-            nextCalled.Should().BeFalse();
+            nextCalls.CallCount.Should().Be(0);
             // Results.ValidationProblem() returns ProblemHttpResult
             result.Should().BeAssignableTo<Microsoft.AspNetCore.Http.IResult>();
             var problemResult = result as Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult;
@@ -412,13 +408,9 @@ public class ScalarValueValidationTests
     {
         // Arrange
         var filter = new ScalarValueValidationEndpointFilter();
-        var nextCalled = false;
+        var nextCalls = new CallbackRecorder<EndpointFilterInvocationContext>();
 
-        EndpointFilterDelegate next = _ =>
-        {
-            nextCalled = true;
-            return ValueTask.FromResult<object?>("success");
-        };
+        EndpointFilterDelegate next = nextCalls.Wrap<ValueTask<object?>>(_ => ValueTask.FromResult<object?>("success")).Invoke;
 
         using (ValidationErrorsContext.BeginScope())
         {
@@ -428,7 +420,7 @@ public class ScalarValueValidationTests
             var result = await filter.InvokeAsync(null!, next);
 
             // Assert
-            nextCalled.Should().BeTrue();
+            nextCalls.CallCount.Should().BeGreaterThan(0);
             result.Should().Be("success");
         }
     }

@@ -126,20 +126,15 @@ public sealed partial class OutboxReadinessTests
     [Fact]
     public async Task CheckHealthAsync_MetadataOnlyThrowingLocalDependencies_NeverResolvesThem()
     {
-        var resolutions = 0;
+        var resolutions = new CallbackRecorder<IServiceProvider>();
         await using var fixture = await Fixture.CreateAsync(
             OutboxReadinessOptions.CreateMetadataOnlyProfile(3), configure: services =>
             {
-                services.AddSingleton<OutboxOptions>(_ =>
-                {
-                    resolutions++;
-                    throw new InvalidOperationException("Irrelevant local options must not be resolved.");
-                });
-                services.AddSingleton<OutboxRelayObservations<OutboxTestDbContext>>(_ =>
-                {
-                    resolutions++;
-                    throw new InvalidOperationException("Explicit local observations must not be resolved.");
-                });
+                services.AddSingleton<OutboxOptions>(resolutions
+                    .Wrap<OutboxOptions>(_ => throw new InvalidOperationException("Irrelevant local options must not be resolved.")));
+                services.AddSingleton<OutboxRelayObservations<OutboxTestDbContext>>(resolutions
+                    .Wrap<OutboxRelayObservations<OutboxTestDbContext>>(_ =>
+                        throw new InvalidOperationException("Explicit local observations must not be resolved.")));
             });
         var validator = fixture.Provider.GetServices<IHostedService>()
             .OfType<IHostedLifecycleService>().Single();
@@ -148,7 +143,7 @@ public sealed partial class OutboxReadinessTests
         var result = await fixture.CheckAsync();
 
         result.Status.Should().Be(HealthStatus.Healthy);
-        resolutions.Should().Be(0);
+        resolutions.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -308,14 +303,11 @@ public sealed partial class OutboxReadinessTests
     [InlineData(true)]
     public async Task StartingAsync_ContextRegistration_DoesNotConstructContext(bool metadataOnly)
     {
-        var constructed = 0;
+        var factoryCalls = new CallbackRecorder<IServiceProvider>();
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddScoped<OutboxTestDbContext>(_ =>
-        {
-            constructed++;
-            throw new InvalidOperationException("A context must not be constructed during validation.");
-        });
+        services.AddScoped<OutboxTestDbContext>(factoryCalls
+            .Wrap<OutboxTestDbContext>(_ => throw new InvalidOperationException("A context must not be constructed during validation.")));
         if (!metadataOnly)
             services.AddTrellisOutbox<OutboxTestDbContext>();
         services.AddTrellisOutboxReadiness<OutboxTestDbContext>(SelectProfile(metadataOnly));
@@ -324,19 +316,16 @@ public sealed partial class OutboxReadinessTests
 
         await validator.StartingAsync(Cancellation);
 
-        constructed.Should().Be(0);
+        factoryCalls.CallCount.Should().Be(0);
     }
 
     [Fact]
     public async Task StartingAsync_ProviderWithoutRegistrationCapability_SkipsCheckWithoutConstructingContext()
     {
-        var constructed = 0;
+        var factoryCalls = new CallbackRecorder<IServiceProvider>();
         var services = new ServiceCollection();
-        services.AddScoped<OutboxTestDbContext>(_ =>
-        {
-            constructed++;
-            throw new InvalidOperationException("The fallback must not construct the context.");
-        });
+        services.AddScoped<OutboxTestDbContext>(factoryCalls
+            .Wrap<OutboxTestDbContext>(_ => throw new InvalidOperationException("The fallback must not construct the context.")));
         await using var provider = services.BuildServiceProvider();
         var wrapped = new ProviderWithoutRegistrationCapability(provider);
         wrapped.GetService(typeof(IServiceProviderIsService)).Should().BeNull();
@@ -346,7 +335,7 @@ public sealed partial class OutboxReadinessTests
         var start = () => validator.StartingAsync(Cancellation);
 
         await start.Should().NotThrowAsync();
-        constructed.Should().Be(0);
+        factoryCalls.CallCount.Should().Be(0);
     }
 
     [Theory]
@@ -423,20 +412,17 @@ public sealed partial class OutboxReadinessTests
     [Fact]
     public async Task StartAsync_MetadataOnlyWithoutRelay_StartsWithoutConstructingContext()
     {
-        var constructed = 0;
+        var factoryCalls = new CallbackRecorder<IServiceProvider>();
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddScoped<OutboxTestDbContext>(_ =>
-        {
-            constructed++;
-            throw new InvalidOperationException("Startup must not construct a context.");
-        });
+        builder.Services.AddScoped<OutboxTestDbContext>(factoryCalls
+            .Wrap<OutboxTestDbContext>(_ => throw new InvalidOperationException("Startup must not construct a context.")));
         builder.Services.AddTrellisOutboxReadiness<OutboxTestDbContext>(SelectProfile(true));
         using var host = builder.Build();
 
         await host.StartAsync(Cancellation);
         await host.StopAsync(Cancellation);
 
-        constructed.Should().Be(0);
+        factoryCalls.CallCount.Should().Be(0);
     }
 
     [Theory]

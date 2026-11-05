@@ -11,19 +11,16 @@ public class SqlServerTestcontainersFixtureTests
     [Fact]
     public async Task InitializeAsync_Disabled_FixtureLifecycle_DoesNotCreateContainer()
     {
-        var factoryCalls = 0;
-        await using var fixture = new SqlServerTestcontainersFixture(false, () =>
-        {
-            factoryCalls++;
-            throw new InvalidOperationException("Docker must not be accessed.");
-        });
+        var factoryCalls = new CallbackRecorder();
+        await using var fixture = new SqlServerTestcontainersFixture(false, factoryCalls
+            .Wrap<IDatabaseContainer>(() => throw new InvalidOperationException("Docker must not be accessed.")));
 
         await fixture.InitializeAsync();
 
         fixture.IsEnabled.Should().BeFalse();
         Func<Task> request = () => fixture.CreateConnectionStringAsync().AsTask();
         await request.Should().ThrowExactlyAsync<InvalidOperationException>();
-        factoryCalls.Should().Be(0);
+        factoryCalls.CallCount.Should().Be(0);
     }
 
     [Theory]
@@ -64,7 +61,7 @@ public class SqlServerTestcontainersFixtureTests
     {
         var startup = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var container = new Mock<IDatabaseContainer>(MockBehavior.Strict);
-        var factoryCalls = 0;
+        var factoryCalls = new CallbackRecorder();
         CancellationToken startupToken = default;
         container.Setup(c => c.StartAsync(It.IsAny<CancellationToken>()))
             .Callback<CancellationToken>(token => startupToken = token)
@@ -73,15 +70,11 @@ public class SqlServerTestcontainersFixtureTests
             .Returns("Server=127.0.0.1,49152;Database=master;Integrated Security=True;TrustServerCertificate=True");
         container.Setup(c => c.DisposeAsync()).Returns(ValueTask.CompletedTask);
 
-        await using (var fixture = new SqlServerTestcontainersFixture(true, () =>
-        {
-            factoryCalls++;
-            return container.Object;
-        }))
+        await using (var fixture = new SqlServerTestcontainersFixture(true, factoryCalls.Wrap<IDatabaseContainer>(() => container.Object)))
         {
             await fixture.InitializeAsync();
 
-            factoryCalls.Should().Be(0);
+            factoryCalls.CallCount.Should().Be(0);
             container.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Never);
             var firstRequest = fixture.CreateConnectionStringAsync().AsTask();
             var secondRequest = fixture.CreateConnectionStringAsync().AsTask();
@@ -93,7 +86,7 @@ public class SqlServerTestcontainersFixtureTests
             var first = new SqlConnectionStringBuilder(await firstRequest);
             var second = new SqlConnectionStringBuilder(await secondRequest);
             fixture.IsEnabled.Should().BeTrue();
-            factoryCalls.Should().Be(1);
+            factoryCalls.CallCount.Should().Be(1);
             startupToken.CanBeCanceled.Should().BeTrue();
             first.DataSource.Should().Be("127.0.0.1,49152");
             second.DataSource.Should().Be(first.DataSource);

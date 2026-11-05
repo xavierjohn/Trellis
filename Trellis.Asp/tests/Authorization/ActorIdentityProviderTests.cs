@@ -259,26 +259,22 @@ public class ActorIdentityProviderTests
     [Fact]
     public async Task AddTrellisWorkerActor_UnknownFactory_KeepsLazyIdentityAndRejectsUnsupportedHttpProvider()
     {
-        var factoryCalls = 0;
+        var factoryCalls = new CallbackRecorder<IServiceProvider>();
         var services = new ServiceCollection();
-        services.AddScoped<IActorProvider>(_ =>
-        {
-            factoryCalls++;
-            return new LegacyClaimsProvider();
-        });
+        services.AddScoped<IActorProvider>(factoryCalls.Wrap<IActorProvider>(_ => new LegacyClaimsProvider()));
         services.AddTrellisWorkerActor(Actor.Create("system", new HashSet<string>()));
-        factoryCalls.Should().Be(0);
+        factoryCalls.CallCount.Should().Be(0);
         using var root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         using var scope = root.CreateScope();
         var identity = scope.ServiceProvider.GetRequiredService<IActorIdentityProvider>();
 
         (await identity.GetCurrentActorIdAsync(Token)).Unwrap().Value.Should().Be("system");
-        factoryCalls.Should().Be(0);
+        factoryCalls.CallCount.Should().Be(0);
         root.GetRequiredService<IHttpContextAccessor>().HttpContext = Context();
         var act = async () => await identity.GetCurrentActorIdAsync(Token);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*LegacyClaimsProvider*IActorIdentityProvider*");
-        factoryCalls.Should().Be(1);
+        factoryCalls.CallCount.Should().Be(1);
         (await scope.ServiceProvider.GetRequiredService<IActorProvider>()
             .GetCurrentActorAsync(Token)).Unwrap().Id.Value.Should().Be("custom:identity");
     }

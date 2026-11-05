@@ -19,14 +19,10 @@ public class ScalarValueValidationEndpointFilterTests
     {
         // Arrange
         var filter = new ScalarValueValidationEndpointFilter();
-        var nextCalled = false;
+        var nextCalls = new Trellis.Testing.CallbackRecorder<EndpointFilterInvocationContext>();
         var expectedResult = Results.Ok("success");
 
-        EndpointFilterDelegate next = _ =>
-        {
-            nextCalled = true;
-            return ValueTask.FromResult<object?>(expectedResult);
-        };
+        EndpointFilterDelegate next = nextCalls.Wrap<ValueTask<object?>>(_ => ValueTask.FromResult<object?>(expectedResult)).Invoke;
 
         var context = CreateEndpointFilterContext();
 
@@ -38,7 +34,7 @@ public class ScalarValueValidationEndpointFilterTests
             var result = await filter.InvokeAsync(context, next);
 
             // Assert
-            nextCalled.Should().BeTrue();
+            nextCalls.CallCount.Should().BeGreaterThan(0);
             result.Should().BeSameAs(expectedResult);
         }
     }
@@ -48,13 +44,9 @@ public class ScalarValueValidationEndpointFilterTests
     {
         // Arrange
         var filter = new ScalarValueValidationEndpointFilter();
-        var nextCalled = false;
+        var nextCalls = new Trellis.Testing.CallbackRecorder<EndpointFilterInvocationContext>();
 
-        EndpointFilterDelegate next = _ =>
-        {
-            nextCalled = true;
-            return ValueTask.FromResult<object?>(Results.Ok());
-        };
+        EndpointFilterDelegate next = nextCalls.Wrap<ValueTask<object?>>(_ => ValueTask.FromResult<object?>(Results.Ok())).Invoke;
 
         var context = CreateEndpointFilterContext();
 
@@ -67,7 +59,7 @@ public class ScalarValueValidationEndpointFilterTests
             var result = await filter.InvokeAsync(context, next);
 
             // Assert
-            nextCalled.Should().BeFalse("next should not be called when errors exist");
+            nextCalls.CallCount.Should().Be(0, "next should not be called when errors exist");
             result.Should().BeOfType<ProblemHttpResult>();
 
             var validationProblem = (ProblemHttpResult)result!;
@@ -146,13 +138,9 @@ public class ScalarValueValidationEndpointFilterTests
     {
         // Arrange
         var filter = new ScalarValueValidationEndpointFilter();
-        var nextCalled = false;
+        var nextCalls = new Trellis.Testing.CallbackRecorder<EndpointFilterInvocationContext>();
 
-        EndpointFilterDelegate next = _ =>
-        {
-            nextCalled = true;
-            return ValueTask.FromResult<object?>(Results.Ok());
-        };
+        EndpointFilterDelegate next = nextCalls.Wrap<ValueTask<object?>>(_ => ValueTask.FromResult<object?>(Results.Ok())).Invoke;
 
         var context = CreateEndpointFilterContext();
 
@@ -164,7 +152,7 @@ public class ScalarValueValidationEndpointFilterTests
             await filter.InvokeAsync(context, next);
 
             // Assert
-            nextCalled.Should().BeTrue();
+            nextCalls.CallCount.Should().BeGreaterThan(0);
         }
     }
 
