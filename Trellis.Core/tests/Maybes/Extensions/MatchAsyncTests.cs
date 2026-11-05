@@ -20,6 +20,19 @@ public class MatchAsyncTests : TestBase
 
     private static ValueTask<Maybe<int>> NoneValueTask() => new(Maybe<int>.None);
 
+    private static async Task RejectsNullBranchBeforeAwaitAsync(Func<ControlledAsync<Maybe<int>>, Task> start, string paramName)
+    {
+        var source = new ControlledAsync<Maybe<int>>();
+        try
+        {
+            await ((Func<Task>)(() => start(source))).ShouldRejectNullBeforeAwaitAsync(paramName);
+        }
+        finally
+        {
+            source.TryComplete(Maybe.From(1));
+        }
+    }
+
     #region Overload 1: Task<Maybe<T>>, sync branches
 
     [Fact]
@@ -39,20 +52,16 @@ public class MatchAsyncTests : TestBase
     }
 
     [Fact]
-    public async Task MatchAsync_Task_SyncBranches_NullSome_Throws()
-    {
-        Func<Task> act = async () => await SomeTask(1).MatchAsync(some: (Func<int, int>)null!, none: () => 0);
-
-        await act.ShouldRejectNullAsync("some");
-    }
+    public Task MatchAsync_Task_SyncBranches_NullSome_Throws() =>
+        RejectsNullBranchBeforeAwaitAsync(
+            source => source.Task.MatchAsync(some: (Func<int, int>)null!, none: () => 0),
+            "some");
 
     [Fact]
-    public async Task MatchAsync_Task_SyncBranches_NullNone_Throws()
-    {
-        Func<Task> act = async () => await SomeTask(1).MatchAsync(some: v => v, none: (Func<int>)null!);
-
-        await act.ShouldRejectNullAsync("none");
-    }
+    public Task MatchAsync_Task_SyncBranches_NullNone_Throws() =>
+        RejectsNullBranchBeforeAwaitAsync(
+            source => source.Task.MatchAsync(some: v => v, none: (Func<int>)null!),
+            "none");
 
     #endregion
 
@@ -75,20 +84,16 @@ public class MatchAsyncTests : TestBase
     }
 
     [Fact]
-    public async Task MatchAsync_ValueTask_SyncBranches_NullSome_Throws()
-    {
-        Func<Task> act = async () => await SomeValueTask(1).MatchAsync(some: (Func<int, int>)null!, none: () => 0).AsTask();
-
-        await act.ShouldRejectNullAsync("some");
-    }
+    public Task MatchAsync_ValueTask_SyncBranches_NullSome_Throws() =>
+        RejectsNullBranchBeforeAwaitAsync(
+            source => source.ValueTask.MatchAsync(some: (Func<int, int>)null!, none: () => 0).AsTask(),
+            "some");
 
     [Fact]
-    public async Task MatchAsync_ValueTask_SyncBranches_NullNone_Throws()
-    {
-        Func<Task> act = async () => await SomeValueTask(1).MatchAsync(some: v => v, none: (Func<int>)null!).AsTask();
-
-        await act.ShouldRejectNullAsync("none");
-    }
+    public Task MatchAsync_ValueTask_SyncBranches_NullNone_Throws() =>
+        RejectsNullBranchBeforeAwaitAsync(
+            source => source.ValueTask.MatchAsync(some: v => v, none: (Func<int>)null!).AsTask(),
+            "none");
 
     #endregion
 
@@ -121,24 +126,20 @@ public class MatchAsyncTests : TestBase
     }
 
     [Fact]
-    public async Task MatchAsync_Task_AsyncBranches_NullSome_Throws()
-    {
-        Func<Task> act = async () => await SomeTask(1).MatchAsync(
-            some: (Func<int, Task<int>>)null!,
-            none: () => Task.FromResult(0));
-
-        await act.ShouldRejectNullAsync("some");
-    }
+    public Task MatchAsync_Task_AsyncBranches_NullSome_Throws() =>
+        RejectsNullBranchBeforeAwaitAsync(
+            source => source.Task.MatchAsync(
+                some: (Func<int, Task<int>>)null!,
+                none: () => Task.FromResult(0)),
+            "some");
 
     [Fact]
-    public async Task MatchAsync_Task_AsyncBranches_NullNone_Throws()
-    {
-        Func<Task> act = async () => await SomeTask(1).MatchAsync(
-            some: v => Task.FromResult(v),
-            none: (Func<Task<int>>)null!);
-
-        await act.ShouldRejectNullAsync("none");
-    }
+    public Task MatchAsync_Task_AsyncBranches_NullNone_Throws() =>
+        RejectsNullBranchBeforeAwaitAsync(
+            source => source.Task.MatchAsync(
+                some: v => Task.FromResult(v),
+                none: (Func<Task<int>>)null!),
+            "none");
 
     #endregion
 
@@ -171,24 +172,20 @@ public class MatchAsyncTests : TestBase
     }
 
     [Fact]
-    public async Task MatchAsync_ValueTask_AsyncBranches_NullSome_Throws()
-    {
-        Func<Task> act = async () => await SomeValueTask(1).MatchAsync(
-            some: (Func<int, ValueTask<int>>)null!,
-            none: () => new ValueTask<int>(0)).AsTask();
-
-        await act.ShouldRejectNullAsync("some");
-    }
+    public Task MatchAsync_ValueTask_AsyncBranches_NullSome_Throws() =>
+        RejectsNullBranchBeforeAwaitAsync(
+            source => source.ValueTask.MatchAsync(
+                some: (Func<int, ValueTask<int>>)null!,
+                none: () => new ValueTask<int>(0)).AsTask(),
+            "some");
 
     [Fact]
-    public async Task MatchAsync_ValueTask_AsyncBranches_NullNone_Throws()
-    {
-        Func<Task> act = async () => await SomeValueTask(1).MatchAsync(
-            some: v => new ValueTask<int>(v),
-            none: (Func<ValueTask<int>>)null!).AsTask();
-
-        await act.ShouldRejectNullAsync("none");
-    }
+    public Task MatchAsync_ValueTask_AsyncBranches_NullNone_Throws() =>
+        RejectsNullBranchBeforeAwaitAsync(
+            source => source.ValueTask.MatchAsync(
+                some: v => new ValueTask<int>(v),
+                none: (Func<ValueTask<int>>)null!).AsTask(),
+            "none");
 
     #endregion
 
