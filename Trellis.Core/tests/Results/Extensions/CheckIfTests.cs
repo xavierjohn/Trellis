@@ -35,17 +35,13 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Bool_SuccessResult_ConditionFalse_CheckSkipped_ReturnsOriginal()
     {
-        var checkInvoked = false;
+        var checkCalls = new CallbackRecorder<int>();
         var result = Result.Ok(42);
 
-        var sut = result.CheckIf(false, v =>
-        {
-            checkInvoked = true;
-            return Result.Ok("ok");
-        });
+        var sut = result.CheckIf(false, checkCalls.Wrap(v => Result.Ok("ok")));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkInvoked.Should().BeFalse("check function should not be invoked when condition is false");
+        checkCalls.CallCount.Should().Be(0, "check function should not be invoked when condition is false");
     }
 
     #endregion
@@ -55,17 +51,13 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Bool_FailureResult_ConditionTrue_CheckNotInvoked_ReturnsOriginalFailure()
     {
-        var checkInvoked = false;
+        var checkCalls = new CallbackRecorder<int>();
         var result = Result.Fail<int>(TestError);
 
-        var sut = result.CheckIf(true, v =>
-        {
-            checkInvoked = true;
-            return Result.Ok("ok");
-        });
+        var sut = result.CheckIf(true, checkCalls.Wrap(v => Result.Ok("ok")));
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
-        checkInvoked.Should().BeFalse("check function should not be invoked for failed results");
+        checkCalls.CallCount.Should().Be(0, "check function should not be invoked for failed results");
     }
 
     [Fact]
@@ -105,17 +97,13 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Predicate_SuccessResult_PredicateFalse_CheckSkipped_ReturnsOriginal()
     {
-        var checkInvoked = false;
+        var checkCalls = new CallbackRecorder<int>();
         var result = Result.Ok(42);
 
-        var sut = result.CheckIf(v => v < 0, v =>
-        {
-            checkInvoked = true;
-            return Result.Ok("ok");
-        });
+        var sut = result.CheckIf(v => v < 0, checkCalls.Wrap(v => Result.Ok("ok")));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkInvoked.Should().BeFalse("check function should not be invoked when predicate is false");
+        checkCalls.CallCount.Should().Be(0, "check function should not be invoked when predicate is false");
     }
 
     #endregion
@@ -125,17 +113,13 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_Predicate_FailureResult_PredicateNotInvoked()
     {
-        var predicateInvoked = false;
+        var predicateCalls = new CallbackRecorder<int>();
         var result = Result.Fail<int>(TestError);
 
-        var sut = result.CheckIf(v =>
-        {
-            predicateInvoked = true;
-            return v > 0;
-        }, _ => Result.Ok("ok"));
+        var sut = result.CheckIf(predicateCalls.Wrap(v => v > 0), _ => Result.Ok("ok"));
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
-        predicateInvoked.Should().BeFalse("predicate should not be invoked for failed results");
+        predicateCalls.CallCount.Should().Be(0, "predicate should not be invoked for failed results");
     }
 
     #endregion
@@ -214,18 +198,14 @@ public class CheckIfTests
     [Fact]
     public void CheckIf_InChain_ConditionTrue_CheckFails_ShortCircuits()
     {
-        var mapInvoked = false;
+        var mapCalls = new CallbackRecorder<string>();
 
         var result = Result.Ok("hello")
             .CheckIf(true, _ => Result.Fail<string>(CheckError))
-            .Map(s =>
-            {
-                mapInvoked = true;
-                return s + "!";
-            });
+            .Map(mapCalls.Wrap(s => s + "!"));
 
         result.Should().BeFailure();
-        mapInvoked.Should().BeFalse("downstream operations should not execute after check failure");
+        mapCalls.CallCount.Should().Be(0, "downstream operations should not execute after check failure");
     }
 
     #endregion

@@ -100,27 +100,19 @@ public class MatchValueTaskTests
     {
         // Arrange
         var result = Result.Ok("hello");
-        var successCalled = false;
-        var failureCalled = false;
+        var successCalls = new Trellis.Testing.CallbackRecorder<string>();
+        var failureCalls = new Trellis.Testing.CallbackRecorder<Error>();
 
         // Act
         var output = await result.MatchAsync(
-            onSuccess: value =>
-            {
-                successCalled = true;
-                return ValueTask.FromResult(value.Length);
-            },
-            onFailure: err =>
-            {
-                failureCalled = true;
-                return ValueTask.FromResult(-1);
-            }
+            onSuccess: successCalls.Wrap(value => ValueTask.FromResult(value.Length)),
+            onFailure: failureCalls.Wrap(err => ValueTask.FromResult(-1))
         );
 
         // Assert
         output.Should().Be(5);
-        successCalled.Should().BeTrue();
-        failureCalled.Should().BeFalse();
+        successCalls.CallCount.Should().BeGreaterThan(0);
+        failureCalls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -128,27 +120,19 @@ public class MatchValueTaskTests
     {
         // Arrange
         var result = Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid" });
-        var successCalled = false;
-        var failureCalled = false;
+        var successCalls = new Trellis.Testing.CallbackRecorder<string>();
+        var failureCalls = new Trellis.Testing.CallbackRecorder<Error>();
 
         // Act
         var output = await result.MatchAsync(
-            onSuccess: value =>
-            {
-                successCalled = true;
-                return ValueTask.FromResult(value.Length);
-            },
-            onFailure: err =>
-            {
-                failureCalled = true;
-                return ValueTask.FromResult(-1);
-            }
+            onSuccess: successCalls.Wrap(value => ValueTask.FromResult(value.Length)),
+            onFailure: failureCalls.Wrap(err => ValueTask.FromResult(-1))
         );
 
         // Assert
         output.Should().Be(-1);
-        successCalled.Should().BeFalse();
-        failureCalled.Should().BeTrue();
+        successCalls.CallCount.Should().Be(0);
+        failureCalls.CallCount.Should().BeGreaterThan(0);
     }
 
     #endregion
@@ -262,26 +246,18 @@ public class MatchValueTaskTests
     {
         // Arrange
         var resultTask = ValueTask.FromResult(Result.Ok("test"));
-        var successCalled = false;
-        var failureCalled = false;
+        var successCalls = new Trellis.Testing.CallbackRecorder<string>();
+        var failureCalls = new Trellis.Testing.CallbackRecorder<Error>();
 
         // Act
         await resultTask.SwitchAsync(
-            onSuccess: _ =>
-            {
-                successCalled = true;
-                return ValueTask.CompletedTask;
-            },
-            onFailure: _ =>
-            {
-                failureCalled = true;
-                return ValueTask.CompletedTask;
-            }
+            onSuccess: successCalls.Wrap(_ => ValueTask.CompletedTask),
+            onFailure: failureCalls.Wrap(_ => ValueTask.CompletedTask)
         );
 
         // Assert
-        successCalled.Should().BeTrue();
-        failureCalled.Should().BeFalse();
+        successCalls.CallCount.Should().BeGreaterThan(0);
+        failureCalls.CallCount.Should().Be(0);
     }
 
     [Fact]
@@ -289,26 +265,18 @@ public class MatchValueTaskTests
     {
         // Arrange
         var resultTask = ValueTask.FromResult(Result.Fail<string>(new Error.Unexpected("test") { Detail = "Boom" }));
-        var successCalled = false;
-        var failureCalled = false;
+        var successCalls = new Trellis.Testing.CallbackRecorder<string>();
+        var failureCalls = new Trellis.Testing.CallbackRecorder<Error>();
 
         // Act
         await resultTask.SwitchAsync(
-            onSuccess: _ =>
-            {
-                successCalled = true;
-                return ValueTask.CompletedTask;
-            },
-            onFailure: _ =>
-            {
-                failureCalled = true;
-                return ValueTask.CompletedTask;
-            }
+            onSuccess: successCalls.Wrap(_ => ValueTask.CompletedTask),
+            onFailure: failureCalls.Wrap(_ => ValueTask.CompletedTask)
         );
 
         // Assert
-        successCalled.Should().BeFalse();
-        failureCalled.Should().BeTrue();
+        successCalls.CallCount.Should().Be(0);
+        failureCalls.CallCount.Should().BeGreaterThan(0);
     }
 
     #endregion

@@ -108,19 +108,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         Task<Result<int>> resultTask = Task.FromResult(Result.Ok(21));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.WhenAsync(
             x => x == 21,
-            x =>
-            {
-                operationExecuted = true;
-                return Task.FromResult(Result.Ok(x * 2));
-            });
+            operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationExecuted.Should().BeTrue();
+        operationCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(42);
     }
@@ -130,19 +126,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         Task<Result<int>> resultTask = Task.FromResult(Result.Ok(21));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.WhenAsync(
             condition: false,
-            operation: x =>
-            {
-                operationExecuted = true;
-                return Task.FromResult(Result.Ok(x * 2));
-            });
+            operation: operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(21);
     }
@@ -152,19 +144,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         Task<Result<int>> resultTask = Task.FromResult(Result.Fail<int>(Error1));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.WhenAsync(
             true,
-            x =>
-            {
-                operationExecuted = true;
-                return Task.FromResult(Result.Ok(x));
-            });
+            operationCalls.Wrap(x => Task.FromResult(Result.Ok(x))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeFailure()
             .Which.Should().HaveCode(Error1.Code);
     }
@@ -178,19 +166,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         Task<Result<int>> resultTask = Task.FromResult(Result.Ok(10));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.UnlessAsync(
             x => x > 50,
-            x =>
-            {
-                operationExecuted = true;
-                return Task.FromResult(Result.Ok(x + 5));
-            });
+            operationCalls.Wrap(x => Task.FromResult(Result.Ok(x + 5))));
 
         // Assert
-        operationExecuted.Should().BeTrue();
+        operationCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(15);
     }
@@ -200,19 +184,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         Task<Result<int>> resultTask = Task.FromResult(Result.Ok(10));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.UnlessAsync(
             condition: true,
-            operation: x =>
-            {
-                operationExecuted = true;
-                return Task.FromResult(Result.Ok(x + 5));
-            });
+            operation: operationCalls.Wrap(x => Task.FromResult(Result.Ok(x + 5))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(10);
     }
@@ -222,19 +202,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         Task<Result<int>> resultTask = Task.FromResult(Result.Fail<int>(Error2));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.UnlessAsync(
             false,
-            x =>
-            {
-                operationExecuted = true;
-                return Task.FromResult(Result.Ok(x));
-            });
+            operationCalls.Wrap(x => Task.FromResult(Result.Ok(x))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeFailure()
             .Which.Should().HaveCode(Error2.Code);
     }
@@ -248,19 +224,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Ok(7));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.WhenAsync(
             x => x == 7,
-            x =>
-            {
-                operationExecuted = true;
-                return ValueTask.FromResult(Result.Ok(x * 3));
-            });
+            operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x * 3))));
 
         // Assert
-        operationExecuted.Should().BeTrue();
+        operationCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(21);
     }
@@ -270,19 +242,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Ok(7));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.WhenAsync(
             x => x < 0,
-            x =>
-            {
-                operationExecuted = true;
-                return ValueTask.FromResult(Result.Ok(x * 3));
-            });
+            operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x * 3))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(7);
     }
@@ -292,19 +260,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Ok(7));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.WhenAsync(
             condition: true,
-            operation: x =>
-            {
-                operationExecuted = true;
-                return ValueTask.FromResult(Result.Ok(x * 3));
-            });
+            operation: operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x * 3))));
 
         // Assert
-        operationExecuted.Should().BeTrue();
+        operationCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(21);
     }
@@ -314,19 +278,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Ok(7));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.WhenAsync(
             condition: false,
-            operation: x =>
-            {
-                operationExecuted = true;
-                return ValueTask.FromResult(Result.Ok(x * 3));
-            });
+            operation: operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x * 3))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(7);
     }
@@ -340,19 +300,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Ok(5));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.UnlessAsync(
             x => x > 10,
-            x =>
-            {
-                operationExecuted = true;
-                return ValueTask.FromResult(Result.Ok(x + 1));
-            });
+            operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x + 1))));
 
         // Assert
-        operationExecuted.Should().BeTrue();
+        operationCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(6);
     }
@@ -362,19 +318,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Ok(5));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.UnlessAsync(
             x => x < 10,
-            x =>
-            {
-                operationExecuted = true;
-                return ValueTask.FromResult(Result.Ok(x + 1));
-            });
+            operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x + 1))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(5);
     }
@@ -384,19 +336,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Ok(5));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.UnlessAsync(
             condition: false,
-            operation: x =>
-            {
-                operationExecuted = true;
-                return ValueTask.FromResult(Result.Ok(x + 1));
-            });
+            operation: operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x + 1))));
 
         // Assert
-        operationExecuted.Should().BeTrue();
+        operationCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(6);
     }
@@ -406,19 +354,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         ValueTask<Result<int>> resultTask = ValueTask.FromResult(Result.Ok(5));
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await resultTask.UnlessAsync(
             condition: true,
-            operation: x =>
-            {
-                operationExecuted = true;
-                return ValueTask.FromResult(Result.Ok(x + 1));
-            });
+            operation: operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x + 1))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(5);
     }
@@ -650,19 +594,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         var result = Result.Ok(42);
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await result.WhenAsync(
             x => x > 40,
-            x =>
-            {
-                operationExecuted = true;
-                return Task.FromResult(Result.Ok(x * 2));
-            });
+            operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationExecuted.Should().BeTrue();
+        operationCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(84);
     }
@@ -672,19 +612,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         var result = Result.Ok(42);
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await result.WhenAsync(
             x => x < 40,
-            x =>
-            {
-                operationExecuted = true;
-                return Task.FromResult(Result.Ok(x * 2));
-            });
+            operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeSuccess()
             .Which.Should().Be(42);
     }
@@ -694,19 +630,15 @@ public class WhenTests : TestBase
     {
         // Arrange
         var result = Result.Fail<int>(Error1);
-        var operationExecuted = false;
+        var operationCalls = new CallbackRecorder<int>();
 
         // Act
         var actual = await result.WhenAsync(
             x => x > 40,
-            x =>
-            {
-                operationExecuted = true;
-                return Task.FromResult(Result.Ok(x * 2));
-            });
+            operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationExecuted.Should().BeFalse();
+        operationCalls.CallCount.Should().Be(0);
         actual.Should().BeFailure();
     }
 
@@ -736,19 +668,15 @@ public class WhenTests : TestBase
         // Arrange
         var transaction = new Transaction { Amount = 15000 };
         var result = Result.Ok(transaction);
-        var validationExecuted = false;
+        var validationCalls = new CallbackRecorder<Transaction>();
 
         // Act
         var actual = await result.WhenAsync(
             t => t.Amount > 10000,
-            t =>
-            {
-                validationExecuted = true;
-                return Task.FromResult(Result.Ok(t));
-            });
+            validationCalls.Wrap(t => Task.FromResult(Result.Ok(t))));
 
         // Assert
-        validationExecuted.Should().BeTrue();
+        validationCalls.CallCount.Should().BeGreaterThan(0);
         actual.Should().BeSuccess();
     }
 

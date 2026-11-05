@@ -162,21 +162,20 @@ public class MatchTupleTests
     {
         // Arrange
         var result = Result.Fail<(int, int)>(new Error.Unexpected("test") { Detail = "Server error" });
-        var errorLogged = false;
+        var errorLogCalls = new CallbackRecorder<Error>();
         var errorMessage = "";
 
         // Act
         result.Switch(
             onSuccess: (a, b) => { },
-            onFailure: err =>
+            onFailure: errorLogCalls.Wrap(err =>
             {
-                errorLogged = true;
                 errorMessage = err.Detail;
-            }
+            })
         );
 
         // Assert
-        errorLogged.Should().BeTrue();
+        errorLogCalls.CallCount.Should().BeGreaterThan(0);
         errorMessage.Should().Be("Server error");
     }
 

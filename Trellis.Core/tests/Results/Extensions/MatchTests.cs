@@ -132,22 +132,18 @@ public class MatchTests : TestBase
     public async Task SwitchAsync_TaskResult_Failure_InvokesFailureHandler()
     {
         var resultTask = Task.FromResult(Result.Fail<int>(Error1));
-        var successCalled = false;
+        var successCalls = new CallbackRecorder<int>();
         Error? failureError = null;
 
         await resultTask.SwitchAsync(
-            onSuccess: value =>
-            {
-                successCalled = true;
-                return Task.CompletedTask;
-            },
+            onSuccess: successCalls.Wrap(value => Task.CompletedTask),
             onFailure: error =>
             {
                 failureError = error;
                 return Task.CompletedTask;
             });
 
-        successCalled.Should().BeFalse();
+        successCalls.CallCount.Should().Be(0);
         ReferenceEquals(failureError, null).Should().BeFalse();
         ReferenceEquals(failureError, Error1).Should().BeTrue();
     }

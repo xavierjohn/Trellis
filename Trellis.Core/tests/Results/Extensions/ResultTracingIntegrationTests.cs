@@ -32,18 +32,14 @@ public class ResultTracingIntegrationTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<int>();
 
         // Act
         var result = Result.Fail<int>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid value" })
-            .Map(x =>
-            {
-                functionCalled = true;
-                return x * 2;
-            });
+            .Map(functionCalls.Wrap(x => x * 2));
 
         // Assert
-        functionCalled.Should().BeFalse();
+        functionCalls.CallCount.Should().Be(0);
         result.Should().BeFailureOfType<Error.InvalidInput>();
         activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Error);
     }
@@ -68,18 +64,14 @@ public class ResultTracingIntegrationTests
     {
         // Arrange
         using var activityTest = new ActivityTestHelper();
-        var functionCalled = false;
+        var functionCalls = new CallbackRecorder<int>();
 
         // Act
         var result = await Result.Fail<int>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid value" })
-            .MapAsync(x =>
-            {
-                functionCalled = true;
-                return Task.FromResult(x * 2);
-            });
+            .MapAsync(functionCalls.Wrap(x => Task.FromResult(x * 2)));
 
         // Assert
-        functionCalled.Should().BeFalse();
+        functionCalls.CallCount.Should().Be(0);
         result.Should().BeFailureOfType<Error.InvalidInput>();
         activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Error);
     }

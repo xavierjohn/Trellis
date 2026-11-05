@@ -12,17 +12,13 @@ public class EnsureValueTaskTests
     public async Task Ensure_ValueTaskRight_short_circuits_when_source_is_failure()
     {
         var source = Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "original" });
-        var invoked = false;
+        var callbackCalls = new CallbackRecorder();
 
         var actual = await source.EnsureAsync(
-            () =>
-            {
-                invoked = true;
-                return new ValueTask<bool>(true);
-            },
+            callbackCalls.Wrap(() => new ValueTask<bool>(true)),
             new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "should not run" });
 
-        invoked.Should().BeFalse();
+        callbackCalls.CallCount.Should().Be(0);
         actual.Should().Be(source);
     }
 
@@ -101,18 +97,14 @@ public class EnsureValueTaskTests
     public async Task Ensure_ValueTaskLeft_with_sync_error_predicate_does_not_call_error_predicate_when_predicate_passes()
     {
         var source = new ValueTask<Result<string>>(Result.Ok("test"));
-        bool errorPredicateCalled = false;
+        var errorPredicateCalls = new CallbackRecorder<string>();
 
         var actual = await source.EnsureAsync(
             x => x.Length == 4,
-            x =>
-            {
-                errorPredicateCalled = true;
-                return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "should not be called" };
-            });
+            errorPredicateCalls.Wrap(x => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "should not be called" }));
 
         actual.Should().BeSuccess().Which.Should().Be("test");
-        errorPredicateCalled.Should().BeFalse("error predicate should not be called when predicate passes");
+        errorPredicateCalls.CallCount.Should().Be(0, "error predicate should not be called when predicate passes");
     }
 
     #endregion
@@ -123,19 +115,18 @@ public class EnsureValueTaskTests
     public async Task Ensure_ValueTaskLeft_with_async_error_predicate_returns_success_when_predicate_passes()
     {
         var source = new ValueTask<Result<string>>(Result.Ok("test"));
-        bool errorPredicateCalled = false;
+        var errorPredicateCalls = new CallbackRecorder<string>();
 
         var actual = await source.EnsureAsync(
             x => x.Length == 4,
-            async x =>
+            errorPredicateCalls.Wrap<ValueTask<Error>>(async x =>
             {
-                errorPredicateCalled = true;
                 await Task.Yield();
                 return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "should not be called" };
-            });
+            }));
 
         actual.Should().BeSuccess().Which.Should().Be("test");
-        errorPredicateCalled.Should().BeFalse("error predicate should not be called when predicate passes");
+        errorPredicateCalls.CallCount.Should().Be(0, "error predicate should not be called when predicate passes");
     }
 
     [Fact]
