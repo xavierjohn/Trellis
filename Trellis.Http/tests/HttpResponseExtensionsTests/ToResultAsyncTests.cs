@@ -77,7 +77,7 @@ public class ToResultAsyncTests
             error.Fault.Should().BeOfType(transportFaultType);
         }
 
-        result.Error!.Detail.Should().Contain(((int)status).ToString(CultureInfo.InvariantCulture));
+        result.Should().HaveErrorDetailContaining(((int)status).ToString(CultureInfo.InvariantCulture));
         tracker.Disposed.Should().BeTrue();
     }
 
@@ -90,8 +90,7 @@ public class ToResultAsyncTests
 
         var result = await task.ToResultAsync();
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Detail.Should().Contain("599");
+        result.Should().HaveErrorDetailContaining("599").And.BeFailureOfType<Error.Unexpected>();
         tracker.Disposed.Should().BeTrue();
     }
 
@@ -381,8 +380,7 @@ public class ToResultAsyncTests
 
         var result = await task.ToResultAsync();
 
-        var unexpected = result.Should().BeFailureOfType<Error.Unexpected>().Subject;
-        unexpected.Code.Should().Be(FaultCodes.NotImplemented);
+        result.Should().HaveErrorCode(FaultCodes.NotImplemented).And.BeFailureOfType<Error.Unexpected>();
     }
 
     [Fact]

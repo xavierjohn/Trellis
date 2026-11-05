@@ -208,8 +208,7 @@ public class MapOnFailureTests : TestBase
         var apiResult = domainResult.MapOnFailure(e => Error.InvalidInput.ForRule(code: "bad.request", detail: $"API Error: {e.Detail}"));
 
         // Assert
-        apiResult.Should().BeFailureOfType<Error.InvalidInput>();
-        apiResult.Error!.Detail.Should().Contain("Insufficient balance");
+        apiResult.Should().HaveErrorDetailContaining("Insufficient balance").And.BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]

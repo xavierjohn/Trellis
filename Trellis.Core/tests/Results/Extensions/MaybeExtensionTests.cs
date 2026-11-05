@@ -243,7 +243,7 @@ public class MaybeExtensionTests
         var result = maybe.ToResult(() => new Error.NotFound(new ResourceRef("Resource", null)) { Detail = "MyClass not found" });
 
         // Assert
-        result.Should().BeFailureOfType<Error.NotFound>().Which.Detail.Should().Be("MyClass not found");
+        result.Should().HaveErrorDetail("MyClass not found").And.BeFailureOfType<Error.NotFound>();
     }
 
     #endregion

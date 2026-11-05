@@ -88,7 +88,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
         var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Should().NotBeSameAs(loaderError);
         notFound.Resource.Should().Be(ResourceRef.For<HiddenResource>("res-1"));
-        notFound.Code.Should().Be("error.unspecified");
+        result.Should().HaveErrorCode("error.unspecified");
         notFound.Detail.Should().BeNull();
         notFound.Cause.Should().BeNull();
         loaderError.Code.Should().Be(privateCode);
@@ -194,8 +194,8 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Should().Be(ResourceRef.For<HiddenResource>("res-1"));
-        notFound.Code.Should().Be("resource.not-found");
-        notFound.Detail.Should().Be("Resource not found.");
+        result.Should().HaveErrorCode("resource.not-found");
+        result.Should().HaveErrorDetail("Resource not found.");
         notFound.Cause.Should().BeNull();
     }
 
@@ -265,8 +265,8 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Should().Be(ResourceRef.For<PublicAggregate>("public-id-42"));
-        notFound.Code.Should().Be("public.not-found");
-        notFound.Detail.Should().Be("Public aggregate not found.");
+        result.Should().HaveErrorCode("public.not-found");
+        result.Should().HaveErrorDetail("Public aggregate not found.");
         notFound.Cause.Should().BeNull();
     }
 
@@ -398,7 +398,7 @@ public sealed class ResourceAuthorizationBehaviorExposurePolicyTests
 
         var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Should().Be(ResourceRef.For<PublicAggregate>("public-id-42"));
-        notFound.Code.Should().Be("error.unspecified");
+        result.Should().HaveErrorCode("error.unspecified");
         notFound.Detail.Should().BeNull();
         notFound.Cause.Should().BeNull();
     }

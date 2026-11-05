@@ -491,7 +491,7 @@ public class ResultTracingIntegrationTests
 
         // Assert
         result.Should().BeFailure().Which.Kind.Should().Be("unexpected");
-        result.Error!.Detail.Should().Be("Recovery failed");
+        result.Should().HaveErrorDetail("Recovery failed");
 
         // Verify transition and failed recovery
         activityTest.AssertActivityCapturedWithStatus("Ensure", ActivityStatusCode.Error);

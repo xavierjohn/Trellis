@@ -118,7 +118,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Should().NotBeSameAs(original);
         notFound.Resource.Should().Be(ResourceRef.For<ViaLeaf>("missing-leaf"));
-        notFound.Code.Should().Be("error.unspecified");
+        result.Should().HaveErrorCode("error.unspecified");
         notFound.Detail.Should().BeNull();
         notFound.Cause.Should().BeNull();
     }
@@ -232,8 +232,8 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
 
         var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Should().Be(ResourceRef.For(projection ? nameof(PublicLeaf) : nameof(ViaLeaf), "leaf-1"));
-        notFound.Code.Should().Be("leaf.not-found");
-        notFound.Detail.Should().Be("Leaf not found.");
+        result.Should().HaveErrorCode("leaf.not-found");
+        result.Should().HaveErrorDetail("Leaf not found.");
         notFound.Cause.Should().BeNull();
     }
 

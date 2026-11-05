@@ -71,8 +71,7 @@ public class EnsureNotNullOrWhiteSpaceTests
         var (result, violations) = MeasureValidation(() =>
             value.EnsureNotNullOrWhiteSpace("name", "Name is required."));
 
-        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        error.Code.Should().Be(ValidationCodes.Unspecified);
+        var error = result.Should().HaveErrorCode(ValidationCodes.Unspecified).And.BeFailureOfType<Error.InvalidInput>().Which;
         error.Detail.Should().BeNull();
         error.Should().HaveRuleViolationCount(0);
         var field = error.Should().HaveFieldViolationCount(1)

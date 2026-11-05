@@ -56,9 +56,8 @@ public sealed class DbContextIdempotencyExtensionsTests : IDisposable
 
         var result = await _context.TryInsertUniqueAsync(second, ct);
 
-        var conflict = result.Should().BeFailureOfType<Error.Conflict>().Which;
-        conflict.Code.Should().Be(FaultCodes.DuplicateKey);
-        conflict.Detail.Should().Be("A record with the same unique value already exists.");
+        result.Should().HaveErrorCode(FaultCodes.DuplicateKey).And.BeFailureOfType<Error.Conflict>();
+        result.Should().HaveErrorDetail("A record with the same unique value already exists.");
     }
 
     [Fact]

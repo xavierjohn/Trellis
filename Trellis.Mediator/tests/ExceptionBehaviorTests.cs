@@ -30,7 +30,7 @@ public class ExceptionBehaviorTests
             "the exception's private diagnostic text must not be returned");
         error.Detail.Should().NotContain("Connection string",
             "internal infrastructure details must not be exposed in error details");
-        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        result.Should().HaveErrorDetail("An unexpected error occurred while processing the request.");
     }
 
     [Fact]
@@ -45,8 +45,7 @@ public class ExceptionBehaviorTests
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
-        var error = result.Should().BeFailureOfType<Error.Unexpected>().Which;
-        error.Code.Should().Be("unhandled-exception");
+        var error = result.Should().HaveErrorCode("unhandled-exception").And.BeFailureOfType<Error.Unexpected>().Which;
         error.FaultId.Should().NotBeNullOrWhiteSpace();
         Guid.TryParseExact(error.FaultId!, "N", out _).Should().BeTrue();
     }

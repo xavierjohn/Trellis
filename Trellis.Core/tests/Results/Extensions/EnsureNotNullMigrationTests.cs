@@ -248,7 +248,7 @@ public class EnsureNotNullMigrationTests
         });
 
         // Assert
-        result.Should().BeFailureOfType<Error.NotFound>().Which.Detail.Should().Be("MyClass not found");
+        result.Should().HaveErrorDetail("MyClass not found").And.BeFailureOfType<Error.NotFound>();
         factoryInvoked.Should().BeTrue("error factory should be invoked for failure");
     }
 

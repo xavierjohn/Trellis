@@ -231,7 +231,7 @@ public class Ensure_ValueTask_Right_Tests
         // Assert
         result.Should().BeFailure("email validation failed");
         capturedValue.Should().Be("test@example");
-        result.Error!.Detail.Should().Contain("test@example");
+        result.Should().HaveErrorDetailContaining("test@example");
     }
 
     #endregion
@@ -274,9 +274,8 @@ public class Ensure_ValueTask_Right_Tests
             });
 
         // Assert
-        result.Should().BeFailure("predicate failed");
-        result.Error!.Detail.Should().Contain("ab");
-        result.Error!.Detail.Should().Contain("must be at least 3 characters");
+        result.Should().HaveErrorDetailContaining("ab").And.BeFailure("predicate failed");
+        result.Should().HaveErrorDetailContaining("must be at least 3 characters");
     }
 
     [Fact]
@@ -489,9 +488,8 @@ public class Ensure_ValueTask_Right_Tests
                     : Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = $"Email '{email}' must contain @ and ." })));
 
         // Assert
-        result.Should().BeFailure("email validation failed");
-        result.Error!.Detail.Should().Contain("invalid-email");
-        result.Error!.Detail.Should().Contain("must contain @ and .");
+        result.Should().HaveErrorDetailContaining("invalid-email").And.BeFailure("email validation failed");
+        result.Should().HaveErrorDetailContaining("must contain @ and .");
     }
 
     [Fact]

@@ -84,7 +84,7 @@ public class ReadJsonAsyncTests
         err.Detail.Should().NotContain("Xavier", "user data from the response body must not appear in the failure detail");
         err.Detail.Should().NotContain("not-a-number-12345", "user data from the response body must not appear in the failure detail");
         err.Detail.Should().NotContain("$.", "JsonException.Path can contain user-controlled dictionary keys; do not surface it");
-        err.Detail.Should().Contain("camelcasePerson", "type name is acceptable diagnostic detail");
+        result.Should().HaveErrorDetailContaining("camelcasePerson", "type name is acceptable diagnostic detail");
     }
 
     [Fact]
@@ -124,8 +124,7 @@ public class ReadJsonAsyncTests
 
         var result = await task.ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Detail.Should().Contain("BadGateway");
+        result.Should().HaveErrorDetailContaining("BadGateway").And.BeFailureOfType<Error.Unexpected>();
         tracker.Disposed.Should().BeTrue();
     }
 

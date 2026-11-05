@@ -32,8 +32,7 @@ public class TaskAdapterTests
     {
         var result = await default(Result<int>).AsTask();
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Code.Should().Be("default-initialized");
+        result.Should().HaveErrorCode("default-initialized").And.BeFailureOfType<Error.Unexpected>();
     }
 
     [Fact]
@@ -60,8 +59,7 @@ public class TaskAdapterTests
     {
         var result = await default(Result<Unit>).AsTask();
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Code.Should().Be("default-initialized");
+        result.Should().HaveErrorCode("default-initialized").And.BeFailureOfType<Error.Unexpected>();
     }
 
     [Fact]
@@ -89,8 +87,7 @@ public class TaskAdapterTests
     {
         var result = await default(Result<int>).AsValueTask();
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Code.Should().Be("default-initialized");
+        result.Should().HaveErrorCode("default-initialized").And.BeFailureOfType<Error.Unexpected>();
     }
 
     [Fact]
@@ -117,7 +114,6 @@ public class TaskAdapterTests
     {
         var result = await default(Result<Unit>).AsValueTask();
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Code.Should().Be("default-initialized");
+        result.Should().HaveErrorCode("default-initialized").And.BeFailureOfType<Error.Unexpected>();
     }
 }
