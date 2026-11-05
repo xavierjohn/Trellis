@@ -113,8 +113,7 @@ public class EnsureValueTaskTests
                 return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "should not be called" };
             });
 
-        actual.IsSuccess.Should().BeTrue();
-        actual.Unwrap().Should().Be("test");
+        actual.Should().BeSuccess().Which.Should().Be("test");
         errorPredicateCalled.Should().BeFalse("error predicate should not be called when predicate passes");
     }
 
@@ -137,8 +136,7 @@ public class EnsureValueTaskTests
                 return new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "should not be called" };
             });
 
-        actual.IsSuccess.Should().BeTrue();
-        actual.Unwrap().Should().Be("test");
+        actual.Should().BeSuccess().Which.Should().Be("test");
         errorPredicateCalled.Should().BeFalse("error predicate should not be called when predicate passes");
     }
 

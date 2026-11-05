@@ -206,8 +206,7 @@ public class CombineTracingTests : TestBase
             .Combine(Result.Ok()); // Unit validation
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be(("First", "Second", Unit.Default));
+        result.Should().BeSuccess().Which.Should().Be(("First", "Second", Unit.Default));
 
         // Should have 2 Combine activities, both with Ok status
         var activities = activityTest.AssertActivityCaptured("Combine", 2);

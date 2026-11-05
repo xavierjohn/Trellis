@@ -13,8 +13,7 @@ public class TraverseAllTests : TestBase
 
         var result = items.TraverseAll(x => Result.Ok(x * 2));
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal([2, 4, 6, 8, 10]);
+        result.Should().BeSuccess().Which.Should().Equal([2, 4, 6, 8, 10]);
     }
 
     [Fact]
@@ -24,8 +23,7 @@ public class TraverseAllTests : TestBase
 
         var result = items.TraverseAll(x => Result.Ok(x * 2));
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().BeEmpty();
+        result.Should().BeSuccess().Which.Should().BeEmpty();
     }
 
     [Fact]
@@ -128,8 +126,7 @@ public class TraverseAllTests : TestBase
 
         var result = await items.TraverseAllAsync(x => Task.FromResult(Result.Ok(x * 2)));
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal([2, 4, 6, 8, 10]);
+        result.Should().BeSuccess().Which.Should().Equal([2, 4, 6, 8, 10]);
     }
 
     [Fact]
@@ -139,8 +136,7 @@ public class TraverseAllTests : TestBase
 
         var result = await items.TraverseAllAsync(x => Task.FromResult(Result.Ok(x * 2)));
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().BeEmpty();
+        result.Should().BeSuccess().Which.Should().BeEmpty();
     }
 
     [Fact]
@@ -221,8 +217,7 @@ public class TraverseAllTests : TestBase
 
         var result = await items.TraverseAllAsync((int x, CancellationToken _) => Result.Ok(x * 10).AsTask(), TestContext.Current.CancellationToken);
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal([10, 20, 30]);
+        result.Should().BeSuccess().Which.Should().Equal([10, 20, 30]);
     }
 
     [Fact]
@@ -285,8 +280,7 @@ public class TraverseAllTests : TestBase
 
         var result = await items.TraverseAllAsync((int x) => Result.Ok(x + 100).AsValueTask());
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal([101, 102, 103]);
+        result.Should().BeSuccess().Which.Should().Equal([101, 102, 103]);
     }
 
     [Fact]
@@ -332,8 +326,7 @@ public class TraverseAllTests : TestBase
 
         var result = await items.TraverseAllAsync((int x, CancellationToken _) => Result.Ok(x - 1).AsValueTask(), TestContext.Current.CancellationToken);
 
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Equal([0, 1, 2]);
+        result.Should().BeSuccess().Which.Should().Equal([0, 1, 2]);
     }
 
     [Fact]

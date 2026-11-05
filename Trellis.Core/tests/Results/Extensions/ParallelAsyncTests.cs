@@ -33,8 +33,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be((1, 2));
+        result.Should().BeSuccess().Which.Should().Be((1, 2));
     }
 
     [Fact]
@@ -61,8 +60,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be(("text", 42));
+        result.Should().BeSuccess().Which.Should().Be(("text", 42));
     }
 
     [Fact]
@@ -143,8 +141,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be((1, 2, 3));
+        result.Should().BeSuccess().Which.Should().Be((1, 2, 3));
     }
 
     [Fact]
@@ -266,8 +263,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be(("text", 42, true));
+        result.Should().BeSuccess().Which.Should().Be(("text", 42, true));
         result.Unwrap().Item1.Should().Be("text");
         result.Unwrap().Item2.Should().Be(42);
         result.Unwrap().Item3.Should().BeTrue();
@@ -286,8 +282,7 @@ public class ParallelAsyncTests : TestBase
         .BindAsync((a, b, c) => Result.Ok(a + b + c));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be(60);
+        result.Should().BeSuccess().Which.Should().Be(60);
     }
 
     [Fact]
@@ -303,8 +298,7 @@ public class ParallelAsyncTests : TestBase
         .MapAsync(tuple => $"{tuple.Item1}-{tuple.Item2}-{tuple.Item3}");
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be("1-2-3");
+        result.Should().BeSuccess().Which.Should().Be("1-2-3");
     }
 
     [Fact]
@@ -347,8 +341,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be((1, 2, 3, 4));
+        result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4));
     }
 
     [Fact]
@@ -379,8 +372,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be((1, 2, 3, 4, 5));
+        result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5));
     }
 
     [Fact]
@@ -397,8 +389,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be((1, 2, 3, 4, 5, 6));
+        result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5, 6));
     }
 
     [Fact]
@@ -416,8 +407,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be((1, 2, 3, 4, 5, 6, 7));
+        result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5, 6, 7));
     }
 
     [Fact]
@@ -436,8 +426,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be((1, 2, 3, 4, 5, 6, 7, 8));
+        result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5, 6, 7, 8));
     }
 
     [Fact]
@@ -457,8 +446,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be((1, 2, 3, 4, 5, 6, 7, 8, 9));
+        result.Should().BeSuccess().Which.Should().Be((1, 2, 3, 4, 5, 6, 7, 8, 9));
     }
 
     [Fact]
@@ -506,8 +494,7 @@ public class ParallelAsyncTests : TestBase
         });
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Profile.Should().Be("John Doe");
+        result.Should().BeSuccess().Which.Profile.Should().Be("John Doe");
         result.Unwrap().OrderCount.Should().Be(2);
         result.Unwrap().Theme.Should().Be("Dark Mode");
     }

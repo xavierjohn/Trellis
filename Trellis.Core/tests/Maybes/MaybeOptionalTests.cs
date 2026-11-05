@@ -22,8 +22,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional(nullString, calls.Wrap(str => Result.Ok(str.ToUpperInvariant())));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().HasValue.Should().BeFalse();
+        result.Should().BeSuccess().Which.HasValue.Should().BeFalse();
         calls.CallCount.Should().Be(0);
     }
 
@@ -38,8 +37,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional<int, WrappedInt>(nullInt, calls.Wrap(num => Result.Ok(new WrappedInt(num * 2))));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().HasValue.Should().BeFalse();
+        result.Should().BeSuccess().Which.HasValue.Should().BeFalse();
         calls.CallCount.Should().Be(0);
     }
 
@@ -53,8 +51,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional<Guid, string>(nullGuid, g => Result.Ok(g.ToString()));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().HasValue.Should().BeFalse();
+        result.Should().BeSuccess().Which.HasValue.Should().BeFalse();
     }
 
     #endregion
@@ -71,8 +68,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional(value, str => Result.Ok(str.ToUpperInvariant()));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().HasValue.Should().BeTrue();
+        result.Should().BeSuccess().Which.HasValue.Should().BeTrue();
         result.Unwrap().Unwrap().Should().Be("HELLO");
     }
 
@@ -86,8 +82,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional<int, WrappedInt>(value, num => Result.Ok(new WrappedInt(num * 2)));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().HasValue.Should().BeTrue();
+        result.Should().BeSuccess().Which.HasValue.Should().BeTrue();
         result.Unwrap().Unwrap().Value.Should().Be(42);
     }
 
@@ -102,8 +97,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional<Guid, string>(value, g => Result.Ok(g.ToString()));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().HasValue.Should().BeTrue();
+        result.Should().BeSuccess().Which.HasValue.Should().BeTrue();
         result.Unwrap().Unwrap().Should().Be(guid.ToString());
     }
 
@@ -161,8 +155,7 @@ public class MaybeOptionalTests
                 : Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid email" }));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().HasValue.Should().BeTrue();
+        result.Should().BeSuccess().Which.HasValue.Should().BeTrue();
         result.Unwrap().Unwrap().Should().Be("test@example.com");
     }
 
@@ -179,8 +172,7 @@ public class MaybeOptionalTests
                 : Result.Fail<string>(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Invalid email" }));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().HasValue.Should().BeFalse();
+        result.Should().BeSuccess().Which.HasValue.Should().BeFalse();
     }
 
     [Fact]
@@ -276,8 +268,7 @@ public class MaybeOptionalTests
 
         // Assert
         functionInvoked.Should().BeTrue("empty string is not null, so function should be invoked");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().HasValue.Should().BeTrue();
+        result.Should().BeSuccess().Which.HasValue.Should().BeTrue();
         result.Unwrap().Unwrap().Should().Be("");
     }
 
@@ -316,8 +307,7 @@ public class MaybeOptionalTests
 
         // Assert
         functionInvoked.Should().BeTrue("zero is not null, so function should be invoked");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Unwrap().Value.Should().Be(0);
+        result.Should().BeSuccess().Which.Unwrap().Value.Should().Be(0);
     }
 
     #endregion

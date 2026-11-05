@@ -46,8 +46,7 @@ public class TapTupleTests : TestBase
 
         // Assert
         _actionExecuted.Should().BeTrue();
-        actual.Should().BeSuccess();
-        actual.Unwrap().Should().Be((42, "hello"));
+        actual.Should().BeSuccess().Which.Should().Be((42, "hello"));
     }
 
     [Fact]
@@ -296,8 +295,7 @@ public class TapTupleTests : TestBase
 
         // Assert
         _actionExecuted.Should().BeTrue();
-        actual.Should().BeSuccess();
-        actual.Unwrap().Should().Be((1, "two", true));
+        actual.Should().BeSuccess().Which.Should().Be((1, "two", true));
     }
 
     [Fact]
@@ -484,8 +482,7 @@ public class TapTupleTests : TestBase
             .Tap(fullName => executionOrder.Add($"Tap2: {fullName}"));
 
         // Assert
-        result.Should().BeSuccess();
-        result.Unwrap().Should().Be("JOHN DOE");
+        result.Should().BeSuccess().Which.Should().Be("JOHN DOE");
         executionOrder.Should().HaveCount(3);
         executionOrder[0].Should().Be("Tap: John Doe");
         executionOrder[1].Should().Be("Bind: John Doe");

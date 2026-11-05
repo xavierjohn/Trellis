@@ -27,8 +27,7 @@ public class MapTests : TestBase
         var result = i.Map(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("5");
+        result.Should().BeSuccess().Which.Should().Be("5");
     }
 
     [Fact]
@@ -57,8 +56,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("5");
+        result.Should().BeSuccess().Which.Should().Be("5");
     }
 
     [Fact]
@@ -85,8 +83,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedTask());
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("5");
+        result.Should().BeSuccess().Which.Should().Be("5");
     }
 
     [Fact]
@@ -124,8 +121,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedTask());
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("5");
+        result.Should().BeSuccess().Which.Should().Be("5");
     }
 
     [Fact]
@@ -154,8 +150,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("5");
+        result.Should().BeSuccess().Which.Should().Be("5");
     }
 
     [Fact]
@@ -182,8 +177,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedValueTask());
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("5");
+        result.Should().BeSuccess().Which.Should().Be("5");
     }
 
     [Fact]
@@ -210,8 +204,7 @@ public class MapTests : TestBase
         var result = await i.MapAsync(x => x.ToString(CultureInfo.InvariantCulture).AsCompletedValueTask());
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("5");
+        result.Should().BeSuccess().Which.Should().Be("5");
     }
 
     [Fact]
