@@ -29,8 +29,7 @@ public class ResourceLoaderByIdTests
 
         var result = await loader.LoadAsync(message, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
     }
 
     #endregion

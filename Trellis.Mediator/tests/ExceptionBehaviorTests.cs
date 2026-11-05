@@ -24,8 +24,7 @@ public class ExceptionBehaviorTests
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        var error = result.UnwrapError().Should().BeOfType<Error.Unexpected>().Subject;
+        var error = result.Should().BeFailureOfType<Error.Unexpected>().Which;
         error.Detail.Should().NotContain("Something went wrong");
         error.Detail.Should().NotContain(privateMarker,
             "the exception's private diagnostic text must not be returned");
@@ -46,7 +45,7 @@ public class ExceptionBehaviorTests
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
-        var error = result.UnwrapError().Should().BeOfType<Error.Unexpected>().Subject;
+        var error = result.Should().BeFailureOfType<Error.Unexpected>().Which;
         error.Code.Should().Be("unhandled-exception");
         error.FaultId.Should().NotBeNullOrWhiteSpace();
         Guid.TryParseExact(error.FaultId!, "N", out _).Should().BeTrue();

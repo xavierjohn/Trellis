@@ -42,8 +42,7 @@ public class TransactionalCommandBehaviorTests
             ct);
 
         // Assert
-        result.Should().BeFailure();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
         uow.CommitAttemptCount.Should().Be(1);
     }
 

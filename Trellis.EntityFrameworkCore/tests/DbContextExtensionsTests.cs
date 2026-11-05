@@ -109,8 +109,7 @@ public class DbContextExtensionsTests : IDisposable
         var result = await _context.SaveChangesResultAsync(ct);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -142,8 +141,7 @@ public class DbContextExtensionsTests : IDisposable
         var result = await _context.SaveChangesResultAsync(ct);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     #endregion
@@ -168,8 +166,7 @@ public class DbContextExtensionsTests : IDisposable
         var result = await _context.SaveChangesResultAsync(ct);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     #endregion
@@ -270,8 +267,7 @@ public class DbContextExtensionsTests : IDisposable
         var result = await _context.SaveChangesResultAsync(acceptAllChangesOnSuccess: false, ct);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -292,8 +288,7 @@ public class DbContextExtensionsTests : IDisposable
         var result = await _context.SaveChangesResultAsync(acceptAllChangesOnSuccess: false, ct);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 
     #endregion

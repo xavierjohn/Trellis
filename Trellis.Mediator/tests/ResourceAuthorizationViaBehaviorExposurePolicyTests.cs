@@ -28,7 +28,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
 
         var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
 
         var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Type.Should().Be("ViaLeaf");
         notFound.Resource.Id.Should().Be("leaf-1");
     }
@@ -85,7 +85,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
 
         var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Type.Should().Be("ViaLeaf");
         notFound.Resource.Id.Should().Be("leaf-1");
     }
@@ -115,7 +115,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
 
         var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Should().NotBeSameAs(original);
         notFound.Resource.Should().Be(ResourceRef.For<ViaLeaf>("missing-leaf"));
         notFound.Code.Should().Be("error.unspecified");
@@ -230,7 +230,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
         var result = await behavior.HandleWithContext(
             new ViaSingleHopCommand("leaf-1"), next, TestContext.Current.CancellationToken);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Should().Be(ResourceRef.For(projection ? nameof(PublicLeaf) : nameof(ViaLeaf), "leaf-1"));
         notFound.Code.Should().Be("leaf.not-found");
         notFound.Detail.Should().Be("Leaf not found.");
@@ -287,7 +287,7 @@ public sealed class ResourceAuthorizationViaBehaviorExposurePolicyTests
 
         var result = await behavior.HandleWithContext(command, next, TestContext.Current.CancellationToken);
 
-        var notFound = result.UnwrapError().Should().BeOfType<Error.NotFound>().Subject;
+        var notFound = result.Should().BeFailureOfType<Error.NotFound>().Which;
         notFound.Resource.Type.Should().Be("ViaLeaf");
     }
 

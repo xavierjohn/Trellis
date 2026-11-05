@@ -58,8 +58,7 @@ public class GptReviewRegressionTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.AuthenticationRequired>();
+        result.Should().BeFailureOfType<Error.AuthenticationRequired>();
 
         factoryInvocations.Should().Be(0,
             "ga-11 requires that no I/O — including DI factory invocations — runs when the caller is unauthenticated. "

@@ -124,8 +124,7 @@ public class CompositeSeekTests
         var result = await db.Rows.ToPageAsync(new PageSize(2, 2), new Cursor("bad-token"), seek,
             cursorFieldName: "after", cancellationToken: TestContext.Current.CancellationToken);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.InvalidInput>().Which.Fields[0].Field.Path.Should().Be("/after");
+        result.Should().BeFailureOfType<Error.InvalidInput>().Which.Fields[0].Field.Path.Should().Be("/after");
         connection.State.Should().Be(System.Data.ConnectionState.Closed);
     }
 

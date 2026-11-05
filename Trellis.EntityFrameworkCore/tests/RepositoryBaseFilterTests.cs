@@ -57,8 +57,7 @@ public sealed partial class RepositoryBaseFilterTests : IDisposable
 
         var result = await _repository.RemoveByIdAsync(id, ct);
 
-        result.Should().BeFailure();
-        result.UnwrapError().Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
     }
 
     /// <summary>
@@ -86,8 +85,7 @@ public sealed partial class RepositoryBaseFilterTests : IDisposable
         // The repository operates as the local tenant (FilterTestDbContext.CurrentTenantId).
         var result = await _repository.RemoveByIdAsync(id, ct);
 
-        result.Should().BeFailure();
-        result.UnwrapError().Should().BeOfType<Error.NotFound>();
+        result.Should().BeFailureOfType<Error.NotFound>();
     }
 
     /// <summary>

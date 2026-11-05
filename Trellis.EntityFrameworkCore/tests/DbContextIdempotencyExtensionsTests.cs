@@ -57,8 +57,7 @@ public sealed class DbContextIdempotencyExtensionsTests : IDisposable
 
         var result = await _context.TryInsertUniqueAsync(second, ct);
 
-        result.IsSuccess.Should().BeFalse();
-        var conflict = result.UnwrapError().Should().BeOfType<Error.Conflict>().Which;
+        var conflict = result.Should().BeFailureOfType<Error.Conflict>().Which;
         conflict.Code.Should().Be(FaultCodes.DuplicateKey);
         conflict.Detail.Should().Be("A record with the same unique value already exists.");
     }
@@ -76,7 +75,7 @@ public sealed class DbContextIdempotencyExtensionsTests : IDisposable
 
         // SQLite does not expose a constraint name in its message, but it does expose
         // the table name via "UNIQUE constraint failed: <Table>.<Column>".
-        var conflict = result.UnwrapError().Should().BeOfType<Error.Conflict>().Which;
+        var conflict = result.Should().BeFailureOfType<Error.Conflict>().Which;
         conflict.ConstraintTableName.Should().Be("Customers");
         conflict.ConstraintName.Should().BeNull(because: "SQLite does not surface a constraint name in its message");
     }

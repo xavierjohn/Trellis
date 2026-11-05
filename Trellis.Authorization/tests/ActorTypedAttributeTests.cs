@@ -37,8 +37,7 @@ public class ActorTypedAttributeTests
 
         var result = actor.GetRequiredAttribute<ActorId>(ScopeKey);
 
-        result.IsFailure.Should().BeTrue();
-        var invalid = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var invalid = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         invalid.Fields[0].Field.Path.Should().Be("/scope", "the failed attribute key identifies the error field");
     }
 
@@ -50,8 +49,7 @@ public class ActorTypedAttributeTests
 
         var result = actor.GetRequiredAttribute<ActorId>(ScopeKey);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.InvalidInput>();
+        result.Should().BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -128,8 +126,7 @@ public class ActorTypedAttributeTests
 
         var result = actor.GetRequiredAttribute<TestTenantId>(TenantKey);
 
-        result.IsFailure.Should().BeTrue();
-        var invalid = result.Error.Should().BeOfType<Error.InvalidInput>().Subject;
+        var invalid = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
         invalid.Fields[0].Field.Path.Should().Be("/tenant_id", "the failed attribute key identifies the error field");
     }
 

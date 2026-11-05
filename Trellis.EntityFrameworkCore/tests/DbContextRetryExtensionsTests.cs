@@ -99,8 +99,7 @@ public class DbContextRetryExtensionsTests : IDisposable
             regenerate: (_, _, _) => { regenerateCalls++; return ValueTask.FromResult(true); },
             cancellationToken: ct);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.Conflict>()
+        result.Should().BeFailureOfType<Error.Conflict>()
             .Which.Code.Should().Be(FaultCodes.DuplicateKey);
         regenerateCalls.Should().Be(0);
         _context.ChangeTracker.Entries<TestCustomer>().Should().HaveCount(1,
@@ -121,8 +120,7 @@ public class DbContextRetryExtensionsTests : IDisposable
             regenerate: (_, _, _) => ValueTask.FromResult(false),
             cancellationToken: ct);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.Conflict>()
+        result.Should().BeFailureOfType<Error.Conflict>()
             .Which.Detail.Should().Contain("Retry aborted by regenerate callback");
         result.Error.Should().BeOfType<Error.Conflict>()
             .Which.Code.Should().Be(FaultCodes.RetryAborted);
@@ -150,8 +148,7 @@ public class DbContextRetryExtensionsTests : IDisposable
             maxAttempts: 3,
             cancellationToken: ct);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.Conflict>()
+        result.Should().BeFailureOfType<Error.Conflict>()
             .Which.Detail.Should().Contain("Maximum retry attempts");
         result.Error.Should().BeOfType<Error.Conflict>()
             .Which.Code.Should().Be(FaultCodes.RetryExhausted);
@@ -305,8 +302,7 @@ public class DbContextRetryExtensionsTests : IDisposable
                 regenerate: (_, _, _) => { regenerateWasCalled = true; return ValueTask.FromResult(true); },
                 cancellationToken: ct);
 
-            result.IsFailure.Should().BeTrue();
-            result.Error.Should().BeOfType<Error.Conflict>()
+            result.Should().BeFailureOfType<Error.Conflict>()
                 .Which.Code.Should().Be(FaultCodes.ConcurrentModification);
             classifierWasCalled.Should().BeFalse("concurrency exceptions must bypass shouldRetry");
             regenerateWasCalled.Should().BeFalse();
@@ -335,8 +331,7 @@ public class DbContextRetryExtensionsTests : IDisposable
             regenerate: (_, _, _) => ValueTask.FromResult(true),
             cancellationToken: ct);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.Conflict>()
+        result.Should().BeFailureOfType<Error.Conflict>()
             .Which.Code.Should().Be(FaultCodes.ReferentialIntegrity);
     }
 
@@ -535,8 +530,7 @@ public class DbContextRetryExtensionsTests : IDisposable
             maxAttempts: 1,
             cancellationToken: ct);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeOfType<Error.Conflict>()
+        result.Should().BeFailureOfType<Error.Conflict>()
             .Which.Detail.Should().Contain("Maximum retry attempts");
         result.Error.Should().BeOfType<Error.Conflict>()
             .Which.Code.Should().Be(FaultCodes.RetryExhausted);

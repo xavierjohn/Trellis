@@ -126,7 +126,6 @@ public class EfUnitOfWorkTests : IDisposable
         var result = await _unitOfWork.CommitAsync(ct);
 
         // Assert
-        result.Should().BeFailure();
-        result.UnwrapError().Should().BeOfType<Error.Conflict>();
+        result.Should().BeFailureOfType<Error.Conflict>();
     }
 }

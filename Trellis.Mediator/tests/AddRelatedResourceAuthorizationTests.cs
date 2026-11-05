@@ -81,8 +81,7 @@ public class AddRelatedResourceAuthorizationTests
 
         var result = await behavior.HandleWithContext(new ExplicitCommand("l-1"), next, CancellationToken.None);
 
-        result.IsFailure.Should().BeTrue();
-        result.UnwrapError().Should().BeOfType<Error.Forbidden>();
+        result.Should().BeFailureOfType<Error.Forbidden>();
         result.UnwrapError().Code.Should().Be("resource.authorization-via.empty");
         tracker.WasInvoked.Should().BeFalse();
     }
