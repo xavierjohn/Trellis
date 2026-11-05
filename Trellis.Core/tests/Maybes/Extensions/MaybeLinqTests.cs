@@ -16,8 +16,7 @@ public class MaybeLinqTests
 
         var result = sut.Select(v => v.ToUpperInvariant());
 
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be("HELLO");
+        result.Should().HaveValue().Which.Should().Be("HELLO");
     }
 
     [Fact]
@@ -38,8 +37,7 @@ public class MaybeLinqTests
         var result = from v in sut
                      select v.ToUpperInvariant();
 
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be("HELLO");
+        result.Should().HaveValue().Which.Should().Be("HELLO");
     }
 
     #endregion
@@ -54,8 +52,7 @@ public class MaybeLinqTests
 
         var result = first.SelectMany(_ => second, (a, b) => $"{a} {b}");
 
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be("Hello World");
+        result.Should().HaveValue().Which.Should().Be("Hello World");
     }
 
     [Fact]
@@ -90,8 +87,7 @@ public class MaybeLinqTests
                      from l in lastName
                      select $"{f} {l}";
 
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be("John Doe");
+        result.Should().HaveValue().Which.Should().Be("John Doe");
     }
 
     [Fact]
@@ -106,8 +102,7 @@ public class MaybeLinqTests
                      from z in c
                      select $"{x}{y}{z}";
 
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be("ABC");
+        result.Should().HaveValue().Which.Should().Be("ABC");
     }
 
     [Fact]
@@ -135,8 +130,7 @@ public class MaybeLinqTests
                      from a in age
                      select new PersonRecord(n, a);
 
-        result.HasValue.Should().BeTrue();
-        result.Value.Name.Should().Be("Alice");
+        result.Should().HaveValue().Which.Name.Should().Be("Alice");
         result.Value.Age.Should().Be(30);
     }
 

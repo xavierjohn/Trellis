@@ -126,8 +126,7 @@ public class MaybeScalarValueJsonConverterTests
             var result = converter.Read(ref reader, typeof(Maybe<ProcessingModeVO>), new JsonSerializerOptions());
 
             // Assert
-            result.HasValue.Should().BeTrue();
-            result.Value.Value.Should().Be(ProcessingMode.Safe);
+            result.Should().HaveValue().Which.Value.Should().Be(ProcessingMode.Safe);
             ValidationErrorsContext.HasErrors.Should().BeFalse();
         }
     }
@@ -153,8 +152,7 @@ public class MaybeScalarValueJsonConverterTests
             var result = converter.Read(ref reader, typeof(Maybe<Email>), new JsonSerializerOptions());
 
             // Assert
-            result.HasValue.Should().BeTrue();
-            result.Value.Value.Should().Be("test@example.com");
+            result.Should().HaveValue().Which.Value.Should().Be("test@example.com");
             ValidationErrorsContext.HasErrors.Should().BeFalse();
         }
     }
@@ -249,8 +247,7 @@ public class MaybeScalarValueJsonConverterTests
             var result = converter.Read(ref reader, typeof(Maybe<Age>), new JsonSerializerOptions());
 
             // Assert
-            result.HasValue.Should().BeTrue();
-            result.Value.Value.Should().Be(25);
+            result.Should().HaveValue().Which.Value.Should().Be(25);
             ValidationErrorsContext.HasErrors.Should().BeFalse();
         }
     }
@@ -322,8 +319,7 @@ public class MaybeScalarValueJsonConverterTests
             var result = converter.Read(ref reader, typeof(Maybe<Percentage>), new JsonSerializerOptions());
 
             // Assert
-            result.HasValue.Should().BeTrue();
-            result.Value.Value.Should().Be(75.5m);
+            result.Should().HaveValue().Which.Value.Should().Be(75.5m);
             ValidationErrorsContext.HasErrors.Should().BeFalse();
         }
     }
@@ -372,8 +368,7 @@ public class MaybeScalarValueJsonConverterTests
             var result = converter.Read(ref reader, typeof(Maybe<ItemId>), new JsonSerializerOptions());
 
             // Assert
-            result.HasValue.Should().BeTrue();
-            result.Value.Value.Should().Be(guid);
+            result.Should().HaveValue().Which.Value.Should().Be(guid);
             ValidationErrorsContext.HasErrors.Should().BeFalse();
         }
     }
@@ -572,8 +567,7 @@ public class MaybeScalarValueJsonConverterTests
         }
 
         // Assert
-        deserialized.HasValue.Should().BeTrue();
-        deserialized.Value.Value.Should().Be(email.Value);
+        deserialized.Should().HaveValue().Which.Value.Should().Be(email.Value);
     }
 
     [Fact]
@@ -813,8 +807,7 @@ public class MaybeScalarValueJsonConverterTests
             ValidationErrorsContext.HasErrors.Should().BeFalse();
             dto.Should().NotBeNull();
             dto!.RequiredEmail.Value.Should().Be("user@test.com");
-            dto.OptionalAge.HasValue.Should().BeTrue();
-            dto.OptionalAge.Value.Value.Should().Be(30);
+            dto.OptionalAge.Should().HaveValue().Which.Value.Should().Be(30);
         }
     }
 

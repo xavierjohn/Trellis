@@ -3,6 +3,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Trellis.Testing;
 
 /// <summary>
 /// Regression tests for owned collections inside composite value objects.
@@ -193,8 +194,7 @@ public partial class CompositeValueObjectCollectionConventionTests(SqlServerTest
 
         await using var verify = new CollectionVoSqlServerContext(connectionString);
         var loaded = await verify.Set<MaybeScorecardEntity>().SingleAsync(TestContext.Current.CancellationToken);
-        loaded.Inning.HasValue.Should().BeTrue();
-        loaded.Inning.Value.Lines.Should().HaveCount(2);
+        loaded.Inning.Should().HaveValue().Which.Lines.Should().HaveCount(2);
     }
 
     private const string SqlServerConnectionString =

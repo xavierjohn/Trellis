@@ -50,8 +50,7 @@ public partial class RepositoryBaseTests : IDisposable
         var result = await _repository.FindByIdAsync(id, ct);
 
         // Assert
-        result.Should().HaveValue();
-        result.Value.Id.Should().Be(id);
+        result.Should().HaveValue().Which.Id.Should().Be(id);
     }
 
     [Fact]

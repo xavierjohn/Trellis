@@ -5,6 +5,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Trellis;
 using Trellis.Asp.Validation;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -42,8 +43,7 @@ public class MaybePrimitiveJsonConverterTests
 
         var rt = JsonSerializer.Deserialize<LongDto>(json, Opts());
         rt.Should().NotBeNull();
-        rt!.Count.HasValue.Should().BeTrue();
-        rt.Count.Value.Should().Be(42L);
+        rt!.Count.Should().HaveValue().Which.Should().Be(42L);
     }
 
     [Fact]

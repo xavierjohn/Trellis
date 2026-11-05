@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 using Trellis.Primitives;
+using Trellis.Testing;
 
 /// <summary>
 /// Integration tests for the source-generated <c>ApplyTrellisConventionsFor&lt;TContext&gt;()</c>
@@ -103,8 +104,7 @@ public class ApplyTrellisConventionsForTests : IDisposable
 
         var loaded = await _context.Customers.FindAsync([customer.Id], ct);
         loaded.Should().NotBeNull();
-        loaded!.Phone.HasValue.Should().BeTrue();
-        loaded.Phone.Value.Value.Should().Be("+14155550100");
+        loaded!.Phone.Should().HaveValue().Which.Value.Should().Be("+14155550100");
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Core.Tests.Maybes.Extensions;
 
 using Trellis;
+using Trellis.Testing;
 
 public class CollectionExtensionTests
 {
@@ -18,8 +19,7 @@ public class CollectionExtensionTests
     {
         int[] source = [42];
         var result = source.TryFirst();
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be(42);
+        result.Should().HaveValue().Which.Should().Be(42);
     }
 
     [Fact]
@@ -27,8 +27,7 @@ public class CollectionExtensionTests
     {
         int[] source = [1, 2, 3];
         var result = source.TryFirst();
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be(1);
+        result.Should().HaveValue().Which.Should().Be(1);
 
         var sourceVisits = 0;
         var disposals = 0;
@@ -60,8 +59,7 @@ public class CollectionExtensionTests
     {
         int[] source = [1, 2, 3, 4];
         var result = source.TryFirst(x => x > 2);
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be(3);
+        result.Should().HaveValue().Which.Should().Be(3);
 
         List<int> sourceVisits = [];
         List<int> predicateVisits = [];
@@ -138,8 +136,7 @@ public class CollectionExtensionTests
     {
         int[] source = [42];
         var result = source.TryLast();
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be(42);
+        result.Should().HaveValue().Which.Should().Be(42);
     }
 
     [Fact]
@@ -147,8 +144,7 @@ public class CollectionExtensionTests
     {
         int[] source = [1, 2, 3];
         var result = source.TryLast();
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be(3);
+        result.Should().HaveValue().Which.Should().Be(3);
     }
 
     [Fact]
@@ -156,8 +152,7 @@ public class CollectionExtensionTests
     {
         int[] source = [1, 2, 3, 4];
         var result = source.TryLast(x => x > 2);
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be(4);
+        result.Should().HaveValue().Which.Should().Be(4);
     }
 
     [Fact]

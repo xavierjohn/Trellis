@@ -95,8 +95,7 @@ public class QueryableExtensionsTests : IDisposable
             .FirstOrDefaultMaybeAsync(c => c.Email == EmailAddress.Create("alice@example.com"), ct);
 
         // Assert
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Name.Value.Should().Be("Alice");
+        maybe.Should().HaveValue().Which.Name.Value.Should().Be("Alice");
     }
 
     #endregion
@@ -129,8 +128,7 @@ public class QueryableExtensionsTests : IDisposable
             .SingleOrDefaultMaybeAsync(ct);
 
         // Assert
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Name.Value.Should().Be("Alice");
+        maybe.Should().HaveValue().Which.Name.Value.Should().Be("Alice");
     }
 
     #endregion
@@ -176,8 +174,7 @@ public class QueryableExtensionsTests : IDisposable
             .SingleOrDefaultMaybeAsync(c => c.Email == EmailAddress.Create("bob@example.com"), ct);
 
         // Assert
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Name.Value.Should().Be("Bob");
+        maybe.Should().HaveValue().Which.Name.Value.Should().Be("Bob");
     }
 
     [Fact]

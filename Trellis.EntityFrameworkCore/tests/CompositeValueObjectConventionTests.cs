@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 using Trellis.Primitives;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for the composite <see cref="ValueObject"/> auto-owned convention.
@@ -167,8 +168,7 @@ public partial class CompositeValueObjectConventionTests : IDisposable
 
         var loaded = await Context.MaybeAddressEntities.FindAsync([1], ct);
         loaded.Should().NotBeNull();
-        loaded!.ShippingAddress.HasValue.Should().BeTrue();
-        loaded.ShippingAddress.Value.Street.Should().Be("456 Oak Ave");
+        loaded!.ShippingAddress.Should().HaveValue().Which.Street.Should().Be("456 Oak Ave");
         loaded.ShippingAddress.Value.City.Should().Be("Portland");
         loaded.ShippingAddress.Value.State.Should().Be("OR");
         loaded.ShippingAddress.Value.ZipCode.Should().Be("97201");
@@ -278,8 +278,7 @@ public partial class CompositeValueObjectConventionTests : IDisposable
 
         var loaded = await Context.MaybeAddressEntities.FindAsync([11], ct);
         loaded.Should().NotBeNull();
-        loaded!.ShippingAddress.HasValue.Should().BeTrue();
-        loaded.ShippingAddress.Value.City.Should().Be("Denver");
+        loaded!.ShippingAddress.Should().HaveValue().Which.City.Should().Be("Denver");
     }
 
     #endregion
@@ -421,8 +420,7 @@ public partial class CompositeValueObjectConventionTests : IDisposable
 
         var loaded = await Context.MaybeNestedCompositeEntities.FindAsync([1], ct);
         loaded.Should().NotBeNull();
-        loaded!.Destination.HasValue.Should().BeTrue();
-        loaded.Destination.Value.Street.Should().Be("200 Harbor Dr");
+        loaded!.Destination.Should().HaveValue().Which.Street.Should().Be("200 Harbor Dr");
         loaded.Destination.Value.DeliveryFee.Amount.Should().Be(25.50m);
         loaded.Destination.Value.DeliveryFee.Currency.Value.Should().Be("USD");
     }
@@ -523,8 +521,7 @@ public partial class CompositeValueObjectConventionTests : IDisposable
 
         var loaded = await context.Entities.FindAsync([1], ct);
         loaded.Should().NotBeNull();
-        loaded!.Availability.HasValue.Should().BeTrue();
-        loaded.Availability.Value.Label.Should().Be("FY2026");
+        loaded!.Availability.Should().HaveValue().Which.Label.Should().Be("FY2026");
     }
 
     #endregion
@@ -769,8 +766,7 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         var loaded = await context.Entities.FindAsync([1], ct);
         loaded.Should().NotBeNull();
         loaded!.Contact.Name.Should().Be("Alice");
-        loaded.Contact.Phone.HasValue.Should().BeTrue();
-        ((string)loaded.Contact.Phone.Value).Should().Be("+15551234567");
+        ((string)loaded.Contact.Phone.Should().HaveValue().Which).Should().Be("+15551234567");
     }
 
     [Fact]
@@ -975,10 +971,8 @@ public partial class CompositeValueObjectConventionTests : IDisposable
 
         var loaded = await context.Entities.FindAsync([1], ct);
         loaded.Should().NotBeNull();
-        loaded!.Contact.HasValue.Should().BeTrue();
-        loaded.Contact.Value.Name.Should().Be("Alice");
-        loaded.Contact.Value.Phone.HasValue.Should().BeTrue();
-        ((string)loaded.Contact.Value.Phone.Value).Should().Be("+15551234567");
+        loaded!.Contact.Should().HaveValue().Which.Name.Should().Be("Alice");
+        ((string)loaded.Contact.Value.Phone.Should().HaveValue().Which).Should().Be("+15551234567");
     }
 
     [Fact]

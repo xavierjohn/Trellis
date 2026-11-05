@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Trellis;
 using Trellis.Asp.ModelBinding;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -139,8 +140,7 @@ public class MaybeModelBinderTests
         // Assert
         context.Result.IsModelSet.Should().BeTrue();
         var maybe = context.Result.Model.Should().BeOfType<Maybe<ProductCode>>().Subject;
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Value.Should().Be("ABC123");
+        maybe.Should().HaveValue().Which.Value.Should().Be("ABC123");
         context.ModelState.ErrorCount.Should().Be(0);
     }
 
@@ -179,8 +179,7 @@ public class MaybeModelBinderTests
         // Assert
         context.Result.IsModelSet.Should().BeTrue();
         var maybe = context.Result.Model.Should().BeOfType<Maybe<UserId>>().Subject;
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Value.Should().Be(guid);
+        maybe.Should().HaveValue().Which.Value.Should().Be(guid);
         context.ModelState.ErrorCount.Should().Be(0);
     }
 
@@ -235,8 +234,7 @@ public class MaybeModelBinderTests
         // Assert
         context.Result.IsModelSet.Should().BeTrue();
         var maybe = context.Result.Model.Should().BeOfType<Maybe<Quantity>>().Subject;
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Value.Should().Be(42);
+        maybe.Should().HaveValue().Which.Value.Should().Be(42);
         context.ModelState.ErrorCount.Should().Be(0);
     }
 
@@ -291,8 +289,7 @@ public class MaybeModelBinderTests
         // Assert
         context.Result.IsModelSet.Should().BeTrue();
         var maybe = context.Result.Model.Should().BeOfType<Maybe<Price>>().Subject;
-        maybe.HasValue.Should().BeTrue();
-        maybe.Value.Value.Should().Be(99.99m);
+        maybe.Should().HaveValue().Which.Value.Should().Be(99.99m);
         context.ModelState.ErrorCount.Should().Be(0);
     }
 

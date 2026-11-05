@@ -636,8 +636,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.Phone.HasValue.Should().BeTrue();
-        loaded.Phone.Value.Value.Should().Be(updatedPhone.Value);
+        loaded!.Phone.Should().HaveValue().Which.Value.Should().Be(updatedPhone.Value);
     }
 
     [Fact]
@@ -693,8 +692,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.SubmittedAt.HasValue.Should().BeTrue();
-        loaded.SubmittedAt.Value.Should().Be(submittedAt);
+        loaded!.SubmittedAt.Should().HaveValue().Which.Should().Be(submittedAt);
     }
 
     [Fact]
@@ -761,8 +759,7 @@ public class MaybeQueryableExtensionsTests : IDisposable
         var loaded = await context.DerivedCustomers.FindAsync([customer.Id], ct);
 
         loaded.Should().NotBeNull();
-        loaded!.Phone.HasValue.Should().BeTrue();
-        loaded.Phone.Value.Value.Should().Be(updatedPhone.Value);
+        loaded!.Phone.Should().HaveValue().Which.Value.Should().Be(updatedPhone.Value);
     }
 
     [Fact]

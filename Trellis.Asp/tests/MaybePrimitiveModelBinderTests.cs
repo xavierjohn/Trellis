@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Trellis;
 using Trellis.Asp.ModelBinding;
+using Trellis.Testing;
 using Xunit;
 
 /// <summary>
@@ -33,8 +34,7 @@ public class MaybePrimitiveModelBinderTests
 
         ctx.Result.IsModelSet.Should().BeTrue();
         var m = ctx.Result.Model.Should().BeOfType<Maybe<long>>().Subject;
-        m.HasValue.Should().BeTrue();
-        m.Value.Should().Be(42L);
+        m.Should().HaveValue().Which.Should().Be(42L);
     }
 
     [Fact]

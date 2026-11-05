@@ -52,8 +52,7 @@ public class MaybePropertyTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.Phone.HasValue.Should().BeTrue();
-        loaded.Phone.Value.Value.Should().Be(phone.Value);
+        loaded!.Phone.Should().HaveValue().Which.Value.Should().Be(phone.Value);
     }
 
     [Fact]
@@ -151,8 +150,7 @@ public class MaybePropertyTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.SubmittedAt.HasValue.Should().BeTrue();
-        loaded.SubmittedAt.Value.Should().Be(submittedAt);
+        loaded!.SubmittedAt.Should().HaveValue().Which.Should().Be(submittedAt);
     }
 
     [Fact]
@@ -228,8 +226,7 @@ public class MaybePropertyTests : IDisposable
 
         // Assert
         loaded.Should().NotBeNull();
-        loaded!.OptionalStatus.HasValue.Should().BeTrue();
-        loaded.OptionalStatus.Value.Should().Be(TestOrderStatus.Shipped);
+        loaded!.OptionalStatus.Should().HaveValue().Which.Should().Be(TestOrderStatus.Shipped);
     }
 
     [Fact]
@@ -498,8 +495,7 @@ public class MaybePropertyTests : IDisposable
         // Assert
         loaded.Customer.Should().NotBeNull();
         loaded.Customer.Name.Value.Should().Be("NavAlice");
-        loaded.Customer.Phone.HasValue.Should().BeTrue();
-        loaded.Customer.Phone.Value.Value.Should().Be(phone.Value);
+        loaded.Customer.Phone.Should().HaveValue().Which.Value.Should().Be(phone.Value);
     }
 
     [Fact]
@@ -548,8 +544,7 @@ public class MaybePropertyTests : IDisposable
         loaded.Orders.Should().HaveCount(2);
 
         var confirmed = loaded.Orders.Single(order => order.Status == TestOrderStatus.Confirmed);
-        confirmed.OptionalStatus.HasValue.Should().BeTrue();
-        confirmed.OptionalStatus.Value.Should().Be(TestOrderStatus.Shipped);
+        confirmed.OptionalStatus.Should().HaveValue().Which.Should().Be(TestOrderStatus.Shipped);
 
         var draft = loaded.Orders.Single(order => order.Status == TestOrderStatus.Draft);
         draft.OptionalStatus.HasNoValue.Should().BeTrue();

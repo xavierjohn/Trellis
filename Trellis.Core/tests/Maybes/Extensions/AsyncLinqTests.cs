@@ -26,8 +26,7 @@ public class AsyncLinqTests : TestBase
             from b in SomeTaskAsync(3)
             select a + b);
 
-        combined.HasValue.Should().BeTrue();
-        combined.Value.Should().Be(5);
+        combined.Should().HaveValue().Which.Should().Be(5);
     }
 
     [Fact]
@@ -78,8 +77,7 @@ public class AsyncLinqTests : TestBase
             from b in SomeSync(3)
             select a + b);
 
-        combined.HasValue.Should().BeTrue();
-        combined.Value.Should().Be(5);
+        combined.Should().HaveValue().Which.Should().Be(5);
     }
 
     [Fact]
@@ -130,8 +128,7 @@ public class AsyncLinqTests : TestBase
             from b in SomeTaskAsync(3)
             select a + b);
 
-        combined.HasValue.Should().BeTrue();
-        combined.Value.Should().Be(5);
+        combined.Should().HaveValue().Which.Should().Be(5);
     }
 
     [Fact]
@@ -179,8 +176,7 @@ public class AsyncLinqTests : TestBase
     {
         var projected = await (from a in SomeTaskAsync(5) select a * 2);
 
-        projected.HasValue.Should().BeTrue();
-        projected.Value.Should().Be(10);
+        projected.Should().HaveValue().Which.Should().Be(10);
     }
 
     [Fact]
@@ -196,8 +192,7 @@ public class AsyncLinqTests : TestBase
     {
         var filtered = await (from a in SomeTaskAsync(15) where a > 10 select a);
 
-        filtered.HasValue.Should().BeTrue();
-        filtered.Value.Should().Be(15);
+        filtered.Should().HaveValue().Which.Should().Be(15);
     }
 
     [Fact]
@@ -228,8 +223,7 @@ public class AsyncLinqTests : TestBase
             from b in SomeValueTaskAsync(3)
             select a + b);
 
-        combined.HasValue.Should().BeTrue();
-        combined.Value.Should().Be(5);
+        combined.Should().HaveValue().Which.Should().Be(5);
     }
 
     [Fact]
@@ -260,8 +254,7 @@ public class AsyncLinqTests : TestBase
             from b in SomeSync(3)
             select a + b);
 
-        combined.HasValue.Should().BeTrue();
-        combined.Value.Should().Be(5);
+        combined.Should().HaveValue().Which.Should().Be(5);
     }
 
     [Fact]
@@ -272,8 +265,7 @@ public class AsyncLinqTests : TestBase
             from b in SomeValueTaskAsync(3)
             select a + b);
 
-        combined.HasValue.Should().BeTrue();
-        combined.Value.Should().Be(5);
+        combined.Should().HaveValue().Which.Should().Be(5);
     }
 
     [Fact]
@@ -301,8 +293,7 @@ public class AsyncLinqTests : TestBase
     {
         var projected = await (from a in SomeValueTaskAsync(5) select a * 2);
 
-        projected.HasValue.Should().BeTrue();
-        projected.Value.Should().Be(10);
+        projected.Should().HaveValue().Which.Should().Be(10);
     }
 
     [Fact]
@@ -338,8 +329,7 @@ public class AsyncLinqTests : TestBase
 
         var result = await task;
 
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be(42);
+        result.Should().HaveValue().Which.Should().Be(42);
     }
 
     [Fact]
@@ -350,8 +340,7 @@ public class AsyncLinqTests : TestBase
 
         var result = await valueTask;
 
-        result.HasValue.Should().BeTrue();
-        result.Value.Should().Be(42);
+        result.Should().HaveValue().Which.Should().Be(42);
     }
 
     [Fact]
