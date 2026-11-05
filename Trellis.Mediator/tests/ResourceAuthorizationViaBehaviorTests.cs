@@ -54,8 +54,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Forbidden>();
-        result.UnwrapError().Code.Should().Be("not_owner");
+        result.Should().HaveErrorCode("not_owner").And.BeFailureOfType<Error.Forbidden>();
         tracker.WasInvoked.Should().BeFalse();
     }
 
@@ -98,7 +97,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var error = result.Should().BeFailure().Which;
         error.Should().BeOfType<Error.Forbidden>();
-        error.Code.Should().Be("resource.authorization-via.load-failed");
+        result.Should().HaveErrorCode("resource.authorization-via.load-failed");
         tracker.WasInvoked.Should().BeFalse();
     }
 
@@ -128,7 +127,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var error = result.Should().BeFailure().Which;
         error.Should().BeOfType<Error.Forbidden>();
-        error.Code.Should().Be("resource.authorization-via.null-payload");
+        result.Should().HaveErrorCode("resource.authorization-via.null-payload");
         tracker.WasInvoked.Should().BeFalse();
     }
 
@@ -200,8 +199,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Forbidden>();
-        result.UnwrapError().Code.Should().Be("not_team_owner");
+        result.Should().HaveErrorCode("not_team_owner").And.BeFailureOfType<Error.Forbidden>();
         tracker.WasInvoked.Should().BeFalse();
     }
 
@@ -244,8 +242,7 @@ public class ResourceAuthorizationViaBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Forbidden>();
-        result.UnwrapError().Code.Should().Be("resource.authorization-via.load-failed");
+        result.Should().HaveErrorCode("resource.authorization-via.load-failed").And.BeFailureOfType<Error.Forbidden>();
         tracker.WasInvoked.Should().BeFalse();
     }
 

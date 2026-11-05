@@ -45,8 +45,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var result = await behavior.HandleWithContext(command, next, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Forbidden>();
-        result.UnwrapError().Detail.Should().Contain("Only the resource owner");
+        result.Should().HaveErrorDetailContaining("Only the resource owner").And.BeFailureOfType<Error.Forbidden>();
         tracker.WasInvoked.Should().BeFalse("handler should not be invoked when authorization fails");
     }
 
@@ -500,7 +499,7 @@ public class ResourceAuthorizationBehaviorTests
 
         var error = result.Should().BeFailure().Which;
         error.Should().BeOfType<Error.Forbidden>();
-        error.Code.Should().Be("resource.authorization.null-payload");
+        result.Should().HaveErrorCode("resource.authorization.null-payload");
         tracker.WasInvoked.Should().BeFalse();
     }
 

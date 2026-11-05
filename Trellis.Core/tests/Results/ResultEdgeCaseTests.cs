@@ -393,10 +393,9 @@ public class ResultEdgeCaseTests
         var result = Result.Try<int>(() => throw new InvalidOperationException("Test exception"));
 
         // Assert
-        var error = result.Should().BeFailureOfType<Error.Unexpected>().Which;
-        error.Code.Should().Be("unhandled-exception");
+        var error = result.Should().HaveErrorCode("unhandled-exception").And.BeFailureOfType<Error.Unexpected>().Which;
         error.FaultId.Should().NotBeNullOrWhiteSpace();
-        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        result.Should().HaveErrorDetail("An unexpected error occurred while processing the request.");
     }
 
     [Fact]
@@ -424,8 +423,7 @@ public class ResultEdgeCaseTests
         var result = Result.Try<int>(() => throw new InvalidOperationException("Test"), CustomMapper);
 
         // Assert
-        result.Should().BeFailureOfType<Error.InvalidInput>();
-        result.Error!.Detail.Should().Be("Custom: Test");
+        result.Should().HaveErrorDetail("Custom: Test").And.BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -442,10 +440,9 @@ public class ResultEdgeCaseTests
         });
 
         // Assert
-        var error = result.Should().BeFailureOfType<Error.Unexpected>().Which;
-        error.Code.Should().Be("unhandled-exception");
+        var error = result.Should().HaveErrorCode("unhandled-exception").And.BeFailureOfType<Error.Unexpected>().Which;
         error.FaultId.Should().NotBeNullOrWhiteSpace();
-        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        result.Should().HaveErrorDetail("An unexpected error occurred while processing the request.");
     }
 
     [Fact]

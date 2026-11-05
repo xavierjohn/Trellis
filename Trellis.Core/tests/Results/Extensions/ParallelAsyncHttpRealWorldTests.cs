@@ -93,8 +93,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         ).WhenAllAsync();
 
         // Assert - should fail with new Error.NotFound(new ResourceRef("Resource", null)) { Detail = permanent failure }
-        result.Should().BeFailureOfType<Error.NotFound>();
-        result.Error!.Detail.Should().Contain("User not found");
+        result.Should().HaveErrorDetailContaining("User not found").And.BeFailureOfType<Error.NotFound>();
     }
 
     [Fact]
@@ -113,8 +112,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         ).WhenAllAsync();
 
         // Assert - should fail with new Error.Conflict(null, "conflict") { Detail = permanent business rule violation }
-        result.Should().BeFailureOfType<Error.Conflict>();
-        result.Error!.Detail.Should().Contain("Out of stock");
+        result.Should().HaveErrorDetailContaining("Out of stock").And.BeFailureOfType<Error.Conflict>();
     }
 
     [Fact]
@@ -133,8 +131,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         ).WhenAllAsync();
 
         // Assert - should fail with Error.InvalidInput (permanent business rule)
-        result.Should().BeFailureOfType<Error.InvalidInput>();
-        result.Error!.Detail.Should().Contain("expired");
+        result.Should().HaveErrorDetailContaining("expired").And.BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -400,8 +397,7 @@ public class ParallelAsyncHttpRealWorldTests : TestBase
         );
 
         // Assert - Stage 2 fraud check failed
-        result.Should().BeFailureOfType<Error.Forbidden>();
-        result.Error!.Detail.Should().Contain("Suspicious transaction");
+        result.Should().HaveErrorDetailContaining("Suspicious transaction").And.BeFailureOfType<Error.Forbidden>();
     }
 
     [Fact]

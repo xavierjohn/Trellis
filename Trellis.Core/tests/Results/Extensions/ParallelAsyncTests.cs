@@ -46,8 +46,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailureOfType<Error.InvalidInput>()
-            .Which.Detail.Should().Be("First failed");
+        result.Should().HaveErrorDetail("First failed").And.BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -94,10 +93,9 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        var error = result.Should().BeFailureOfType<Error.Unexpected>().Which;
-        error.Code.Should().Be("unhandled-exception");
+        var error = result.Should().HaveErrorCode("unhandled-exception").And.BeFailureOfType<Error.Unexpected>().Which;
         error.FaultId.Should().NotBeNullOrWhiteSpace();
-        error.Detail.Should().Be("An unexpected error occurred while processing the request.");
+        result.Should().HaveErrorDetail("An unexpected error occurred while processing the request.");
         error.Detail.Should().NotContain("sync boom");
     }
 
@@ -155,8 +153,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailureOfType<Error.InvalidInput>()
-            .Which.Detail.Should().Be("First failed");
+        result.Should().HaveErrorDetail("First failed").And.BeFailureOfType<Error.InvalidInput>();
     }
 
     [Fact]
@@ -170,8 +167,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailureOfType<Error.NotFound>()
-            .Which.Detail.Should().Be("Second not found");
+        result.Should().HaveErrorDetail("Second not found").And.BeFailureOfType<Error.NotFound>();
     }
 
     [Fact]
@@ -185,8 +181,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert
-        result.Should().BeFailureOfType<Error.Forbidden>()
-            .Which.Detail.Should().Be("Third forbidden");
+        result.Should().HaveErrorDetail("Third forbidden").And.BeFailureOfType<Error.Forbidden>();
     }
 
     [Fact]
@@ -525,8 +520,7 @@ public class ParallelAsyncTests : TestBase
         ).WhenAllAsync();
 
         // Assert - Should fail if any check fails
-        result.Should().BeFailureOfType<Error.Forbidden>();
-        result.Error!.Detail.Should().Contain("Suspicious location");
+        result.Should().HaveErrorDetailContaining("Suspicious location").And.BeFailureOfType<Error.Forbidden>();
     }
 
     #endregion

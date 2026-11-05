@@ -81,8 +81,7 @@ public class AddRelatedResourceAuthorizationTests
 
         var result = await behavior.HandleWithContext(new ExplicitCommand("l-1"), next, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Forbidden>();
-        result.UnwrapError().Code.Should().Be("resource.authorization-via.empty");
+        result.Should().HaveErrorCode("resource.authorization-via.empty").And.BeFailureOfType<Error.Forbidden>();
         tracker.WasInvoked.Should().BeFalse();
     }
 
@@ -128,7 +127,7 @@ public class AddRelatedResourceAuthorizationTests
         // "load-failed" code so the response does not leak which hop failed; what matters
         // here is that the pipeline FAILS CLOSED (Forbidden) instead of throwing
         // ArgumentNullException → 500 from HopLoadResult.Success(null!).
-        error.Code.Should().Be("resource.authorization-via.load-failed");
+        result.Should().HaveErrorCode("resource.authorization-via.load-failed");
         tracker.WasInvoked.Should().BeFalse();
     }
 

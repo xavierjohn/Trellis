@@ -25,8 +25,7 @@ public class StableFaultCodeTests
         var result = await Respond(new TrackingHttpResponseMessage(HttpStatusCode.InternalServerError))
             .ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        var error = result.Should().BeFailureOfType<Error.Unexpected>().Subject;
-        error.Code.Should().Be(FaultCodes.HttpResponseNotSuccess);
+        var error = result.Should().HaveErrorCode(FaultCodes.HttpResponseNotSuccess).And.BeFailureOfType<Error.Unexpected>().Subject;
         error.FaultId.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -38,8 +37,7 @@ public class StableFaultCodeTests
         var result = await Respond(new TrackingHttpResponseMessage(status))
             .ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        var error = result.Should().BeFailureOfType<Error.Unexpected>().Subject;
-        error.Code.Should().Be(FaultCodes.HttpResponseNoBody);
+        var error = result.Should().HaveErrorCode(FaultCodes.HttpResponseNoBody).And.BeFailureOfType<Error.Unexpected>().Subject;
         error.FaultId.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -54,8 +52,7 @@ public class StableFaultCodeTests
         var result = await Respond(message)
             .ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Code.Should().Be(FaultCodes.HttpResponseNoBody);
+        result.Should().HaveErrorCode(FaultCodes.HttpResponseNoBody).And.BeFailureOfType<Error.Unexpected>();
     }
 
     [Fact]
@@ -69,8 +66,7 @@ public class StableFaultCodeTests
         var result = await Respond(message)
             .ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        var error = result.Should().BeFailureOfType<Error.Unexpected>().Subject;
-        error.Code.Should().Be(FaultCodes.HttpResponseInvalidBody);
+        var error = result.Should().HaveErrorCode(FaultCodes.HttpResponseInvalidBody).And.BeFailureOfType<Error.Unexpected>().Subject;
         error.FaultId.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -85,8 +81,7 @@ public class StableFaultCodeTests
         var result = await Respond(message)
             .ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Code.Should().Be(FaultCodes.HttpResponseInvalidBody);
+        result.Should().HaveErrorCode(FaultCodes.HttpResponseInvalidBody).And.BeFailureOfType<Error.Unexpected>();
     }
 
     [Fact]
@@ -95,8 +90,7 @@ public class StableFaultCodeTests
         var result = await Respond(new TrackingHttpResponseMessage(HttpStatusCode.InternalServerError))
             .ReadJsonMaybeAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Code.Should().Be(FaultCodes.HttpResponseNotSuccess);
+        result.Should().HaveErrorCode(FaultCodes.HttpResponseNotSuccess).And.BeFailureOfType<Error.Unexpected>();
     }
 
     [Fact]
@@ -110,8 +104,7 @@ public class StableFaultCodeTests
         var result = await Respond(message)
             .ReadJsonMaybeAsync(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Code.Should().Be(FaultCodes.HttpResponseInvalidBody);
+        result.Should().HaveErrorCode(FaultCodes.HttpResponseInvalidBody).And.BeFailureOfType<Error.Unexpected>();
     }
 
     [Fact]
@@ -120,8 +113,7 @@ public class StableFaultCodeTests
         var result = await Task.FromResult<HttpResponseMessage>(new TrackingHttpResponseMessage(HttpStatusCode.BadGateway))
             .ToResultAsync();
 
-        var error = result.Should().BeFailureOfType<Error.Unexpected>().Subject;
-        error.Code.Should().Be(FaultCodes.HttpResponseFault);
+        var error = result.Should().HaveErrorCode(FaultCodes.HttpResponseFault).And.BeFailureOfType<Error.Unexpected>().Subject;
         error.FaultId.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -140,7 +132,7 @@ public class StableFaultCodeTests
         var a = first.Should().BeFailureOfType<Error.Unexpected>().Subject;
         var b = second.Should().BeFailureOfType<Error.Unexpected>().Subject;
 
-        a.Code.Should().Be(b.Code, "a dashboard must be able to group these failures");
+        first.Should().HaveErrorCode(b.Code, "a dashboard must be able to group these failures");
         a.FaultId.Should().NotBe(b.FaultId, "each incident still needs its own identifier");
     }
 }

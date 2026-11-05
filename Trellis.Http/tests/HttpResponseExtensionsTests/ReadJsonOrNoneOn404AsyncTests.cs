@@ -95,8 +95,7 @@ public class ReadJsonOrNoneOn404AsyncTests
 
         var result = await task.ReadJsonOrNoneOn404Async(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Conflict>()
-            .Which.Detail.Should().Contain("409");
+        result.Should().HaveErrorDetailContaining("409").And.BeFailureOfType<Error.Conflict>();
         tracker.Disposed.Should().BeTrue();
     }
 
@@ -109,8 +108,7 @@ public class ReadJsonOrNoneOn404AsyncTests
 
         var result = await task.ReadJsonOrNoneOn404Async(SourceGenerationContext.Default.camelcasePerson, CancellationToken.None);
 
-        result.Should().BeFailureOfType<Error.Unexpected>()
-            .Which.Detail.Should().Contain("599");
+        result.Should().HaveErrorDetailContaining("599").And.BeFailureOfType<Error.Unexpected>();
         tracker.Disposed.Should().BeTrue();
     }
 
