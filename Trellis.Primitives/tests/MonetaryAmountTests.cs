@@ -15,16 +15,14 @@ public class MonetaryAmountTests
     public void TryCreate_ValidAmount_ReturnsSuccess()
     {
         var result = MonetaryAmount.TryCreate(29.99m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(29.99m);
+        result.Should().BeSuccess().Which.Value.Should().Be(29.99m);
     }
 
     [Fact]
     public void TryCreate_Zero_ReturnsSuccess()
     {
         var result = MonetaryAmount.TryCreate(0m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(0m);
+        result.Should().BeSuccess().Which.Value.Should().Be(0m);
     }
 
     [Fact]
@@ -38,8 +36,7 @@ public class MonetaryAmountTests
     public void TryCreate_RoundsToTwoDecimalPlaces()
     {
         var result = MonetaryAmount.TryCreate(29.999m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(30.00m);
+        result.Should().BeSuccess().Which.Value.Should().Be(30.00m);
     }
 
     [Fact]
@@ -71,8 +68,7 @@ public class MonetaryAmountTests
     {
         decimal? value = 15.50m;
         var result = MonetaryAmount.TryCreate(value);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(15.50m);
+        result.Should().BeSuccess().Which.Value.Should().Be(15.50m);
     }
 
     [Fact]
@@ -107,8 +103,7 @@ public class MonetaryAmountTests
         var b = MonetaryAmount.Create(20.50m);
 
         var result = a.Add(b);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(30.50m);
+        result.Should().BeSuccess().Which.Value.Should().Be(30.50m);
     }
 
     [Fact]
@@ -118,8 +113,7 @@ public class MonetaryAmountTests
         var b = MonetaryAmount.Create(20.00m);
 
         var result = a.Subtract(b);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(30.00m);
+        result.Should().BeSuccess().Which.Value.Should().Be(30.00m);
     }
 
     [Fact]
@@ -138,8 +132,7 @@ public class MonetaryAmountTests
         var amount = MonetaryAmount.Create(10.00m);
 
         var result = amount.Multiply(3);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(30.00m);
+        result.Should().BeSuccess().Which.Value.Should().Be(30.00m);
     }
 
     [Fact]
@@ -157,8 +150,7 @@ public class MonetaryAmountTests
         var amount = MonetaryAmount.Create(10.00m);
 
         var result = amount.Multiply(1.5m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(15.00m);
+        result.Should().BeSuccess().Which.Value.Should().Be(15.00m);
     }
 
     [Fact]
@@ -318,8 +310,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Fact]
@@ -393,8 +384,7 @@ public class MonetaryAmountTests
         var result = MonetaryAmount.TryCreate("1234.56");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1234.56m);
+        result.Should().BeSuccess().Which.Value.Should().Be(1234.56m);
     }
 
     #endregion
@@ -408,8 +398,7 @@ public class MonetaryAmountTests
 
         var result = MonetaryAmount.Sum(items);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(10.00m);
+        result.Should().BeSuccess().Which.Value.Should().Be(10.00m);
     }
 
     [Fact]
@@ -424,8 +413,7 @@ public class MonetaryAmountTests
 
         var result = MonetaryAmount.Sum(items);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(35.75m);
+        result.Should().BeSuccess().Which.Value.Should().Be(35.75m);
     }
 
     [Fact]
@@ -433,8 +421,7 @@ public class MonetaryAmountTests
     {
         var result = MonetaryAmount.Sum(Array.Empty<MonetaryAmount>());
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(0m);
+        result.Should().BeSuccess().Which.Value.Should().Be(0m);
     }
 
     [Fact]

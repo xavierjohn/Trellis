@@ -80,8 +80,7 @@ public class ValidateAdditionalTests
     public void Sku_ValidPattern_ReturnsSuccess()
     {
         var result = Sku.TryCreate("SKU-123456");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("SKU-123456");
+        result.Should().BeSuccess().Which.Value.Should().Be("SKU-123456");
     }
 
     [Fact]
@@ -134,8 +133,7 @@ public class ValidateAdditionalTests
     public void EvenPercentage_EvenInRange_ReturnsSuccess()
     {
         var result = EvenPercentage.TryCreate(50);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(50);
+        result.Should().BeSuccess().Which.Value.Should().Be(50);
     }
 
     [Fact]
@@ -166,8 +164,7 @@ public class ValidateAdditionalTests
     public void EvenPercentage_FromStringEven_ReturnsSuccess()
     {
         var result = EvenPercentage.TryCreate("50");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(50);
+        result.Should().BeSuccess().Which.Value.Should().Be(50);
     }
 
     [Fact]
@@ -202,8 +199,7 @@ public class ValidateAdditionalTests
     {
         // Lenient default permits zero, and ValidateAdditional allows it (< 0 check).
         var result = PositiveScore.TryCreate(0);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(0);
+        result.Should().BeSuccess().Which.Value.Should().Be(0);
     }
 
     [Fact]
@@ -230,8 +226,7 @@ public class ValidateAdditionalTests
     public void PreciseAmount_TwoDecimalPlaces_ReturnsSuccess()
     {
         var result = PreciseAmount.TryCreate(10.99m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(10.99m);
+        result.Should().BeSuccess().Which.Value.Should().Be(10.99m);
     }
 
     [Fact]
@@ -247,8 +242,7 @@ public class ValidateAdditionalTests
     {
         // Lenient default permits zero, and ValidateAdditional allows it (0.00 has 2 decimal places).
         var result = PreciseAmount.TryCreate(0m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(0m);
+        result.Should().BeSuccess().Which.Value.Should().Be(0m);
     }
 
     [Fact]

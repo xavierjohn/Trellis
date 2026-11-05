@@ -22,8 +22,7 @@ public class MoneyTests
         var result = Money.TryCreate(amount, currency);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Currency.Value.Should().Be(currency);
+        result.Should().BeSuccess().Which.Currency.Value.Should().Be(currency);
     }
 
     [Fact]
@@ -91,8 +90,7 @@ public class MoneyTests
         var result = Money.TryCreate(input, currency);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(expected);
+        result.Should().BeSuccess().Which.Amount.Should().Be(expected);
     }
 
     #endregion
@@ -110,8 +108,7 @@ public class MoneyTests
         var result = left.Add(right);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(76.00m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(76.00m);
         result.Unwrap().Currency.Value.Should().Be("USD");
     }
 
@@ -141,8 +138,7 @@ public class MoneyTests
         var result = left.Subtract(right);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(64.50m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(64.50m);
     }
 
     [Fact]
@@ -185,8 +181,7 @@ public class MoneyTests
         var result = money.Multiply(3.5m);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(69.97m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(69.97m);
         result.Unwrap().Currency.Value.Should().Be("USD");
     }
 
@@ -200,8 +195,7 @@ public class MoneyTests
         var result = money.Multiply(5);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(62.50m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(62.50m);
     }
 
     [Fact]
@@ -232,8 +226,7 @@ public class MoneyTests
         var result = money.Divide(3m);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(33.33m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(33.33m);
     }
 
     [Fact]
@@ -246,8 +239,7 @@ public class MoneyTests
         var result = money.Divide(4);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(25.00m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(25.00m);
     }
 
     [Fact]
@@ -303,8 +295,7 @@ public class MoneyTests
         var result = money.Allocate(1, 1, 1);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().HaveCount(3);
+        result.Should().BeSuccess().Which.Should().HaveCount(3);
         result.Unwrap()[0].Amount.Should().Be(33.34m); // Gets the remainder
         result.Unwrap()[1].Amount.Should().Be(33.33m);
         result.Unwrap()[2].Amount.Should().Be(33.33m);
@@ -321,8 +312,7 @@ public class MoneyTests
         var result = money.Allocate(1, 2, 1); // 25%, 50%, 25%
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().HaveCount(3);
+        result.Should().BeSuccess().Which.Should().HaveCount(3);
         result.Unwrap()[0].Amount.Should().Be(25.00m);
         result.Unwrap()[1].Amount.Should().Be(50.00m);
         result.Unwrap()[2].Amount.Should().Be(25.00m);
@@ -595,8 +585,7 @@ public class MoneyTests
         var result = Money.Zero("EUR");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(0m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(0m);
         result.Unwrap().Currency.Value.Should().Be("EUR");
     }
 
@@ -607,8 +596,7 @@ public class MoneyTests
         var result = Money.Zero();
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Currency.Value.Should().Be("USD");
+        result.Should().BeSuccess().Which.Currency.Value.Should().Be("USD");
     }
 
     [Fact]
@@ -712,8 +700,7 @@ public class MoneyTests
 
         var result = Money.Sum(items);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(10.00m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(10.00m);
     }
 
     [Fact]
@@ -728,8 +715,7 @@ public class MoneyTests
 
         var result = Money.Sum(items);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(35.75m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(35.75m);
         result.Unwrap().Currency.Should().Be(CurrencyCode.Create("USD"));
     }
 
@@ -788,8 +774,7 @@ public class MoneyTests
 
         var result = Money.Sum(Array.Empty<Money>(), fallback);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(fallback);
+        result.Should().BeSuccess().Which.Should().Be(fallback);
     }
 
     [Fact]
@@ -799,8 +784,7 @@ public class MoneyTests
 
         var result = Money.Sum(Array.Empty<Money>(), fallback);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(42.50m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(42.50m);
         result.Unwrap().Currency.Value.Should().Be("EUR");
     }
 
@@ -820,8 +804,7 @@ public class MoneyTests
 
         var result = Money.Sum(items, fallback);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(30.50m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(30.50m);
         result.Unwrap().Currency.Value.Should().Be("EUR");
     }
 
@@ -838,8 +821,7 @@ public class MoneyTests
 
         var result = Money.Sum(items, fallback);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(35.75m);
+        result.Should().BeSuccess().Which.Amount.Should().Be(35.75m);
         result.Unwrap().Currency.Value.Should().Be("USD");
     }
 
@@ -1061,8 +1043,7 @@ public class MoneyTests
     {
         var result = Money.TryCreate(input, currency);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(expected, $"{currency} has 0 minor units per ISO 4217");
+        result.Should().BeSuccess().Which.Amount.Should().Be(expected, $"{currency} has 0 minor units per ISO 4217");
     }
 
     [Theory]
@@ -1074,8 +1055,7 @@ public class MoneyTests
     {
         var result = Money.TryCreate(input, currency);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(expected, $"{currency} has 3 minor units per ISO 4217");
+        result.Should().BeSuccess().Which.Amount.Should().Be(expected, $"{currency} has 3 minor units per ISO 4217");
     }
 
     [Theory]
@@ -1086,8 +1066,7 @@ public class MoneyTests
     {
         var result = Money.TryCreate(input, currency);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Amount.Should().Be(expected, $"{currency} has 4 minor units per ISO 4217");
+        result.Should().BeSuccess().Which.Amount.Should().Be(expected, $"{currency} has 4 minor units per ISO 4217");
     }
 
     [Fact]

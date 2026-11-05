@@ -17,8 +17,7 @@ public class RequiredGuidTests
     public void Can_create_RequiredGuid_from_GuidEmpty()
     {
         var guidId1 = EmployeeId.TryCreate(default(Guid));
-        guidId1.IsSuccess.Should().BeTrue();
-        guidId1.Unwrap().Value.Should().Be(Guid.Empty);
+        guidId1.Should().BeSuccess().Which.Value.Should().Be(Guid.Empty);
     }
 
     [Fact]
@@ -186,8 +185,7 @@ public class RequiredGuidTests
         // Lenient default — Guid.Empty parsed from "00000000-..." is accepted.
         var myGuidResult = EmployeeId.TryCreate("00000000-0000-0000-0000-000000000000");
 
-        myGuidResult.IsSuccess.Should().BeTrue();
-        myGuidResult.Unwrap().Value.Should().Be(Guid.Empty);
+        myGuidResult.Should().BeSuccess().Which.Value.Should().Be(Guid.Empty);
     }
 
     [Fact]

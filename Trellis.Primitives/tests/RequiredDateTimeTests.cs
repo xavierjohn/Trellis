@@ -19,8 +19,7 @@ public class RequiredDateTimeTests
         var date = new DateTime(2026, 1, 15, 12, 0, 0, DateTimeKind.Utc);
         var result = OrderDate.TryCreate(date);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(date);
+        result.Should().BeSuccess().Which.Value.Should().Be(date);
     }
 
     [Fact]
@@ -29,8 +28,7 @@ public class RequiredDateTimeTests
         var now = DateTime.UtcNow;
         var result = OrderDate.TryCreate(now);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(now);
+        result.Should().BeSuccess().Which.Value.Should().Be(now);
     }
 
     [Fact]
@@ -38,16 +36,14 @@ public class RequiredDateTimeTests
     {
         var result = OrderDate.TryCreate(DateTime.MinValue);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(DateTime.MinValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(DateTime.MinValue);
     }
 
     [Fact]
     public void TryCreate_MaxValue_ReturnsSuccess()
     {
         var result = OrderDate.TryCreate(DateTime.MaxValue);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(DateTime.MaxValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(DateTime.MaxValue);
     }
 
     [Fact]
@@ -65,8 +61,7 @@ public class RequiredDateTimeTests
     {
         var result = OrderDate.TryCreate("2026-01-15T12:00:00Z");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Year.Should().Be(2026);
+        result.Should().BeSuccess().Which.Value.Year.Should().Be(2026);
         result.Unwrap().Value.Month.Should().Be(1);
         result.Unwrap().Value.Day.Should().Be(15);
     }
@@ -196,8 +191,7 @@ public class RequiredDateTimeTests
     {
         var result = InternalDate.TryCreate(DateTime.UtcNow);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeOfType<InternalDate>();
+        result.Should().BeSuccess().Which.Should().BeOfType<InternalDate>();
     }
 
     [Fact]

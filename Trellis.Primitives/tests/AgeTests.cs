@@ -21,8 +21,7 @@ public class AgeTests
         var result = Age.TryCreate(ageValue);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(ageValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(ageValue);
     }
 
     [Theory]
@@ -242,8 +241,7 @@ public class AgeTests
         var result = Age.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Fact]

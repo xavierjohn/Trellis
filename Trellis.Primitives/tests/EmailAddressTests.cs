@@ -29,8 +29,7 @@ public class EmailAddressTests
         var result = EmailAddress.TryCreate(email, "school email");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeOfType<EmailAddress>();
+        result.Should().BeSuccess().Which.Should().BeOfType<EmailAddress>();
     }
 
     [Fact]
@@ -38,8 +37,7 @@ public class EmailAddressTests
     {
         var result = EmailAddress.TryCreate("  John.Doe+tag@Example.COM  ");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("John.Doe+tag@Example.COM");
+        result.Should().BeSuccess().Which.Value.Should().Be("John.Doe+tag@Example.COM");
     }
 
     [Theory]

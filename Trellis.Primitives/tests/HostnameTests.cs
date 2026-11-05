@@ -24,8 +24,7 @@ public class HostnameTests
         var result = Hostname.TryCreate(hostname);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(hostname);
+        result.Should().BeSuccess().Which.Value.Should().Be(hostname);
     }
 
     [Theory]
@@ -37,8 +36,7 @@ public class HostnameTests
         var result = Hostname.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]
@@ -87,8 +85,7 @@ public class HostnameTests
 
         var result = Hostname.TryCreate($"  {hostname}  ");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(hostname);
+        result.Should().BeSuccess().Which.Value.Should().Be(hostname);
     }
 
     [Theory]

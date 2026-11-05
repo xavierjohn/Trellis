@@ -18,8 +18,7 @@ public class RequiredBoolTests
     {
         var result = GiftWrap.TryCreate(true);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().BeTrue();
+        result.Should().BeSuccess().Which.Value.Should().BeTrue();
     }
 
     [Fact]
@@ -28,8 +27,7 @@ public class RequiredBoolTests
         // false is a valid value — NOT rejected!
         var result = GiftWrap.TryCreate(false);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().BeFalse();
+        result.Should().BeSuccess().Which.Value.Should().BeFalse();
     }
 
     [Fact]
@@ -47,8 +45,7 @@ public class RequiredBoolTests
     {
         var result = GiftWrap.TryCreate("true");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().BeTrue();
+        result.Should().BeSuccess().Which.Value.Should().BeTrue();
     }
 
     [Fact]
@@ -56,8 +53,7 @@ public class RequiredBoolTests
     {
         var result = GiftWrap.TryCreate("false");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().BeFalse();
+        result.Should().BeSuccess().Which.Value.Should().BeFalse();
     }
 
     [Theory]
@@ -184,8 +180,7 @@ public class RequiredBoolTests
     {
         var result = InternalFlag.TryCreate(true);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeOfType<InternalFlag>();
+        result.Should().BeSuccess().Which.Should().BeOfType<InternalFlag>();
     }
 
     [Fact]

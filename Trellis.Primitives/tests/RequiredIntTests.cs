@@ -39,8 +39,7 @@ public class RequiredIntTests
         var result = InternalTicketNumber.TryCreate(value);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeOfType<InternalTicketNumber>();
+        result.Should().BeSuccess().Which.Should().BeOfType<InternalTicketNumber>();
         result.Unwrap().Value.Should().Be(value);
     }
 

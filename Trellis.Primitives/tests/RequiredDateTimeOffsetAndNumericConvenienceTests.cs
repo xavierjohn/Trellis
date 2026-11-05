@@ -43,16 +43,14 @@ public class RequiredDateTimeOffsetAndNumericConvenienceTests
     {
         var now = DateTimeOffset.UtcNow;
         var result = EventOccurredAt.TryCreate(now);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(now);
+        result.Should().BeSuccess().Which.Value.Should().Be(now);
     }
 
     [Fact]
     public void TryCreate_LenientDateTimeOffset_AcceptsMinValue()
     {
         var result = EventOccurredAt.TryCreate(DateTimeOffset.MinValue);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(DateTimeOffset.MinValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(DateTimeOffset.MinValue);
     }
 
     [Fact]
@@ -67,8 +65,7 @@ public class RequiredDateTimeOffsetAndNumericConvenienceTests
     {
         var fixedOffset = new DateTimeOffset(2026, 6, 1, 12, 30, 0, TimeSpan.FromHours(-5));
         var parsed = EventOccurredAt.TryCreate(fixedOffset.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
-        parsed.IsSuccess.Should().BeTrue();
-        parsed.Unwrap().Value.Should().Be(fixedOffset);
+        parsed.Should().BeSuccess().Which.Value.Should().Be(fixedOffset);
         parsed.Unwrap().Value.Offset.Should().Be(TimeSpan.FromHours(-5));
     }
 

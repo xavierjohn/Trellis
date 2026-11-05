@@ -87,8 +87,7 @@ public class CompositeRequiredStringFlowThroughTests
     public void Lenient_composite_TryCreate_accepts_empty_inner_string()
     {
         var result = FlowThroughLenientComposite.TryCreate("", 5);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Name.Value.Should().Be("");
+        result.Should().BeSuccess().Which.Name.Value.Should().Be("");
     }
 
     // ---- JSON deserialize flow-through ----

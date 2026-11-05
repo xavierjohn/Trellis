@@ -20,8 +20,7 @@ public class CurrencyCodeTests
         var result = CurrencyCode.TryCreate(code);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(code.ToUpperInvariant());
+        result.Should().BeSuccess().Which.Value.Should().Be(code.ToUpperInvariant());
     }
 
     [Theory]
@@ -34,8 +33,7 @@ public class CurrencyCodeTests
         var result = CurrencyCode.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]

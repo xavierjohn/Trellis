@@ -36,8 +36,7 @@ public class RangedDecimalTests
     public void TryCreate_WithinRange_ReturnsSuccess()
     {
         var result = TestPrice.TryCreate(99.99m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(99.99m);
+        result.Should().BeSuccess().Which.Value.Should().Be(99.99m);
     }
 
     [Fact]
@@ -74,16 +73,14 @@ public class RangedDecimalTests
     public void TryCreate_AtMinBoundary_ReturnsSuccess()
     {
         var result = TestPrice.TryCreate(1m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1m);
+        result.Should().BeSuccess().Which.Value.Should().Be(1m);
     }
 
     [Fact]
     public void TryCreate_AtMaxBoundary_ReturnsSuccess()
     {
         var result = TestPrice.TryCreate(999m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(999m);
+        result.Should().BeSuccess().Which.Value.Should().Be(999m);
     }
 
     [Fact]
@@ -179,16 +176,14 @@ public class RangedDecimalTests
     public void LargeRangeDecimal_AtMinBoundary_ReturnsSuccess()
     {
         var result = LargeRangeDecimal.TryCreate(-1_000_000_000_000_000m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(-1_000_000_000_000_000m);
+        result.Should().BeSuccess().Which.Value.Should().Be(-1_000_000_000_000_000m);
     }
 
     [Fact]
     public void LargeRangeDecimal_AtMaxBoundary_ReturnsSuccess()
     {
         var result = LargeRangeDecimal.TryCreate(1_000_000_000_000_000m);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1_000_000_000_000_000m);
+        result.Should().BeSuccess().Which.Value.Should().Be(1_000_000_000_000_000m);
     }
 
     [Fact]
