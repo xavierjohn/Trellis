@@ -394,7 +394,7 @@ public class ActorTests
     [InlineData("attributes")]
     public void Constructor_NullCollection_ThrowsArgumentNullException(string nullParameterName)
     {
-        Action act = () => _ = new Actor(
+        var act = () => new Actor(
             "user-1",
             permissions: nullParameterName == "permissions" ? null! : new HashSet<string>(),
             forbiddenPermissions: nullParameterName == "forbiddenPermissions" ? null! : new HashSet<string>(),
@@ -484,7 +484,7 @@ public class ActorTests
     [Fact]
     public void Constructor_NullActorId_ThrowsArgumentNullException()
     {
-        Action act = () => _ = new Actor(
+        var act = () => new Actor(
             id: (ActorId)null!,
             permissions: new HashSet<string>(),
             forbiddenPermissions: new HashSet<string>(),

@@ -394,7 +394,7 @@ public partial class RepositoryBaseTests : IDisposable
     public void Constructor_null_context_throws()
     {
         // Act
-        Action act = () => _ = new TestItemRepository(null!);
+        var act = () => new TestItemRepository(null!);
 
         // Assert
         act.ShouldRejectNull("context");

@@ -17,7 +17,7 @@ public class ArgumentValidationTests
 
     [Fact]
     public void EfUnitOfWork_NullContext_ThrowsArgumentNullException() =>
-        NullGuard.ShouldRejectNull(() => _ = new EfUnitOfWork<TestContext>(context: null!), "context");
+        NullGuard.ShouldRejectNull(() => new EfUnitOfWork<TestContext>(context: null!), "context");
 
     #endregion
 
