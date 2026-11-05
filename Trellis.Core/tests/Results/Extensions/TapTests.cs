@@ -1,6 +1,6 @@
 ﻿namespace Trellis.Core.Tests.Results.Extensions.Tap;
 
-using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using Trellis.Testing;
 
 public partial class TapTests : TestBase
 {

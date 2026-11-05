@@ -22,23 +22,31 @@ public class ArgumentValidationTests
 
     [Fact]
     public void AuthorizationBehavior_NullActorProvider_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new AuthorizationBehavior<AdminCommand, Result<string>>(actorProvider: null!), "actorProvider");
+        NullGuard.ShouldRejectNull(
+            () => _ = new AuthorizationBehavior<AdminCommand, Result<string>>(actorProvider: null!),
+            "actorProvider");
 
     [Fact]
     public void ResourceAuthorizationBehavior_NullActorProvider_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
-            actorProvider: null!,
-            serviceProvider: new ServiceCollection().BuildServiceProvider()), "actorProvider");
+        NullGuard.ShouldRejectNull(
+            () => _ = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+                actorProvider: null!,
+                serviceProvider: new ServiceCollection().BuildServiceProvider()),
+            "actorProvider");
 
     [Fact]
     public void ResourceAuthorizationBehavior_NullServiceProvider_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
-            actorProvider: FakeActorProvider.NoPermissions(),
-            serviceProvider: null!), "serviceProvider");
+        NullGuard.ShouldRejectNull(
+            () => _ = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+                actorProvider: FakeActorProvider.NoPermissions(),
+                serviceProvider: null!),
+            "serviceProvider");
 
     [Fact]
     public void ValidationBehavior_NullValidators_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new ValidationBehavior<TestCommand, Result<string>>(validators: null!), "validators");
+        NullGuard.ShouldRejectNull(
+            () => _ = new ValidationBehavior<TestCommand, Result<string>>(validators: null!),
+            "validators");
 
     [Fact]
     public void LoggingBehavior_NullLogger_Throws() =>
@@ -46,7 +54,9 @@ public class ArgumentValidationTests
 
     [Fact]
     public void ExceptionBehavior_NullLogger_Throws() =>
-        NullGuard.ShouldRejectNull(() => _ = new ExceptionBehavior<TestCommand, Result<string>>(logger: null!), "logger");
+        NullGuard.ShouldRejectNull(
+            () => _ = new ExceptionBehavior<TestCommand, Result<string>>(logger: null!),
+            "logger");
 
     [Fact]
     public void DomainEventDispatchBehavior_NullPublisher_Throws() =>
@@ -91,7 +101,9 @@ public class ArgumentValidationTests
 
     [Fact]
     public void AddTrellisBehaviors_Configure_NullServices_Throws() =>
-        NullGuard.ShouldRejectNull(() => ServiceCollectionExtensions.AddTrellisBehaviors(services: null!, configure: _ => { }), "services");
+        NullGuard.ShouldRejectNull(
+            () => ServiceCollectionExtensions.AddTrellisBehaviors(services: null!, configure: _ => { }),
+            "services");
 
     [Fact]
     public void AddResourceAuthorization_Generic_NullServices_Throws() =>

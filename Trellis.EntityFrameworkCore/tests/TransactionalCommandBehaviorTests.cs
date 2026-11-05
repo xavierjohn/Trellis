@@ -255,7 +255,9 @@ public class TransactionalCommandBehaviorTests
     /// </summary>
     [Fact]
     public void Constructor_null_unitOfWork_throws_argument_null_exception() =>
-        NullGuard.ShouldRejectNull(() => _ = new TransactionalCommandBehavior<FakeCommand, Result<string>>(unitOfWork: null!), "unitOfWork");
+        NullGuard.ShouldRejectNull(
+            () => _ = new TransactionalCommandBehavior<FakeCommand, Result<string>>(unitOfWork: null!),
+            "unitOfWork");
 
     #endregion
 }

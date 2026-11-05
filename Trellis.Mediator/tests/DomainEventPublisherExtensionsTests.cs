@@ -1,7 +1,7 @@
 ﻿namespace Trellis.Mediator.Tests;
 
 using Trellis.Mediator.Tests.Helpers;
-using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="DomainEventPublisherExtensions.DispatchAggregateEventsAsync"/>.

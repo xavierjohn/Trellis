@@ -1,6 +1,6 @@
 ﻿namespace Trellis.Core.Tests.Errors;
 
-using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="InputPointer"/>'s RFC 6901 (JSON Pointer) compliance.

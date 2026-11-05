@@ -846,9 +846,7 @@ public class MoneyTests
     {
         var fallback = Money.Create(0m, "USD");
 
-        Action act = () => Money.Sum(null!, fallback);
-
-        act.ShouldRejectNull("values");
+        NullGuard.ShouldRejectNull(() => Money.Sum(null!, fallback), "values");
     }
 
     [Fact]
@@ -856,9 +854,7 @@ public class MoneyTests
     {
         var items = new[] { Money.Create(10m, "USD") };
 
-        Action act = () => Money.Sum(items, null!);
-
-        act.ShouldRejectNull("fallback");
+        NullGuard.ShouldRejectNull(() => Money.Sum(items, null!), "fallback");
     }
 
     [Fact]

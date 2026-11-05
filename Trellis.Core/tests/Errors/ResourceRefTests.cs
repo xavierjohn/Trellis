@@ -3,7 +3,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
-using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using Trellis.Testing;
 
 /// <summary>
 /// Tests for <see cref="ResourceRef"/> helper factories.

@@ -3,7 +3,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection;
-using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using Trellis.Testing;
 
 /// <summary>
 /// Focused tests for <see cref="EquatableArray{T}"/>. End-to-end use is covered indirectly by

@@ -21,7 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Trellis;
 using Trellis.Asp;
-using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using Trellis.Testing;
 using HttpResult = Microsoft.AspNetCore.Http.IResult;
 
 /// <summary>

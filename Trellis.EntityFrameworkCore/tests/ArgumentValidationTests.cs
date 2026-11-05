@@ -35,7 +35,9 @@ public class ArgumentValidationTests
 
     [Fact]
     public Task SaveChangesResultUnitAsync_NullContext_ThrowsArgumentNullException() =>
-        NullGuard.ShouldRejectNullAsync(() => DbContextExtensions.SaveChangesResultUnitAsync(context: null!), "context");
+        NullGuard.ShouldRejectNullAsync(
+            () => DbContextExtensions.SaveChangesResultUnitAsync(context: null!),
+            "context");
 
     [Fact]
     public Task SaveChangesResultUnitAsync_AcceptAllChanges_NullContext_ThrowsArgumentNullException() =>
@@ -55,7 +57,9 @@ public class ArgumentValidationTests
 
     [Fact]
     public void AddTrellisInterceptors_NonGeneric_NullBuilder_ThrowsArgumentNullException() =>
-        NullGuard.ShouldRejectNull(() => DbContextOptionsBuilderExtensions.AddTrellisInterceptors(optionsBuilder: null!), "optionsBuilder");
+        NullGuard.ShouldRejectNull(
+            () => DbContextOptionsBuilderExtensions.AddTrellisInterceptors(optionsBuilder: null!),
+            "optionsBuilder");
 
     [Fact]
     public void AddTrellisInterceptors_Generic_TimeProvider_NullBuilder_ThrowsArgumentNullException() =>
@@ -73,7 +77,9 @@ public class ArgumentValidationTests
 
     [Fact]
     public Task FirstOrDefaultMaybeAsync_NullQuery_ThrowsArgumentNullException() =>
-        NullGuard.ShouldRejectNullAsync(() => QueryableExtensions.FirstOrDefaultMaybeAsync<string>(query: null!), "query");
+        NullGuard.ShouldRejectNullAsync(
+            () => QueryableExtensions.FirstOrDefaultMaybeAsync<string>(query: null!),
+            "query");
 
     [Fact]
     public Task FirstOrDefaultMaybeAsync_Predicate_NullQuery_ThrowsArgumentNullException() =>
@@ -83,15 +89,21 @@ public class ArgumentValidationTests
 
     [Fact]
     public Task FirstOrDefaultMaybeAsync_Predicate_NullPredicate_ThrowsArgumentNullException() =>
-        NullGuard.ShouldRejectNullAsync(() => Array.Empty<string>().AsQueryable().FirstOrDefaultMaybeAsync(predicate: null!), "predicate");
+        NullGuard.ShouldRejectNullAsync(
+            () => Array.Empty<string>().AsQueryable().FirstOrDefaultMaybeAsync(predicate: null!),
+            "predicate");
 
     [Fact]
     public Task SingleOrDefaultMaybeAsync_NullQuery_ThrowsArgumentNullException() =>
-        NullGuard.ShouldRejectNullAsync(() => QueryableExtensions.SingleOrDefaultMaybeAsync<string>(query: null!), "query");
+        NullGuard.ShouldRejectNullAsync(
+            () => QueryableExtensions.SingleOrDefaultMaybeAsync<string>(query: null!),
+            "query");
 
     [Fact]
     public Task SingleOrDefaultMaybeAsync_Predicate_NullPredicate_ThrowsArgumentNullException() =>
-        NullGuard.ShouldRejectNullAsync(() => Array.Empty<string>().AsQueryable().SingleOrDefaultMaybeAsync(predicate: null!), "predicate");
+        NullGuard.ShouldRejectNullAsync(
+            () => Array.Empty<string>().AsQueryable().SingleOrDefaultMaybeAsync(predicate: null!),
+            "predicate");
 
     [Fact]
     public Task FirstOrDefaultResultAsync_NullQuery_ThrowsArgumentNullException() =>

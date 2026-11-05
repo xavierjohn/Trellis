@@ -307,7 +307,9 @@ public class SharedResourceLoaderTests
         var adapter = new SharedResourceLoaderAdapter<SharedCancelCommand, SharedOrder, string>(
             new TestSharedOrderLoader());
 
-        await NullGuard.ShouldRejectNullAsync(() => adapter.LoadAsync(message: null!, CancellationToken.None), "message");
+        await NullGuard.ShouldRejectNullAsync(
+            () => adapter.LoadAsync(message: null!, CancellationToken.None),
+            "message");
     }
 
     #endregion
