@@ -22,8 +22,7 @@ public class CountryCodeTests
         var result = CountryCode.TryCreate(code);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(code.ToUpperInvariant());
+        result.Should().BeSuccess().Which.Value.Should().Be(code.ToUpperInvariant());
     }
 
     [Theory]
@@ -38,8 +37,7 @@ public class CountryCodeTests
         var result = CountryCode.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]
@@ -51,8 +49,7 @@ public class CountryCodeTests
         var result = CountryCode.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]

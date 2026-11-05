@@ -23,8 +23,7 @@ public class IpAddressTests
         var result = IpAddress.TryCreate(ipAddress);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(ipAddress);
+        result.Should().BeSuccess().Which.Value.Should().Be(ipAddress);
     }
 
     [Theory]
@@ -41,8 +40,7 @@ public class IpAddressTests
         var result = IpAddress.TryCreate(ipAddress);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().ToIPAddress().Should().NotBeNull();
+        result.Should().BeSuccess().Which.ToIPAddress().Should().NotBeNull();
     }
 
     [Theory]
@@ -54,8 +52,7 @@ public class IpAddressTests
         var result = IpAddress.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]

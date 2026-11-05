@@ -21,8 +21,7 @@ public class PhoneNumberTests
         var result = PhoneNumber.TryCreate(phone);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(phone);
+        result.Should().BeSuccess().Which.Value.Should().Be(phone);
     }
 
     [Theory]
@@ -35,8 +34,7 @@ public class PhoneNumberTests
         var result = PhoneNumber.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]

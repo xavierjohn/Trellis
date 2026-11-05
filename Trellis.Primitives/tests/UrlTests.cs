@@ -21,8 +21,7 @@ public class UrlTests
         var result = Url.TryCreate(url);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]

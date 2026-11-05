@@ -22,8 +22,7 @@ public class LanguageCodeTests
         var result = LanguageCode.TryCreate(code);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(code.ToLowerInvariant());
+        result.Should().BeSuccess().Which.Value.Should().Be(code.ToLowerInvariant());
     }
 
     [Theory]
@@ -38,8 +37,7 @@ public class LanguageCodeTests
         var result = LanguageCode.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]
@@ -51,8 +49,7 @@ public class LanguageCodeTests
         var result = LanguageCode.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]
@@ -116,8 +113,7 @@ public class LanguageCodeTests
 
         if (code == "ru")
         {
-            result.IsSuccess.Should().BeTrue();
-            result.Unwrap().Value.Should().Be("ru");
+            result.Should().BeSuccess().Which.Value.Should().Be("ru");
         }
         else
         {

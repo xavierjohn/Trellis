@@ -104,8 +104,7 @@ public class RequiredEnumTests
         var result = TestOrderState.TryCreate("Draft");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(TestOrderState.Draft);
+        result.Should().BeSuccess().Which.Should().Be(TestOrderState.Draft);
     }
 
     [Fact]
@@ -115,8 +114,7 @@ public class RequiredEnumTests
         var result = TestOrderState.TryCreate("CONFIRMED");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(TestOrderState.Confirmed);
+        result.Should().BeSuccess().Which.Should().Be(TestOrderState.Confirmed);
     }
 
     [Fact]
@@ -391,8 +389,7 @@ public class RequiredEnumTests
         var result = TestPaymentMethod.TryCreate("BankTransfer");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Fee.Should().Be(0.005m);
+        result.Should().BeSuccess().Which.Fee.Should().Be(0.005m);
     }
 
     [Fact]
@@ -402,8 +399,7 @@ public class RequiredEnumTests
         var result = TestOverriddenOrderState.TryCreate("payment-pending");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be(TestOverriddenOrderState.AwaitingPayment);
+        result.Should().BeSuccess().Which.Should().Be(TestOverriddenOrderState.AwaitingPayment);
     }
 
     #endregion

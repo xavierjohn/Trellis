@@ -31,8 +31,7 @@ public class RangedIntTests
     public void TryCreate_WithinRange_ReturnsSuccess()
     {
         var result = TestQuantity.TryCreate(500);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(500);
+        result.Should().BeSuccess().Which.Value.Should().Be(500);
     }
 
     [Fact]
@@ -57,24 +56,21 @@ public class RangedIntTests
     public void TryCreate_AtMinBoundary_ReturnsSuccess()
     {
         var result = TestQuantity.TryCreate(1);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1);
+        result.Should().BeSuccess().Which.Value.Should().Be(1);
     }
 
     [Fact]
     public void TryCreate_AtMaxBoundary_ReturnsSuccess()
     {
         var result = TestQuantity.TryCreate(999);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(999);
+        result.Should().BeSuccess().Which.Value.Should().Be(999);
     }
 
     [Fact]
     public void TryCreate_Zero_WithRangeAllowingZero_ReturnsSuccess()
     {
         var result = TestPercentageInt.TryCreate(0);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(0);
+        result.Should().BeSuccess().Which.Value.Should().Be(0);
     }
 
     [Fact]
@@ -99,8 +95,7 @@ public class RangedIntTests
     public void TryCreate_FromString_WithinRange_ReturnsSuccess()
     {
         var result = TestQuantity.TryCreate("500");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(500);
+        result.Should().BeSuccess().Which.Value.Should().Be(500);
     }
 
     [Fact]
@@ -126,8 +121,7 @@ public class RangedIntTests
     public void TryCreate_NullableWithinRange_ReturnsSuccess()
     {
         var result = TestQuantity.TryCreate((int?)500);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(500);
+        result.Should().BeSuccess().Which.Value.Should().Be(500);
     }
 
     #endregion
@@ -161,16 +155,14 @@ public class RangedIntTests
     public void FullRangeInt_AtIntMinValue_ReturnsSuccess()
     {
         var result = FullRangeInt.TryCreate(int.MinValue);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(int.MinValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(int.MinValue);
     }
 
     [Fact]
     public void FullRangeInt_AtIntMaxValue_ReturnsSuccess()
     {
         var result = FullRangeInt.TryCreate(int.MaxValue);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(int.MaxValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(int.MaxValue);
     }
 
     [Fact]

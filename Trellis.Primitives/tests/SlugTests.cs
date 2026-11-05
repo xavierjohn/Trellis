@@ -23,8 +23,7 @@ public class SlugTests
         var result = Slug.TryCreate(slug);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(slug);
+        result.Should().BeSuccess().Which.Value.Should().Be(slug);
     }
 
     [Theory]
@@ -36,8 +35,7 @@ public class SlugTests
         var result = Slug.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Theory]

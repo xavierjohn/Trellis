@@ -20,8 +20,7 @@ public class PercentageTests
         var result = Percentage.TryCreate(value);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(value);
+        result.Should().BeSuccess().Which.Value.Should().Be(value);
     }
 
     [Theory]
@@ -138,8 +137,7 @@ public class PercentageTests
         var result = Percentage.FromFraction(fraction);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expectedPercentage);
+        result.Should().BeSuccess().Which.Value.Should().Be(expectedPercentage);
     }
 
     [Theory]
@@ -441,8 +439,7 @@ public class PercentageTests
         var result = Percentage.TryCreate(input);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(expected);
+        result.Should().BeSuccess().Which.Value.Should().Be(expected);
     }
 
     [Fact]
@@ -452,8 +449,7 @@ public class PercentageTests
         var result = Percentage.TryCreate("50%");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(50m);
+        result.Should().BeSuccess().Which.Value.Should().Be(50m);
     }
 
     [Fact]
@@ -463,8 +459,7 @@ public class PercentageTests
         var result = Percentage.TryCreate("75 %");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(75m);
+        result.Should().BeSuccess().Which.Value.Should().Be(75m);
     }
 
     [Fact]

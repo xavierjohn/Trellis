@@ -43,8 +43,7 @@ public class RequiredDecimalTests
         var result = InternalUnitPrice.TryCreate(value);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().BeOfType<InternalUnitPrice>();
+        result.Should().BeSuccess().Which.Should().BeOfType<InternalUnitPrice>();
         result.Unwrap().Value.Should().Be(value);
     }
 
@@ -52,16 +51,14 @@ public class RequiredDecimalTests
     public void Can_create_RequiredDecimal_MaxValue()
     {
         var result = InternalUnitPrice.TryCreate(decimal.MaxValue);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(decimal.MaxValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(decimal.MaxValue);
     }
 
     [Fact]
     public void Can_create_RequiredDecimal_MinValue()
     {
         var result = InternalUnitPrice.TryCreate(decimal.MinValue);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(decimal.MinValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(decimal.MinValue);
     }
 
     [Fact]
@@ -191,8 +188,7 @@ public class RequiredDecimalTests
 
             var result = RangedUnitPrice.TryCreate("19.99");
 
-            result.IsSuccess.Should().BeTrue();
-            result.Unwrap().Value.Should().Be(19.99m);
+            result.Should().BeSuccess().Which.Value.Should().Be(19.99m);
         }
         finally
         {

@@ -37,8 +37,7 @@ public class IFormattableScalarValueTests
         var result = MonetaryAmount.TryCreate("1.234,56", german);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1234.56m);
+        result.Should().BeSuccess().Which.Value.Should().Be(1234.56m);
     }
 
     [Fact]
@@ -48,8 +47,7 @@ public class IFormattableScalarValueTests
         var result = MonetaryAmount.TryCreate("1234.56", null);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1234.56m);
+        result.Should().BeSuccess().Which.Value.Should().Be(1234.56m);
     }
 
     [Fact]
@@ -103,8 +101,7 @@ public class IFormattableScalarValueTests
         var result = MonetaryAmount.TryCreate("1 234,56", french);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1234.56m);
+        result.Should().BeSuccess().Which.Value.Should().Be(1234.56m);
     }
 
     #endregion
@@ -118,8 +115,7 @@ public class IFormattableScalarValueTests
         var result = Age.TryCreate("25", CultureInfo.InvariantCulture);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(25);
+        result.Should().BeSuccess().Which.Value.Should().Be(25);
     }
 
     [Fact]
@@ -129,8 +125,7 @@ public class IFormattableScalarValueTests
         var result = Age.TryCreate("25", null);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(25);
+        result.Should().BeSuccess().Which.Value.Should().Be(25);
     }
 
     [Fact]
@@ -177,8 +172,7 @@ public class IFormattableScalarValueTests
         var result = Percentage.TryCreate("50,5", german);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(50.5m);
+        result.Should().BeSuccess().Which.Value.Should().Be(50.5m);
     }
 
     [Fact]
@@ -188,8 +182,7 @@ public class IFormattableScalarValueTests
         var result = Percentage.TryCreate("50.5", null);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(50.5m);
+        result.Should().BeSuccess().Which.Value.Should().Be(50.5m);
     }
 
     [Fact]
@@ -199,8 +192,7 @@ public class IFormattableScalarValueTests
         var result = Percentage.TryCreate("50.5%", CultureInfo.InvariantCulture);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(50.5m);
+        result.Should().BeSuccess().Which.Value.Should().Be(50.5m);
     }
 
     [Fact]
@@ -238,8 +230,7 @@ public class IFormattableScalarValueTests
         var result = UnitPrice.TryCreate("29.99");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(29.99m);
+        result.Should().BeSuccess().Which.Value.Should().Be(29.99m);
     }
 
     [Fact]
@@ -251,8 +242,7 @@ public class IFormattableScalarValueTests
         var result = UnitPrice.TryCreate("29,99");
 
         // Assert — InvariantCulture misinterprets "29,99" as 2999
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(2999m);
+        result.Should().BeSuccess().Which.Value.Should().Be(2999m);
     }
 
     [Fact]
@@ -265,8 +255,7 @@ public class IFormattableScalarValueTests
         var result = UnitPrice.TryCreate("29,99", german);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(29.99m);
+        result.Should().BeSuccess().Which.Value.Should().Be(29.99m);
     }
 
     [Fact]
@@ -279,8 +268,7 @@ public class IFormattableScalarValueTests
         var result = UnitPrice.TryCreate("1.234,56", german);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1234.56m);
+        result.Should().BeSuccess().Which.Value.Should().Be(1234.56m);
     }
 
     #endregion
@@ -298,8 +286,7 @@ public class IFormattableScalarValueTests
         var result = TicketNumber.TryCreate("42");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(42);
+        result.Should().BeSuccess().Which.Value.Should().Be(42);
     }
 
     [Fact]
@@ -331,8 +318,7 @@ public class IFormattableScalarValueTests
         var result = TraceId.TryCreate("12345");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(12345L);
+        result.Should().BeSuccess().Which.Value.Should().Be(12345L);
     }
 
     [Fact]
@@ -364,8 +350,7 @@ public class IFormattableScalarValueTests
         var result = OrderDate.TryCreate("2026-03-28T12:00:00Z");
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Year.Should().Be(2026);
+        result.Should().BeSuccess().Which.Value.Year.Should().Be(2026);
         result.Unwrap().Value.Month.Should().Be(3);
         result.Unwrap().Value.Day.Should().Be(28);
     }
@@ -380,8 +365,7 @@ public class IFormattableScalarValueTests
         var result = OrderDate.TryCreate("28.03.2026", german);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Year.Should().Be(2026);
+        result.Should().BeSuccess().Which.Value.Year.Should().Be(2026);
         result.Unwrap().Value.Month.Should().Be(3);
         result.Unwrap().Value.Day.Should().Be(28);
     }

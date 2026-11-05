@@ -226,8 +226,7 @@ public class RequiredStringTests
         // Lenient default — no auto-trim. Input is stored verbatim.
         var result = TrackingId.TryCreate("  ABC123  ");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("  ABC123  ",
+        result.Should().BeSuccess().Which.Value.Should().Be("  ABC123  ",
             "RequiredString does not auto-trim under the lenient default; opt in with [Trim].");
     }
 

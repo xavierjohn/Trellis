@@ -31,16 +31,14 @@ public class RequiredStringLengthTests
     public void TryCreate_MaxLengthOnly_ValidLength_ReturnsSuccess()
     {
         var result = ShortCode.TryCreate("ABC");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("ABC");
+        result.Should().BeSuccess().Which.Value.Should().Be("ABC");
     }
 
     [Fact]
     public void TryCreate_MaxLengthOnly_ExactMaxLength_ReturnsSuccess()
     {
         var result = ShortCode.TryCreate("1234567890"); // exactly 10
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("1234567890");
+        result.Should().BeSuccess().Which.Value.Should().Be("1234567890");
     }
 
     [Fact]
@@ -49,8 +47,7 @@ public class RequiredStringLengthTests
         // Lenient default — no auto-trim. "  ABC123  " is 10 chars (== max) and is stored verbatim.
         var result = ShortCode.TryCreate("  ABC123  ");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("  ABC123  ");
+        result.Should().BeSuccess().Which.Value.Should().Be("  ABC123  ");
     }
 
     [Fact]
@@ -80,8 +77,7 @@ public class RequiredStringLengthTests
     {
         // Lenient default — empty string is accepted.
         var result = ShortCode.TryCreate("");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("");
+        result.Should().BeSuccess().Which.Value.Should().Be("");
     }
 
     [Fact]
@@ -100,16 +96,14 @@ public class RequiredStringLengthTests
     public void TryCreate_MinAndMaxLength_ValidLength_ReturnsSuccess()
     {
         var result = UserName.TryCreate("John");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("John");
+        result.Should().BeSuccess().Which.Value.Should().Be("John");
     }
 
     [Fact]
     public void TryCreate_MinAndMaxLength_ExactMinLength_ReturnsSuccess()
     {
         var result = UserName.TryCreate("abc"); // exactly 3
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("abc");
+        result.Should().BeSuccess().Which.Value.Should().Be("abc");
     }
 
     [Fact]

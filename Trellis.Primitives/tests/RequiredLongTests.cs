@@ -33,8 +33,7 @@ public class RequiredLongTests
     public void TryCreate_ValidLong_ReturnsSuccess()
     {
         var result = TraceId.TryCreate(123456789L);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(123456789L);
+        result.Should().BeSuccess().Which.Value.Should().Be(123456789L);
     }
 
     [Theory]
@@ -45,8 +44,7 @@ public class RequiredLongTests
     public void TryCreate_ExtremeValues_ReturnsSuccess(long value)
     {
         var result = TraceId.TryCreate(value);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(value);
+        result.Should().BeSuccess().Which.Value.Should().Be(value);
     }
 
     [Fact]
@@ -60,8 +58,7 @@ public class RequiredLongTests
     public void TryCreate_FromString_ReturnsSuccess()
     {
         var result = TraceId.TryCreate("999999999999");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(999999999999L);
+        result.Should().BeSuccess().Which.Value.Should().Be(999999999999L);
     }
 
     [Fact]
@@ -89,16 +86,14 @@ public class RequiredLongTests
     public void TryCreate_WithRange_AtMinBoundary_ReturnsSuccess()
     {
         var result = SequenceNumber.TryCreate(1L);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1L);
+        result.Should().BeSuccess().Which.Value.Should().Be(1L);
     }
 
     [Fact]
     public void TryCreate_WithRange_AtMaxBoundary_ReturnsSuccess()
     {
         var result = SequenceNumber.TryCreate(1000000L);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(1000000L);
+        result.Should().BeSuccess().Which.Value.Should().Be(1000000L);
     }
 
     [Fact]
@@ -112,8 +107,7 @@ public class RequiredLongTests
     public void TryCreate_WithRange_FromString_WithinRange_ReturnsSuccess()
     {
         var result = SequenceNumber.TryCreate("500");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(500L);
+        result.Should().BeSuccess().Which.Value.Should().Be(500L);
     }
 
     [Fact]
@@ -153,8 +147,7 @@ public class RequiredLongTests
     public void LargeSequence_AtLongMax_ReturnsSuccess()
     {
         var result = LargeSequence.TryCreate(5000000000L);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(5000000000L);
+        result.Should().BeSuccess().Which.Value.Should().Be(5000000000L);
     }
 
     [Fact]
@@ -186,16 +179,14 @@ public class RequiredLongTests
     public void FullRangeLong_AtLongMinValue_ReturnsSuccess()
     {
         var result = FullRangeLong.TryCreate(long.MinValue);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(long.MinValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(long.MinValue);
     }
 
     [Fact]
     public void FullRangeLong_AtLongMaxValue_ReturnsSuccess()
     {
         var result = FullRangeLong.TryCreate(long.MaxValue);
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be(long.MaxValue);
+        result.Should().BeSuccess().Which.Value.Should().Be(long.MaxValue);
     }
 
     [Fact]
