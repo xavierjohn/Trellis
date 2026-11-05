@@ -11,10 +11,9 @@ public class MapTests : TestBase
     {
         var result = Result.Ok(5);
 
-        var act = () => result.Map<int, string>(null!);
+        Action act = () => result.Map<int, string>(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        act.ShouldRejectNull("func");
     }
 
     [Fact]
@@ -104,8 +103,7 @@ public class MapTests : TestBase
 
         var act = async () => await result.MapAsync((Func<int, Task<string>>)null!);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        await act.ShouldRejectNullAsync("func");
     }
 
     [Fact]

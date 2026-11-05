@@ -1,5 +1,6 @@
 ﻿using Trellis.Mediator;
 using Trellis.Testing;
+using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 namespace Trellis.EntityFrameworkCore.Tests;
 
 public class TransactionalCommandBehaviorTests
@@ -254,10 +255,7 @@ public class TransactionalCommandBehaviorTests
     /// </summary>
     [Fact]
     public void Constructor_null_unitOfWork_throws_argument_null_exception() =>
-        FluentActions
-            .Invoking(() => new TransactionalCommandBehavior<FakeCommand, Result<string>>(unitOfWork: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "unitOfWork");
+        NullGuard.ShouldRejectNull(() => _ = new TransactionalCommandBehavior<FakeCommand, Result<string>>(unitOfWork: null!), "unitOfWork");
 
     #endregion
 }

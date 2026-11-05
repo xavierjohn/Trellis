@@ -18,10 +18,9 @@ public class MapTsTests : TestBase
     {
         var result = Result.Ok((T.Value1, K.Value1));
 
-        var act = () => result.Map<T, K, string>(null!);
+        Action act = () => result.Map<T, K, string>(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        act.ShouldRejectNull("func");
     }
 
     [Fact]
@@ -29,8 +28,7 @@ public class MapTsTests : TestBase
     {
         var act = async () => await ((Task<Result<(T, K)>>)null!).MapAsync((t, k) => $"{t}-{k}");
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Fact]

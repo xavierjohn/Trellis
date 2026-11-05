@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Trellis.Authorization;
 using Trellis.Mediator.Tests.Helpers;
+using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
 /// Inspection findings <b>m-1</b> (constructor null guards) and <b>m-2</b>
@@ -21,67 +22,43 @@ public class ArgumentValidationTests
 
     [Fact]
     public void AuthorizationBehavior_NullActorProvider_Throws() =>
-        FluentActions
-            .Invoking(() => new AuthorizationBehavior<AdminCommand, Result<string>>(actorProvider: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "actorProvider");
+        NullGuard.ShouldRejectNull(() => _ = new AuthorizationBehavior<AdminCommand, Result<string>>(actorProvider: null!), "actorProvider");
 
     [Fact]
     public void ResourceAuthorizationBehavior_NullActorProvider_Throws() =>
-        FluentActions
-            .Invoking(() => new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
-                actorProvider: null!,
-                serviceProvider: new ServiceCollection().BuildServiceProvider()))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "actorProvider");
+        NullGuard.ShouldRejectNull(() => _ = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            actorProvider: null!,
+            serviceProvider: new ServiceCollection().BuildServiceProvider()), "actorProvider");
 
     [Fact]
     public void ResourceAuthorizationBehavior_NullServiceProvider_Throws() =>
-        FluentActions
-            .Invoking(() => new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
-                actorProvider: FakeActorProvider.NoPermissions(),
-                serviceProvider: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "serviceProvider");
+        NullGuard.ShouldRejectNull(() => _ = new ResourceAuthorizationBehavior<ResourceOwnerCommand, TestResource, Result<string>>(
+            actorProvider: FakeActorProvider.NoPermissions(),
+            serviceProvider: null!), "serviceProvider");
 
     [Fact]
     public void ValidationBehavior_NullValidators_Throws() =>
-        FluentActions
-            .Invoking(() => new ValidationBehavior<TestCommand, Result<string>>(validators: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "validators");
+        NullGuard.ShouldRejectNull(() => _ = new ValidationBehavior<TestCommand, Result<string>>(validators: null!), "validators");
 
     [Fact]
     public void LoggingBehavior_NullLogger_Throws() =>
-        FluentActions
-            .Invoking(() => new LoggingBehavior<TestCommand, Result<string>>(logger: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "logger");
+        NullGuard.ShouldRejectNull(() => _ = new LoggingBehavior<TestCommand, Result<string>>(logger: null!), "logger");
 
     [Fact]
     public void ExceptionBehavior_NullLogger_Throws() =>
-        FluentActions
-            .Invoking(() => new ExceptionBehavior<TestCommand, Result<string>>(logger: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "logger");
+        NullGuard.ShouldRejectNull(() => _ = new ExceptionBehavior<TestCommand, Result<string>>(logger: null!), "logger");
 
     [Fact]
     public void DomainEventDispatchBehavior_NullPublisher_Throws() =>
-        FluentActions
-            .Invoking(() => new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
-                publisher: null!,
-                logger: NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "publisher");
+        NullGuard.ShouldRejectNull(() => _ = new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
+            publisher: null!,
+            logger: NullLogger<DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>>.Instance), "publisher");
 
     [Fact]
     public void DomainEventDispatchBehavior_NullLogger_Throws() =>
-        FluentActions
-            .Invoking(() => new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
-                publisher: new InertPublisher(),
-                logger: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "logger");
+        NullGuard.ShouldRejectNull(() => _ = new DomainEventDispatchBehavior<AggregateCommand, Result<TestAggregate>>(
+            publisher: new InertPublisher(),
+            logger: null!), "logger");
 
     /// <summary>
     /// PR #459 review feedback: the null-guard suite must also lock in the
@@ -94,21 +71,15 @@ public class ArgumentValidationTests
     /// </summary>
     [Fact]
     public void MediatorDomainEventPublisher_NullServiceProvider_Throws() =>
-        FluentActions
-            .Invoking(() => new MediatorDomainEventPublisher(
-                serviceProvider: null!,
-                logger: NullLogger<MediatorDomainEventPublisher>.Instance))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "serviceProvider");
+        NullGuard.ShouldRejectNull(() => _ = new MediatorDomainEventPublisher(
+            serviceProvider: null!,
+            logger: NullLogger<MediatorDomainEventPublisher>.Instance), "serviceProvider");
 
     [Fact]
     public void MediatorDomainEventPublisher_NullLogger_Throws() =>
-        FluentActions
-            .Invoking(() => new MediatorDomainEventPublisher(
-                serviceProvider: new ServiceCollection().BuildServiceProvider(),
-                logger: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "logger");
+        NullGuard.ShouldRejectNull(() => _ = new MediatorDomainEventPublisher(
+            serviceProvider: new ServiceCollection().BuildServiceProvider(),
+            logger: null!), "logger");
 
     #endregion
 
@@ -116,57 +87,36 @@ public class ArgumentValidationTests
 
     [Fact]
     public void AddTrellisBehaviors_NullServices_Throws() =>
-        FluentActions
-            .Invoking(() => ServiceCollectionExtensions.AddTrellisBehaviors(services: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "services");
+        NullGuard.ShouldRejectNull(() => ServiceCollectionExtensions.AddTrellisBehaviors(services: null!), "services");
 
     [Fact]
     public void AddTrellisBehaviors_Configure_NullServices_Throws() =>
-        FluentActions
-            .Invoking(() => ServiceCollectionExtensions.AddTrellisBehaviors(services: null!, configure: _ => { }))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "services");
+        NullGuard.ShouldRejectNull(() => ServiceCollectionExtensions.AddTrellisBehaviors(services: null!, configure: _ => { }), "services");
 
     [Fact]
     public void AddResourceAuthorization_Generic_NullServices_Throws() =>
-        FluentActions
-            .Invoking(() => ServiceCollectionExtensions
-                .AddResourceAuthorization<ResourceOwnerCommand, TestResource, Result<string>>(services: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "services");
+        NullGuard.ShouldRejectNull(() => ServiceCollectionExtensions
+            .AddResourceAuthorization<ResourceOwnerCommand, TestResource, Result<string>>(services: null!), "services");
 
     [Fact]
     public void AddResourceAuthorization_Scanning_NullServices_Throws() =>
-        FluentActions
-            .Invoking(() => ServiceCollectionExtensions
-                .AddResourceAuthorization(services: null!, assemblies: typeof(ArgumentValidationTests).Assembly))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "services");
+        NullGuard.ShouldRejectNull(() => ServiceCollectionExtensions
+            .AddResourceAuthorization(services: null!, assemblies: typeof(ArgumentValidationTests).Assembly), "services");
 
     [Fact]
     public void AddResourceLoaders_NullServices_Throws() =>
-        FluentActions
-            .Invoking(() => ServiceCollectionExtensions
-                .AddResourceLoaders(services: null!, assembly: typeof(ArgumentValidationTests).Assembly))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "services");
+        NullGuard.ShouldRejectNull(() => ServiceCollectionExtensions
+            .AddResourceLoaders(services: null!, assembly: typeof(ArgumentValidationTests).Assembly), "services");
 
     [Fact]
     public void AddResourceLoaders_NullAssembly_Throws() =>
-        FluentActions
-            .Invoking(() => new ServiceCollection()
-                .AddResourceLoaders(assembly: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "assembly");
+        NullGuard.ShouldRejectNull(() => _ = new ServiceCollection()
+            .AddResourceLoaders(assembly: null!), "assembly");
 
     [Fact]
     public void AddSharedResourceLoader_NullServices_Throws() =>
-        FluentActions
-            .Invoking(() => ServiceCollectionExtensions
-                .AddSharedResourceLoader<IdentifiedResourceCommand, TestResource, string>(services: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "services");
+        NullGuard.ShouldRejectNull(() => ServiceCollectionExtensions
+            .AddSharedResourceLoader<IdentifiedResourceCommand, TestResource, string>(services: null!), "services");
 
     #endregion
 

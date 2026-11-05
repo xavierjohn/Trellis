@@ -17,10 +17,9 @@ public class ParallelAsyncTests : TestBase
         Func<Task<Result<int>>> taskFactory1 = null!;
         Func<Task<Result<int>>> taskFactory2 = () => CreateDelayedSuccessTask(2, 20);
 
-        var act = () => Result.ParallelAsync(taskFactory1, taskFactory2);
+        Action act = () => Result.ParallelAsync(taskFactory1, taskFactory2);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "taskFactory1");
+        act.ShouldRejectNull("taskFactory1");
     }
 
     [Fact]

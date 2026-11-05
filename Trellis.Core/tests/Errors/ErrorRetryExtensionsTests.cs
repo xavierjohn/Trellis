@@ -212,9 +212,9 @@ public class ErrorRetryExtensionsTests
     [Fact]
     public void Classify_throws_on_null()
     {
-        var act = () => ErrorRetryExtensions.Classify(null!);
+        Action act = () => ErrorRetryExtensions.Classify(null!);
 
-        act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("error");
+        act.ShouldRejectNull("error");
     }
 
     [Fact]
@@ -244,9 +244,9 @@ public class ErrorRetryExtensionsTests
     [Fact]
     public void GetRetryAdvice_throws_on_null()
     {
-        var act = () => ErrorRetryExtensions.GetRetryAdvice(null!);
+        Action act = () => ErrorRetryExtensions.GetRetryAdvice(null!);
 
-        act.Should().Throw<ArgumentNullException>().Which.ParamName.Should().Be("error");
+        act.ShouldRejectNull("error");
     }
 
     // ─────────────────────────────────────────────────────────────────────────

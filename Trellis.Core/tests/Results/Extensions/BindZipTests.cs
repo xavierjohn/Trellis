@@ -160,11 +160,10 @@ public class BindZipTests : TestBase
         var result = Result.Ok("hello");
 
         // Act
-        var act = () => result.BindZip<string, int>(null!);
+        Action act = () => result.BindZip<string, int>(null!);
 
         // Assert
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        act.ShouldRejectNull("func");
     }
 
     #endregion

@@ -29,10 +29,9 @@ public class TapTupleTests : TestBase
     {
         var result = Result.Ok((42, "hello"));
 
-        var act = () => result.Tap<int, string>((Action<int, string>)null!);
+        Action act = () => result.Tap<int, string>((Action<int, string>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "action");
+        act.ShouldRejectNull("action");
     }
 
     [Fact]
@@ -172,8 +171,7 @@ public class TapTupleTests : TestBase
 
         Func<Task<Result<(int, string)>>> act = () => result.TapAsync((a, b) => { });
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Fact]

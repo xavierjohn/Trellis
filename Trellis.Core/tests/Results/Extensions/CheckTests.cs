@@ -88,10 +88,9 @@ public class Check_Tests
     {
         var result = Result.Ok("hello");
 
-        var act = () => result.Check((Func<string, Result<int>>)null!);
+        Action act = () => result.Check((Func<string, Result<int>>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        act.ShouldRejectNull("func");
     }
 
     #endregion

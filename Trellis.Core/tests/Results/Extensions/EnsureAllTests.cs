@@ -44,10 +44,9 @@ public class EnsureAllTests
     {
         var sut = Result.Ok("Hello");
 
-        var act = () => sut.EnsureAll(null!);
+        Action act = () => sut.EnsureAll(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "checks");
+        act.ShouldRejectNull("checks");
     }
 
     [Fact]

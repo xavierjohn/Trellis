@@ -45,7 +45,7 @@ public sealed class HttpContextPageUrlExtensionsTests
     {
         HttpContext? context = null;
         Action act = () => context!.PageUrl("X", (_, _) => new RouteValueDictionary());
-        act.Should().Throw<ArgumentNullException>().And.ParamName.Should().Be("httpContext");
+        act.ShouldRejectNull("httpContext");
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public sealed class HttpContextPageUrlExtensionsTests
     {
         var context = new DefaultHttpContext();
         Action act = () => context.PageUrl("X", (Func<Cursor, int, RouteValueDictionary>)null!);
-        act.Should().Throw<ArgumentNullException>().And.ParamName.Should().Be("routeValues");
+        act.ShouldRejectNull("routeValues");
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public sealed class HttpContextPageUrlExtensionsTests
     {
         var context = new DefaultHttpContext();
         Action act = () => context.PageUrl("X", (ApiVersion)null!, (_, _) => new RouteValueDictionary());
-        act.Should().Throw<ArgumentNullException>().And.ParamName.Should().Be("version");
+        act.ShouldRejectNull("version");
     }
 
     #endregion

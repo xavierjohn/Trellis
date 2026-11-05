@@ -10,10 +10,9 @@ public class WhenTests : TestBase
     {
         var result = Result.Ok(42);
 
-        var act = () => result.When((Func<int, bool>)null!, x => Result.Ok(x));
+        Action act = () => result.When((Func<int, bool>)null!, x => Result.Ok(x));
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "predicate");
+        act.ShouldRejectNull("predicate");
     }
 
     [Fact]
@@ -25,8 +24,7 @@ public class WhenTests : TestBase
             x => x > 0,
             x => Task.FromResult(Result.Ok(x)));
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     #region When with Predicate

@@ -11,10 +11,9 @@ public class RecoverOnFailureTests
     {
         var input = Result.Fail<string>(new Error.Unexpected("test") { Detail = "Error" });
 
-        var act = () => input.RecoverOnFailure((Func<Result<string>>)null!);
+        Action act = () => input.RecoverOnFailure((Func<Result<string>>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "func");
+        act.ShouldRejectNull("func");
     }
 
     [Fact]
@@ -24,8 +23,7 @@ public class RecoverOnFailureTests
 
         Func<Task<Result<string>>> act = () => input.RecoverOnFailureAsync(GetSuccessResult);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     #region RecoverOnFailure_Sync

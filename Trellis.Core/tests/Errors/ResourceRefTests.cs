@@ -3,6 +3,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using static Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
 /// Tests for <see cref="ResourceRef"/> helper factories.
@@ -184,10 +185,9 @@ public class ResourceRefTests
     [Fact]
     public void FormatTypeName_throws_for_null_type()
     {
-        var act = () => ResourceRef.FormatTypeName(null!);
+        Action act = () => ResourceRef.FormatTypeName(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "type");
+        act.ShouldRejectNull("type");
     }
 
     private sealed record CustomerAccount;

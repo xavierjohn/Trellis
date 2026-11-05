@@ -60,10 +60,9 @@ public class RecoverTests
     {
         var sut = Result.Fail<string>(new Error.Unexpected("test") { Detail = "error" });
 
-        var act = () => sut.Recover((Func<string>)null!);
+        Action act = () => sut.Recover((Func<string>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "fallbackFunc");
+        act.ShouldRejectNull("fallbackFunc");
     }
 
     #endregion
@@ -100,10 +99,9 @@ public class RecoverTests
     {
         var sut = Result.Fail<string>(new Error.Unexpected("test") { Detail = "error" });
 
-        var act = () => sut.Recover((Func<Error, string>)null!);
+        Action act = () => sut.Recover((Func<Error, string>)null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "fallbackFunc");
+        act.ShouldRejectNull("fallbackFunc");
     }
 
     #endregion

@@ -275,8 +275,7 @@ public class MatchTupleTracingTests : TestBase
             onSuccess: (num, str) => $"{num}-{str}",
             onFailure: _ => "Error");
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Fact]
@@ -362,8 +361,7 @@ public class MatchTupleTracingTests : TestBase
             onSuccess: (num, str) => Task.CompletedTask,
             onFailure: _ => Task.CompletedTask);
 
-        await act.Should().ThrowAsync<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resultTask");
+        await act.ShouldRejectNullAsync("resultTask");
     }
 
     [Fact]

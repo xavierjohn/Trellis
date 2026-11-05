@@ -394,23 +394,21 @@ public class ActorTests
     [InlineData("attributes")]
     public void Constructor_NullCollection_ThrowsArgumentNullException(string nullParameterName)
     {
-        var act = () => new Actor(
+        Action act = () => _ = new Actor(
             "user-1",
             permissions: nullParameterName == "permissions" ? null! : new HashSet<string>(),
             forbiddenPermissions: nullParameterName == "forbiddenPermissions" ? null! : new HashSet<string>(),
             attributes: nullParameterName == "attributes" ? null! : new Dictionary<string, string>());
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == nullParameterName);
+        act.ShouldRejectNull(nullParameterName);
     }
 
     [Fact]
     public void Create_NullPermissions_ThrowsArgumentNullException()
     {
-        var act = () => Actor.Create("user-1", permissions: null!);
+        Action act = () => Actor.Create("user-1", permissions: null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "permissions");
+        act.ShouldRejectNull("permissions");
     }
 
     [Fact]
@@ -418,10 +416,9 @@ public class ActorTests
     {
         var actor = CreateActor();
 
-        var act = () => actor.HasPermission(null!);
+        Action act = () => actor.HasPermission(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "permission");
+        act.ShouldRejectNull("permission");
     }
 
     [Theory]
@@ -441,10 +438,9 @@ public class ActorTests
     {
         var actor = CreateActor();
 
-        var act = () => actor.HasAllPermissions(null!);
+        Action act = () => actor.HasAllPermissions(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "permissions");
+        act.ShouldRejectNull("permissions");
     }
 
     [Fact]
@@ -452,10 +448,9 @@ public class ActorTests
     {
         var actor = CreateActor();
 
-        var act = () => actor.HasAnyPermission(null!);
+        Action act = () => actor.HasAnyPermission(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "permissions");
+        act.ShouldRejectNull("permissions");
     }
 
     [Fact]
@@ -463,10 +458,9 @@ public class ActorTests
     {
         var actor = CreateActor();
 
-        var act = () => actor.IsOwner(null!);
+        Action act = () => actor.IsOwner(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "resourceOwnerId");
+        act.ShouldRejectNull("resourceOwnerId");
     }
 
     [Fact]
@@ -490,23 +484,21 @@ public class ActorTests
     [Fact]
     public void Constructor_NullActorId_ThrowsArgumentNullException()
     {
-        var act = () => new Actor(
+        Action act = () => _ = new Actor(
             id: (ActorId)null!,
             permissions: new HashSet<string>(),
             forbiddenPermissions: new HashSet<string>(),
             attributes: new Dictionary<string, string>());
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "id");
+        act.ShouldRejectNull("id");
     }
 
     [Fact]
     public void Create_NullActorId_ThrowsArgumentNullException()
     {
-        var act = () => Actor.Create(id: (ActorId)null!, new HashSet<string>());
+        Action act = () => Actor.Create(id: (ActorId)null!, new HashSet<string>());
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "id");
+        act.ShouldRejectNull("id");
     }
 
     [Fact]
@@ -514,10 +506,9 @@ public class ActorTests
     {
         var actor = CreateActor();
 
-        var act = () => actor.HasAttribute(null!);
+        Action act = () => actor.HasAttribute(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "key");
+        act.ShouldRejectNull("key");
     }
 
     [Fact]
@@ -525,10 +516,9 @@ public class ActorTests
     {
         var actor = CreateActor();
 
-        var act = () => actor.GetAttribute(null!);
+        Action act = () => actor.GetAttribute(null!);
 
-        act.Should().Throw<ArgumentNullException>()
-            .Where(exception => exception.ParamName == "key");
+        act.ShouldRejectNull("key");
     }
 
     #endregion

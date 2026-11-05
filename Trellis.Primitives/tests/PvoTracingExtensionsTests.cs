@@ -7,6 +7,7 @@ using OpenTelemetry.Trace;
 using Trellis.Primitives;
 using Trellis.Primitives.Tests.Helpers;
 using Xunit;
+using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 
 /// <summary>
 /// Tests for PvoTracingExtensions to verify OpenTelemetry integration.
@@ -175,10 +176,8 @@ public class PvoTracingExtensionsTests : IDisposable
 
     [Fact]
     public void AddTrellisPrimitivesInstrumentation_NullBuilder_ThrowsArgumentNullException() =>
-        FluentActions.Invoking(() => PrimitiveValueObjectTraceProviderBuilderExtensions
-            .AddTrellisPrimitivesInstrumentation(builder: null!))
-            .Should().Throw<ArgumentNullException>()
-            .Where(ex => ex.ParamName == "builder");
+        NullGuard.ShouldRejectNull(() => PrimitiveValueObjectTraceProviderBuilderExtensions
+            .AddTrellisPrimitivesInstrumentation(builder: null!), "builder");
 
     // --- Single-span invariant: every public factory call emits exactly one activity,
     //     on both success and failure, regardless of which overload is the entry point. ---
