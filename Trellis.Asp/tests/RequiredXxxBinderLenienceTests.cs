@@ -91,8 +91,7 @@ public class RequiredXxxBinderLenienceTests
     {
         // Under the lenient default the bare Required* base accepts "" verbatim.
         var result = AspStrictString.TryCreate("");
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("");
+        result.Should().BeSuccess().Which.Value.Should().Be("");
 
         // And via binder for a whitespace-only payload — bound verbatim.
         var binder = new ScalarValueModelBinder<AspStrictString, string>();

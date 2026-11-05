@@ -74,8 +74,7 @@ public class ToPageAsyncTests : IDisposable
 
         var result = await _context.Orders.ToPageAsync(pageSize, cursor: null, o => o.Amount, cancellationToken: ct);
 
-        result.IsSuccess.Should().BeTrue();
-        var page = result.Unwrap();
+        var page = result.Should().BeSuccess().Which;
         page.Items.Should().BeEmpty();
         page.Next.Should().BeNull();
         page.RequestedLimit.Should().Be(10);

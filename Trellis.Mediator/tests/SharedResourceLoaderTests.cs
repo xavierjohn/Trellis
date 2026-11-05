@@ -194,8 +194,7 @@ public class SharedResourceLoaderTests
         inner.LastRequestedId.Should().Be("order-1");
         inner.LastCancellationToken.Should().Be(cts.Token);
         var result = await forwarded;
-        result.IsSuccess.Should().BeTrue();
-        var loaded = result.Unwrap();
+        var loaded = result.Should().BeSuccess().Which;
         loaded.Id.Should().Be("order-1");
         loaded.Should().BeSameAs(order);
     }
@@ -279,8 +278,7 @@ public class SharedResourceLoaderTests
         else
         {
             var result = await forwarded;
-            result.IsSuccess.Should().BeTrue();
-            var loaded = result.Unwrap();
+            var loaded = result.Should().BeSuccess().Which;
             loaded.Id.Should().Be("order-42");
             loaded.Should().BeSameAs(order);
         }

@@ -37,8 +37,7 @@ public class ActorIdTests
     {
         var result = ActorId.TryCreate("user-1");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("user-1");
+        result.Should().BeSuccess().Which.Value.Should().Be("user-1");
     }
 
     [Fact]
@@ -46,8 +45,7 @@ public class ActorIdTests
     {
         var result = ActorId.TryCreate("  user-1  ");
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("user-1");
+        result.Should().BeSuccess().Which.Value.Should().Be("user-1");
     }
 
     [Fact]

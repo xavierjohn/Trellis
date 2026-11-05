@@ -26,8 +26,7 @@ public class ActorTypedAttributeTests
 
         var result = actor.GetRequiredAttribute<ActorId>(ScopeKey);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Value.Should().Be("tenant-7");
+        result.Should().BeSuccess().Which.Value.Should().Be("tenant-7");
     }
 
     [Fact]

@@ -60,8 +60,7 @@ public class AddResourceLoadersTests
         var loader = scope.ServiceProvider.GetRequiredService<IResourceLoader<TestMessage, TestEntity>>();
         var result = await loader.LoadAsync(new TestMessage("id-1"), CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Id.Should().Be("id-1");
+        result.Should().BeSuccess().Which.Id.Should().Be("id-1");
     }
 
     #endregion

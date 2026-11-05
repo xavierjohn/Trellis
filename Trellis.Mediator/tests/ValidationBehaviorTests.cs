@@ -20,8 +20,7 @@ public class ValidationBehaviorTests
 
         var result = await behavior.Handle(command, next, CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("Hello, Alice!");
+        result.Should().BeSuccess().Which.Should().Be("Hello, Alice!");
         tracker.WasInvoked.Should().BeTrue();
     }
 
@@ -58,8 +57,7 @@ public class ValidationBehaviorTests
 
         var result = await behavior.Handle(query, next, CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Should().Be("Result-42");
+        result.Should().BeSuccess().Which.Should().Be("Result-42");
         tracker.WasInvoked.Should().BeTrue();
     }
 

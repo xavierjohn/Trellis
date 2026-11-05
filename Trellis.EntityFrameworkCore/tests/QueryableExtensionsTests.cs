@@ -245,8 +245,7 @@ public class QueryableExtensionsTests : IDisposable
                 ct);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Unwrap().Name.Value.Should().Be("Alice");
+        result.Should().BeSuccess().Which.Name.Value.Should().Be("Alice");
     }
 
     #endregion
