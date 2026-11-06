@@ -50,7 +50,7 @@ public sealed class LocationRouteResolverTests
         response.Headers.Location!.OriginalString.Should().Be("/destination/42?tenant=resolved");
         shared.Should().HaveCount(2);
         shared["remove"].Should().Be("stale");
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
     }
 
     [Theory]

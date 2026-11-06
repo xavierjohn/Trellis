@@ -239,7 +239,7 @@ public class WorkerActorTests
         var provider = scope.ServiceProvider.GetRequiredService<IActorProvider>();
         _ = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
-        innerConstructions.CallCount.Should().Be(0, "worker tick must not construct the inner HTTP-side provider");
+        innerConstructions.Should().NotHaveBeenCalled("worker tick must not construct the inner HTTP-side provider");
     }
 
     [Fact]
@@ -259,7 +259,7 @@ public class WorkerActorTests
         _ = await provider.GetCurrentActorAsync(TestContext.Current.CancellationToken);
         _ = ((IProvideActorVaryHeaders)provider).VaryByHeaders;
 
-        innerConstructions.CallCount.Should().Be(1, "lazy inner must be materialized exactly once per wrapper scope");
+        innerConstructions.Should().HaveBeenCalledOnce("lazy inner must be materialized exactly once per wrapper scope");
     }
 
     [Fact]

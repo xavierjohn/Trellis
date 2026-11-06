@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp;
+using static Trellis.Testing.CallbackRecorderAssertionsExtensions;
 
 /// <summary>
 /// Tests for <c>WithCacheControl()</c> on <see cref="HttpResponseOptionsBuilder{TDomain}"/>
@@ -440,7 +441,7 @@ public sealed class WithCacheControlTests
                 new CacheControlHeaderValue { Private = true, MaxAge = TimeSpan.FromMinutes(5) }))).ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(204);
-        selectorCalls.CallCount.Should().Be(0,
+        selectorCalls.Should().NotHaveBeenCalled(
             "no-payload write outcomes (UpdatedNoContent / AcceptedNoContent) carry no TDomain — " +
             "a domain-dependent selector must never run against default(TDomain)");
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty(
@@ -460,7 +461,7 @@ public sealed class WithCacheControlTests
                 new CacheControlHeaderValue { Private = true, MaxAge = TimeSpan.FromMinutes(5) }))).ExecuteAsync(ctx);
 
         ctx.Response.StatusCode.Should().Be(202);
-        selectorCalls.CallCount.Should().Be(0);
+        selectorCalls.Should().NotHaveBeenCalled();
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
     }
 
@@ -498,7 +499,7 @@ public sealed class WithCacheControlTests
         await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(selectorCalls
             .Wrap<CacheControlHeaderValue?>(_ => CacheControl.Public(TimeSpan.FromMinutes(5))))).ExecuteAsync(ctx);
 
-        selectorCalls.CallCount.Should().Be(0,
+        selectorCalls.Should().NotHaveBeenCalled(
             "a null Value on WriteOutcome.Created carries no usable domain; domain-dependent " +
             "selectors must not run against null");
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
@@ -516,7 +517,7 @@ public sealed class WithCacheControlTests
         await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(selectorCalls
             .Wrap<CacheControlHeaderValue?>(_ => CacheControl.Public(TimeSpan.FromMinutes(5))))).ExecuteAsync(ctx);
 
-        selectorCalls.CallCount.Should().Be(0);
+        selectorCalls.Should().NotHaveBeenCalled();
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
         ctx.Response.Headers.ContentLanguage.ToString().Should().Be("en");
     }
@@ -532,7 +533,7 @@ public sealed class WithCacheControlTests
         await r.ToHttpResponse<Todo>(o => o.WithContentLanguage("en").WithCacheControl(selectorCalls
             .Wrap<CacheControlHeaderValue?>(_ => CacheControl.Public(TimeSpan.FromMinutes(5))))).ExecuteAsync(ctx);
 
-        selectorCalls.CallCount.Should().Be(0);
+        selectorCalls.Should().NotHaveBeenCalled();
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
         ctx.Response.Headers.ContentLanguage.ToString().Should().Be("en");
     }
@@ -566,7 +567,7 @@ public sealed class WithCacheControlTests
         await r.ToHttpResponse(t => t, o => o.WithCacheControl(selectorCalls
             .Wrap<CacheControlHeaderValue?>(_ => CacheControl.Public(TimeSpan.FromMinutes(5))))).ExecuteAsync(ctx);
 
-        selectorCalls.CallCount.Should().Be(0,
+        selectorCalls.Should().NotHaveBeenCalled(
             "Result.Ok<T>(null!) is legal — domain-dependent selectors must not run against null");
         ctx.Response.Headers.CacheControl.ToString().Should().BeEmpty();
     }
@@ -643,12 +644,12 @@ public sealed class WithCacheControlTests
             t => t,
             o => o.WithCacheControl(selectorCalls.Wrap<CacheControlHeaderValue?>(_ => CacheControl.NoStore())));
 
-        selectorCalls.CallCount.Should().Be(0,
+        selectorCalls.Should().NotHaveBeenCalled(
             "selector must defer to IResult.ExecuteAsync, not run during ToHttpResponse(...)");
 
         await http.ExecuteAsync(ctx);
 
-        selectorCalls.CallCount.Should().BeGreaterThan(0);
+        selectorCalls.Should().HaveBeenCalledAtLeastOnce();
         ctx.Response.Headers.CacheControl.ToString().Should().Be("no-store");
     }
 

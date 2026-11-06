@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Trellis.Asp;
+using static Trellis.Testing.CallbackRecorderAssertionsExtensions;
 
 /// <summary>
 /// Branch coverage for <see cref="TrellisWriteOutcomeResult{TDomain,TBody}"/> across every
@@ -164,7 +165,7 @@ public sealed class TrellisWriteOutcomeResultTests
         ctx.Response.Headers.ContainsKey("Location").Should().BeFalse();
         ctx.Response.Headers.ContainsKey("Link").Should().BeFalse();
         ctx.Response.Headers.CacheControl.ToString().Should().Be("no-store");
-        successSelectorCalls.CallCount.Should().Be(0);
+        successSelectorCalls.Should().NotHaveBeenCalled();
         ctx.Response.Body.Position = 0;
         using var body = await JsonDocument.ParseAsync(
             ctx.Response.Body, cancellationToken: TestContext.Current.CancellationToken);
