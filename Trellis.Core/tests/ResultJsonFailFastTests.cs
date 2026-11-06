@@ -157,6 +157,180 @@ public class ResultJsonFailFastTests
         JsonSerializer.Serialize(concrete, s_optionsWithFactoryOverride).Should().Be("\"any:result\"");
     }
 
+    // ---------- Deserialization through every declared shape ----------
+
+    [Fact]
+    public void Deserialize_via_IResult_T_interface_throws_naming_the_declared_shape()
+    {
+        var act = () => JsonSerializer.Deserialize<IResult<int>>("{\"IsSuccess\":true}");
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("IResult<Int32> cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    [Fact]
+    public void Deserialize_via_non_generic_IResult_throws_naming_the_declared_shape()
+    {
+        var act = () => JsonSerializer.Deserialize<IResult>("{\"IsSuccess\":true}");
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("IResult cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    [Fact]
+    public void Deserialize_DTO_with_a_Result_property_throws_at_converter_creation()
+    {
+        // The throw comes from creating the converter for the declared type, which happens in both
+        // directions, so the JSON payload is irrelevant.
+        var act = () => JsonSerializer.Deserialize<DtoCarryingResult>("{\"Inner\":null}");
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("Result<Int32> cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    [Fact]
+    public void Deserialize_DTO_with_an_IResult_T_property_throws_at_converter_creation()
+    {
+        // The throw comes from creating the converter for the declared type, which happens in both
+        // directions, so the JSON payload is irrelevant.
+        var act = () => JsonSerializer.Deserialize<DtoCarryingIResultT>("{\"Inner\":null}");
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("IResult<Int32> cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    // ---------- Nested declared types ----------
+
+    [Fact]
+    public void Serialize_list_of_Result_throws()
+    {
+        List<Result<int>> results = [Result.Ok(1), Result.Ok(2)];
+
+        var act = () => JsonSerializer.Serialize(results);
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("Result<Int32> cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    [Fact]
+    public void Serialize_array_of_IResult_T_throws()
+    {
+        IResult<int>[] results = [Result.Ok(1)];
+
+        var act = () => JsonSerializer.Serialize(results);
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("IResult<Int32> cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    [Fact]
+    public void Serialize_dictionary_with_Result_values_throws()
+    {
+        var results = new Dictionary<string, Result<int>> { ["a"] = Result.Ok(1) };
+
+        var act = () => JsonSerializer.Serialize(results);
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("Result<Int32> cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    [Fact]
+    public void Deserialize_list_of_Result_throws_at_converter_creation()
+    {
+        // The throw comes from creating the converter for the declared type, which happens in both
+        // directions, so the JSON payload is irrelevant.
+        var act = () => JsonSerializer.Deserialize<List<Result<int>>>("[]");
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("Result<Int32> cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    [Fact]
+    public void Serialize_nullable_Result_throws_at_converter_creation()
+    {
+        // Nullable<Result<int>> wraps the Result<int> converter, so the factory throws while building it,
+        // before the null value is inspected.
+        Result<int>? absent = null;
+
+        var act = () => JsonSerializer.Serialize(absent);
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("Result<Int32> cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    [Fact]
+    public void Serialize_boxed_Result_through_an_object_declaration_throws_for_the_runtime_type()
+    {
+        // A value declared as object is serialized with the runtime type's converter, which is the
+        // [JsonConverter] attribute on Result<T>, so boxing does not bypass the guard.
+        object boxed = Result.Ok(42);
+
+        var act = () => JsonSerializer.Serialize(boxed);
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage("Result<Int32> cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    // ---------- Factory contract ----------
+
+    [Theory]
+    [InlineData(typeof(Result<int>), true)]
+    [InlineData(typeof(Result<string>), true)]
+    [InlineData(typeof(IResult<int>), true)]
+    [InlineData(typeof(IResult<Order>), true)]
+    [InlineData(typeof(IResult), true)]
+    [InlineData(typeof(int), false)]
+    [InlineData(typeof(string), false)]
+    [InlineData(typeof(object), false)]
+    [InlineData(typeof(Maybe<int>), false)]
+    [InlineData(typeof(List<Result<int>>), false)]
+    [InlineData(typeof(Result<int>[]), false)]
+    [InlineData(typeof(Result<int>?), false)]
+    [InlineData(typeof(Unit), false)]
+    public void CanConvert_matches_exactly_the_result_shapes(Type type, bool expected)
+    {
+        var factory = new ResultRequiresExplicitHttpMappingConverter();
+
+        factory.CanConvert(type).Should().Be(expected);
+    }
+
+    [Fact]
+    public void CanConvert_rejects_a_null_type()
+    {
+        var factory = new ResultRequiresExplicitHttpMappingConverter();
+
+        var act = () => factory.CanConvert(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("typeToConvert");
+    }
+
+    [Fact]
+    public void CreateConverter_rejects_a_null_type()
+    {
+        var factory = new ResultRequiresExplicitHttpMappingConverter();
+
+        var act = () => factory.CreateConverter(null!, new JsonSerializerOptions());
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("typeToConvert");
+    }
+
+    [Theory]
+    [InlineData(typeof(Result<int>), "Result<Int32>")]
+    [InlineData(typeof(Result<string>), "Result<String>")]
+    [InlineData(typeof(IResult<int>), "IResult<Int32>")]
+    [InlineData(typeof(IResult), "IResult")]
+    public void CreateConverter_always_throws_and_names_the_declared_shape(Type type, string shape)
+    {
+        var factory = new ResultRequiresExplicitHttpMappingConverter();
+
+        var act = () => factory.CreateConverter(type, new JsonSerializerOptions());
+
+        act.Should().Throw<NotSupportedException>()
+            .WithMessage($"{shape} cannot be JSON-serialized or deserialized*ToHttpResponse*");
+    }
+
+    private sealed record Order(int Id);
+
     private sealed record DtoCarryingResult(Result<int> Inner);
 
     private sealed record DtoCarryingIResultT(IResult<int> Inner);
