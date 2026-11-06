@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - tuple `Match` and `Switch` trace a throwing success handler as `Error`
+
+The tuple `Match`, `Switch`, `MatchAsync` and `SwitchAsync` overloads stamped the `Trellis.Results` activity `Ok`
+before invoking `onSuccess`, so a span whose success handler threw or faulted stayed `Ok`. They now set `Ok` only
+after the handler completes and set `Error` if it throws or faults, matching the non-tuple `Match` and `Switch`.
+The exception still propagates unchanged and the failure branch is unaffected.
+
 ### Added - `Forbidden` and call-count assertions for callback recorders in Trellis.Testing
 
 `CallbackRecorder.Forbidden(because)` / `Forbidden<TResult>(because)` and the same overloads on
