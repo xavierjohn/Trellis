@@ -175,7 +175,7 @@ public class MatchTupleTests
         );
 
         // Assert
-        errorLogCalls.CallCount.Should().BeGreaterThan(0);
+        errorLogCalls.Should().HaveBeenCalledAtLeastOnce();
         errorMessage.Should().Be("Server error");
     }
 

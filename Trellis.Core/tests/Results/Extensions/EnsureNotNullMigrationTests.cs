@@ -188,7 +188,7 @@ public class EnsureNotNullMigrationTests
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date.Value);
-        factoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for success");
+        factoryCalls.Should().NotHaveBeenCalled("error factory should not be invoked for success");
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class EnsureNotNullMigrationTests
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date not set." });
-        factoryCalls.CallCount.Should().BeGreaterThan(0, "error factory should be invoked for failure");
+        factoryCalls.Should().HaveBeenCalledAtLeastOnce("error factory should be invoked for failure");
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class EnsureNotNullMigrationTests
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(myClass);
-        factoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for success");
+        factoryCalls.Should().NotHaveBeenCalled("error factory should not be invoked for success");
     }
 
     [Fact]
@@ -233,7 +233,7 @@ public class EnsureNotNullMigrationTests
 
         // Assert
         result.Should().HaveErrorDetail("MyClass not found").And.BeFailureOfType<Error.NotFound>();
-        factoryCalls.CallCount.Should().BeGreaterThan(0, "error factory should be invoked for failure");
+        factoryCalls.Should().HaveBeenCalledAtLeastOnce("error factory should be invoked for failure");
     }
 
     #endregion
@@ -253,7 +253,7 @@ public class EnsureNotNullMigrationTests
 
         // Assert
         result.Should().BeSuccess().Which.Should().BeSameAs(myClass);
-        factoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for success");
+        factoryCalls.Should().NotHaveBeenCalled("error factory should not be invoked for success");
     }
 
     [Fact]
@@ -269,7 +269,7 @@ public class EnsureNotNullMigrationTests
 
         // Assert
         result.Should().BeFailure().Which.Should().Be(new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "Date is not set." });
-        factoryCalls.CallCount.Should().BeGreaterThan(0, "error factory should be invoked for failure");
+        factoryCalls.Should().HaveBeenCalledAtLeastOnce("error factory should be invoked for failure");
     }
 
     [Fact]
@@ -285,7 +285,7 @@ public class EnsureNotNullMigrationTests
 
         // Assert
         result.Should().BeSuccess().Which.Should().Be(date.Value);
-        factoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for success");
+        factoryCalls.Should().NotHaveBeenCalled("error factory should not be invoked for success");
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public class EnsureNotNullMigrationTests
 
         // Assert
         result.Should().BeFailureOfType<Error.Conflict>();
-        factoryCalls.CallCount.Should().BeGreaterThan(0, "error factory should be invoked for failure");
+        factoryCalls.Should().HaveBeenCalledAtLeastOnce("error factory should be invoked for failure");
     }
 
     #endregion

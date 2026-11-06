@@ -56,10 +56,10 @@ public class MaybeToResultTests
                 () => source.TryComplete(Maybe.From(expected)),
                 TimeSpan.FromSeconds(30),
                 TestContext.Current.CancellationToken,
-                whilePending: () => calls.CallCount.Should().Be(0));
+                whilePending: () => calls.Should().NotHaveBeenCalled());
 
         result.Should().BeSuccess().Which.Should().BeSameAs(expected);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -74,10 +74,10 @@ public class MaybeToResultTests
                 () => source.TryComplete(Maybe<int>.None),
                 TimeSpan.FromSeconds(30),
                 TestContext.Current.CancellationToken,
-                whilePending: () => calls.CallCount.Should().Be(0));
+                whilePending: () => calls.Should().NotHaveBeenCalled());
 
         result.Should().BeFailure().Which.Should().BeSameAs(expected);
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class MaybeToResultTests
             .ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")))
             .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class MaybeToResultTests
             .ToResultAsync(calls.Wrap<Error>(() => new Error.Forbidden("test.absent")))
             .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]

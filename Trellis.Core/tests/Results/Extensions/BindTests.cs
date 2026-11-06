@@ -26,7 +26,7 @@ public partial class BindTests : TestBase
         var newResult = result.Bind(functionCalls.Wrap(value => Result.Ok<string>($"Value: {value}")));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0);
+        functionCalls.Should().HaveBeenCalledAtLeastOnce();
         newResult.Should().BeSuccess()
             .Which.Should().Be("Value: 42");
     }
@@ -42,7 +42,7 @@ public partial class BindTests : TestBase
         var newResult = result.Bind(functionCalls.Wrap(value => Result.Ok<string>($"Value: {value}")));
 
         // Assert
-        functionCalls.CallCount.Should().Be(0);
+        functionCalls.Should().NotHaveBeenCalled();
         newResult.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -57,7 +57,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}")));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0);
+        functionCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -73,7 +73,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}")));
 
         // Assert
-        functionCalls.CallCount.Should().Be(0);
+        functionCalls.Should().NotHaveBeenCalled();
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -88,7 +88,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsTask()));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0);
+        functionCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -104,7 +104,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsTask()));
 
         // Assert
-        functionCalls.CallCount.Should().Be(0);
+        functionCalls.Should().NotHaveBeenCalled();
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -129,7 +129,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsTask()));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0);
+        functionCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -145,7 +145,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsTask()));
 
         // Assert
-        functionCalls.CallCount.Should().Be(0);
+        functionCalls.Should().NotHaveBeenCalled();
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -161,7 +161,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}")));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0);
+        functionCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -177,7 +177,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}")));
 
         // Assert
-        functionCalls.CallCount.Should().Be(0);
+        functionCalls.Should().NotHaveBeenCalled();
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -192,7 +192,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsValueTask()));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0);
+        functionCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -208,7 +208,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsValueTask()));
 
         // Assert
-        functionCalls.CallCount.Should().Be(0);
+        functionCalls.Should().NotHaveBeenCalled();
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 
@@ -223,7 +223,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsValueTask()));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0);
+        functionCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be("Hello");
     }
@@ -239,7 +239,7 @@ public partial class BindTests : TestBase
         var actual = await result.BindAsync(functionCalls.Wrap(str => Result.Ok($"{str}").AsValueTask()));
 
         // Assert
-        functionCalls.CallCount.Should().Be(0);
+        functionCalls.Should().NotHaveBeenCalled();
         actual.Should().BeFailure().Which.Should().Be(Error1);
     }
 

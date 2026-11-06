@@ -36,7 +36,7 @@ public class ResultEnsureNotNullTests
             result.Should().BeFailure().Which.Should().Be(error);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.Should().HaveBeenCalledTimes(form == GuardForm.Factory && !present ? 1 : 0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNull",
             present ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
@@ -70,7 +70,7 @@ public class ResultEnsureNotNullTests
             result.Should().BeFailure().Which.Should().Be(error);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.Should().HaveBeenCalledTimes(form == GuardForm.Factory && !present ? 1 : 0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNull",
             present ? ActivityStatusCode.Ok : ActivityStatusCode.Error);

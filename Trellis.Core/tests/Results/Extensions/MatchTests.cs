@@ -143,7 +143,7 @@ public class MatchTests : TestBase
                 return Task.CompletedTask;
             });
 
-        successCalls.CallCount.Should().Be(0);
+        successCalls.Should().NotHaveBeenCalled();
         ReferenceEquals(failureError, null).Should().BeFalse();
         ReferenceEquals(failureError, Error1).Should().BeTrue();
     }

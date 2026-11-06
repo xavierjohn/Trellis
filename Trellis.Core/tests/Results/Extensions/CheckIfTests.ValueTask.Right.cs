@@ -39,7 +39,7 @@ public class CheckIfTests_ValueTask_Right
         var sut = await result.CheckIfAsync(false, checkCalls.Wrap(v => new ValueTask<Result<string>>(Result.Ok("ok"))));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkCalls.CallCount.Should().Be(0);
+        checkCalls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public class CheckIfTests_ValueTask_Right
         var sut = await result.CheckIfAsync(true, checkCalls.Wrap(v => new ValueTask<Result<string>>(Result.Ok("ok"))));
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
-        checkCalls.CallCount.Should().Be(0);
+        checkCalls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -73,6 +73,6 @@ public class CheckIfTests_ValueTask_Right
         var sut = await result.CheckIfAsync(v => v < 0, checkCalls.Wrap(v => new ValueTask<Result<string>>(Result.Ok("ok"))));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkCalls.CallCount.Should().Be(0);
+        checkCalls.Should().NotHaveBeenCalled();
     }
 }

@@ -39,7 +39,7 @@ public class ResultTracingIntegrationTests
             .Map(functionCalls.Wrap(x => x * 2));
 
         // Assert
-        functionCalls.CallCount.Should().Be(0);
+        functionCalls.Should().NotHaveBeenCalled();
         result.Should().BeFailureOfType<Error.InvalidInput>();
         activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Error);
     }
@@ -71,7 +71,7 @@ public class ResultTracingIntegrationTests
             .MapAsync(functionCalls.Wrap(x => Task.FromResult(x * 2)));
 
         // Assert
-        functionCalls.CallCount.Should().Be(0);
+        functionCalls.Should().NotHaveBeenCalled();
         result.Should().BeFailureOfType<Error.InvalidInput>();
         activityTest.AssertActivityCapturedWithStatus("Map", ActivityStatusCode.Error);
     }

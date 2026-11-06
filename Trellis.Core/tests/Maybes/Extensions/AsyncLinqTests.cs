@@ -377,11 +377,11 @@ public class AsyncLinqTests : TestBase
             () => source.TryComplete(Maybe.From(5)),
             TimeSpan.FromSeconds(30),
             TestContext.Current.CancellationToken,
-            whilePending: () => invocations.CallCount.Should().Be(0));
+            whilePending: () => invocations.Should().NotHaveBeenCalled());
 
         result.TryGetValue(out var value).Should().BeTrue();
         value.Should().Be(10);
-        invocations.CallCount.Should().Be(1);
+        invocations.Should().HaveBeenCalledOnce();
     }
 
     [Fact]
@@ -396,13 +396,13 @@ public class AsyncLinqTests : TestBase
             TestContext.Current.CancellationToken,
             whilePending: () =>
             {
-                invocations.CallCount.Should().Be(0);
+                invocations.Should().NotHaveBeenCalled();
                 source.ResultReadCount.Should().Be(0);
             });
 
         result.TryGetValue(out var value).Should().BeTrue();
         value.Should().Be(10);
-        invocations.CallCount.Should().Be(1);
+        invocations.Should().HaveBeenCalledOnce();
         source.ResultReadCount.Should().Be(1);
     }
 
@@ -415,7 +415,7 @@ public class AsyncLinqTests : TestBase
         await Task.FromException<Maybe<int>>(exception).Select(invocations.Wrap(value => value * 2))
             .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        invocations.CallCount.Should().Be(0);
+        invocations.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -427,7 +427,7 @@ public class AsyncLinqTests : TestBase
         await ValueTask.FromException<Maybe<int>>(exception).Select(invocations.Wrap(value => value * 2))
             .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        invocations.CallCount.Should().Be(0);
+        invocations.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -439,7 +439,7 @@ public class AsyncLinqTests : TestBase
         await canceled.ToTask<Maybe<int>>().Select(invocations.Wrap(value => value * 2))
             .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        invocations.CallCount.Should().Be(0);
+        invocations.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -451,7 +451,7 @@ public class AsyncLinqTests : TestBase
         await canceled.ToValueTask<Maybe<int>>().Select(invocations.Wrap(value => value * 2))
             .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        invocations.CallCount.Should().Be(0);
+        invocations.Should().NotHaveBeenCalled();
     }
 }
 #pragma warning restore CA2012

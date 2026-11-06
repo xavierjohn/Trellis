@@ -18,7 +18,7 @@ public class EnsureValueTaskTests
             callbackCalls.Wrap(() => new ValueTask<bool>(true)),
             new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "should not run" });
 
-        callbackCalls.CallCount.Should().Be(0);
+        callbackCalls.Should().NotHaveBeenCalled();
         actual.Should().Be(source);
     }
 
@@ -104,7 +104,7 @@ public class EnsureValueTaskTests
             errorPredicateCalls.Wrap(x => new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "should not be called" }));
 
         actual.Should().BeSuccess().Which.Should().Be("test");
-        errorPredicateCalls.CallCount.Should().Be(0, "error predicate should not be called when predicate passes");
+        errorPredicateCalls.Should().NotHaveBeenCalled("error predicate should not be called when predicate passes");
     }
 
     #endregion
@@ -126,7 +126,7 @@ public class EnsureValueTaskTests
             }));
 
         actual.Should().BeSuccess().Which.Should().Be("test");
-        errorPredicateCalls.CallCount.Should().Be(0, "error predicate should not be called when predicate passes");
+        errorPredicateCalls.Should().NotHaveBeenCalled("error predicate should not be called when predicate passes");
     }
 
     [Fact]

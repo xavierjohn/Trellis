@@ -27,7 +27,7 @@ public class ResultEnsureFactoryTests
             result.Should().BeSuccess().Which.Should().Be(Unit.Default);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.CallCount.Should().Be(condition ? 0 : 1);
+        calls.Should().HaveBeenCalledTimes(condition ? 0 : 1);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("Ensure",
             condition ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
@@ -100,7 +100,7 @@ public class ResultEnsureFactoryTests
         Action act = () => Result.Ensure(calls.Wrap(() => true), errorFactory: null!);
 
         act.ShouldRejectNull("errorFactory");
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class ResultEnsureFactoryTests
             calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
         act.ShouldRejectNull("predicate");
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class ResultEnsureFactoryTests
             calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
         act.Should().Throw<InvalidOperationException>().Which.Should().BeSameAs(exception);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -144,13 +144,13 @@ public class ResultEnsureFactoryTests
             TestContext.Current.CancellationToken,
             whilePending: () =>
             {
-                predicateCalls.CallCount.Should().Be(1);
-                factoryCalls.CallCount.Should().Be(0);
+                predicateCalls.Should().HaveBeenCalledOnce();
+                factoryCalls.Should().NotHaveBeenCalled();
             });
 
         result.IsSuccess.Should().Be(condition);
-        predicateCalls.CallCount.Should().Be(1);
-        factoryCalls.CallCount.Should().Be(condition ? 0 : 1);
+        predicateCalls.Should().HaveBeenCalledOnce();
+        factoryCalls.Should().HaveBeenCalledTimes(condition ? 0 : 1);
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public class ResultEnsureFactoryTests
             calls.Wrap(() => Task.FromResult(true)), errorFactory: null!);
 
         await act.ShouldRejectNullAsync("errorFactory");
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -172,7 +172,7 @@ public class ResultEnsureFactoryTests
             calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
         await act.ShouldRejectNullAsync("predicate");
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -189,7 +189,7 @@ public class ResultEnsureFactoryTests
             calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")));
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(exception);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public class ResultEnsureFactoryTests
             calls.Wrap<Error>(() => new Error.Forbidden("guard.denied")))
             .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]

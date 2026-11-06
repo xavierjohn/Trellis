@@ -116,7 +116,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationCalls.CallCount.Should().BeGreaterThan(0);
+        operationCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be(42);
     }
@@ -134,7 +134,7 @@ public class WhenTests : TestBase
             operation: operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeSuccess()
             .Which.Should().Be(21);
     }
@@ -152,7 +152,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => Task.FromResult(Result.Ok(x))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeFailure()
             .Which.Should().HaveCode(Error1.Code);
     }
@@ -174,7 +174,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => Task.FromResult(Result.Ok(x + 5))));
 
         // Assert
-        operationCalls.CallCount.Should().BeGreaterThan(0);
+        operationCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be(15);
     }
@@ -192,7 +192,7 @@ public class WhenTests : TestBase
             operation: operationCalls.Wrap(x => Task.FromResult(Result.Ok(x + 5))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeSuccess()
             .Which.Should().Be(10);
     }
@@ -210,7 +210,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => Task.FromResult(Result.Ok(x))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeFailure()
             .Which.Should().HaveCode(Error2.Code);
     }
@@ -232,7 +232,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x * 3))));
 
         // Assert
-        operationCalls.CallCount.Should().BeGreaterThan(0);
+        operationCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be(21);
     }
@@ -250,7 +250,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x * 3))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeSuccess()
             .Which.Should().Be(7);
     }
@@ -268,7 +268,7 @@ public class WhenTests : TestBase
             operation: operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x * 3))));
 
         // Assert
-        operationCalls.CallCount.Should().BeGreaterThan(0);
+        operationCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be(21);
     }
@@ -286,7 +286,7 @@ public class WhenTests : TestBase
             operation: operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x * 3))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeSuccess()
             .Which.Should().Be(7);
     }
@@ -308,7 +308,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x + 1))));
 
         // Assert
-        operationCalls.CallCount.Should().BeGreaterThan(0);
+        operationCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be(6);
     }
@@ -326,7 +326,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x + 1))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeSuccess()
             .Which.Should().Be(5);
     }
@@ -344,7 +344,7 @@ public class WhenTests : TestBase
             operation: operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x + 1))));
 
         // Assert
-        operationCalls.CallCount.Should().BeGreaterThan(0);
+        operationCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be(6);
     }
@@ -362,7 +362,7 @@ public class WhenTests : TestBase
             operation: operationCalls.Wrap(x => ValueTask.FromResult(Result.Ok(x + 1))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeSuccess()
             .Which.Should().Be(5);
     }
@@ -602,7 +602,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationCalls.CallCount.Should().BeGreaterThan(0);
+        operationCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess()
             .Which.Should().Be(84);
     }
@@ -620,7 +620,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeSuccess()
             .Which.Should().Be(42);
     }
@@ -638,7 +638,7 @@ public class WhenTests : TestBase
             operationCalls.Wrap(x => Task.FromResult(Result.Ok(x * 2))));
 
         // Assert
-        operationCalls.CallCount.Should().Be(0);
+        operationCalls.Should().NotHaveBeenCalled();
         actual.Should().BeFailure();
     }
 
@@ -676,7 +676,7 @@ public class WhenTests : TestBase
             validationCalls.Wrap(t => Task.FromResult(Result.Ok(t))));
 
         // Assert
-        validationCalls.CallCount.Should().BeGreaterThan(0);
+        validationCalls.Should().HaveBeenCalledAtLeastOnce();
         actual.Should().BeSuccess();
     }
 
