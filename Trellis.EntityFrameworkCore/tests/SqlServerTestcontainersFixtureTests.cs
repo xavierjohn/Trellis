@@ -13,14 +13,14 @@ public class SqlServerTestcontainersFixtureTests
     {
         var factoryCalls = new CallbackRecorder();
         await using var fixture = new SqlServerTestcontainersFixture(false, factoryCalls
-            .Wrap<IDatabaseContainer>(() => throw new InvalidOperationException("Docker must not be accessed.")));
+            .Forbidden<IDatabaseContainer>("Docker must not be accessed."));
 
         await fixture.InitializeAsync();
 
         fixture.IsEnabled.Should().BeFalse();
         Func<Task> request = () => fixture.CreateConnectionStringAsync().AsTask();
         await request.Should().ThrowExactlyAsync<InvalidOperationException>();
-        factoryCalls.CallCount.Should().Be(0);
+        factoryCalls.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -74,7 +74,7 @@ public class SqlServerTestcontainersFixtureTests
         {
             await fixture.InitializeAsync();
 
-            factoryCalls.CallCount.Should().Be(0);
+            factoryCalls.Should().NotHaveBeenCalled();
             container.Verify(c => c.StartAsync(It.IsAny<CancellationToken>()), Times.Never);
             var firstRequest = fixture.CreateConnectionStringAsync().AsTask();
             var secondRequest = fixture.CreateConnectionStringAsync().AsTask();
@@ -86,7 +86,7 @@ public class SqlServerTestcontainersFixtureTests
             var first = new SqlConnectionStringBuilder(await firstRequest);
             var second = new SqlConnectionStringBuilder(await secondRequest);
             fixture.IsEnabled.Should().BeTrue();
-            factoryCalls.CallCount.Should().Be(1);
+            factoryCalls.Should().HaveBeenCalledOnce();
             startupToken.CanBeCanceled.Should().BeTrue();
             first.DataSource.Should().Be("127.0.0.1,49152");
             second.DataSource.Should().Be(first.DataSource);

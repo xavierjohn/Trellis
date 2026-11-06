@@ -132,10 +132,9 @@ public sealed partial class OutboxReadinessTests
             OutboxReadinessOptions.CreateMetadataOnlyProfile(3), configure: services =>
             {
                 services.AddSingleton<OutboxOptions>(optionsResolutions
-                    .Wrap<OutboxOptions>(_ => throw new InvalidOperationException("Irrelevant local options must not be resolved.")));
+                    .Forbidden<OutboxOptions>("Irrelevant local options must not be resolved."));
                 services.AddSingleton<OutboxRelayObservations<OutboxTestDbContext>>(observationsResolutions
-                    .Wrap<OutboxRelayObservations<OutboxTestDbContext>>(_ =>
-                        throw new InvalidOperationException("Explicit local observations must not be resolved.")));
+                    .Forbidden<OutboxRelayObservations<OutboxTestDbContext>>("Explicit local observations must not be resolved."));
             });
         var validator = fixture.Provider.GetServices<IHostedService>()
             .OfType<IHostedLifecycleService>().Single();
@@ -144,8 +143,8 @@ public sealed partial class OutboxReadinessTests
         var result = await fixture.CheckAsync();
 
         result.Status.Should().Be(HealthStatus.Healthy);
-        optionsResolutions.CallCount.Should().Be(0);
-        observationsResolutions.CallCount.Should().Be(0);
+        optionsResolutions.Should().NotHaveBeenCalled();
+        observationsResolutions.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -309,7 +308,7 @@ public sealed partial class OutboxReadinessTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddScoped<OutboxTestDbContext>(factoryCalls
-            .Wrap<OutboxTestDbContext>(_ => throw new InvalidOperationException("A context must not be constructed during validation.")));
+            .Forbidden<OutboxTestDbContext>("A context must not be constructed during validation."));
         if (!metadataOnly)
             services.AddTrellisOutbox<OutboxTestDbContext>();
         services.AddTrellisOutboxReadiness<OutboxTestDbContext>(SelectProfile(metadataOnly));
@@ -318,7 +317,7 @@ public sealed partial class OutboxReadinessTests
 
         await validator.StartingAsync(Cancellation);
 
-        factoryCalls.CallCount.Should().Be(0);
+        factoryCalls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -327,7 +326,7 @@ public sealed partial class OutboxReadinessTests
         var factoryCalls = new CallbackRecorder<IServiceProvider>();
         var services = new ServiceCollection();
         services.AddScoped<OutboxTestDbContext>(factoryCalls
-            .Wrap<OutboxTestDbContext>(_ => throw new InvalidOperationException("The fallback must not construct the context.")));
+            .Forbidden<OutboxTestDbContext>("The fallback must not construct the context."));
         await using var provider = services.BuildServiceProvider();
         var wrapped = new ProviderWithoutRegistrationCapability(provider);
         wrapped.GetService(typeof(IServiceProviderIsService)).Should().BeNull();
@@ -337,7 +336,7 @@ public sealed partial class OutboxReadinessTests
         var start = () => validator.StartingAsync(Cancellation);
 
         await start.Should().NotThrowAsync();
-        factoryCalls.CallCount.Should().Be(0);
+        factoryCalls.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -417,14 +416,14 @@ public sealed partial class OutboxReadinessTests
         var factoryCalls = new CallbackRecorder<IServiceProvider>();
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddScoped<OutboxTestDbContext>(factoryCalls
-            .Wrap<OutboxTestDbContext>(_ => throw new InvalidOperationException("Startup must not construct a context.")));
+            .Forbidden<OutboxTestDbContext>("Startup must not construct a context."));
         builder.Services.AddTrellisOutboxReadiness<OutboxTestDbContext>(SelectProfile(true));
         using var host = builder.Build();
 
         await host.StartAsync(Cancellation);
         await host.StopAsync(Cancellation);
 
-        factoryCalls.CallCount.Should().Be(0);
+        factoryCalls.Should().NotHaveBeenCalled();
     }
 
     [Theory]

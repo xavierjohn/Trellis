@@ -15,7 +15,7 @@ public class ActorProviderExtensionsTests
         var result = await provider.RequireActorAsync(cancellation.Token);
 
         result.Should().BeSameAs(actor);
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         calls.Arguments.Should().ContainSingle().Which.Should().Be(cancellation.Token);
     }
 
