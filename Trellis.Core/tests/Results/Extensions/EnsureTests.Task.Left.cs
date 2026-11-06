@@ -169,8 +169,8 @@ public class EnsureTests_Task_Left
 
         result.Should().BeFailure("Input Result.Fail should be returned")
             .Which.Should().Be(initialError);
-        predicateCalls.CallCount.Should().Be(0, "Predicate should not be called when initial result is failure");
-        errorPredicateCalls.CallCount.Should().Be(0, "Error predicate should not be called when initial result is failure");
+        predicateCalls.Should().NotHaveBeenCalled("Predicate should not be called when initial result is failure");
+        errorPredicateCalls.Should().NotHaveBeenCalled("Error predicate should not be called when initial result is failure");
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public class EnsureTests_Task_Left
 
         result.Should().BeSuccess("Input Result passes predicate condition")
             .Which.Should().Be("initial ok");
-        errorPredicateCalls.CallCount.Should().Be(0, "Error predicate should not be called when predicate passes");
+        errorPredicateCalls.Should().NotHaveBeenCalled("Error predicate should not be called when predicate passes");
     }
 
     [Fact]

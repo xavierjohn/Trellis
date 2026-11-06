@@ -41,7 +41,7 @@ public class CheckIfTests
         var sut = result.CheckIf(false, checkCalls.Wrap(v => Result.Ok("ok")));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkCalls.CallCount.Should().Be(0, "check function should not be invoked when condition is false");
+        checkCalls.Should().NotHaveBeenCalled("check function should not be invoked when condition is false");
     }
 
     #endregion
@@ -57,7 +57,7 @@ public class CheckIfTests
         var sut = result.CheckIf(true, checkCalls.Wrap(v => Result.Ok("ok")));
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
-        checkCalls.CallCount.Should().Be(0, "check function should not be invoked for failed results");
+        checkCalls.Should().NotHaveBeenCalled("check function should not be invoked for failed results");
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class CheckIfTests
         var sut = result.CheckIf(v => v < 0, checkCalls.Wrap(v => Result.Ok("ok")));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkCalls.CallCount.Should().Be(0, "check function should not be invoked when predicate is false");
+        checkCalls.Should().NotHaveBeenCalled("check function should not be invoked when predicate is false");
     }
 
     #endregion
@@ -119,7 +119,7 @@ public class CheckIfTests
         var sut = result.CheckIf(predicateCalls.Wrap(v => v > 0), _ => Result.Ok("ok"));
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
-        predicateCalls.CallCount.Should().Be(0, "predicate should not be invoked for failed results");
+        predicateCalls.Should().NotHaveBeenCalled("predicate should not be invoked for failed results");
     }
 
     #endregion
@@ -205,7 +205,7 @@ public class CheckIfTests
             .Map(mapCalls.Wrap(s => s + "!"));
 
         result.Should().BeFailure();
-        mapCalls.CallCount.Should().Be(0, "downstream operations should not execute after check failure");
+        mapCalls.Should().NotHaveBeenCalled("downstream operations should not execute after check failure");
     }
 
     #endregion

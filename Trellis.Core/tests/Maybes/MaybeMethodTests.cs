@@ -3,6 +3,7 @@
 using System.Globalization;
 using Trellis;
 using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using static Trellis.Testing.CallbackRecorderAssertionsExtensions;
 
 /// <summary>
 /// Tests for Maybe instance methods: Bind, Or, Where, Tap, GetValueOrDefault(Func).
@@ -99,7 +100,7 @@ public class MaybeMethodTests
         var result = sut.Or(factoryCalls.Wrap(() => 10));
 
         result.Value.Should().Be(5);
-        factoryCalls.CallCount.Should().Be(0);
+        factoryCalls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -155,7 +156,7 @@ public class MaybeMethodTests
         var result = sut.Or(factoryCalls.Wrap(() => Maybe.From(10)));
 
         result.Value.Should().Be(5);
-        factoryCalls.CallCount.Should().Be(0);
+        factoryCalls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -302,7 +303,7 @@ public class MaybeMethodTests
 
         sut.GetValueOrDefault(callbackCalls.Wrap(() => 10));
 
-        callbackCalls.CallCount.Should().Be(0);
+        callbackCalls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -404,7 +405,7 @@ public class MaybeMethodTests
 
         sut.HasValueWhere(invocations.Wrap(_ => true));
 
-        invocations.CallCount.Should().Be(0);
+        invocations.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -461,7 +462,7 @@ public class MaybeMethodTests
 
         result.HasNoValue.Should().BeTrue();
         invocations.Arguments.Should().Equal(["source"]);
-        invocations.CallCount.Should().Be(1);
+        invocations.Should().HaveBeenCalledOnce();
     }
 
     [Fact]
@@ -470,10 +471,10 @@ public class MaybeMethodTests
         var sut = Maybe<string>.None;
         var invocations = new Trellis.Testing.CallbackRecorder<string>();
 
-        var result = sut.Map(invocations.Wrap<string>(_ => throw new InvalidOperationException("selector-must-not-run")));
+        var result = sut.Map(invocations.Forbidden<string>("selector-must-not-run"));
 
         result.HasNoValue.Should().BeTrue();
-        invocations.CallCount.Should().Be(0);
+        invocations.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -486,7 +487,7 @@ public class MaybeMethodTests
 
         result.TryGetValue(out var projected).Should().BeTrue();
         projected.Should().Be(0);
-        invocations.CallCount.Should().Be(1);
+        invocations.Should().HaveBeenCalledOnce();
     }
 
     [Fact]
@@ -499,6 +500,6 @@ public class MaybeMethodTests
 
         result.TryGetValue(out var projected).Should().BeTrue();
         projected.Should().BeFalse();
-        invocations.CallCount.Should().Be(1);
+        invocations.Should().HaveBeenCalledOnce();
     }
 }

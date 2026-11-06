@@ -55,7 +55,7 @@ public class Ensure_ValueTask_Right_Tests
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        predicateCalls.CallCount.Should().Be(0, "predicate should not be invoked for failed results");
+        predicateCalls.Should().NotHaveBeenCalled("predicate should not be invoked for failed results");
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class Ensure_ValueTask_Right_Tests
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        predicateCalls.CallCount.Should().Be(0, "predicate should not be invoked for failed results");
+        predicateCalls.Should().NotHaveBeenCalled("predicate should not be invoked for failed results");
     }
 
     [Fact]
@@ -197,7 +197,7 @@ public class Ensure_ValueTask_Right_Tests
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        errorFactoryCalls.CallCount.Should().Be(0, "error factory should not be invoked for failed results");
+        errorFactoryCalls.Should().NotHaveBeenCalled("error factory should not be invoked for failed results");
     }
 
     [Fact]
@@ -286,7 +286,7 @@ public class Ensure_ValueTask_Right_Tests
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        asyncErrorFactoryCalls.CallCount.Should().Be(0, "async error factory should not be invoked for failed results");
+        asyncErrorFactoryCalls.Should().NotHaveBeenCalled("async error factory should not be invoked for failed results");
     }
 
     [Fact]
@@ -358,7 +358,7 @@ public class Ensure_ValueTask_Right_Tests
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        predicateCalls.CallCount.Should().Be(0, "predicate should not be invoked for failed results");
+        predicateCalls.Should().NotHaveBeenCalled("predicate should not be invoked for failed results");
     }
 
     [Fact]
@@ -432,7 +432,7 @@ public class Ensure_ValueTask_Right_Tests
         // Assert
         result.Should().BeFailure("initial result is failure")
             .Which.Should().Be(initialError);
-        predicateCalls.CallCount.Should().Be(0, "predicate should not be invoked for failed results");
+        predicateCalls.Should().NotHaveBeenCalled("predicate should not be invoked for failed results");
     }
 
     [Fact]

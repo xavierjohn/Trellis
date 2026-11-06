@@ -31,7 +31,7 @@ public class EnsureNotNullOrWhiteSpaceTests
         });
 
         result.Should().BeSuccess().Which.Should().BeSameAs(value);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
         violations.Should().Be(0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Ok);
@@ -52,7 +52,7 @@ public class EnsureNotNullOrWhiteSpaceTests
         var result = value.EnsureNotNullOrWhiteSpace(calls.Wrap<Error>(() => error));
 
         result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNullOrWhiteSpace", ActivityStatusCode.Error);
     }

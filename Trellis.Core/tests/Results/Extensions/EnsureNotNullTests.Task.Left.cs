@@ -47,7 +47,7 @@ public class EnsureNotNullAsyncTests
             result.Should().BeFailure().Which.Should().Be(error);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.Should().HaveBeenCalledTimes(form == GuardForm.Factory && !present ? 1 : 0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNull",
             present ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
@@ -71,7 +71,7 @@ public class EnsureNotNullAsyncTests
             result.Should().BeFailure().Which.Should().Be(error);
         else
             result.Should().BeFailure().Which.Should().BeSameAs(error);
-        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.Should().HaveBeenCalledTimes(form == GuardForm.Factory && !present ? 1 : 0);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeFalse();
         tracing.AssertActivityCapturedWithStatus("EnsureNotNull",
             present ? ActivityStatusCode.Ok : ActivityStatusCode.Error);
@@ -91,10 +91,10 @@ public class EnsureNotNullAsyncTests
                 () => completion.TryComplete(present ? "value" : null),
                 TimeSpan.FromSeconds(30),
                 TestContext.Current.CancellationToken,
-                whilePending: () => calls.CallCount.Should().Be(0));
+                whilePending: () => calls.Should().NotHaveBeenCalled());
 
         result.IsSuccess.Should().Be(present);
-        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.Should().HaveBeenCalledTimes(form == GuardForm.Factory && !present ? 1 : 0);
     }
 
     [Theory]
@@ -111,10 +111,10 @@ public class EnsureNotNullAsyncTests
                 () => completion.TryComplete(present ? 0 : null),
                 TimeSpan.FromSeconds(30),
                 TestContext.Current.CancellationToken,
-                whilePending: () => calls.CallCount.Should().Be(0));
+                whilePending: () => calls.Should().NotHaveBeenCalled());
 
         result.IsSuccess.Should().Be(present);
-        calls.CallCount.Should().Be(form == GuardForm.Factory && !present ? 1 : 0);
+        calls.Should().HaveBeenCalledTimes(form == GuardForm.Factory && !present ? 1 : 0);
     }
 
     [Theory]
@@ -130,7 +130,7 @@ public class EnsureNotNullAsyncTests
         await Scalar(kind, form, Task.FromException<int?>(exception), error, calls.Wrap<Error>(() => error))
             .ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -146,7 +146,7 @@ public class EnsureNotNullAsyncTests
         await Scalar(kind, form, canceled.ToTask<int?>(), error, calls.Wrap<Error>(() => error))
             .ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -218,7 +218,7 @@ public class EnsureNotNullAsyncTests
 
         await reference.ShouldRejectNullAsync("task");
         await scalar.ShouldRejectNullAsync("task");
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]

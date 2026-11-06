@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Immutable;
 using static Trellis.Testing.ArgumentNullAssertionsExtensions;
+using static Trellis.Testing.CallbackRecorderAssertionsExtensions;
 
 /// <summary>
 /// Unit tests for the <see cref="Page{T}"/> pagination envelope.
@@ -155,6 +156,6 @@ public class PageTests
         mapped.AppliedLimit.Should().Be(10);
         mapped.DeliveredCount.Should().Be(0);
         mapped.WasCapped.Should().BeFalse();
-        mapperCalls.CallCount.Should().Be(0);
+        mapperCalls.Should().NotHaveBeenCalled();
     }
 }

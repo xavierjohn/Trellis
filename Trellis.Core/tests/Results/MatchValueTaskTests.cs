@@ -1,5 +1,7 @@
 ﻿namespace Trellis.Core.Tests;
 
+using static Trellis.Testing.CallbackRecorderAssertionsExtensions;
+
 /// <summary>
 /// Tests for Match/Switch ValueTask extension methods.
 /// - ValueTask Left-Async: ValueTask&lt;Result&lt;TIn&gt;&gt; with sync handlers
@@ -111,8 +113,8 @@ public class MatchValueTaskTests
 
         // Assert
         output.Should().Be(5);
-        successCalls.CallCount.Should().BeGreaterThan(0);
-        failureCalls.CallCount.Should().Be(0);
+        successCalls.Should().HaveBeenCalledAtLeastOnce();
+        failureCalls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -131,8 +133,8 @@ public class MatchValueTaskTests
 
         // Assert
         output.Should().Be(-1);
-        successCalls.CallCount.Should().Be(0);
-        failureCalls.CallCount.Should().BeGreaterThan(0);
+        successCalls.Should().NotHaveBeenCalled();
+        failureCalls.Should().HaveBeenCalledAtLeastOnce();
     }
 
     #endregion
@@ -256,8 +258,8 @@ public class MatchValueTaskTests
         );
 
         // Assert
-        successCalls.CallCount.Should().BeGreaterThan(0);
-        failureCalls.CallCount.Should().Be(0);
+        successCalls.Should().HaveBeenCalledAtLeastOnce();
+        failureCalls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -275,8 +277,8 @@ public class MatchValueTaskTests
         );
 
         // Assert
-        successCalls.CallCount.Should().Be(0);
-        failureCalls.CallCount.Should().BeGreaterThan(0);
+        successCalls.Should().NotHaveBeenCalled();
+        failureCalls.Should().HaveBeenCalledAtLeastOnce();
     }
 
     #endregion

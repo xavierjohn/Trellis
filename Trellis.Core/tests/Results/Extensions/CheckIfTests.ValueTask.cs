@@ -42,7 +42,7 @@ public class CheckIfTests_ValueTask
         var sut = await resultTask.CheckIfAsync(false, checkCalls.Wrap(v => new ValueTask<Result<string>>(Result.Ok("ok"))));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkCalls.CallCount.Should().Be(0);
+        checkCalls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class CheckIfTests_ValueTask
         var sut = await resultTask.CheckIfAsync(true, checkCalls.Wrap(v => new ValueTask<Result<string>>(Result.Ok("ok"))));
 
         sut.Should().BeFailure().Which.Should().Be(TestError);
-        checkCalls.CallCount.Should().Be(0);
+        checkCalls.Should().NotHaveBeenCalled();
     }
 
     #endregion
@@ -90,7 +90,7 @@ public class CheckIfTests_ValueTask
         var sut = await resultTask.CheckIfAsync(v => v < 0, checkCalls.Wrap(v => new ValueTask<Result<string>>(Result.Ok("ok"))));
 
         sut.Should().BeSuccess().Which.Should().Be(42);
-        checkCalls.CallCount.Should().Be(0);
+        checkCalls.Should().NotHaveBeenCalled();
     }
 
     #endregion

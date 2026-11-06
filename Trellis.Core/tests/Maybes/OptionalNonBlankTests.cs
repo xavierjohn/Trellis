@@ -18,7 +18,7 @@ public class OptionalNonBlankTests
         var result = Maybe.OptionalNonBlank(input, calls.Wrap(value => Result.Ok(value)));
 
         result.Should().BeSuccess().Which.HasNoValue.Should().BeTrue();
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -34,7 +34,7 @@ public class OptionalNonBlankTests
         var result = Maybe.OptionalNonBlank(input, calls.Wrap(value => Result.Ok(value)));
 
         result.Unwrap().Unwrap().Should().BeSameAs(input);
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         calls.Arguments.Should().ContainSingle().Which.Should().BeSameAs(input);
     }
 
@@ -68,7 +68,7 @@ public class OptionalNonBlankTests
 
         result.Should().BeFailure().Which.Should().BeSameAs(error);
         ((IPersistOnFailure)result).PersistOnFailure.Should().Be(persistOnFailure);
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
     }
 
     [Theory]
@@ -105,7 +105,7 @@ public class OptionalNonBlankTests
         var result = Maybe.Optional(input, calls.Wrap(value => Result.Ok(value)));
 
         result.Unwrap().Unwrap().Should().BeSameAs(input);
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         calls.Arguments.Should().ContainSingle().Which.Should().BeSameAs(input);
     }
 }

@@ -14,7 +14,7 @@ public class EnsureAllFactoryTests
         ));
 
         result.Should().BeSuccess().Which.Should().Be("valid");
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class EnsureAllFactoryTests
 
         result.Should().BeFailure().Which.Should().Be(error);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeTrue();
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public class EnsureAllFactoryTests
             : await Task.FromResult(Result.Ok("value")).EnsureAllAsync(checks);
 
         result.Should().BeFailureOfType<Error.InvalidInput>().Which.Should().HaveFieldViolationCount(2);
-        calls.CallCount.Should().Be(2);
+        calls.Should().HaveBeenCalledTimes(2);
     }
 
     [Theory]
@@ -164,10 +164,10 @@ public class EnsureAllFactoryTests
             () => completion.TryComplete(Result.Ok("ready")),
             TimeSpan.FromSeconds(30),
             TestContext.Current.CancellationToken,
-            whilePending: () => calls.CallCount.Should().Be(0));
+            whilePending: () => calls.Should().NotHaveBeenCalled());
 
         result.Should().BeSuccess().Which.Should().Be("ready");
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
     }
 
     [Theory]
@@ -189,7 +189,7 @@ public class EnsureAllFactoryTests
 
         result.Should().BeFailure().Which.Should().Be(error);
         ((IPersistOnFailure)result).PersistOnFailure.Should().BeTrue();
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Theory]

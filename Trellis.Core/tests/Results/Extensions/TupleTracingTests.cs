@@ -247,7 +247,7 @@ public class TupleTracingTests : TestBase
 
         // Assert
         result.Should().BeFailure();
-        actionCalls.CallCount.Should().BeGreaterThan(0);
+        actionCalls.Should().HaveBeenCalledAtLeastOnce();
         activityTest.AssertActivityCapturedWithStatus("TapOnFailure", ActivityStatusCode.Error);
     }
 

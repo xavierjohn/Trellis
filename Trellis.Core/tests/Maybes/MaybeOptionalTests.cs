@@ -23,7 +23,7 @@ public class MaybeOptionalTests
 
         // Assert
         result.Should().BeSuccess().Which.HasValue.Should().BeFalse();
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class MaybeOptionalTests
 
         // Assert
         result.Should().BeSuccess().Which.HasValue.Should().BeFalse();
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -256,7 +256,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional(emptyString, functionCalls.Wrap(str => Result.Ok(str)));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0, "empty string is not null, so function should be invoked");
+        functionCalls.Should().HaveBeenCalledAtLeastOnce("empty string is not null, so function should be invoked");
         result.Should().BeSuccess().Which.Should().HaveValue().Which.Should().Be("");
     }
 
@@ -271,7 +271,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional<Guid, string>(defaultGuid, functionCalls.Wrap(g => Result.Ok(g.ToString())));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0, "Guid.Empty is not null, so function should be invoked");
+        functionCalls.Should().HaveBeenCalledAtLeastOnce("Guid.Empty is not null, so function should be invoked");
         result.IsSuccess.Should().BeTrue();
     }
 
@@ -286,7 +286,7 @@ public class MaybeOptionalTests
         var result = Maybe.Optional<int, WrappedInt>(zero, functionCalls.Wrap(num => Result.Ok(new WrappedInt(num))));
 
         // Assert
-        functionCalls.CallCount.Should().BeGreaterThan(0, "zero is not null, so function should be invoked");
+        functionCalls.Should().HaveBeenCalledAtLeastOnce("zero is not null, so function should be invoked");
         result.Should().BeSuccess().Which.Unwrap().Value.Should().Be(0);
     }
 

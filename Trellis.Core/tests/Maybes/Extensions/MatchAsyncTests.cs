@@ -203,13 +203,13 @@ public class MatchAsyncTests : TestBase
             TestContext.Current.CancellationToken,
             whilePending: () =>
             {
-                someInvocations.CallCount.Should().Be(0);
-                noneInvocations.CallCount.Should().Be(0);
+                someInvocations.Should().NotHaveBeenCalled();
+                noneInvocations.Should().NotHaveBeenCalled();
             });
 
         result.Should().Be(14);
-        someInvocations.CallCount.Should().Be(1);
-        noneInvocations.CallCount.Should().Be(0);
+        someInvocations.Should().HaveBeenCalledOnce();
+        noneInvocations.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -226,13 +226,13 @@ public class MatchAsyncTests : TestBase
             TestContext.Current.CancellationToken,
             whilePending: () =>
             {
-                someInvocations.CallCount.Should().Be(0);
-                noneInvocations.CallCount.Should().Be(0);
+                someInvocations.Should().NotHaveBeenCalled();
+                noneInvocations.Should().NotHaveBeenCalled();
             });
 
         result.Should().Be(-42);
-        someInvocations.CallCount.Should().Be(0);
-        noneInvocations.CallCount.Should().Be(1);
+        someInvocations.Should().NotHaveBeenCalled();
+        noneInvocations.Should().HaveBeenCalledOnce();
     }
 
     [Fact]
@@ -246,8 +246,8 @@ public class MatchAsyncTests : TestBase
             some: someInvocations.Wrap(value => Task.FromResult(value * 2)),
             none: noneInvocations.Wrap(() => Task.FromResult(-1))).ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        someInvocations.CallCount.Should().Be(0);
-        noneInvocations.CallCount.Should().Be(0);
+        someInvocations.Should().NotHaveBeenCalled();
+        noneInvocations.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -261,8 +261,8 @@ public class MatchAsyncTests : TestBase
             some: someInvocations.Wrap(value => value * 2),
             none: noneInvocations.Wrap(() => -1)).ShouldPropagateExceptionAsync(exception, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        someInvocations.CallCount.Should().Be(0);
-        noneInvocations.CallCount.Should().Be(0);
+        someInvocations.Should().NotHaveBeenCalled();
+        noneInvocations.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -276,8 +276,8 @@ public class MatchAsyncTests : TestBase
             some: someInvocations.Wrap(value => value * 2),
             none: noneInvocations.Wrap(() => -1)).ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        someInvocations.CallCount.Should().Be(0);
-        noneInvocations.CallCount.Should().Be(0);
+        someInvocations.Should().NotHaveBeenCalled();
+        noneInvocations.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public class MatchAsyncTests : TestBase
             some: someInvocations.Wrap(value => new ValueTask<int>(value * 2)),
             none: noneInvocations.Wrap<ValueTask<int>>(() => new ValueTask<int>(-42))).ShouldPropagateCancellationAsync(canceled.Token, TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
 
-        someInvocations.CallCount.Should().Be(0);
-        noneInvocations.CallCount.Should().Be(0);
+        someInvocations.Should().NotHaveBeenCalled();
+        noneInvocations.Should().NotHaveBeenCalled();
     }
 }
