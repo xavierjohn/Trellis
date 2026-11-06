@@ -1377,7 +1377,7 @@ public static Task<Result<TResult>> BindAsync<TValue, TResult>(this Result<TValu
 public static Result<TOut> Map<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> map)
 public static Result<TValue> Ensure<TValue>(this Result<TValue> result, Func<TValue, bool> predicate, Error error)
 public static TOut Match<TIn, TOut>(this Result<TIn> result, Func<TIn, TOut> onSuccess, Func<Error, TOut> onFailure)
-public static Result<T> ToResult<T>(this T? obj, Error error) where T : class
+public static Result<TValue> ToResult<TValue>(in this Maybe<TValue> maybe, Error error) where TValue : notnull
 public static Maybe<T> ToMaybe<T>(this Result<T> result) where T : notnull
 public static Result<TValue> Recover<TValue>(this Result<TValue> result, Func<Error, TValue> fallbackFunc)
 public static Result<TValue> TapOnFailure<TValue>(this Result<TValue> result, Action<Error> action)
