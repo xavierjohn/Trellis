@@ -58,7 +58,7 @@ public class GptReviewRegressionTests
 
         result.Should().BeFailureOfType<Error.AuthenticationRequired>();
 
-        factoryInvocations.CallCount.Should().Be(0,
+        factoryInvocations.Should().NotHaveBeenCalled(
             "ga-11 requires that no I/O — including DI factory invocations — runs when the caller is unauthenticated. "
             + "Loader factories are arbitrary user code (a custom factory could open a DbContext, query a cache, etc.).");
     }
