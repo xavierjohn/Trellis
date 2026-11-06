@@ -76,6 +76,8 @@ public class AggregateTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
+    [InlineData("\u0085")]
+    [InlineData("\u00A0")]
     public void StampETag_with_empty_or_whitespace_throws_ArgumentException(string etag)
     {
         var aggregate = (IETagStampable)TestAggregate.Create("agg-1");
@@ -95,6 +97,69 @@ public class AggregateTests
         var act = () => aggregate.StampETag("\"quoted-etag\"");
 
         act.Should().Throw<ArgumentException>();
+    }
+
+    // RFC 9110 §8.8.1: etagc = %x21 / %x23-7E / obs-text (0x80-FF). The rows sit on both sides of every edge.
+    [Theory]
+    [InlineData('\u0000')]
+    [InlineData('\t')]
+    [InlineData('\u001F')]
+    [InlineData('\u0020')]
+    [InlineData('\u0022')]
+    [InlineData('\u007F')]
+    [InlineData('\u0100')]
+    [InlineData('\uFFFF')]
+    public void StampETag_with_a_character_outside_etagc_throws_and_names_the_character(char invalid)
+    {
+        var aggregate = (IETagStampable)TestAggregate.Create("agg-1");
+
+        var act = () => aggregate.StampETag($"ab{invalid}cd");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("etag")
+            .Which.Message.Should().Contain($"U+{(int)invalid:X4}");
+    }
+
+    [Theory]
+    [InlineData("\"abc")]
+    [InlineData("abc\"")]
+    [InlineData("a\"bc")]
+    [InlineData("ab\uD83D\uDE00cd")]
+    public void StampETag_rejects_an_invalid_character_at_any_position(string etag)
+    {
+        var aggregate = (IETagStampable)TestAggregate.Create("agg-1");
+
+        var act = () => aggregate.StampETag(etag);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData('\u0021')]
+    [InlineData('\u0023')]
+    [InlineData('\u007E')]
+    [InlineData('\u0080')]
+    [InlineData('\u00FF')]
+    public void StampETag_accepts_the_characters_at_the_etagc_boundaries(char valid)
+    {
+        var aggregate = TestAggregate.Create("agg-1");
+        var token = $"ab{valid}cd";
+
+        ((IETagStampable)aggregate).StampETag(token);
+
+        aggregate.ETag.Should().Be(token);
+    }
+
+    [Fact]
+    public void StampETag_with_an_invalid_etag_keeps_the_previous_etag()
+    {
+        var aggregate = TestAggregate.Create("agg-1");
+        ((IETagStampable)aggregate).StampETag("etag-old");
+
+        var act = () => ((IETagStampable)aggregate).StampETag("etag\u007Fnew");
+
+        act.Should().Throw<ArgumentException>();
+        aggregate.ETag.Should().Be("etag-old");
     }
 
     [Fact]
@@ -152,6 +217,33 @@ public class AggregateTests
         // Assert — throws, and the ETag, timestamps, and uncommitted event are all left untouched.
         act.Should().Throw<ArgumentException>();
         aggregate.ETag.Should().BeEmpty();
+        aggregate.CreatedAt.Should().Be(created);
+        aggregate.LastModified.Should().Be(modified);
+        aggregate.IsChanged.Should().BeTrue();
+    }
+
+    [Fact]
+    public void StampReconstitutedState_with_invalid_etag_keeps_a_previously_stamped_etag()
+    {
+        // Arrange — a previously stamped token that a failed reconstitution must not overwrite or clear.
+        var aggregate = TestAggregate.Create("agg-1");
+        ((IETagStampable)aggregate).StampETag("etag-old");
+        aggregate.DoSomething();
+        var created = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var modified = new DateTimeOffset(2024, 2, 1, 0, 0, 0, TimeSpan.Zero);
+        aggregate.CreatedAt = created;
+        aggregate.LastModified = modified;
+
+        // Act — DEL (0x7F) is the first character above the valid ASCII range.
+        var act = () => ((IReconstitutionStampable)aggregate)
+            .StampReconstitutedState(
+                new DateTimeOffset(2025, 5, 5, 0, 0, 0, TimeSpan.Zero),
+                new DateTimeOffset(2025, 6, 6, 0, 0, 0, TimeSpan.Zero),
+                "etag\u007Fnew");
+
+        // Assert
+        act.Should().Throw<ArgumentException>();
+        aggregate.ETag.Should().Be("etag-old");
         aggregate.CreatedAt.Should().Be(created);
         aggregate.LastModified.Should().Be(modified);
         aggregate.IsChanged.Should().BeTrue();
