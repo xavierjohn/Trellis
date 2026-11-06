@@ -43,7 +43,7 @@ public sealed class CallbackRecorder
     /// <param name="because">The reason the callback must not run; used as the exception message.</param>
     /// <returns>A recording callback that always throws <see cref="InvalidOperationException"/>.</returns>
     /// <exception cref="ArgumentException"><paramref name="because"/> is null, empty or whitespace.</exception>
-    public Action Forbid(string because)
+    public Action Forbidden(string because)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(because);
         return () =>
@@ -59,7 +59,7 @@ public sealed class CallbackRecorder
     /// <returns>A recording function that always throws <see cref="InvalidOperationException"/>.</returns>
     /// <remarks>The function throws synchronously when invoked, even when <typeparamref name="TResult"/> is a Task or ValueTask; it never returns a faulted task.</remarks>
     /// <exception cref="ArgumentException"><paramref name="because"/> is null, empty or whitespace.</exception>
-    public Func<TResult> Forbid<TResult>(string because)
+    public Func<TResult> Forbidden<TResult>(string because)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(because);
         return () =>
@@ -140,7 +140,7 @@ public sealed class CallbackRecorder<TArgument>
     /// <param name="because">The reason the callback must not run; used as the exception message.</param>
     /// <returns>A recording callback that always throws <see cref="InvalidOperationException"/>.</returns>
     /// <exception cref="ArgumentException"><paramref name="because"/> is null, empty or whitespace.</exception>
-    public Action<TArgument> Forbid(string because)
+    public Action<TArgument> Forbidden(string because)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(because);
         return argument =>
@@ -156,7 +156,7 @@ public sealed class CallbackRecorder<TArgument>
     /// <returns>A recording function that always throws <see cref="InvalidOperationException"/>.</returns>
     /// <remarks>The function throws synchronously when invoked, even when <typeparamref name="TResult"/> is a Task or ValueTask; it never returns a faulted task.</remarks>
     /// <exception cref="ArgumentException"><paramref name="because"/> is null, empty or whitespace.</exception>
-    public Func<TArgument, TResult> Forbid<TResult>(string because)
+    public Func<TArgument, TResult> Forbidden<TResult>(string because)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(because);
         return argument =>

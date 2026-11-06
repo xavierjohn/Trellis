@@ -33,7 +33,7 @@ maybe.Should().HaveValue().Which.Should().Be("Ada");
 - **Identity agreement** — `await actorProvider.ShouldHaveConsistentActorIdentityAsync(identityProvider, ct)` compares sequential resolutions with provider-specific diagnostics
 - **Structured validation** — Match full pointers/reason codes, count violations, or assert exact field/rule payload multisets with typed arguments
 - **Persistence intent** — `HavePersistOnFailure(bool)` on typed and interface result assertions
-- **Callback recording** — `CallbackRecorder` / `CallbackRecorder<TArgument>` record counts and ordered argument snapshots without changing callback outcomes; `Should().HaveBeenCalledOnce()` and siblings assert call counts, and `Forbid` makes a callback that must never run fail loudly
+- **Callback recording** — `CallbackRecorder` / `CallbackRecorder<TArgument>` record counts and ordered argument snapshots without changing callback outcomes; `Should().HaveBeenCalledOnce()` and siblings assert call counts, and `Forbidden` makes a callback that must never run fail loudly
 - **Controlled async sources** — `ControlledAsync<T>` is a pending source you complete, fault or cancel; `ControlledAsync.SingleUse<T>()` also proves a ValueTask is consumed exactly once
 - **Async assertions** — `ShouldBePendingThenReleaseAsync` (pending check, guaranteed release, bounded wait), `ShouldPropagateExceptionAsync` / `ShouldPropagateCancellationAsync` (original exception or token unchanged), `CanceledToken`, and null-guard checks that name the parameter (`ShouldRejectNull*`)
 - **Domain events** — `aggregate.UncommittedEvents().Should().HaveRaised<TEvent>()`, `NotHaveRaised`, `HaveRaisedCount`, `HaveRaisedExactlyInOrder`

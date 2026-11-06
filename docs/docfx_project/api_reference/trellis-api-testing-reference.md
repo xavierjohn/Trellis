@@ -35,7 +35,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-hand
 | Assert persistence intent without claiming a database commit | `.HavePersistOnFailure(expected)` on typed or interface result assertions | [Persistence intent](#persistence-intent) |
 | Record callback counts and ordered arguments | `CallbackRecorder` / `CallbackRecorder<TArgument>` | [Callback recorders](#callback-recorders) |
 | Assert a callback ran once, at least once, an exact number of times or never | `recorder.Should().HaveBeenCalledOnce()` and siblings | [Callback call-count assertions](#callback-call-count-assertions) |
-| Make a factory or selector fail the test if the code under test ever invokes it | `recorder.Forbid<TResult>(because)` | [Callback recorders](#callback-recorders) |
+| Make a factory or selector fail the test if the code under test ever invokes it | `recorder.Forbidden<TResult>(because)` | [Callback recorders](#callback-recorders) |
 | Control a genuinely pending Task/ValueTask receiver | `ControlledAsync<T>` | [`ControlledAsync<T>`](#controlledasynct) |
 | Bound an async assertion without canceling its source | `BeSuccessAsync(timeout, cancellationToken)` and failure variants | [Bounded async assertions](#bounded-async-assertions) |
 | Prove a ValueTask consumer reads its result exactly once | `ControlledAsync.SingleUse<T>()`, then `ResultReadCount` | [`ControlledAsync<T>`](#controlledasynct) |
@@ -517,8 +517,8 @@ public sealed class CallbackRecorder
     public void Record();
     public Action Wrap(Action callback);
     public Func<TResult> Wrap<TResult>(Func<TResult> callback);
-    public Action Forbid(string because);
-    public Func<TResult> Forbid<TResult>(string because);
+    public Action Forbidden(string because);
+    public Func<TResult> Forbidden<TResult>(string because);
 }
 
 public sealed class CallbackRecorder<TArgument>
@@ -529,8 +529,8 @@ public sealed class CallbackRecorder<TArgument>
     public void Record(TArgument argument);
     public Action<TArgument> Wrap(Action<TArgument> callback);
     public Func<TArgument, TResult> Wrap<TResult>(Func<TArgument, TResult> callback);
-    public Action<TArgument> Forbid(string because);
-    public Func<TArgument, TResult> Forbid<TResult>(string because);
+    public Action<TArgument> Forbidden(string because);
+    public Func<TArgument, TResult> Forbidden<TResult>(string because);
 }
 ```
 
@@ -541,11 +541,11 @@ not completion order; argument objects are not cloned. Use a tuple argument for 
 Use one recorder per test; there is no shared global state or reset lifecycle. Null callbacks
 throw `ArgumentNullException` before recording.
 
-`Forbid` creates a callback for code paths that must never invoke it, such as a factory that must
+`Forbidden` creates a callback for code paths that must never invoke it, such as a factory that must
 stay unresolved. It records the entry (so the count is non-zero even if the code under test swallows the
 exception) and then throws `InvalidOperationException` with `because` as the message. `because` is
 required: null, empty or whitespace throws `ArgumentException` at creation, before anything is recorded.
-`TResult` cannot be inferred, so write `recorder.Forbid<OutboxOptions>("options must not be resolved")`.
+`TResult` cannot be inferred, so write `recorder.Forbidden<OutboxOptions>("options must not be resolved")`.
 The function throws synchronously when invoked, even when `TResult` is a `Task` or `ValueTask`; it never returns a faulted task.
 
 #### Callback call-count assertions
@@ -577,8 +577,8 @@ Pick the assertion that states the intent: `HaveBeenCalledOnce` is exactly one e
 `HaveBeenCalledAtLeastOnce` is one or more, `NotHaveBeenCalled` is zero. Failures report the observed
 count, and the argument recorder also lists the recorded arguments. `HaveBeenCalledTimes` throws
 `ArgumentOutOfRangeException` for a negative `expected`. These `Should()` overloads are on the recorder
-types only. On a recorder they replace FluentAssertions' object assertions (`BeSameAs`, `BeEquivalentTo`, `Be`), so
-compare the recorder's `CallCount` or `Arguments` instead.
+types only. On a recorder they no longer offer FluentAssertions' `Be`, `NotBe` and `BeEquivalentTo`, so
+compare the recorder's `CallCount` or `Arguments` instead; `BeSameAs`, `NotBeNull` and the other reference-type assertions remain.
 
 #### `ControlledAsync<T>`
 

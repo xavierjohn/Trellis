@@ -115,10 +115,10 @@ public class CallbackRecorderTests
     }
 
     [Fact]
-    public void Forbid_Parameterless_RecordsEntryAndThrowsInvalidOperationWithReason()
+    public void Forbidden_Parameterless_RecordsEntryAndThrowsInvalidOperationWithReason()
     {
         var recorder = new CallbackRecorder();
-        var callback = recorder.Forbid("must not run");
+        var callback = recorder.Forbidden("must not run");
 
         var act = () => callback();
 
@@ -127,10 +127,10 @@ public class CallbackRecorderTests
     }
 
     [Fact]
-    public void Forbid_ParameterlessWithResult_RecordsEntryAndThrowsInvalidOperationWithReason()
+    public void Forbidden_ParameterlessWithResult_RecordsEntryAndThrowsInvalidOperationWithReason()
     {
         var recorder = new CallbackRecorder();
-        Func<int> callback = recorder.Forbid<int>("no value expected");
+        Func<int> callback = recorder.Forbidden<int>("no value expected");
 
         var act = () => callback();
 
@@ -139,11 +139,11 @@ public class CallbackRecorderTests
     }
 
     [Fact]
-    public void Forbid_Argument_RecordsArgumentAndThrowsInvalidOperationWithReason()
+    public void Forbidden_Argument_RecordsArgumentAndThrowsInvalidOperationWithReason()
     {
         var recorder = new CallbackRecorder<string>();
-        Action<string> action = recorder.Forbid("action forbidden");
-        Func<string, int> function = recorder.Forbid<int>("function forbidden");
+        Action<string> action = recorder.Forbidden("action forbidden");
+        Func<string, int> function = recorder.Forbidden<int>("function forbidden");
 
         var actionAct = () => action("first");
         var functionAct = () => function("second");
@@ -154,10 +154,10 @@ public class CallbackRecorderTests
     }
 
     [Fact]
-    public void Forbid_ExceptionSwallowedByCaller_StillCountsTheCall()
+    public void Forbidden_ExceptionSwallowedByCaller_StillCountsTheCall()
     {
         var recorder = new CallbackRecorder();
-        var callback = recorder.Forbid("swallowed");
+        var callback = recorder.Forbidden("swallowed");
 
         try
         {
@@ -174,15 +174,15 @@ public class CallbackRecorderTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Forbid_BlankReason_ThrowsArgumentExceptionBeforeAnyCall(string? reason)
+    public void Forbidden_BlankReason_ThrowsArgumentExceptionBeforeAnyCall(string? reason)
     {
         var recorder = new CallbackRecorder();
         var argumentRecorder = new CallbackRecorder<int>();
 
-        var parameterless = () => recorder.Forbid(reason!);
-        var parameterlessResult = () => recorder.Forbid<int>(reason!);
-        var argument = () => argumentRecorder.Forbid(reason!);
-        var argumentResult = () => argumentRecorder.Forbid<int>(reason!);
+        var parameterless = () => recorder.Forbidden(reason!);
+        var parameterlessResult = () => recorder.Forbidden<int>(reason!);
+        var argument = () => argumentRecorder.Forbidden(reason!);
+        var argumentResult = () => argumentRecorder.Forbidden<int>(reason!);
 
         parameterless.Should().Throw<ArgumentException>().WithParameterName("because");
         parameterlessResult.Should().Throw<ArgumentException>().WithParameterName("because");

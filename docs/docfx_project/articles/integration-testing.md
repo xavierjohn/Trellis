@@ -293,7 +293,7 @@ callbacks. Recording is thread-safe and occurs before invocation, even when the 
 callbacks are not serialized and returned Task/ValueTask values are not consumed.
 
 Assert counts with `Should().HaveBeenCalledOnce()`, `HaveBeenCalledAtLeastOnce()`, `HaveBeenCalledTimes(n)` or
-`NotHaveBeenCalled()`. For a factory or selector that must never run, pass `calls.Forbid<T>("reason")`: it records the
+`NotHaveBeenCalled()`. For a factory or selector that must never run, pass `calls.Forbidden<T>("reason")`: it records the
 entry and throws `InvalidOperationException`, so the count stays non-zero even if the code under test swallows it.
 
 `ShouldBePendingThenReleaseAsync` replaces the hand-written `try { assert pending } finally { release }`
