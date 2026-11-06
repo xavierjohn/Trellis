@@ -7,7 +7,7 @@ using Trellis.Core.Tests.Helpers;
 /// Pins the parent/child shape of the spans the ROP extensions emit: steps of one chain are siblings
 /// under whatever span was ambient, and an operation started inside a step's callback is a child of that step.
 /// </summary>
-public class TracingParentageTests
+public class ResultTracingParentageTests
 {
     private static readonly Error s_error = new Error.InvalidInput(EquatableArray<FieldViolation>.Empty) { Detail = "invalid" };
 
