@@ -412,6 +412,153 @@ public class MatchTupleTracingTests : TestBase
 
     #endregion
 
+    #region Handler Faults Trace Error
+
+    // The scalar Match/Switch mark the activity Error when a handler throws. The tuple forms must agree,
+    // otherwise a span for a failed success handler reads as Ok.
+
+    [Fact]
+    public void Match_2Tuple_WhenSuccessHandlerThrows_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var result = Result.Ok((42, "hello"));
+
+        var act = () => result.Match<int, string, string>(
+            onSuccess: (_, _) => throw new InvalidOperationException("boom"),
+            onFailure: _ => "Error");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public void Match_2Tuple_WhenFailureHandlerThrows_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var result = Result.Fail<(int, string)>(Error1);
+
+        var act = () => result.Match<int, string, string>(
+            onSuccess: (_, _) => "Ok",
+            onFailure: _ => throw new InvalidOperationException("boom"));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public void Switch_2Tuple_WhenSuccessHandlerThrows_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var result = Result.Ok((42, "hello"));
+
+        var act = () => result.Switch(
+            onSuccess: (_, _) => throw new InvalidOperationException("boom"),
+            onFailure: _ => { });
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Switch", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public void Switch_2Tuple_WhenFailureHandlerThrows_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var result = Result.Fail<(int, string)>(Error1);
+
+        var act = () => result.Switch(
+            onSuccess: (_, _) => { },
+            onFailure: _ => throw new InvalidOperationException("boom"));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Switch", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task MatchAsync_2Tuple_AsyncHandlers_WhenSuccessHandlerFaults_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var resultTask = Task.FromResult(Result.Ok((42, "hello")));
+
+        Func<Task> act = async () => await resultTask.MatchAsync(
+            onSuccess: (_, _) => Task.FromException<string>(new InvalidOperationException("boom")),
+            onFailure: _ => Task.FromResult("Error"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task MatchAsync_2Tuple_AsyncHandlers_WhenSuccessHandlerThrowsSynchronously_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var resultTask = Task.FromResult(Result.Ok((42, "hello")));
+
+        Func<Task> act = async () => await resultTask.MatchAsync<int, string, string>(
+            onSuccess: (_, _) => throw new InvalidOperationException("boom"),
+            onFailure: _ => Task.FromResult("Error"));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task MatchAsync_2Tuple_AsyncHandlers_WhenFailureHandlerFaults_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var resultTask = Task.FromResult(Result.Fail<(int, string)>(Error1));
+
+        Func<Task> act = async () => await resultTask.MatchAsync(
+            onSuccess: (_, _) => Task.FromResult("Ok"),
+            onFailure: _ => Task.FromException<string>(new InvalidOperationException("boom")));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task MatchAsync_2Tuple_SyncHandlers_WhenSuccessHandlerThrows_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var resultTask = Task.FromResult(Result.Ok((42, "hello")));
+
+        Func<Task> act = async () => await resultTask.MatchAsync<int, string, string>(
+            onSuccess: (_, _) => throw new InvalidOperationException("boom"),
+            onFailure: _ => "Error");
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Match", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task SwitchAsync_2Tuple_WhenSuccessHandlerFaults_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var resultTask = Task.FromResult(Result.Ok((42, "hello")));
+
+        Func<Task> act = async () => await resultTask.SwitchAsync(
+            onSuccess: (_, _) => Task.FromException(new InvalidOperationException("boom")),
+            onFailure: _ => Task.CompletedTask);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Switch", ActivityStatusCode.Error);
+    }
+
+    [Fact]
+    public async Task SwitchAsync_2Tuple_WhenFailureHandlerFaults_TracesErrorStatus()
+    {
+        using var activityTest = new ActivityTestHelper();
+        var resultTask = Task.FromResult(Result.Fail<(int, string)>(Error1));
+
+        Func<Task> act = async () => await resultTask.SwitchAsync(
+            onSuccess: (_, _) => Task.CompletedTask,
+            onFailure: _ => Task.FromException(new InvalidOperationException("boom")));
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
+        activityTest.AssertActivityCapturedWithStatus("Switch", ActivityStatusCode.Error);
+    }
+
+    #endregion
+
     #region Real-World Scenarios with Tracing
 
     [Fact]

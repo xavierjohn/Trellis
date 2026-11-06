@@ -113,9 +113,18 @@ public static class MatchTupleExtensions
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MatchTupleExtensions.Match));
         if (result.TryGetValue(out var tupleValue))
         {
-            activity?.SetStatus(ActivityStatusCode.Ok);
             <#= destructure #>
-            return onSuccess(<#= valueParams #>);
+            try
+            {
+                var output = onSuccess(<#= valueParams #>);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return output;
+            }
+            catch
+            {
+                activity?.SetStatus(ActivityStatusCode.Error);
+                throw;
+            }
         }
         else
         {
@@ -167,9 +176,17 @@ public static class MatchTupleExtensions
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MatchTupleExtensions.Switch));
         if (result.TryGetValue(out var tupleValue))
         {
-            activity?.SetStatus(ActivityStatusCode.Ok);
             <#= destructure #>
-            onSuccess(<#= valueParams #>);
+            try
+            {
+                onSuccess(<#= valueParams #>);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch
+            {
+                activity?.SetStatus(ActivityStatusCode.Error);
+                throw;
+            }
         }
         else
         {
@@ -268,9 +285,18 @@ public static class MatchTupleExtensionsAsync
         using var activity = RopTrace.ActivitySource.StartActivity(nameof(MatchTupleExtensions.Match));
         if (result.TryGetValue(out var tupleValue))
         {
-            activity?.SetStatus(ActivityStatusCode.Ok);
             <#= destructure #>
-            return await onSuccess(<#= valueParams #>).ConfigureAwait(false);
+            try
+            {
+                var output = await onSuccess(<#= valueParams #>).ConfigureAwait(false);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+                return output;
+            }
+            catch
+            {
+                activity?.SetStatus(ActivityStatusCode.Error);
+                throw;
+            }
         }
         else
         {
@@ -343,9 +369,17 @@ public static class MatchTupleExtensionsAsync
         var result = await resultTask.ConfigureAwait(false);
         if (result.TryGetValue(out var tupleValue))
         {
-            activity?.SetStatus(ActivityStatusCode.Ok);
             <#= destructure #>
-            await onSuccess(<#= valueParams #>).ConfigureAwait(false);
+            try
+            {
+                await onSuccess(<#= valueParams #>).ConfigureAwait(false);
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch
+            {
+                activity?.SetStatus(ActivityStatusCode.Error);
+                throw;
+            }
         }
         else
         {
