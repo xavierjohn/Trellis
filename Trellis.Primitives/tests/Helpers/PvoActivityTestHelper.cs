@@ -107,8 +107,8 @@ public sealed class PvoActivityTestHelper : IDisposable
     /// <param name="displayName">The activity display name to search for.</param>
     /// <param name="count">The minimum number of activities with this name to wait for.</param>
     /// <param name="timeout">Optional timeout period. Defaults to 2 seconds.</param>
-    /// <returns>An enumerable of activities with the specified name, or null if not found within timeout.</returns>
-    public IEnumerable<Activity>? WaitForActivities(string displayName, int count, TimeSpan? timeout = null)
+    /// <returns>A snapshot of the activities with the specified name, or null if not found within timeout.</returns>
+    public IReadOnlyList<Activity>? WaitForActivities(string displayName, int count, TimeSpan? timeout = null)
     {
         var maxWait = timeout ?? TimeSpan.FromSeconds(2);
         var stopwatch = Stopwatch.StartNew();
@@ -117,8 +117,8 @@ public sealed class PvoActivityTestHelper : IDisposable
         {
             lock (_lock)
             {
-                var activities = _capturedActivities.Where(a => a.DisplayName == displayName);
-                if (activities.Count() >= count)
+                var activities = _capturedActivities.Where(a => a.DisplayName == displayName).ToArray();
+                if (activities.Length >= count)
                     return activities;
             }
 
