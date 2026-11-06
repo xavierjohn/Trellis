@@ -35,20 +35,15 @@ public class ApiReferencePayloadGateTests
 
     [Fact]
     public void Only_the_analyzers_package_declares_that_core_delivers_its_reference() =>
-        PackableProjects().Where(p => p.DeliveredByCore).Select(p => p.Name)
+        PackableProjects(RepositoryRoot()).Where(p => p.DeliveredByCore).Select(p => p.Name)
             .Should().Equal(CoreDeliveredPackage);
 
     [Fact]
     public void Every_packable_package_delivers_the_api_reference_set()
     {
-        var projects = PackableProjects();
+        PackableProjects(RepositoryRoot()).Should().NotBeEmpty("the enumeration must actually find the repository's projects");
 
-        projects.Should().NotBeEmpty("the enumeration must actually find the repository's projects");
-
-        var undelivered = projects
-            .Where(p => !DeliversReferenceSet(p, projects))
-            .Select(p => p.Name)
-            .ToList();
+        var undelivered = UndeliveredPackages(RepositoryRoot());
 
         undelivered.Should().BeEmpty(
             "a packable package must ship the reference set, declare that Trellis.Core delivers its "
@@ -59,14 +54,7 @@ public class ApiReferencePayloadGateTests
     [Fact]
     public void Every_declared_reference_name_resolves_to_a_file()
     {
-        var root = RepositoryRoot();
-
-        var dangling = PackableProjects()
-            .Where(p => !string.IsNullOrEmpty(p.ApiRefName))
-            .Where(p => !File.Exists(Path.Combine(
-                root, "docs", "docfx_project", "api_reference", $"trellis-api-{p.ApiRefName}.md")))
-            .Select(p => $"{p.Name} -> trellis-api-{p.ApiRefName}.md")
-            .ToList();
+        var dangling = DanglingReferenceNames(RepositoryRoot());
 
         // A typo here is silent: the MSBuild None/Include simply matches nothing, so the package
         // packs successfully and ships no reference. The audits key off the same property, so they
@@ -90,7 +78,7 @@ public class ApiReferencePayloadGateTests
 
         // One package owns the guidance manifest, so a consumer approves Trellis.Core once and the
         // index does not accumulate a pending entry for every satellite package.
-        var shippers = PackableProjects().Where(p => p.ShipsReferenceSet).Select(p => p.Name).ToList();
+        var shippers = PackableProjects(root).Where(p => p.ShipsReferenceSet).Select(p => p.Name).ToList();
         shippers.Should().Equal("Trellis.Core");
 
         File.Exists(Path.Combine(root, "build", "Trellis.ApiReference.targets"))
@@ -103,7 +91,7 @@ public class ApiReferencePayloadGateTests
     public void Core_publishing_UsesPrivateSharedHelper_AndRemovesCustomManifestGenerator()
     {
         var root = RepositoryRoot();
-        var publishers = PackableProjects()
+        var publishers = PackableProjects(root)
             .Select(project => (project.Name, References: XDocument.Load(project.Path).Descendants()
                 .Where(element => element.Name.LocalName == "PackageReference" &&
                     (string?)element.Attribute("Include") == "Trellis.AgentDocs.Packaging").ToArray()))
@@ -184,13 +172,7 @@ public class ApiReferencePayloadGateTests
     [Fact]
     public void Every_packable_package_matches_the_first_party_manifest_target_layout()
     {
-        var root = RepositoryRoot();
-        var misplaced = PackableProjects()
-            .Where(project => !project.Path.Equals(
-                Path.Combine(root, project.Name, "src", project.Name + ".csproj"),
-                StringComparison.OrdinalIgnoreCase))
-            .Select(project => project.Path)
-            .ToList();
+        var misplaced = MisplacedProjects(RepositoryRoot());
 
         misplaced.Should().BeEmpty(
             "the pack-time manifest target is gated to <Package>/src/<Package>.csproj");
@@ -208,11 +190,7 @@ public class ApiReferencePayloadGateTests
         // quietly stops covering it, which is the same "hand-listed set goes stale" failure the
         // enumeration exists to avoid, one level up. This asserts the convention itself, so such a
         // project fails here instead of shipping without docs.
-        var stray = OutsideSrcProjects()
-            .Where(path => !Path.GetFileNameWithoutExtension(path).EndsWith(".Tests", StringComparison.Ordinal))
-            .Where(path => !DeclaresNonPackable(path))
-            .Select(path => Path.GetRelativePath(RepositoryRoot(), path))
-            .ToList();
+        var stray = StrayProjects(RepositoryRoot());
 
         stray.Should().BeEmpty(
             "a project outside */src/ that is not marked IsPackable=false is invisible to the "
@@ -223,12 +201,11 @@ public class ApiReferencePayloadGateTests
     /// True when the project, or any <c>Directory.Build.props</c> above it, opts out of packing.
     /// The walk matters: the example projects declare nothing themselves and inherit the opt-out.
     /// </summary>
-    private static bool DeclaresNonPackable(string projectPath)
+    private static bool DeclaresNonPackable(string projectPath, string root)
     {
         if (SaysNotPackable(projectPath))
             return true;
 
-        var root = RepositoryRoot();
         var directory = new DirectoryInfo(Path.GetDirectoryName(projectPath)!);
 
         while (directory is not null)
@@ -256,15 +233,48 @@ public class ApiReferencePayloadGateTests
             .Any(e => string.Equals(e.Value.Trim(), "false", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static IEnumerable<string> OutsideSrcProjects()
+    private static IEnumerable<string> OutsideSrcProjects(string root)
     {
         var separator = Path.DirectorySeparatorChar;
 
-        return Directory.EnumerateFiles(RepositoryRoot(), "*.csproj", SearchOption.AllDirectories)
+        return Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{separator}src{separator}", StringComparison.Ordinal))
             .Where(path => !path.Contains($"{separator}bin{separator}", StringComparison.Ordinal))
             .Where(path => !path.Contains($"{separator}obj{separator}", StringComparison.Ordinal));
     }
+
+    /// <summary>Packable packages under <paramref name="root"/> with no route to a package that delivers the reference set.</summary>
+    internal static List<string> UndeliveredPackages(string root)
+    {
+        var projects = PackableProjects(root);
+        return projects.Where(p => !DeliversReferenceSet(p, projects)).Select(p => p.Name).ToList();
+    }
+
+    /// <summary>Packages whose declared <c>TrellisApiRefName</c> names no reference file under <paramref name="root"/>.</summary>
+    internal static List<string> DanglingReferenceNames(string root) =>
+        PackableProjects(root)
+            .Where(p => !string.IsNullOrEmpty(p.ApiRefName))
+            .Where(p => !File.Exists(Path.Combine(
+                root, "docs", "docfx_project", "api_reference", $"trellis-api-{p.ApiRefName}.md")))
+            .Select(p => $"{p.Name} -> trellis-api-{p.ApiRefName}.md")
+            .ToList();
+
+    /// <summary>Packable projects that are not at <c>&lt;Package&gt;/src/&lt;Package&gt;.csproj</c> under <paramref name="root"/>.</summary>
+    internal static List<string> MisplacedProjects(string root) =>
+        PackableProjects(root)
+            .Where(project => !project.Path.Equals(
+                Path.Combine(root, project.Name, "src", project.Name + ".csproj"),
+                StringComparison.OrdinalIgnoreCase))
+            .Select(project => project.Path)
+            .ToList();
+
+    /// <summary>Projects outside the <c>src</c> convention that neither are test projects nor opt out of packing.</summary>
+    internal static List<string> StrayProjects(string root) =>
+        OutsideSrcProjects(root)
+            .Where(path => !Path.GetFileNameWithoutExtension(path).EndsWith(".Tests", StringComparison.Ordinal))
+            .Where(path => !DeclaresNonPackable(path, root))
+            .Select(path => Path.GetRelativePath(root, path))
+            .ToList();
 
     /// <summary>
     /// A package delivers the set when it ships it, states that Trellis.Core delivers its reference
@@ -297,9 +307,8 @@ public class ApiReferencePayloadGateTests
         return false;
     }
 
-    private static List<ProjectInfo> PackableProjects()
+    internal static List<ProjectInfo> PackableProjects(string root)
     {
-        var root = RepositoryRoot();
         var separator = Path.DirectorySeparatorChar;
 
         return Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
@@ -348,7 +357,7 @@ public class ApiReferencePayloadGateTests
         return directory!.FullName;
     }
 
-    private sealed record ProjectInfo(
+    internal sealed record ProjectInfo(
         string Name,
         string Path,
         bool IsPackable,
