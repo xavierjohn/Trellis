@@ -392,7 +392,7 @@ public class ScalarValueValidationTests
             var result = await filter.InvokeAsync(invocationContext, next);
 
             // Assert
-            nextCalls.CallCount.Should().Be(0);
+            nextCalls.Should().NotHaveBeenCalled();
             // Results.ValidationProblem() returns ProblemHttpResult
             result.Should().BeAssignableTo<Microsoft.AspNetCore.Http.IResult>();
             var problemResult = result as Microsoft.AspNetCore.Http.HttpResults.ProblemHttpResult;
@@ -420,7 +420,7 @@ public class ScalarValueValidationTests
             var result = await filter.InvokeAsync(null!, next);
 
             // Assert
-            nextCalls.CallCount.Should().BeGreaterThan(0);
+            nextCalls.Should().HaveBeenCalledAtLeastOnce();
             result.Should().Be("success");
         }
     }

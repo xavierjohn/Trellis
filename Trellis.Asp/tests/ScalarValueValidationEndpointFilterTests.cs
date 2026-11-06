@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
 using Xunit;
+using static Trellis.Testing.CallbackRecorderAssertionsExtensions;
 
 /// <summary>
 /// Tests for ScalarValueValidationEndpointFilter for Minimal APIs.
@@ -34,7 +35,7 @@ public class ScalarValueValidationEndpointFilterTests
             var result = await filter.InvokeAsync(context, next);
 
             // Assert
-            nextCalls.CallCount.Should().BeGreaterThan(0);
+            nextCalls.Should().HaveBeenCalledAtLeastOnce();
             result.Should().BeSameAs(expectedResult);
         }
     }
@@ -59,7 +60,7 @@ public class ScalarValueValidationEndpointFilterTests
             var result = await filter.InvokeAsync(context, next);
 
             // Assert
-            nextCalls.CallCount.Should().Be(0, "next should not be called when errors exist");
+            nextCalls.Should().NotHaveBeenCalled("next should not be called when errors exist");
             result.Should().BeOfType<ProblemHttpResult>();
 
             var validationProblem = (ProblemHttpResult)result!;
@@ -152,7 +153,7 @@ public class ScalarValueValidationEndpointFilterTests
             await filter.InvokeAsync(context, next);
 
             // Assert
-            nextCalls.CallCount.Should().BeGreaterThan(0);
+            nextCalls.Should().HaveBeenCalledAtLeastOnce();
         }
     }
 

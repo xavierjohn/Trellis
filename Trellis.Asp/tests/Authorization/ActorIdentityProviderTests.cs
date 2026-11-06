@@ -263,18 +263,18 @@ public class ActorIdentityProviderTests
         var services = new ServiceCollection();
         services.AddScoped<IActorProvider>(factoryCalls.Wrap<IActorProvider>(_ => new LegacyClaimsProvider()));
         services.AddTrellisWorkerActor(Actor.Create("system", new HashSet<string>()));
-        factoryCalls.CallCount.Should().Be(0);
+        factoryCalls.Should().NotHaveBeenCalled();
         using var root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         using var scope = root.CreateScope();
         var identity = scope.ServiceProvider.GetRequiredService<IActorIdentityProvider>();
 
         (await identity.GetCurrentActorIdAsync(Token)).Unwrap().Value.Should().Be("system");
-        factoryCalls.CallCount.Should().Be(0);
+        factoryCalls.Should().NotHaveBeenCalled();
         root.GetRequiredService<IHttpContextAccessor>().HttpContext = Context();
         var act = async () => await identity.GetCurrentActorIdAsync(Token);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*LegacyClaimsProvider*IActorIdentityProvider*");
-        factoryCalls.CallCount.Should().Be(1);
+        factoryCalls.Should().HaveBeenCalledOnce();
         (await scope.ServiceProvider.GetRequiredService<IActorProvider>()
             .GetCurrentActorAsync(Token)).Unwrap().Id.Value.Should().Be("custom:identity");
     }

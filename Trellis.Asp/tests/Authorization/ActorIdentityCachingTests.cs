@@ -60,7 +60,7 @@ public class ActorIdentityCachingTests
         var cache = new CachingActorProvider(provider, new HttpContextAccessor());
         var first = cache.GetCurrentActorIdAsync(Token).AsTask();
         var second = cache.GetCurrentActorIdAsync(Token).AsTask();
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         provider.ActorCalls.Should().Be(0);
         completion.TryComplete(Maybe.From(ActorId.Create("shared")));
 
@@ -105,7 +105,7 @@ public class ActorIdentityCachingTests
             await act.Should().ThrowAsync<OperationCanceledException>();
         }
 
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         provider.ActorCalls.Should().Be(0);
     }
 
@@ -131,7 +131,7 @@ public class ActorIdentityCachingTests
         observed.IsCancellationRequested.Should().BeFalse();
         completion.TryComplete(Maybe.From(ActorId.Create("survivor")));
         (await survivor).Unwrap().Value.Should().Be("survivor");
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
     }
 
     [Theory]
@@ -155,7 +155,7 @@ public class ActorIdentityCachingTests
             (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
         }
 
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         provider.ActorCalls.Should().Be(0);
     }
 
@@ -169,7 +169,7 @@ public class ActorIdentityCachingTests
         (await cache.GetCurrentActorIdAsync(Token)).Should().BeNone();
         (await cache.GetCurrentActorIdAsync(Token)).Should().BeNone();
         provider.ActorCalls.Should().Be(0);
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         (await cache.GetCurrentActorAsync(Token)).Should().BeNone();
     }
 

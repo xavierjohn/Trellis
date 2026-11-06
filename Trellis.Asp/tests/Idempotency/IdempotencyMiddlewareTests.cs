@@ -243,14 +243,14 @@ public sealed class IdempotencyMiddlewareTests
         problem.RootElement.GetProperty("code").GetString().Should().Be("idempotency.key_reused_with_different_body");
         problem.RootElement.GetProperty("detail").GetString().Should().Be(
             "The Idempotency-Key value was reused with a different request fingerprint (method, path, query, headers, or body).");
-        executions.CallCount.Should().Be(1);
+        executions.Should().HaveBeenCalledOnce();
 
         using var retry = new HttpRequestMessage(HttpMethod.Post, "/fingerprint/A") { Content = JsonBody("{}") };
         retry.Headers.Add(KeyHeader, QuoteKey(key));
         using var replay = await client.SendAsync(retry, TestContext.Current.CancellationToken);
         replay.StatusCode.Should().Be(HttpStatusCode.Created);
         replay.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
-        executions.CallCount.Should().Be(1);
+        executions.Should().HaveBeenCalledOnce();
     }
 
     [Fact]
@@ -302,7 +302,7 @@ public sealed class IdempotencyMiddlewareTests
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
             .Should().Contain("idempotency.key_invalid");
-        executions.CallCount.Should().Be(0);
+        executions.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -341,7 +341,7 @@ public sealed class IdempotencyMiddlewareTests
         replay.StatusCode.Should().Be(HttpStatusCode.Created);
         replay.Headers.GetValues("Idempotent-Replayed").Should().Contain("true");
         (await replay.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("created");
-        executions.CallCount.Should().Be(1);
+        executions.Should().HaveBeenCalledOnce();
     }
 
     [Fact]
@@ -712,7 +712,7 @@ public sealed class IdempotencyMiddlewareTests
             "transient 5xx responses must not be cached");
         secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse(
             "the retry must hit the handler again, not replay the original 5xx");
-        executions.CallCount.Should().Be(2, "the handler must execute on each retry of a 5xx outcome");
+        executions.Should().HaveBeenCalledTimes(2, "the handler must execute on each retry of a 5xx outcome");
     }
 
     [Fact]
@@ -741,7 +741,7 @@ public sealed class IdempotencyMiddlewareTests
         secondResp.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
         secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse(
             "5xx detection must work even when the handler never flushed the response body");
-        executions.CallCount.Should().Be(2);
+        executions.Should().HaveBeenCalledTimes(2);
     }
 
     [Fact]
@@ -771,7 +771,7 @@ public sealed class IdempotencyMiddlewareTests
         secondResp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         secondResp.Headers.GetValues("Idempotent-Replayed").Should().Contain("true",
             "deterministic 4xx outcomes are still cached because retries will produce the same answer");
-        executions.CallCount.Should().Be(1, "the handler must run only once when a 4xx outcome was cached");
+        executions.Should().HaveBeenCalledOnce("the handler must run only once when a 4xx outcome was cached");
     }
 
     [Fact]
@@ -806,7 +806,7 @@ public sealed class IdempotencyMiddlewareTests
         secondResp.StatusCode.Should().Be(HttpStatusCode.OK);
         secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse(
             "responses that wrote trailers cannot be replayed by the snapshot writer, so they must not be cached");
-        executions.CallCount.Should().Be(2, "the handler must execute on each retry when trailers were written");
+        executions.Should().HaveBeenCalledTimes(2, "the handler must execute on each retry when trailers were written");
     }
 
     [Fact]
@@ -1004,7 +1004,7 @@ public sealed class IdempotencyMiddlewareTests
         received.Should().Equal(["\"\""]);
         firstResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         firstResponse.Headers.Contains("Idempotent-Replayed").Should().BeFalse();
-        executions.CallCount.Should().Be(1);
+        executions.Should().HaveBeenCalledOnce();
 
         using var retry = new HttpRequestMessage(HttpMethod.Post, "/empty-key") { Content = JsonBody("{\"x\":1}") };
         retry.Headers.TryAddWithoutValidation(KeyHeader, "\"\"").Should().BeTrue();
@@ -1020,7 +1020,7 @@ public sealed class IdempotencyMiddlewareTests
         (await mismatch.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))
             .Should().Contain("idempotency.key_reused_with_different_body");
         received.Should().Equal(["\"\"", "\"\"", "\"\""]);
-        executions.CallCount.Should().Be(1);
+        executions.Should().HaveBeenCalledOnce();
     }
 
     [Fact]
@@ -1292,7 +1292,7 @@ public sealed class IdempotencyMiddlewareTests
             "the immediate retry must be able to re-reserve the abandoned key instead of receiving idempotency.in_flight");
         secondResp.Headers.Contains("Idempotent-Replayed").Should().BeFalse(
             "CompleteAsync failed, so there is no persisted snapshot to replay");
-        executions.CallCount.Should().Be(2, "the retry must execute the handler after the first reservation is abandoned");
+        executions.Should().HaveBeenCalledTimes(2, "the retry must execute the handler after the first reservation is abandoned");
     }
 
     private sealed class CapturingLoggerProvider : ILoggerProvider

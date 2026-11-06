@@ -25,7 +25,7 @@ public class CachingActorProviderTests
         var result2 = await caching.GetCurrentActorAsync(TestContext.Current.CancellationToken);
 
         result1.Unwrap().Should().BeSameAs(result2.Unwrap());
-        calls.CallCount.Should().Be(1, "inner provider should only be called once");
+        calls.Should().HaveBeenCalledOnce("inner provider should only be called once");
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public class CachingActorProviderTests
         await act1.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
         await act2.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
 
-        calls.CallCount.Should().Be(1,
+        calls.Should().HaveBeenCalledOnce(
             "synchronous failures from the inner provider must be cached for the request scope, "
             + "matching the contract documented on CachingActorProvider");
     }

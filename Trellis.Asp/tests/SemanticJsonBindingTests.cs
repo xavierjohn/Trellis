@@ -40,7 +40,7 @@ public sealed class SemanticJsonBindingTests
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType.Should().BeNull();
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
     }
 
     [Theory]
@@ -61,7 +61,7 @@ public sealed class SemanticJsonBindingTests
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("code").GetString().Should().Be("error.unspecified");
@@ -84,7 +84,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/semantic", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -106,7 +106,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/semantic", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("fieldViolations").EnumerateArray()
@@ -127,7 +127,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/scalar", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("kind").GetString().Should().Be("bad-request");
@@ -149,7 +149,7 @@ public sealed class SemanticJsonBindingTests
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("kind").GetString().Should().Be("bad-request");
@@ -171,7 +171,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/semantic", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("fieldViolations").EnumerateArray()
@@ -194,7 +194,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/strict", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -227,7 +227,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync(route, content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("fieldViolations").EnumerateArray()
@@ -253,7 +253,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/callback", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -268,7 +268,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/callback", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         using var body = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         body.RootElement.GetDecimal().Should().Be(3m);
@@ -300,7 +300,7 @@ public sealed class SemanticJsonBindingTests
             "/nested-callback", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Fact]
@@ -336,7 +336,7 @@ public sealed class SemanticJsonBindingTests
             "/derived-callback", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        calls.CallCount.Should().Be(1);
+        calls.Should().HaveBeenCalledOnce();
         (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).Should().Be("1");
     }
 
@@ -392,7 +392,7 @@ public sealed class SemanticJsonBindingTests
         using var response = await client.PostAsync("/rule", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
         using var problem = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         problem.RootElement.GetProperty("ruleViolations").EnumerateArray()
@@ -424,7 +424,7 @@ public sealed class SemanticJsonBindingTests
             "/optional-composite?count=invalid", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     [Theory]
@@ -448,7 +448,7 @@ public sealed class SemanticJsonBindingTests
         response.StatusCode.Should().Be(invalidBody
             ? HttpStatusCode.UnprocessableEntity
             : HttpStatusCode.BadRequest);
-        calls.CallCount.Should().Be(0);
+        calls.Should().NotHaveBeenCalled();
     }
 
     private static async Task<WebApplication> CreateAppAsync(
