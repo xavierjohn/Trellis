@@ -101,6 +101,8 @@ finally
 `ControlledAsync<T>` is one type with two modes: Task-backed by default, or
 `ControlledAsync.SingleUse<T>()`, whose `ValueTask` throws on a second consumption and counts reads in
 `ResultReadCount`. `CallbackRecorder<TArgument>` records ordered argument snapshots (`Arguments`).
+Assert counts with `calls.Should().HaveBeenCalledOnce()` (also `NotHaveBeenCalled`, `HaveBeenCalledAtLeastOnce`,
+`HaveBeenCalledTimes`), and use `calls.Forbidden<T>("reason")` for a callback that must never run.
 Bounded success/failure assertions take a timeout and token; they stop only the assertion wait, never the
 operation. The helpers are test-runner-agnostic.
 

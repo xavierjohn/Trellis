@@ -113,4 +113,82 @@ public class CallbackRecorderTests
         calls.CallCount.Should().Be(0);
         arguments.Arguments.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Forbidden_Parameterless_RecordsEntryAndThrowsInvalidOperationWithReason()
+    {
+        var recorder = new CallbackRecorder();
+        var callback = recorder.Forbidden("must not run");
+
+        var act = () => callback();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("must not run");
+        recorder.CallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void Forbidden_ParameterlessWithResult_RecordsEntryAndThrowsInvalidOperationWithReason()
+    {
+        var recorder = new CallbackRecorder();
+        Func<int> callback = recorder.Forbidden<int>("no value expected");
+
+        var act = () => callback();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("no value expected");
+        recorder.CallCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void Forbidden_Argument_RecordsArgumentAndThrowsInvalidOperationWithReason()
+    {
+        var recorder = new CallbackRecorder<string>();
+        Action<string> action = recorder.Forbidden("action forbidden");
+        Func<string, int> function = recorder.Forbidden<int>("function forbidden");
+
+        var actionAct = () => action("first");
+        var functionAct = () => function("second");
+
+        actionAct.Should().Throw<InvalidOperationException>().WithMessage("action forbidden");
+        functionAct.Should().Throw<InvalidOperationException>().WithMessage("function forbidden");
+        recorder.Arguments.Should().Equal(["first", "second"]);
+    }
+
+    [Fact]
+    public void Forbidden_ExceptionSwallowedByCaller_StillCountsTheCall()
+    {
+        var recorder = new CallbackRecorder();
+        var callback = recorder.Forbidden("swallowed");
+
+        try
+        {
+            callback();
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        recorder.Should().HaveBeenCalledOnce();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Forbidden_BlankReason_ThrowsArgumentExceptionBeforeAnyCall(string? reason)
+    {
+        var recorder = new CallbackRecorder();
+        var argumentRecorder = new CallbackRecorder<int>();
+
+        var parameterless = () => recorder.Forbidden(reason!);
+        var parameterlessResult = () => recorder.Forbidden<int>(reason!);
+        var argument = () => argumentRecorder.Forbidden(reason!);
+        var argumentResult = () => argumentRecorder.Forbidden<int>(reason!);
+
+        parameterless.Should().Throw<ArgumentException>().WithParameterName("because");
+        parameterlessResult.Should().Throw<ArgumentException>().WithParameterName("because");
+        argument.Should().Throw<ArgumentException>().WithParameterName("because");
+        argumentResult.Should().Throw<ArgumentException>().WithParameterName("because");
+        recorder.CallCount.Should().Be(0);
+        argumentRecorder.CallCount.Should().Be(0);
+    }
 }

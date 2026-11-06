@@ -38,6 +38,36 @@ public sealed class CallbackRecorder
             return callback();
         };
     }
+
+    /// <summary>Creates a callback that records its entry and then throws, for code paths that must never invoke it.</summary>
+    /// <param name="because">The reason the callback must not run; used as the exception message.</param>
+    /// <returns>A recording callback that always throws <see cref="InvalidOperationException"/>.</returns>
+    /// <exception cref="ArgumentException"><paramref name="because"/> is null, empty or whitespace.</exception>
+    public Action Forbidden(string because)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(because);
+        return () =>
+        {
+            Record();
+            throw new InvalidOperationException(because);
+        };
+    }
+
+    /// <summary>Creates a function that records its entry and then throws, for code paths that must never invoke it.</summary>
+    /// <typeparam name="TResult">The return type the code under test expects.</typeparam>
+    /// <param name="because">The reason the callback must not run; used as the exception message.</param>
+    /// <returns>A recording function that always throws <see cref="InvalidOperationException"/>.</returns>
+    /// <remarks>The function throws synchronously when invoked, even when <typeparamref name="TResult"/> is a Task or ValueTask; it never returns a faulted task.</remarks>
+    /// <exception cref="ArgumentException"><paramref name="because"/> is null, empty or whitespace.</exception>
+    public Func<TResult> Forbidden<TResult>(string because)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(because);
+        return () =>
+        {
+            Record();
+            throw new InvalidOperationException(because);
+        };
+    }
 }
 
 /// <summary>Records callback arguments in entry order without changing callback outcomes.</summary>
@@ -103,6 +133,36 @@ public sealed class CallbackRecorder<TArgument>
         {
             Record(argument);
             return callback(argument);
+        };
+    }
+
+    /// <summary>Creates a callback that records its argument and then throws, for code paths that must never invoke it.</summary>
+    /// <param name="because">The reason the callback must not run; used as the exception message.</param>
+    /// <returns>A recording callback that always throws <see cref="InvalidOperationException"/>.</returns>
+    /// <exception cref="ArgumentException"><paramref name="because"/> is null, empty or whitespace.</exception>
+    public Action<TArgument> Forbidden(string because)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(because);
+        return argument =>
+        {
+            Record(argument);
+            throw new InvalidOperationException(because);
+        };
+    }
+
+    /// <summary>Creates a function that records its argument and then throws, for code paths that must never invoke it.</summary>
+    /// <typeparam name="TResult">The return type the code under test expects.</typeparam>
+    /// <param name="because">The reason the callback must not run; used as the exception message.</param>
+    /// <returns>A recording function that always throws <see cref="InvalidOperationException"/>.</returns>
+    /// <remarks>The function throws synchronously when invoked, even when <typeparamref name="TResult"/> is a Task or ValueTask; it never returns a faulted task.</remarks>
+    /// <exception cref="ArgumentException"><paramref name="because"/> is null, empty or whitespace.</exception>
+    public Func<TArgument, TResult> Forbidden<TResult>(string because)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(because);
+        return argument =>
+        {
+            Record(argument);
+            throw new InvalidOperationException(because);
         };
     }
 }

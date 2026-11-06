@@ -275,7 +275,7 @@ var calls = new CallbackRecorder<int>();
 var validate = calls.Wrap((int value) => Result.Ok(value * 2));
 
 validate(3).Should().HaveValue(6);
-calls.CallCount.Should().Be(1);
+calls.Should().HaveBeenCalledOnce();
 calls.Arguments.Should().Equal([3]);
 
 var source = new ControlledAsync<Result<int>>();
@@ -291,6 +291,10 @@ result.Should().BeSuccess().Which.Should().Be(42);
 Use parameterless `CallbackRecorder` for error factories and tuple arguments for multi-input
 callbacks. Recording is thread-safe and occurs before invocation, even when the callback throws;
 callbacks are not serialized and returned Task/ValueTask values are not consumed.
+
+Assert counts with `Should().HaveBeenCalledOnce()`, `HaveBeenCalledAtLeastOnce()`, `HaveBeenCalledTimes(n)` or
+`NotHaveBeenCalled()`. For a factory or selector that must never run, pass `calls.Forbidden<T>("reason")`: it records the
+entry and throws `InvalidOperationException`, so the count stays non-zero even if the code under test swallows it.
 
 `ShouldBePendingThenReleaseAsync` replaces the hand-written `try { assert pending } finally { release }`
 scaffold: it asserts the operation is still pending, runs your pending-state checks, **always** releases

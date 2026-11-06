@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - `Forbidden` and call-count assertions for callback recorders in Trellis.Testing
+
+`CallbackRecorder.Forbidden(because)` / `Forbidden<TResult>(because)` and the same overloads on
+`CallbackRecorder<TArgument>` create a callback for code paths that must never invoke it: the entry is recorded
+(so the count is non-zero even if the code under test swallows the exception) and then
+`InvalidOperationException(because)` is thrown. A null or blank reason throws `ArgumentException` at creation.
+`recorder.Should()` now offers `NotHaveBeenCalled`, `HaveBeenCalledOnce`, `HaveBeenCalledAtLeastOnce` and
+`HaveBeenCalledTimes(n)`, with the observed count (and, for the argument recorder, the recorded arguments) in the
+failure message.
+
+**Source-breaking:** `Should()` on a `CallbackRecorder` or `CallbackRecorder<TArgument>` now returns the new
+`CallbackRecorderAssertions` classes. Calls that relied on FluentAssertions' object assertions there (`Be`,
+`NotBe`, `BeEquivalentTo`) no longer compile; assert on `CallCount` or `Arguments` instead.
+
 ### Added - `TestGate` rendezvous helper in Trellis.Testing
 
 `TestGate` replaces the hand-written `entered` / `release` `TaskCompletionSource` pair used to pause code under
