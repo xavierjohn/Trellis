@@ -133,4 +133,106 @@ public class RepresentationMetadataTests
 
         metadata.Vary.Should().Equal(["Accept", "Accept-Encoding"]);
     }
+
+    [Fact]
+    public void WithETag_wildcard_is_rejected()
+    {
+        var act = () => RepresentationMetadata.WithETag(EntityTagValue.Wildcard());
+
+        act.ShouldRejectArgument("eTag");
+    }
+
+    [Fact]
+    public void Builder_SetETag_wildcard_is_rejected_when_built()
+    {
+        var act = () => RepresentationMetadata.Create()
+            .SetETag(EntityTagValue.Wildcard())
+            .Build();
+
+        act.ShouldRejectArgument("eTag");
+    }
+
+    [Fact]
+    public void A_literal_star_tag_is_not_the_wildcard_and_is_accepted()
+    {
+        var viaFactory = RepresentationMetadata.WithETag(EntityTagValue.Strong("*"));
+        var viaBuilder = RepresentationMetadata.Create().SetWeakETag("*").Build();
+
+        viaFactory.ETag!.OpaqueTag.Should().Be("*");
+        viaFactory.ETag.IsWildcard.Should().BeFalse();
+        viaBuilder.ETag!.OpaqueTag.Should().Be("*");
+        viaBuilder.ETag.IsWeak.Should().BeTrue();
+    }
+
+    private static string[] Names(params string[] values) => values;
+
+    public static TheoryData<string[]> BlankOnlyLists() =>
+        new()
+        {
+            Names(),
+            Names(string.Empty),
+            Names(" ", "\t"),
+        };
+
+    [Theory]
+    [MemberData(nameof(BlankOnlyLists))]
+    public void Builder_AddVary_with_only_blank_names_builds_null(string[] fieldNames)
+    {
+        var metadata = RepresentationMetadata.Create().AddVary(fieldNames).Build();
+
+        metadata.Vary.Should().BeNull();
+    }
+
+    [Theory]
+    [MemberData(nameof(BlankOnlyLists))]
+    public void Builder_AddContentLanguage_with_only_blank_values_builds_null(string[] languages)
+    {
+        var metadata = RepresentationMetadata.Create().AddContentLanguage(languages).Build();
+
+        metadata.ContentLanguage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Builder_blank_entries_are_skipped_and_valid_ones_kept()
+    {
+        var metadata = RepresentationMetadata.Create()
+            .AddVary(" ", "Accept", string.Empty)
+            .AddContentLanguage("\t", "en", string.Empty)
+            .Build();
+
+        metadata.Vary.Should().Equal(["Accept"]);
+        metadata.ContentLanguage.Should().Equal(["en"]);
+    }
+
+    [Fact]
+    public void Build_returns_a_snapshot_that_later_builder_changes_do_not_alter()
+    {
+        var firstDate = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var builder = RepresentationMetadata.Create()
+            .SetStrongETag("first")
+            .SetLastModified(firstDate)
+            .AddVary("Accept")
+            .AddContentLanguage("en")
+            .SetContentLocation("/first");
+        var first = builder.Build();
+
+        var second = builder
+            .SetWeakETag("second")
+            .SetLastModified(firstDate.AddDays(1))
+            .AddVary("Accept-Encoding")
+            .AddContentLanguage("fr")
+            .SetContentLocation("/second")
+            .Build();
+
+        first.ETag.Should().Be(EntityTagValue.Strong("first"));
+        first.LastModified.Should().Be(firstDate);
+        first.Vary.Should().Equal(["Accept"]);
+        first.ContentLanguage.Should().Equal(["en"]);
+        first.ContentLocation.Should().Be("/first");
+        second.ETag.Should().Be(EntityTagValue.Weak("second"));
+        second.LastModified.Should().Be(firstDate.AddDays(1));
+        second.Vary.Should().Equal(["Accept", "Accept-Encoding"]);
+        second.ContentLanguage.Should().Equal(["en", "fr"]);
+        second.ContentLocation.Should().Be("/second");
+    }
 }

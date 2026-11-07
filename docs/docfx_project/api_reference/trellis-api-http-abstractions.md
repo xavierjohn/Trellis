@@ -118,10 +118,10 @@ Fluent builder returned by `RepresentationMetadata.Create()`; every setter retur
 | `SetETag(EntityTagValue)` | Sets the validator directly. |
 | `SetStrongETag(string)` / `SetWeakETag(string)` | Sets the validator from an opaque tag. |
 | `SetLastModified(DateTimeOffset)` | Sets `Last-Modified`. |
-| `AddVary(params string[])` | Appends `Vary` field names, deduplicating case-insensitively. |
-| `AddContentLanguage(params string[])` | Appends language tags, deduplicating case-insensitively. |
+| `AddVary(params string[])` | Appends `Vary` field names, skipping blank names and deduplicating case-insensitively. |
+| `AddContentLanguage(params string[])` | Appends language tags, skipping blank values and deduplicating case-insensitively. |
 | `SetContentLocation(string)` | Sets `Content-Location`. |
-| `Build()` | Produces the `RepresentationMetadata`. Empty `Vary` / `ContentLanguage` collections are normalised to `null`. |
+| `Build()` | Produces the `RepresentationMetadata`; the result is a snapshot, so later changes to the builder do not alter it. Empty `Vary` / `ContentLanguage` collections (including ones that held only blank entries) are normalised to `null`. |
 
 ### `WriteOutcome<T>` case payloads
 
