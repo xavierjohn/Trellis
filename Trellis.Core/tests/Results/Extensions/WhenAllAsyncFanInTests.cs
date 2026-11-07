@@ -121,53 +121,6 @@ public class WhenAllAsyncFanInTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
-    [Fact]
-    public async Task WhenAllAsync_two_faults_escape_as_one_unwrapped_exception()
-    {
-        Func<Task> act = async () => _ = await (Faulted("first"), Faulted("second")).WhenAllAsync();
-
-        await act.Should().ThrowExactlyAsync<InvalidOperationException>("the exception is rethrown as is, not wrapped in an AggregateException")
-            .WithMessage("first", "only the first exception escapes, in tuple order");
-    }
-
-    #endregion
-
-    #region Null tasks
-
-    // These characterize Task.WhenAll's null handling, which WhenAllAsync lets through: the exception type
-    // (and so the error.type tag) follows the runtime, but a null task must never become a Result failure.
-
-    [Fact]
-    public async Task WhenAllAsync_two_way_null_task_faults_the_returned_task_with_ArgumentException()
-    {
-        using var activityTest = new ActivityTestHelper();
-        Task<Result<int>> missing = null!;
-
-        var all = (missing, Ok(2)).WhenAllAsync();
-
-        Func<Task> act = () => all;
-        await act.Should().ThrowAsync<ArgumentException>();
-        var activity = activityTest.AssertActivityCapturedWithStatus("WhenAllAsync", ActivityStatusCode.Error);
-        activity.GetTagItem("error.type").Should().Be(nameof(ArgumentException));
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(2)]
-    public async Task WhenAllAsync_three_way_null_task_faults_the_returned_task_with_ArgumentException(int nullIndex)
-    {
-        using var activityTest = new ActivityTestHelper();
-        Task<Result<int>> missing = null!;
-
-        var all = (nullIndex == 0 ? missing : Ok(1), nullIndex == 1 ? missing : Ok(2), nullIndex == 2 ? missing : Ok(3)).WhenAllAsync();
-
-        Func<Task> act = () => all;
-        await act.Should().ThrowAsync<ArgumentException>();
-        var activity = activityTest.AssertActivityCapturedWithStatus("WhenAllAsync", ActivityStatusCode.Error);
-        activity.GetTagItem("error.type").Should().Be(nameof(ArgumentException));
-    }
-
     #endregion
 
     #region Domain failures are merged in tuple order

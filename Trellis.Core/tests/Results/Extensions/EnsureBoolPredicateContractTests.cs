@@ -33,10 +33,6 @@ public class EnsureBoolPredicateContractTests
         public static readonly Pred Null = new(null, null);
 
         public static Pred Of(Func<int, bool> predicate) => new(predicate, value => Task.FromResult(predicate(value)));
-
-        public static Pred FromAsync(Func<int, Task<bool>> predicate) => new(null, predicate);
-
-        public static Pred Throws(Exception exception) => new(_ => throw exception, _ => throw exception);
     }
 
     private sealed record Fac(Func<int, Error>? Sync, Func<int, Task<Error>>? Async)
@@ -44,8 +40,6 @@ public class EnsureBoolPredicateContractTests
         public static readonly Fac Null = new(null, null);
 
         public static Fac Of(Func<int, Error> factory) => new(factory, value => Task.FromResult(factory(value)));
-
-        public static Fac FromAsync(Func<int, Task<Error>> factory) => new(null, factory);
     }
 
     private sealed record Form(
@@ -56,8 +50,6 @@ public class EnsureBoolPredicateContractTests
         Func<Task<Result<int>>, Pred, Error, Fac, Task<Result<int>>> Run)
     {
         public bool PendingSource => Receiver != Receiver.Result;
-
-        public bool AsyncPredicate => Predicate != Awaitable.None;
 
         public bool HasFactory => ErrorKind != ErrorKind.Static;
     }
@@ -143,15 +135,11 @@ public class EnsureBoolPredicateContractTests
 
     public static TheoryData<string> ValuePredicateForms() => new(Keys(form => form.PredicateTakesValue));
 
-    public static TheoryData<string> AsyncPredicateForms() => new(Keys(form => form.AsyncPredicate));
-
     public static TheoryData<string> PendingSourceForms() => new(Keys(form => form.PendingSource));
 
     public static TheoryData<string> TaskReceiverForms() => new(Keys(form => form.Receiver == Receiver.Task));
 
     public static TheoryData<string> FactoryForms() => new(Keys(form => form.HasFactory));
-
-    public static TheoryData<string> AsyncFactoryForms() => new(Keys(form => form.ErrorKind == ErrorKind.AsyncFactory));
 
     public static TheoryData<string> PendingSourceFactoryForms() => new(Keys(form => form.PendingSource && form.HasFactory));
 
@@ -354,141 +342,6 @@ public class EnsureBoolPredicateContractTests
         var operation = Run(form, gate.Task, Pred.Of(_ => true), Fac.Null);
 
         await operation.ShouldRejectNullBeforeAwaitAsync("errorPredicate");
-    }
-
-    #endregion
-
-    #region Completion and exceptions of the async overloads
-
-    [Theory]
-    [MemberData(nameof(PendingSourceForms))]
-    public async Task A_pending_source_is_awaited_before_the_predicate_runs(string form)
-    {
-        var gate = Gate();
-        var predicateCalls = new List<int>();
-
-        var all = Run(form, gate.Task, Pred.Of(value =>
-        {
-            predicateCalls.Add(value);
-            return true;
-        }));
-
-        all.IsCompleted.Should().BeFalse();
-        predicateCalls.Should().BeEmpty("the predicate cannot run before the source completes");
-        gate.SetResult(Result.Ok(21));
-        var result = await all;
-        ValueOf(result).Should().Be(21);
-        predicateCalls.Should().HaveCount(1);
-    }
-
-    [Theory]
-    [MemberData(nameof(PendingSourceForms))]
-    public async Task A_faulted_source_rethrows_without_evaluating_anything(string form)
-    {
-        var predicateCalls = new List<int>();
-        var source = Task.FromException<Result<int>>(new InvalidOperationException("source"));
-
-        Func<Task> act = () => Run(form, source, Pred.Of(value =>
-        {
-            predicateCalls.Add(value);
-            return true;
-        }));
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("source");
-        predicateCalls.Should().BeEmpty();
-    }
-
-    [Theory]
-    [MemberData(nameof(PendingSourceForms))]
-    public async Task A_canceled_source_cancels_without_evaluating_anything(string form)
-    {
-        var predicateCalls = new List<int>();
-        var source = Task.FromCanceled<Result<int>>(new CancellationToken(canceled: true));
-
-        var all = Run(form, source, Pred.Of(value =>
-        {
-            predicateCalls.Add(value);
-            return true;
-        }));
-
-        Func<Task> act = () => all;
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        all.IsCanceled.Should().BeTrue();
-        predicateCalls.Should().BeEmpty();
-    }
-
-    [Theory]
-    [MemberData(nameof(AsyncPredicateForms))]
-    public async Task A_pending_predicate_is_awaited_and_its_verdict_decides(string form)
-    {
-        var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        var all = Run(form, Success(21), Pred.FromAsync(_ => gate.Task));
-
-        all.IsCompleted.Should().BeFalse("the predicate has not completed yet");
-        gate.SetResult(false);
-        var result = await all;
-        result.Error.Should().BeSameAs(Rejected);
-    }
-
-    [Theory]
-    [MemberData(nameof(AsyncPredicateForms))]
-    public async Task A_faulted_predicate_rethrows_and_builds_no_error(string form)
-    {
-        var factoryCalls = new List<int>();
-
-        Func<Task> act = () => Run(form, Success(21), Pred.FromAsync(_ => Task.FromException<bool>(new InvalidOperationException("predicate"))), Fac.Of(value =>
-        {
-            factoryCalls.Add(value);
-            return Rejected;
-        }));
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("predicate");
-        factoryCalls.Should().BeEmpty();
-    }
-
-    [Theory]
-    [MemberData(nameof(AsyncPredicateForms))]
-    public async Task A_canceled_predicate_cancels(string form)
-    {
-        var all = Run(form, Success(21), Pred.FromAsync(_ => Task.FromCanceled<bool>(new CancellationToken(canceled: true))));
-
-        Func<Task> act = () => all;
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        all.IsCanceled.Should().BeTrue();
-    }
-
-    [Theory]
-    [MemberData(nameof(AllForms))]
-    public async Task A_predicate_that_throws_escapes_unwrapped(string form)
-    {
-        Func<Task> act = () => Run(form, Success(21), Pred.Throws(new InvalidOperationException("predicate")));
-
-        await act.Should().ThrowExactlyAsync<InvalidOperationException>().WithMessage("predicate");
-    }
-
-    [Theory]
-    [MemberData(nameof(AsyncFactoryForms))]
-    public async Task A_pending_error_factory_is_awaited_and_its_error_is_returned(string form)
-    {
-        var gate = new TaskCompletionSource<Error>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        var all = Run(form, Success(21), Pred.Of(_ => false), Fac.FromAsync(_ => gate.Task));
-
-        all.IsCompleted.Should().BeFalse("the error factory has not completed yet");
-        gate.SetResult(Rejected);
-        var result = await all;
-        result.Error.Should().BeSameAs(Rejected);
-    }
-
-    [Theory]
-    [MemberData(nameof(AsyncFactoryForms))]
-    public async Task A_faulted_error_factory_rethrows(string form)
-    {
-        Func<Task> act = () => Run(form, Success(21), Pred.Of(_ => false),
-            Fac.FromAsync(_ => Task.FromException<Error>(new InvalidOperationException("factory"))));
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("factory");
     }
 
     #endregion

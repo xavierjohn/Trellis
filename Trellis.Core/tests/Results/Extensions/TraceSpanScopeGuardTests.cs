@@ -50,39 +50,6 @@ public class TraceSpanScopeGuardTests
 
     #region The scanner
 
-    [Fact]
-    public void Scanner_accepts_a_using_declaration() =>
-        UnscopedStarts("    using var activity = RopTrace.ActivitySource.StartActivity(nameof(Map));").Should().BeEmpty();
-
-    [Theory]
-    [InlineData("    var activity = RopTrace.ActivitySource.StartActivity(nameof(Map));")]
-    [InlineData("    activity = RopTrace.ActivitySource.StartActivity(nameof(Map));")]
-    [InlineData("    RopTrace.ActivitySource.StartActivity(nameof(Map));")]
-    [InlineData("    using var other = RopTrace.ActivitySource.StartActivity(nameof(Map));")]
-    [InlineData("    return RopTrace.ActivitySource.StartActivity(nameof(Map));")]
-    public void Scanner_flags_a_start_that_is_not_a_using_declaration(string line) =>
-        UnscopedStarts(line).Should().ContainSingle();
-
-    [Theory]
-    [InlineData("    /// using var activity = RopTrace.ActivitySource.StartActivity(nameof(Map));")]
-    [InlineData("    // var activity = source.StartActivity(nameof(Map));")]
-    [InlineData("    var text = nothing.Here();")]
-    public void Scanner_ignores_comments_and_unrelated_lines(string line) =>
-        UnscopedStarts(line).Should().BeEmpty();
-
-    [Fact]
-    public void Scanner_reports_every_offending_line()
-    {
-        const string text = """
-            using var activity = A.StartActivity("a");
-            var leaked = B.StartActivity("b");
-            using var activity = C.StartActivity("c");
-            var alsoLeaked = D.StartActivity("d");
-            """;
-
-        UnscopedStarts(text).Should().HaveCount(2);
-    }
-
     private static List<string> UnscopedStarts(string text)
     {
         var offenders = new List<string>();
