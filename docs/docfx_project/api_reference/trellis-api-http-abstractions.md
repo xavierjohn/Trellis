@@ -70,9 +70,9 @@ Construct it only in HTTP-aware boundaries and wrap it in `new Error.TransportFa
 | `OpaqueTag` | `string` | The raw tag with no quotes and no `W/` prefix. Compare against `IAggregate.ETag` with `StringComparison.Ordinal`. |
 | `IsWeak` | `bool` | `true` for `W/"..."`. Weak tags do **not** satisfy `If-Match`, which requires strong comparison (RFC 9110 §13.1.1). |
 | `IsWildcard` | `bool` | `true` only for the RFC 9110 `*` token, as opposed to a literal ETag whose opaque tag happens to be `*`. A wildcard satisfies `If-Match` unconditionally. |
-| `Strong(string)` / `Weak(string)` / `Wildcard` | factories | Construction. `Strong`/`Weak` validate the opaque-tag character set and throw on invalid input. |
+| `Strong(string)` / `Weak(string)` / `Wildcard` | factories | Construction. `Strong`/`Weak` validate the opaque-tag character set (RFC 9110 §8.8.1: `!`, `#` to `~`, and the obs-text range U+0080 to U+00FF; no space, double quote, DEL, control character or character above U+00FF) and throw `ArgumentException` naming `opaqueTag`. `TryParse` applies the same set and returns `EtagMalformed` instead of throwing. |
 | `TryParse(string)` | parser | Parses a header value, including the `W/` prefix. |
-| `StrongEquals` / `WeakEquals` | comparison | RFC 9110 §8.8.3.2 comparison functions. |
+| `StrongEquals` / `WeakEquals` | comparison | RFC 9110 §8.8.3.2 comparison functions. A wildcard never matches anything on either side, including a literal `*` tag, which compares like any other tag. |
 | `ToHeaderValue()` | `string` | Formats for the wire, re-adding quotes and any `W/` prefix. |
 
 ### `RetryAfterValue` members
