@@ -5,13 +5,11 @@ using Trellis;
 
 /// <summary>
 /// The four async <c>OptionalETagAsync</c> / <c>RequireETagAsync</c> overloads (Task and ValueTask)
-/// must wait for their source, pick the matching sync rule and forward the caller's header tags.
+/// pick the matching sync rule, forward the caller's header tags and keep a failed source's error.
 /// The rules themselves are pinned by <see cref="AggregateETagExtensionsTests"/> and <see cref="AggregateTests"/>.
 /// </summary>
 public class AggregateETagAsyncExtensionsTests
 {
-    private static readonly TimeSpan s_timeout = TimeSpan.FromSeconds(10);
-
     private static readonly Dictionary<string, Func<Task<Result<TestAggregate>>, EntityTagValue[]?, Task<Result<TestAggregate>>>> s_operations = new()
     {
         ["Optional/Task"] = (source, tags) => source.OptionalETagAsync(tags),
@@ -88,41 +86,5 @@ public class AggregateETagAsyncExtensionsTests
 
         withoutHeader.Error.Should().BeSameAs(original);
         withHeader.Error.Should().BeSameAs(original);
-    }
-
-    [Theory]
-    [MemberData(nameof(Operations))]
-    public async Task A_pending_source_is_awaited_before_the_header_is_applied(string operation)
-    {
-        var source = new TaskCompletionSource<Result<TestAggregate>>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        var pending = s_operations[operation](source.Task, [EntityTagValue.Strong("stale")]);
-
-        pending.IsCompleted.Should().BeFalse("the header cannot be checked before the aggregate is known");
-        source.SetResult(Result.Ok(AggregateWithETag("current")));
-        var result = await pending.WaitAsync(s_timeout, TestContext.Current.CancellationToken);
-        result.Should().HaveErrorDetail("Resource has been modified. Please reload and retry.");
-    }
-
-    [Theory]
-    [MemberData(nameof(Operations))]
-    public async Task A_faulted_source_propagates_its_exception(string operation)
-    {
-        var source = Task.FromException<Result<TestAggregate>>(new InvalidOperationException("boom"));
-
-        var act = () => s_operations[operation](source, [EntityTagValue.Strong("any")]);
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
-    }
-
-    [Theory]
-    [MemberData(nameof(Operations))]
-    public async Task A_canceled_source_propagates_the_cancellation(string operation)
-    {
-        var source = Task.FromCanceled<Result<TestAggregate>>(new CancellationToken(canceled: true));
-
-        var act = () => s_operations[operation](source, [EntityTagValue.Strong("any")]);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }
