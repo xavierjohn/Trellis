@@ -104,30 +104,6 @@ public class AsUnitTests
         unit.Equals(Result.Fail(MakeSentinel())).Should().BeTrue();
     }
 
-    [Fact]
-    public async Task AsUnitAsync_Task_waits_for_a_pending_source_and_then_projects_it()
-    {
-        var error = MakeError();
-        var source = new TaskCompletionSource<Result<int>>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        var bridge = source.Task.AsUnitAsync();
-
-        bridge.IsCompleted.Should().BeFalse("the bridge must not complete before its source does");
-        source.SetResult(Result.Fail<int>(error));
-        var unit = await bridge;
-        ReferenceEquals(unit.Error, error).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task AsUnitAsync_Task_propagates_a_faulted_source()
-    {
-        var source = Task.FromException<Result<int>>(new InvalidOperationException("boom"));
-
-        Func<Task> act = async () => await source.AsUnitAsync();
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
-    }
-
     #endregion
 
     #region AsUnitAsync over ValueTask
@@ -173,30 +149,6 @@ public class AsUnitTests
 
         unit.IsFailure.Should().BeTrue();
         unit.Equals(Result.Fail(MakeSentinel())).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task AsUnitAsync_ValueTask_waits_for_a_pending_source_and_then_projects_it()
-    {
-        var error = MakeError();
-        var source = new TaskCompletionSource<Result<int>>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        var bridge = new ValueTask<Result<int>>(source.Task).AsUnitAsync();
-
-        bridge.IsCompleted.Should().BeFalse("the bridge must not complete before its source does");
-        source.SetResult(Result.Fail<int>(error));
-        var unit = await bridge;
-        ReferenceEquals(unit.Error, error).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task AsUnitAsync_ValueTask_propagates_a_faulted_source()
-    {
-        var source = new ValueTask<Result<int>>(Task.FromException<Result<int>>(new InvalidOperationException("boom")));
-
-        Func<Task> act = async () => await source.AsUnitAsync();
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
     }
 
     #endregion

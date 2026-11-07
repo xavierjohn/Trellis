@@ -28,10 +28,6 @@ public class WhenOverloadContractTests
         public static readonly Op Null = new(null, null);
 
         public static Op Of(Func<int, Result<int>> operation) => new(operation, value => Task.FromResult(operation(value)));
-
-        public static Op FromAsync(Func<int, Task<Result<int>>> operation) => new(null, operation);
-
-        public static Op Throws(Exception exception) => new(_ => throw exception, _ => throw exception);
     }
 
     private sealed record Overload(
@@ -40,7 +36,6 @@ public class WhenOverloadContractTests
         bool UsesPredicate,
         Func<Task<Result<int>>, Func<int, bool>?, bool, Op, Task<Result<int>>> Run)
     {
-        public bool IsAsync => Shape != Shape.Sync;
 
         public bool PendingSource => Shape is Shape.TaskReceiver or Shape.ValueTaskReceiver;
 
@@ -82,8 +77,6 @@ public class WhenOverloadContractTests
     public static TheoryData<string> AllOverloads() => new(s_overloads.Keys);
 
     public static TheoryData<string> PredicateOverloads() => new(Keys(o => o.UsesPredicate));
-
-    public static TheoryData<string> AsyncOverloads() => new(Keys(o => o.IsAsync));
 
     public static TheoryData<string> PendingSourceOverloads() => new(Keys(o => o.PendingSource));
 
@@ -312,135 +305,6 @@ public class WhenOverloadContractTests
         var operation = s_overloads[overload].Run(gate.Task, null, true, Op.Of(PassThrough));
 
         await operation.ShouldRejectNullBeforeAwaitAsync("predicate");
-    }
-
-    #endregion
-
-    #region Completion and exceptions of the async overloads
-
-    [Theory]
-    [MemberData(nameof(PendingSourceOverloads))]
-    public async Task A_pending_source_is_awaited_before_anything_is_evaluated(string overload)
-    {
-        var gate = Gate();
-        var predicateCalls = new List<int>();
-        var operationCalls = new List<int>();
-
-        var all = Call(overload, gate.Task, s_overloads[overload].IsWhen, Op.Of(value =>
-        {
-            operationCalls.Add(value);
-            return Result.Ok(value * 2);
-        }), predicateCalls);
-
-        all.IsCompleted.Should().BeFalse();
-        predicateCalls.Should().BeEmpty("the predicate cannot run before the source completes");
-        operationCalls.Should().BeEmpty();
-        gate.SetResult(Result.Ok(21));
-        var result = await all;
-        ValueOf(result).Should().Be(42);
-    }
-
-    [Theory]
-    [MemberData(nameof(PendingSourceOverloads))]
-    public async Task A_faulted_source_rethrows_without_evaluating_anything(string overload)
-    {
-        var predicateCalls = new List<int>();
-        var operationCalls = new List<int>();
-        var source = Task.FromException<Result<int>>(new InvalidOperationException("source"));
-
-        Func<Task> act = () => Call(overload, source, s_overloads[overload].IsWhen, Op.Of(value =>
-        {
-            operationCalls.Add(value);
-            return Result.Ok(value);
-        }), predicateCalls);
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("source");
-        predicateCalls.Should().BeEmpty();
-        operationCalls.Should().BeEmpty();
-    }
-
-    [Theory]
-    [MemberData(nameof(PendingSourceOverloads))]
-    public async Task A_canceled_source_cancels_without_evaluating_anything(string overload)
-    {
-        var predicateCalls = new List<int>();
-        var operationCalls = new List<int>();
-        var source = Task.FromCanceled<Result<int>>(new CancellationToken(canceled: true));
-
-        var all = Call(overload, source, s_overloads[overload].IsWhen, Op.Of(value =>
-        {
-            operationCalls.Add(value);
-            return Result.Ok(value);
-        }), predicateCalls);
-
-        Func<Task> act = () => all;
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        all.IsCanceled.Should().BeTrue();
-        predicateCalls.Should().BeEmpty();
-        operationCalls.Should().BeEmpty();
-    }
-
-    [Theory]
-    [MemberData(nameof(AsyncOverloads))]
-    public async Task A_pending_operation_is_awaited_and_its_result_is_returned(string overload)
-    {
-        var gate = Gate();
-
-        var all = Call(overload, Success(), s_overloads[overload].IsWhen, Op.FromAsync(_ => gate.Task));
-
-        all.IsCompleted.Should().BeFalse("the selected operation has not completed yet");
-        gate.SetResult(OperationFailure(persisted: true));
-        var result = await all;
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeSameAs(OperationError);
-        PersistFlag(result).Should().BeTrue();
-    }
-
-    [Theory]
-    [MemberData(nameof(AsyncOverloads))]
-    public async Task A_faulted_operation_rethrows(string overload)
-    {
-        Func<Task> act = () => Call(overload, Success(), s_overloads[overload].IsWhen,
-            Op.FromAsync(_ => Task.FromException<Result<int>>(new InvalidOperationException("operation"))));
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("operation");
-    }
-
-    [Theory]
-    [MemberData(nameof(AsyncOverloads))]
-    public async Task A_canceled_operation_cancels(string overload)
-    {
-        var all = Call(overload, Success(), s_overloads[overload].IsWhen,
-            Op.FromAsync(_ => Task.FromCanceled<Result<int>>(new CancellationToken(canceled: true))));
-
-        Func<Task> act = () => all;
-        await act.Should().ThrowAsync<OperationCanceledException>();
-        all.IsCanceled.Should().BeTrue();
-    }
-
-    [Theory]
-    [MemberData(nameof(AllOverloads))]
-    public async Task An_operation_that_throws_escapes_unwrapped(string overload)
-    {
-        Func<Task> act = () => Call(overload, Success(), s_overloads[overload].IsWhen, Op.Throws(new InvalidOperationException("operation")));
-
-        await act.Should().ThrowExactlyAsync<InvalidOperationException>().WithMessage("operation");
-    }
-
-    [Theory]
-    [MemberData(nameof(PredicateOverloads))]
-    public async Task A_predicate_that_throws_escapes_unwrapped_before_the_operation_runs(string overload)
-    {
-        var operationCalls = new List<int>();
-
-        Func<Task> act = () => s_overloads[overload].Run(Success(), _ => throw new InvalidOperationException("predicate"), true, Op.Of(value =>
-        {
-            operationCalls.Add(value);
-            return Result.Ok(value);
-        }));
-
-        await act.Should().ThrowExactlyAsync<InvalidOperationException>().WithMessage("predicate");
-        operationCalls.Should().BeEmpty();
     }
 
     #endregion

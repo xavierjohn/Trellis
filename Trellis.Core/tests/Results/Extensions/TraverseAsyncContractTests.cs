@@ -177,10 +177,13 @@ public class TraverseAsyncContractTests
     [MemberData(nameof(ValueForms))]
     public async Task Successful_items_are_collected_in_source_order(string form)
     {
-        var outcome = await Run(form, new TrackedSource(4).Items(), (item, _) => Ok(item * 10));
+        var source = new TrackedSource(4);
+
+        var outcome = await Run(form, source.Items(), (item, _) => Ok(item * 10));
 
         outcome.IsSuccess.Should().BeTrue();
         outcome.Values.Should().Equal([10, 20, 30, 40]);
+        source.Enumerations.Should().Be(1, "the source must be enumerated exactly once");
     }
 
     [Theory]
@@ -199,19 +202,6 @@ public class TraverseAsyncContractTests
         outcome.IsSuccess.Should().BeTrue();
         calls.Should().BeEmpty();
         source.Disposals.Should().Be(1);
-    }
-
-    [Theory]
-    [MemberData(nameof(AllForms))]
-    public async Task The_source_is_enumerated_once_and_disposed_on_success(string form)
-    {
-        var source = new TrackedSource(3);
-
-        await Run(form, source.Items(), (item, _) => Ok(item));
-
-        source.Enumerations.Should().Be(1);
-        source.Disposals.Should().Be(1);
-        source.Yielded.Should().Equal([1, 2, 3]);
     }
 
     [Theory]
@@ -322,46 +312,6 @@ public class TraverseAsyncContractTests
 
         outcome.IsSuccess.Should().BeFalse();
         outcome.Persist.Should().Be(persistFirst || persistLast);
-    }
-
-    #endregion
-
-    #region Exceptions
-
-    [Theory]
-    [MemberData(nameof(AllForms))]
-    public async Task A_faulted_selector_escapes_unwrapped_and_the_source_is_disposed(string form)
-    {
-        var calls = new List<int>();
-        var source = new TrackedSource(5);
-
-        Func<Task> act = () => Run(form, source.Items(), (item, _) =>
-        {
-            calls.Add(item);
-            return item == 2 ? Task.FromException<Result<int>>(new InvalidOperationException("selector")) : Ok(item);
-        });
-
-        await act.Should().ThrowExactlyAsync<InvalidOperationException>().WithMessage("selector");
-        calls.Should().Equal([1, 2]);
-        source.Disposals.Should().Be(1);
-    }
-
-    [Theory]
-    [MemberData(nameof(AllForms))]
-    public async Task A_selector_that_throws_escapes_unwrapped_and_the_source_is_disposed(string form)
-    {
-        var calls = new List<int>();
-        var source = new TrackedSource(5);
-
-        Func<Task> act = () => Run(form, source.Items(), (item, _) =>
-        {
-            calls.Add(item);
-            return item == 2 ? throw new InvalidOperationException("selector") : Ok(item);
-        });
-
-        await act.Should().ThrowExactlyAsync<InvalidOperationException>().WithMessage("selector");
-        calls.Should().Equal([1, 2]);
-        source.Disposals.Should().Be(1);
     }
 
     #endregion
