@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - tuple `Match`, `Switch`, `MatchAsync` and `SwitchAsync` for arities 6 to 9
+
+The tuple overloads of `Match`, `Switch`, `MatchAsync` and `SwitchAsync` were generated only for 2 to 5 elements,
+while the API reference and the error-handling article promised 2 to 9 (the arity the `Bind`, `Map`, `Tap`,
+`Combine` and `WhenAll` families already generate). `MatchTupleTs.g.tt` now generates 2 to 9, so a `Result` of a
+6- to 9-tuple, such as one built with `Combine`, can be matched or switched with destructured handlers. Existing
+overloads are unchanged.
+
 ### Fixed - tuple `Match` and `Switch` trace a throwing success handler as `Error`
 
 The tuple `Match`, `Switch`, `MatchAsync` and `SwitchAsync` overloads stamped the `Trellis.Results` activity `Ok`

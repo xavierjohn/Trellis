@@ -6,7 +6,7 @@
 <#@ output extension=".cs" #>
 <#
     const int MinTupleSize = 2;
-    const int MaxTupleSize = 5;
+    const int MaxTupleSize = 9;
     
     string GetTypeParams(int count) => string.Join(", ", Enumerable.Range(1, count).Select(i => $"T{i}"));
     string GetTupleType(int count) => $"({GetTypeParams(count)})";
@@ -29,7 +29,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 
 /// <summary>
-/// Provides pattern matching extension methods for Result types containing tuples (2-5 elements) with automatic destructuring.
+/// Provides pattern matching extension methods for Result types containing tuples (2-9 elements) with automatic destructuring.
 /// Match enables handling both success and failure cases inline with clean, readable code.
 /// </summary>
 /// <remarks>
@@ -199,7 +199,7 @@ public static class MatchTupleExtensions
 }
 
 /// <summary>
-/// Provides asynchronous pattern matching extension methods for Result types containing tuples (2-5 elements).
+/// Provides asynchronous pattern matching extension methods for Result types containing tuples (2-9 elements).
 /// Supports both Task and ValueTask for async pattern matching.
 /// </summary>
 /// <remarks>
