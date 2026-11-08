@@ -89,12 +89,12 @@ public static class OrdersDi
         services
             .AddTrellisBehaviors()                              // canonical mediator behaviors (exception, tracing, logging, authorization, validation)
             .AddTrellisFluentValidation(typeof(PlaceOrderValidator).Assembly)
-            .AddTrellisUnitOfWork<AppDbContext>()               // opens the transaction, commits on success
+            .AddTrellisUnitOfWork<AppDbContext>()               // opens a unit-of-work scope; saves staged changes after a successful handler
             .AddScoped<IOrderRepository, EfOrderRepository>();
 }
 ```
 
-**What it shows.** The mediator pipeline already runs `ValidationBehavior<TMessage, TResponse>` before the handler — `AddTrellisFluentValidation` plugs every `IValidator<T>` into it via the open-generic `IMessageValidator<T>` adapter. `AddTrellisUnitOfWork<TContext>` registers `TransactionalCommandBehavior<,>` in its own pipeline slot, inside telemetry and event dispatch, so it commits only when the handler and any inside-transaction behaviors return success. The handler itself is pure: no `try`/`catch`, no primitive parsing, no `await db.SaveChangesAsync()` — that's the unit of work's job.
+**What it shows.** The mediator pipeline already runs `ValidationBehavior<TMessage, TResponse>` before the handler — `AddTrellisFluentValidation` plugs every `IValidator<T>` into it via the open-generic `IMessageValidator<T>` adapter. `AddTrellisUnitOfWork<TContext>` registers `TransactionalCommandBehavior<,>` in its own pipeline slot, inside telemetry and event dispatch. It opens a unit-of-work scope around the handler and, when the handler and any inside-transaction behaviors return success, saves the staged changes in one `SaveChanges` call. There is no enclosing database transaction around the handler: the EF Core implicit transaction covers that single `SaveChanges`. A failure result discards the staged changes, except `Result.FailAfterCommit(...)`, which still commits so a worker handler can persist a failed-state row while returning the failure. The handler itself is pure: no `try`/`catch`, no primitive parsing, no `await db.SaveChangesAsync()` — that's the unit of work's job.
 
 > **Multiple independent resources in the handler?** Reach for [Recipe 21](recipe-21-parallel-loads.md) when the loads hit *different* stores (HTTP + DB, two upstream services, factory-created `DbContext`s). For two repository reads against the same scoped `DbContext`, stay sequential — that case races EF Core. The Recipe explains the rule and shows both shapes.
 

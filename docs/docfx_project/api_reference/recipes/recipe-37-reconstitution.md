@@ -105,9 +105,9 @@ public sealed class DapperOrderRepository(IDbConnection db) : IOrderRepository
 }
 ```
 
-On **save**, generate a fresh token and stamp it the same way (or via `IETagStampable.StampETag`), using the previous value in the optimistic `WHERE ETag = @original` clause — the non-EF equivalent of the EF concurrency-token interceptor.
+On **save**, generate a fresh token and stamp it with `IETagStampable.StampETag`, using the previous value in the optimistic `WHERE ETag = @original` clause — the non-EF equivalent of the EF concurrency-token interceptor. Do not use `StampReconstitutedState` on save: it calls `AcceptChanges()`, which clears the aggregate's pending domain events before they are published after the commit. Reserve it for loading.
 
 **Semantics to remember.**
-- The reconstitution constructor must be pure assignment: no `Create`, no behavior methods, no events. `StampReconstitutedState` clears any uncommitted events defensively, but relying on that hides a modeling bug.
+- The reconstitution constructor must be pure assignment: no `Create`, no behavior methods, no events. `StampReconstitutedState` clears any uncommitted events (it calls `AcceptChanges()`), which is a safety net for loading only; relying on it hides a modeling bug.
 - Reconstitution does **not** re-validate domain invariants — correct for trusted outbound reads (see [Recipe 30](recipe-30-rehydration.md)). Value-object-level checks still run through each `TryCreate`.
 - Child entities follow the same pattern: a private reconstitution constructor + `Reconstitute` factory; the parent copies them into its backing collection.

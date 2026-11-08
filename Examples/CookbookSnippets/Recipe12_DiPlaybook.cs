@@ -18,8 +18,8 @@ public static class CompositionRoot
     {
         // 1. Trellis composition root: ASP, Mediator behaviors, FluentValidation, claims-based
         //    actor provider, resource authorization, and EF unit of work in canonical order.
-        //    UseEntityFrameworkUnitOfWork<TContext> is applied last so TransactionalCommandBehavior
-        //    lands innermost in the mediator pipeline.
+        //    TransactionalCommandBehavior sits in its own mediator pipeline slot regardless of call order;
+        //    UseEntityFrameworkUnitOfWork<TContext> is registered after the inside-transaction behaviors.
         services.AddTrellis(options => options
             .UseAsp()
             .UseScalarValueValidation()
