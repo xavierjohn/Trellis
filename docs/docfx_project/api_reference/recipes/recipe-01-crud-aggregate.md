@@ -8,7 +8,7 @@ version: v3
 last_verified: 2026-10-22
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Shows an aggregate with value objects, an entity and a repository contract. Use when creating or loading an aggregate, or when a cancel or return must release stock."
+agent_description: "Shows an aggregate with value objects, an entity and a repository contract. Use when creating a typed id, a string or composite value object, or an aggregate root with a Maybe-returning repository."
 ---
 # Recipe 1 — CRUD aggregate (DDD value objects + entity + repository contract)
 
@@ -20,7 +20,7 @@ agent_description: "Shows an aggregate with value objects, an entity and a repos
 - What it shows
 - Anti-pattern → fix (wrong attribute namespace)
 
-**Problem.** Model an `Order` aggregate with a typed identifier, a value-object money type, and a repository contract that returns `Result<T>` for not-found.
+**Problem.** Model an `Order` aggregate with a typed identifier, a value-object money type, and a repository contract that returns `Maybe<T>` when an aggregate may not exist.
 
 ```csharp
 using Trellis;
@@ -87,12 +87,12 @@ public interface IOrderRepository
 
 **What it shows.** Each base class in this recipe supplies a complete surface — your derived type adds only domain-specific state. **Do not redeclare members that are already inherited**; that is the most common Recipe 1 mistake.
 
-- `RequiredGuid<TSelf>` source-generates `TryCreate` overloads, `Parse`/`TryParse`, an explicit `Guid` → `TSelf` operator, the `Value` accessor, equality / `GetHashCode` / `IComparable`, JSON and EF Core converters, plus the `NewUniqueV4()`, `NewUniqueV7()`, and `NewUniqueV7(TimeProvider)` factories. It rejects `null` only by default; `Guid.Empty` is accepted. Add `[NotDefault]` to also reject `Guid.Empty`. Do not write your own `TryCreate`, equality members, parse/convert helpers, or JSON/EF converters.
-- `RequiredString<TSelf>` source-generates `TryCreate(string?, string?)`, `Parse`/`TryParse`, an explicit `string` → `TSelf` operator, the `Value` accessor, equality, JSON and EF Core converters, plus `Length`/`StartsWith`/`Contains`/`EndsWith` pass-throughs. It rejects `null` only by default; `""` and whitespace-only input are accepted and stored as-is (no auto-trim). Add `[NotDefault]` to also reject `""`, `[Trim]` to enable trimming, or both for strict trim-then-reject-empty behavior. Same rule applies: derived classes add only domain-specific helpers (e.g., a custom `TryCreateWithValidation` that layers extra rules on top of the generated `TryCreate`).
+- `RequiredGuid<TSelf>` source-generates `TryCreate` overloads, `Parse`/`TryParse`, an explicit `Guid` → `TSelf` operator, the `Value` accessor, equality / `GetHashCode` / `IComparable`, a JSON converter, plus the `NewUniqueV4()`, `NewUniqueV7()`, and `NewUniqueV7(TimeProvider)` factories. It rejects `null` only by default; `Guid.Empty` is accepted. Add `[NotDefault]` to also reject `Guid.Empty`. EF Core value converters come from `Trellis.EntityFrameworkCore` (call `ApplyTrellisConventionsFor<TContext>()` in `ConfigureConventions`), not from this type. Do not write your own `TryCreate`, equality members, parse/convert helpers, or JSON converters.
+- `RequiredString<TSelf>` source-generates `TryCreate(string?, string?)`, `Parse`/`TryParse`, an explicit `string` → `TSelf` operator, the `Value` accessor, equality, a JSON converter, plus `Length`/`StartsWith`/`Contains`/`EndsWith` pass-throughs. It rejects `null` only by default; `""` and whitespace-only input are accepted and stored as-is (no auto-trim). Add `[NotDefault]` to also reject `""`, `[Trim]` to enable trimming, or both for strict trim-then-reject-empty behavior. Same rule applies: derived classes add only domain-specific helpers (e.g., a custom `TryCreateWithValidation` that layers extra rules on top of the generated `TryCreate`).
 - `ValueObject` (the base of `Money`, `Address`, etc.) supplies `Equals(object?)`, `Equals(ValueObject?)`, `GetHashCode`, `CompareTo`, and the `==`/`!=`/`<`/`<=`/`>`/`>=` operators — all derived from `GetEqualityComponents()`. Your derived type implements **only** `protected override void GetEqualityComponents(ref EqualityComponents components)`. Do not override `Equals`/`GetHashCode`/`CompareTo` or write equality operators yourself — that breaks the contract the base class establishes. For `Maybe<T>` components, use the inherited `protected static IComparable? MaybeComponent<T>(Maybe<T>)` helper rather than unwrapping manually.
 - `Aggregate<TId>` already supplies inherited infrastructure members: `Id`, protected `DomainEvents`, persistence-managed `ETag`, `IsChanged` based on pending domain events, and the `CreatedAt`/`LastModified` timestamps (inherited from `Entity<TId>`, managed by `EntityTimestampInterceptor`). Do not redeclare those members on every aggregate; use the inherited surface and add only domain-specific state. Domain events are added via `DomainEvents.Add(...)` from inside the aggregate; the public read-only view is `IAggregate.UncommittedEvents()`.
 
-> **Compiled contract.** The exact signatures of every member listed above are exercised in `Examples/CookbookSnippets/Recipe01_CrudAggregate.cs` → `Recipe1InheritedSurface` in the Trellis source repository (not shipped in the NuGet package). That file is compiled in CI, so if a signature changes in the framework, the build fails and this callout MUST be updated to match. When you need to confirm an exact overload in your own project, read the base classes' API in [trellis-api-core.md](../trellis-api-core.md#domain-driven-design) or the package's XML documentation — never paraphrase signatures from memory.
+> **Compiled contract.** The exact signatures of every member listed above are exercised in `Examples/CookbookSnippets/Recipe01_CrudAggregate.cs` → `Recipe1InheritedSurface` in the Trellis source repository (not shipped in the NuGet package). That file is compiled in CI. When you need to confirm an exact overload in your own project, read the base classes' API in [trellis-api-core.md](../trellis-api-core.md#domain-driven-design) or the package's XML documentation — never paraphrase signatures from memory.
 
 `Required*<TSelf>` primitives are lenient by default (rejects `null` only). Use `[NotDefault]` to opt into rejecting the type's sentinel value, and `[Trim]` to opt into string trimming. Both attributes are meaningful; see [trellis-api-primitives.md](../trellis-api-primitives.md#required-defaults-and-opt-ins) for the full behavior table.
 

@@ -14,9 +14,10 @@ agent_description: "Shows an MVC controller action that returns a Trellis Result
 
 **Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Mediator`.
 
-**Problem.** Map a `Result<Order>` to the same HTTP response as [Recipe 4](recipe-04-minimal-api-endpoint.md) (strong ETag, `Last-Modified`, Problem Details on failure, `304` on a matching precondition), but from an MVC controller that returns a typed `ActionResult<OrderDto>`.
+**Problem.** Map a `Result<Order>` to an HTTP response from an MVC controller that returns a typed `ActionResult<OrderDto>`: `200` with a strong ETag, `404` Problem Details when the order is missing, and `304` on a matching `If-None-Match`. The minimal-API equivalent, which also sets `Last-Modified` and `Vary`, is [Recipe 4](recipe-04-minimal-api-endpoint.md).
 
 ```csharp
+using Mediator;
 using Microsoft.AspNetCore.Mvc;
 using Trellis;
 using Trellis.Asp;
@@ -43,6 +44,8 @@ public sealed class OrdersController(IMediator mediator) : ControllerBase
 
 public sealed record OrderDto(Guid Id, decimal Amount, string Currency);
 ```
+
+**Prerequisites.** `GetOrderQuery` is an application-owned `IQuery<Result<Order>>`. The host needs `AddControllers()` and `MapControllers()`, and the `DbContext` options must call `AddTrellisInterceptors()` so `ETag` is stamped on save (see [Recipe 4](recipe-04-minimal-api-endpoint.md)). This controller and recipe 2's `OrdersController` both use the route `orders`, and recipe 4 maps `GET /orders/{id:guid}`; use only one of them in a host.
 
 **What it shows.** `.AsActionResult<TBody>()` projects an `IResult` into a typed `ActionResult<TBody>`, so MVC clients still get OpenAPI/Swagger-friendly typed responses while the response itself executes through the same `IResult` pipeline as Minimal API.
 

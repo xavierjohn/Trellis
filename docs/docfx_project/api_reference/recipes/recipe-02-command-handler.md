@@ -20,7 +20,7 @@ agent_description: "Shows a command handler with FluentValidation and EF Core pe
 - What it shows
 - Anti-pattern → fix (TRLS010)
 
-**Problem.** Wire a `PlaceOrderCommand` end-to-end: validation via FluentValidation, mediator handler that uses an EF repository, transactional commit on success.
+**Problem.** Wire a `PlaceOrderCommand` end-to-end: validation via FluentValidation, mediator handler that uses an EF repository, and a unit-of-work commit (one `SaveChanges`) after a successful handler.
 
 ```csharp
 using FluentValidation;
@@ -94,6 +94,8 @@ public static class OrdersDi
 }
 ```
 
+Application-owned and not shown: `AppDbContext`, `EfOrderRepository`, `AddDbContext<AppDbContext>(o => o.Use<Provider>(...).AddTrellisInterceptors())` (the interceptors stamp `ETag`, `CreatedAt` and `LastModified` on save), and `AddMediator(o => o.ServiceLifetime = ServiceLifetime.Scoped)`, called before `AddOrdersFeature()` because `AddTrellisBehaviors()` throws when Mediator was registered with the default Singleton lifetime. See [Recipe 12](recipe-12-di-wiring.md).
+
 **What it shows.** The mediator pipeline already runs `ValidationBehavior<TMessage, TResponse>` before the handler — `AddTrellisFluentValidation` plugs every `IValidator<T>` into it via the open-generic `IMessageValidator<T>` adapter. `AddTrellisUnitOfWork<TContext>` registers `TransactionalCommandBehavior<,>` in its own pipeline slot, inside telemetry and event dispatch. It opens a unit-of-work scope around the handler and, when the handler and any inside-transaction behaviors return success, saves the staged changes in one `SaveChanges` call. There is no enclosing database transaction around the handler: the EF Core implicit transaction covers that single `SaveChanges`. A failure result skips this invocation's commit and does not roll back tracked state: entities the handler already added stay in the context, and a later successful commit on the same `DbContext` would persist them. The exception is `Result.FailAfterCommit(...)`, which still commits so a worker handler can persist a failed-state row while returning the failure. The handler itself is pure: no `try`/`catch`, no primitive parsing, no `await db.SaveChangesAsync()` — that's the unit of work's job.
 
 > **Multiple independent resources in the handler?** Reach for [Recipe 21](recipe-21-parallel-loads.md) when the loads hit *different* stores (HTTP + DB, two upstream services, factory-created `DbContext`s). For two repository reads against the same scoped `DbContext`, stay sequential — that case races EF Core. The Recipe explains the rule and shows both shapes.
@@ -103,9 +105,9 @@ public static class OrdersDi
 **Anti-pattern → fix (TRLS010).**
 
 ```csharp
-// WRONG — sync-over-async (.Result deadlocks) + throwing inside the Result chain.
+// WRONG — blocks a thread on the Maybe carrier with .Result, and throws inside the Result chain (TRLS010).
 .Bind(id => repo.FindAsync(id, ct).Result is { HasValue: true }
-    ? throw new InvalidOperationException("already exists")  // TRLS010 + TRLS005
+    ? throw new InvalidOperationException("already exists")  // TRLS010: throw inside Bind
     : Result.Ok(id))
 
 // FIX — MatchAsync awaits the Maybe carrier and dispatches without leaving the Result chain.

@@ -61,7 +61,7 @@ public static class OrdersDi
 }
 
 #if FALSE
-// WRONG — sync-over-async (.Result deadlocks) + throwing inside the Result chain.
+// WRONG — blocks a thread on the Maybe carrier with .Result + throwing inside the Result chain.
 // Kept here for documentation only. Demonstrates TRLS010 and TRLS005.
 internal static class AntiPattern
 {

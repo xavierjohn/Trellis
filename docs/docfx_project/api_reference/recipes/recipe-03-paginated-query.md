@@ -8,7 +8,7 @@ version: v3
 last_verified: 2026-10-22
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Shows a query handler that returns Page with a cursor. Use when adding a paginated list query: PageRequest, bound cursor and limit inputs, ordering, seeking before Take."
+agent_description: "Shows a query handler that returns Page with a cursor. Use when adding a paginated list query: raw cursor and limit parsing with TryCreatePageRequest, PageRequest, seek ordering, next-page links."
 ---
 # Recipe 3 — Query handler returning `Page<T>` (paginated list with cursor)
 
@@ -41,8 +41,7 @@ public sealed class ListOrdersHandler(AppDbContext db)
     {
         var seek = SeekDefinition.Ascending<Order, Guid>(o => o.Id.Value);
         var page = await db.Orders.AsNoTracking()
-            .ToPageAsync(q.Pagination, seek, cursorFieldName: "cursor",
-                cancellationToken: ct);
+            .ToPageAsync(q.Pagination, seek, cancellationToken: ct);
 
         return page.Map(p => p.Map(o =>
             new OrderListItem(o.Id.Value, o.Total.Amount, o.Total.Currency.Value)));
@@ -105,6 +104,8 @@ For non-unique primary sorts, change the definition rather than hand-writing a s
 var seek = SeekDefinition.Descending<Order, DateTimeOffset>(o => o.CreatedAt)
     .ThenAscending(o => o.Id.Value);
 ```
+
+Provider support varies: SQLite cannot order by `DateTimeOffset`, so use a provider that translates the key or map the column to a supported type.
 
 End with a stable unique key. Every key must be non-null and provider-comparable; verify translation/collation semantics. `.Id.Value` projection requires `AddTrellisInterceptors()` on the context options. Apply tenant/authorization/business filters before `ToPageAsync`; the sample assumes the order source is already appropriately scoped.
 
