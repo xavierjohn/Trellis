@@ -12,7 +12,7 @@ agent_description: "Shows Result.ParallelAsync and WhenAllAsync for independent 
 ---
 # Recipe 21 — Parallel independent loads in handlers: `Result.ParallelAsync` + `WhenAllAsync`
 
-**Requires:** `Trellis.Core`, plus `Trellis.Mediator`.
+**Requires:** `Trellis.Core`, plus `Trellis.Mediator`. The repository interfaces in these samples are application-defined and return `Task<Result<T>>` (for example by adapting the `Maybe<T>` that `RepositoryBase.FindByIdAsync` returns); `GetByIdsAsync` is also application-defined.
 
 ## Contents
 

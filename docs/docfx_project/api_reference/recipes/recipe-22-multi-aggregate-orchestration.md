@@ -114,7 +114,7 @@ public sealed class ReturnOrderHandler(
 >
 > The test must hold the related-aggregate's pre-operation state and assert that no partial side-effect leaked through.
 
-The generator test (the one a coverage-driven author would never produce from a happy-path-only mental model):
+The generator test (the one a coverage-driven author would never produce from a happy-path-only mental model). Test blocks need `Trellis.Testing` and FluentAssertions; `_sender`, the seeding helpers and the property names (`StockQuantity`, `Status`) are application-owned:
 
 ```csharp
 [Fact]

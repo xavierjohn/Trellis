@@ -262,7 +262,7 @@ return order.Submit();
 
 **Partial-Failure Atomicity test (the test the bug-shipping models never wrote).**
 
-Every two-pass handler needs a test where a *later* element of the collection is unsatisfiable while *earlier* elements are. Happy-path tests cannot reveal the partial-mutation bug.
+Every two-pass handler needs a test where a *later* element of the collection is unsatisfiable while *earlier* elements are. Happy-path tests cannot reveal the partial-mutation bug. The test block needs `Trellis.Testing` and FluentAssertions; `_sender` and the seeding helper are application-owned.
 
 ```csharp
 [Fact]
