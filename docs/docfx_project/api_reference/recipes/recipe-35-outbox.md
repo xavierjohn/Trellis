@@ -12,7 +12,7 @@ agent_description: "Shows the transactional outbox for crash-safe domain events.
 ---
 # Recipe 35 — Transactional outbox for crash-safe domain events
 
-**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.EntityFrameworkCore.Outbox`, `Trellis.ServiceDefaults`.
+**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.EntityFrameworkCore.Outbox`, `Trellis.Mediator`, `Trellis.ServiceDefaults`.
 
 **Problem.** Your command raises a domain event and commits, but the in-pipeline `UseDomainEvents()` dispatch runs *after* the transaction. If the process crashes between the commit and the dispatch, the event is lost — the order is saved but `OrderPlaced` never reaches its handler.
 
@@ -33,17 +33,19 @@ services.AddTrellis(trellis => trellis
     .UseOutbox<AppDbContext>());
 ```
 
-Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.GetUtcNow()))`. When the outbox is enabled the capture interceptor clears the aggregate's events after the commit succeeds (in the `SavedChanges` callback, not inside the transaction), so the in-pipeline dispatch sees none and the relay becomes the single, durable dispatcher.
+Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.GetUtcNow()))`. When the outbox is enabled the capture interceptor clears the aggregate's events in the `SavedChanges` callback, after EF's own per-save transaction has committed (the commit the unit of work uses), so the in-pipeline dispatch sees none and the relay becomes the single, durable dispatcher. Do not wrap `SaveChanges` in your own transaction: the callback runs before that outer commit, so a rollback would lose both the rows and the events.
 
 **Semantics to remember.**
 
-- **Domain rows** use reporting dispatch: every domain handler must complete before the row is processed. A handler that throws leaves it pending and retry re-invokes only failed handlers, up to `OutboxOptions.MaxAttempts`, after which it is parked. Make handlers idempotent — a crash can repeat successes whose progress was not saved. Default in-pipeline domain dispatch still swallows handler exceptions because its post-commit callers have no retry mechanism. Integration rows have a different publisher-handoff boundary; see [Recipe 36](recipe-36-integration-events.md).
+- **Domain rows** use reporting dispatch: every domain handler must complete before the row is processed. A handler that throws leaves it pending and retry re-invokes only failed handlers, up to `OutboxOptions.MaxAttempts`, after which it is parked. Retries wait an exponential backoff (`RetryBackoff`, capped by `MaxRetryBackoff`), so parking after the default attempts takes hours; lower them in tests. Make handlers idempotent — a crash can repeat successes whose progress was not saved. Default in-pipeline domain dispatch still swallows handler exceptions because its post-commit callers have no retry mechanism. Integration rows have a different publisher-handoff boundary; see [Recipe 36](recipe-36-integration-events.md).
 - `Maybe<T>` event members are supported — a present value serializes as the underlying value, an absent one as JSON `null`. Members that depend on a caller-registered (non-attribute) `JsonSerializerOptions` converter still need a nullable transport, since the outbox serializer only honors `[JsonConverter]`-attributed types.
 - This is an outbox, not an event store: rows are a transient delivery buffer and may be pruned once `ProcessedAt` is set.
 - Capture persists the current W3C trace context with each domain row; the outbox schema includes nullable lineage and trace columns. See the outbox reference for the column names.
-- Every new domain row also receives its own UTC `CapturedAt` from the interceptor's
-  `TimeProvider`. Add the nullable column/index migration before deploying the writer;
+- Every new domain row receives a UTC `CapturedAt` from the interceptor's
+  `TimeProvider` (events of one aggregate in one save share the value). Add the nullable column/index migration before deploying the writer;
   legacy nulls remain unknown and `OccurredAt` is never a queue-age substitute.
+
+`AddDbContext<TContext>(...)` and a scoped `AddMediator(...)` are application-owned and must also be registered.
 
 See [trellis-api-efcore-outbox.md](../trellis-api-efcore-outbox.md#how-the-outbox-works) for the full contract, options, and operational guidance.
 

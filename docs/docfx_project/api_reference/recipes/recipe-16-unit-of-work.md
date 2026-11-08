@@ -42,7 +42,7 @@ public sealed class CreateOrderHandler(IOrderRepository repo)
 }
 ```
 
-> `repo.Add(entity)` stages the aggregate for insertion via EF Core; `TransactionalCommandBehavior`, registered by `services.AddTrellisUnitOfWork<TContext>()` in your ACL composition root, automatically saves after a successful enclosed pipeline response — no explicit save call is needed in the handler.
+> `repo.Add(entity)` stages the aggregate for insertion via EF Core; `TransactionalCommandBehavior`, registered by `services.AddTrellisUnitOfWork<TContext>()` in your composition root, automatically saves after a successful enclosed pipeline response — no explicit save call is needed in the handler.
 
 **What it shows.** Handlers shape domain state; the pipeline owns the commit boundary.
 `RepositoryBase.Add` returns `void` to signal "staged, not persisted" — not an awaitable
@@ -62,18 +62,19 @@ outer authorization, validation, telemetry, and event-dispatch stages.
 **Anti-pattern → fix.**
 
 ```csharp
-// ❌ Wrong — explicit SaveChangesAsync in the handler. Bypasses TransactionalCommandBehavior,
-//   so cross-aggregate behaviors that depend on a single commit boundary (outbox writes,
-//   ETag bumps, audit logs) end up in inconsistent states. Also: you've now committed even
-//   if a later behavior in the pipeline fails post-handler.
+// ❌ Wrong — an explicit SaveChangesAsync in the handler commits before the inside-transaction
+//   behaviors (such as audit staging) and the outer behaviors have finished. TransactionalCommandBehavior
+//   still runs and saves again, so rows those behaviors stage land in a second, separate save,
+//   and a later failure cannot undo the first commit. Outbox capture and ETag stamping still
+//   run on every save.
 public ValueTask<Result<OrderId>> Handle(CreateOrderCommand cmd, CancellationToken ct) =>
     Order.TryCreate(cmd.Total)
         .Tap(repo.Add)
-        .TapAsync(_ => dbContext.SaveChangesAsync(ct));   // ❌ — duplicates UoW, racy
+        .TapAsync(_ => dbContext.SaveChangesAsync(ct));   // ❌ — a second, earlier commit
 
 // ❌ Wrong — calling SaveAsync from a production handler. SaveAsync is a FakeRepository
 //   convenience for tests. EF repositories don't expose it (and shouldn't).
-.TapAsync(o => repo.SaveAsync(o, ct))   // ❌ — IRepository<Order>.SaveAsync doesn't exist
+.TapAsync(o => repo.SaveAsync(o, ct))   // ❌ — the application's repository contract (and RepositoryBase) has no SaveAsync
 
 // ✅ Correct — stage with Add, let TransactionalCommandBehavior commit on success.
 .Tap(repo.Add)
@@ -87,9 +88,9 @@ var customers = new FakeRepository<Customer, CustomerId>();
 customers.Add(MakeAlice());   // helper builds a valid Customer via Customer.TryCreate(...)
 
 // ✅ Conflict-result test: SaveAsync returns the Error.Conflict so the test can assert.
-var customers = new FakeRepository<Customer, CustomerId>().WithUniqueConstraint(c => c.Email);
-customers.Add(MakeAlice());                                          // first alice — accepted
-var result = await customers.SaveAsync(MakeAlice());                 // intentional conflict
+var uniqueCustomers = new FakeRepository<Customer, CustomerId>().WithUniqueConstraint(c => c.Email);
+uniqueCustomers.Add(MakeAlice());                                    // first alice — accepted
+var result = await uniqueCustomers.SaveAsync(MakeAlice());           // intentional conflict
 result.UnwrapError().Should().BeOfType<Error.Conflict>();
 ```
 
@@ -102,8 +103,10 @@ services
     .AddTrellisBehaviors()                              // exception/tracing/logging/authorization/validation
     .AddTrellisFluentValidation(typeof(MyValidator).Assembly)
     .AddTrellisUnitOfWork<AppDbContext>()               // ⬅ registers TransactionalCommandBehavior
-    .AddScoped<IOrderRepository, EfOrderRepository>();
+    .AddScoped<IOrderRepository>(p => new EfOrderRepository(p.GetRequiredService<AppDbContext>()));
 ```
+
+`AddDbContext<AppDbContext>(...)` (with `AddTrellisInterceptors()`) and `AddMediator(options => options.ServiceLifetime = ServiceLifetime.Scoped)` are application-owned and must also be registered. `AppDbContext`, `Order`, `IOrderRepository` and `EfOrderRepository` are application types; the repository takes the concrete context in its constructor, so it is registered with a factory rather than `AddScoped<I, Impl>()`.
 
 Without a transaction behavior and matching `IUnitOfWork`, `repo.Add(order)` only stages
 the entity. Tests against `FakeRepository` can hide that omission because `Add` is
@@ -256,24 +259,24 @@ public sealed partial class RequiredAuditBehavior<TMessage, TResponse>(
 }
 ```
 
-Register the recorder as scoped. Both repositories must resolve the same concrete
+Register the recorder as scoped. `AppDbContext`, `AddDbContext<AppDbContext>(...)` and a scoped `AddMediator(...)` are application-owned. Both repositories must resolve the same concrete
 context and stage only; they must not save independently:
 
 ```csharp
 services.AddSingleton(TimeProvider.System);
 services.AddScoped<IOrderAuditRecorder, OrderAuditRecorder>();
 services.AddScoped<IOrderRepository>(provider =>
-    new EfOrderRepository(provider.GetRequiredService<Recipe16DbContext>()));
+    new EfOrderRepository(provider.GetRequiredService<AppDbContext>()));
 services.AddScoped<IAuditEntryRepository>(provider =>
-    new EfAuditEntryRepository(provider.GetRequiredService<Recipe16DbContext>()));
+    new EfAuditEntryRepository(provider.GetRequiredService<AppDbContext>()));
 services.AddTrellis(options => options
     .UseInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))
-    .UseEntityFrameworkUnitOfWork<Recipe16DbContext>());
+    .UseEntityFrameworkUnitOfWork<AppDbContext>());
 ```
 
 Without the builder, register standard behaviors, use
 `services.AddInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))`, and register
-`AddTrellisUnitOfWork<Recipe16DbContext>()`. Either helper order preserves placement.
+`AddTrellisUnitOfWork<AppDbContext>()`. Either helper order preserves placement.
 The open behavior's marker constraint selects matching commands; the typed
 `AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` overload selects one binding.
 Multiple selected behaviors nest in binding order and unwind in reverse order.
@@ -300,12 +303,7 @@ For post-commit events from behavior-added aggregates, select
 `UseTrackedAggregateDomainEvents(...)`: response-shape dispatch discovers only returned
 aggregates. Outbox capture sees behavior-added aggregates in the same owning save.
 
-> **Compiled and behavior-pinned.** `Examples/CookbookSnippets/Recipe16_UnitOfWork.cs` in the Trellis source repository (not shipped in the NuGet package)
-> contains the complete model, recorder, behavior, adapters, context, and registration.
-> `Examples/CookbookSnippets.Tests/Recipe16AuditBehaviorTests.cs` uses real SQLite to
-> prove same-save atomicity, rollback, nested checkpoints, outcome handling, and
-> post-commit events. It also pins the explicit limitation that ignored inner failures
-> do not permanently reject the owner. The outbox suite covers behavior-added aggregates.
+> **Behavior pinned by tests.** The Trellis repository's SQLite tests pin same-save atomicity, rollback, nested checkpoints, outcome handling and post-commit events. They also pin the explicit limitation that ignored inner failures do not permanently reject the owner. The outbox suite covers behavior-added aggregates.
 
 ## Testing handlers with an application-owned recorder
 
@@ -329,7 +327,7 @@ sealed class Orders : FakeRepository<Order, OrderId>, IOrderRepository;
 ```
 
 An application may substitute its own recorder double through the same interface.
-`Examples/CookbookSnippets.Tests/Recipe16AuditHandlerTests.cs` (same repository) also invokes the real
+A Trellis repository test also invokes the real
 behavior around a real handler without a container to verify staging, cleanup on all
 exit paths, and preservation of original exceptions. Fake repositories are immediately
 visible and do not prove transaction atomicity; keep the SQLite tests for that boundary.

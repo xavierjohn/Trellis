@@ -14,7 +14,7 @@ agent_description: "Shows the CanFire and Fire pattern with FireResult for aggre
 
 **Requires:** `Trellis.Core`, plus `Trellis.StateMachine`.
 
-**Problem.** Drive an order through `Draft → Submitted → Shipped` using Stateless, but expose every transition as `Result<TState>` so the mediator pipeline composes naturally.
+**Problem.** Drive a document through `Draft → Submitted → Approved` using Stateless (`Document` is an application-owned aggregate with a settable `State` property), but expose every transition as `Result<TState>` so the mediator pipeline composes naturally.
 
 ```csharp
 using Stateless;
@@ -57,14 +57,14 @@ public sealed class DocumentService
 }
 ```
 
-**What it shows.** `StateMachineExtensions.FireResult(...)` honors `PermitIf`/`IgnoreIf` guards via `CanFire(...)` rather than parsing exception messages, so invalid-transition detection is independent of Stateless exception text. For aggregates whose state lives in a backing field (e.g., loaded from EF), use `LazyStateMachine<TState, TTrigger>` to defer machine creation until the first `FireResult` call.
+**What it shows.** `StateMachineExtensions.FireResult(...)` honors `PermitIf`/`IgnoreIf` guards via `CanFire(...)` rather than parsing exception messages, so invalid-transition detection is independent of Stateless exception text. A trigger that no handler permits or ignores (including one whose `PermitIf`/`IgnoreIf` guard is false) becomes an `InvariantViolation`; a trigger ignored via `Ignore`/`IgnoreIf` returns success with the unchanged state, not a failure. For aggregates whose state lives in a backing field (e.g., loaded from EF), use `LazyStateMachine<TState, TTrigger>` to defer machine creation until the first `FireResult` call (or the first access of its `Machine` property).
 
 **Side-effect placement.** Keep Stateless configuration declarative: states, triggers, permitted transitions, and pure/idempotent guards. Put business mutation, domain events, outbox writes, and other side effects after `FireResult` succeeds, usually in `.Tap(...)` as shown above. `FireResult` short-circuits when `CanFire(...)` is false and does **not** invoke `Fire(...)`, so configured `OnUnhandledTrigger` callbacks do not run from the typed-result path. Consumers who want an `OnUnhandledTrigger` callback to run must call Stateless `Fire(...)` directly. If side effects live in `OnEntry`, `OnExit`, transition callbacks, or `OnUnhandledTrigger`, they can run outside the visible ROP success/failure path and make handler behavior diverge from tests.
 
 > **HTTP semantics.** Invalid state-machine transitions surface as `Error.InvariantViolation` (HTTP 422), not `Error.InvalidInput` or `Error.Conflict` (HTTP 409). The reasoning: a rejected transition ("you asked for `Submit` on a `Cancelled` order") is a breach of the aggregate's lifecycle invariant evaluated against its current state — the request itself is well-formed (so it is not inbound-input validation), and it is not a concurrent-modification conflict that a retry could resolve. Both `InvalidInput` and `InvariantViolation` map to 422 and share the on-wire ProblemDetails `kind` `unprocessable-content`, so the HTTP response is unchanged; the distinction is the domain error type (its `Kind` slug becomes `invariant-violation`). Callers that need to distinguish state-machine rejections from other 422s can match on the `Code` value `state-machine.invalid-transition`.
 
 ```csharp
-// Asserting on a state-machine rejection in tests:
+// Asserting on a state-machine rejection in tests (uses FluentAssertions):
 var invariant = result.Error.Should().BeOfType<Error.InvariantViolation>().Subject;
 invariant.Code.Should().Be("state-machine.invalid-transition");
 ```

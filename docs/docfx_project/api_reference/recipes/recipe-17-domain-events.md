@@ -17,7 +17,7 @@ agent_description: "Shows custom domain events where OccurredAt is the only time
 **Problem.** You're modeling an order workflow and reach for a domain event:
 
 ```csharp
-// ❌ Wrong — CS0535 'OrderSubmitted does not implement IDomainEvent.OccurredAt'
+// ❌ Wrong — CS0535: 'OrderSubmitted' does not implement interface member 'IDomainEvent.OccurredAt'
 public sealed record OrderSubmitted(OrderId OrderId, Money Total, DateTimeOffset SubmittedAt) : IDomainEvent;
 ```
 
@@ -37,7 +37,7 @@ public sealed record OrderApproved(OrderId OrderId, ActorId ApprovedBy, DateTime
 public sealed record OrderShipped(OrderId OrderId, TrackingNumber Tracking, DateTimeOffset OccurredAt) : IDomainEvent;
 ```
 
-**Raising the event.** Always pass `TimeProvider.GetUtcNow()` (the .NET 8 testable-clock primitive returns `DateTimeOffset` directly — no conversion needed). The aggregate's domain method, not the event constructor, is where time enters the system:
+**Raising the event.** Always pass `TimeProvider.GetUtcNow()` (the testable-clock primitive returns `DateTimeOffset` directly — no conversion needed). The aggregate's domain method, not the event constructor, is where time enters the system:
 
 ```csharp
 public Result<Order> Submit(TimeProvider clock)
@@ -54,7 +54,7 @@ public Result<Order> Submit(TimeProvider clock)
 ```
 
 > [!IMPORTANT]
-> Domain-event handlers are side-effect-only. The mediator dispatch behaviors snapshot `UncommittedEvents()` at dispatch entry and publish only that snapshot. If a handler raises an event on the same aggregate, post-dispatch validation throws `DomainEventHandlerCascadedException` and the aggregate's events are not cleared. If a side effect needs more domain mutation, send a separate Mediator command after the originating command completes, or queue post-commit work that runs as its own top-level command — not from inside the handler.
+> Domain-event handlers are side-effect-only. The mediator dispatch behaviors snapshot `UncommittedEvents()` after the owning commit, immediately before publishing, and publish only that snapshot. If a handler raises an event on the same aggregate, post-dispatch validation throws `DomainEventHandlerCascadedException` and the aggregate's events are not cleared. That exception is raised after the commit, so the write is already durable while the caller sees a failure (an `Unexpected` failure through the standard `ExceptionBehavior`); do not retry the command to recover. If a side effect needs more domain mutation, send a separate Mediator command after the originating command completes, or queue post-commit work that runs as its own top-level command — not from inside the handler.
 
 **On the aggregate.** If your aggregate also exposes a public `SubmittedAt` property (e.g., to drive UI sort order or read-model projections), source it from the event timestamp at write time — don't track it independently:
 
