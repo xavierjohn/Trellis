@@ -12,7 +12,7 @@ agent_description: "Compares Maybe of a scalar with nullable transport for optio
 ---
 # Recipe 14 — Optional fields in request DTOs: `Maybe<TScalar>` vs nullable transport
 
-**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Mediator`, `Trellis.Primitives`.
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Mediator`, `Trellis.Primitives`. `ShippingAddress` is the composite from [Recipe 13](recipe-13-composite-value-object.md), whose `[OwnedEntity]` attribute needs `Trellis.EntityFrameworkCore`; `CreateCustomerCommand` and `CustomerResponse` are application-owned.
 
 ## Contents
 
@@ -26,8 +26,8 @@ The answer depends on whether the inner type is a **scalar** (single-primitive) 
 
 | Inner type | Pattern | Why |
 |---|---|---|
-| `Maybe<TScalar>` where `TScalar : class, IScalarValue<TScalar, TPrimitive>` (e.g., `Maybe<EmailAddress>`, `Maybe<PhoneNumber>`) | **Use `Maybe<T>` directly on the DTO.** | `AddScalarValueValidation()` (or the convenience `AddTrellisAspWithScalarValidation()`) registers `MaybeScalarValueJsonConverterFactory` (JSON) and `MaybeModelBinder<T,P>` (route/query/header); MVC child-validation suppression for `None` scalar-maybe values is handled internally by the Trellis MVC integration. Call it before MVC model binding is configured. `null`/missing → `None`; valid → `Maybe.From(validated)`; invalid → ProblemDetails with the same field path the domain emits. Custom struct scalar wrappers require an application-owned converter or a DTO adapter; Core's ability to hold them in `Maybe<T>` does not remove the transport converters' class constraint. |
-| `Maybe<TComposite>` where `TComposite : ValueObject` with multiple fields (e.g., `Maybe<ShippingAddress>`) | **Use a nullable transport (`TComposite?`) and adapt at the controller seam.** | No `MaybeCompositeValueObjectJsonConverterFactory` ships today — System.Text.Json would default-construct the inner type, bypassing `TryCreate`. Wrap with `Maybe.From(...)` inside the controller. |
+| `Maybe<TScalar>` where `TScalar : class, IScalarValue<TScalar, TPrimitive>` (e.g., `Maybe<EmailAddress>`, `Maybe<PhoneNumber>`) | **Use `Maybe<T>` directly on the DTO.** | `AddScalarValueValidation()` (or the convenience `AddTrellisAspWithScalarValidation()`) registers `MaybeScalarValueJsonConverterFactory` (JSON) and `MaybeModelBinder<T,P>` (route/query/header); MVC child-validation suppression for `None` scalar-maybe values is handled internally by the Trellis MVC integration. Register it with the other services; its order relative to `AddControllers()` does not matter. `null`/missing → `None`; valid → `Maybe.From(validated)`; invalid → ProblemDetails with the same field path the domain emits. Custom struct scalar wrappers require an application-owned converter or a DTO adapter; Core's ability to hold them in `Maybe<T>` does not remove the transport converters' class constraint. |
+| `Maybe<TComposite>` where `TComposite : ValueObject` with multiple fields (e.g., `Maybe<ShippingAddress>`) | **Use a nullable transport (`TComposite?`) and adapt at the controller seam.** | No JSON converter exists for `Maybe<TComposite>`: the factory only matches scalar value objects, so System.Text.Json treats the struct as a plain object and reads every payload as `None`, bypassing `TryCreate`. Wrap with `Maybe.From(...)` inside the controller. |
 | `Maybe<TPrimitive>` (e.g., `Maybe<int>`, `Maybe<long>`, `Maybe<string>`, `Maybe<Guid>`, `Maybe<DateTime>`) | **Use `Maybe<T>` directly on the DTO.** | `AddScalarValueValidation()` (or the convenience `AddTrellisAspWithScalarValidation()`) registers `MaybePrimitiveJsonConverterFactory` (JSON) and `MaybePrimitiveModelBinder<T>` (route/query/header). Same closed-primitive allowed list as `CompositeValueObjectJsonConverter` (`string`, `decimal`, `int`, `long`, `short`, `byte`, `double`, `float`, `bool`, `Guid`, `DateTime`, `DateTimeOffset`). `null`/missing → `None`; valid primitive → `Maybe.From(value)`. If the primitive carries domain meaning, you may still prefer wrapping it in a scalar value object (e.g., `Age : RequiredInt<Age>`) for the wire-time validation `TryCreate` provides; both shapes are factory-handled. |
 | `Maybe<TUnsupportedPrimitive>` (e.g., `Maybe<DateOnly>`, `Maybe<TimeOnly>`, `Maybe<uint>`) | **Use `TUnsupportedPrimitive?` on the DTO and `.AsMaybe()` at the seam.** | These types are outside both the composite-VO converter allowed list and the `Maybe<TPrimitive>` factory allowed list. The wire-shape DTO + adapter at the controller seam is the same pattern as `Maybe<TComposite>`. |
 
@@ -62,12 +62,17 @@ public sealed class CustomersController(ISender sender) : ControllerBase
 }
 ```
 
-`AddTrellisAspWithScalarValidation()` is the only wiring required:
+`AddTrellisAspWithScalarValidation()` registers the converters and binders, and `app.UseScalarValueValidation()` collects the field errors so their pointers are not doubled:
 
 ```csharp
 services.AddTrellisAspWithScalarValidation();   // MaybeScalarValueJsonConverterFactory + MaybePrimitiveJsonConverterFactory + MaybeModelBinder + MaybePrimitiveModelBinder + ValidationVisitor patch
 services.AddControllers();
+
+// after building the app, before MapControllers():
+app.UseScalarValueValidation();
 ```
+
+Without the middleware an invalid phone still returns 422, but the pointer is `/phoneNumber/phoneNumber` (and `/email/emailAddress` for a bad top-level scalar).
 
 Send `{"email":"a@b.com","phoneNumber":null}` (or omit `phoneNumber` entirely) → handler receives `Maybe<PhoneNumber>.None`. Send `{"email":"a@b.com","phoneNumber":"not a phone"}` → 422 with field path `/phoneNumber` and the validation message produced by `PhoneNumber.TryCreate`.
 
@@ -100,20 +105,24 @@ The composite VO must still carry `[JsonConverter(typeof(CompositeValueObjectJso
 ## Anti-pattern → fix
 
 ```csharp
-// WRONG — composite Maybe<T> on DTO. Compiles, deserializes to Maybe.From(default(ShippingAddress)),
-// silently skips TryCreate. Discovered only when the persisted entity has empty strings.
+// WRONG — composite Maybe<T> on DTO. It compiles, but System.Text.Json uses the generic struct shape:
+// every request body deserializes to Maybe.None, TryCreate never runs and the client's address is
+// silently dropped (TRLS020).
 public sealed record CreateCustomerRequest(EmailAddress Email, Maybe<ShippingAddress> ShippingAddress);
 
 // FIX — nullable transport + controller-seam adapter (Pattern B above).
 public sealed record CreateCustomerRequest(EmailAddress Email, ShippingAddress? ShippingAddress);
 
 // WRONG — bypassing AddScalarValueValidation() (e.g., raw services.AddControllers().AddJsonOptions(...) in isolation)
-// drops the Maybe converters AND the SuppressChildValidationMetadataProvider, so MVC's ValidationVisitor
-// will throw InvalidOperationException("Maybe has no value.") the moment a None reaches model validation.
+// drops the Maybe converters AND the MaybeSuppressChildValidationMetadataProvider. Omitting the property
+// then reaches model validation with a None and MVC throws InvalidOperationException
+// ("Maybe<PhoneNumber>.Value was accessed when HasValue is false"); null or valid values fail with a 400
+// because the Maybe converters are missing.
 services.AddControllers();   // missing scalar-value validation wiring
 
-// FIX — call AddTrellisAspWithScalarValidation() (or AddScalarValueValidation() explicitly) before
-// AddControllers(); both call paths are idempotent and configure both pipelines.
+// FIX — call AddTrellisAspWithScalarValidation() (or AddScalarValueValidation() explicitly);
+// both call paths are idempotent and configure both pipelines, and their order relative to
+// AddControllers() does not matter.
 services.AddTrellisAspWithScalarValidation();
 services.AddControllers();
 ```

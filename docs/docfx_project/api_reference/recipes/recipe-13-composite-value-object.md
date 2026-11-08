@@ -137,7 +137,7 @@ For JSON calls, trailing optional parameters receive their declared defaults (`f
 | Concern | Contract |
 |---|---|
 | Ownership discovery | `CompositeValueObjectConvention` discovers composites by **inheritance from `ValueObject`**, not `[OwnedEntity]`. The generated `ApplyTrellisConventionsFor<AppDbContext>()` follows reachable types from the context's `DbSet<T>` roots and registers scalar converters too. No manual `OwnsOne` or scalar `HasConversion` is needed for this address. |
-| Composite materialization | `[OwnedEntity]` generates the private parameterless constructor. Its class must be `partial` (`TRLS036`), inherit `ValueObject` (`TRLS038`), and declare no parameterless constructor (`TRLS037`). Keep `{ get; private set; }`, not `init` (`TRLS022`). A mapped composite with neither a generated nor handwritten parameterless constructor fails at model-build with `TrellisPersistenceMappingException`. |
+| Composite materialization | `[OwnedEntity]` generates the private parameterless constructor. Its class must be `partial` (`TRLS036`), inherit `ValueObject` (`TRLS038`), and declare no parameterless constructor (`TRLS037`, a warning: the generator skips emission instead of failing the build). Keep `{ get; private set; }`, not `init` (`TRLS022`). A mapped composite with neither a generated nor handwritten parameterless constructor fails at model-build with `TrellisPersistenceMappingException`. |
 | Aggregate materialization | EF cannot bind an owned navigation in a constructor. The separate `Customer(CustomerId id)` constructor below provides a materialization path. |
 | JSON validation | `[JsonConverter(typeof(CompositeValueObjectJsonConverter<ShippingAddress>))]` selects the primitive factory. Without the converter, JSON binding does not enforce this `TryCreate` contract. |
 
@@ -205,8 +205,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
 - Null-only required-field guards create errors only for missing values. `EnsureNotNullOrWhiteSpace("name", "Name is required.")` reports `value.not-null` for null names and `value.not-empty` for empty/whitespace names, without creating violations on success or trimming valid text.
 - The primitive and typed factories converge on one construction path. Scalar validation and missing-reference checks accumulate all field failures; additional composite rules belong in the typed factory, not a second transport-only implementation.
-- `CompositeValueObjectJsonConverter<T>` calls the primitive `TryCreate`, so an invalid `state` produces the same structured `Error.InvalidInput` the domain emits. Missing/null inner JSON fields fail *before* `TryCreate` runs. ASP collecting adapters collect these failures without throwing; standalone deserialization rejects them with `TrellisJsonValidationException`.
-- `ApplyTrellisConventions` removes the boilerplate `OwnsOne` call. You only need `OwnsOne` when you want to **override** the convention (custom column names, table splitting, indexes on inner properties).
+- `CompositeValueObjectJsonConverter<T>` calls the primitive `TryCreate`, so an invalid `state` produces the same structured `Error.InvalidInput` the domain emits. Missing/null inner JSON fields fail *before* `TryCreate` runs. With `AddTrellisAspWithScalarValidation()` registered, ASP collecting adapters collect these failures without throwing; standalone deserialization rejects them with `TrellisJsonValidationException`.
+- `ApplyTrellisConventionsFor<AppDbContext>()` (or `ApplyTrellisConventions(assembly)`) removes the boilerplate `OwnsOne` call. You only need `OwnsOne` when you want to **override** the convention (custom column names, table splitting, indexes on inner properties).
 
 **Storage shape.**
 

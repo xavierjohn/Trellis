@@ -57,7 +57,7 @@ public static class ModelDiagnostics
 }
 ```
 
-**What it shows.** `Maybe<T>` properties are routed through `MaybeConvention`, which generates a backing field (`_email` for `Email`) that EF Core maps to a nullable column. The CLR property remains `Maybe<EmailAddress>` everywhere in the domain. `MaybePropertyMapping` is the diagnostic record that exposes both names — useful for `HasIndex` on the storage member.
+**What it shows.** The EF generator emits a private `_email` backing field for a `partial` `Maybe<T>` property, and `MaybeConvention` maps it to a nullable column named `Email` and ignores the CLR property. The CLR property remains `Maybe<EmailAddress>` everywhere in the domain. `MaybePropertyMapping` is the diagnostic record that exposes both names — useful for `HasIndex` on the storage member.
 
 For storage-level inspection, the same record exposes `StorageKind`, `TableName`,
 `Schema`, and `Columns.Items` (property paths, actual table/column names, provider column
@@ -71,21 +71,21 @@ separate-table fallback reason when known, not a guess about explicit overrides.
 **Anti-pattern → fix (TRLS016).**
 
 ```csharp
-// WRONG — HasIndex against the CLR Maybe<T> property silently fails
+// WRONG — HasIndex against the CLR Maybe<T> property throws InvalidOperationException at model build
+// ("... has property 'Email' of type Maybe<...> mapped as a scalar"); TRLS016 flags it at compile time.
 modelBuilder.Entity<Customer>().HasIndex(c => c.Email);   // TRLS016
 
 // WRONG — explicit Property() configuration on a Maybe<T> CLR property.
 // MaybeConvention generates a private backing field (e.g., _email) and maps THAT.
-// Calling builder.Property(c => c.Email) tries to map Maybe<EmailAddress> as a column,
-// which is not a supported store type — fails at model validation with
-// "The property 'Customer.Email' could not be mapped because the database provider
-//  does not support the type 'Maybe<EmailAddress>'."
+// Calling builder.Property(c => c.Email) tries to map Maybe<EmailAddress> as a column, so the model
+// fails to build with an InvalidOperationException ("Entity 'Customer' has property 'Email' of type
+// Maybe<...> mapped as a scalar ... Remove any explicit '.Property(x => x.Email)' call").
 internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
-        builder.Property(c => c.Email).IsRequired();          // ❌ — runtime error
-        builder.Property(c => c.Email).HasMaxLength(254);     // ❌ — runtime error
+        builder.Property(c => c.Email).IsRequired();          // ❌ — fails at model build
+        builder.Property(c => c.Email).HasMaxLength(254);     // ❌ — fails at model build
     }
 }
 
@@ -128,7 +128,7 @@ var overdue = await context.Orders
 
 **Why this works in both EF and `FakeRepository<T, TId>`** — the compiled `Func<Order, bool>` that `FakeRepository` evaluates in memory uses C#'s short-circuit `&&`, so `Value` is never read when `HasValue` is `false`. In EF, the interceptor rewrites both clauses to the mapped storage member and emits idiomatic SQL (`status = 'Submitted' AND submitted_at IS NOT NULL AND submitted_at < @threshold`). **One Specification, one predicate, identical semantics in production and in tests.**
 
-**HasValueWhere shorthand.** The same parity holds when the two-clause guard is collapsed into `Maybe<T>.HasValueWhere(predicate)`. In-memory it expands to `HasValue && predicate(Value)` (predicate is never invoked on None); in EF the interceptor rewrites it to the same `IS NOT NULL AND ...` SQL. Use whichever form reads better — they are interchangeable.
+**HasValueWhere shorthand.** The same parity holds when the two-clause guard is collapsed into `Maybe<T>.HasValueWhere(predicate)`. In-memory it expands to `HasValue && predicate(Value)` (predicate is never invoked on None); in EF the interceptor rewrites it to the same `IS NOT NULL AND ...` SQL. Use whichever form reads better — they are interchangeable as long as the `HasValueWhere` argument is an inline lambda (a captured `Func` delegate is not translated and throws `ArgumentException`).
 
 ```csharp
 // Equivalent specification using HasValueWhere — same SQL, same FakeRepository semantics.
@@ -144,7 +144,7 @@ public Task<IReadOnlyList<Order>> FindOverdueAsync(DateTime asOf, CancellationTo
     fake.QueryAsync(new OverdueOrderSpecification(asOf), ct);
 ```
 
-> **Prerequisite.** The interceptor only runs when the `DbContext` is configured with `optionsBuilder.AddTrellisInterceptors()`. Without it, EF Core sees `Maybe<T>` as an unmapped CLR type and either drops the predicate silently or fails translation — while the `FakeRepository` tests continue to pass. This is the failure mode that creates "fake says yes, production says no". Always wire interceptors in `AddDbContext`.
+> **Prerequisite.** The interceptor only runs when the `DbContext` is configured with `optionsBuilder.AddTrellisInterceptors()`. Without it EF Core cannot translate `Maybe<T>` members and the query throws `InvalidOperationException` (the LINQ expression could not be translated) — while the `FakeRepository` tests continue to pass. This is the failure mode that creates "fake says yes, production says no". Always wire interceptors in `AddDbContext`.
 
 ```csharp
 // Sentinel alternative — for predicates where you'd rather encode "absence acts as

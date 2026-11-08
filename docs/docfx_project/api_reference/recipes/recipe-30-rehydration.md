@@ -12,7 +12,7 @@ agent_description: "Contrasts fail-loud and Result-track rehydration of entities
 ---
 # Recipe 30 — Rehydrating entities from persistence: fail-loud vs Result-track
 
-**Requires:** `Trellis.Core` only.
+**Requires:** `Trellis.Core`. The samples assume EF Core and application-owned `AppDbContext`, `UserRows` and `ContactRows`; inside a Trellis mediator handler (`Trellis.Mediator`) the exception is converted by `ExceptionBehavior`, and `Trellis.Asp` maps the result to HTTP 500.
 
 ## Contents
 
@@ -29,7 +29,7 @@ Picking the right rehydration shape depends on which trust model applies to that
 
 ## Pattern A — fail-loud rehydration (the 90% case)
 
-When write-path validation is guaranteed (`TryCreate` enforced at every insert + update + migration backfill), a `TryCreate` failure on read is an operator bug. Use `Result<T>.GetValueOrThrow(string? errorMessage)` so the failure is loud, immediate, and names the offending row:
+When write-path validation is guaranteed (`TryCreate` enforced at every insert + update + migration backfill), a `TryCreate` failure on read is an operator bug. Use the `GetValueOrThrow(string? errorMessage)` extension on `Result<T>` so the failure is loud, immediate, and names the offending row:
 
 ```csharp
 using Trellis;
@@ -58,7 +58,7 @@ public sealed class UserRepository(AppDbContext db) : IUserRepository
 }
 ```
 
-`GetValueOrThrow` throws `InvalidOperationException` whose message names the offending row. The exception bubbles through `ExceptionBehavior` and surfaces as `new Error.Unexpected("unhandled-exception", faultId)` to the wire (HTTP 500), with the full message in operator-side logs — exactly the shape for "this should never have happened."
+`GetValueOrThrow(message)` throws `InvalidOperationException` with exactly `message` (the validation error is not appended), so include the row key and column in it. The exception bubbles through `ExceptionBehavior` and surfaces as `new Error.Unexpected("unhandled-exception", faultId)` to the wire (HTTP 500), with the full message in operator-side logs — exactly the shape for "this should never have happened."
 
 **Why not `Trellis.Testing.Unwrap()`?** `Unwrap()` is a test-only helper (see [Recipe 18](recipe-18-dto-to-value-object.md)). Production code that uses it mixes test and production seams and is harder to grep for than a named-verb extractor. `GetValueOrThrow` ships in `Trellis.Core` and the verb in the name makes the failure mode explicit at every call site.
 

@@ -34,9 +34,9 @@ The `[JsonConverter(typeof(CompositeValueObjectJsonConverter<T>))]` attribute on
 
 | C# property | JSON request/response shape |
 |---|---|
-| `ShippingAddress ShippingAddress { get; private set; }` (required composite VO) | `"shippingAddress": { "street": "1 Main St", "city": "Redmond", "state": "WA", "postalCode": "98052", "country": "US" }` — every field present; an **invalid** inner field (fails `TryCreate`) or a **missing** inner field produces structured `Error.InvalidInput` with field path `/shippingAddress/<field>`. ASP collects it; standalone serialization rejects it. |
+| `ShippingAddress ShippingAddress { get; private set; }` (required composite VO) | `"shippingAddress": { "street": "1 Main St", "city": "Redmond", "state": "WA", "postalCode": "98052", "country": "US" }` — every field present; an **invalid** inner field (fails `TryCreate`) or a **missing** inner field produces structured `Error.InvalidInput` with field path `/shippingAddress/<field>`. With `AddTrellisAspWithScalarValidation()` registered (see [Recipe 14](recipe-14-optional-dto-fields.md)), ASP collects it as a 422; with a bare `AddControllers()` the same payload is a 400 with `$.shippingAddress` and no per-field path. Standalone serialization rejects it. |
 | `partial Maybe<ShippingAddress> BillingAddress { get; set; }` (optional composite VO on a domain model — **not** used directly on a request DTO; see [Recipe 14](recipe-14-optional-dto-fields.md)) | Domain model only. On the wire, request DTOs use a **nullable transport** (`ShippingAddress?`) and the controller adapts via `Maybe.From(...)`. Response DTOs project to `ShippingAddress?` for the same reason. |
-| `Money Total { get; private set; }` (required composite VO with scalar inner properties — `decimal Amount`, `Currency Currency`) | `"total": { "amount": 49.99, "currency": "USD" }` — the inner field casing is camelCase (the `CompositeValueObjectJsonConverter` emits camelCase property names). Inner scalar VOs (e.g., `Currency : RequiredString<Currency>`) serialize as their underlying primitive (`"USD"`, not `{"value":"USD"}`). |
+| `Money Total { get; private set; }` (required composite VO with scalar inner properties — `decimal Amount`, `CurrencyCode Currency`) | `"total": { "amount": 49.99, "currency": "USD" }` — the inner field casing is camelCase (the `CompositeValueObjectJsonConverter` emits camelCase property names). Inner scalar VOs (e.g., `CurrencyCode : RequiredString<CurrencyCode>`) serialize as their underlying primitive (`"USD"`, not `{"value":"USD"}`). |
 | Scalar VO (`OrderId : RequiredGuid<OrderId>`, `EmailAddress : RequiredString<EmailAddress>`) | Always serializes as the underlying primitive (`"550e8400-..."`, `"a@b.com"`). Never wrapped in `{ "value": ... }`. This is automatic via the source-generated `IScalarValue<T,P>` JSON converter. |
 
 **Anti-pattern → fix.**
@@ -58,11 +58,11 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
 // FIX — say nothing about composite owned VOs in IEntityTypeConfiguration. The convention
 // auto-registers them as OwnsOne. To override (rename column, add an index on an inner
-// property, force table-splitting), use OwnsOne explicitly — it is additive, not duplicative,
-// because the convention checks IsOwned() before re-registering.
+// property, force table-splitting), use OwnsOne explicitly — explicit OwnsOne configuration
+// takes precedence over the convention.
 
-// WRONG — manual OwnsOne after ApplyTrellisConventions duplicates the convention's work
-// and silently overrides any annotations the convention set.
+// WRONG — an empty OwnsOne after ApplyTrellisConventions adds nothing: the convention already owns
+// the type, so it only duplicates the registration. Use OwnsOne only to override.
 builder.OwnsOne(c => c.ShippingAddress, owned => { /* … */ });
 
 // FIX — let the convention own the registration. Use OwnsOne only to override
@@ -79,7 +79,7 @@ builder.OwnsOne(c => c.ShippingAddress, owned =>
 [OwnedEntity]
 public class ShippingAddress : ValueObject { /* … */ }
 
-// WRONG — declared parameterless ctor (TRLS037) shadows the generator's emitted one.
+// WRONG — a handwritten parameterless ctor (TRLS037, a warning) makes the generator skip its emission; remove it or drop [OwnedEntity].
 [OwnedEntity]
 public partial class ShippingAddress : ValueObject { public ShippingAddress() { } }
 
@@ -92,7 +92,7 @@ public partial class ShippingAddress { /* … */ }
 
 When an aggregate or composite value object exposes a collection as an `IReadOnlyList<T>` (or `IReadOnlyCollection<T>`) facade over a private `List<T>` field, **how you map it depends on whether the element `T` is a value object or an entity:**
 
-- **`T` is a composite value object** (derives from `ValueObject`): **no configuration is required.** `CompositeValueObjectConvention` registers every composite VO as an owned type, and EF Core's navigation discovery binds the read-only facade to its `_camelCase` backing field automatically — including when the collection lives *inside another composite VO*, and whether the owner is required or `Maybe<T>`. Writing `Ignore` + `OwnsMany` for a value-object collection is redundant.
+- **`T` is a composite value object** (derives from `ValueObject`): **no mapping configuration is needed for discovery.** `CompositeValueObjectConvention` registers every composite VO as an owned type, and EF Core's navigation discovery binds the read-only facade to its `_camelCase` backing field automatically — including when the collection lives *inside another composite VO*, and whether the owner is required or `Maybe<T>`. Writing `Ignore` + `OwnsMany` for discovery is redundant. The synthesized per-row integer key is store-generated, though: it inserts on SQL Server and fails on SQLite (`NOT NULL constraint failed: <Table>.Id`). For SQLite tests, or provider-independent keys, map it: `OwnsMany(o => o.Items, w => { w.Property<Guid>("RowId"); w.HasKey("RowId"); })`.
 - **`T` is an entity** (has its own identity, not a `ValueObject`): the element is **not auto-owned** — Trellis conventions auto-own value objects only. By convention EF treats an entity collection as a *separate, independently-tracked* relationship, so configure `OwnsMany` explicitly to make it an owned aggregate child, as shown below.
 
 ```csharp
@@ -163,7 +163,7 @@ Choose the mapping shape deliberately:
 
 ## Supported property shapes inside a composite VO — when to map to a DTO instead
 
-`CompositeValueObjectJsonConverter<T>` is deliberately small. It supports a closed list of primitive types directly and routes Trellis scalar value objects through their underlying primitives. Anything else — including any `Maybe<T>`, arrays, collections, and nested composite VO properties — throws `TrellisJsonValidationException` at the first JSON access. The converter never delegates property reads/writes back to `JsonSerializer`, so adding `[JsonConverter]` to an inner composite type does not rescue the nested case. **EF Core persistence is more permissive** (`Maybe<T>`, arrays, and nested composites work) so the JSON gap only surfaces when the composite VO crosses an HTTP boundary.
+`CompositeValueObjectJsonConverter<T>` is deliberately small. It supports a closed list of primitive types directly and routes Trellis scalar value objects through their underlying primitives. Anything else — including any `Maybe<T>`, arrays, collections, and nested composite VO properties — throws `TrellisJsonValidationException` on serialization, and on deserialization when the JSON contains the property (a missing property is reported as a missing-field violation). The converter never delegates property reads/writes back to `JsonSerializer`, so adding `[JsonConverter]` to an inner composite type does not rescue the nested case. **EF Core persistence is more permissive** (`Maybe<T>`, arrays, and nested composites work) so the JSON gap only surfaces when the composite VO crosses an HTTP boundary.
 
 The intentional split is: keep the framework converter simple; route consumers with richer shapes through a wire-shape DTO at the controller/endpoint seam ([Recipe 14](recipe-14-optional-dto-fields.md) generalised).
 
@@ -172,10 +172,10 @@ The intentional split is: keep the framework converter simple; route consumers w
 | `string` | ✅ Supported as-is | Use directly. |
 | `decimal`, `int`, `long`, `short`, `byte`, `double`, `float`, `bool` | ✅ Supported as-is | Use directly. |
 | `Guid`, `DateTime`, `DateTimeOffset` | ✅ Supported as-is | Use directly. |
-| Trellis scalar VO (`RequiredString<>`, `RequiredInt<>`, `RequiredGuid<>`, `RequiredEnum<>`, `RequiredDateTime<>`, …) — and shipped concretes like `EmailAddress`, `PhoneNumber`, `Money.Currency` | ✅ Flattens to underlying primitive on the wire | Use directly. The composite converter detects `IScalarValue<,>` and reads/writes the inner primitive. |
-| **Nullable** Trellis scalar VO (`PropertyType? Optional` declared as a property on the composite VO) | ⚠️ **Write/read asymmetric.** Writing `null` produces JSON `null`; reading the same JSON throws a primitive-specific validation error (e.g. `Property '...' must be a string.` for a string-backed scalar like `RequiredString<>` / `RequiredEnum<>`; `must be an integer.` for `RequiredInt<>`; `must be a GUID.` for `RequiredGuid<>`). The converter doesn't propagate TryCreate parameter nullability through its metadata, so `ReadPrimitive` cannot distinguish a required scalar from a nullable scalar interior. | **Map to a DTO.** Same pattern as `Maybe<T>` below — declare the optional field on the wire-shape DTO as nullable, lift to `Maybe<TScalar>` (preferred) or keep nullable on the domain VO and resolve at the seam. The asymmetry is pinned by `CompositeVoBoundaryTests.Nullable_scalar_VO_interior_is_write_read_asymmetric_for_null_value`. |
+| Trellis scalar VO (`RequiredString<>`, `RequiredInt<>`, `RequiredGuid<>`, `RequiredEnum<>`, `RequiredDateTime<>`, …) — and shipped concretes like `EmailAddress`, `PhoneNumber`, `Money.Currency` (`CurrencyCode`) | ✅ Flattens to underlying primitive on the wire | Use directly. The composite converter detects `IScalarValue<,>` and reads/writes the inner primitive. |
+| **Nullable** Trellis scalar VO (`PropertyType? Optional` declared as a property on the composite VO) | ⚠️ **Write/read asymmetric.** Writing `null` produces JSON `null`; reading the same JSON throws a primitive-specific validation error (e.g. `Property '...' must be a string.` for a string-backed scalar like `RequiredString<>` / `RequiredEnum<>`; `must be an integer.` for `RequiredInt<>`; `must be a GUID.` for `RequiredGuid<>`). The converter doesn't propagate TryCreate parameter nullability through its metadata, so `TryReadPrimitive` cannot distinguish a required scalar from a nullable scalar interior. | **Map to a DTO.** Same pattern as `Maybe<T>` below — declare the optional field on the wire-shape DTO as nullable, lift to `Maybe<TScalar>` (preferred) or keep nullable on the domain VO and resolve at the seam. (A repository test in the Trellis source pins this asymmetry.) |
 | Nested composite owned VO (e.g., a nested `Money` or `ShippingAddress` as a property of another composite VO) | ❌ **Not supported.** `CompositeValueObjectJsonConverter<TOuter>` does not delegate to `JsonSerializer` for property values — it only reads/writes its own primitive allowed list directly. Adding `[JsonConverter]` to the inner type does not help, because the outer converter never asks STJ for an inner converter; it tries to treat the nested type as one of its primitives and trips on the first access. | **Map to a DTO** — declare each nested composite as its own property on the wire-shape DTO. Nested composite VOs serialize correctly only when STJ sees them at the top of a property of a non-Trellis-composite-converter type (i.e., a plain record/class with `[JsonConverter]` on the nested VO type itself). |
-| `Maybe<T>` for any T (primitive, scalar VO, composite VO, array) | ❌ **Not supported.** Throws `TrellisJsonValidationException: "Unsupported primitive type 'Maybe`1...'"` regardless of value (`Some` or `None`). | **Map to a wire-shape DTO.** See [Recipe 14](recipe-14-optional-dto-fields.md) — the same `T?` + adapt-at-the-seam pattern applies whether the optional is on the DTO itself or inside a composite VO. |
+| `Maybe<T>` for any T (primitive, scalar VO, composite VO, array) | ❌ **Not supported.** Throws `TrellisJsonValidationException` on write (`Unsupported primitive type 'Maybe`1...'`) regardless of value (`Some` or `None`); on read it throws when the JSON contains the property. | **Map to a wire-shape DTO.** See [Recipe 14](recipe-14-optional-dto-fields.md) — the same `T?` + adapt-at-the-seam pattern applies whether the optional is on the DTO itself or inside a composite VO. |
 | Array (`T[]`), collection (`List<T>`, `IReadOnlyList<T>`, `IEnumerable<T>`) | ❌ Not supported. | **Map to a DTO** with the array on the wire-shape type. |
 
 **When to use a DTO at the seam (the general rule).** If a composite VO's interior holds any property shape outside the supported list — most commonly `Maybe<TPrimitive>` or arrays — keep the VO clean as a domain type and declare a wire-shape DTO at the controller/endpoint:

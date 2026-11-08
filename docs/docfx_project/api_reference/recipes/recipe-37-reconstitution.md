@@ -72,7 +72,9 @@ public sealed class DapperOrderRepository(IDbConnection db) : IOrderRepository
         if (row is null)
             return Result.Fail<Order>(new Error.NotFound(ResourceRef.For<Order>(id)));
 
+        var lineRows = await db.QueryAsync<OrderLineRow>(/* ... */);
         var lines = lineRows.Select(r => OrderLine.Reconstitute(
+            OrderLineId.TryCreate(r.Id).GetValueOrThrow($"Corrupt OrderLine.Id in row {r.Id}"),
             ProductId.TryCreate(r.ProductId).GetValueOrThrow($"Corrupt OrderLine.ProductId in row {r.Id}"),
             r.Quantity));
 
@@ -105,7 +107,7 @@ public sealed class DapperOrderRepository(IDbConnection db) : IOrderRepository
 }
 ```
 
-On **save**, generate a fresh token and stamp it with `IETagStampable.StampETag`, using the previous value in the optimistic `WHERE ETag = @original` clause — the non-EF equivalent of the EF concurrency-token interceptor. Do not use `StampReconstitutedState` on save: it calls `AcceptChanges()`, which clears the aggregate's pending domain events before they are published after the commit. Reserve it for loading.
+On **save**, generate a fresh token and stamp it with `((IETagStampable)order).StampETag(Guid.NewGuid().ToString("N"))` (the aggregate implements the interface explicitly, so the cast is required), using the previous value in the optimistic `WHERE ETag = @original` clause — the non-EF equivalent of the EF concurrency-token interceptor. Do not use `StampReconstitutedState` on save: it calls `AcceptChanges()`, which clears the aggregate's pending domain events before they are published after the commit. Reserve it for loading. A null, empty or malformed stored token makes `StampReconstitutedState` throw (`ArgumentNullException` or `ArgumentException`), so backfill the column before loading.
 
 **Semantics to remember.**
 - The reconstitution constructor must be pure assignment: no `Create`, no behavior methods, no events. `StampReconstitutedState` clears any uncommitted events (it calls `AcceptChanges()`), which is a safety net for loading only; relying on it hides a modeling bug.
