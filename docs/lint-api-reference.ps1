@@ -880,10 +880,14 @@ foreach ($recipeDoc in $recipeDocs) {
             continue
         }
 
-        $bareReference = if ($insideFence) { 'Recipes?\s+(?<number>\d+)' } else { '(?<![\[`])Recipes?\s+(?<number>\d+)' }
+        # Outside a code fence, a mention inside a Markdown link ([...Recipe 21...](file.md)) is already a link, whatever its
+        # label says. Inline code is not a link, so a number in backticks still counts as bare.
+        $linkSpans = if ($insideFence) { @() } else { @([regex]::Matches($lineText, '\[[^\]]*\]\([^)]*\)')) }
 
-        foreach ($referenceMatch in [regex]::Matches($lineText, $bareReference)) {
-            if ([int] $referenceMatch.Groups['number'].Value -ne $ownNumber) {
+        foreach ($referenceMatch in [regex]::Matches($lineText, 'Recipes?\s+(?<number>\d+)')) {
+            $insideLink = @($linkSpans | Where-Object { $referenceMatch.Index -ge $_.Index -and $referenceMatch.Index -lt ($_.Index + $_.Length) }).Count -gt 0
+
+            if (-not $insideLink -and [int] $referenceMatch.Groups['number'].Value -ne $ownNumber) {
                 $where = if ($insideFence) { 'name the recipe file stem (for example recipe-02-command-handler)' } else { 'link it, as [Recipe N](recipe-NN-name.md)' }
                 Write-Host "$($recipeDoc.FullName)($($lineIndex + 1),1): error TRLDOC019: '$($referenceMatch.Value)' is a bare recipe number that an agent holding only this recipe cannot resolve; $where, and say in a clause what the other recipe supplies."
                 $failed = $true

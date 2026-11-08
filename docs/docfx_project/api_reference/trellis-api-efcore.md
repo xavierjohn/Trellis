@@ -493,7 +493,7 @@ authorization-before-commit order.
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public TransactionalCommandBehavior(IUnitOfWork unitOfWork)` | Captures the scoped unit of work resolved alongside the handler. Throws `ArgumentNullException` for null `unitOfWork`. |
-| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Opens `BeginScope` and a command-state frame. On success or explicit persist-on-failure, awaits hooks, then commits only if all accept. Hook failures invalidate the unit of work. Ordinary handler failures skip hooks/commit; every exit closes the frame. |
+| `public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)` | `ValueTask<TResponse>` | Opens `BeginScope`, awaits the enclosed application behaviors and handler, then commits on their final success or explicit persist-on-failure response. A commit error replaces that response. Ordinary failure or exception skips this commit. |
 
 ### `UnitOfWorkServiceCollectionExtensions`
 

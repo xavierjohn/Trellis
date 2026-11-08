@@ -804,7 +804,7 @@ services.AddDomainEventHandler<InboxRead, SendReadReceiptHandler>();
 
 ### Persisting failure state from a worker handler
 
-A worker handler often needs to mark a domain record as `permanently_failed` *and* return failure to the caller (so retries stop, alerts fire, the outbox doesn't redrive). The naive shape — handler stages the state change then returns `Result.Fail<T>(error)` — loses the persisted state because `TransactionalCommandBehavior` rolls back on failure.
+A worker handler often needs to mark a domain record as `permanently_failed` *and* return failure to the caller (so retries stop, alerts fire, the outbox doesn't redrive). The naive shape — handler stages the state change then returns `Result.Fail<T>(error)` — loses the persisted state because `TransactionalCommandBehavior` skips its commit on an ordinary failure.
 
 `Result.FailAfterCommit<T>(error)` solves this. It is still a failure (`IsFailure == true`, dispatch is skipped, callers see the error), but it carries an `IPersistOnFailure.PersistOnFailure` flag that `TransactionalCommandBehavior` reads to decide whether to commit:
 
@@ -834,8 +834,8 @@ public async ValueTask<Result<Reminder>> Handle(
         return Result.Fail<Reminder>(gatewayResult.Error);
 
     // Permanent failure → mark the row and persist that decision alongside the failure outcome.
-    // Without FailAfterCommit, MarkPermanentlyFailed's tracked changes roll back and the next
-    // tick re-enters this handler against the same row.
+    // Without FailAfterCommit, the behavior skips its commit, so MarkPermanentlyFailed's tracked
+    // changes are not saved and the next tick re-enters this handler against the same row.
     reminder.MarkPermanentlyFailed(gatewayResult.Error.Code, _clock.UtcNow);
     return Result.FailAfterCommit<Reminder>(gatewayResult.Error);
 }
