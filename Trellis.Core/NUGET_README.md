@@ -96,11 +96,11 @@ when ordinary absence becomes a failure.
 `Trellis.Core` includes the versioned API reference for the whole Trellis family (Core, ASP.NET Core,
 Mediator, EF Core, Analyzers and the rest), but an AI coding assistant working in your repository will not
 find those documents inside the NuGet cache. This optional setup installs them into Git-root `.agentdocs/`
-and adds small pointers to `AGENTS.md` and `.github/copilot-instructions.md`, so assistants read the
+and adds small pointers to `AGENTS.md`, an existing `CLAUDE.md` and `.github/copilot-instructions.md`, so assistants read the
 routing guide instead of guessing API signatures. Confirm a project references a package before using its
 API. **Trellis works normally without it.** Restore and build never create `.agentdocs/` or edit your
 instructions; you choose whether to install the guidance.
-`Trellis.AgentDocs` is independently versioned from Core; `1.0.2` is available from NuGet.org.
+`Trellis.AgentDocs` is independently versioned from Core; `1.0.3` is available from NuGet.org.
 Core's private `Trellis.AgentDocs.Packaging` build dependency publishes the complete reference
 set; it is not a dependency of your application, and feature packages do not duplicate the guides.
 
@@ -109,7 +109,7 @@ if the solution is in a subdirectory):
 
 ```bash
 dotnet new tool-manifest --output .config
-dotnet tool install Trellis.AgentDocs --version 1.0.2 --tool-manifest .config/dotnet-tools.json
+dotnet tool install Trellis.AgentDocs --version 1.0.3 --tool-manifest .config/dotnet-tools.json
 dotnet restore <solution-or-project>
 dotnet tool run agentdocs init <solution-or-project>
 ```
@@ -125,6 +125,9 @@ first-party package that depends on `Trellis.Core`. A project that references on
 The generated index makes one document required reading, `trellis-start-here.md` (about 23 KB): it routes
 each task to the reference or recipe to open. Every other reference is listed in the index as on demand,
 with a one-line description of when to open it, so an agent can pick the right one without reading them all.
+`sync` also writes one Agent Skill stub per listed guide to `.agents/skills`, which GitHub Copilot and other agents
+scan; Claude Code reads `.claude/skills`, so list that folder in `skillDirectories` or link it to `.agents/skills`
+([details](https://github.com/xavierjohn/Trellis.AgentDocs.Packaging/blob/main/Trellis.AgentDocs/README.md#agent-skills)).
 After a Trellis upgrade, run `dotnet restore` and then `dotnet tool run agentdocs sync`. CI can run
 `dotnet tool run agentdocs check` to detect drift without writes. Commit the tool pin, the managed
 instruction pointers, `.agentdocs/policy.json` and `.agentdocs/` with the package change. `.agentdocs/` and

@@ -100,7 +100,7 @@ solution or project:
 
 ```bash
 dotnet new tool-manifest --output .config
-dotnet tool install Trellis.AgentDocs --version 1.0.2 --tool-manifest .config/dotnet-tools.json
+dotnet tool install Trellis.AgentDocs --version 1.0.3 --tool-manifest .config/dotnet-tools.json
 dotnet restore <solution-or-project>
 dotnet tool run agentdocs init <solution-or-project>
 ```
@@ -121,6 +121,13 @@ from other repositories may require separate approval. After upgrading Trellis, 
 followed by `dotnet tool run agentdocs sync`, and commit the tool manifest, managed instruction
 pointers, `.agentdocs/policy.json`, and `.agentdocs/` with the package update.
 
+`init` adds the same pointer to an existing `CLAUDE.md`, which Claude Code reads instead of `AGENTS.md`, and `sync`
+writes one Agent Skill stub per listed guide (28 for `Trellis.Core`) to `.agents/skills`, the folder GitHub Copilot and
+other agents scan. Claude Code reads `.claude/skills` instead: add `"skillDirectories": [".agents/skills",
+".claude/skills"]` to `.agentdocs/policy.json`, or link `.claude/skills` to `.agents/skills`; see the
+[`Trellis.AgentDocs` README](https://github.com/xavierjohn/Trellis.AgentDocs.Packaging/blob/main/Trellis.AgentDocs/README.md#agent-skills). Skills are an extra route for agents that load them; agents that
+follow the pointer use the index.
+
 ## Packages
 
 Start with `Trellis.Core`; add only the integrations your application uses. `Trellis.ServiceDefaults` is the opinionated composition root for web services.
@@ -132,7 +139,7 @@ Start with `Trellis.Core`; add only the integrations your application uses. `Tre
 | [Trellis.Core](https://www.nuget.org/packages/Trellis.Core) | `Result<T>`, `Maybe<T>`, typed errors, DDD building blocks, pagination, and source-generated value-object bases |
 | [Trellis.Primitives](https://www.nuget.org/packages/Trellis.Primitives) | Ready-to-use value objects such as `EmailAddress`, `Money`, and `Url` |
 | [Trellis.Analyzers](https://www.nuget.org/packages/Trellis.Analyzers) | Compile-time guidance for Result, Maybe, EF Core, and value-object usage |
-| [Trellis.AgentDocs](https://www.nuget.org/packages/Trellis.AgentDocs) | Independently versioned optional local tool (`agentdocs`) for installing and checking package guidance; published `1.0.2` |
+| [Trellis.AgentDocs](https://www.nuget.org/packages/Trellis.AgentDocs) | Independently versioned optional local tool (`agentdocs`) for installing and checking package guidance; published `1.0.3` |
 
 ### Application and web integration
 

@@ -104,7 +104,7 @@ public class ApiReferencePayloadGateTests
         var version = XDocument.Load(Path.Combine(root, "Directory.Packages.props")).Descendants()
             .Single(element => element.Name.LocalName == "PackageVersion" &&
                 (string?)element.Attribute("Include") == "Trellis.AgentDocs.Packaging");
-        ((string?)version.Attribute("Version")).Should().Be("1.0.2");
+        ((string?)version.Attribute("Version")).Should().Be("1.0.3");
         File.Exists(Path.Combine(root, "build", "generate-reference-manifest.ps1")).Should().BeFalse(
             "the shared helper, not a second manifest generator, owns hashing and serialization");
     }
