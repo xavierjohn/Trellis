@@ -31,8 +31,7 @@ For an identity provider that genuinely needs asynchronous work, resolve
 `IActorIdentityProvider` before the limiter and retain a private request-local snapshot.
 Never use `.Result`, `.Wait()`, or blocking async calls in the partitioner.
 
-The following application-owned sample is compiled in
-`Examples/CookbookSnippets/Recipe41_ActorRateLimiting.cs` in the Trellis source repository (not shipped in the NuGet package); its tests execute both paths,
+The following application-owned sample is compiled in the Trellis source repository (not shipped in the NuGet package), whose tests execute both paths,
 network fallback, authorization ordering and idempotent replay. The small two-per-minute
 budget is illustrative, not a Trellis default. Configure and validate the host's real
 authentication scheme first. This sample assumes one trusted issuer and uses `"sample"`
@@ -199,8 +198,8 @@ is a configuration fault, distinct from a successfully resolved `None` snapshot.
 | Optional identity prefetch → limiter → authorization → idempotency → endpoint | Requests reaching the applicable limiter consume permits even if later challenged/forbidden; exhaustion can produce 429 before a later 401/403. |
 | Authorization → optional identity prefetch → limiter → idempotency → endpoint | Valid when deliberately retained: ASP.NET authorization challenges/forbids short-circuit before the limiter and consume no permits. The limiter does **not** protect authorization work. |
 
-The client-style `UseAuthorization()` → `UseRateLimiter()` → `UseTrellisIdempotency()`
-order therefore remains valid. Permission loading inside a later Mediator handler is
+The order `UseAuthorization()` → `UseRateLimiter()` → `UseTrellisIdempotency()`
+is valid (second row of the table). Permission loading inside a later Mediator handler is
 different from ASP.NET authorization: those later requests have already reached the
 limiter. In either order, putting the limiter before idempotency charges replay requests.
 `DefaultIdempotencyScopeResolver` and `ActorIdempotencyScopeResolver` still resolve
@@ -241,17 +240,18 @@ The helper lives in `Trellis.Testing`; import that namespace in tests. It resolv
 two paths sequentially and checks full-actor IDs without treating identity presence
 as authorization.
 
-**Retry-After.** The existing Trellis rejection adapter emits only lease-provided advice.
-On .NET 10, sliding-window and concurrency limiters still do not provide an estimate;
-the retry-advice documentation/characterization change does not synthesize one.
-Fixed-window/token-bucket advice can also be absent. Clients handle 429 without a header
-using bounded backoff and jitter, subject to the operation's retry safety.
+**Retry-After.** The Trellis rejection adapter emits `Retry-After` only when the limiter lease
+carries retry advice. On .NET 10 fixed-window and token-bucket limiters supply it for an immediate
+capacity rejection (the sample above returns `Retry-After: 60`); sliding-window and concurrency
+limiters never do, and a queued request that is evicted from the queue or rejected by limiter
+disposal has none. No delay is invented. Clients handle a 429 without the header using bounded
+backoff and jitter, subject to the operation's retry safety.
 
 **Anti-pattern → fix.** Duplicated subject extraction → one full canonical normalizer;
 permission-loading full actor prefetch → identity-only provider; blocking partitioner →
 await before the limiter and read a private snapshot; missing snapshot treated as
 anonymous → explicit configuration error. Use `Maybe.Match` / guarded `TryGetValue`
-instead of unsafe `.Value` access (TRLS003); no new authorization or limiter engine exists.
+instead of unsafe `.Value` access (TRLS003).
 
 **References.** [Identity contract](../trellis-api-authorization.md#iactoridentityprovider),
 [ASP identity registration](../trellis-api-asp.md#identity-only-provider-registration),

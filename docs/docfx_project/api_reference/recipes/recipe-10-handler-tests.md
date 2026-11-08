@@ -8,9 +8,9 @@ version: v3
 last_verified: 2026-10-22
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Shows handler tests with Trellis.Testing: Should().Be(...) and UnwrapError(). Use when writing handler or domain tests."
+agent_description: "Shows handler tests with Trellis.Testing result, event and validation assertions. Use when writing handler or domain tests."
 ---
-# Recipe 10 — Test: handler test using `Trellis.Testing` `Should().Be(...)` / `UnwrapError()`
+# Recipe 10 — Test: handler test using `Trellis.Testing` result assertions
 
 **Requires:** `Trellis.Core`, plus `Trellis.Authorization`, `Trellis.Primitives`, `Trellis.Testing`.
 
@@ -68,10 +68,12 @@ public class PlaceOrderHandlerTests
 }
 ```
 
-**What it shows.** `ResultAssertions<TValue>.HaveValue(expected)` asserts the success value **equals** `expected` (use `HaveValueEquivalentTo` for member-wise structural equivalence); `UnwrapError()` is the safe accessor that *only* returns the error and is intended for use after `Should().BeFailure...`. Calling `.Should()` on an `Error.InvalidInput` returns the specialized `ValidationErrorAssertions` (with `HaveFieldError`, `HaveFieldErrorWithDetail`, `HaveFieldCount`). Async assertions have two valid shapes: await the pipeline first and assert the resulting `Result<T>`, or call `BeSuccessAsync` / `BeFailureAsync` directly on `Task<Result<T>>` or `ValueTask<Result<T>>`. The unsupported shape is `await result.Should().BeSuccessAsync()` because `.Should()` returns synchronous `ResultAssertions<TValue>`.
+`InMemoryOrderRepository` is an application-owned test double that implements `IOrderRepository` and records added orders (`Last()` returns the most recent); `FakeRepository<TAggregate, TId>` from `Trellis.Testing` is the packaged equivalent.
+
+**What it shows.** `ResultAssertions<TValue>.HaveValue(expected)` asserts the success value **equals** `expected` (use `HaveValueEquivalentTo` for member-wise structural equivalence); `UnwrapError()` returns the error and throws `UnwrapFailedException` if the result succeeded, so call it only after `Should().BeFailure...`. Calling `.Should()` on an `Error.InvalidInput` returns the specialized `ValidationErrorAssertions` (with `HaveFieldError`, `HaveFieldErrorWithDetail`, `HaveFieldCount`). Async assertions have two valid shapes: await the pipeline first and assert the resulting `Result<T>`, or call `BeSuccessAsync` / `BeFailureAsync` directly on `Task<Result<T>>` or `ValueTask<Result<T>>`. The unsupported shape is `await result.Should().BeSuccessAsync()` because `.Should()` returns synchronous `ResultAssertions<TValue>`.
 
 Beyond Result assertions, `Trellis.Testing` covers the other things handler and domain tests check:
-`aggregate.UncommittedEvents().Should().HaveRaised<TEvent>()` for raised domain events,
+`aggregate.UncommittedEvents().Should().HaveRaised<TEvent>()` for raised domain events (it passes only when exactly one matching event was raised; use `HaveRaisedCount<TEvent>(n)` for other counts),
 `page.Should().HaveNextCursor()` / `.BeLastPage()` for a `Page<T>`, `spec.Should().BeSatisfiedBy(x)` for
 specifications, and `actor.Should().HavePermission(...)` plus `message.ShouldNotBeAuthorizedFor(actor)` for
 denied paths without the pipeline. `TestActorProvider.Anonymous()` supplies the unauthenticated case. See the
