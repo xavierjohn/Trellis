@@ -166,9 +166,9 @@ function Get-DocFiles {
     param([string] $Directory)
     if (-not (Test-Path $Directory)) { return @() }
     $found = @(Get-ChildItem -Path $Directory -Filter '*.md' -File)
-    # The api_reference Agent Skills live in a subfolder of it.
-    $skills = Join-Path $Directory 'skills'
-    if (Test-Path $skills) { $found += @(Get-ChildItem -Path $skills -Filter '*.md' -File) }
+    # The api_reference recipe documents live in a subfolder of it.
+    $recipes = Join-Path $Directory 'recipes'
+    if (Test-Path $recipes) { $found += @(Get-ChildItem -Path $recipes -Filter '*.md' -File) }
     $found | Where-Object { $FrontmatterExcludedFiles -notcontains $_.Name }
 }
 

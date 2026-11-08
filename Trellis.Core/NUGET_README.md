@@ -125,7 +125,7 @@ first-party package that depends on `Trellis.Core`. A project that references on
 The generated index makes one document required reading, `trellis-start-here.md` (about 28 KB): it routes
 each task to the reference or recipe to open. Every other reference is listed in the index as on demand,
 with a one-line description of when to open it, so an agent can pick the right one without reading them all.
-`sync` also writes one Agent Skill stub per listed guide to `.agents/skills`, which GitHub Copilot and other agents
+`sync` also writes one Agent Skill stub per listed guide (the recipes are the task guides) to `.agents/skills`, which GitHub Copilot and other agents
 scan; Claude Code reads `.claude/skills`, so list that folder in `skillDirectories` or link it to `.agents/skills`
 ([details](https://github.com/xavierjohn/Trellis.AgentDocs.Packaging/blob/main/Trellis.AgentDocs/README.md#agent-skills)).
 After a Trellis upgrade, run `dotnet restore` and then `dotnet tool run agentdocs sync`. CI can run

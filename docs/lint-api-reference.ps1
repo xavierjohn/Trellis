@@ -242,10 +242,10 @@ if (-not (Test-Path -LiteralPath $apiReferenceDir)) {
 }
 
 $failed = $false
-# The reference documents, plus the Agent Skills in the skills subfolder (see TRLDOC017).
-$skillsDirectory = Join-Path $apiReferenceDir 'skills'
+# The reference documents, plus the recipe documents in the recipes subfolder (see TRLDOC017 and TRLDOC018).
+$recipesDirectory = Join-Path $apiReferenceDir 'recipes'
 $markdownFiles = @(Get-ChildItem -LiteralPath $apiReferenceDir -Filter '*.md' -File) +
-    @(if (Test-Path -LiteralPath $skillsDirectory) { Get-ChildItem -LiteralPath $skillsDirectory -Filter '*.md' -File }) |
+    @(if (Test-Path -LiteralPath $recipesDirectory) { Get-ChildItem -LiteralPath $recipesDirectory -Filter '*.md' -File }) |
     Sort-Object FullName
 $headingIndexByPath = New-HeadingIndex -MarkdownFiles $markdownFiles
 
@@ -339,7 +339,7 @@ foreach ($file in $markdownFiles) {
                     continue
                 }
 
-                if ($targetFile -notmatch '^(?:\.\./|skills/)?[A-Za-z0-9._-]+\.md$') {
+                if ($targetFile -notmatch '^(?:\.\./|recipes/)?[A-Za-z0-9._-]+\.md$') {
                     continue
                 }
             }
@@ -495,9 +495,9 @@ foreach ($guardrailDoc in $docManifest.GuardrailDocs) {
 # TRLDOC006 - every recipe must be pinned by a compiled snippet in
 # Examples/CookbookSnippets. Recipes are the most-copied code in the doc set, so an
 # unpinned recipe is the shape most likely to rot into code that does not compile.
-# Each recipe is its own document, docs/docfx_project/api_reference/skills/recipe-NN-<topic>.md,
+# Each recipe is its own document, docs/docfx_project/api_reference/recipes/recipe-NN-<topic>.md,
 # whose first heading is `# Recipe N - <title>`; the file name and the heading must agree on N.
-$recipeDirectory = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference/skills'
+$recipeDirectory = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference/recipes'
 $snippetDirectory = Join-Path $RepositoryRoot 'Examples/CookbookSnippets'
 $recipeFiles = @(Get-ChildItem -LiteralPath $recipeDirectory -Filter 'recipe-*.md' -File | Sort-Object Name)
 
@@ -764,7 +764,7 @@ foreach ($doc in $shippedDocs) {
             $failed = $true
         }
 
-        if ($usage -eq 'onDemand' -and $doc.Directory.Name -ne 'skills' -and $description -notmatch '^Open when ') {
+        if ($usage -eq 'onDemand' -and $doc.Directory.Name -ne 'recipes' -and $description -notmatch '^Open when ') {
             Write-Host "$($doc.FullName)(1,1): error TRLDOC016: An onDemand agent_description must start with 'Open when ' so the index says what task triggers the document."
             $failed = $true
         }
@@ -776,75 +776,76 @@ if ($requiredDocs.Count -ne 1 -or $requiredDocs[0] -ne 'trellis-start-here.md') 
     $failed = $true
 }
 
-# TRLDOC017 - documents under api_reference/skills/ are Claude Agent Skills, so they follow the platform's skill
-# authoring best practices (https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices).
-# This is the machine-checkable part: a front matter `name` equal to the file name (at most 64 characters of lowercase
-# letters, digits and hyphens; no reserved word `anthropic` or `claude`; no XML tag), a description that says what the
-# skill covers and when to use it ("Use when"), written in the third person and without an XML tag (the platform allows
-# 1,024 characters; the AgentDocs manifest allows 200, which TRLDOC016 enforces), a body of fewer than 500 lines, and a
-# `## Contents` section in any skill longer than 100 lines.
-# The folder is the signal: a new skill goes here and is held to these rules; reference documents stay outside it.
-$skillDocs = @($markdownFiles | Where-Object { $_.Directory.Name -eq 'skills' })
+# TRLDOC017 - documents under api_reference/recipes/ are recipes: one task guide per document. They are written to the
+# platform's skill authoring best practices (https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
+# because AgentDocs publishes each one as an Agent Skill stub for agents that load skills; the recipe itself is the reference
+# file behind the stub. This is the machine-checkable part: a front matter `name` equal to the file name (at most 64
+# characters of lowercase letters, digits and hyphens; no reserved word `anthropic` or `claude`; no XML tag), a description
+# that says what the recipe covers and when to use it ("Use when"), written in the third person and without an XML tag (the
+# platform allows 1,024 characters; the AgentDocs manifest allows 200, which TRLDOC016 enforces), a body of fewer than 500
+# lines, and a `## Contents` section in any recipe longer than 100 lines.
+# The folder is the signal: a new recipe goes here and is held to these rules; reference documents stay outside it.
+$recipeDocs = @($markdownFiles | Where-Object { $_.Directory.Name -eq 'recipes' })
 
-foreach ($skill in $skillDocs) {
-    $skillLines = @(Get-Content -LiteralPath $skill.FullName)
-    $stem = [System.IO.Path]::GetFileNameWithoutExtension($skill.Name)
-    $nameLines = @($skillLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^name:' })
-    $skillName = if ($nameLines.Count -eq 1) { ($nameLines[0] -replace '^name:\s*', '').Trim() } else { '' }
+foreach ($recipeDoc in $recipeDocs) {
+    $recipeDocLines = @(Get-Content -LiteralPath $recipeDoc.FullName)
+    $stem = [System.IO.Path]::GetFileNameWithoutExtension($recipeDoc.Name)
+    $nameLines = @($recipeDocLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^name:' })
+    $recipeName = if ($nameLines.Count -eq 1) { ($nameLines[0] -replace '^name:\s*', '').Trim() } else { '' }
 
-    if ($skillName -cne $stem) {
-        Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill must declare 'name: $stem' in its front matter, equal to its file name (found '$skillName')."
+    if ($recipeName -cne $stem) {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe must declare 'name: $stem' in its front matter, equal to its file name (found '$recipeName')."
         $failed = $true
     }
 
-    if ($skillName -cnotmatch '^[a-z0-9-]{1,64}$' -or $skillName -match 'anthropic|claude') {
-        Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill name is at most 64 characters of lowercase letters, digits and hyphens and cannot contain the reserved words 'anthropic' or 'claude'."
+    if ($recipeName -cnotmatch '^[a-z0-9-]{1,64}$' -or $recipeName -match 'anthropic|claude') {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe name is at most 64 characters of lowercase letters, digits and hyphens and cannot contain the reserved words 'anthropic' or 'claude'."
         $failed = $true
     }
 
-    $descLines = @($skillLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^agent_description:' })
-    $skillDescription = if ($descLines.Count -eq 1) { ($descLines[0] -replace '^agent_description:\s*', '').Trim() -replace '^"(.*)"$', '$1' } else { '' }
+    $descLines = @($recipeDocLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^agent_description:' })
+    $recipeDescription = if ($descLines.Count -eq 1) { ($descLines[0] -replace '^agent_description:\s*', '').Trim() -replace '^"(.*)"$', '$1' } else { '' }
 
-    if ($skillDescription -notmatch 'Use when ') {
-        Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill description must say what the skill covers and when to use it, with a 'Use when ...' clause."
+    if ($recipeDescription -notmatch 'Use when ') {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe description must say what the recipe covers and when to use it, with a 'Use when ...' clause."
         $failed = $true
     }
 
-    if ($skillDescription -cmatch '\bI\b' -or $skillDescription -match '\b(you|your|yours|we|our|us|my)\b' -or $skillDescription -match '^Open when ') {
-        Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill description is written in the third person (for example 'Shows ... Use when ...'), not as an instruction or in the first or second person, because it is injected into the system prompt."
+    if ($recipeDescription -cmatch '\bI\b' -or $recipeDescription -match '\b(you|your|yours|we|our|us|my)\b' -or $recipeDescription -match '^Open when ') {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe description is written in the third person (for example 'Shows ... Use when ...'), not as an instruction or in the first or second person, because it is injected into the system prompt."
         $failed = $true
     }
 
-    if ($skillDescription -match '<[^>]*>') {
-        Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill description cannot contain XML tags; write 'Page' or 'Maybe of T' instead of 'Page<T>'."
+    if ($recipeDescription -match '<[^>]*>') {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe description cannot contain XML tags; write 'Page' or 'Maybe of T' instead of 'Page<T>'."
         $failed = $true
     }
 
-    if ($skillLines.Count -ge 500) {
-        Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill is kept under 500 lines (found $($skillLines.Count)). Split the content into a second skill or a linked reference."
+    if ($recipeDocLines.Count -ge 500) {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe is kept under 500 lines (found $($recipeDocLines.Count)). Split the content into a second recipe or a linked reference."
         $failed = $true
     }
 
     # The best practices ask for a table of contents at the top of any reference file longer than 100 lines, so a partial
     # read (for example the first 100 lines) still shows the whole scope.
-    if ($skillLines.Count -gt 100 -and -not ($skillLines | Where-Object { $_.TrimEnd() -ceq '## Contents' })) {
-        Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill longer than 100 lines (found $($skillLines.Count)) starts with a '## Contents' section listing its parts, so a partial read still shows the whole scope."
+    if ($recipeDocLines.Count -gt 100 -and -not ($recipeDocLines | Where-Object { $_.TrimEnd() -ceq '## Contents' })) {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe longer than 100 lines (found $($recipeDocLines.Count)) starts with a '## Contents' section listing its parts, so a partial read still shows the whole scope."
         $failed = $true
     }
 
     # TRLDOC018 - Trellis.Core ships every recipe, but a recipe can need other packages, so each one says which in a
     # `**Requires:**` line near the top. Every `using Trellis.<Package>;` whose namespace is a package built from this
     # repository must be named there, so a recipe cannot quietly depend on a package it does not list.
-    $requiresLine = @($skillLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^\*\*Requires:\*\*' }) | Select-Object -First 1
+    $requiresLine = @($recipeDocLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^\*\*Requires:\*\*' }) | Select-Object -First 1
     if (-not $requiresLine) {
-        Write-Host "$($skill.FullName)(1,1): error TRLDOC018: A skill states the packages it needs in a '**Requires:**' line within its first 30 lines (for example '**Requires:** ``Trellis.Core``, plus ``Trellis.Asp``.')."
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC018: A recipe states the packages it needs in a '**Requires:**' line within its first 30 lines (for example '**Requires:** ``Trellis.Core``, plus ``Trellis.Asp``.')."
         $failed = $true
     }
     else {
-        foreach ($namespace in @($skillLines | ForEach-Object { if ($_ -cmatch '^using (Trellis(?:\.\w+)+);') { $Matches[1] } } | Sort-Object -Unique)) {
+        foreach ($namespace in @($recipeDocLines | ForEach-Object { if ($_ -cmatch '^using (Trellis(?:\.\w+)+);') { $Matches[1] } } | Sort-Object -Unique)) {
             if ((Test-Path -LiteralPath (Join-Path $RepositoryRoot "$namespace/src/$namespace.csproj")) -and
                 -not $requiresLine.Contains("``$namespace``")) {
-                Write-Host "$($skill.FullName)(1,1): error TRLDOC018: The code uses 'using $namespace;' but the Requires line does not name the package ``$namespace``."
+                Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC018: The code uses 'using $namespace;' but the Requires line does not name the package ``$namespace``."
                 $failed = $true
             }
         }

@@ -16,7 +16,7 @@ agent_description: "Open when a TRLS diagnostic appears or when checking which a
 - **Namespace:** `Trellis.Analyzers`
 - **Purpose:** Roslyn analyzers and code fixes that enforce correct Trellis `Result<T>`, `Maybe<T>`, EF Core, and value-object usage.
 
-See also: [recipe-11-analyzer-fixes.md](skills/recipe-11-analyzer-fixes.md) — recipes using this package.
+See also: [recipe-11-analyzer-fixes.md](recipes/recipe-11-analyzer-fixes.md) — recipes using this package.
 
 ## Installation — the analyzers are opt-in
 

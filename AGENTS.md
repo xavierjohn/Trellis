@@ -16,7 +16,7 @@ Before writing or changing code that uses Trellis APIs, read the relevant files 
 
 **`docs/docfx_project/api_reference/trellis-start-here.md` is the start file. Read all of it first and keep it resident for the whole session.**
 
-The full reference set is larger than a narrow task needs and is not meant to be held in context. The router is self-contained: its task-lookup table maps a task to the right recipe or API section, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. It is the one `required` document AgentDocs delivers to consumers. The 39 recipe documents (`skills/recipe-*.md`) are on demand, and a typical end-to-end task reads one to three of them.
+The full reference set is larger than a narrow task needs and is not meant to be held in context. The router is self-contained: its task-lookup table maps a task to the right recipe or API section, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. It is the one `required` document AgentDocs delivers to consumers. The 39 recipe documents (`recipes/recipe-*.md`) are on demand, and a typical end-to-end task reads one to three of them.
 
 **So hold the router, and read recipe bodies on demand.** Do not spend context on bodies the task will not use. Read a body the moment the router sends you to one; do not work from a recipe's title. For a focused subtask, use the recipe's section routes and read their complete constraints and solution.
 
@@ -26,7 +26,7 @@ Then pull in only the area-specific references the router points you at. Start a
 
 If context is too tight to hold the router plus one area reference, you are too tight to write correct Trellis code — say so rather than guessing at API shapes.
 
-`trellis-start-here.md` is the only start file, here and for consumers: the optional, separately versioned `Trellis.AgentDocs` local tool (command `agentdocs`) installs the reference set under Git-root `.agentdocs/packages/trellis.core/trellis/` and makes this router the one required read. Each recipe is its own `onDemand` document (`skills/recipe-*.md`) and holds one recipe body only. Keep the router self-contained, and keep the recipe count it quotes correct (TRLDOC010).
+`trellis-start-here.md` is the only start file, here and for consumers: the optional, separately versioned `Trellis.AgentDocs` local tool (command `agentdocs`) installs the reference set under Git-root `.agentdocs/packages/trellis.core/trellis/` and makes this router the one required read. Each recipe is its own `onDemand` document (`recipes/recipe-*.md`) and holds one recipe body only. Keep the router self-contained, and keep the recipe count it quotes correct (TRLDOC010).
 
 ### Do not delegate reference reading to a sub-agent
 

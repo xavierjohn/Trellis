@@ -33,8 +33,8 @@ function Get-NavigationEntries {
     }
 }
 
-# Each recipe is its own document, skills/recipe-NN-<topic>.md.
-$recipeFiles = @(Get-ChildItem -LiteralPath (Join-Path $referenceDirectory 'skills') -Filter 'recipe-*.md' -File | Sort-Object Name)
+# Each recipe is its own document, recipes/recipe-NN-<topic>.md.
+$recipeFiles = @(Get-ChildItem -LiteralPath (Join-Path $referenceDirectory 'recipes') -Filter 'recipe-*.md' -File | Sort-Object Name)
 if ($recipeFiles.Count -eq 0) {
     throw "No recipe documents (recipe-*.md) were found in $referenceDirectory."
 }
@@ -61,13 +61,13 @@ $expectedTargets = [System.Collections.Generic.HashSet[string]]::new([StringComp
 $jsonTargets = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $htmlTargets = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 
-foreach ($anchor in [regex]::Matches($tocHtml, '<a\b[^>]*\bhref="(?<href>skills/recipe-[^"#]+\.html)"')) {
+foreach ($anchor in [regex]::Matches($tocHtml, '<a\b[^>]*\bhref="(?<href>recipes/recipe-[^"#]+\.html)"')) {
     [void] $htmlTargets.Add([System.Net.WebUtility]::HtmlDecode($anchor.Groups['href'].Value))
 }
 
 foreach ($recipeFile in $recipeFiles) {
     $number = [int] [regex]::Match($recipeFile.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
-    $page = 'skills/' + [System.IO.Path]::ChangeExtension($recipeFile.Name, '.html')
+    $page = 'recipes/' + [System.IO.Path]::ChangeExtension($recipeFile.Name, '.html')
     $pagePath = Join-Path $siteDirectory $page
     if (-not (Test-Path -LiteralPath $pagePath -PathType Leaf)) {
         $failures.Add("Recipe $number has no rendered page '$page'.")

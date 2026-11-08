@@ -17,7 +17,7 @@ agent_description: "Open when modeling actors, canonical identity-only resolutio
 > [!TIP]
 > For the end-to-end mental model — JWT → JwtBearer → `IActorProvider` → mediator behaviors → 401/403 — plus decision trees and Mermaid diagrams, read [Mental model](https://xavierjohn.github.io/Trellis/articles/integration-asp-authorization.html#mental-model) in the integration article first. This file is the type-by-type reference.
 
-See also: [recipe-07-resource-authorization.md](skills/recipe-07-resource-authorization.md) — recipes using this package.
+See also: [recipe-07-resource-authorization.md](recipes/recipe-07-resource-authorization.md) — recipes using this package.
 
 ## Use this file when
 
@@ -62,7 +62,7 @@ That's it. The mediator pipeline:
 2. loads the `Order` by `OrderId` via your `OrderResourceLoader` implementation of `SharedResourceLoaderById<Order, OrderId>` and the adapter installed by `AddSharedResourceAuthorization`,
 3. calls `Authorize(actor, order)`.
 
-For multi-hop authorization (the resource the actor must own is reached via one or more navigation hops, including the cricket "actor owns home OR away team" shape), use `IAuthorizeResourceVia<TOwner>` with `IIdentifyRelatedResource[s]<TRelated, TId>` along the path — see cookbook [Recipe 24](skills/recipe-24-indirect-authorization.md).
+For multi-hop authorization (the resource the actor must own is reached via one or more navigation hops, including the cricket "actor owns home OR away team" shape), use `IAuthorizeResourceVia<TOwner>` with `IIdentifyRelatedResource[s]<TRelated, TId>` along the path — see cookbook [Recipe 24](recipes/recipe-24-indirect-authorization.md).
 
 `AddSharedResourceAuthorization` lives in `Trellis.Mediator`; import `Microsoft.Extensions.DependencyInjection` and `Trellis.Mediator` in the composition root. Its builder counterpart is `UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()`. The existing `AddResourceAuthorization<TMessage,TResource,TResponse>()` remains the lower-level behavior/accessor registration and still requires a loader or `AddSharedResourceLoader` bridge separately.
 
@@ -74,7 +74,7 @@ For multi-hop authorization (the resource the actor must own is reached via one 
 | Represent the current user/service | `Actor` | [`Actor`](#actor) |
 | Check granted permissions with explicit deny override | `actor.HasPermission(...)`, `HasAllPermissions(...)`, `HasAnyPermission(...)` | [`Actor`](#actor) |
 | Resolve actor for a request/message | `IActorProvider.GetCurrentActorAsync(...)` | [`IActorProvider`](#iactorprovider) |
-| Resolve canonical identity without permissions or attributes | Optional `IActorIdentityProvider.GetCurrentActorIdAsync(...)` | [`IActorIdentityProvider`](#iactoridentityprovider), [Recipe 41](skills/recipe-41-actor-rate-limiting.md) |
+| Resolve canonical identity without permissions or attributes | Optional `IActorIdentityProvider.GetCurrentActorIdAsync(...)` | [`IActorIdentityProvider`](#iactoridentityprovider), [Recipe 41](recipes/recipe-41-actor-rate-limiting.md) |
 | Receive the actor actually checked by this dispatch without another provider lookup | `ActorCommandHandler`, `ActorQueryHandler`, or the direct/via resource variants in `Trellis.Mediator` | [Mediator handler bases](trellis-api-mediator.md#actor-aware-handler-bases) |
 | Read a required actor through a stable or explicitly cached provider after authorization | `actorProvider.RequireActorAsync(cancellationToken)` | [`ActorProviderExtensions`](#actorproviderextensions) |
 | Require static permissions on a message | Implement `IAuthorize.RequiredPermissions` | [`IAuthorize`](#iauthorize) |
@@ -380,7 +380,7 @@ The pipeline always passes `IReadOnlyList<TOwner>` to `Authorize` — size 1 for
 - **Missing `SharedResourceLoaderById<TTo, TToId>`** at any hop — throws `InvalidOperationException` (deployment bug, not authorization denial).
 
 Exposure policy is configured in [`ResourceAuthorizationOptions`](trellis-api-mediator.md#resourceauthorizationoptions)
-and keyed on the leaf, not the owner. See [Recipe 32](skills/recipe-32-hide-existence.md).
+and keyed on the leaf, not the owner. See [Recipe 32](recipes/recipe-32-hide-existence.md).
 
 A command may implement either `IAuthorizeResource<T>` **or** `IAuthorizeResourceVia<TOwner>`, never both. Registration throws at startup if both are present — security primitives are not silently composed.
 
@@ -504,7 +504,7 @@ In those cases the handler reloads via the repository. The loader's job is to de
 
 **Concurrency.** Safe across nested `mediator.Send` and concurrent `Task.WhenAll` dispatch of the same closed pair within one DI scope. Implementation uses a per-async-flow linked frame list with a volatile `IsActive` flag — each push allocates a new frame (no shared mutable state between sibling forks), and dispose flips the frame's `IsActive` flag (visible to orphan child tasks that captured the frame at fork time but outlived the parent dispatch). The framework guarantees an orphan task cannot read the resource after the parent's dispatch ends.
 
-See [Recipe 31](skills/recipe-31-authorized-resource.md) in the cookbook for the WRONG/FIX shape and a full end-to-end example.
+See [Recipe 31](recipes/recipe-31-authorized-resource.md) in the cookbook for the WRONG/FIX shape and a full end-to-end example.
 
 ## Behavioral notes
 

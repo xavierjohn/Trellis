@@ -47,7 +47,7 @@ Use this table to find the canonical Trellis API for the most common EF Core tas
 | Classify an EF/DB exception | `DbExceptionClassifier.IsDuplicateKey(ex)` / `IsForeignKeyViolation(ex)` / `ExtractConstraintDetail(ex)` / `ExtractConstraintIdentity(ex)`. To map DB exceptions to a Trellis `Error` automatically, use `db.SaveChangesResultAsync()` / `SaveChangesResultUnitAsync()` (or, for idempotent inserts, `db.TryInsertUniqueAsync()`) instead of catching and classifying by hand. | [`DbExceptionClassifier`](#dbexceptionclassifier), [`DbContextExtensions`](#dbcontextextensions), [`DbContextIdempotencyExtensions`](#dbcontextidempotencyextensions) |
 | Wrap an aggregate-store repository with `Result<T>` returns | Inherit `RepositoryBase<TAggregate, TId>` | [`RepositoryBase<TAggregate, TId>`](#repositorybasetaggregate-tid) |
 | Stage commands in a unit of work and flush once per request | `IUnitOfWork` + `EfUnitOfWork<TContext>` + `TransactionalCommandBehavior<,>` (registered via `AddTrellisUnitOfWork<TContext>()`) | [`IUnitOfWork`](#iunitofwork), [`EfUnitOfWork<TContext>`](#efunitofworktcontext), [`TransactionalCommandBehavior<TMessage, TResponse>`](#transactionalcommandbehaviortmessage-tresponse) |
-| Stage audit records after a handler but before the same save | `AddInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))` with application-owned recorder checkpoints | [Placement contract](trellis-api-mediator.md#insidetransactionbehaviorservicecollectionextensions), [Recipe 16](skills/recipe-16-unit-of-work.md#same-commit-audit-staging) |
+| Stage audit records after a handler but before the same save | `AddInsideTransactionBehavior(typeof(RequiredAuditBehavior<,>))` with application-owned recorder checkpoints | [Placement contract](trellis-api-mediator.md#insidetransactionbehaviorservicecollectionextensions), [Recipe 16](recipes/recipe-16-unit-of-work.md#same-commit-audit-staging) |
 | Paginate an `IQueryable<T>` with a typed, single/composite, ascending/descending seek | `PageRequest.TryCreate(...)` then `source.ToPageAsync(request, seek, ...)`; define ordering with `SeekDefinition.Ascending` / `Descending` and `ThenAscending` / `ThenDescending` | [`SeekDefinition`](#seekdefinition), [`PaginationQueryableExtensions`](#paginationqueryableextensions) |
 | Filter by a spherical radius and order/page by computed distance | Validate `GeoBounds`, compose `GeoCoordinateExpressions.WithinRadius(...)` and `DistanceMetersTo(...)`, then use the distance expression in `SeekDefinition.Ascending(...)` | [`GeoCoordinateExpressions`](#geocoordinateexpressions), [`PaginationQueryableExtensions`](#paginationqueryableextensions) |
 
@@ -263,7 +263,7 @@ before creating `GeoBounds`; do not assume provider and client results are bit-i
 bind canonical identity for the origin, radius, all other filters, sort directions, and an
 algorithm/version marker. A cursor from a different nearby query must fail decoding rather
 than resume against changed semantics. See
-[Recipe 40](skills/recipe-40-computed-pagination.md).
+[Recipe 40](recipes/recipe-40-computed-pagination.md).
 
 ### `PaginationQueryableExtensions`
 
@@ -357,7 +357,7 @@ For translated spherical distance, compose
 [`GeoCoordinateExpressions`](#geocoordinateexpressions) directly with the seek definition.
 For computed ordering that cannot be translated, use a caller-owned, bounded algorithm and
 Core's typed codec/page assembly; see
-[Recipe 40](skills/recipe-40-computed-pagination.md).
+[Recipe 40](recipes/recipe-40-computed-pagination.md).
 Do not materialize an unbounded table just to bypass translation.
 
 ### `RepositoryBase<TAggregate, TId>`
@@ -479,7 +479,7 @@ commit decision. Behaviors own their result checks and cleanup, and stage rather
 save independently. Returning an ordinary failure skips this invocation's commit; it
 does not roll back tracked state or permanently prevent an outer/later commit.
 See the [placement contract](trellis-api-mediator.md#insidetransactionbehaviorservicecollectionextensions)
-and [checkpoint recipe](skills/recipe-16-unit-of-work.md#same-commit-audit-staging).
+and [checkpoint recipe](recipes/recipe-16-unit-of-work.md#same-commit-audit-staging).
 
 > **Important:** This behavior is **not** registered by `Trellis.Mediator.ServiceCollectionExtensions.AddTrellisBehaviors()`. Consumers of `Trellis.EntityFrameworkCore` must register it explicitly via `AddTrellisUnitOfWork<TContext>()` (see below). Ordering is independent versus `AddTrellisBehaviors()` and domain-event dispatch helpers: the transaction behavior is rehomed inside outer behaviors and around explicitly selected inside-transaction behaviors — so commit failures remain visible to outer logging/tracing/exception behaviors.
 
@@ -750,7 +750,7 @@ public sealed class MaybeQueryInterceptor : IQueryExpressionInterceptor
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)` | `Expression` | Rewrites query expressions so natural `Maybe<T>` access translates to mapped storage members. Supported patterns inside `Where`/`Select`/`Specification.ToExpression()`: `o.X.HasValue`, `o.X.HasNoValue`, `o.X.Value`, `o.X.GetValueOrDefault(d)`, `o.X == Maybe<T>.None` / `o.X != Maybe<T>.None` (and converse operand order), `o.X == Maybe.From(value)` / `o.X != Maybe.From(value)` (and converse operand order), `o.X == default(Maybe<T>)`, and `o.X.HasValueWhere(t => ...predicate-body-on-t...)`. `HasValueWhere` requires an inline expression-bodied lambda; captured `Func<T,bool>` variables and method-group conversions fall through and EF Core reports the translation failure. See cookbook [Recipe 8](skills/recipe-08-maybe-ef-mapping.md) for the Specification walkthrough. |
+| `public Expression QueryCompilationStarting(Expression queryExpression, QueryExpressionEventData eventData)` | `Expression` | Rewrites query expressions so natural `Maybe<T>` access translates to mapped storage members. Supported patterns inside `Where`/`Select`/`Specification.ToExpression()`: `o.X.HasValue`, `o.X.HasNoValue`, `o.X.Value`, `o.X.GetValueOrDefault(d)`, `o.X == Maybe<T>.None` / `o.X != Maybe<T>.None` (and converse operand order), `o.X == Maybe.From(value)` / `o.X != Maybe.From(value)` (and converse operand order), `o.X == default(Maybe<T>)`, and `o.X.HasValueWhere(t => ...predicate-body-on-t...)`. `HasValueWhere` requires an inline expression-bodied lambda; captured `Func<T,bool>` variables and method-group conversions fall through and EF Core reports the translation failure. See cookbook [Recipe 8](recipes/recipe-08-maybe-ef-mapping.md) for the Specification walkthrough. |
 
 ### `ScalarValueQueryInterceptor`
 

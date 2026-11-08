@@ -96,7 +96,7 @@ try {
             if ($field -cnotin @('path', 'sha256', 'usage', 'description')) { throw "unexpected document field: $field" }
         }
         $path = [string]$doc.path
-        if ($path -notmatch '^trellis/(?:skills/)?[^/\\]+\.md$' -or $path.Contains('..')) { throw "invalid path: $path" }
+        if ($path -notmatch '^trellis/(?:recipes/)?[^/\\]+\.md$' -or $path.Contains('..')) { throw "invalid path: $path" }
         if ($doc.sha256 -cnotmatch '^[0-9a-f]{64}$') { throw "invalid sha256 for $path" }
         if (-not $seen.Add($path.Normalize([System.Text.NormalizationForm]::FormC))) {
             throw "duplicate document path: $path"
@@ -136,11 +136,11 @@ try {
     }
     if ($packedDocs.Count -ne $seen.Count) { throw "packed documents $($packedDocs.Count) != listed $($seen.Count)" }
 
-    # The reference documents, plus the Agent Skills in the skills subfolder (packed under trellis/skills/).
+    # The reference documents, plus the recipe documents in the recipes subfolder (packed under trellis/recipes/).
     $expected = @(Get-ChildItem -Path $docsRoot -Filter '*.md' -File |
         Where-Object Name -NE 'completeness-report.md' | ForEach-Object { "trellis/$($_.Name)" }) +
-        @(Get-ChildItem -Path (Join-Path $docsRoot 'skills') -Filter '*.md' -File -ErrorAction SilentlyContinue |
-            ForEach-Object { "trellis/skills/$($_.Name)" })
+        @(Get-ChildItem -Path (Join-Path $docsRoot 'recipes') -Filter '*.md' -File -ErrorAction SilentlyContinue |
+            ForEach-Object { "trellis/recipes/$($_.Name)" })
     if (@($expected | Where-Object { -not $seen.Contains($_) }).Count -gt 0 -or $expected.Count -ne $seen.Count) {
         throw 'manifest document set differs from the source reference set'
     }

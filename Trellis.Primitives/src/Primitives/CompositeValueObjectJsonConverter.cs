@@ -26,7 +26,7 @@ using Trellis;
 /// <para>
 /// For the full Domain + API JSON binding + EF Core ownership walkthrough on a multi-field VO
 /// (<c>ShippingAddress</c>-style), see <b>Recipe 13 — Composite value object end-to-end</b>
-/// in <c>docs/docfx_project/api_reference/skills/recipe-13-composite-value-object.md</c>.
+/// in <c>docs/docfx_project/api_reference/recipes/recipe-13-composite-value-object.md</c>.
 /// </para>
 /// <para>
 /// Discovery convention: each public read-only instance property declared on <typeparamref name="T"/>

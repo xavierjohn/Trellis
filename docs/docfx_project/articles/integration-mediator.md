@@ -188,7 +188,7 @@ permanently blocking an outer/later commit. Propagate nested failures when their
 must not commit, and discard a failed request's context. Concurrent commands sharing
 one unit of work remain unsupported.
 
-The [same-commit audit recipe](../api_reference/skills/recipe-16-unit-of-work.md#same-commit-audit-staging)
+The [same-commit audit recipe](../api_reference/recipes/recipe-16-unit-of-work.md#same-commit-audit-staging)
 uses a scoped recorder and nested checkpoints, with cleanup on every exit. Its handler
 returns the entity normally and can be tested directly without a framework frame or
 unit-of-work double. Audit coverage, schemas, metadata, and no-op recording remain
@@ -386,7 +386,7 @@ builder.Services.AddTrellis(options => options
 
 Parameterless `HideExistence` uses `error.unspecified` and the standard NotFound display message. The default policy is `Propagate`; `DefaultExposurePolicy = HideAsNotFound` enables service-wide hiding, while `Propagate<TResource>()` opts out individual resources. Each normalization emits private `ExistenceHidden` diagnostics with the original input kind/code.
 
-Other direct-resource / via-leaf errors remain unchanged. Intermediate/owner load failures collapse to `Forbidden("resource.authorization-via.load-failed")` before normalization, so even owner `Unavailable` becomes a hidden NotFound. See [Recipe 32](../api_reference/skills/recipe-32-hide-existence.md).
+Other direct-resource / via-leaf errors remain unchanged. Intermediate/owner load failures collapse to `Forbidden("resource.authorization-via.load-failed")` before normalization, so even owner `Unavailable` becomes a hidden NotFound. See [Recipe 32](../api_reference/recipes/recipe-32-hide-existence.md).
 
 **Caveats.**
 - **`AuthorizationBehavior` runs first.** Commands implementing both `IAuthorize` and `IAuthorizeResource<T>` have static-permission `AuthenticationRequired` / `Forbidden` surfaced by `AuthorizationBehavior` — those are NOT translated, because the static-auth behavior has no concept of the resource. Commands needing existence-hiding to apply to anonymous probes must omit `IAuthorize`.
@@ -394,7 +394,7 @@ Other direct-resource / via-leaf errors remain unchanged. Intermediate/owner loa
 - **Via commands key on the leaf.** `HideExistence<Match>()` covers `IAuthorizeResourceVia<Team>` + `IIdentifyResource<Match,MatchId>` and references the leaf, never the owner.
 - **Boundary scope.** Handler failures, aggregates, per-request trace IDs, application response customization, and timing are not normalized.
 
-See cookbook [Recipe 32](../api_reference/skills/recipe-32-hide-existence.md) for the projection-loader overload, SIEM query examples, and the full worked example.
+See cookbook [Recipe 32](../api_reference/recipes/recipe-32-hide-existence.md) for the projection-loader overload, SIEM query examples, and the full worked example.
 
 ## Validation
 

@@ -127,7 +127,7 @@ The full case set and slug-change table is in the [Error union DDD realignment](
 |---|---|
 | `result.Value` (after explicit `IsSuccess` check) | `result.TryGetValue(out var value)` or `var (ok, value, error) = result;` |
 | `result.Value` inside a chain | `.Map(value => ...)` / `.Bind(value => ...)` |
-| `result.Value` at a persistence DTO → entity rehydration seam | `result.GetValueOrThrow("context message")` — see [cookbook Recipe 30](docs/docfx_project/api_reference/skills/recipe-30-rehydration.md) |
+| `result.Value` at a persistence DTO → entity rehydration seam | `result.GetValueOrThrow("context message")` — see [cookbook Recipe 30](docs/docfx_project/api_reference/recipes/recipe-30-rehydration.md) |
 | `result.Value` in test arrangement | `result.Unwrap()` (from `Trellis.Testing`, test-only) |
 
 `GetValueOrThrow(string? errorMessage = null)` ships in `Trellis.Core` and mirrors the existing `Maybe<T>.GetValueOrThrow(string? errorMessage = null)` precedent. It throws `InvalidOperationException` on failure, which bubbles through `ExceptionBehavior` to a wire `new Error.Unexpected("unhandled-exception", faultId)` (HTTP 500) with the row-identifying message in operator-side logs.

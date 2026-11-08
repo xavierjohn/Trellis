@@ -5,95 +5,95 @@
     - name: Domain modeling & persistence
       items:
         - name: 1. CRUD aggregate
-          href: skills/recipe-01-crud-aggregate.md
+          href: recipes/recipe-01-crud-aggregate.md
         - name: 8. Optional EF Core value objects
-          href: skills/recipe-08-maybe-ef-mapping.md
+          href: recipes/recipe-08-maybe-ef-mapping.md
         - name: 9. State transitions
-          href: skills/recipe-09-state-machine.md
+          href: recipes/recipe-09-state-machine.md
         - name: 13. Composite value objects
-          href: skills/recipe-13-composite-value-object.md
+          href: recipes/recipe-13-composite-value-object.md
         - name: 13. Composite value objects, JSON and collections
-          href: skills/recipe-13-composite-json-and-collections.md
+          href: recipes/recipe-13-composite-json-and-collections.md
         - name: 16. Unit-of-work saves
-          href: skills/recipe-16-unit-of-work.md
+          href: recipes/recipe-16-unit-of-work.md
         - name: 27. Idempotent inserts
-          href: skills/recipe-27-idempotent-insert.md
+          href: recipes/recipe-27-idempotent-insert.md
         - name: 30. Rehydrate persisted entities
-          href: skills/recipe-30-rehydration.md
+          href: recipes/recipe-30-rehydration.md
         - name: 37. Reconstitute aggregates
-          href: skills/recipe-37-reconstitution.md
+          href: recipes/recipe-37-reconstitution.md
     - name: Handlers & orchestration
       items:
         - name: 2. Command, validation & persistence
-          href: skills/recipe-02-command-handler.md
+          href: recipes/recipe-02-command-handler.md
         - name: 20. Fail-fast or accumulating validation
-          href: skills/recipe-20-fail-fast-vs-accumulating.md
+          href: recipes/recipe-20-fail-fast-vs-accumulating.md
         - name: 21. Parallel independent loads
-          href: skills/recipe-21-parallel-loads.md
+          href: recipes/recipe-21-parallel-loads.md
         - name: 22. Multi-aggregate orchestration
-          href: skills/recipe-22-multi-aggregate-orchestration.md
+          href: recipes/recipe-22-multi-aggregate-orchestration.md
         - name: 25. Validate before mutating
-          href: skills/recipe-25-two-pass-validate-mutate.md
+          href: recipes/recipe-25-two-pass-validate-mutate.md
     - name: Queries & input
       items:
         - name: 3. Cursor pagination
-          href: skills/recipe-03-paginated-query.md
+          href: recipes/recipe-03-paginated-query.md
         - name: 14. Optional request fields
-          href: skills/recipe-14-optional-dto-fields.md
+          href: recipes/recipe-14-optional-dto-fields.md
         - name: 18. DTOs to value-object commands
-          href: skills/recipe-18-dto-to-value-object.md
+          href: recipes/recipe-18-dto-to-value-object.md
         - name: 39. Localized validation messages
-          href: skills/recipe-39-localized-validation.md
+          href: recipes/recipe-39-localized-validation.md
         - name: 40. Computed pagination
-          href: skills/recipe-40-computed-pagination.md
+          href: recipes/recipe-40-computed-pagination.md
     - name: HTTP endpoints & clients
       items:
         - name: 4. Minimal API endpoints
-          href: skills/recipe-04-minimal-api-endpoint.md
+          href: recipes/recipe-04-minimal-api-endpoint.md
         - name: 5. MVC controllers
-          href: skills/recipe-05-mvc-controller.md
+          href: recipes/recipe-05-mvc-controller.md
         - name: 6. Conditional GET
-          href: skills/recipe-06-conditional-get.md
+          href: recipes/recipe-06-conditional-get.md
         - name: 19. HTTP client results & optional reads
-          href: skills/recipe-19-http-client.md
+          href: recipes/recipe-19-http-client.md
         - name: 23. Optimistic concurrency
-          href: skills/recipe-23-if-match-concurrency.md
+          href: recipes/recipe-23-if-match-concurrency.md
         - name: 28. Problem Details resource links
-          href: skills/recipe-28-problem-details-instance.md
+          href: recipes/recipe-28-problem-details-instance.md
         - name: 29. Idempotent POST & PATCH
-          href: skills/recipe-29-idempotency-key.md
+          href: recipes/recipe-29-idempotency-key.md
         - name: 41. Actor-aware rate limiting
-          href: skills/recipe-41-actor-rate-limiting.md
+          href: recipes/recipe-41-actor-rate-limiting.md
     - name: Authorization & tenancy
       items:
         - name: 7. Actor & resource authorization
-          href: skills/recipe-07-resource-authorization.md
+          href: recipes/recipe-07-resource-authorization.md
         - name: 24. Multi-hop authorization
-          href: skills/recipe-24-indirect-authorization.md
+          href: recipes/recipe-24-indirect-authorization.md
         - name: 31. Reuse the authorized resource
-          href: skills/recipe-31-authorized-resource.md
+          href: recipes/recipe-31-authorized-resource.md
         - name: 32. Hide resource existence
-          href: skills/recipe-32-hide-existence.md
+          href: recipes/recipe-32-hide-existence.md
         - name: 38. Tenant-scoped authorization
-          href: skills/recipe-38-tenant-authorization.md
+          href: recipes/recipe-38-tenant-authorization.md
     - name: Events & messaging
       items:
         - name: 17. Define domain events
-          href: skills/recipe-17-domain-events.md
+          href: recipes/recipe-17-domain-events.md
         - name: 35. Transactional outbox
-          href: skills/recipe-35-outbox.md
+          href: recipes/recipe-35-outbox.md
         - name: 36. Translate integration events
-          href: skills/recipe-36-integration-events.md
+          href: recipes/recipe-36-integration-events.md
     - name: Composition, testing & diagnostics
       items:
         - name: 10. Handler tests
-          href: skills/recipe-10-handler-tests.md
+          href: recipes/recipe-10-handler-tests.md
         - name: 11. Analyzer fixes
-          href: skills/recipe-11-analyzer-fixes.md
+          href: recipes/recipe-11-analyzer-fixes.md
         - name: 12. Composition-root wiring
-          href: skills/recipe-12-di-wiring.md
+          href: recipes/recipe-12-di-wiring.md
         - name: 26. Background worker tests
-          href: skills/recipe-26-worker-tests.md
+          href: recipes/recipe-26-worker-tests.md
 - name: Anti-pattern gallery
   href: trellis-api-anti-patterns.md
 - name: Per-package reference

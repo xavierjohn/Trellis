@@ -84,7 +84,7 @@ behaviors, closer to the handler.
 Identical bindings deduplicate. Behaviors nest in selection order and unwind in reverse
 order. They own outcome checks, recorder checkpoints, and cleanup in `finally`.
 An ordinary failure skips this invocation's commit, without rollback or permanent
-rejection of an outer/later commit. See [Recipe 16](../api_reference/skills/recipe-16-unit-of-work.md#same-commit-audit-staging)
+rejection of an outer/later commit. See [Recipe 16](../api_reference/recipes/recipe-16-unit-of-work.md#same-commit-audit-staging)
 for a complete same-context audit example and direct handler tests.
 
 Explicitly closed/generated pipelines instead list their application behavior after
@@ -200,5 +200,5 @@ builder.Services.AddTrellis(o => o
 ## See also
 
 - [API reference](../api_reference/trellis-api-servicedefaults.md) — type tables and method signatures.
-- [Cookbook Recipe 12: DI wiring playbook](../api_reference/skills/recipe-12-di-wiring.md).
+- [Cookbook Recipe 12: DI wiring playbook](../api_reference/recipes/recipe-12-di-wiring.md).
 - Per-package articles: [`integration-aspnet.md`](integration-aspnet.md), [`integration-mediator.md`](integration-mediator.md), [`integration-fluentvalidation.md`](integration-fluentvalidation.md), [`integration-ef.md`](integration-ef.md), [`integration-asp-authorization.md`](integration-asp-authorization.md).

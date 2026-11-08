@@ -75,7 +75,7 @@ try {
     $results = @()
 
     foreach ($doc in @(Get-ChildItem -Path $docsDir -Filter '*.md' -File) +
-                     @(Get-ChildItem -Path (Join-Path $docsDir 'skills') -Filter '*.md' -File -ErrorAction SilentlyContinue) |
+                     @(Get-ChildItem -Path (Join-Path $docsDir 'recipes') -Filter '*.md' -File -ErrorAction SilentlyContinue) |
                      Sort-Object Name) {
         if ($doc.Name -eq 'completeness-report.md') { continue }
 

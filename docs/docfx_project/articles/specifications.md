@@ -260,5 +260,5 @@ public sealed class FulfilOverdueOrders(IOrderRepository repository)
 
 - API surface: [`trellis-api-core.md` → `Specification<T>`](../api_reference/trellis-api-core.md#specificationt)
 - `Maybe<T>` query rewriting and the `AddTrellisInterceptors()` registration: [`integration-ef.md`](integration-ef.md)
-- Spec / `Maybe<T>` / fake-vs-real divergence walkthrough: [Recipe 8, which absorbed the retired Recipe 15](../api_reference/skills/recipe-08-maybe-ef-mapping.md)
+- Spec / `Maybe<T>` / fake-vs-real divergence walkthrough: [Recipe 8, which absorbed the retired Recipe 15](../api_reference/recipes/recipe-08-maybe-ef-mapping.md)
 - Domain primitives that read well inside specifications: [`primitives.md`](primitives.md)
