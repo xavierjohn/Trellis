@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - AgentDocs 1.0.3: the tool and the packaging helper
+
+The documentation setup now pins `Trellis.AgentDocs` and `Trellis.AgentDocs.Packaging` `1.0.3` (the README, the `Trellis.Core`
+NuGet README, the payload and satellite probes, and the two contract tests that assert the pins). The helper's output for
+`Trellis.Core` is unchanged. The tool adds a managed pointer to an existing `CLAUDE.md`, which Claude Code reads instead of
+`AGENTS.md`, and writes one Agent Skill stub per listed guide to `.agents/skills`. Claude Code reads `.claude/skills`, so the
+READMEs say how to give it the same skills: list that folder in `skillDirectories`, or link it to `.agents/skills`.
+
 ### Added - tuple `Match`, `Switch`, `MatchAsync` and `SwitchAsync` for arities 6 to 9
 
 The tuple overloads of `Match`, `Switch`, `MatchAsync` and `SwitchAsync` were generated only for 2 to 5 elements,
