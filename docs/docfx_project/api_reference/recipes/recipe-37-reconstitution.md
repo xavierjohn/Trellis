@@ -85,7 +85,8 @@ public sealed class DapperOrderRepository(IDbConnection db) : IOrderRepository
             lines);
 
         // Restore the infrastructure metadata loaded from the row. Store-native tokens are commonly
-        // quoted (a Cosmos _etag arrives as "abc" or W/"abc"), but StampReconstitutedState requires
+        // quoted (a Cosmos _etag arrives with its quotes, e.g. "00000000-0000-0000-6fd5-8990b40501dd"; other
+        // stores or proxies may add a W/ weak prefix), but StampReconstitutedState requires
         // the unquoted RFC 9110 opaque form and throws on '"'. Stores that already hand back an
         // unquoted token (a SQL rowversion, say) pass straight through.
         ((IReconstitutionStampable)order)
