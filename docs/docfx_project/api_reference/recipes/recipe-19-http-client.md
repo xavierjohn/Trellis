@@ -39,7 +39,7 @@ public Task<Result<Maybe<OrderDto>>> FindOrderAsync(HttpClient client, Guid id, 
 
 **What it shows.**
 
-- Bare `ToResultAsync()` is strict in v3: 2xx responses stay on the success track; non-2xx responses become typed Trellis errors.
+- Bare `ToResultAsync()` is strict: 2xx responses stay on the success track; non-2xx responses become typed Trellis errors.
 - Use `ReadJsonOrNoneOn404Async(...)` when `404` is expected domain absence, not failure.
 - Use explicit status mapping only when the upstream status needs a domain-specific resource or policy:
 

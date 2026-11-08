@@ -126,10 +126,10 @@ preserves input location and can be used lazily:
 `Result.EnsureNotNull(value, () => Error.InvalidInput.Required(inputPointer, detail))`.
 Composite validators can use
 `FieldViolation.Required(fieldName, detail)` or `FieldViolation.Required(inputPointer, detail)`
-to retain an indexed path and input location. Core's nullable `ToResult` APIs and
-universal no-argument lift have been removed: use these guards for required values,
+to retain an indexed path and input location. Use these guards for required values,
 `Result.Ok(value)` for deliberate success wrapping, and `maybe.ToResult(errorFactory)`
-when ordinary absence becomes a failure. TRLS066 now emits the static guard shape.
+when ordinary absence becomes a failure. TRLS066 flags `Result.Ensure(x is not null, error)`
+and suggests `Result.EnsureNotNull(x, error)` instead.
 
 **Nested collections.** When `CreateCustomerRequest` carries a `List<AddressDto>` whose items each need to become value objects, the `Result.Combine` shape above doesn't generalize to the collection — use [Recipe 20](recipe-20-fail-fast-vs-accumulating.md) (`TraverseAll`) to validate every row and accumulate per-item failures into one `Error.InvalidInput`. Inlining `.Select(item => item.ToCommand().Match(c => c, e => throw …))` throws on the first invalid row and surfaces as HTTP 500 instead of HTTP 422 with field violations.
 

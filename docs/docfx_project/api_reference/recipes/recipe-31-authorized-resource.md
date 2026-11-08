@@ -88,7 +88,7 @@ receive the same leaf, not owners. Handler tests send the command through Mediat
 protected and cannot be invoked as a public bypass. All mutation-readiness and TOCTOU cautions
 below apply equally to base-supplied resources.
 
-**Via commands** (multi-hop authorization via `IAuthorizeResourceVia<TOwner>`) expose the **leaf** through the accessor — the resource the message identifies via `IIdentifyResource<TLeaf, TLeafId>`, which is the typical mutation target. The owner accessor is intentionally **not** exposed in v4; handlers that need owner state read it from their repository.
+**Via commands** (multi-hop authorization via `IAuthorizeResourceVia<TOwner>`) expose the **leaf** through the accessor — the resource the message identifies via `IIdentifyResource<TLeaf, TLeafId>`, which is the typical mutation target. The owner accessor is intentionally **not** exposed; handlers that need owner state read it from their repository.
 
 ```csharp
 public sealed record UploadScorecardCommand(MatchId MatchId, Scorecard Scorecard)
