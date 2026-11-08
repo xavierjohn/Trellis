@@ -52,7 +52,7 @@ public ValueTask<Result<Customer>> Handle(UpdateCustomerCommand c, ...) =>
 
 ## Code fix available
 
-No. The right transport depends on whether the composite is optional. See [cookbook Recipe 14](../../api_reference/trellis-api-cookbook.md#recipe-14--optional-fields-in-request-dtos-maybetscalar-vs-nullable-transport) for the canonical optional-field pattern at the API seam.
+No. The right transport depends on whether the composite is optional. See [cookbook Recipe 14](../../api_reference/skills/recipe-14-optional-dto-fields.md) for the canonical optional-field pattern at the API seam.
 
 ## Configuration
 

@@ -139,6 +139,6 @@ resolve each package to one version: `init` stops without writing context if ver
 ## Documentation
 
 - [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-core.html)
-- [Cross-package cookbook](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-cookbook.html)
+- [Cross-package cookbook](https://xavierjohn.github.io/Trellis/api_reference/trellis-start-here.html#task---recipe-lookup)
 - [Error-handling guide](https://xavierjohn.github.io/Trellis/articles/error-handling.html)
 - [Pagination guide](https://xavierjohn.github.io/Trellis/articles/pagination.html)

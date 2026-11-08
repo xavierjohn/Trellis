@@ -237,5 +237,5 @@ Keep business mutations **after** `FireResult` succeeds. Do not place domain sid
 
 - API surface: [`trellis-api-statemachine.md`](../api_reference/trellis-api-statemachine.md)
 - `Result<T>`, `Error.InvariantViolation`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
-- Cookbook recipe (CanFire + Fire pattern with `FireResult`): [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult)
+- Cookbook recipe (CanFire + Fire pattern with `FireResult`): [`recipe-09-state-machine.md`](../api_reference/skills/recipe-09-state-machine.md)
 - Upstream library: [Stateless on GitHub](https://github.com/dotnet-state-machine/stateless)

@@ -19,7 +19,7 @@ This package composes `Trellis.EntityFrameworkCore` (the `DbContext`, transactio
 > [!NOTE]
 > The **contracts** are store-agnostic and live outside the EF Core packages. The store SPIs — `IUnitOfWork`, `IInboxStore`, `IConsumerCheckpointStore`, and `InboxRecord` — are in `Trellis.Persistence.Abstractions` (namespace `Trellis`); the consume-side dispatch contracts — `IInboxDispatcher`, `IntegrationEnvelope`, `InboxDispatchOutcome` — are in `Trellis.Mediator`. This page documents the EF Core **adapter** (`EfInboxStore`, `EfConsumerCheckpointStore`, `InboxDispatcher<TContext>`, `InboxMessage`, and the registration extensions) that implements them.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-package-cookbook) — recipes using this package.
+See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) — recipes using this package.
 
 ## Use this file when
 

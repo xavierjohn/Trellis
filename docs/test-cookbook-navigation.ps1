@@ -13,14 +13,12 @@ Set-StrictMode -Version Latest
 
 $referenceDirectory = Join-Path $RepositoryRoot 'docs' 'docfx_project' 'api_reference'
 $siteDirectory = Join-Path $RepositoryRoot 'docs' 'docfx_project' '_site' 'api_reference'
-$cookbookPath = Join-Path $referenceDirectory 'trellis-api-cookbook.md'
-$htmlPath = Join-Path $siteDirectory 'trellis-api-cookbook.html'
 $tocPath = Join-Path $siteDirectory 'toc.json'
 $tocHtmlPath = Join-Path $siteDirectory 'toc.html'
 
-foreach ($path in @($cookbookPath, $htmlPath, $tocPath, $tocHtmlPath)) {
+foreach ($path in @($tocPath, $tocHtmlPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-        throw "Cookbook navigation input is missing: $path. Build the DocFX site before running this check."
+        throw "Recipe navigation input is missing: $path. Build the DocFX site before running this check."
     }
 }
 
@@ -35,55 +33,56 @@ function Get-NavigationEntries {
     }
 }
 
-$liveRecipes = @(
-    Get-Content -LiteralPath $cookbookPath |
-        Where-Object { $_ -match '^## Recipe \d+\s' -and $_ -notmatch '\*\(retired\)\*' } |
-        ForEach-Object { [int] [regex]::Match($_, '^## Recipe (?<number>\d+)').Groups['number'].Value }
-)
-if ($liveRecipes.Count -eq 0) {
-    throw "No live recipe headings were found in $cookbookPath."
+# Each recipe is its own document, skills/recipe-NN-<topic>.md.
+$recipeFiles = @(Get-ChildItem -LiteralPath (Join-Path $referenceDirectory 'skills') -Filter 'recipe-*.md' -File | Sort-Object Name)
+if ($recipeFiles.Count -eq 0) {
+    throw "No recipe documents (recipe-*.md) were found in $referenceDirectory."
 }
 
 $toc = Get-Content -LiteralPath $tocPath -Raw | ConvertFrom-Json -Depth 100
-$cookbook = @($toc.items | Where-Object {
-    $_.PSObject.Properties['href'] -and $_.href -eq 'trellis-api-cookbook.html'
+$recipes = @($toc.items | Where-Object {
+    $_.PSObject.Properties['name'] -and $_.name -ceq 'Recipes'
 })
-if ($cookbook.Count -ne 1 -or -not $cookbook[0].PSObject.Properties['items']) {
-    throw 'The DocFX TOC must contain one Cookbook entry with grouped recipe navigation.'
+if ($recipes.Count -ne 1 -or -not $recipes[0].PSObject.Properties['items']) {
+    throw 'The DocFX TOC must contain one Recipes entry with grouped recipe navigation.'
 }
 
-$groups = @($cookbook[0].items | Where-Object { $_.PSObject.Properties['items'] })
-if ($groups.Count -lt 2 -or $groups.Count -ne @($cookbook[0].items).Count) {
-    throw 'Cookbook recipes must be grouped by topic in the DocFX TOC.'
+$groups = @($recipes[0].items | Where-Object { $_.PSObject.Properties['items'] })
+if ($groups.Count -lt 2 -or $groups.Count -ne @($recipes[0].items).Count) {
+    throw 'Recipes must be grouped by topic in the DocFX TOC.'
 }
 
-$links = @(Get-NavigationEntries -Items $cookbook[0].items | Where-Object {
+$links = @(Get-NavigationEntries -Items $recipes[0].items | Where-Object {
     $_.PSObject.Properties['href']
 })
-$html = Get-Content -LiteralPath $htmlPath -Raw
 $tocHtml = Get-Content -LiteralPath $tocHtmlPath -Raw
-$headings = @([regex]::Matches($html, '<h2\b[^>]*\bid="(?<anchor>recipe-(?<number>\d+)-[^"]+)"'))
 $failures = [System.Collections.Generic.List[string]]::new()
 $expectedTargets = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $jsonTargets = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $htmlTargets = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 
-foreach ($anchor in [regex]::Matches($tocHtml, '<a\b[^>]*\bhref="(?<href>trellis-api-cookbook\.html#[^"]+)"')) {
+foreach ($anchor in [regex]::Matches($tocHtml, '<a\b[^>]*\bhref="(?<href>skills/recipe-[^"#]+\.html)"')) {
     [void] $htmlTargets.Add([System.Net.WebUtility]::HtmlDecode($anchor.Groups['href'].Value))
 }
 
-foreach ($number in $liveRecipes) {
-    $heading = @($headings | Where-Object { [int] $_.Groups['number'].Value -eq $number })
-    if ($heading.Count -ne 1) {
-        $failures.Add("Recipe $number must have exactly one rendered heading; found $($heading.Count).")
+foreach ($recipeFile in $recipeFiles) {
+    $number = [int] [regex]::Match($recipeFile.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
+    $page = 'skills/' + [System.IO.Path]::ChangeExtension($recipeFile.Name, '.html')
+    $pagePath = Join-Path $siteDirectory $page
+    if (-not (Test-Path -LiteralPath $pagePath -PathType Leaf)) {
+        $failures.Add("Recipe $number has no rendered page '$page'.")
         continue
     }
 
-    $href = 'trellis-api-cookbook.html#' + $heading[0].Groups['anchor'].Value
-    [void] $expectedTargets.Add($href)
-    $recipeLinks = @($links | Where-Object { $_.href -ceq $href })
+    $headings = @([regex]::Matches((Get-Content -LiteralPath $pagePath -Raw), "<h1\b[^>]*\bid=`"recipe-$number-[^`"]*`""))
+    if ($headings.Count -ne 1) {
+        $failures.Add("Recipe $number must have exactly one rendered recipe heading in '$page'; found $($headings.Count).")
+    }
+
+    [void] $expectedTargets.Add($page)
+    $recipeLinks = @($links | Where-Object { $_.href -ceq $page })
     if ($recipeLinks.Count -ne 1) {
-        $failures.Add("Recipe $number must have exactly one TOC link to '$href'; found $($recipeLinks.Count).")
+        $failures.Add("Recipe $number must have exactly one TOC link to '$page'; found $($recipeLinks.Count).")
     }
     foreach ($recipeLink in $recipeLinks) {
         if (-not $recipeLink.PSObject.Properties['name'] -or $recipeLink.name -cnotlike "$number. *") {
@@ -95,7 +94,7 @@ foreach ($number in $liveRecipes) {
 foreach ($link in $links) {
     [void] $jsonTargets.Add($link.href)
     if (-not $expectedTargets.Contains($link.href)) {
-        $failures.Add("Unexpected cookbook navigation target: '$($link.href)'. Link only to live recipes in the canonical cookbook.")
+        $failures.Add("Unexpected recipe navigation target: '$($link.href)'. Link only to live recipe documents.")
     }
     if (-not $htmlTargets.Contains($link.href)) {
         $failures.Add("The rendered HTML TOC is missing '$($link.href)'.")
@@ -104,12 +103,12 @@ foreach ($link in $links) {
 
 foreach ($target in $htmlTargets) {
     if (-not $jsonTargets.Contains($target)) {
-        $failures.Add("The rendered HTML TOC contains unexpected cookbook target '$target'.")
+        $failures.Add("The rendered HTML TOC contains unexpected recipe target '$target'.")
     }
 }
 
 if ($failures.Count -gt 0) {
-    throw "Cookbook navigation failed:`n$($failures -join "`n")"
+    throw "Recipe navigation failed:`n$($failures -join "`n")"
 }
 
-Write-Host "Cookbook navigation passed: $($liveRecipes.Count) live recipes in $($groups.Count) topic groups, with rendered HTML links."
+Write-Host "Recipe navigation passed: $($recipeFiles.Count) live recipe documents in $($groups.Count) topic groups, with rendered HTML links."

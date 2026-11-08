@@ -43,7 +43,7 @@ internal static class DocSymbolAudit
         var unusedAllowlistEntries = new HashSet<string>(allowlist, StringComparer.Ordinal);
         int unknownCount = 0;
 
-        foreach (var file in Directory.EnumerateFiles(docsDir, "*.md").OrderBy(p => p, StringComparer.Ordinal))
+        foreach (var file in ReferenceDocuments.Enumerate(docsDir))
         {
             var name = Path.GetFileName(file);
 

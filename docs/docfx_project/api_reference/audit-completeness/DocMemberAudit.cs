@@ -119,7 +119,7 @@ internal static class DocMemberAudit
         int inlineSpansScanned = 0;
         var unusedAllowlist = new HashSet<string>(allowlist, StringComparer.Ordinal);
 
-        foreach (var file in Directory.EnumerateFiles(docsDir, "*.md").OrderBy(p => p, StringComparer.Ordinal))
+        foreach (var file in ReferenceDocuments.Enumerate(docsDir))
         {
             var name = Path.GetFileName(file);
 

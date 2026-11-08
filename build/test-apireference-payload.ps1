@@ -158,10 +158,10 @@ try {
         Copy-Item -LiteralPath $core.FullName -Destination $corrupt -Force
         $zip = [System.IO.Compression.ZipFile]::Open($corrupt, [System.IO.Compression.ZipArchiveMode]::Update)
         try {
-            $entry = $zip.GetEntry('trellis/trellis-api-cookbook.md')
-            if (-not $entry) { throw 'Core cookbook missing from packed payload' }
+            $entry = $zip.GetEntry('trellis/skills/recipe-01-crud-aggregate.md')
+            if (-not $entry) { throw 'Core recipe document missing from packed payload' }
             $entry.Delete()
-            $replacement = $zip.CreateEntry('trellis/trellis-api-cookbook.md')
+            $replacement = $zip.CreateEntry('trellis/skills/recipe-01-crud-aggregate.md')
             $writer = [System.IO.StreamWriter]::new($replacement.Open())
             try { $writer.Write('corrupted document') } finally { $writer.Dispose() }
         }
@@ -169,7 +169,7 @@ try {
         $validation = & (Join-Path $PSScriptRoot 'validate-reference-manifest.ps1') -Package $corrupt `
             -Project (Join-Path $root 'Trellis.Core\src\Trellis.Core.csproj') -RepositoryRoot $root -Quiet 2>&1
         if ($LASTEXITCODE -eq 0 -or ($validation | Out-String) -notmatch
-            'sha256 mismatch for trellis/trellis-api-cookbook\.md') {
+            'sha256 mismatch for trellis/skills/recipe-01-crud-aggregate\.md') {
             throw "Corrupt packed bytes were not rejected for the expected hash mismatch: $($validation | Out-String)"
         }
         Write-Host 'PASS Core tampered packed document rejected (sha256 mismatch)'

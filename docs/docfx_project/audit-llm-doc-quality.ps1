@@ -165,8 +165,11 @@ function Add-Finding {
 function Get-DocFiles {
     param([string] $Directory)
     if (-not (Test-Path $Directory)) { return @() }
-    Get-ChildItem -Path $Directory -Filter '*.md' -File |
-        Where-Object { $FrontmatterExcludedFiles -notcontains $_.Name }
+    $found = @(Get-ChildItem -Path $Directory -Filter '*.md' -File)
+    # The api_reference Agent Skills live in a subfolder of it.
+    $skills = Join-Path $Directory 'skills'
+    if (Test-Path $skills) { $found += @(Get-ChildItem -Path $skills -Filter '*.md' -File) }
+    $found | Where-Object { $FrontmatterExcludedFiles -notcontains $_.Name }
 }
 
 function Read-Frontmatter {

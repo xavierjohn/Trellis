@@ -188,6 +188,7 @@ internal static class DocAttributionAudit
     private static IEnumerable<(string Directory, bool Recursive)> ScannedDirectories(string docsDir)
     {
         yield return (docsDir, false);
+        yield return (Path.Combine(docsDir, "skills"), false);
 
         // Articles are where the motivating defect actually lived, and they are not covered by
         // the other gates. The walk is recursive because the per-diagnostic pages under

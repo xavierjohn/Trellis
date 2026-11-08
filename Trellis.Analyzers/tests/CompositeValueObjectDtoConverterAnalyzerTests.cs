@@ -510,7 +510,7 @@ public class CompositeValueObjectDtoConverterAnalyzerTests
 
     // ---- Maybe<TComposite> coverage (TRLS020 extension) ----------------------
     //
-    // The cookbook (trellis-api-cookbook.md:1097) calls Maybe<TComposite> on DTOs
+    // The composite value object recipe (recipe-13-composite-value-object.md) calls Maybe<TComposite> on DTOs
     // a "correctness bug, not just an ergonomics one" — `MaybeScalarValueJsonConverterFactory`
     // refuses to convert when the inner T isn't `IScalarValue<,>`, so STJ falls back to
     // default construction of the composite, bypassing TryCreate validation.

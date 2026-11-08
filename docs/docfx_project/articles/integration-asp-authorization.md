@@ -163,7 +163,7 @@ sequenceDiagram
     end
 ```
 
-The diagram shows the default `Propagate` policy: `Error.Forbidden` maps to 403 with its `PolicyId` and optional resource; leaf-load errors retain their metadata, while intermediate/owner load failures collapse to Forbidden. For sensitive resources, [`HideExistence`](../api_reference/trellis-api-mediator.md#resourceauthorizationoptions) normalizes resource-stage NotFound/Gone/Forbidden/AuthenticationRequired to the same public 404 for missing, removed, and withheld resources. Static `IAuthorize` failures remain outside that policy. See [Recipe 32](../api_reference/trellis-api-cookbook.md#recipe-32--hide-existence-with-authfailureexposurepolicyhideasnotfound) and [Multi-hop resource authorization](#multi-hop-resource-authorization-via-iauthorizeresourceviatowner).
+The diagram shows the default `Propagate` policy: `Error.Forbidden` maps to 403 with its `PolicyId` and optional resource; leaf-load errors retain their metadata, while intermediate/owner load failures collapse to Forbidden. For sensitive resources, [`HideExistence`](../api_reference/trellis-api-mediator.md#resourceauthorizationoptions) normalizes resource-stage NotFound/Gone/Forbidden/AuthenticationRequired to the same public 404 for missing, removed, and withheld resources. Static `IAuthorize` failures remain outside that policy. See [Recipe 32](../api_reference/skills/recipe-32-hide-existence.md) and [Multi-hop resource authorization](#multi-hop-resource-authorization-via-iauthorizeresourceviatowner).
 
 ### Cache partitioning across actors
 
@@ -525,7 +525,7 @@ factory result fails explicitly on HTTP identity resolution.
 For actor-aware rate limiting, a claims-only custom provider and synchronous partitioner
 can call the **same application-owned normalization function directly**: no prefetch is
 needed. Async identity resolution needs route-scoped await-before-limiter plumbing and
-a private snapshot, not sync-over-async. [Compiled Recipe 41](../api_reference/trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions)
+a private snapshot, not sync-over-async. [Compiled Recipe 41](../api_reference/skills/recipe-41-actor-rate-limiting.md)
 shows both approaches, network fallback, middleware ordering and cost boundaries.
 Idempotency continues resolving the full actor, not the new identity contract.
 
@@ -907,13 +907,13 @@ builder.Services.AddScoped<SharedResourceLoaderById<Owner, OwnerId>, OwnerLoader
 builder.Services.AddResourceAuthorization(typeof(UpdateMatchCommand).Assembly);
 ```
 
-For Native AOT / trimming-strict deployments the cookbook walks through hand-building `ResolvedAuthorizationPath` for multi-hop chains. See [Recipe 24](../api_reference/trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization) for the full walkthrough.
+For Native AOT / trimming-strict deployments the cookbook walks through hand-building `ResolvedAuthorizationPath` for multi-hop chains. See [Recipe 24](../api_reference/skills/recipe-24-indirect-authorization.md) for the full walkthrough.
 
 > [!IMPORTANT]
 > **What fires at startup vs at request time.** The path resolver runs at registration time (during `AddResourceAuthorization(...)`) and rejects with `InvalidOperationException`: no path from leaf to owner, ambiguous path (multiple distinct routes), plural-in-middle (only the terminal hop may be plural, to avoid cartesian fan-out), leaf == owner (use `IAuthorizeResource<T>` instead), via-command without `IIdentifyResource<TLeaf, TLeafId>`, and dual-mode commands (carrying both `IAuthorizeResource<T>` and `IAuthorizeResourceVia<TOwner>` — security primitives are never silently composed). Missing `SharedResourceLoaderById<TTo, TToId>` registration for **any hop in the path** (including the terminal owner hop) is a request-time `InvalidOperationException` — the resolver builds the loader delegate at registration time but resolves the concrete loader from the request scope at request time, so an absent registration fails loud rather than masking as 403. Intermediate or owner load *failures* (`Result<T>.IsFailure`) collapse to `Error.Forbidden`, not `Error.NotFound`, to avoid existence leaks across team / owner boundaries.
 
 > [!TIP]
-> The marker interfaces declare the path; the resolver computes the navigation chain once at registration time and caches it. If your authorization rule needs to traverse a hop that can't be expressed as "load by id" (cartesian joins, recursive hierarchies, conditional paths), fall back to the per-command `IResourceLoader<TMessage, TProjection>` escape hatch and write `Authorize(actor, projection)` directly. See [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md) and Recipe 24 in [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md#recipe-24--indirect-multi-hop-resource-authorization) for the full reference.
+> The marker interfaces declare the path; the resolver computes the navigation chain once at registration time and caches it. If your authorization rule needs to traverse a hop that can't be expressed as "load by id" (cartesian joins, recursive hierarchies, conditional paths), fall back to the per-command `IResourceLoader<TMessage, TProjection>` escape hatch and write `Authorize(actor, projection)` directly. See [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md) and Recipe 24 in [`recipe-24-indirect-authorization.md`](../api_reference/skills/recipe-24-indirect-authorization.md) for the full reference.
 
 ### Cache partitioning across actors (`VaryForActor()`)
 

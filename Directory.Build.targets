@@ -42,6 +42,9 @@
     <PackageGuidanceItem Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\*.md"
                          Exclude="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\completeness-report.md"
                          PackagePath="trellis/%(Filename)%(Extension)" />
+    <!-- The recipes are Claude Agent Skills (see TRLDOC017), kept in their own folder so the format rules apply to them. -->
+    <PackageGuidanceItem Include="$(MSBuildThisFileDirectory)docs\docfx_project\api_reference\skills\*.md"
+                         PackagePath="trellis/skills/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)build\Trellis.Guidance.Metadata.targets"

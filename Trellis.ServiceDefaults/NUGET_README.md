@@ -87,6 +87,6 @@ native DI cannot dynamically close open behaviors over value-type responses.
 ## Documentation
 
 - [Package API reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-servicedefaults.html)
-- [Cross-package cookbook](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-cookbook.html)
+- [Cross-package cookbook](https://xavierjohn.github.io/Trellis/api_reference/trellis-start-here.html#task---recipe-lookup)
 - [Mediator reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-mediator.html)
 - [EF Core reference](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore.html)

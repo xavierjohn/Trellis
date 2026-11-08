@@ -14,7 +14,7 @@ agent_description: "Open when you need exact signatures for Result, Maybe, Error
 **Namespace:** `Trellis`  
 **Purpose:** Provides Trellis result, maybe, scalar-value, and transport-agnostic error primitives for railway-oriented application flows.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-package-cookbook) — recipes using this package, [trellis-api-http-abstractions.md](trellis-api-http-abstractions.md#package-role), [trellis-api-asp.md](trellis-api-asp.md#use-this-file-when), [trellis-api-primitives.md](trellis-api-primitives.md#trellis-api-primitives).
+See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) — recipes using this package, [trellis-api-http-abstractions.md](trellis-api-http-abstractions.md#package-role), [trellis-api-asp.md](trellis-api-asp.md#use-this-file-when), [trellis-api-primitives.md](trellis-api-primitives.md#trellis-api-primitives).
 
 ---
 
@@ -69,7 +69,7 @@ Use this table before searching the long type catalog.
 | Move reusable query predicates out of repositories | `Specification<T>` | [`Specification<T>`](#specificationt) |
 | Define custom required value objects | `partial class X : RequiredString<X>` / `RequiredGuid<X>` / other `Required*` bases | [`Primitive value object base classes`](#primitive-value-object-base-classes) |
 | Share validated JSON parsing between non-throwing ASP collection and standalone rejection | Derive from `ResultJsonConverter<T>` and implement `TryRead` | [`ResultJsonConverter<T>`](#resultjsonconvertert) |
-| Extract a success value or throw at a trust boundary (DTO → entity rehydration, JSON deserialization) | `result.GetValueOrThrow($"context message")` / `GetValueOrThrowAsync(...)` | [`GetValueOrThrowExtensions`](#extension-class-catalog-full-signatures) (entry in the extension catalog), [cookbook Recipe 30](trellis-api-cookbook.md#recipe-30--rehydrating-entities-from-persistence-fail-loud-vs-result-track) |
+| Extract a success value or throw at a trust boundary (DTO → entity rehydration, JSON deserialization) | `result.GetValueOrThrow($"context message")` / `GetValueOrThrowAsync(...)` | [`GetValueOrThrowExtensions`](#extension-class-catalog-full-signatures) (entry in the extension catalog), [cookbook Recipe 30](skills/recipe-30-rehydration.md) |
 
 ## Canonical async handler skeleton
 
@@ -2097,7 +2097,7 @@ public static class CursorCodec
 | `Composite<TPrimary,TSecondary>()` | Uses scalar codecs for any supported primary/secondary types, not only timestamps and IDs. |
 | `Composite(primary, secondary)` | Composes arbitrary codecs, including nested composites. Each component is encoded by its own codec; length-prefix framing keeps delimiters inside strings unambiguous. |
 | `Create(schema, format, parse)` | Explicit serializer/parser, not an implicit JSON fallback. Schema must be 1–64 ASCII letters, digits, or hyphens. The parser validates domain bounds/context and returns field-specific invalid-input errors for bad client state. |
-| `Map(wireCodec, toWire, fromWire)` | Maps a wire representation into named, validated domain state without rewriting serialization. `fromWire` runs on decode and during encode validation. See [Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state). |
+| `Map(wireCodec, toWire, fromWire)` | Maps a wire representation into named, validated domain state without rewriting serialization. `fromWire` runs on decode and during encode validation. See [Recipe 40](skills/recipe-40-computed-pagination.md). |
 
 `TryDecodeOptional(cursor, codec, fieldName)` is the shared optional-state adapter used by `PageRequest.Decode` and EF pagination: only a null cursor means `Maybe<TState>.None`; otherwise codec failures propagate and successful non-null state becomes present. A null codec throws `ArgumentNullException`; a codec returning successful null state throws `InvalidOperationException`. This is distinct from scalar `TryDecode`, which rejects an absent cursor.
 
@@ -2131,7 +2131,7 @@ var page = PageBuilder.FromOverFetch(
     row => codec.Encode((row.CreatedAt, row.Id)));
 ```
 
-The encoded boundary must match the upstream ordering and tie-breaker. Use EF [`SeekDefinition`](trellis-api-efcore.md#seekdefinition) / [`PaginationQueryableExtensions`](trellis-api-efcore.md#paginationqueryableextensions) for provider-translatable ordering/seek, or [Recipe 40](trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state) for application-owned computed pagination. Provider-owned continuation tokens should use the direct `Page<T>` constructor instead.
+The encoded boundary must match the upstream ordering and tie-breaker. Use EF [`SeekDefinition`](trellis-api-efcore.md#seekdefinition) / [`PaginationQueryableExtensions`](trellis-api-efcore.md#paginationqueryableextensions) for provider-translatable ordering/seek, or [Recipe 40](skills/recipe-40-computed-pagination.md) for application-owned computed pagination. Provider-owned continuation tokens should use the direct `Page<T>` constructor instead.
 
 **Wire shape.** `Trellis.Asp` maps `Result<Page<T>>` to `200 OK` with a JSON envelope and RFC 8288 `Link` header; see [`pagination response mapping`](trellis-api-asp.md#use-this-file-when). Neither Core assembly nor EF helpers implement reverse-seek, signing, geospatial queries, or snapshot isolation. A direct `Page<T>` can still preserve a provider-supplied `Previous`.
 

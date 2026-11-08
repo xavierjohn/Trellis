@@ -37,6 +37,7 @@ $docsDir = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference'
 # Shared with docs/lint-api-reference.ps1 (TRLDOC004) - see that file for why one list.
 $docManifest = Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot 'api-reference-docs.psd1')
 $crossCuttingDocs = $docManifest.CrossCuttingDocs
+$crossCuttingDocPatterns = @($docManifest.CrossCuttingDocPatterns)
 
 function Get-LastVerified {
     param([string] $Path)
@@ -73,7 +74,9 @@ try {
 
     $results = @()
 
-    foreach ($doc in Get-ChildItem -Path $docsDir -Filter '*.md' -File | Sort-Object Name) {
+    foreach ($doc in @(Get-ChildItem -Path $docsDir -Filter '*.md' -File) +
+                     @(Get-ChildItem -Path (Join-Path $docsDir 'skills') -Filter '*.md' -File -ErrorAction SilentlyContinue) |
+                     Sort-Object Name) {
         if ($doc.Name -eq 'completeness-report.md') { continue }
 
         $lastVerified = Get-LastVerified $doc.FullName
@@ -85,7 +88,8 @@ try {
             continue
         }
 
-        if ($crossCuttingDocs -contains $doc.Name) {
+        if (($crossCuttingDocs -contains $doc.Name) -or
+            (@($crossCuttingDocPatterns | Where-Object { $doc.Name -like $_ }).Count -gt 0)) {
             $sourceDirs = $allSourceDirs
         }
         elseif ($doc.Name -match '^trellis-api-(.+)\.md$' -and $ownerByRefName.ContainsKey($Matches[1])) {

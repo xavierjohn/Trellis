@@ -95,7 +95,7 @@ internal sealed class CompositeValueObjectConvention(IReadOnlySet<Type> composit
         "annotate it with [OwnedEntity] (Trellis.EntityFrameworkCore generates a private parameterless " +
         "constructor), or declare a private parameterless constructor on the type yourself — the latter " +
         "keeps the value object free of any Entity Framework Core dependency. See the composite " +
-        "value object recipe (Recipe 13) in trellis-api-cookbook.md.";
+        "value object recipe (Recipe 13) in recipe-13-composite-value-object.md.";
 
     /// <summary>
     /// After the model is built, reconciles composite value object owned navigations with EF Core's

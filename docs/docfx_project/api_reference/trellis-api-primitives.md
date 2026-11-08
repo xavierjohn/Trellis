@@ -14,7 +14,7 @@ agent_description: "Open when using ready-made value objects such as EmailAddres
 **Namespaces:** `Trellis`, `Trellis.Primitives`  
 **Purpose:** the 18 built-in concrete value objects (`Age`, `CountryCode`, `CurrencyCode`, `EmailAddress`, `GeoBoundingBox`, `GeoBounds`, `GeoCoordinate`, `Hostname`, `IpAddress`, `LanguageCode`, `MonetaryAmount`, `Money`, `Percentage`, `PhoneNumber`, `Slug`, `Url`, `WeeklyPeriod`, `WeeklySchedule`) plus Primitives-owned VO-runtime infrastructure (`CompositeValueObjectJsonConverter<T>`, `PrimitiveValueObjectTraceProviderBuilderExtensions`).
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggregate-ddd-value-objects--entity--repository-contract) — recipes using this package.
+See also: [recipe-01-crud-aggregate.md](skills/recipe-01-crud-aggregate.md) — recipes using this package.
 
 > **Package scope.** The `Required*<TSelf>` base classes (`RequiredString`, `RequiredEnum`, `RequiredInt`, `RequiredLong`, `RequiredDecimal`, `RequiredGuid`, `RequiredBool`, `RequiredDateTime`, `RequiredDateTimeOffset`), validation attributes (`StringLengthAttribute`, `RangeAttribute`, `EnumValueAttribute`), opt-in behavior attributes (`NotDefaultAttribute`, `TrimAttribute`), numeric sign attributes (`PositiveAttribute`, `NonNegativeAttribute`, `NegativeAttribute`, `NonPositiveAttribute`), `StringExtensions` (`NormalizeFieldName`, `ToCamelCase`, `ParseScalarValue`, `TryParseScalarValue`), `ParsableJsonConverter<T>`, `PrimitiveValueObjectTrace`, and `RequiredEnumJsonConverter<TRequiredEnum>` live in `Trellis.Core`. The base contracts (`IScalarValue<TSelf, TPrimitive>`, `IFormattableScalarValue<TSelf, TPrimitive>`) and base classes (`ValueObject`, `ScalarValueObject<TSelf, T>`) also live in `Trellis.Core`. `Trellis.Primitives` ships the concrete VOs that build on those bases plus the composite JSON converter and OpenTelemetry registration extension listed below. See [trellis-api-core.md](trellis-api-core.md#primitive-value-object-base-classes) for the base-type reference.
 >
@@ -39,7 +39,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-1--crud-aggre
 | Validate an email string | `EmailAddress.TryCreate(...)` | [`EmailAddress`](#emailaddress) |
 | Validate optional phone input | `PhoneNumber.TryCreate(...)` and wrap absence with `Maybe<PhoneNumber>` at the domain seam | [`PhoneNumber`](#phonenumber), [Core `Maybe<T>`](trellis-api-core.md#public-readonly-struct-maybet-where-t--notnull) |
 | Represent money | `Money` / `MonetaryAmount` / `CurrencyCode` | [`Money`](#money), [`MonetaryAmount`](#monetaryamount), [`CurrencyCode`](#currencycode) |
-| Validate exact monetary input before normalization-sensitive comparison or deduplication | Application-owned raw-input guards, then `MonetaryAmount.TryCreate(...)` | [Recipe 18's monetary boundary](trellis-api-cookbook.md#exact-input-monetary-boundaries-before-normalization) |
+| Validate exact monetary input before normalization-sensitive comparison or deduplication | Application-owned raw-input guards, then `MonetaryAmount.TryCreate(...)` | [Recipe 18's monetary boundary](skills/recipe-18-dto-to-value-object.md#exact-input-monetary-boundaries-before-normalization) |
 | Validate geographic coordinates, measure approximate in-memory distance, or build conservative spherical search bounds | `GeoCoordinate.TryCreate(...)`, `DistanceMetersTo(...)`, `GeoBounds.TryCreate(...)` | [`GeoCoordinate`](#geocoordinate), [`GeoBounds`](#geobounds) |
 | Represent recurring weekly availability, overnight windows, or local-clock DST membership | `WeeklyPeriod.TryCreate(...)`, `WeeklySchedule.TryCreate(...)`, `IsActiveAt(...)` | [`WeeklyPeriod`](#weeklyperiod), [`WeeklySchedule`](#weeklyschedule) |
 | Bind/serialize built-in scalar primitives | Use generated converters from the primitive/base contracts; ASP validation is in `Trellis.Asp` | [`ParsableJsonConverter<T>`](trellis-api-core.md#parsablejsonconvertert), [ASP validation](trellis-api-asp.md#namespace-trellisaspvalidation) |
@@ -480,7 +480,7 @@ public class MonetaryAmount : ScalarValueObject<MonetaryAmount, decimal>, IScala
 | `public override string ToString()` | `string` | Invariant decimal string. |
 | `public static Result<MonetaryAmount> Sum(IEnumerable<MonetaryAmount> values)` | `Result<MonetaryAmount>` | Returns `Zero` for empty collections. Throws `ArgumentNullException` when `values` is null and `ArgumentException` when any element is null. |
 
-**Normalization is not exact-input validation.** `MonetaryAmount.TryCreate(1.004m)` succeeds with `1.00m`; it does not reject extra fractional digits. Distinct raw amounts can therefore compare equal and share a hash-set entry after construction. If an application requires an exact quote match or distinguishes raw inputs for deduplication, validate the parsed primitive before constructing the value object and retain any raw input needed by that policy. See [Recipe 18's exact-input boundary](trellis-api-cookbook.md#exact-input-monetary-boundaries-before-normalization). Rounding remains the factory's normal behavior, not a configurable strictness mode.
+**Normalization is not exact-input validation.** `MonetaryAmount.TryCreate(1.004m)` succeeds with `1.00m`; it does not reject extra fractional digits. Distinct raw amounts can therefore compare equal and share a hash-set entry after construction. If an application requires an exact quote match or distinguishes raw inputs for deduplication, validate the parsed primitive before constructing the value object and retain any raw input needed by that policy. See [Recipe 18's exact-input boundary](skills/recipe-18-dto-to-value-object.md#exact-input-monetary-boundaries-before-normalization). Rounding remains the factory's normal behavior, not a configurable strictness mode.
 
 > **`Create` (throws) vs `TryCreate` (Result).** `MonetaryAmount` inherits the scalar `Create(decimal)` factory from `ScalarValueObject<TSelf, T>`, which **throws** `InvalidOperationException` on invalid input (it runs `TryCreate` and throws on the failure) — the same fail-fast factory the explicit `decimal` cast uses. `TryCreate(...)` returns `Result<MonetaryAmount>` and never throws on a validation failure. Use `Create` only for trusted, constant, or already-validated values (fail-fast at a boundary); use `TryCreate` for untrusted input and **inside any `Result`/ROP chain**, where a throw breaks the railway (analyzer `TRLS010` flags throwing inside `Bind`/`Map`/`Tap`/`Ensure`). The same throws-vs-`Result` split applies across value objects — both the composite `Money` and the scalar `Required*<T>` primitives expose a throwing `Create` alongside `TryCreate`. (`Parse` throws `FormatException`; `TryParse` is the non-throwing parse counterpart.)
 
@@ -510,7 +510,7 @@ and receive their declared defaults, not the live JSON path.
 A typed `TryCreate` overload accepting the scalar properties can coexist with that primitive-input
 overload, but does not replace it or match its primitive prefix. The primitive factory can validate
 and `Bind` to the typed factory so both callers share construction and cross-field validation.
-See [Recipe 13's typed factories and ordering contract](trellis-api-cookbook.md#typed-composite-factories-and-property-order).
+See [Recipe 13's typed factories and ordering contract](skills/recipe-13-composite-value-object.md#typed-composite-factories-and-property-order).
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -537,7 +537,7 @@ configuration still throw. The parser and writer remain ASP-independent.
 
 If trimming does remove the interface, the converter throws at first use naming the unreduced property types, rather than silently emitting a different JSON shape — so the failure is loud, but it is a *runtime* failure, which is why an AOT publish probe covering the composite path is worth having.
 
-> **Pattern reference.** For the full Domain + API JSON binding + EF Core ownership walkthrough on a multi-field VO (`ShippingAddress`-style), see [Cookbook Recipe 13](trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership). Without this `[JsonConverter]` attribute on a request DTO's composite `[OwnedEntity]` property, model binding falls back to default construction and **silently bypasses `TryCreate`** — the inner-field validation never runs and an invalid payload propagates into the domain layer.
+> **Pattern reference.** For the full Domain + API JSON binding + EF Core ownership walkthrough on a multi-field VO (`ShippingAddress`-style), see [Cookbook Recipe 13](skills/recipe-13-composite-value-object.md). Without this `[JsonConverter]` attribute on a request DTO's composite `[OwnedEntity]` property, model binding falls back to default construction and **silently bypasses `TryCreate`** — the inner-field validation never runs and an invalid payload propagates into the domain layer.
 
 ### `Money`
 

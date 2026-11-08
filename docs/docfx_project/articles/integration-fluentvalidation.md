@@ -372,4 +372,4 @@ public sealed class UserService(
 - `Result<T>`, `Error.InvalidInput`, `FieldViolation`, `InputPointer`: [trellis-api-core.md](../api_reference/trellis-api-core.md)
 - Mediator validation behavior: [trellis-api-mediator.md](../api_reference/trellis-api-mediator.md)
 - ASP.NET 422 rendering: [trellis-api-asp.md](../api_reference/trellis-api-asp.md)
-- Cookbook recipes: [trellis-api-cookbook.md](../api_reference/trellis-api-cookbook.md)
+- Cookbook recipes: [trellis-start-here.md](../api_reference/trellis-start-here.md#task---recipe-lookup)
