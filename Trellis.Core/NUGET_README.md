@@ -122,7 +122,7 @@ first-party package that depends on `Trellis.Core`. A project that references on
 `Trellis.Core` in its graph and receives no guidance, and packages published from other repositories
 (for example `Trellis.ServiceLevelIndicators`) ship their own reference.
 
-The generated index makes one document required reading, `trellis-start-here.md` (about 23 KB): it routes
+The generated index makes one document required reading, `trellis-start-here.md` (about 28 KB): it routes
 each task to the reference or recipe to open. Every other reference is listed in the index as on demand,
 with a one-line description of when to open it, so an agent can pick the right one without reading them all.
 `sync` also writes one Agent Skill stub per listed guide to `.agents/skills`, which GitHub Copilot and other agents
