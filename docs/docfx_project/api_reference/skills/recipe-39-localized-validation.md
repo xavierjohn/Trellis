@@ -12,6 +12,12 @@ agent_description: "Shows rendering a validation failure in the caller's languag
 ---
 # Recipe 39 — Rendering a validation failure in the caller's language (`code` + `args`)
 
+## Contents
+
+- Problem
+- What it shows
+- Anti-pattern → fix
+
 **Problem.** A 422 arrives carrying `detail` in English, and the UI must show the message in the user's language. The tempting shortcut is to scrape the sentence — read the numbers out of `"must be between 0 and 150"`, or split `"Valid values: Checking, MoneyMarket, Savings"` on `", "` — and that shortcut is what `code` and `args` exist to retire. Prose belongs to whichever producer noticed the failure, and two producers may notice the same failure: an unknown enum name is worded `'Platinum' is not a valid AccountType. Valid values: …` by `RequiredEnum.TryCreate` and `Invalid AccountType value: 'Platinum'. Valid values are: …` by `RequiredEnumJsonConverter`, depending on how the value reached the model. A scraper built against one wording silently mis-renders the other. `Code` is stable, and `Args` carries the operands as typed values — so render from those and treat `Detail` only as a fallback.
 
 ```csharp

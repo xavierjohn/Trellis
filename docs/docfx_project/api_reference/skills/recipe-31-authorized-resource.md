@@ -12,6 +12,19 @@ agent_description: "Shows IAuthorizedResource so a command authorizes and mutate
 ---
 # Recipe 31 — Avoid duplicate load with `IAuthorizedResource<TCommand, TResource>`
 
+## Contents
+
+- Problem
+- Fix
+- Command and loader are unchanged
+- Actor/resource parameter alternative
+- Via commands
+- When NOT to inject the accessor
+- Concurrency
+- Failure modes
+- What it shows
+- Related recipes
+
 **Problem.** A command implements `IAuthorizeResource<Order>` (or `IAuthorizeResourceVia<Team>`); the resource-authorization pipeline loads the resource to run `Authorize(actor, resource)`; then the handler loads the **same** resource again from its repository to mutate it. For non-EF stores this is wasted I/O — a doubled CosmosDB read (and doubled RU billing), a doubled Dapper roundtrip, a doubled outbound HTTP call. Even for EF (where the change-tracker identity map returns the same tracked instance) the second LINQ query still fires.
 
 **Fix.** Inject `IAuthorizedResource<TCommand, TResource>` and call `GetRequiredResource()` instead of re-fetching via the repository. The framework returns the **same instance** the loader produced for this dispatch.

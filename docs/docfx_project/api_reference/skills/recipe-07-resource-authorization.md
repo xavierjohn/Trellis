@@ -12,6 +12,16 @@ agent_description: "Covers IActorProvider, IAuthorize and resource-based authori
 ---
 # Recipe 7 — Authorization: `IActorProvider` + `IAuthorize` + resource-based auth
 
+## Contents
+
+- Problem
+- What it shows
+- Checked actor/resource parameters
+- Existing provider lookup
+- Pipeline migration
+- Microservices
+- Path C — OAuth2 token exchange / OBO
+
 **Problem.** Resource-based ownership check on an update command (the 90% case) plus a static permission gate on a delete command, all via the mediator pipeline.
 
 ```csharp

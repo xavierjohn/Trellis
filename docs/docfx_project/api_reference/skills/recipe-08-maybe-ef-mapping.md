@@ -12,6 +12,15 @@ agent_description: "Maps Maybe and nullable value objects with EF Core, includin
 ---
 # Recipe 8 — EF Core: `MaybePropertyMapping` for nullable value objects
 
+## Contents
+
+- Problem
+- What it shows
+- Anti-pattern → fix (TRLS016)
+- Why this works in both EF and `FakeRepository<T, TId>`
+- HasValueWhere shorthand
+- Sharing the spec with `FakeRepository`
+
 **Problem.** Persist a `Maybe<EmailAddress>` property with the EF Core `MaybeConvention`, then verify the generated mapping in a startup diagnostics check.
 
 ```csharp

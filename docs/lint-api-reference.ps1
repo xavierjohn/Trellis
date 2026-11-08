@@ -781,7 +781,8 @@ if ($requiredDocs.Count -ne 1 -or $requiredDocs[0] -ne 'trellis-start-here.md') 
 # This is the machine-checkable part: a front matter `name` equal to the file name (at most 64 characters of lowercase
 # letters, digits and hyphens; no reserved word `anthropic` or `claude`; no XML tag), a description that says what the
 # skill covers and when to use it ("Use when"), written in the third person and without an XML tag (the platform allows
-# 1,024 characters; the AgentDocs manifest allows 200, which TRLDOC016 enforces), and a body of fewer than 500 lines.
+# 1,024 characters; the AgentDocs manifest allows 200, which TRLDOC016 enforces), a body of fewer than 500 lines, and a
+# `## Contents` section in any skill longer than 100 lines.
 # The folder is the signal: a new skill goes here and is held to these rules; reference documents stay outside it.
 $skillDocs = @($markdownFiles | Where-Object { $_.Directory.Name -eq 'skills' })
 
@@ -821,6 +822,13 @@ foreach ($skill in $skillDocs) {
 
     if ($skillLines.Count -ge 500) {
         Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill is kept under 500 lines (found $($skillLines.Count)). Split the content into a second skill or a linked reference."
+        $failed = $true
+    }
+
+    # The best practices ask for a table of contents at the top of any reference file longer than 100 lines, so a partial
+    # read (for example the first 100 lines) still shows the whole scope.
+    if ($skillLines.Count -gt 100 -and -not ($skillLines | Where-Object { $_.TrimEnd() -ceq '## Contents' })) {
+        Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill longer than 100 lines (found $($skillLines.Count)) starts with a '## Contents' section listing its parts, so a partial read still shows the whole scope."
         $failed = $true
     }
 }

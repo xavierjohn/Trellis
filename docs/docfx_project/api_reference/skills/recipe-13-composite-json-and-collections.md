@@ -12,6 +12,12 @@ agent_description: "Covers a composite value object's JSON wire shape, owned col
 ---
 # Recipe 13 part 2 — Composite value objects: JSON wire shape, owned collections and DTO mapping
 
+## Contents
+
+- [Composite value object JSON wire shape](#composite-value-object-json-wire-shape)
+- [Owned collections with a private backing field](#owned-collections-with-a-private-backing-field)
+- [Supported property shapes inside a composite VO — when to map to a DTO instead](#supported-property-shapes-inside-a-composite-vo--when-to-map-to-a-dto-instead)
+
 Continues [Recipe 13](recipe-13-composite-value-object.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership), which defines the composite value object, its typed factories and its EF Core persistence.
 
 | Task within this recipe | Read |

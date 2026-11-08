@@ -12,6 +12,19 @@ agent_description: "Shows two-pass validate-then-mutate over related aggregates 
 ---
 # Recipe 25 — Two-pass validate-then-mutate over a collection of related aggregates
 
+## Contents
+
+- Problem
+- The invariant the recipe teaches
+- Two design moves in the stock example
+- Worked example
+- The Pass-2-cannot-fail invariant — what makes it hold
+- Execution-time eligibility
+- Snapshot-time eligibility
+- Choosing fail-fast vs accumulating for the validation pass
+- How this fits with sibling recipes
+- Anti-pattern → fix
+
 **Problem.** A handler iterates a collection that maps one-to-many onto related aggregates and applies an operation that can fail per element (e.g., `SubmitOrderCommand` reserves stock on the `Product` referenced by every `LineItem`). The naïve single-loop shape — call the mutating operation, check the `Result`, return on failure — is the lab convergent miss across two cycles (`findings-2026-04-30.md §3.4`): two out of three models shipped this shape, and the bug only surfaces on tests that arrange a *later* element to fail.
 
 ```csharp

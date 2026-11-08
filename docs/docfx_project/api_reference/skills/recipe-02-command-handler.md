@@ -12,6 +12,12 @@ agent_description: "Shows a command handler with FluentValidation and EF Core pe
 ---
 # Recipe 2 — Command + handler + FluentValidation + EF persistence
 
+## Contents
+
+- Problem
+- What it shows
+- Anti-pattern → fix (TRLS010)
+
 **Problem.** Wire a `PlaceOrderCommand` end-to-end: validation via FluentValidation, mediator handler that uses an EF repository, transactional commit on success.
 
 ```csharp

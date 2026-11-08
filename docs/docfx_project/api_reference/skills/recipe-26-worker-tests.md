@@ -12,6 +12,11 @@ agent_description: "Shows integration tests for a BackgroundService with WorkerH
 ---
 # Recipe 26 — Test a `BackgroundService` with `WorkerHarness<TWorker>`
 
+## Contents
+
+- Problem
+- What it shows
+
 **Problem.** A periodic worker reads pending work, dispatches a side effect, and emits a domain event per item. Integration tests must drive the worker forward deterministically (no `Task.Delay`), capture the domain events the worker raised, and stop the host cleanly — without re-implementing the `IHost` + `FakeTimeProvider` + `IActorProvider` + `IDomainEventHandler<T>` plumbing in every test fixture.
 
 ```csharp

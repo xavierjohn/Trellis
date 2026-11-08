@@ -12,6 +12,12 @@ agent_description: "Explains Add staging versus SaveAsync in handlers and commit
 ---
 # Recipe 16 — Unit of work in handlers: `Add` staging vs immediate `SaveAsync`
 
+## Contents
+
+- [Handler staging and commit ownership](#handler-staging-and-commit-ownership)
+- [Same-commit audit staging](#same-commit-audit-staging)
+- [Testing handlers with an application-owned recorder](#testing-handlers-with-an-application-owned-recorder)
+
 | Task within this recipe | Read |
 |---|---|
 | Understand who persists repository-staged changes | [Handler staging and commit ownership](#handler-staging-and-commit-ownership) |

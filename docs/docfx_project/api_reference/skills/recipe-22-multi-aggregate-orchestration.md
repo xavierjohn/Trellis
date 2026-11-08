@@ -12,6 +12,13 @@ agent_description: "Shows orchestrating several related aggregates and failing l
 ---
 # Recipe 22 — Multi-aggregate orchestration: fail-loud on missing related aggregates
 
+## Contents
+
+- Problem
+- The test-design principle: Partial-Failure Atomicity
+- Generalisation
+- Anti-pattern → fix
+
 **Problem.** A command needs to mutate one primary aggregate (an Order) and trigger a side effect on each element of a related-aggregate set (release reserved stock on every Product referenced by the Order's line items). The naive shape is a `foreach` with a dictionary lookup of the related aggregate by id. If a referenced related aggregate is missing from that lookup — invariant violation; under normal flow it should never happen — what is the correct behaviour?
 
 The wrong answer: `if (!dict.TryGetValue(id, out var related)) continue;` and move on. The handler appears to succeed, the primary aggregate transitions, the unit of work commits, and the side effect is silently skipped for the missing element. The orchestration has broken its own post-condition ("stock is released for every line item") with no signal to the caller and no rollback.

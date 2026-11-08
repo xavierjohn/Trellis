@@ -12,6 +12,12 @@ agent_description: "Shows an aggregate with value objects, an entity and a repos
 ---
 # Recipe 1 — CRUD aggregate (DDD value objects + entity + repository contract)
 
+## Contents
+
+- Problem
+- What it shows
+- Anti-pattern → fix (wrong attribute namespace)
+
 **Problem.** Model an `Order` aggregate with a typed identifier, a value-object money type, and a repository contract that returns `Result<T>` for not-found.
 
 ```csharp

@@ -12,6 +12,23 @@ agent_description: "Shows AuthFailureExposurePolicy.HideAsNotFound for one publi
 ---
 # Recipe 32 — Hide existence with `AuthFailureExposurePolicy.HideAsNotFound`
 
+## Contents
+
+- Problem
+- Fix
+- Public metadata
+- Fixed public code/detail
+- Multiple resources
+- Default is `Propagate`
+- Projection-loader overload
+- Via commands
+- Pipeline interaction caveat
+- Cache safety
+- Observability
+- Normalization scope
+- Via intermediate/owner failures
+- Related recipes
+
 **Problem.** A `Forbidden` response on `GET /incidents/{id}` tells the unauthorized caller "this resource exists and you may not access it". For some resources — incident reports, security findings, internal correspondence, private profiles — that disclosure is itself the leak. The boundary needs to return 404 (indistinguishable from "the resource does not exist") to unauthorized actors.
 
 **Fix.** Opt the resource into `AuthFailureExposurePolicy.HideAsNotFound` via `ResourceAuthorizationOptions`. Resource-stage root `Error.NotFound`, `Error.Gone`, `Error.Forbidden`, and `Error.AuthenticationRequired` become one fresh public NotFound. Its type and ID come from configuration and the request, never the original error; original code, detail, and cause are not copied. Other direct-resource / via-leaf errors pass through unchanged.

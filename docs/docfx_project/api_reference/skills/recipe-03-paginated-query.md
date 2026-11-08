@@ -12,6 +12,12 @@ agent_description: "Shows a query handler that returns Page with a cursor. Use w
 ---
 # Recipe 3 — Query handler returning `Page<T>` (paginated list with cursor)
 
+## Contents
+
+- Problem
+- What it shows
+- Failure and consistency boundaries
+
 **Problem.** Expose a list endpoint that paginates `Order` rows by cursor, exposes the requested vs. applied limit, and projects a DTO.
 
 ```csharp

@@ -12,6 +12,18 @@ agent_description: "Maps primitive DTO fields to value objects in a command with
 ---
 # Recipe 18 — DTO primitives to value-object command: no test-only `Unwrap()`
 
+## Contents
+
+- Problem
+- Monetary inputs
+- What it shows
+- Anti-pattern -> fix
+- Already-created but nullable values
+- Nested collections
+- Problem
+- Anti-pattern -> fix
+- Exact means numeric, not lexical
+
 **Problem.** Request DTOs often carry primitive transport fields (`string email`, `string customerName`), while commands and domain methods should receive Trellis value objects. Each `TryCreate` returns `Result<TVO>`. Do not use `Unwrap()` in production code — it is a `Trellis.Testing` helper for tests.
 
 **Monetary inputs.** For an exact quote match or raw-input identity before rounding, read [the monetary boundary below](#exact-input-monetary-boundaries-before-normalization) before converting that DTO field.

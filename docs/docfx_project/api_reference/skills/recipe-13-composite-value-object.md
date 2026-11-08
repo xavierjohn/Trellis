@@ -12,6 +12,12 @@ agent_description: "Shows a composite value object's domain model, typed factori
 ---
 # Recipe 13 — Composite value object end-to-end (Domain + API JSON binding + EF Core ownership)
 
+## Contents
+
+- [Composite value object domain and persistence contract](#composite-value-object-domain-and-persistence-contract)
+  - [Typed composite factories and property order](#typed-composite-factories-and-property-order)
+  - [EF ownership and materialization](#ef-ownership-and-materialization)
+
 | Task within this recipe | Read |
 |---|---|
 | Define and persist the composite value object | [Domain and persistence contract](#composite-value-object-domain-and-persistence-contract), including the solution and storage rules |

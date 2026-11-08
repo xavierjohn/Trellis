@@ -12,6 +12,13 @@ agent_description: "Shows Result.ParallelAsync and WhenAllAsync for independent 
 ---
 # Recipe 21 — Parallel independent loads in handlers: `Result.ParallelAsync` + `WhenAllAsync`
 
+## Contents
+
+- Problem
+- What it shows
+- When NOT to use it
+- Anti-pattern → fix
+
 **Problem.** A handler needs two (or more) loads that are *genuinely* independent — a customer record from one upstream service, a product record from another; an HTTP call to authn plus a DB read for profile; or two reads against two distinct EF Core `DbContext` instances. Awaiting each load before starting the next serializes their latency. Starting both before awaiting either allows concurrency. `Task.WhenAll` preserves their `Result<T>` values but does not combine them into one result; the tuple `.WhenAllAsync()` extension supplies that fold.
 
 `Result.ParallelAsync(...)` is the framework's opinionated entry point: factory-takes-no-args, eagerly invokes each factory so both tasks actually run concurrently, returns a tuple of `Task<Result<T>>` that the matching `.WhenAllAsync()` extension awaits with `Task.WhenAll` and folds via `Result.Combine` into a single `Result<(T1, T2, …)>`. Failures combine through `Error.Combine`, so two `Error.InvalidInput` failures merge their fields, heterogeneous failures become an `Error.Aggregate`.
