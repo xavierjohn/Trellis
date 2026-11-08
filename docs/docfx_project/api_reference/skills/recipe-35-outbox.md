@@ -38,7 +38,7 @@ Raise events exactly as before — `DomainEvents.Add(new OrderPlaced(Id, clock.G
 - **Domain rows** use reporting dispatch: every domain handler must complete before the row is processed. A handler that throws leaves it pending and retry re-invokes only failed handlers, up to `OutboxOptions.MaxAttempts`, after which it is parked. Make handlers idempotent — a crash can repeat successes whose progress was not saved. Default in-pipeline domain dispatch still swallows handler exceptions because its post-commit callers have no retry mechanism. Integration rows have a different publisher-handoff boundary; see Recipe 36.
 - `Maybe<T>` event members are supported — a present value serializes as the underlying value, an absent one as JSON `null`. Members that depend on a caller-registered (non-attribute) `JsonSerializerOptions` converter still need a nullable transport, since the outbox serializer only honors `[JsonConverter]`-attributed types.
 - This is an outbox, not an event store: rows are a transient delivery buffer and may be pruned once `ProcessedAt` is set.
-- Capture persists the current W3C trace context with each domain row; the alpha outbox schema includes nullable lineage and trace columns. See the outbox reference for the column names.
+- Capture persists the current W3C trace context with each domain row; the outbox schema includes nullable lineage and trace columns. See the outbox reference for the column names.
 - Every new domain row also receives its own UTC `CapturedAt` from the interceptor's
   `TimeProvider`. Add the nullable column/index migration before deploying the writer;
   legacy nulls remain unknown and `OccurredAt` is never a queue-age substitute.

@@ -116,4 +116,4 @@ services.AddTrellisAspWithScalarValidation();
 services.AddControllers();
 ```
 
-> A future `MaybeCompositeValueObjectJsonConverterFactory` could make Pattern B unnecessary; until then, nullable transport plus controller-seam adaptation is the supported pattern.
+> Nullable transport plus controller-seam adaptation is the supported pattern.

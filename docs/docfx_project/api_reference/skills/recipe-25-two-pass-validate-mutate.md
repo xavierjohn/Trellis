@@ -25,7 +25,7 @@ agent_description: "Shows two-pass validate-then-mutate over related aggregates 
 - How this fits with sibling recipes
 - Anti-pattern → fix
 
-**Problem.** A handler iterates a collection that maps one-to-many onto related aggregates and applies an operation that can fail per element (e.g., `SubmitOrderCommand` reserves stock on the `Product` referenced by every `LineItem`). The naïve single-loop shape — call the mutating operation, check the `Result`, return on failure — is the lab convergent miss across two cycles (`findings-2026-04-30.md §3.4`): two out of three models shipped this shape, and the bug only surfaces on tests that arrange a *later* element to fail.
+**Problem.** A handler iterates a collection that maps one-to-many onto related aggregates and applies an operation that can fail per element (e.g., `SubmitOrderCommand` reserves stock on the `Product` referenced by every `LineItem`). The naïve single-loop shape — call the mutating operation, check the `Result`, return on failure — is the common mistake, and the bug only surfaces on tests that arrange a *later* element to fail.
 
 ```csharp
 // ❌ Single-loop mutate-as-you-validate. Line 1 reserves; line 3 fails InsufficientStock;
