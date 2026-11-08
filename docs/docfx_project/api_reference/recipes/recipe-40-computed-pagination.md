@@ -129,9 +129,9 @@ not filtering. The hash is not a signature — wrap the codec with application-o
 protection when cursor tamper resistance is required.
 
 The broad boxes deliberately admit false positives, while the exact predicate removes
-them. They use ordinary numeric columns rather than a provider spatial index. SQLite and
-SQL Server are exercised by Trellis integration tests; verify all translated functions and
-seek comparisons on other providers. Translation/connection failures propagate without a
+them. They use ordinary numeric columns rather than a provider spatial index. The translated functions and
+seek comparisons are tested on SQLite and SQL Server only; verify them on any other provider
+before relying on them. Translation/connection failures propagate without a
 client-side fallback. Search values are parameters, so different origins/radii within the
 same one-box or two-box structural case reuse the query shape. Provider transcendental
 functions can round differently from the in-memory `SinPi`/`CosPi` path at an exact

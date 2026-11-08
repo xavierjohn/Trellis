@@ -54,6 +54,8 @@ public sealed class ViolationMessageRenderer(IStringLocalizer<ViolationMessages>
 {
     public string Render(FieldViolationProblemDetail violation, CultureInfo culture)
     {
+        // IStringLocalizer picks the template from CultureInfo.CurrentUICulture, not from `culture`;
+        // to render for another locale, set CultureInfo.CurrentUICulture for the duration of the call.
         var template = localizer[TemplateKey(violation)];
 
         // An unknown code is not a bug to hide: a server may add a code before this client
@@ -141,7 +143,7 @@ public sealed class ViolationMessageRenderer(IStringLocalizer<ViolationMessages>
 }
 ```
 
-Read the violations off the response, not the root, and do not assume they are there:
+Read the violations off the response, not the root, and do not assume they are there. `options` must be `new JsonSerializerOptions(JsonSerializerDefaults.Web)` (camelCase, case-insensitive): with default options every `FieldViolationProblemDetail` deserializes with an empty `Code` and no error.
 
 ```csharp
 public static class ViolationReader
@@ -169,6 +171,10 @@ public static class ViolationReader
 }
 ```
 
+`Location.In` says where the value came from. For `body` and `unknown` locations `Location.Pointer` (RFC 6901) binds the message to a form control; for `query`, `path` and `header` it is absent and `Location.Name` carries the parameter name.
+
+A failure raised with `Error.InvalidInput.ForRule(...)` (a form-level or multi-field rule) has no `fieldViolations`: it arrives as `ruleViolations`, each with its own `code`, `detail`, `locations` and `args` (`RuleViolationProblemDetail[]`). Read that member the same way and render by `Code` and `Args` through the same table. A 400 for a body that never parsed may carry no problem body at all unless `AddProblemDetails()` is configured, so handle a null `ProblemDetails`.
+
 `FieldViolationProblemDetail` and `ValidationArgValue` are declared in `Trellis.Asp` and `Trellis.Core`, which a Trellis-based caller already references — but nothing here depends on that. The contract is the JSON, so a client on another stack declares its own equivalent record and the recipe is unchanged; these are response-shape metadata, not a domain model to share.
 
 **What it shows.** A localized message is a function of `Code`, `Args`, and a resource table — never of `Detail`. Keying the `.resx` on the reason code makes the [`ValidationCodes`](../trellis-api-core.md#validationcodes--the-reason-code-vocabulary) vocabulary the translation vocabulary, so a missing translation is a missing row rather than a parsing bug, and a translator sees the whole surface in one file. Because `ValidationArgValue` is a closed union of JSON's self-describing values, formatting is total and exhaustive: `Number` is a `decimal` written invariantly on the wire and formatted *culturally* for display, which is the one conversion a scraper cannot do correctly because it never recovers the type. `ViolationLocation.Pointer` (RFC 6901) is what binds the message back to a form control.
@@ -182,6 +188,6 @@ The same renderer works server-side when an API must localize on behalf of thin 
 | Parsing operands out of `Detail` (`"Valid values: "`, `"between 0 and 150"`) | Prose belongs to the producer, and one failure has several producers with different wording. It is also English-only, which is the problem being solved. | Read `Args["from"]`, `Args["allowed"]`. |
 | Treating a missing `allowed` as "nothing is permitted" | Past `ValidationArgs.MaxAllowedMembers` the list is omitted deliberately and `allowedCount` sent instead. Rendering "choose one of: (none)" tells the user the field is unusable. | Branch on `allowed` / `allowedCount` / neither. |
 | Switching on the root `code` | `Error.InvalidInput` leaves the root at `error.unspecified`; the actionable codes are per violation. | Descend into `fieldViolations[n].code`. |
-| Assuming `fieldViolations` exists | A body that never parsed reports 400 with no such member. | Treat absence as "no per-field reason available". |
+| Assuming `fieldViolations` exists | A body that never parsed reports 400 with no such member, and a rules-only failure carries `ruleViolations` instead. | Treat absence of both `fieldViolations` and `ruleViolations` as "no per-violation reason available". |
 | Formatting a `Number` with `InvariantCulture` for display, or echoing the raw JSON text | Shows `1.5` to a user whose locale writes `1,5`. | Format with the UI culture; the wire stays invariant. |
 | Falling back to a generic string for an unrecognized code | Discards the server's own explanation, which is usually better than "Invalid input". | Fall back to `Detail` first, generic prose last. |

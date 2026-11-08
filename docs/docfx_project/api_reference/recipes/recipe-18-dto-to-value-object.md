@@ -22,8 +22,8 @@ agent_description: "Maps primitive DTO fields to value objects in a command with
 - Anti-pattern -> fix
 - Already-created but nullable values
 - Nested collections
-- Problem
-- Anti-pattern -> fix
+- Exact-input monetary boundaries: Problem
+- Exact-input monetary boundaries: Anti-pattern -> fix
 - Exact means numeric, not lexical
 
 **Problem.** Request DTOs often carry primitive transport fields (`string email`, `string customerName`), while commands and domain methods should receive Trellis value objects. Each `TryCreate` returns `Result<TVO>`. Do not use `Unwrap()` in production code — it is a `Trellis.Testing` helper for tests.
@@ -169,4 +169,4 @@ This is a **sample-local application policy**, not a new Trellis API or a strict
 
 **Exact means numeric, not lexical.** Parsed `decimal` equality accepts `20.2500m` for a `20.25m` quote. Parsing itself can round away digits beyond `decimal`'s roughly 28-29 significant digits: both `decimal.Parse` and `Utf8JsonReader.GetDecimal()` read `20.2500000000000000000000000000001` as `20.25m`, before this guard runs. This example does not require a particular encoded scale, preserve original JSON text, or provide a lossless number lexer. Keep the raw JSON number text when true lexical exactness or an audit/identity contract needs the original representation. `MonetaryAmount` is for a single-currency context; `Money` uses currency-dependent precision, not always two decimal places.
 
-The complete example is compiled in `Examples/CookbookSnippets/Recipe18_ExactMonetaryBoundary.cs` in the Trellis source repository (not shipped in the NuGet package). `Examples/CookbookSnippets.Tests/Recipe18MonetaryBoundaryTests.cs` covers exact and zero matches, equivalent decimal scales, precision loss in both parsing paths, rounding collisions, missing/mismatched inputs, normalized hash-set identity, and the unchanged midpoint/negative-input behavior. The factory's midpoint, normalized-identity, and sub-cent-negative contracts are also pinned in `Trellis.Primitives/tests/MonetaryAmountTests.cs`.
+The monetary example is covered by tests in the Trellis source repository (not shipped in the NuGet package): exact and zero matches, equivalent decimal scales, precision loss in both parsing paths, rounding collisions, missing and mismatched inputs, normalized hash-set identity, and the factory's midpoint, normalized-identity and sub-cent-negative contracts.
