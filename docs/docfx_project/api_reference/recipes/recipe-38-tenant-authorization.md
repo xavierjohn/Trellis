@@ -22,8 +22,11 @@ using Trellis;
 using Trellis.Authorization;
 using Trellis.Mediator;
 
-// String-backed tenant id, sourced from the actor's "tid" claim. DocumentId and TenantDocument
-// (the loaded resource, carrying the tenant it belongs to) are your own types — see recipe-01-crud-aggregate.
+// String-backed tenant id, sourced from the actor's "tid" claim. [NotDefault] rejects the empty
+// string and [Trim] makes blank input empty, so a blank claim fails to parse. A plain
+// RequiredString would accept "" and "  ". DocumentId and TenantDocument (the loaded resource,
+// carrying the tenant it belongs to) are your own application types.
+[Trim, NotDefault]
 public sealed partial class TenantId : RequiredString<TenantId>;
 
 public sealed record ArchiveDocumentCommand(DocumentId DocumentId)
@@ -33,8 +36,8 @@ public sealed record ArchiveDocumentCommand(DocumentId DocumentId)
 
     // The per-command scope check. No base class — the rule stays explicit and lives with the
     // command. Actor.TryGetAttribute<TenantId> parses the "tid" claim through the VO's IParsable (validating via TryCreate),
-    // so the gate deny-closes (Forbidden) on a missing, malformed, or mismatched tenant claim.
-    public IResult Authorize(Actor actor, TenantDocument resource) =>
+    // so the gate deny-closes (Forbidden) on a missing, blank or mismatched tenant claim.
+    public Trellis.IResult Authorize(Actor actor, TenantDocument resource) =>
         Result.Ensure(
             actor.TryGetAttribute<TenantId>(ActorAttributes.TenantId, out var tenant) && tenant == resource.TenantId,
             () => new Error.Forbidden(
@@ -47,6 +50,8 @@ public sealed record ArchiveDocumentCommand(DocumentId DocumentId)
 Result<TenantId> tenant = actor.GetRequiredAttribute<TenantId>(ActorAttributes.TenantId);
 ```
 
-**What it shows.** `Actor.GetRequiredAttribute<TVo>(key)` and `Actor.TryGetAttribute<TVo>(key, out vo)` parse an actor attribute (an ABAC claim) into a Trellis value object through its `IParsable` implementation — the same validation that guards request input now guards claim-sourced values, with no `GetAttribute(...)` + `TryCreate(...)` boilerplate and no magic strings. `TryGetAttribute` is the natural fit for an authorization gate (deny-close on `false`); `GetRequiredAttribute` returns `Result<TVo>` for railway composition in a handler, failing with an `Error.InvalidInput` whose field is the attribute key when the claim is absent or invalid. The value object can be any source-generated `Required*` VO — `string`-, `Guid`-, or `int`-backed — since the generator makes each one `IParsable`, so a Guid-backed tenant id works as naturally as a string claim. Wiring is identical to [Recipe 7](recipe-07-resource-authorization.md); the tenant check lives in `Authorize(actor, resource)`, which the resource-authorization pipeline runs after the loader produces the resource.
+A `Forbidden` with code `tenant.isolation` tells a caller from another tenant that the row exists. If cross-tenant probing must not reveal that, add `.UseResourceAuthorization(o => o.HideExistence<TenantDocument>())` ([Recipe 32](recipe-32-hide-existence.md)) so the `Forbidden` becomes a `NotFound`.
+
+**What it shows.** `Actor.GetRequiredAttribute<TVo>(key)` and `Actor.TryGetAttribute<TVo>(key, out vo)` parse an actor attribute (an ABAC claim) into a Trellis value object through its `IParsable` implementation — the same validation that guards request input now guards claim-sourced values, with no `GetAttribute(...)` + `TryCreate(...)` boilerplate and no magic strings. `TryGetAttribute` is the natural fit for an authorization gate (deny-close on `false`); `GetRequiredAttribute` returns `Result<TVo>` for railway composition in a handler, failing with an `Error.InvalidInput` whose field path is the attribute key as a JSON pointer (for example `/tid`) and whose reason code is `attribute.invalid` when the claim is absent or invalid. The value object can be any source-generated `Required*` VO — `string`-, `Guid`-, or `int`-backed — since the generator makes each one `IParsable`, so a Guid-backed tenant id works as naturally as a string claim. Resource-authorization wiring is the same as [Recipe 7](recipe-07-resource-authorization.md), but the actor provider must supply the tenant attribute: `ActorAttributes.TenantId` is `"tid"`; `AddEntraActorProvider()` fills it by default, `AddClaimsActorProvider()` never populates attributes (so with it every call is denied), and the internal-JWT provider needs `AttributeClaimMap[ActorAttributes.TenantId] = "tid"`. The tenant check lives in `Authorize(actor, resource)`, which the resource-authorization pipeline runs after the loader produces the resource.
 
 **Why no `TenantScopedCommand` base type.** The variable part of a tenant guard — what "scope" means, which resources are scoped, how the resource exposes its tenant — is domain policy. A reusable base class is either too rigid or needs enough hooks to beat the three explicit lines it replaces, and inheritance hides a security decision. The typed accessor removes the *ceremony* (parsing) while leaving the *policy* (the comparison) visible and per-command.

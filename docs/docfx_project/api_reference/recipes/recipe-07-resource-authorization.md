@@ -12,7 +12,9 @@ agent_description: "Covers IActorProvider, IAuthorize and resource-based authori
 ---
 # Recipe 7 — Authorization: `IActorProvider` + `IAuthorize` + resource-based auth
 
-**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Authorization`, `Trellis.Http.Abstractions`, `Trellis.Mediator`, `Trellis.Primitives`, `Trellis.ServiceDefaults`, and `Trellis.Microservices.AspNetCore` (published from the Trellis.Microservices repository) for Path B.
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Authorization`, `Trellis.Http.Abstractions`, `Trellis.Mediator`, `Trellis.Primitives`, `Trellis.ServiceDefaults`, and `Trellis.Microservices.AspNetCore` (published from the Trellis.Microservices repository) for Path B. Paths A and B also use the `Microsoft.AspNetCore.Authentication.JwtBearer` package.
+
+`Mediator` and `Trellis` both define `Unit`, and ASP.NET's `Microsoft.AspNetCore.Http` defines `IResult`. Write `Trellis.Unit` and `Trellis.IResult` in full: the bare names are ambiguous (`CS0104`) when both namespaces are in scope.
 
 ## Contents
 
@@ -38,7 +40,7 @@ using Trellis.Primitives;
 // owner rule and IIdentifyResource<TResource, TId> so the framework reuses the shared
 // SharedResourceLoaderById<TResource, TId> instead of requiring a per-command loader.
 public sealed record UpdateOrderCommand(OrderId OrderId, Money NewTotal)
-    : ICommand<Result<Unit>>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
+    : ICommand<Result<Trellis.Unit>>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
 {
     // Typed VO carried straight through — no parse, no throw.
     // ASP.NET model binding (via IScalarValue<OrderId, string>) handles the
@@ -54,7 +56,7 @@ public sealed record UpdateOrderCommand(OrderId OrderId, Money NewTotal)
 // Static permission gate (no resource load needed): every actor with the named permission
 // and no matching forbidden permission can run the command. Use IAuthorize when the decision does not depend on
 // any resource state.
-public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result<Unit>>, IAuthorize
+public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result<Trellis.Unit>>, IAuthorize
 {
     public IReadOnlyList<string> RequiredPermissions => ["orders:delete"];
 }
@@ -63,14 +65,10 @@ public sealed record DeleteOrderCommand(OrderId OrderId) : ICommand<Result<Unit>
 services.AddTrellisBehaviors();
 services.AddClaimsActorProvider();               // ClaimsActorProvider for ASP.NET Core
 // Pass every assembly that contains command/query types AND every assembly that contains
-// IResourceLoader<,> implementations. In a layered app the loader typically lives in the
-// ACL assembly, not the Application assembly — passing only the Application assembly will
-// register ResourceAuthorizationBehavior<,,> without discovering the shared loader and the
-// pipeline will fail at runtime when it cannot resolve IResourceLoader<TMessage, TResource>.
-// Note: the scanner de-duplicates the `assemblies` parameter with a first-seen-order
-// HashSet, and closed pipeline-behavior registrations are idempotent across repeated
-// scans and explicit-plus-scanned overlap when service type and implementation type match.
-// Passing the same assembly twice is safe.
+// SharedResourceLoaderById<,> or IResourceLoader<,> implementations. In a layered app the
+// loader typically lives in the ACL assembly, not the Application assembly. If the loader
+// assembly is omitted, no loader is registered for the command and requests fail at run time
+// (reported as Error.Unexpected, HTTP 500). Passing the same assembly twice is safe.
 services.AddResourceAuthorization(
     typeof(UpdateOrderCommand).Assembly,        // Application assembly (commands + IAuthorizeResource)
     typeof(OrderResourceLoader).Assembly);      // ACL assembly (IResourceLoader<,> implementations)
@@ -91,7 +89,7 @@ public sealed record ReadOrderQuery(OrderId OrderId)
     : IQuery<Result<Order>>, IAuthorizeResource<Order>, IIdentifyResource<Order, OrderId>
 {
     public OrderId GetResourceId() => OrderId;
-    public IResult Authorize(Actor actor, Order resource) =>
+    public Trellis.IResult Authorize(Actor actor, Order resource) =>
         Result.Ensure(resource.OwnerId == actor.Id, static () => new Error.Forbidden("orders.owner"));
 }
 
@@ -104,11 +102,11 @@ public sealed class ReadOrderHandler : ActorResourceQueryHandler<ReadOrderQuery,
 ```
 
 Keep the existing shared-loader registration and add the query's resource registration.
-Ordinary accessor-based handlers remain valid; an actor-free business body need not adopt
+Ordinary accessor-based handlers stay valid; an actor-free business body need not adopt
 these bases. See [all six bases and migration](../trellis-api-mediator.md#actor-aware-handler-bases).
 
 **Existing provider lookup.** `await actorProvider.RequireActorAsync(cancellationToken)`
-still performs another lookup, not a dispatch-snapshot read. It requires established actor
+performs another provider lookup, not a dispatch-snapshot read. It requires established actor
 presence and a stable or explicitly cached provider when its result must match authorization.
 For claims-backed hosts, register `AddCachingActorProvider<ClaimsActorProvider>()` after
 `AddClaimsActorProvider`; wrap the same scoped provider used by authorization. The helper
@@ -130,14 +128,17 @@ services.AddScoped<SharedResourceLoaderById<Order, OrderId>, OrderResourceLoader
 services.AddSharedResourceAuthorization<UpdateOrderCommand, Order, OrderId, Result<Trellis.Unit>>();
 ```
 
-The equivalent builder slot is `UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()`; it also enables the standard Mediator behaviors. Both helpers preserve existing per-message loaders and leave the shared-loader implementation explicitly registered. The lower-level `AddResourceAuthorization<TMessage,TResource,TResponse>()` and `UseResourceAuthorization<TMessage,TResource,TResponse>()` remain available for custom loaders; neither adds the shared-loader bridge. See [`trellis-api-servicedefaults.md`](../trellis-api-servicedefaults.md#trellisservicebuilder). For multi-hop authorization, see [Recipe 24](recipe-24-indirect-authorization.md).
+The equivalent builder slot is `UseSharedResourceAuthorization<TMessage,TResource,TId,TResponse>()`; it also enables the standard Mediator behaviors. Both helpers preserve existing per-message loaders and leave the shared-loader implementation explicitly registered. The lower-level `AddResourceAuthorization<TMessage,TResource,TResponse>()` and `UseResourceAuthorization<TMessage,TResource,TResponse>()` are for custom loaders; they register only the behavior and accessor, never a loader and never the shared-loader bridge, so a command wired with them alone returns a 500 until a loader is registered. See [`trellis-api-servicedefaults.md`](../trellis-api-servicedefaults.md#trellisservicebuilder). For multi-hop authorization, see [Recipe 24](recipe-24-indirect-authorization.md).
 
-**Microservices.** The setup above works identically behind a reverse proxy / API gateway — the simplest microservices pattern is **token pass-through**: the gateway validates the incoming external JWT (Auth0 / Entra / Keycloak / etc.) and forwards it as-is, and each microservice configures `AddJwtBearer(o => o.Authority = "https://idp")` against the SAME external IDP. No new Trellis packages required.
+**Microservices.** The setup above works the same behind a reverse proxy / API gateway — the simplest microservices pattern is **token pass-through**: the gateway validates the incoming external JWT (Auth0 / Entra / Keycloak / etc.) and forwards it as-is, and each microservice configures `AddJwtBearer(o => o.Authority = "https://idp")` against the SAME external IDP. No new Trellis packages required.
 
 ```csharp
 // Microservice composition — token pass-through path.
 // Gateway validated the JWT; this service validates again against the same IDP and
 // hydrates the Actor from the standard claims.
+using Microsoft.IdentityModel.Tokens;
+using Trellis.ServiceDefaults;
+
 builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
 {
     o.Authority = "https://your-idp.example";   // SAME IDP the gateway validated against
@@ -151,13 +152,13 @@ builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
     };
 });
 
+builder.Services.AddScoped<SharedResourceLoaderById<Order, OrderId>, OrderResourceLoader>();
 builder.Services.AddTrellis(o => o
     .UseClaimsActorProvider(c => { c.ActorIdClaim = "sub"; c.PermissionsClaim = "permissions"; })
-    .UseResourceAuthorization()
-    .UseResourceAuthorization<UpdateOrderCommand, Order, Result<Unit>>());
+    .UseSharedResourceAuthorization<UpdateOrderCommand, Order, OrderId, Result<Trellis.Unit>>());
 ```
 
-This pattern works today with current Trellis. Choose it when the external IDP is stable, all microservices share the same trust root, and you don't need per-cluster permission projection or shorter-than-IDP token lifetimes.
+Choose this pattern when the external IDP is stable, all microservices share the same trust root, and you don't need per-cluster permission projection or shorter-than-IDP token lifetimes.
 
 **Path B — Trellis internal JWT (`AddTrellisInternalJwtActorProvider` from `Trellis.Microservices.AspNetCore`).** When the constraints above don't hold — you need per-cluster audience isolation, gateway-side permission projection, shorter token lifetimes than the external IDP allows, or you want downstream services decoupled from the external IDP's claim shape — switch to the Trellis internal-JWT contract. A trusted gateway (typically `Trellis.Yarp`, but any gateway implementing the same minting contract works) re-mints a fresh per-cluster JWT carrying the FULL resolved `Actor` shape, including `ForbiddenPermissions` and ABAC `Attributes`. The minter, downstream actor provider, and shared contract constants ship in the [`xavierjohn/Trellis.Microservices`](https://github.com/xavierjohn/Trellis.Microservices) repository (packages: `Trellis.Yarp`, `Trellis.Microservices.AspNetCore`, `Trellis.Microservices.Abstractions`). Downstream microservices add `Trellis.Microservices.AspNetCore` and call `services.AddTrellisInternalJwtActorProvider(...)` directly:
 
@@ -166,7 +167,10 @@ This pattern works today with current Trellis. Choose it when the external IDP i
 // Gateway minted a fresh internal JWT for this cluster; this service validates it against
 // the gateway's signing key and hydrates the FULL Actor surface (including forbidden
 // permissions + ABAC attributes) from the gateway-controlled claim shape.
+using Microsoft.IdentityModel.Tokens;
+using Trellis.Authorization;
 using Trellis.Microservices.AspNetCore;  // ServiceCollectionExtensions.AddTrellisInternalJwtActorProvider
+using Trellis.ServiceDefaults;
 
 builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
 {
@@ -186,18 +190,18 @@ builder.Services.AddAuthentication("Bearer").AddJwtBearer(o =>
 
 builder.Services.AddTrellisInternalJwtActorProvider(c =>
 {
-    c.RequiredAttributes = ["tenant_id"];          // fail closed on missing tenant
-    c.AttributeClaimMap["tenant_id"] = "tid";
+    c.RequiredAttributes = [ActorAttributes.TenantId];   // fail closed on missing tenant
+    c.AttributeClaimMap[ActorAttributes.TenantId] = "tid"; // actor attribute key -> JWT claim name
     c.AttributeClaimMap["mfa"] = "amr_normalized";
     c.ExpectedIssuer = "https://gateway.internal"; // defense-in-depth runtime check
     c.ExpectedAudience = "incidents-service";
 });
 
+builder.Services.AddScoped<SharedResourceLoaderById<Order, OrderId>, OrderResourceLoader>();
 builder.Services.AddTrellis(o => o
-    .UseResourceAuthorization()
-    .UseResourceAuthorization<UpdateOrderCommand, Order, Result<Unit>>());
+    .UseSharedResourceAuthorization<UpdateOrderCommand, Order, OrderId, Result<Trellis.Unit>>());
 ```
 
-The internal-JWT contract requires the gateway to mint three sentinel claims (`trellis_actor_contract_version=1`, `trellis_permissions_count`, `trellis_forbidden_permissions_count`) so a misbehaving proxy cannot strip the deny set silently — the deny-overrides-allow contract integrity invariant. The strict validation profile shown above is mandatory; the [microservices cookbook](https://github.com/xavierjohn/Trellis.Microservices/blob/main/docs/docfx_project/api_reference/trellis-api-microservices-cookbook.md) Recipe 1 spells out the air-gapped (static-key-ring) variant, the tenant-isolation defense-in-depth check, and the key-rotation runbook; Recipe 2 covers the gateway-side end-to-end.
+The internal-JWT contract requires the gateway to mint three sentinel claims (`trellis_actor_contract_version=1`, `trellis_permissions_count`, `trellis_forbidden_permissions_count`) so a misbehaving proxy cannot strip the deny set silently — the deny-overrides-allow contract integrity invariant. `AddTrellisInternalJwtActorProvider` does not validate the token, and nothing enforces the validation profile shown above when you register `AddJwtBearer` yourself. For the enforced version, call `AddTrellisInternalJwtBearer(issuer, audience, configureActor)` instead of the hand-written `AddJwtBearer` block: it forces RS256, a signed token, an expiry, the issuer and audience, `TryAllIssuerSigningKeys = false` and a capped clock skew, and re-asserts them after your configuration. Use the hand-written profile only when that fixed posture does not fit. The [microservices cookbook](https://github.com/xavierjohn/Trellis.Microservices/blob/main/docs/docfx_project/api_reference/trellis-api-microservices-cookbook.md) Recipe 1 spells out the air-gapped (static-key-ring) variant, the tenant-isolation defense-in-depth check, and the key-rotation runbook; Recipe 2 covers the gateway-side end-to-end.
 
 **Path C — OAuth2 token exchange / OBO** is not implemented by Trellis. Use `Microsoft.Identity.Web`'s OBO support directly when an enterprise multi-tenant SaaS needs RFC 8693 token exchange against the IDP.

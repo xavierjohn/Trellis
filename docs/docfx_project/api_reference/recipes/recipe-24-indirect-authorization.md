@@ -19,7 +19,7 @@ agent_description: "Shows authorization against a related resource several navig
 - [Cricket fan-out — end to end](#cricket-fan-out--end-to-end)
 - [Chain — `Match → Team → Tournament`](#chain--match--team--tournament)
 - [AOT / explicit registration](#aot--explicit-registration)
-- [What the framework rejects at startup](#what-the-framework-rejects-at-startup)
+- [What the framework rejects](#what-the-framework-rejects)
 - [TOCTOU note](#toctou-note)
 
 **Problem.** A command identifies a "leaf" resource by id (e.g. `MatchId`) but ownership/authorization is determined by a different resource one or more navigation hops away. Examples:
@@ -28,7 +28,7 @@ agent_description: "Shows authorization against a related resource several navig
 - **Owner chain**: `Match → Team → Tournament` — authorize against tournament owner.
 - **Org hierarchy**: `Document → Folder` where `Folder` carries the org-unit owning the document.
 
-The naive workaround is a per-handler ownership guard (e.g. cricket's old `MatchOwnershipGuard`). It runs inside the handler body **after** the framework authorization pipeline has already passed, must be remembered in every handler, and is easy to forget — making it a recurring source of authorization gaps. `IAuthorizeResourceVia<TOwner>` moves the check into the framework pipeline as a declarative interface.
+The naive workaround is a per-handler ownership guard (e.g. a per-handler ownership guard). It runs inside the handler body **after** the framework authorization pipeline has already passed, must be remembered in every handler, and is easy to forget — making it a recurring source of authorization gaps. `IAuthorizeResourceVia<TOwner>` moves the check into the framework pipeline as a declarative interface.
 
 **Decision table.**
 
@@ -53,33 +53,36 @@ using Trellis.Mediator;
 public sealed partial class MatchId : RequiredGuid<MatchId>;
 public sealed partial class TeamId  : RequiredGuid<TeamId>;
 
-public sealed class Match : Aggregate<MatchId>, IIdentifyRelatedResources<Team, TeamId>
+public sealed class Match(MatchId id, TeamId homeTeamId, TeamId awayTeamId)
+    : Aggregate<MatchId>(id), IIdentifyRelatedResources<Team, TeamId>
 {
-    public TeamId HomeTeamId { get; }
-    public TeamId AwayTeamId { get; }
+    public TeamId HomeTeamId { get; } = homeTeamId;
+    public TeamId AwayTeamId { get; } = awayTeamId;
     public IReadOnlyList<TeamId> GetRelatedResourceIds() => [HomeTeamId, AwayTeamId];
 }
 
-public sealed class Team : Aggregate<TeamId>
+public sealed class Team(TeamId id, ActorId createdByActorId) : Aggregate<TeamId>(id)
 {
-    public ActorId CreatedByActorId { get; }
+    public ActorId CreatedByActorId { get; } = createdByActorId;
 }
 
-public sealed record UploadScorecardCommand(MatchId MatchId, /* fields */)
-    : ICommand<Result<Unit>>,
+public sealed record UploadScorecardCommand(MatchId MatchId, string Scorecard)
+    : ICommand<Result<Trellis.Unit>>,
       IAuthorizeResourceVia<Team>,
       IIdentifyResource<Match, MatchId>
 {
     public MatchId GetResourceId() => MatchId;
 
-    public IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
+    public Trellis.IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
         Result.Ensure(
             owners.Any(t => t.CreatedByActorId == actor.Id),
             static () => new Error.Forbidden("match.upload-scorecard")
                 { Detail = "Actor does not own either match team." });
 }
 
-// Composition root — assembly scan registers everything.
+// Composition root — the assembly scan registers the behaviors, accessors and loader adapters.
+// The SharedResourceLoaderById<Match, MatchId> and SharedResourceLoaderById<Team, TeamId>
+// implementations must live in a scanned assembly or be registered explicitly.
 services.AddTrellisBehaviors();
 services.AddResourceAuthorization(typeof(UploadScorecardCommand).Assembly);
 ```
@@ -105,26 +108,34 @@ available when the business body does not need an actor.
 ## Chain — `Match → Team → Tournament`
 
 ```csharp
-public sealed class Match : Aggregate<MatchId>, IIdentifyRelatedResource<Team, TeamId>
+public sealed partial class TournamentId : RequiredGuid<TournamentId>;
+
+public sealed class Tournament(TournamentId id, ActorId ownerActorId) : Aggregate<TournamentId>(id)
 {
-    public TeamId TeamId { get; }
+    public ActorId OwnerActorId { get; } = ownerActorId;
+}
+
+public sealed class Match(MatchId id, TeamId teamId) : Aggregate<MatchId>(id), IIdentifyRelatedResource<Team, TeamId>
+{
+    public TeamId TeamId { get; } = teamId;
     public TeamId GetRelatedResourceId() => TeamId;
 }
 
-public sealed class Team : Aggregate<TeamId>, IIdentifyRelatedResource<Tournament, TournamentId>
+public sealed class Team(TeamId id, TournamentId tournamentId)
+    : Aggregate<TeamId>(id), IIdentifyRelatedResource<Tournament, TournamentId>
 {
-    public TournamentId TournamentId { get; }
+    public TournamentId TournamentId { get; } = tournamentId;
     public TournamentId GetRelatedResourceId() => TournamentId;
 }
 
 public sealed record CancelMatchCommand(MatchId MatchId)
-    : ICommand<Result<Unit>>,
+    : ICommand<Result<Trellis.Unit>>,
       IAuthorizeResourceVia<Tournament>,
       IIdentifyResource<Match, MatchId>
 {
     public MatchId GetResourceId() => MatchId;
 
-    public IResult Authorize(Actor actor, IReadOnlyList<Tournament> owners) =>
+    public Trellis.IResult Authorize(Actor actor, IReadOnlyList<Tournament> owners) =>
         Result.Ensure(
             owners[0].OwnerActorId == actor.Id,
             static () => new Error.Forbidden("match.cancel"));
@@ -139,40 +150,52 @@ The resolver discovers the path `Match → Team → Tournament` at registration 
 
 ```csharp
 // Single-hop scenario: Match has one Team FK; the actor must own that team.
-public sealed class Match : Aggregate<MatchId>, IIdentifyRelatedResource<Team, TeamId>
+// (Alternative to the Match definitions above: use one Match definition per assembly.)
+public sealed class Match(MatchId id, TeamId teamId) : Aggregate<MatchId>(id), IIdentifyRelatedResource<Team, TeamId>
 {
-    public TeamId TeamId { get; }
+    public TeamId TeamId { get; } = teamId;
     public TeamId GetRelatedResourceId() => TeamId;
 }
 
 public sealed record DeleteMatchCommand(MatchId MatchId)
-    : ICommand<Result<Unit>>,
+    : ICommand<Result<Trellis.Unit>>,
       IAuthorizeResourceVia<Team>,
       IIdentifyResource<Match, MatchId>
 {
     public MatchId GetResourceId() => MatchId;
 
-    public IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
+    public Trellis.IResult Authorize(Actor actor, IReadOnlyList<Team> owners) =>
         Result.Ensure(
             owners[0].CreatedByActorId == actor.Id,
             static () => new Error.Forbidden("match.delete"));
 }
 
+// AddRelatedResourceAuthorization registers only the behavior and accessor. The leaf loader,
+// the owner loader and the leaf bridge must be registered separately.
+services.AddScoped<SharedResourceLoaderById<Match, MatchId>, MatchLoader>();
+services.AddScoped<SharedResourceLoaderById<Team, TeamId>, TeamLoader>();
+services.AddSharedResourceLoader<DeleteMatchCommand, Match, MatchId>();
+
 services.AddRelatedResourceAuthorization<
-    DeleteMatchCommand, Match, MatchId, Team, TeamId, Result<Unit>>(
+    DeleteMatchCommand, Match, MatchId, Team, TeamId, Result<Trellis.Unit>>(
     extractOwnerId: match => match.TeamId);  // single-hop selector
 ```
 
+`MatchLoader` and `TeamLoader` are application-owned `SharedResourceLoaderById<,>` implementations. If the leaf or owner loader is missing, the first request fails with `Error.Unexpected` (HTTP 500).
+
 For chains (`Match → Team → Tournament`) or fan-out (cricket `Match → {HomeTeam, AwayTeam}`), the single-hop overload cannot express the path. Build a `ResolvedAuthorizationPath` manually and use the `(this IServiceCollection, ResolvedAuthorizationPath)` overload — the hand-built path can carry multiple hops and a plural terminal hop.
 
-## What the framework rejects at startup
+## What the framework rejects
+
+The first five are rejected when you call `AddResourceAuthorization`:
 
 - **Dual-mode commands** — implementing both `IAuthorizeResource<T>` and `IAuthorizeResourceVia<TOwner>` on one command. Security primitives are never silently composed.
 - **Via-command without `IIdentifyResource<TLeaf, TLeafId>`** — the scanner cannot infer the leaf, so a silent skip would leave the via-marker unprotected. Throws naming the offending command.
 - **Multiple distinct simple paths** from leaf to owner (ambiguous). Throws listing every discovered path; disambiguate by removing an `IIdentifyRelatedResource[s]` declaration or by switching to the explicit `IResourceLoader<TMessage, TProjection>` escape hatch.
 - **Plural hop in a non-terminal position** — fan-out cartesian expansion is not supported.
 - **No path** from leaf to owner — declare an `IIdentifyRelatedResource[s]<TOwner, ...>` somewhere along the chain or use the escape hatch.
-- **Missing `SharedResourceLoaderById<TTo, TToId>`** registration for any hop — throws `InvalidOperationException` at request time (deployment bug, not authorization denial).
+
+**Fails at request time** (reported by the standard pipeline as `Error.Unexpected`, HTTP 500, not as `Forbidden`): a missing leaf `IResourceLoader`, or a missing `SharedResourceLoaderById<TTo, TToId>` for any hop. This is a deployment bug, not an authorization denial.
 
 ## TOCTOU note
 

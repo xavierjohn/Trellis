@@ -36,9 +36,12 @@ agent_description: "Shows AuthFailureExposurePolicy.HideAsNotFound for one publi
 **Fix.** Opt the resource into `AuthFailureExposurePolicy.HideAsNotFound` via `ResourceAuthorizationOptions`. Resource-stage root `Error.NotFound`, `Error.Gone`, `Error.Forbidden`, and `Error.AuthenticationRequired` become one fresh public NotFound. Its type and ID come from configuration and the request, never the original error; original code, detail, and cause are not copied. Other direct-resource / via-leaf errors pass through unchanged.
 
 ```csharp
-// Composition root.
+// Composition root. Register the loader and an actor provider; UseResourceAuthorization<...>()
+// alone registers no loader, so requests would fail with a 500.
+builder.Services.AddScoped<SharedResourceLoaderById<Incident, IncidentId>, IncidentLoader>();
 builder.Services.AddTrellis(options => options
-    .UseResourceAuthorization<GetIncidentQuery, Incident, Result<IncidentDto>>()
+    .UseClaimsActorProvider()
+    .UseSharedResourceAuthorization<GetIncidentQuery, Incident, IncidentId, Result<IncidentDto>>()
     .UseResourceAuthorization(o => o.HideExistence<Incident>()));
 ```
 
@@ -50,7 +53,7 @@ public sealed record GetIncidentQuery(IncidentId Id)
       IIdentifyResource<Incident, IncidentId>
 {
     public IncidentId GetResourceId() => Id;
-    public IResult Authorize(Actor actor, Incident incident) =>
+    public Trellis.IResult Authorize(Actor actor, Incident incident) =>
         Result.Ensure(incident.AssigneeId == actor.Id || actor.HasPermission("incidents:read-any"),
             static () => new Error.Forbidden("incidents.read-denied"));
 }
@@ -98,7 +101,7 @@ The pipeline extracts the ID from `IIdentifyResource<Incident, IncidentId>` firs
 
 **Via commands** key on `TLeaf`. `HideExistence<Match>()` covers `IAuthorizeResourceVia<Team>` + `IIdentifyResource<Match,MatchId>`. Missing leaves and withheld outcomes use the same public Match error, never an owner error. The projection form can select a separate public leaf type.
 
-**Pipeline interaction caveat.** When a command implements both `IAuthorize` (static permissions) and `IAuthorizeResource<T>`, the canonical pipeline runs `AuthorizationBehavior` **before** `ResourceAuthorizationBehavior`. An unauthenticated caller fails the static gate first — that `AuthenticationRequired` is **not** translated to `NotFound`, because `AuthorizationBehavior` has no concept of the resource it's protecting. Commands that need full existence-hiding (anonymous probes return 404, not 401) must omit `IAuthorize` and let `HideAsNotFound` cover the resource-authorization branch alone.
+**Pipeline interaction caveat.** When a command implements both `IAuthorize` (static permissions) and `IAuthorizeResource<T>`, the canonical pipeline runs `AuthorizationBehavior` **before** `ResourceAuthorizationBehavior`. An unauthenticated caller fails the static gate first — that `AuthenticationRequired` is **not** translated to `NotFound`, because `AuthorizationBehavior` has no concept of the resource it's protecting. Commands that need full existence-hiding (anonymous probes return 404, not 401) must omit `IAuthorize` and let `HideAsNotFound` cover the resource-authorization branch alone. The endpoint must also not require authentication at the ASP.NET layer (`RequireAuthorization()` or `[Authorize]`), because that middleware answers 401 before the pipeline runs. To hide existence from authenticated callers who lack a permission, test the permission inside `Authorize(actor, resource)` instead of `IAuthorize`: a static permission failure returns 403 before any resource lookup.
 
 `ActorResourceQueryHandler<GetIncidentQuery,Incident,Result<IncidentDto>>` and the
 corresponding direct-command/via bases preserve this resource-only shape: they do **not**

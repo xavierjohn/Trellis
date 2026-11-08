@@ -34,29 +34,30 @@ agent_description: "Shows IAuthorizedResource so a command authorizes and mutate
 ```csharp
 // ❌ Wrong — handler reloads the resource the pipeline already loaded.
 public sealed class CancelOrderHandler(IOrderRepository orders) // duplicate-load source
-    : ICommandHandler<CancelOrderCommand, Result<Unit>>
+    : ICommandHandler<CancelOrderCommand, Result<Trellis.Unit>>
 {
-    public async ValueTask<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct)
+    public async ValueTask<Result<Trellis.Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct)
     {
         var found = await orders.FindByIdAsync(cmd.OrderId, ct);   // SECOND lookup — wasteful
         if (!found.TryGetValue(out var order))
-            return Result.Fail<Unit>(new Error.NotFound(ResourceRef.For<Order>(cmd.OrderId)));
+            return Result.Fail<Trellis.Unit>(new Error.NotFound(ResourceRef.For<Order>(cmd.OrderId)));
         order.Cancel();
-        return Result.Ok(Unit.Value);
+        return Result.Ok(Trellis.Unit.Value);
     }
 }
 
 // ✅ Correct — handler reads the loaded resource from the accessor.
 public sealed class CancelOrderHandler(IAuthorizedResource<CancelOrderCommand, Order> authorized)
-    : ICommandHandler<CancelOrderCommand, Result<Unit>>
+    : ICommandHandler<CancelOrderCommand, Result<Trellis.Unit>>
 {
-    public ValueTask<Result<Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct)
+    public ValueTask<Result<Trellis.Unit>> Handle(CancelOrderCommand cmd, CancellationToken ct)
     {
         // The pipeline loaded this Order to run cmd.Authorize(actor, order); we mutate the
-        // SAME instance. No second DB roundtrip; for EF the entity is already tracked and the
-        // mutation flows through the unit-of-work commit at the end of the request.
+        // SAME instance. No second DB roundtrip; if the loader returned a tracked entity
+        // and a unit of work is registered, this mutation is saved when the command's unit-of-work
+        // scope commits after the handler succeeds.
         authorized.GetRequiredResource().Cancel();
-        return new(Result.Ok(Unit.Value));
+        return new(Result.Ok(Trellis.Unit.Value));
     }
 }
 ```
@@ -92,24 +93,24 @@ below apply equally to base-supplied resources.
 
 ```csharp
 public sealed record UploadScorecardCommand(MatchId MatchId, Scorecard Scorecard)
-    : ICommand<Result<Unit>>,
+    : ICommand<Result<Trellis.Unit>>,
       IIdentifyResource<Match, MatchId>,
       IAuthorizeResourceVia<Team>
 {
     public MatchId GetResourceId() => MatchId;
-    public IResult Authorize(Actor actor, IReadOnlyList<Team> teams) =>
+    public Trellis.IResult Authorize(Actor actor, IReadOnlyList<Team> teams) =>
         Result.Ensure(teams.Any(t => t.CreatedByActorId == actor.Id),
             static () => new Error.Forbidden("team.not-owner"));
 }
 
 public sealed class UploadScorecardHandler(
     IAuthorizedResource<UploadScorecardCommand, Match> match)   // LEAF accessor
-    : ICommandHandler<UploadScorecardCommand, Result<Unit>>
+    : ICommandHandler<UploadScorecardCommand, Result<Trellis.Unit>>
 {
-    public ValueTask<Result<Unit>> Handle(UploadScorecardCommand cmd, CancellationToken ct)
+    public ValueTask<Result<Trellis.Unit>> Handle(UploadScorecardCommand cmd, CancellationToken ct)
     {
         match.GetRequiredResource().UploadScorecard(cmd.Scorecard);   // mutate the leaf
-        return new(Result.Ok(Unit.Value));
+        return new(Result.Ok(Trellis.Unit.Value));
     }
 }
 ```
@@ -123,15 +124,15 @@ public sealed class UploadScorecardHandler(
 
 In those cases the loader's job is "decide who owns the resource for the authorization check"; the handler's job is "fetch the canonical mutation-ready aggregate". They are different shapes and the accessor would couple them incorrectly.
 
-**Concurrency.** The accessor is safe across nested `mediator.Send` and concurrent `Task.WhenAll` dispatch of the same closed pair within one DI scope. Implementation uses a per-async-flow linked frame list with an `IsActive` flag — each push allocates a new frame (no shared mutable state between sibling forks), and dispose flips the frame's `IsActive` flag (visible to orphan child tasks that captured the frame at fork time but outlived the parent dispatch). The framework guarantees an orphan task cannot read the resource after the parent's dispatch ends. (Verified by `AuthorizedResourceHolderTests.ParallelPushes_OfDifferentResources_DoNotCrossContaminate` and `OrphanChildTask_CapturesFrameAtFork_ButReadsNothingAfterParentDispose`.)
+**Concurrency.** The accessor is scoped to the current dispatch: nested `mediator.Send` calls see their own resource and the outer one is restored afterwards, concurrent `Task.WhenAll` dispatches of the same closed pair within one DI scope do not see each other's resource, and a read from a task that outlives the dispatch throws. Implementation uses a per-async-flow linked frame list with an `IsActive` flag — each push allocates a new frame (no shared mutable state between sibling forks), and dispose flips the frame's `IsActive` flag (visible to orphan child tasks that captured the frame at fork time but outlived the parent dispatch). The framework guarantees an orphan task cannot read the resource after the parent's dispatch ends. (Verified by `AuthorizedResourceHolderTests.ParallelPushes_OfDifferentResources_DoNotCrossContaminate` and `OrphanChildTask_CapturesFrameAtFork_ButReadsNothingAfterParentDispose`.)
 
 **Failure modes.** `GetRequiredResource()` throws `InvalidOperationException` outside a populated dispatch — typical causes:
 - the handler was invoked directly (e.g. from a unit test) without going through the mediator pipeline;
 - the message lacks resource-authorization registration (`AddResourceAuthorization` was never called for it);
-- authentication failed, the loader failed, or `Authorize` was denied (none of which populate the accessor — denied authorizations cannot expose the loaded resource).
+- it is read from a task that outlives the dispatch, or for a message/resource pair the pipeline did not authorize. (Failed authentication, a failed loader and a denied `Authorize` never reach the handler, so they cannot cause this.)
 
 For optional reads use `TryGetResource(out var resource)` which returns `false` instead of throwing.
 
-**What it shows.** Eliminates the duplicate load that motivated the accessor. For non-EF stores (CosmosDB, Dapper, HTTP-backed loaders) this is a measurable perf win — half the I/O on every authorized command. For EF it is also a win (skips the second LINQ query — the identity map only handles entity-instance deduplication, not the SQL roundtrip). The framework guarantee is identity, not mutation-readiness — the cookbook caution above is the user's responsibility.
+**What it shows.** Eliminates the duplicate load that motivated the accessor. For non-EF stores (CosmosDB, Dapper, HTTP-backed loaders) it removes the handler's second load of the same resource, which is one fewer round trip per command. For an EF query-based loader it also skips the second LINQ query (the identity map deduplicates entity instances, not the SQL round trip). The framework guarantee is identity, not mutation-readiness — the caution above is the caller's responsibility.
 
 **Related recipes.** [Recipe 7](recipe-07-resource-authorization.md) for the authorization model itself; [Recipe 24](recipe-24-indirect-authorization.md) for the via case the accessor composes with.
