@@ -12,7 +12,7 @@ agent_description: "Shows an MVC controller action that returns a Trellis Result
 ---
 # Recipe 5 — MVC controller using `AsActionResult`
 
-**Requires:** `Trellis.Core`, plus `Trellis.Asp`.
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Mediator`.
 
 **Problem.** Same payload as Recipe 4 but with a typed MVC `ActionResult<OrderDto>`.
 

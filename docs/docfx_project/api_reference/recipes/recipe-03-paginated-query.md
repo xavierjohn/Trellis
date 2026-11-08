@@ -12,7 +12,7 @@ agent_description: "Shows a query handler that returns Page with a cursor. Use w
 ---
 # Recipe 3 — Query handler returning `Page<T>` (paginated list with cursor)
 
-**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.EntityFrameworkCore`.
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.Mediator`.
 
 ## Contents
 

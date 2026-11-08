@@ -16,7 +16,7 @@ agent_description: "Shows the AddTrellis builder composition root: module order 
 
 **Problem.** Compose Trellis service modules in the correct order so behaviors stack properly without forcing simple apps to install every package.
 
-**Preferred: tiered builder.** Use `Trellis.ServiceDefaults` from the API/composition root. The builder records intent first, then applies modules in the canonical order. `UseEntityFrameworkUnitOfWork<TContext>()`, when selected, is always applied last so `TransactionalCommandBehavior<,>` lands innermost.
+**Preferred: tiered builder.** Use `Trellis.ServiceDefaults` from the API/composition root. The builder records intent first, then applies modules in the canonical order. Pipeline position comes from the Mediator behavior slots, not from call order: `TransactionalCommandBehavior<,>` sits inside telemetry and event dispatch and outside any inside-transaction application behaviors (`UseInsideTransactionBehavior`). `UseEntityFrameworkUnitOfWork<TContext>()`, when selected, is registered after those behaviors; the outbox, outbox-readiness and inbox registrations follow it and add no Mediator behavior.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -68,7 +68,7 @@ public static class CompositionRoot
 | `UseResourceAuthorization(...)` | `AddResourceAuthorization(...)` | Implies `UseMediator()` and scans for resource auth/loaders. |
 | `UseDomainEvents(...)` | `AddDomainEventDispatch(...)` | Implies `UseMediator()`. Response-shape dispatch uses strict snapshot validation; handlers must be side-effect-only. Mutually exclusive with tracked dispatch. |
 | `UseTrackedAggregateDomainEvents(...)` | `AddTrackedAggregateDomainEventDispatch(...)` | Implies `UseMediator()`. Dispatches committed aggregate snapshots for outcome-DTO commands and throws on same-aggregate or cross-aggregate cascade. Mutually exclusive with response-shape dispatch. |
-| `UseEntityFrameworkUnitOfWork<TContext>()` | `AddTrellisUnitOfWork<TContext>()` | Implies `UseMediator()` and is always applied last. |
+| `UseEntityFrameworkUnitOfWork<TContext>()` | `AddTrellisUnitOfWork<TContext>()` | Implies `UseMediator()`. Registered after the inside-transaction behaviors and before the outbox, readiness and inbox registrations; the transaction stays outside inside-transaction behaviors. |
 | `UseOutboxReadiness<TContext>(profile)` | `AddTrellisOutboxReadiness<TContext>(profile)` | Explicitly selected bounded metadata with optional local-relay monitoring, applied after selected outbox registration without changing Mediator order. Local mode requires a matching relay; metadata-only requires the worker retry limit. Endpoint authorization/selection remains separate. |
 
 **Still app-owned.** `AddTrellis(...)` does **not** call `AddDbContext`, `AddMediator`, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.

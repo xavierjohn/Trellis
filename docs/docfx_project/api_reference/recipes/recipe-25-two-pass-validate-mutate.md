@@ -12,7 +12,7 @@ agent_description: "Shows two-pass validate-then-mutate over related aggregates 
 ---
 # Recipe 25 — Two-pass validate-then-mutate over a collection of related aggregates
 
-**Requires:** `Trellis.Core` only.
+**Requires:** `Trellis.Core`, plus `Trellis.Mediator`.
 
 ## Contents
 

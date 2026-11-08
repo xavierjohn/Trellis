@@ -545,7 +545,7 @@ else {
         }
     }
 
-    $indexedRecipes = [System.Collections.Generic.HashSet[int]]::new()
+    $indexedRecipes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
     if ($patternsIndexStart -lt 0) {
         Write-Host "$routingPath(1,1): error TRLDOC007: The router (trellis-start-here.md) has no '## Patterns Index' section, so recipe reachability cannot be verified. Restore the section or update the heading in this script."
@@ -554,8 +554,8 @@ else {
     else {
         $patternsIndexText = ($routingLines[$patternsIndexStart..($patternsIndexEnd - 1)] -join "`n")
 
-        foreach ($linkMatch in [regex]::Matches($patternsIndexText, 'recipe-(?<number>\d+)-[A-Za-z0-9-]+\.md')) {
-            [void] $indexedRecipes.Add([int] $linkMatch.Groups['number'].Value)
+        foreach ($linkMatch in [regex]::Matches($patternsIndexText, 'recipe-\d+-[A-Za-z0-9-]+\.md')) {
+            [void] $indexedRecipes.Add($linkMatch.Value)
         }
     }
 
@@ -596,8 +596,8 @@ else {
             $failed = $true
         }
 
-        if ($patternsIndexStart -ge 0 -and -not $indexedRecipes.Contains($recipeNumber)) {
-            Write-Host "$($recipeFile.FullName)($($headingIndex + 1),1): error TRLDOC007: Recipe $recipeNumber is not reachable from the Patterns Index. Add a task-phrased row linking to $($recipeFile.Name) so agents that load only the index can discover it."
+        if ($patternsIndexStart -ge 0 -and -not $indexedRecipes.Contains($recipeFile.Name)) {
+            Write-Host "$($recipeFile.FullName)($($headingIndex + 1),1): error TRLDOC007: '$($recipeFile.Name)' is not reachable from the Patterns Index (each recipe document needs its own link, even when two documents share a recipe number). Add a task-phrased row linking to $($recipeFile.Name) so agents that load only the index can discover it."
             $failed = $true
         }
     }
@@ -848,6 +848,16 @@ foreach ($recipeDoc in $recipeDocs) {
                 Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC018: The code uses 'using $namespace;' but the Requires line does not name the package ``$namespace``."
                 $failed = $true
             }
+        }
+
+        # Trellis.Core does not reference Mediator. A recipe that uses the Mediator contracts needs Trellis.Mediator,
+        # which brings Mediator.Abstractions with it.
+        $usesMediator = @($recipeDocLines | Where-Object { $_ -cmatch '^using Mediator;|\bIMediator\b' }).Count -gt 0
+        $namesMediator = $requiresLine.Contains('`Trellis.Mediator`')
+
+        if ($usesMediator -and -not $namesMediator) {
+            Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC018: The code uses the Mediator contracts ('using Mediator;' or IMediator) but the Requires line does not name the package ``Trellis.Mediator``, which brings Mediator.Abstractions."
+            $failed = $true
         }
     }
 }

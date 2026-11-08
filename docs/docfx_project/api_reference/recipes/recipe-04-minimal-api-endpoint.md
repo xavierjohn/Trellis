@@ -12,7 +12,7 @@ agent_description: "Wires Result to a Minimal API endpoint with HttpResponseOpti
 ---
 # Recipe 4 — Minimal-API endpoint wiring `Result<T>` → `HttpResponseOptionsBuilder` → `ToHttpResponse`
 
-**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Http.Abstractions`.
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Http.Abstractions`, `Trellis.Mediator`.
 
 **Problem.** Map a `Result<Order>` to a fully-conformant HTTP response: `200` with strong ETag and `Last-Modified`, `404`/`422` Problem Details on failure, `304` on `If-None-Match` match.
 

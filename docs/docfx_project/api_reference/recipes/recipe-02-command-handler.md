@@ -89,12 +89,12 @@ public static class OrdersDi
         services
             .AddTrellisBehaviors()                              // canonical mediator behaviors (exception, tracing, logging, authorization, validation)
             .AddTrellisFluentValidation(typeof(PlaceOrderValidator).Assembly)
-            .AddTrellisUnitOfWork<AppDbContext>()               // Innermost: commits on success
+            .AddTrellisUnitOfWork<AppDbContext>()               // opens the transaction, commits on success
             .AddScoped<IOrderRepository, EfOrderRepository>();
 }
 ```
 
-**What it shows.** The mediator pipeline already runs `ValidationBehavior<TMessage, TResponse>` before the handler — `AddTrellisFluentValidation` plugs every `IValidator<T>` into it via the open-generic `IMessageValidator<T>` adapter. `AddTrellisUnitOfWork<TContext>` registers `TransactionalCommandBehavior<,>` *after* the others, so it lands innermost and commits only when the handler returns success. The handler itself is pure: no `try`/`catch`, no primitive parsing, no `await db.SaveChangesAsync()` — that's the unit of work's job.
+**What it shows.** The mediator pipeline already runs `ValidationBehavior<TMessage, TResponse>` before the handler — `AddTrellisFluentValidation` plugs every `IValidator<T>` into it via the open-generic `IMessageValidator<T>` adapter. `AddTrellisUnitOfWork<TContext>` registers `TransactionalCommandBehavior<,>` in its own pipeline slot, inside telemetry and event dispatch, so it commits only when the handler and any inside-transaction behaviors return success. The handler itself is pure: no `try`/`catch`, no primitive parsing, no `await db.SaveChangesAsync()` — that's the unit of work's job.
 
 > **Multiple independent resources in the handler?** Reach for [Recipe 21](recipe-21-parallel-loads.md) when the loads hit *different* stores (HTTP + DB, two upstream services, factory-created `DbContext`s). For two repository reads against the same scoped `DbContext`, stay sequential — that case races EF Core. The Recipe explains the rule and shows both shapes.
 
