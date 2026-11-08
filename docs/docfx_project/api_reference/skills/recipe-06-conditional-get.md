@@ -12,6 +12,8 @@ agent_description: "Shows conditional GET with EntityTagValue. Use when a read s
 ---
 # Recipe 6 — Conditional GET with `EntityTagValue`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Http.Abstractions`.
+
 **Problem.** Serve a resource with strong-ETag conditional GET so clients can revalidate cheaply.
 
 ```csharp

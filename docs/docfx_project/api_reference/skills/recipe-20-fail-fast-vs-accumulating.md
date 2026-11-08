@@ -12,6 +12,8 @@ agent_description: "Contrasts fail-fast Sequence and Traverse with accumulating 
 ---
 # Recipe 20 — Fail-fast vs accumulating: `Sequence`/`Traverse` vs `SequenceAll`/`TraverseAll`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Primitives`.
+
 **Problem.** A single pipeline contains two distinct collection-level concerns:
 
 1. **Form-style validation** of a batch payload — every invalid row should be reported in one response, not just the first.

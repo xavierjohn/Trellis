@@ -12,6 +12,8 @@ agent_description: "Shows AuthFailureExposurePolicy.HideAsNotFound for one publi
 ---
 # Recipe 32 — Hide existence with `AuthFailureExposurePolicy.HideAsNotFound`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Authorization`, `Trellis.Mediator`, `Trellis.ServiceDefaults`.
+
 ## Contents
 
 - Problem

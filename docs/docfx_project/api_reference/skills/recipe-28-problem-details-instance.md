@@ -12,6 +12,8 @@ agent_description: "Synthesises ProblemDetails.Instance from a ResourceRef. Use 
 ---
 # Recipe 28 — Synthesise `ProblemDetails.Instance` from a `ResourceRef`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`.
+
 **Problem.** A `POST /api/orders` endpoint that creates an order against an existing customer fails with `new Error.NotFound(ResourceRef.For<Customer>("abc-123"))` when the customer does not exist. The default RFC 9457 `Instance` is the request URL (`/api/orders`), which does not identify the missing resource — the client has to inspect the body to learn which customer was missing. Worse, telemetry indexed by `Instance` collapses every missing-customer failure on this endpoint into the same `/api/orders` bucket regardless of which customer was missing.
 
 **Solution.** `TrellisAspOptions.SynthesizeProblemDetailsInstanceFromResourceRef` (default `true`) tells `ResponseFailureWriter` to populate `Instance` from the failing `ResourceRef` whenever the request URL does not already identify the resource. The synthesised value is `/{collection}/{escapedId}` (no `/api/` prefix, no api-version segment, no query string). The naive plural fallback lowercases the type name; registered overrides are emitted verbatim, so use lowercase override values if you want to preserve the convention. The original request URI is preserved under `Extensions["request"]` for callers that need both.

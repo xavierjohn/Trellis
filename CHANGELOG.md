@@ -33,7 +33,7 @@ The documentation gates follow the split: TRLDOC004 treats `recipe-*.md` as cros
 `CrossCuttingDocPatterns` list that the freshness audit shares, TRLDOC006 and TRLDOC007 check each recipe document
 (file name and heading must agree on the number), TRLDOC010 counts recipe documents, TRLDOC013 reads only the router,
 the new TRLDOC017 holds everything under `skills/` to Claude's skill authoring best practices (name, third-person description with
-a `Use when` clause, no XML tag, under 500 lines, a `## Contents` section once past 100 lines), and the DocFX navigation check verifies one rendered page and one TOC link per recipe. The published site URL
+a `Use when` clause, no XML tag, under 500 lines, a `## Contents` section once past 100 lines), the new TRLDOC018 requires every recipe to name the packages it needs in a `**Requires:**` line, and the DocFX navigation check verifies one rendered page and one TOC link per recipe. The published site URL
 `api_reference/trellis-api-cookbook.html` no longer exists; each recipe has its own page under `api_reference/skills/`.
 
 ### Added - tuple `Match`, `Switch`, `MatchAsync` and `SwitchAsync` for arities 6 to 9

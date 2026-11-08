@@ -12,6 +12,8 @@ agent_description: "Shows the CanFire and Fire pattern with FireResult for aggre
 ---
 # Recipe 9 — State machine: `CanFire` + `Fire` pattern with `FireResult`
 
+**Requires:** `Trellis.Core`, plus `Trellis.StateMachine`.
+
 **Problem.** Drive an order through `Draft → Submitted → Shipped` using Stateless, but expose every transition as `Result<TState>` so the mediator pipeline composes naturally.
 
 ```csharp

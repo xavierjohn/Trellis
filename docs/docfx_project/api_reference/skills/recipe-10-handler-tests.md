@@ -12,6 +12,8 @@ agent_description: "Shows handler tests with Trellis.Testing: Should().Be(...) a
 ---
 # Recipe 10 — Test: handler test using `Trellis.Testing` `Should().Be(...)` / `UnwrapError()`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Authorization`, `Trellis.Primitives`, `Trellis.Testing`.
+
 **Problem.** Unit-test the `PlaceOrderHandler` from Recipe 2 using FluentAssertions extensions from `Trellis.Testing`.
 
 For an actor-aware base, send the command/query through Mediator with `TestActorProvider`

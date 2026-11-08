@@ -12,6 +12,8 @@ agent_description: "Compares Maybe of a scalar with nullable transport for optio
 ---
 # Recipe 14 — Optional fields in request DTOs: `Maybe<TScalar>` vs nullable transport
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Mediator`, `Trellis.Primitives`.
+
 ## Contents
 
 - [Pattern A — scalar `Maybe<T>` directly on the DTO](#pattern-a--scalar-maybet-directly-on-the-dto)

@@ -12,6 +12,8 @@ agent_description: "Shows orchestrating several related aggregates and failing l
 ---
 # Recipe 22 — Multi-aggregate orchestration: fail-loud on missing related aggregates
 
+**Requires:** `Trellis.Core`, plus `Trellis.Mediator`.
+
 ## Contents
 
 - Problem

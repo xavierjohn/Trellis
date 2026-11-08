@@ -12,6 +12,8 @@ agent_description: "Shows integration tests for a BackgroundService with WorkerH
 ---
 # Recipe 26 — Test a `BackgroundService` with `WorkerHarness<TWorker>`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Http.Abstractions`, `Trellis.Mediator`, `Trellis.Testing.Worker`.
+
 ## Contents
 
 - Problem

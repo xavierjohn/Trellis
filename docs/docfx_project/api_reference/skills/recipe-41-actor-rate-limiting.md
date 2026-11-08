@@ -12,6 +12,8 @@ agent_description: "Shows actor-aware ASP.NET rate limiting that partitions by c
 ---
 # Recipe 41 — Actor-aware rate limiting without loading permissions
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Authorization`, `Trellis.ServiceDefaults`, `Trellis.Testing`.
+
 ## Contents
 
 - [Middleware order and cost](#middleware-order-and-cost)

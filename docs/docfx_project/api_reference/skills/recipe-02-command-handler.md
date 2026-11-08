@@ -12,6 +12,8 @@ agent_description: "Shows a command handler with FluentValidation and EF Core pe
 ---
 # Recipe 2 — Command + handler + FluentValidation + EF persistence
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Authorization`, `Trellis.EntityFrameworkCore`, `Trellis.FluentValidation`, `Trellis.Mediator`, `Trellis.Mediator.FluentValidation`, `Trellis.Primitives`.
+
 ## Contents
 
 - Problem

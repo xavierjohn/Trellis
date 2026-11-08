@@ -12,6 +12,8 @@ agent_description: "Shows computed pagination with validated, query-bound contin
 ---
 # Recipe 40 — Computed pagination with validated query-bound continuation state
 
+**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.Primitives`.
+
 ## Contents
 
 - [Translated EF Core spherical-distance path](#translated-ef-core-spherical-distance-path)

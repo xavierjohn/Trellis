@@ -12,6 +12,8 @@ agent_description: "Covers HttpClient result safety and optional reads where a 4
 ---
 # Recipe 19 — HTTP client result safety and optional reads
 
+**Requires:** `Trellis.Core`, plus `Trellis.Http`.
+
 **Problem.** Call an upstream HTTP resource safely, preserving non-success status codes as Trellis errors and treating a missing optional resource as `Maybe.None`.
 
 ```csharp

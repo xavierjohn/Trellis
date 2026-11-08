@@ -12,6 +12,8 @@ agent_description: "Shows custom domain events where OccurredAt is the only time
 ---
 # Recipe 17 — Defining custom domain events: `OccurredAt` is the only timestamp
 
+**Requires:** `Trellis.Core`, plus `Trellis.Authorization`.
+
 **Problem.** You're modeling an order workflow and reach for a domain event:
 
 ```csharp

@@ -12,6 +12,8 @@ agent_description: "Contrasts fail-loud and Result-track rehydration of entities
 ---
 # Recipe 30 — Rehydrating entities from persistence: fail-loud vs Result-track
 
+**Requires:** `Trellis.Core` only.
+
 ## Contents
 
 - [Pattern A — fail-loud rehydration (the 90% case)](#pattern-a--fail-loud-rehydration-the-90-case)

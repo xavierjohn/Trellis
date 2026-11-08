@@ -12,6 +12,8 @@ agent_description: "Maps primitive DTO fields to value objects in a command with
 ---
 # Recipe 18 — DTO primitives to value-object command: no test-only `Unwrap()`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Primitives`.
+
 ## Contents
 
 - Problem

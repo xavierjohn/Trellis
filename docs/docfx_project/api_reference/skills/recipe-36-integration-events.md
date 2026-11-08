@@ -12,6 +12,8 @@ agent_description: "Shows translating a domain event into a stable integration e
 ---
 # Recipe 36 — Translating a domain event into an integration event
 
+**Requires:** `Trellis.Core`, plus `Trellis.Mediator`, `Trellis.ServiceDefaults`.
+
 **Problem.** You want to publish that an order was placed to *other* services, but your `OrderPlaced` domain event carries internal value objects (`OrderId`, `CustomerEmail`, `Money`). Relaying it as-is couples external consumers to your domain model, and every refactor becomes a breaking wire change.
 
 **Fix.** Keep the domain event internal and publish a deliberately-shaped `IIntegrationEvent` translated from it. The translator is an ordinary domain-event handler that adds to `IIntegrationEventCollector`; the outbox relay stages the integration event durably and later hands it to `IIntegrationEventPublisher`.

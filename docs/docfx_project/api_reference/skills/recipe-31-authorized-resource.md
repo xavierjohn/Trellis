@@ -12,6 +12,8 @@ agent_description: "Shows IAuthorizedResource so a command authorizes and mutate
 ---
 # Recipe 31 — Avoid duplicate load with `IAuthorizedResource<TCommand, TResource>`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Authorization`, `Trellis.Mediator`.
+
 ## Contents
 
 - Problem

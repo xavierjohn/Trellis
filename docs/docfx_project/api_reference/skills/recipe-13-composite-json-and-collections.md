@@ -12,6 +12,8 @@ agent_description: "Covers a composite value object's JSON wire shape, owned col
 ---
 # Recipe 13 part 2 — Composite value objects: JSON wire shape, owned collections and DTO mapping
 
+**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.Primitives`.
+
 ## Contents
 
 - [Composite value object JSON wire shape](#composite-value-object-json-wire-shape)

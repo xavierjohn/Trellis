@@ -12,6 +12,8 @@ agent_description: "Shows the IETF Idempotency-Key middleware with UseTrellisIde
 ---
 # Recipe 29 — IETF `Idempotency-Key` middleware on POST / PATCH with `UseTrellisIdempotency`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.ServiceDefaults`.
+
 **Problem.** A client retries a `POST /payments` after a network hiccup. The original request already created the payment; the retry must return the same `201 Created` payload — not a second `201` (double-charge), and not a `400 Bad Request` because the second attempt now violates a uniqueness rule. The IETF [`draft-ietf-httpapi-idempotency-key-header`](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/) names the header (`Idempotency-Key`) and the contract: Trellis stores the first response under `(scope, parsed key)` with its request fingerprint, replays it on a matching-fingerprint retry, rejects fingerprint mismatches with `MismatchStatusCode` (default `422 Unprocessable Entity`), and serialises matching concurrent in-flight retries with `409 Conflict` + `Retry-After`. Doing this by hand per endpoint scatters request buffering, response capture, scope/tenant isolation, and store-side CAS across the codebase.
 
 **Solution.** `Trellis.Asp.Idempotency.IdempotencyMiddleware` (opt-in via the `[Idempotent]` endpoint attribute) does the contract end-to-end. The middleware is a no-op on endpoints that do not carry the attribute and on methods outside the configured set (`POST` and `PATCH` by default).

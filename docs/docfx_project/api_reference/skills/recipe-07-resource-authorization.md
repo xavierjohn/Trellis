@@ -12,6 +12,8 @@ agent_description: "Covers IActorProvider, IAuthorize and resource-based authori
 ---
 # Recipe 7 — Authorization: `IActorProvider` + `IAuthorize` + resource-based auth
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Authorization`, `Trellis.Http.Abstractions`, `Trellis.Mediator`, `Trellis.Primitives`, `Trellis.ServiceDefaults`, and `Trellis.Microservices.AspNetCore` (published from the Trellis.Microservices repository) for Path B.
+
 ## Contents
 
 - Problem

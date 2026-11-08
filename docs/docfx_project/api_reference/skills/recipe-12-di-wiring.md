@@ -12,6 +12,8 @@ agent_description: "Shows the AddTrellis builder composition root: module order 
 ---
 # Recipe 12 — DI wiring playbook: `AddTrellis` composition builder
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.ServiceDefaults`.
+
 **Problem.** Compose Trellis service modules in the correct order so behaviors stack properly without forcing simple apps to install every package.
 
 **Preferred: tiered builder.** Use `Trellis.ServiceDefaults` from the API/composition root. The builder records intent first, then applies modules in the canonical order. `UseEntityFrameworkUnitOfWork<TContext>()`, when selected, is always applied last so `TransactionalCommandBehavior<,>` lands innermost.

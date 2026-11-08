@@ -12,6 +12,8 @@ agent_description: "Shows authorization against a related resource several navig
 ---
 # Recipe 24 — Indirect (multi-hop) resource authorization
 
+**Requires:** `Trellis.Core`, plus `Trellis.Authorization`, `Trellis.Mediator`.
+
 ## Contents
 
 - [Cricket fan-out — end to end](#cricket-fan-out--end-to-end)

@@ -12,6 +12,8 @@ agent_description: "Shows a composite value object's domain model, typed factori
 ---
 # Recipe 13 — Composite value object end-to-end (Domain + API JSON binding + EF Core ownership)
 
+**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.Primitives`.
+
 ## Contents
 
 - [Composite value object domain and persistence contract](#composite-value-object-domain-and-persistence-contract)

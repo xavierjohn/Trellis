@@ -12,6 +12,8 @@ agent_description: "Explains when a mutating endpoint requires If-Match and how 
 ---
 # Recipe 23 — Concurrency control on aggregate-mutating endpoints: when to require `If-Match`
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.Http.Abstractions`.
+
 **Problem.** RFC 9110 §13.1.1 lets clients send `If-Match: "etag"` on unsafe methods to detect stale-read race conditions: if the resource's current ETag doesn't match, the server returns `412 Precondition Failed` instead of overwriting concurrent changes. For mutating handlers, the framework provides `ETagHelper.ParseIfMatch(request)` to extract the typed `EntityTagValue[]` from the incoming `If-Match` header, plus the `Result<T>.OptionalETag(...)` / `RequireETag(...)` extensions (and their `*Async` overloads) that evaluate the precondition at the read-modify-write boundary inside the handler chain. (`opts.WithETag(...).EvaluatePreconditions()` on the response builder is a different feature — it only runs on `GET` / `HEAD` for `If-None-Match` → `304` and `If-Match` → `412` on safe-method reads; it is **not** the mutation hook.) The decision question: which mutating endpoints actually need this?
 
 A blanket "require `If-Match` on every mutation" rule is wrong. **Not requiring a header is different from ignoring a supplied header.** RFC 9110 §§13.1.1 and 13.2.1 require eligible supplied preconditions to be evaluated before the action; a false `If-Match` must not perform the mutation. Domain transition guards do not replace this HTTP check. Use `OptionalETag` when unconditional callers are allowed and `RequireETag` when the endpoint requires a precondition:

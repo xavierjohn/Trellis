@@ -12,6 +12,8 @@ agent_description: "Maps Maybe and nullable value objects with EF Core, includin
 ---
 # Recipe 8 — EF Core: `MaybePropertyMapping` for nullable value objects
 
+**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.Testing`.
+
 ## Contents
 
 - Problem

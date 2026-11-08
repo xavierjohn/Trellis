@@ -12,6 +12,8 @@ agent_description: "Shows idempotent inserts with TryInsertUniqueAsync on a uniq
 ---
 # Recipe 27 — Idempotent inserts on a unique constraint with `TryInsertUniqueAsync`
 
+**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`.
+
 **Problem.** A worker (or any caller) processes events that may be redelivered. It must record "I handled event X for destination Y" exactly once. A `(EventId, DestinationId)` unique index in the database is the source of truth — the second delivery should silently no-op, not crash, not double-process. Doing this with `Any(...)` + `Add` + `SaveChangesAsync` is a TOCTOU race: two concurrent deliveries both see "not present", both `Add`, one wins and the loser throws `DbUpdateException`. Catching `DbUpdateException` and string-matching on the inner exception's message is provider-specific (SQL Server says one thing, PostgreSQL another, SQLite a third) and easy to get subtly wrong.
 
 **Solution.** `DbContext.TryInsertUniqueAsync(entity, ct)` (from `Trellis.EntityFrameworkCore.DbContextIdempotencyExtensions`) adds the entity, calls `SaveChangesAsync`, and converts a provider-level unique-constraint violation into `Result.Fail(new Error.Conflict(Resource: null, Code: FaultCodes.DuplicateKey))` with a generic safe `Detail`. Constraint identity (`ConstraintName`, `ConstraintTableName`) is extracted on a best-effort basis and attached to the `Error.Conflict` payload for structured logging. All other failures — concurrency, foreign-key, cancellation, connection errors — propagate to the caller so retry policies and global handlers see them. The helper requires a clean `DbContext` (no pending changes) so a duplicate-key violation can be unambiguously attributed to the entity being inserted.

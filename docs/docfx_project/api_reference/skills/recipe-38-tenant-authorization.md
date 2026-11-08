@@ -12,6 +12,8 @@ agent_description: "Shows tenant-scoped resource authorization with a typed acto
 ---
 # Recipe 38 — Tenant-scoped resource authorization with a typed actor attribute
 
+**Requires:** `Trellis.Core`, plus `Trellis.Authorization`, `Trellis.Mediator`.
+
 **Problem.** A multi-tenant service must reject any command whose target row belongs to a different tenant than the caller. The check is the same in every command — read the tenant from the actor's claim, compare it to the resource's tenant — so it gets copy-pasted, and each copy re-does the `actor.GetAttribute("tid")` string lookup plus a manual `TenantId.TryCreate(...)`. A shared base class is tempting, but tenant isolation is **policy**, not configuration: a base type either rigidly assumes one scope shape or grows so many hooks it saves nothing, and it hides a security decision inside a hierarchy. Keep the rule explicit per command; remove only the parsing ceremony.
 
 ```csharp

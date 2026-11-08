@@ -12,6 +12,8 @@ agent_description: "Shows the transactional outbox for crash-safe domain events.
 ---
 # Recipe 35 — Transactional outbox for crash-safe domain events
 
+**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.EntityFrameworkCore.Outbox`, `Trellis.ServiceDefaults`.
+
 **Problem.** Your command raises a domain event and commits, but the in-pipeline `UseDomainEvents()` dispatch runs *after* the transaction. If the process crashes between the commit and the dispatch, the event is lost — the order is saved but `OrderPlaced` never reaches its handler.
 
 **Fix.** Install `Trellis.EntityFrameworkCore.Outbox`. The capture interceptor writes one row per uncommitted event into `TrellisOutboxMessages` in the **same** transaction as the aggregate, and a background relay re-dispatches them after the commit. Wire three things:

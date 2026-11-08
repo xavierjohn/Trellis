@@ -12,6 +12,8 @@ agent_description: "Explains Add staging versus SaveAsync in handlers and commit
 ---
 # Recipe 16 — Unit of work in handlers: `Add` staging vs immediate `SaveAsync`
 
+**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.FluentValidation`, `Trellis.Mediator`, `Trellis.Mediator.FluentValidation`, `Trellis.ServiceDefaults`, `Trellis.Testing`.
+
 ## Contents
 
 - [Handler staging and commit ownership](#handler-staging-and-commit-ownership)

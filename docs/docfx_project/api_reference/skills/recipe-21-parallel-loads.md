@@ -12,6 +12,8 @@ agent_description: "Shows Result.ParallelAsync and WhenAllAsync for independent 
 ---
 # Recipe 21 — Parallel independent loads in handlers: `Result.ParallelAsync` + `WhenAllAsync`
 
+**Requires:** `Trellis.Core` only.
+
 ## Contents
 
 - Problem

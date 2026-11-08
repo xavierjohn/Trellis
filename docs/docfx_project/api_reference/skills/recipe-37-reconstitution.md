@@ -12,6 +12,8 @@ agent_description: "Shows reconstituting an aggregate in a non-EF repository wit
 ---
 # Recipe 37 — Reconstituting an aggregate without its factory (non-EF repositories)
 
+**Requires:** `Trellis.Core`, plus `Trellis.Http.Abstractions`.
+
 ## Contents
 
 - [1. The aggregate exposes a reconstitution factory (author-owned)](#1-the-aggregate-exposes-a-reconstitution-factory-author-owned)

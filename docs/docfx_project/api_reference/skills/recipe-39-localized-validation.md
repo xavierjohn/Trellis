@@ -12,6 +12,8 @@ agent_description: "Shows rendering a validation failure in the caller's languag
 ---
 # Recipe 39 — Rendering a validation failure in the caller's language (`code` + `args`)
 
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`.
+
 ## Contents
 
 - Problem

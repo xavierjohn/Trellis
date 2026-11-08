@@ -831,6 +831,24 @@ foreach ($skill in $skillDocs) {
         Write-Host "$($skill.FullName)(1,1): error TRLDOC017: A skill longer than 100 lines (found $($skillLines.Count)) starts with a '## Contents' section listing its parts, so a partial read still shows the whole scope."
         $failed = $true
     }
+
+    # TRLDOC018 - Trellis.Core ships every recipe, but a recipe can need other packages, so each one says which in a
+    # `**Requires:**` line near the top. Every `using Trellis.<Package>;` whose namespace is a package built from this
+    # repository must be named there, so a recipe cannot quietly depend on a package it does not list.
+    $requiresLine = @($skillLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^\*\*Requires:\*\*' }) | Select-Object -First 1
+    if (-not $requiresLine) {
+        Write-Host "$($skill.FullName)(1,1): error TRLDOC018: A skill states the packages it needs in a '**Requires:**' line within its first 30 lines (for example '**Requires:** ``Trellis.Core``, plus ``Trellis.Asp``.')."
+        $failed = $true
+    }
+    else {
+        foreach ($namespace in @($skillLines | ForEach-Object { if ($_ -cmatch '^using (Trellis(?:\.\w+)+);') { $Matches[1] } } | Sort-Object -Unique)) {
+            if ((Test-Path -LiteralPath (Join-Path $RepositoryRoot "$namespace/src/$namespace.csproj")) -and
+                -not $requiresLine.Contains("``$namespace``")) {
+                Write-Host "$($skill.FullName)(1,1): error TRLDOC018: The code uses 'using $namespace;' but the Requires line does not name the package ``$namespace``."
+                $failed = $true
+            }
+        }
+    }
 }
 
 if ($failed) {
