@@ -23,7 +23,7 @@ using Trellis.Authorization;
 using Trellis.Mediator;
 
 // String-backed tenant id, sourced from the actor's "tid" claim. DocumentId and TenantDocument
-// (the loaded resource, carrying the tenant it belongs to) are your own types — see Recipe 1.
+// (the loaded resource, carrying the tenant it belongs to) are your own types — see recipe-01-crud-aggregate.
 public sealed partial class TenantId : RequiredString<TenantId>;
 
 public sealed record ArchiveDocumentCommand(DocumentId DocumentId)

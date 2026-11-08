@@ -49,7 +49,7 @@ For an ordinary failed result, `TransactionalCommandBehavior` skips its automati
 
 **Two design moves in the stock example.**
 
-- **Pure `Can*` predicate alongside the mutator.** The aggregate exposes a side-effect-free `CanReserve(qty) → Result<Trellis.Unit>` that returns the same domain error the mutator would, and a `Reserve(qty)` that internally delegates to `CanReserve` before mutating. Same shape as Recipe 9's state-machine `CanFire`+`Fire`/`FireResult` pattern, lifted from "single transition on one aggregate" to "collection of operations across many aggregates."
+- **Pure `Can*` predicate alongside the mutator.** The aggregate exposes a side-effect-free `CanReserve(qty) → Result<Trellis.Unit>` that returns the same domain error the mutator would, and a `Reserve(qty)` that internally delegates to `CanReserve` before mutating. Same shape as [Recipe 9](recipe-09-state-machine.md)'s state-machine `CanFire`+`Fire`/`FireResult` pattern, lifted from "single transition on one aggregate" to "collection of operations across many aggregates."
 - **Mutation-plan grouping for duplicate keys.** If the input collection can name the same related aggregate twice (e.g., two line items with the same `ProductId`), aggregate the duplicates into a single `(Product, totalQuantity)` plan entry before validating. Validating each line independently against unchanged stock is **not** equivalent to mutating them sequentially: two `CanReserve(3)` calls against `Stock=5` both pass, but the second `Reserve(3)` then fails. Grouping eliminates the aliasing.
 
 > ⚠️ **Per-line invariants must be enforced before grouping.** The plan step (`g.Sum(li => (long)li.Quantity)`) preserves the aggregated quantity but destroys per-line identity. If `LineItem.Quantity` could be `-4`, then a `(5, -4)` pair would group to a valid `1`, slipping a negative quantity past `CanReserve`. In Trellis services per-line invariants are typically enforced at line-item construction (value-object `Quantity : RequiredInt<Quantity>` validating `> 0`, or a private constructor + `TryCreate` factory). If your per-line invariants don't aggregate cleanly into a sum — e.g., "no single line may exceed 100 units" rather than "the total across lines must not exceed available stock" — add an explicit per-line validation pass *before* the grouping step and `Sequence` its results into Pass 1. Sum into `long`, not `int`, so valid positive quantities whose total exceeds `int.MaxValue` reach `CanReserve(long)` and return the existing `stock.insufficient` rule instead of throwing `OverflowException` inside `Sum`. `Stock` remains an `int`; `Reserve(long)` narrows the quantity only after `CanReserve` proves `0 < quantity <= Stock`.
@@ -111,7 +111,7 @@ public sealed class SubmitOrderHandler(
         if (!orderResult.TryGetValue(out var order))
             return orderResult;
 
-        // Recipe 22 preflight (presence check). Every line-item ProductId must resolve
+        // recipe-22-multi-aggregate-orchestration preflight (presence check). Every line-item ProductId must resolve
         // BEFORE the plan step, otherwise byId[g.Key] would throw KeyNotFoundException
         // and bypass the Result pipeline. SequenceAll reports every missing id.
         var productIds = order.LineItems.Select(li => li.ProductId).Distinct().ToArray();
@@ -133,7 +133,7 @@ public sealed class SubmitOrderHandler(
 
         // PASS 1 — validate every fallible domain check across every aggregate. No mutations.
         // SequenceAll accumulates every violation so the response enumerates them rather than
-        // reporting only the first; use .Sequence() for fail-fast semantics (see Recipe 20
+        // reporting only the first; use .Sequence() for fail-fast semantics (see recipe-20-fail-fast-vs-accumulating
         // for the decision criteria).
         var validation = plan
             .Select(p => p.Product.CanReserve(p.Quantity))
@@ -155,7 +155,7 @@ public sealed class SubmitOrderHandler(
 }
 ```
 
-The complete compile-checked snippet (including the time-policy examples below and the anti-pattern `WrongHandler` under `#if FALSE`) lives at `Examples/CookbookSnippets/Recipe25_TwoPassValidateThenMutate.cs` in the framework repository. `Examples/CookbookSnippets.Tests/TwoPassMutationTests.cs` exercises the stock example, clock boundary, and intra-pass guard invalidation.
+The complete compile-checked snippet (including the time-policy examples below and the anti-pattern `WrongHandler` under `#if FALSE`) lives at `Examples/CookbookSnippets/Recipe25_TwoPassValidateThenMutate.cs` in the Trellis source repository (not shipped in the NuGet package). `Examples/CookbookSnippets.Tests/TwoPassMutationTests.cs` exercises the stock example, clock boundary, and intra-pass guard invalidation.
 
 **The Pass-2-cannot-fail invariant — what makes it hold.**
 
@@ -173,7 +173,7 @@ When a later operation can still reject, propagate its result through `Bind` or 
 
 Consider a return accepted until an inclusive deadline. Preflight reads one tick before that deadline. The same clock object later returns one tick after it. Releasing stock first and then returning the order leaves released stock and its event behind when the return rejects; no thread or intervening `await` is needed.
 
-Choose the business policy explicitly. The following compile-checked examples use application-defined `ReturnWindowOrder` and `ReturnInventory` types from the snippet: the order's return method checks eligibility before changing its return timestamp or raising an event; inventory has a time-independent release guard. The order transition cannot invalidate that guard, and neither example freezes inventory.
+Choose the business policy explicitly. The following compile-checked examples use application-defined `ReturnWindowOrder` and `ReturnInventory` types from that snippet: the order's return method checks eligibility before changing its return timestamp or raising an event; inventory has a time-independent release guard. The order transition cannot invalidate that guard, and neither example freezes inventory.
 
 The two policy blocks below are manually mirrored from the compiled snippet. `TRLDOC006` checks recipe/snippet presence, not code equality; keep these blocks synchronized with the corresponding source methods.
 
@@ -221,7 +221,7 @@ The worked example uses `SequenceAll()` so the response enumerates every violati
 
 - [Recipe 9](recipe-09-state-machine.md) — single-aggregate single-transition variant of the same `Can*`+`*` shape. Recipe 25 generalizes it across many aggregates and many operations.
 - [Recipe 20](recipe-20-fail-fast-vs-accumulating.md) — the `Sequence`/`SequenceAll` choice for the validation pass.
-- [Recipe 22](recipe-22-multi-aggregate-orchestration.md) — presence preflight for *missing* related aggregates (a different failure mode from per-element invariants). The two preflights compose: Recipe 22 runs first (every required aggregate exists), then Recipe 25 (every present aggregate's invariants admit the operation).
+- [Recipe 22](recipe-22-multi-aggregate-orchestration.md) — presence preflight for *missing* related aggregates (a different failure mode from per-element invariants). The two preflights compose: [Recipe 22](recipe-22-multi-aggregate-orchestration.md) runs first (every required aggregate exists), then Recipe 25 (every present aggregate's invariants admit the operation).
 
 **Anti-pattern → fix.**
 

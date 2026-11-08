@@ -32,7 +32,7 @@ For an identity provider that genuinely needs asynchronous work, resolve
 Never use `.Result`, `.Wait()`, or blocking async calls in the partitioner.
 
 The following application-owned sample is compiled in
-`Examples/CookbookSnippets/Recipe41_ActorRateLimiting.cs`; its tests execute both paths,
+`Examples/CookbookSnippets/Recipe41_ActorRateLimiting.cs` in the Trellis source repository (not shipped in the NuGet package); its tests execute both paths,
 network fallback, authorization ordering and idempotent replay. The small two-per-minute
 budget is illustrative, not a Trellis default. Configure and validate the host's real
 authentication scheme first. This sample assumes one trusted issuer and uses `"sample"`

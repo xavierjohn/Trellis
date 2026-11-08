@@ -14,7 +14,7 @@ agent_description: "Shows handler tests with Trellis.Testing: Should().Be(...) a
 
 **Requires:** `Trellis.Core`, plus `Trellis.Authorization`, `Trellis.Primitives`, `Trellis.Testing`.
 
-**Problem.** Unit-test the `PlaceOrderHandler` from Recipe 2 using FluentAssertions extensions from `Trellis.Testing`.
+**Problem.** Unit-test the `PlaceOrderHandler` from [Recipe 2](recipe-02-command-handler.md) using FluentAssertions extensions from `Trellis.Testing`.
 
 For an actor-aware base, send the command/query through Mediator with `TestActorProvider`
 and fake business dependencies, then use the same Result assertions below. Keep the normal
@@ -26,7 +26,7 @@ Calling the public two-argument `Handle` without an authorized dispatch throws b
 business logic, and registering a test actor provider alone does not create that dispatch.
 For pipeline-free unit tests, exercise aggregates, policies, or application services
 directly rather than unsealing a handler or accessing its protected hook by reflection.
-The direct test below is for Recipe 2's ordinary handler, not an actor-aware base.
+The direct test below is for [Recipe 2](recipe-02-command-handler.md)'s ordinary handler, not an actor-aware base.
 
 ```csharp
 using FluentAssertions;

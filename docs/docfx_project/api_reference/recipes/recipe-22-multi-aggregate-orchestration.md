@@ -46,7 +46,7 @@ public sealed class ReturnOrderHandler(
 {
     public async ValueTask<Result<Order>> Handle(ReturnOrderCommand command, CancellationToken cancellationToken)
     {
-        // Repository find returns Result<T> — matches Recipe 21's repository shape;
+        // Repository find returns Result<T> — matches the repository shape in recipe-21-parallel-loads;
         // .TryGetValue extracts the success value or short-circuits on the existing Error.
         var orderResult = await orders.FindByIdAsync(command.OrderId, cancellationToken);
         if (!orderResult.TryGetValue(out var order))
@@ -71,7 +71,7 @@ public sealed class ReturnOrderHandler(
             return Result.Fail<Order>(presence.Error);
 
         // All related aggregates reachable. Preflight the per-aggregate domain
-        // invariants (Recipe 25: pure CanReleaseStock predicate paired with the
+        // invariants (recipe-25-two-pass-validate-mutate: pure CanReleaseStock predicate paired with the
         // mutating ReleaseStock) before any mutation. Releasing stock on Product
         // A and then failing on Product B's release would leave A in a partially-
         // released state that TransactionalCommandBehavior cannot roll back from
@@ -176,7 +176,7 @@ var presence = order.LineItems.Select(li => li.ProductId).Distinct()
 if (presence.IsFailure)
     return Result.Fail<Order>(presence.Error);
 
-// Preflight the per-aggregate domain invariants (Recipe 25) BEFORE any mutation.
+// Preflight the per-aggregate domain invariants (recipe-25-two-pass-validate-mutate) BEFORE any mutation.
 // Releasing stock on Product A then failing on Product B would leave A partially
 // released — TransactionalCommandBehavior cannot roll back the in-memory aggregate
 // graph within the request. Never mutate-and-bail in the loop.

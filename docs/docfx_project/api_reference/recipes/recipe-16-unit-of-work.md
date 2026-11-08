@@ -300,7 +300,7 @@ For post-commit events from behavior-added aggregates, select
 `UseTrackedAggregateDomainEvents(...)`: response-shape dispatch discovers only returned
 aggregates. Outbox capture sees behavior-added aggregates in the same owning save.
 
-> **Compiled and behavior-pinned.** `Examples/CookbookSnippets/Recipe16_UnitOfWork.cs`
+> **Compiled and behavior-pinned.** `Examples/CookbookSnippets/Recipe16_UnitOfWork.cs` in the Trellis source repository (not shipped in the NuGet package)
 > contains the complete model, recorder, behavior, adapters, context, and registration.
 > `Examples/CookbookSnippets.Tests/Recipe16AuditBehaviorTests.cs` uses real SQLite to
 > prove same-save atomicity, rollback, nested checkpoints, outcome handling, and
@@ -329,7 +329,7 @@ sealed class Orders : FakeRepository<Order, OrderId>, IOrderRepository;
 ```
 
 An application may substitute its own recorder double through the same interface.
-`Examples/CookbookSnippets.Tests/Recipe16AuditHandlerTests.cs` also invokes the real
+`Examples/CookbookSnippets.Tests/Recipe16AuditHandlerTests.cs` (same repository) also invokes the real
 behavior around a real handler without a container to verify staging, cleanup on all
 exit paths, and preservation of original exceptions. Fake repositories are immediately
 visible and do not prove transaction atomicity; keep the SQLite tests for that boundary.

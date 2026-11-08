@@ -14,7 +14,7 @@ agent_description: "Shows an MVC controller action that returns a Trellis Result
 
 **Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.Mediator`.
 
-**Problem.** Same payload as Recipe 4 but with a typed MVC `ActionResult<OrderDto>`.
+**Problem.** Map a `Result<Order>` to the same HTTP response as [Recipe 4](recipe-04-minimal-api-endpoint.md) (strong ETag, `Last-Modified`, Problem Details on failure, `304` on a matching precondition), but from an MVC controller that returns a typed `ActionResult<OrderDto>`.
 
 ```csharp
 using Microsoft.AspNetCore.Mvc;
@@ -46,7 +46,7 @@ public sealed record OrderDto(Guid Id, decimal Amount, string Currency);
 
 **What it shows.** `.AsActionResult<TBody>()` projects an `IResult` into a typed `ActionResult<TBody>`, so MVC clients still get OpenAPI/Swagger-friendly typed responses while the response itself executes through the same `IResult` pipeline as Minimal API.
 
-The same adapter supports the Created/Updated outcomes in Recipe 4. For
+The same adapter supports the Created/Updated outcomes of the PUT upsert in [Recipe 4](recipe-04-minimal-api-endpoint.md). For
 `Result<WriteOutcome<Order>>`, project the body with `ToHttpResponse(...)` and chain
 `.AsActionResult<OrderDto>()`; route/action location fallbacks run against the Order,
 not the projected DTO. A nonblank outcome Location takes precedence.

@@ -43,7 +43,7 @@ builder.Services.AddTrellis(options => options
 ```
 
 ```csharp
-// Command and loader are unchanged from Recipe 7.
+// Command and loader are unchanged from recipe-07-resource-authorization.
 public sealed record GetIncidentQuery(IncidentId Id)
     : IQuery<Result<IncidentDto>>,
       IAuthorizeResource<Incident>,

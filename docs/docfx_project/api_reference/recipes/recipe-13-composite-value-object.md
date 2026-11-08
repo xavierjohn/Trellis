@@ -47,7 +47,7 @@ Use a string-backed scalar value object for each component and write **both** co
 >
 > Keep `Street, City, State, PostalCode, Country` aligned with `street, city, state, postalCode, country`. Keep the typed overload, constructor assignments, and equality components in that order too. Named arguments at a handwritten call site do not change the converter's positional call. JSON members may arrive in any order: they are looked up by JSON name before invocation. After a refactor, check every field with distinct values in a JSON round trip.
 
-The distinct-value serialization and JSON member-order assertions in `Examples/CookbookSnippets.Tests/Recipe13FactoryTests.cs` demonstrate this check.
+The distinct-value serialization and JSON member-order assertions in `Examples/CookbookSnippets.Tests/Recipe13FactoryTests.cs` in the Trellis source repository (not shipped in the NuGet package) demonstrate this check.
 
 The converter needs exactly one unambiguous primitive-prefix `TryCreate` returning `Result<ShippingAddress>`; trailing parameters must be optional. The typed overload does not match that primitive prefix and is not called directly by the converter.
 
@@ -141,7 +141,7 @@ For JSON calls, trailing optional parameters receive their declared defaults (`f
 | Aggregate materialization | EF cannot bind an owned navigation in a constructor. The separate `Customer(CustomerId id)` constructor below provides a materialization path. |
 | JSON validation | `[JsonConverter(typeof(CompositeValueObjectJsonConverter<ShippingAddress>))]` selects the primitive factory. Without the converter, JSON binding does not enforce this `TryCreate` contract. |
 
-**EF-free domain alternative.** `[OwnedEntity]` lives in `Trellis.EntityFrameworkCore`, so applying it introduces that dependency. To keep the value object EF-free, omit the attribute and write a private parameterless constructor yourself, as Recipe 1's custom `Money` does. Convention-based ownership still works. Referencing the package analyzer-only (`OutputItemType="Analyzer" ReferenceOutputAssembly="false"`) supplies generators but does **not** make a layer applying `[OwnedEntity]` EF-free. See the [EF storage and migration guidance](../trellis-api-efcore.md#maybet-storage-owned-types-and-migrations).
+**EF-free domain alternative.** `[OwnedEntity]` lives in `Trellis.EntityFrameworkCore`, so applying it introduces that dependency. To keep the value object EF-free, omit the attribute and write a private parameterless constructor yourself, as [Recipe 1](recipe-01-crud-aggregate.md)'s custom `Money` does. Convention-based ownership still works. Referencing the package analyzer-only (`OutputItemType="Analyzer" ReferenceOutputAssembly="false"`) supplies generators but does **not** make a layer applying `[OwnedEntity]` EF-free. See the [EF storage and migration guidance](../trellis-api-efcore.md#maybet-storage-owned-types-and-migrations).
 
 In the same namespace, add the owning aggregate and context:
 

@@ -61,7 +61,7 @@ public sealed class CancelOrderHandler(IAuthorizedResource<CancelOrderCommand, O
 }
 ```
 
-**Command and loader are unchanged.** Existing `IAuthorizeResource<Order>` + `IIdentifyResource<Order, OrderId>` + `SharedResourceLoaderById<Order, OrderId>` registrations stay exactly as in Recipe 7. The accessor is **auto-registered** by `AddResourceAuthorization(...)` for every closed `(TMessage, TResource)` pair the scan sees, and by the explicit `AddResourceAuthorization<TMessage, TResource, TResponse>()` / `AddRelatedResourceAuthorization<...>()` helpers for AOT consumers. No additional composition-root call is required.
+**Command and loader are unchanged.** Existing `IAuthorizeResource<Order>` + `IIdentifyResource<Order, OrderId>` + `SharedResourceLoaderById<Order, OrderId>` registrations stay exactly as in [Recipe 7](recipe-07-resource-authorization.md). The accessor is **auto-registered** by `AddResourceAuthorization(...)` for every closed `(TMessage, TResource)` pair the scan sees, and by the explicit `AddResourceAuthorization<TMessage, TResource, TResponse>()` / `AddRelatedResourceAuthorization<...>()` helpers for AOT consumers. No additional composition-root call is required.
 
 **Actor/resource parameter alternative.** When business logic also needs the checked
 actor, the accessor constructor can be replaced by a parameterless framework base:
@@ -132,6 +132,6 @@ In those cases the loader's job is "decide who owns the resource for the authori
 
 For optional reads use `TryGetResource(out var resource)` which returns `false` instead of throwing.
 
-**What it shows.** Eliminates the duplicate load that motivated the v4 accessor. For non-EF stores (CosmosDB, Dapper, HTTP-backed loaders) this is a measurable perf win — half the I/O on every authorized command. For EF it is also a win (skips the second LINQ query — the identity map only handles entity-instance deduplication, not the SQL roundtrip). The framework guarantee is identity, not mutation-readiness — the cookbook caution above is the user's responsibility.
+**What it shows.** Eliminates the duplicate load that motivated the accessor. For non-EF stores (CosmosDB, Dapper, HTTP-backed loaders) this is a measurable perf win — half the I/O on every authorized command. For EF it is also a win (skips the second LINQ query — the identity map only handles entity-instance deduplication, not the SQL roundtrip). The framework guarantee is identity, not mutation-readiness — the cookbook caution above is the user's responsibility.
 
 **Related recipes.** [Recipe 7](recipe-07-resource-authorization.md) for the authorization model itself; [Recipe 24](recipe-24-indirect-authorization.md) for the via case the accessor composes with.

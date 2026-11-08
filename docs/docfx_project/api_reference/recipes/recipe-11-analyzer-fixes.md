@@ -16,7 +16,7 @@ agent_description: "Pairs each analyzer warning with a WRONG and a FIX example. 
 
 The anti-pattern catalog is its own file, so that AI sessions and human readers can load it independently when debugging an analyzer warning. See **[`trellis-api-anti-patterns.md`](../trellis-api-anti-patterns.md)** <!-- trellis-doc-lint: allow-bare-cross-doc-link --> for each common analyzer trigger and its idiomatic Trellis fix (TRLS001, TRLS003, TRLS010, TRLS016, TRLS018, TRLS019).
 
-If you are looking up a specific analyzer by ID, the standalone file is faster than scanning this cookbook. The cookbook recipes still link to the relevant sections of that file where they apply.
+If you are looking up a specific analyzer by ID, the standalone file is faster than scanning this recipe. The other recipes still link to the relevant sections of that file where they apply.
 
 For a fresh GUID used as an error/violation reason code, follow [TRLS067's WRONG/FIX shape](../trellis-api-anti-patterns.md#trls067--fresh-guid-derived-reason-code): retain a stable category and move the incident identifier to metadata. Other dynamic application codes remain legal.
 

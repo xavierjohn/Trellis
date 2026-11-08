@@ -860,6 +860,36 @@ foreach ($recipeDoc in $recipeDocs) {
             $failed = $true
         }
     }
+
+    # TRLDOC019 - a recipe is loaded on demand, and an agent that holds only this one has no way to resolve "Recipe 4": the
+    # skill name is `recipe-04-<slug>`, not "Recipe 4". So a mention of another recipe in prose is a markdown link to its
+    # file, and one in a code comment names its file stem. The recipe's own number, its heading, and the separate
+    # Microservices cookbook are exempt.
+    $ownNumber = [int] [regex]::Match($recipeDoc.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
+    $insideFence = $false
+
+    for ($lineIndex = 0; $lineIndex -lt $recipeDocLines.Count; $lineIndex++) {
+        $lineText = $recipeDocLines[$lineIndex].TrimStart([char] 0xFEFF)
+
+        if ($lineText -match '^\s*(>\s*)?```') {
+            $insideFence = -not $insideFence
+            continue
+        }
+
+        if ($lineText -match '^#\s+Recipe\s+\d+' -or $lineText -match 'microservices cookbook') {
+            continue
+        }
+
+        $bareReference = if ($insideFence) { 'Recipes?\s+(?<number>\d+)' } else { '(?<![\[`])Recipes?\s+(?<number>\d+)' }
+
+        foreach ($referenceMatch in [regex]::Matches($lineText, $bareReference)) {
+            if ([int] $referenceMatch.Groups['number'].Value -ne $ownNumber) {
+                $where = if ($insideFence) { 'name the recipe file stem (for example recipe-02-command-handler)' } else { 'link it, as [Recipe N](recipe-NN-name.md)' }
+                Write-Host "$($recipeDoc.FullName)($($lineIndex + 1),1): error TRLDOC019: '$($referenceMatch.Value)' is a bare recipe number that an agent holding only this recipe cannot resolve; $where, and say in a clause what the other recipe supplies."
+                $failed = $true
+            }
+        }
+    }
 }
 
 if ($failed) {

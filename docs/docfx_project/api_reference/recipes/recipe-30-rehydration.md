@@ -20,7 +20,7 @@ agent_description: "Contrasts fail-loud and Result-track rehydration of entities
 - [Pattern B — Result-track end-to-end (the legacy-data case)](#pattern-b--result-track-end-to-end-the-legacy-data-case)
 - [Choosing between A and B](#choosing-between-a-and-b)
 
-**Problem.** A repository loads a row from the database and needs to reconstruct a domain entity whose value-object fields each have `TryCreate(...) → Result<TVO>`. Recipe 18 covers the inbound direction (request DTO → command, with `Result.Combine + Map`). The inverse direction — DB row → entity — has a different failure semantic:
+**Problem.** A repository loads a row from the database and needs to reconstruct a domain entity whose value-object fields each have `TryCreate(...) → Result<TVO>`. [Recipe 18](recipe-18-dto-to-value-object.md) covers the inbound direction (request DTO → command, with `Result.Combine + Map`). The inverse direction — DB row → entity — has a different failure semantic:
 
 - **Inbound** is *untrusted* input — every `TryCreate` failure is a legitimate validation response and must surface as `Error.InvalidInput` on the Result track so the caller can fix the request.
 - **Outbound** is *trusted* input — the row was written through the same `TryCreate` chain (write-path validation). A `TryCreate` failure on read means the row predates the validation rule (legacy data), the rule changed since (migration drift), or the database was tampered with — none of which the *application caller* can fix.
@@ -111,7 +111,7 @@ If you don't have one clear answer for a given aggregate, default to **Pattern A
 ```csharp
 // ❌ Wrong — Trellis.Testing.Unwrap() in production code. Mixes test and production seams;
 //   harder to grep for than a named-verb extraction; the test-only contract is documented
-//   at Recipe 18.
+//   at recipe-18-dto-to-value-object.
 var user = User.TryCreate(
     UserId.TryCreate(row.Id).Unwrap(),
     EmailAddress.TryCreate(row.Email).Unwrap()).Unwrap();

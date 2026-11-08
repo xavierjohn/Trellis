@@ -34,8 +34,8 @@ The naive workaround is a per-handler ownership guard (e.g. cricket's old `Match
 
 | Scenario | Recipe |
 |---|---|
-| **Owner-by-id check on the command's resource (the 90% case)** | `IAuthorizeResource<T>` + `IIdentifyResource<T, TId>` → framework reuses `SharedResourceLoaderById<T, TId>` (Recipe 7) |
-| Authorize against the resource the command identifies (custom loader) | `IAuthorizeResource<T>` + custom `IResourceLoader<TMessage, T>` (Recipe 7) |
+| **Owner-by-id check on the command's resource (the 90% case)** | `IAuthorizeResource<T>` + `IIdentifyResource<T, TId>` → framework reuses `SharedResourceLoaderById<T, TId>` ([Recipe 7](recipe-07-resource-authorization.md)) |
+| Authorize against the resource the command identifies (custom loader) | `IAuthorizeResource<T>` + custom `IResourceLoader<TMessage, T>` ([Recipe 7](recipe-07-resource-authorization.md)) |
 | Authorize against a single related resource one FK hop away | `IAuthorizeResourceVia<TOwner>` + `IIdentifyRelatedResource<TOwner, TOwnerId>` on the leaf |
 | Authorize against a set of related resources (cricket fan-out, OR-ownership) | `IAuthorizeResourceVia<TOwner>` + `IIdentifyRelatedResources<TOwner, TOwnerId>` on the leaf |
 | Authorize against a resource at the end of a chain (`Match → Team → Tournament`) | `IAuthorizeResourceVia<TFinalOwner>` + `IIdentifyRelatedResource<,>` declared on each intermediate entity |

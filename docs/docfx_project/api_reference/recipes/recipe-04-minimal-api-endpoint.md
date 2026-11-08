@@ -23,7 +23,7 @@ using Trellis.Asp;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddTrellisAspWithScalarValidation();  // error → status mapping + scalar-value validation
-builder.Services.AddOrdersFeature();       // from Recipe 2
+builder.Services.AddOrdersFeature();       // from recipe-02-command-handler
 
 var app = builder.Build();
 

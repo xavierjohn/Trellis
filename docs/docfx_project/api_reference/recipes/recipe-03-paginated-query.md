@@ -84,7 +84,7 @@ parameter.
 [`Trellis.Asp`](../trellis-api-asp.md#httpcontextpaginationextensions), so the same endpoint
 expression works without a versioning package. In versioned hosts, enable
 [`UseVersionedPageUrls`](../trellis-api-asp-apiversioning.md#trellisaspoptionsapiversioningextensions)
-once through `AddTrellisAsp` / `UseAsp` as in Recipe 12. Identically routed namespace-versioned
+once through `AddTrellisAsp` / `UseAsp` as in [Recipe 12](recipe-12-di-wiring.md). Identically routed namespace-versioned
 list actions may share a name: the enabled policy resolves self-pagination against the active
 endpoint, preserving next/previous versions independently of registration order.
 
