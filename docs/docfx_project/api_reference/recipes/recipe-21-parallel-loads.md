@@ -23,7 +23,7 @@ agent_description: "Shows Result.ParallelAsync and WhenAllAsync for independent 
 
 **Problem.** A handler needs two (or more) loads that are *genuinely* independent — a customer record from one upstream service, a product record from another; an HTTP call to authn plus a DB read for profile; or two reads against two distinct EF Core `DbContext` instances. Awaiting each load before starting the next serializes their latency. Starting both before awaiting either allows concurrency. `Task.WhenAll` preserves their `Result<T>` values but does not combine them into one result; the tuple `.WhenAllAsync()` extension supplies that fold.
 
-`Result.ParallelAsync(...)` is the framework's opinionated entry point: factory-takes-no-args, eagerly invokes each factory so both tasks actually run concurrently, returns a tuple of `Task<Result<T>>` that the matching `.WhenAllAsync()` extension awaits with `Task.WhenAll` and folds via `Result.Combine` into a single `Result<(T1, T2, …)>`. Failures combine through `Error.Combine`, so two `Error.InvalidInput` failures merge their fields, heterogeneous failures become an `Error.Aggregate`.
+`Result.ParallelAsync(...)` is the framework's opinionated entry point: factory-takes-no-args, eagerly invokes each factory so both tasks actually run concurrently, returns a tuple of `Task<Result<T>>` that the matching `.WhenAllAsync()` extension awaits with `Task.WhenAll` and folds via `Result.Combine` into a single `Result<(T1, T2, …)>`. Failures combine through `Error.Combine`, so two `Error.InvalidInput` failures merge their fields, heterogeneous failures become an `Error.Aggregate` (a lone failure is returned unchanged).
 
 > 🛑 **Danger — `Result.ParallelAsync` against repositories that share a `DbContext` instance will race and throw.** The hard rule, independent of DI: **never start a second operation on a `DbContext` before the first one has completed.** EF Core's `DbContext` is documented as not thread-safe; the second concurrent operation throws `InvalidOperationException: A second operation was started on this context instance before a previous operation completed.` The typical Trellis EF wiring triggers this case by construction: `services.AddDbContext<TContext>(...)` registers the context with its default scoped lifetime (this is the default of the parameterless overload — `AddDbContext<TContext>(..., ServiceLifetime)` can override it), and `services.AddTrellisUnitOfWork<TContext>()` registers `IUnitOfWork` as scoped and consumes the scoped `TContext`. So **every repository resolved from the same request scope shares one `DbContext` instance**, and parallelising two repository reads parallelises two operations on that one context. Keep them sequential — see "When NOT to use it" below. `Result.ParallelAsync` is for genuinely cross-resource concurrency (HTTP + DB, two distinct upstream services, factory-created independent contexts), not for two repository reads against the same store.
 
@@ -62,7 +62,7 @@ public sealed class CheckoutHandler(
 - `.WhenAllAsync()` on the tuple is the matching extension. Without it you still have a tuple of `Task<Result<T>>` — which isn't awaitable on its own; you'd have to await each task individually and combine the results by hand. `.WhenAllAsync()` is the one-line fold.
 - The combined `Result<(T1, T2)>` flows back into the standard ROP chain (`BindAsync`, `MapAsync`, `TapAsync`) — no `match` / `if (success)` branches.
 - `Result.ParallelAsync` ships overloads for 2–9 factories. For dynamic collections, `TraverseAsync` is a **sequential, fail-fast alternative**, not parallel fan-in; `TraverseAllAsync` is also sequential but accumulates failures ([Recipe 20](recipe-20-fail-fast-vs-accumulating.md)). If collection loads need concurrency, use an explicitly bounded concurrency design over independent resources and deliberately choose failure aggregation and cancellation behavior.
-- Task faults and cancellation propagate from `.WhenAllAsync()` after all supplied tasks complete; they are not converted to Result failures. A factory that throws synchronously escapes from `ParallelAsync` immediately, so later factories are not invoked.
+- Task faults and cancellation propagate from `.WhenAllAsync()` after all supplied tasks complete; they are not converted to Result failures. A factory that throws synchronously escapes from `ParallelAsync` immediately, so later factories are not invoked, and tasks already started by earlier factories keep running, neither awaited nor canceled; keep factories exception-free or give each task its own cancellation.
 
 **When NOT to use it.**
 
@@ -77,7 +77,8 @@ public sealed class CheckoutHandler(
 // Looks "obviously parallelisable" but races the underlying EF context. `Task.WhenAll`
 // waits for both returned tasks to complete before surfacing a task fault. The failure mode
 // is an `InvalidOperationException("A second operation was started on this context...")`
-// thrown by EF Core when the second concurrent operation hits the shared connection.
+// thrown by EF Core's concurrency check when a second operation starts on a context instance
+// that is still busy.
 // Reproduction is timing-dependent: the throw is reliable under contention but can be
 // missed on a near-instant warm cache, which lulls authors into thinking it's correct.
 public ValueTask<Result<DraftOrderId>> Handle(CreateDraftOrderCommand command, CancellationToken cancellationToken) =>
@@ -120,11 +121,16 @@ public async ValueTask<Result<DraftOrderId>> HandleAccumulating(CreateDraftOrder
 // call and the in-memory cache have no shared state; ParallelAsync is safe here.
 //
 // For two EF reads in genuine parallel, inject `IDbContextFactory<TContext>` and
-// open two short-lived contexts inside the handler:
+// open two short-lived contexts inside the handler. When the host also uses AddDbContext,
+// register the factory with the scoped lifetime, otherwise the container fails to build it:
+//
+//   services.AddDbContextFactory<AppDbContext>(opts => ..., ServiceLifetime.Scoped);
 //
 //   await using var aCtx = await _factory.CreateDbContextAsync(ct);
 //   await using var bCtx = await _factory.CreateDbContextAsync(ct);
-//   // ... use aCtx and bCtx independently inside ParallelAsync factories ...
+//   // ... run each branch's query on its own context inside the ParallelAsync factories
+//   //     (not through repositories bound to the request's scoped context); contexts
+//   //     created this way do not take part in the request's IUnitOfWork commit ...
 //
 // The trade-off: two extra contexts and their connections per request, in exchange
 // for parallel reads. Worth it only when the queries are slow.

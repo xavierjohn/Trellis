@@ -12,7 +12,7 @@ agent_description: "Shows the AddTrellis builder composition root: module order 
 ---
 # Recipe 12 — DI wiring playbook: `AddTrellis` composition builder
 
-**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.ServiceDefaults`.
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.Mediator`, `Trellis.ServiceDefaults`. The host also references `Mediator.SourceGenerator` (it generates `AddMediator`, called once per project with constant options) and an EF Core provider package such as `Microsoft.EntityFrameworkCore.SqlServer`.
 
 **Problem.** Compose Trellis service modules in the correct order so behaviors stack properly without forcing simple apps to install every package.
 
@@ -62,14 +62,16 @@ public static class CompositionRoot
 | `UseAsp()` | `AddTrellisAsp()` | Error → status mapping and `ResourceCollectionNameRegistry`. **Does NOT register scalar-value JSON / model-binding validation** — compose with `UseScalarValueValidation()` when binding value-object DTOs. |
 | `UseScalarValueValidation()` | `AddScalarValueValidation()` | Configures both MVC and Minimal API JSON pipelines (model binders + JSON converters + `SuppressModelStateInvalidFilter` toggle). Independent of `UseAsp()`. Minimal API hosts must still call `app.UseScalarValueValidation()` middleware and chain `.WithScalarValueValidation()` per endpoint. |
 | `UseMediator()` | `AddTrellisBehaviors()` | Registers the canonical Result-aware pipeline behaviors. |
-| `UseInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` | `AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` | Implies `UseMediator()`; places an application behavior before the commit decision. Both support constrained open `Type` overloads. Register `IUnitOfWork` separately. See [Recipe 16](recipe-16-unit-of-work.md). |
+| `UseInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` | `AddInsideTransactionBehavior<TMessage,TResponse,TBehavior>()` | Implies `UseMediator()`; places an application behavior before the commit decision. A `Type` overload registers a concrete open generic behavior for every command that satisfies its constraints (`TMessage : ICommand<TResponse>`, `TResponse : IResult, IFailureFactory<TResponse>`); an unsuitable type throws `ArgumentException` when `AddTrellis` applies it. Either overload installs the transactional behavior but not an `IUnitOfWork`, so register that separately. See [Recipe 16](recipe-16-unit-of-work.md). |
 | `UseFluentValidation(...)` | `AddTrellisFluentValidation(...)` (from `Trellis.Mediator.FluentValidation`) | Implies `UseMediator()`. Pass assemblies to scan, or omit assemblies when validators are registered explicitly. |
 | `UseClaimsActorProvider()` / `UseEntraActorProvider()` / `UseDevelopmentActorProvider()` | One ASP actor provider | The builder rejects multiple actor providers. |
 | `UseResourceAuthorization(...)` | `AddResourceAuthorization(...)` | Implies `UseMediator()` and scans for resource auth/loaders. |
 | `UseDomainEvents(...)` | `AddDomainEventDispatch(...)` | Implies `UseMediator()`. Response-shape dispatch uses strict snapshot validation; handlers must be side-effect-only. Mutually exclusive with tracked dispatch. |
-| `UseTrackedAggregateDomainEvents(...)` | `AddTrackedAggregateDomainEventDispatch(...)` | Implies `UseMediator()`. Dispatches committed aggregate snapshots for outcome-DTO commands and throws on same-aggregate or cross-aggregate cascade. Mutually exclusive with response-shape dispatch. |
+| `UseTrackedAggregateDomainEvents(...)` | `AddTrackedAggregateDomainEventDispatch(...)` | Implies `UseMediator()`. Dispatches committed aggregate snapshots for outcome-DTO commands and throws on same-aggregate or cross-aggregate cascade. Needs a unit of work that exposes `ITrackedAggregateSource` (the EF slot does). Mutually exclusive with response-shape dispatch. |
 | `UseEntityFrameworkUnitOfWork<TContext>()` | `AddTrellisUnitOfWork<TContext>()` | Implies `UseMediator()`. Registered after the inside-transaction behaviors and before the outbox, readiness and inbox registrations; the transaction stays outside inside-transaction behaviors. |
 | `UseOutboxReadiness<TContext>(profile)` | `AddTrellisOutboxReadiness<TContext>(profile)` | Explicitly selected bounded metadata with optional local-relay monitoring, applied after selected outbox registration without changing Mediator order. Local mode requires a matching relay; metadata-only requires the worker retry limit. Endpoint authorization/selection remains separate. |
+
+Other builder slots (outbox, inbox, integration events, ProblemDetails, idempotency, caching and worker actor providers, nested-JSON and EasyAuth actor providers, shared resource authorization) are listed in [trellis-api-servicedefaults.md](../trellis-api-servicedefaults.md#trellisservicebuilder).
 
 **Still app-owned.** `AddTrellis(...)` does **not** call `AddDbContext`, `AddMediator`, or route-constraint registration. Those choices depend on provider, connection string, source-generator setup, migrations, route template names, and hosting style.
 
@@ -84,4 +86,4 @@ Unversioned hosts keep `.UseAsp()`; both use the same `HttpContext.PageUrl` expr
 The optional policy uses the existing options slot, so ServiceDefaults does not acquire
 a versioning-SDK dependency. Location still uses `.WithVersionedRoute()` per response.
 
-> **Set `options.ServiceLifetime = ServiceLifetime.Scoped` on `AddMediator(...)`** in any host that creates a request/execution scope (ASP.NET Core, workers). Mediator's default lifetime is `Singleton`, but the Trellis pipeline behaviors depend on per-request services (`IActorProvider`, `IUnitOfWork`, `IMessageValidator<>`), so a singleton handler/behavior fails the DI root-scope validation the moment it resolves a scoped dependency — a build-clean service that throws at startup. (Same guidance: `Trellis.Mediator` README and the [Mediator integration article](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html).)
+> **Call `AddMediator(...)` before `AddTrellis(...)` and set `options.ServiceLifetime = ServiceLifetime.Scoped`** in any host that creates a request/execution scope (ASP.NET Core, workers). Mediator's default lifetime is `Singleton`, but the Trellis pipeline behaviors are scoped (`IActorProvider`, `IUnitOfWork`, `IMessageValidator<>`). `AddTrellis` (through `AddTrellisBehaviors`) throws `InvalidOperationException` when it sees a Singleton `IMediator` or `ISender` that was registered earlier. A Singleton `AddMediator` registered after `AddTrellis` is not detected and fails on first resolution. (See the [Mediator integration article](https://xavierjohn.github.io/Trellis/articles/integration-mediator.html).)

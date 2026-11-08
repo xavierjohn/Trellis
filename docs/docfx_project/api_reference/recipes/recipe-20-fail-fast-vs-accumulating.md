@@ -31,11 +31,12 @@ public sealed record CreateContactRow(string Email, string Name);
 public Result<IReadOnlyList<EmailAddress>> ValidateAddresses(IEnumerable<CreateContactRow> rows) =>
     rows.TraverseAll(row => EmailAddress.TryCreate(row.Email));
 //        ↑ TraverseAll runs the selector for every row.
-//          - All succeed   → Ok(list)
-//          - One bad email → that single Error.InvalidInput (no Aggregate wrap)
-//          - Many bad      → one merged Error.InvalidInput whose
-//                            Fields/Rules concatenate every per-item violation
-//          - Mixed kinds   → flat Error.Aggregate of every distinct error
+//          - All succeed    → Ok(list); an empty source gives Ok(empty list)
+//          - One failure    → that error unchanged (no Aggregate wrap)
+//          - Only InvalidInput → one InvalidInput whose Fields/Rules concatenate every violation
+//          - Other or mixed → one Error.Aggregate listing the failures in source order (duplicates kept).
+//                            InvalidInputs merge only while no other kind has been seen yet, so a
+//                            later InvalidInput can appear as its own Aggregate entry.
 
 // Indexed accumulation: errors identify the original row, e.g. /contacts/2/email.
 public static Result<IReadOnlyList<EmailAddress>> ValidateAddressesIndexed(IEnumerable<CreateContactRow> rows) =>
@@ -58,10 +59,10 @@ public Task<Result<IReadOnlyList<Order>>> LoadOrders(IEnumerable<OrderId> ids, C
 
 **What it shows.**
 
-- `TraverseAll` / `SequenceAll` exist precisely to solve "show me every error". They use the same `Error.Combine` extension as `EnsureAll`, so two `InvalidInput` failures merge and unrelated failures flatten into `Error.Aggregate`.
+- `TraverseAll` / `SequenceAll` exist precisely to solve "show me every error". They use the same `Error.Combine` extension as `EnsureAll`, so two `InvalidInput` failures merge and unrelated failures flatten into `Error.Aggregate` (duplicates are kept, and a lone failure is returned unchanged rather than wrapped).
 - `Traverse` / `Sequence` exist precisely to solve "stop wasting work on the first failure". They never *accumulate into* an `Error.Aggregate`; they propagate the first failure as-is (which means if a selector itself returns `Result.Fail<T>(new Error.Aggregate(...))`, that `Aggregate` flows through unchanged — not because Traverse created it, but because Traverse preserves whatever the failing selector produced).
-- The unindexed `TraverseAll` family ships the same async surface as `Traverse`: sync, `Task`, `Task` + `CancellationToken`, `ValueTask`, `ValueTask` + `CancellationToken`, plus a `Task<Result<Unit>>` + `CancellationToken` overload. `SequenceAll` is sync-only because `Sequence` is sync-only; if async siblings ever land for `Sequence`, they land for `SequenceAll` at the same time.
-- Indexed `TraverseAll` accepts `(item, index)`; indexed `TraverseAllAsync` accepts `(item, index, token)` for Task, ValueTask, and no-payload Task selectors. The token argument is optional, but the lambda keeps all three parameters to distinguish it from the existing `(item, token)` overload. Indices are zero-based source positions, not success counts; async selectors run sequentially and failures do not stop subsequent items.
+- The unindexed `TraverseAll` family ships the same async surface as `Traverse`: sync, `Task`, `Task` + `CancellationToken`, `ValueTask`, `ValueTask` + `CancellationToken`, plus a `Task<Result<Unit>>` + `CancellationToken` overload. `Sequence` and `SequenceAll` are synchronous only; for async per-item work use `TraverseAsync` / `TraverseAllAsync`. For the unindexed `TraverseAsync` and `TraverseAllAsync` families an inline `async` lambda is ambiguous between the `Task` and `ValueTask` overloads (`CS0121`): pass a method or lambda that returns `Task<Result<T>>` (or `ValueTask<Result<T>>`) directly, or a typed `Func<...>`. The indexed `TraverseAllAsync` prefers the `Task` overload.
+- Indexed `TraverseAll` accepts `(item, index)`; indexed `TraverseAllAsync` accepts `(item, index, token)` for Task, ValueTask, and no-payload Task selectors. The selector must declare all three parameters (item, index, token); that is what distinguishes it from the `(item, token)` overload. Indices are zero-based source positions, not success counts; async selectors run sequentially and failures do not stop subsequent items.
 - Already have an `IEnumerable<Result<T>>` (e.g. from a `Select` over a `TryCreate`)? Pick `.Sequence()` (fail-fast) or `.SequenceAll()` (accumulating); they're the identity-selector forms of `Traverse` / `TraverseAll`.
 
 **Anti-pattern → fix.**

@@ -52,7 +52,7 @@ For an ordinary failed result, `TransactionalCommandBehavior` skips its automati
 - **Pure `Can*` predicate alongside the mutator.** The aggregate exposes a side-effect-free `CanReserve(qty) → Result<Trellis.Unit>` that returns the same domain error the mutator would, and a `Reserve(qty)` that internally delegates to `CanReserve` before mutating. Same shape as [Recipe 9](recipe-09-state-machine.md)'s state-machine `CanFire`+`Fire`/`FireResult` pattern, lifted from "single transition on one aggregate" to "collection of operations across many aggregates."
 - **Mutation-plan grouping for duplicate keys.** If the input collection can name the same related aggregate twice (e.g., two line items with the same `ProductId`), aggregate the duplicates into a single `(Product, totalQuantity)` plan entry before validating. Validating each line independently against unchanged stock is **not** equivalent to mutating them sequentially: two `CanReserve(3)` calls against `Stock=5` both pass, but the second `Reserve(3)` then fails. Grouping eliminates the aliasing.
 
-> ⚠️ **Per-line invariants must be enforced before grouping.** The plan step (`g.Sum(li => (long)li.Quantity)`) preserves the aggregated quantity but destroys per-line identity. If `LineItem.Quantity` could be `-4`, then a `(5, -4)` pair would group to a valid `1`, slipping a negative quantity past `CanReserve`. In Trellis services per-line invariants are typically enforced at line-item construction (value-object `Quantity : RequiredInt<Quantity>` validating `> 0`, or a private constructor + `TryCreate` factory). If your per-line invariants don't aggregate cleanly into a sum — e.g., "no single line may exceed 100 units" rather than "the total across lines must not exceed available stock" — add an explicit per-line validation pass *before* the grouping step and `Sequence` its results into Pass 1. Sum into `long`, not `int`, so valid positive quantities whose total exceeds `int.MaxValue` reach `CanReserve(long)` and return the existing `stock.insufficient` rule instead of throwing `OverflowException` inside `Sum`. `Stock` remains an `int`; `Reserve(long)` narrows the quantity only after `CanReserve` proves `0 < quantity <= Stock`.
+> ⚠️ **Per-line invariants must be enforced before grouping.** The plan step (`g.Sum(li => (long)li.Quantity)`) preserves the aggregated quantity but destroys per-line identity. If `LineItem.Quantity` could be `-4`, then a `(5, -4)` pair would group to a valid `1`, slipping a negative quantity past `CanReserve`. In Trellis services per-line invariants are typically enforced at line-item construction (a `Quantity : RequiredInt<Quantity>` whose `ValidateAdditional` rejects values `<= 0`, or a private constructor + `TryCreate` factory). If your per-line invariants don't aggregate cleanly into a sum — e.g., "no single line may exceed 100 units" rather than "the total across lines must not exceed available stock" — add an explicit per-line validation pass *before* the grouping step and `Sequence` its results into Pass 1. Sum into `long`, not `int`, so valid positive quantities whose total exceeds `int.MaxValue` reach `CanReserve(long)` and return the existing `stock.insufficient` rule instead of throwing `OverflowException` inside `Sum`. `Stock` remains an `int`; `Reserve(long)` narrows the quantity only after `CanReserve` proves `0 < quantity <= Stock`.
 
 Production services should still bound per-line quantities and the number of lines per order according to business and resource limits. Wider arithmetic does not replace those policies.
 
@@ -66,6 +66,8 @@ using System.Threading.Tasks;
 using Mediator;
 using Trellis;
 
+// Constructors and the LineItem type (ProductId, int Quantity > 0) are omitted for brevity;
+// Aggregate<TId> requires an id constructor argument.
 public sealed class Product : Aggregate<ProductId>
 {
     public int Stock { get; private set; }
@@ -175,9 +177,9 @@ Consider a return accepted until an inclusive deadline. Preflight reads one tick
 
 Choose the business policy explicitly. The following compile-checked examples use application-defined `ReturnWindowOrder` and `ReturnInventory` types from that snippet: the order's return method checks eligibility before changing its return timestamp or raising an event; inventory has a time-independent release guard. The order transition cannot invalidate that guard, and neither example freezes inventory.
 
-The two policy blocks below are manually mirrored from the compiled snippet. `TRLDOC006` checks recipe/snippet presence, not code equality; keep these blocks synchronized with the corresponding source methods.
+The two policy blocks below mirror the compiled snippet.
 
-**Execution-time eligibility:** recheck the live clock at the transition attempt, and perform that potentially rejecting transition before inventory changes, after all other preflight checks. A request admitted by preflight can now be rejected with unchanged stock, return metadata, and events.
+**Execution-time eligibility:** recheck the live clock at the transition attempt, and perform that potentially rejecting transition before inventory changes, after all other preflight checks. A request admitted by preflight can be rejected with unchanged stock, return metadata, and events.
 
 ```csharp
 public static Result<Trellis.Unit> AtExecutionTime(
@@ -215,7 +217,7 @@ Both examples require exclusive ownership and stable stock-release inputs. Trans
 
 **Choosing fail-fast vs accumulating for the validation pass.**
 
-The worked example uses `SequenceAll()` so the response enumerates every violation (typical for form-style and stock-style invariants where the user benefits from seeing all problems at once). Switch to `Sequence()` for fail-fast semantics when later checks are expensive and a single failure is sufficient. See [Recipe 20](recipe-20-fail-fast-vs-accumulating.md) for the full decision criteria. Both forms short-circuit on the same boundary: nothing in Pass 2 runs until validation returns `Ok`.
+The worked example uses `SequenceAll()` so the response enumerates every violation (typical for form-style and stock-style invariants where the user benefits from seeing all problems at once). Switch to `Sequence()` for fail-fast semantics when later checks are expensive and a single failure is sufficient. See [Recipe 20](recipe-20-fail-fast-vs-accumulating.md) for the full decision criteria. Both forms short-circuit on the same boundary: nothing in Pass 2 runs until validation returns `Ok`. `CanSubmit()` is evaluated when the sequence is built, so it runs even under `.Sequence()`; it is pure.
 
 **How this fits with sibling recipes.**
 

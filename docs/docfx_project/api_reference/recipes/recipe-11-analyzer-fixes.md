@@ -8,13 +8,13 @@ version: v3
 last_verified: 2026-10-22
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Pairs each analyzer warning with a WRONG and a FIX example. Use when fixing a Trellis analyzer warning (TRLS###)."
+agent_description: "Points to the WRONG and FIX catalog for Trellis analyzer diagnostics and how to enable the analyzers. Use when a TRLS build diagnostic needs fixing."
 ---
-# Recipe 11 — Anti-pattern → fix gallery (the analyzers in action)
+# Recipe 11 — Analyzer fixes: where to look
 
 **Requires:** `Trellis.Core`, plus `Trellis.Analyzers`, `Trellis.Asp`.
 
-The anti-pattern catalog is its own file, so that AI sessions and human readers can load it independently when debugging an analyzer warning. See **[`trellis-api-anti-patterns.md`](../trellis-api-anti-patterns.md)** <!-- trellis-doc-lint: allow-bare-cross-doc-link --> for each common analyzer trigger and its idiomatic Trellis fix (TRLS001, TRLS003, TRLS010, TRLS016, TRLS018, TRLS019).
+The anti-pattern catalog is its own file, so that AI sessions and human readers can load it independently when debugging an analyzer warning. See **[`trellis-api-anti-patterns.md`](../trellis-api-anti-patterns.md)** <!-- trellis-doc-lint: allow-bare-cross-doc-link --> for each analyzer trigger and its idiomatic Trellis fix (for example TRLS001, TRLS003, TRLS010, TRLS016, TRLS018, TRLS019, TRLS067). TRLS003 is an error; the others listed here are warnings.
 
 If you are looking up a specific analyzer by ID, the standalone file is faster than scanning this recipe. The other recipes still link to the relevant sections of that file where they apply.
 

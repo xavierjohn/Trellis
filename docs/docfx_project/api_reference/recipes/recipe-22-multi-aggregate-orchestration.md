@@ -25,12 +25,12 @@ agent_description: "Shows orchestrating several related aggregates and failing l
 
 The wrong answer: `if (!dict.TryGetValue(id, out var related)) continue;` and move on. The handler appears to succeed, the primary aggregate transitions, the unit of work commits, and the side effect is silently skipped for the missing element. The orchestration has broken its own post-condition ("stock is released for every line item") with no signal to the caller and no rollback.
 
-The right answer: fail-loud before mutation. Return `Error.NotFound` referencing the missing related aggregate so the ordinary failed command is not automatically committed. Do not rely on the unit of work to restore a primary aggregate already mutated in memory. The presence invariant — "every line item resolves to a Product, or no mutation begins" — is now enforced and observable.
+The right answer: fail-loud before mutation. Return `Error.NotFound` referencing the missing related aggregate so the ordinary failed command is not automatically committed. Do not rely on the unit of work to restore a primary aggregate already mutated in memory. The presence invariant — "every line item resolves to a Product, or no mutation begins" — is enforced and observable.
 
 Two operating principles drive the snippet below:
 
 - **Preflight before mutating, not during.** An in-memory aggregate mutation persists through the rest of the handler's object graph even if the later database commit rolls back. So a release-then-discover pattern leaks partially-released stock into any subsequent read of the same aggregate within the request scope. Compute the missing-set *before* any side effect.
-- **Report the full problem.** That's the value of preflighting — surface every missing id in one round-trip via `Error.Aggregate`, with each missing id keeping its own structured `ResourceRef`. (This recipe assumes product ids are non-sensitive; if your threat model differs, drop the per-id refs and emit a single generic `NotFound`.)
+- **Report the full problem.** That's the value of preflighting — surface every missing id in one round-trip: with two or more missing ids the result is an `Error.Aggregate` of `NotFound` errors, each keeping its own structured `ResourceRef`; with exactly one it is that single `NotFound`. (This recipe assumes product ids are non-sensitive; if your threat model differs, drop the per-id refs and emit a single generic `NotFound`.)
 
 ```csharp
 using System.Linq;
@@ -46,7 +46,7 @@ public sealed class ReturnOrderHandler(
 {
     public async ValueTask<Result<Order>> Handle(ReturnOrderCommand command, CancellationToken cancellationToken)
     {
-        // Repository find returns Result<T> — matches the repository shape in recipe-21-parallel-loads;
+        // Repository find returns Result<T> (an application-defined repository interface);
         // .TryGetValue extracts the success value or short-circuits on the existing Error.
         var orderResult = await orders.FindByIdAsync(command.OrderId, cancellationToken);
         if (!orderResult.TryGetValue(out var order))
