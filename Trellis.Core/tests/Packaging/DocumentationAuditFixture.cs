@@ -19,6 +19,9 @@ internal sealed class DocumentationAuditFixture : IDisposable
         _docsDirectory = Path.Combine(_directory, "docs", "docfx_project", "api_reference");
         Directory.CreateDirectory(Path.Combine(_docsDirectory, "audit-completeness"));
         WriteLedger("ambiguous-members.txt", "");
+
+        // The recipe cross-reference audit refuses to pass over an empty recipe set, so a fixture tree carries one valid recipe.
+        WriteDocument(Path.Combine("recipes", "recipe-01-fixture.md"), "# Recipe 1 — Fixture\n\nSee [the router](../trellis-start-here.md).\n");
     }
 
     public void WritePackage(string name, string source, string documentation, params string[] packageReferences)
@@ -52,8 +55,12 @@ internal sealed class DocumentationAuditFixture : IDisposable
         File.Move(AssemblyPath(name, configuration),
             Path.Combine(Path.GetDirectoryName(AssemblyPath(destinationPackage, "Release"))!, name + ".dll"));
 
-    public void WriteDocument(string name, string documentation) =>
-        File.WriteAllText(Path.Combine(_docsDirectory, name), documentation, new UTF8Encoding(true));
+    public void WriteDocument(string name, string documentation)
+    {
+        var path = Path.Combine(_docsDirectory, name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, documentation, new UTF8Encoding(true));
+    }
 
     public void WriteLedger(string name, string contents) =>
         File.WriteAllText(Path.Combine(_docsDirectory, "audit-completeness", name), contents, new UTF8Encoding(true));

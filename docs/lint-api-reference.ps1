@@ -785,14 +785,6 @@ if ($requiredDocs.Count -ne 1 -or $requiredDocs[0] -ne 'trellis-start-here.md') 
 # platform allows 1,024 characters; the AgentDocs manifest allows 200, which TRLDOC016 enforces), a body of fewer than 500
 # lines, and a `## Contents` section in any recipe longer than 100 lines.
 # The folder is the signal: a new recipe goes here and is held to these rules; reference documents stay outside it.
-# Blank each inline code span with spaces of the same length, so link syntax inside it is literal text while offsets still
-# line up with the original line.
-function Hide-InlineCode {
-    param([string] $Text)
-
-    return [regex]::Replace($Text, '(?<ticks>`+)(?:(?!\k<ticks>).)+?\k<ticks>', [System.Text.RegularExpressions.MatchEvaluator] { param($codeSpan) ' ' * $codeSpan.Value.Length })
-}
-
 $recipeDocs = @($markdownFiles | Where-Object { $_.Directory.Name -eq 'recipes' })
 
 foreach ($recipeDoc in $recipeDocs) {
@@ -865,84 +857,6 @@ foreach ($recipeDoc in $recipeDocs) {
 
         if ($usesMediator -and -not $namesMediator) {
             Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC018: The code uses the Mediator contracts ('using Mediator;' or IMediator) but the Requires line does not name the package ``Trellis.Mediator``, which brings Mediator.Abstractions."
-            $failed = $true
-        }
-    }
-
-    # TRLDOC019 and TRLDOC020 need to know what is a real link, so they look at the document the way the renderer does.
-    # Links are inline links only, [label](target). Reference-style links ([label][ref], [ref]) and their definitions are
-    # not recognized, so a recipe uses the inline form. $linkView is the document with the same line numbers and offsets as
-    # the file, but with code fences emptied and inline code spans and HTML comments blanked, so link syntax inside any of
-    # them is not seen as a link.
-    $docLines = @($recipeDocLines | ForEach-Object { $_.TrimStart([char] 0xFEFF) })
-    $lineKind = [int[]]::new($docLines.Count)   # 0 prose, 1 code-fence marker, 2 code-fence content
-    $linkView = [string[]]::new($docLines.Count)
-    $insideFence = $false
-
-    for ($lineIndex = 0; $lineIndex -lt $docLines.Count; $lineIndex++) {
-        if ($docLines[$lineIndex] -match '^\s*(>\s*)?```') {
-            $insideFence = -not $insideFence
-            $lineKind[$lineIndex] = 1
-            $linkView[$lineIndex] = ''
-        }
-        elseif ($insideFence) {
-            $lineKind[$lineIndex] = 2
-            $linkView[$lineIndex] = ''
-        }
-        else {
-            $linkView[$lineIndex] = Hide-InlineCode $docLines[$lineIndex]
-        }
-    }
-
-    # An HTML comment is not rendered. It can span lines, so blank it in the whole text, keeping the newlines.
-    $linkView = [regex]::Replace(($linkView -join "`n"), '<!--.*?(?:-->|\z)', [System.Text.RegularExpressions.MatchEvaluator] { param($comment) $comment.Value -replace '[^\n]', ' ' }, [System.Text.RegularExpressions.RegexOptions]::Singleline) -split "`n"
-
-    # TRLDOC019 - a recipe is loaded on demand, and an agent that holds only this one has no way to resolve "Recipe 4": the
-    # skill name is `recipe-04-<slug>`, not "Recipe 4". So a mention of another recipe in prose is a markdown link to its
-    # file, and one in a code comment names its file stem. The recipe's own number, its heading, and the separate
-    # Microservices cookbook are exempt. A number in inline code is still bare, and a mention inside a link label is already
-    # a link, whatever its label says.
-    $ownNumber = [int] [regex]::Match($recipeDoc.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
-
-    for ($lineIndex = 0; $lineIndex -lt $docLines.Count; $lineIndex++) {
-        $lineText = $docLines[$lineIndex]
-
-        if ($lineKind[$lineIndex] -eq 1 -or $lineText -match '^#\s+Recipe\s+\d+' -or $lineText -match 'microservices cookbook') {
-            continue
-        }
-
-        $linkSpans = @([regex]::Matches($linkView[$lineIndex], '\[[^\]]*\]\([^)]*\)'))
-
-        foreach ($referenceMatch in [regex]::Matches($lineText, 'Recipes?\s+(?<number>\d+)')) {
-            $insideLink = @($linkSpans | Where-Object { $referenceMatch.Index -ge $_.Index -and $referenceMatch.Index -lt ($_.Index + $_.Length) }).Count -gt 0
-
-            if (-not $insideLink -and [int] $referenceMatch.Groups['number'].Value -ne $ownNumber) {
-                $where = if ($lineKind[$lineIndex] -eq 2) { 'name the recipe file stem (for example recipe-02-command-handler)' } else { 'link it, as [Recipe N](recipe-NN-name.md)' }
-                Write-Host "$($recipeDoc.FullName)($($lineIndex + 1),1): error TRLDOC019: '$($referenceMatch.Value)' is a bare recipe number that an agent holding only this recipe cannot resolve; $where, and say in a clause what the other recipe supplies. Recipes use inline links only."
-                $failed = $true
-            }
-        }
-    }
-
-    # TRLDOC020 - a recipe split across several documents (the same recipe number, for example the two parts of
-    # recipe 13) is read one document at a time, so each document must link to every sibling; otherwise an agent that
-    # opened one part has no route to the rest.
-    $ownPrefix = [regex]::Match($recipeDoc.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
-    $siblingDocs = @($recipeDocs | Where-Object {
-            $_.Name -cne $recipeDoc.Name -and
-            [regex]::Match($_.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value -eq $ownPrefix
-        })
-
-    # The link target is the sibling's file name, before any #anchor, with an optional ./ and an optional link title.
-    $linkedFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-
-    foreach ($link in [regex]::Matches(($linkView -join "`n"), '\[[^\]]*\]\(\s*(?:<(?<target>[^>\s]+)>|(?<target>[^)\s<>]+))(?:\s+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?\s*\)')) {
-        [void] $linkedFiles.Add((($link.Groups['target'].Value -replace '#.*$', '') -replace '^\./', ''))
-    }
-
-    foreach ($siblingDoc in $siblingDocs) {
-        if (-not $linkedFiles.Contains($siblingDoc.Name)) {
-            Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC020: '$($recipeDoc.Name)' shares recipe number $ownPrefix with '$($siblingDoc.Name)' but does not link to it. Link every sibling document of a split recipe, as [Recipe $ownPrefix part N]($($siblingDoc.Name)), so an agent holding one part can find the others. Recipes use inline links only."
             $failed = $true
         }
     }

@@ -1,0 +1,128 @@
+﻿namespace Trellis.Core.Tests.Packaging;
+
+using Trellis.Docs.Audit;
+
+/// <summary>
+/// Negative and positive controls for <see cref="RecipeLinkAudit"/>. Each case is a document shape a review once
+/// disagreed about; the parser (Markdig, the one DocFX renders with) is the oracle, so a case is accepted exactly when
+/// the rendered page would contain a real link.
+/// </summary>
+public class RecipeLinkAuditTests
+{
+    private const string Own = "recipe-05-example.md";
+    private const string Part = "recipe-13-part-two.md";
+    private const string Sibling = "recipe-13-part-one.md";
+
+    // TRLDOC019: a mention of Recipe 21 (not this recipe's own number) that is the label of a real link.
+    [Theory]
+    [InlineData("See [Recipe 21](recipe-21-x.md).")]
+    [InlineData("See [Recipe 21](recipe-21-x.md \"Title\").")]
+    [InlineData("See [Recipe 21](./recipe-21-x.md#section).")]
+    [InlineData("See [Recipe 21](<recipe-21-x.md>).")]
+    [InlineData("See [`Recipe 21`](recipe-21-x.md).")]
+    [InlineData("See [the Recipe 21 guide](recipe-21-x.md).")]
+    [InlineData("See [Recipe 21][r].\n\n[r]: recipe-21-x.md")]
+    [InlineData("See [Recipe 21][R].\n\n[r]: recipe-21-x.md")]
+    [InlineData("See [Recipe 21][].\n\n[Recipe  21]: recipe-21-x.md")]
+    [InlineData("See [Recipe 21].\n\n[recipe 21]: recipe-21-x.md")]
+    [InlineData("See [`Recipe 21`].\n\n[`Recipe 21`]: recipe-21-x.md")]
+    [InlineData("See [`Recipe 21`][].\n\n[`Recipe 21`]: recipe-21-x.md")]
+    [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-21-x.md) |")]
+    [InlineData("# Recipe 5 — This recipe\n\nBody.")]
+    [InlineData("This recipe is Recipe 5 and says so.")]
+    [InlineData("The Microservices cookbook has its own Recipe 4.")]
+    [InlineData("```csharp\n// see recipe-21-x for the handler\n```")]
+    public void Mention_IsRealLink_OrExempt_IsAccepted(string markdown) =>
+        RecipeLinkAudit.Check(Own, markdown, []).Should().BeEmpty();
+
+    // TRLDOC019: the same mention, but what looks like a link is not one.
+    [Theory]
+    [InlineData("See Recipe 21.")]
+    [InlineData("See Recipes 21 and 22.")]
+    [InlineData("Use `Recipe 21`.")]
+    [InlineData("Use `Recipe 21` and [something else](x.md).")]
+    [InlineData("See `[Recipe 21](recipe-21-x.md)`.")]
+    [InlineData("See ``[Recipe 21](recipe-21-x.md)``.")]
+    [InlineData("See `[Recipe 21][r]`.\n\n[r]: recipe-21-x.md")]
+    [InlineData("See `[Recipe 21]`.\n\n[recipe 21]: recipe-21-x.md")]
+    [InlineData("<!-- See [Recipe 21](recipe-21-x.md) -->")]
+    [InlineData("<!--\n[Recipe 21](recipe-21-x.md)\n-->")]
+    [InlineData("<!-- note --> [Recipe 21](recipe-21-x.md)")]
+    [InlineData("See [Recipe 21][missing].")]
+    [InlineData("See [Recipe 21][].")]
+    [InlineData("See [Recipe 21].")]
+    [InlineData("See [Recipe 21][r].\n\n```\n[r]: recipe-21-x.md\n```")]
+    [InlineData("See [Recipe 21][r].\n\n<!--\n[r]: recipe-21-x.md\n-->")]
+    [InlineData("See [Recipe 21][r].\n\n    [r]: recipe-21-x.md")]
+    [InlineData("![Recipe 21](diagram.png)")]
+    [InlineData("```csharp\n// see Recipe 21 for the handler\n```")]
+    [InlineData("```\n<!-- opens a comment inside a fence\n```\n\nThen Recipe 21.")]
+    [InlineData("Use `<!--` literally, then Recipe 21.")]
+    [InlineData("---\nagent_description: \"Uses Recipe 21.\"\n---\n# Recipe 5 — Title")]
+    [InlineData("| A | B |\n| --- | --- |\n| x | Recipe 21 |")]
+    // The recipe 13 part two defect: an unpaired backtick opens a code span that swallows the link after it.
+    [InlineData("Odd ticks: `a`b`c, see [Recipe 21](recipe-21-x.md) and `d`.")]
+    [InlineData("| A | B |\n| --- | --- |\n| `a`b`c | see [Recipe 21](recipe-21-x.md) and `d` |")]
+    public void Mention_NotARealLink_IsRejected(string markdown) =>
+        RecipeLinkAudit.Check(Own, markdown, []).Should().Contain(f => f.Rule == "TRLDOC019");
+
+    [Fact]
+    public void Mention_ReportsItsLine()
+    {
+        var findings = RecipeLinkAudit.Check(Own, "# Recipe 5 — Title\n\nSome text.\n\nSee Recipe 21 here.\n\n```csharp\nvar x = 1; // Recipe 22\n```", []);
+
+        findings.Select(f => (f.Rule, f.Line)).Should().Equal(("TRLDOC019", 5), ("TRLDOC019", 8));
+    }
+
+    // TRLDOC020: this part links to its sibling.
+    [Theory]
+    [InlineData("Continues [part one](recipe-13-part-one.md).")]
+    [InlineData("Continues [part one](./recipe-13-part-one.md#heading \"Title\").")]
+    [InlineData("Continues [part one](<recipe-13-part-one.md>).")]
+    [InlineData("Continues [`part one`](recipe-13-part-one.md).")]
+    [InlineData("Continues [part one][p1].\n\n[p1]: recipe-13-part-one.md")]
+    [InlineData("Continues [part one][].\n\n[Part One]: recipe-13-part-one.md#heading")]
+    [InlineData("Continues [part one].\n\n[part one]: recipe-13-part-one.md")]
+    public void Sibling_IsLinked_IsAccepted(string markdown) =>
+        RecipeLinkAudit.Check(Part, markdown, [Sibling]).Should().BeEmpty();
+
+    // TRLDOC020: the sibling's file name appears, but not as a link.
+    [Theory]
+    [InlineData("Nothing links anywhere.")]
+    [InlineData("See recipe-13-part-one.md in the folder.")]
+    [InlineData("<!-- [part one](recipe-13-part-one.md) -->")]
+    [InlineData("<!--\n[part one](recipe-13-part-one.md)\n-->")]
+    [InlineData("<!-- note --> [part one](recipe-13-part-one.md)")]
+    [InlineData("`[part one](recipe-13-part-one.md)`")]
+    [InlineData("``[part one](recipe-13-part-one.md)``")]
+    [InlineData("`[part one][p1]`\n\n[p1]: recipe-13-part-one.md")]
+    [InlineData("```csharp\n// [part one](recipe-13-part-one.md)\n```")]
+    [InlineData("[part one](recipe-13-part-one.md.bak)")]
+    [InlineData("[part one](other/recipe-13-part-one.md)")]
+    [InlineData("[part one][missing]")]
+    [InlineData("[part one][p1]\n\n```\n[p1]: recipe-13-part-one.md\n```")]
+    [InlineData("[part one]\n\n<!--\n[part one]: recipe-13-part-one.md\n-->")]
+    [InlineData("A definition nothing uses.\n\n[p1]: recipe-13-part-one.md")]
+    [InlineData("![part one](recipe-13-part-one.md)")]
+    public void Sibling_NotLinked_IsRejected(string markdown) =>
+        RecipeLinkAudit.Check(Part, markdown, [Sibling]).Should().Contain(f => f.Rule == "TRLDOC020");
+
+    [Fact]
+    public void Siblings_EachMustBeLinked()
+    {
+        var findings = RecipeLinkAudit.Check(
+            "recipe-13-part-three.md",
+            "Continues [part one](recipe-13-part-one.md).",
+            ["recipe-13-part-one.md", "recipe-13-part-two.md"]);
+
+        findings.Should().ContainSingle().Which.Message.Should().Contain("recipe-13-part-two.md");
+    }
+
+    [Fact]
+    public void Document_WithNoSiblings_NeedsNoLinks() =>
+        RecipeLinkAudit.Check(Own, "Plain text with no recipe mentions.", []).Should().BeEmpty();
+
+    [Fact]
+    public void ByteOrderMark_DoesNotShiftTheFindings() =>
+        RecipeLinkAudit.Check(Own, "﻿See Recipe 21.", []).Should().ContainSingle().Which.Line.Should().Be(1);
+}
