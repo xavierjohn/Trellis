@@ -119,7 +119,7 @@ Prefer the early-return guard in ROP code: it keeps the happy path unindented an
 
 ```csharp
 // WRONG
-b.HasIndex(c => c.Email);                          // TRLS016 — silently no-op
+b.HasIndex(c => c.Email);                          // TRLS016 — throws InvalidOperationException at model build
 
 // FIX
 b.HasTrellisIndex(c => new { c.Email });

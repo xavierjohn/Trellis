@@ -10,7 +10,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 /// <summary>
 /// Analyzer that detects HasIndex lambda expressions referencing Maybe&lt;T&gt; properties.
 /// MaybeConvention maps Maybe&lt;T&gt; via backing fields, so the CLR property is invisible
-/// to EF Core's index builder and the index silently fails to be created.
+/// to EF Core's index builder and model building throws an InvalidOperationException.
 /// Only activates when the compilation references the Trellis.EntityFrameworkCore assembly.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]

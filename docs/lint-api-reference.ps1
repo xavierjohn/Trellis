@@ -904,8 +904,30 @@ foreach ($recipeDoc in $recipeDocs) {
             [regex]::Match($_.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value -eq $ownPrefix
         })
 
+    # Only real Markdown links count: a `[label](target)` outside a code fence whose target path (before any #anchor)
+    # is exactly the sibling's file name. A fenced comment or plain text that merely contains the file name does not.
+    $siblingLinkTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $siblingInsideFence = $false
+
+    foreach ($siblingLine in $recipeDocLines) {
+        $siblingText = $siblingLine.TrimStart([char] 0xFEFF)
+
+        if ($siblingText -match '^\s*(>\s*)?```') {
+            $siblingInsideFence = -not $siblingInsideFence
+            continue
+        }
+
+        if ($siblingInsideFence) {
+            continue
+        }
+
+        foreach ($siblingLink in [regex]::Matches($siblingText, '\[[^\]]*\]\((?<target>[^)\s#]+)(?:#[^)\s]*)?\)')) {
+            [void] $siblingLinkTargets.Add(($siblingLink.Groups['target'].Value -replace '^\./', ''))
+        }
+    }
+
     foreach ($siblingDoc in $siblingDocs) {
-        $linksSibling = @($recipeDocLines | Where-Object { $_.Contains("]($($siblingDoc.Name)") }).Count -gt 0
+        $linksSibling = $siblingLinkTargets.Contains($siblingDoc.Name)
 
         if (-not $linksSibling) {
             Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC020: '$($recipeDoc.Name)' shares recipe number $ownPrefix with '$($siblingDoc.Name)' but does not link to it. Link every sibling document of a split recipe, as [Recipe $ownPrefix part N]($($siblingDoc.Name)), so an agent holding one part can find the others."

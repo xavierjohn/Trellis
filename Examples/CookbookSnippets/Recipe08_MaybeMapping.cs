@@ -34,7 +34,7 @@ public static class ModelDiagnostics
 }
 
 #if FALSE
-// WRONG — HasIndex against the CLR Maybe<T> property silently fails (TRLS016).
+// WRONG — HasIndex against the CLR Maybe<T> property throws InvalidOperationException at model build (TRLS016).
 internal static class AntiPattern
 {
     public static void Configure(EntityTypeBuilder<Customer> b) =>
