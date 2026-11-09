@@ -16,6 +16,9 @@ public class RecipeLinkAuditTests
     // TRLDOC019: a mention of Recipe 21 (not this recipe's own number) that is the label of a real link.
     [Theory]
     [InlineData("See [Recipe 21](recipe-21-x.md).")]
+    [InlineData("See [Recipe 4](recipe-04-x.md).")]
+    [InlineData("See [Recipe 21](../recipes/recipe-21-x.md#heading).")]
+    [InlineData("See [Recipe 4][r].\n\n[r]: recipe-04-x.md")]
     [InlineData("See [Recipe 21](recipe-21-x.md \"Title\").")]
     [InlineData("See [Recipe 21](./recipe-21-x.md#section).")]
     [InlineData("See [Recipe 21](<recipe-21-x.md>).")]
@@ -38,6 +41,17 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // The label names a recipe the link does not open.
+    [InlineData("See [Recipe 21](recipe-20-x.md).")]
+    [InlineData("See [the Recipe 21 guide](recipe-22-x.md).")]
+    [InlineData("See [Recipe 21](recipe-210-x.md).")]
+    [InlineData("See [`Recipe 21`](recipe-20-x.md).")]
+    [InlineData("See [Recipe 21](#section).")]
+    [InlineData("See [Recipe 21](other.md).")]
+    [InlineData("See [Recipe 21](https://example.com/recipe-21-x.md).")]
+    [InlineData("See [Recipe 21][r].\n\n[r]: recipe-20-x.md")]
+    [InlineData("See [Recipe 21].\n\n[recipe 21]: recipe-20-x.md")]
+    [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-20-x.md) |")]
     [InlineData("See Recipes 21 and 22.")]
     [InlineData("Use `Recipe 21`.")]
     [InlineData("Use `Recipe 21` and [something else](x.md).")]

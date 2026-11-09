@@ -25,7 +25,8 @@ internal sealed record RecipeLinkFinding(string Rule, int Line, string Message);
 /// applies when it renders the page. This audit asks the same parser (Markdig, the one DocFX uses), so it cannot
 /// disagree with the rendered site about what is a link.
 ///
-/// TRLDOC019: a mention of another recipe by number ("Recipe 21") is the label of a real link. A number in inline
+/// TRLDOC019: a mention of another recipe by number ("Recipe 21") is the label of a real link to that recipe's file
+/// (the number in <c>recipe-21-slug.md</c> must match the number in the label). A number in inline
 /// code, an HTML comment, a code fence or the YAML front matter is not a link and so is rejected (inside a fence,
 /// name the recipe file stem instead). A recipe's own number, its level-1 title and the separate Microservices
 /// cookbook are exempt.
@@ -115,15 +116,15 @@ internal static class RecipeLinkAudit
         var links = document.Descendants<LinkInline>().Where(link => !link.IsImage).ToList();
         linkCount = links.Count;
 
-        var insideLink = new HashSet<MarkdownObject>(ReferenceEqualityComparer.Instance);
+        var linkOfLabelNode = new Dictionary<MarkdownObject, LinkInline>(ReferenceEqualityComparer.Instance);
 
         foreach (var link in links)
         {
             foreach (var node in link.Descendants())
-                insideLink.Add(node);
+                linkOfLabelNode[node] = link;
         }
 
-        void Scan(int zeroBasedLine, string raw, bool codeLike)
+        void Scan(int zeroBasedLine, string raw, bool codeLike, LinkInline? labelOf = null)
         {
             var line = Math.Clamp(zeroBasedLine, 0, sourceLines.Length - 1);
 
@@ -132,8 +133,25 @@ internal static class RecipeLinkAudit
 
             foreach (Match mention in s_mention.Matches(raw))
             {
-                if (int.Parse(mention.Groups["number"].Value, CultureInfo.InvariantCulture) == ownNumber)
+                var mentioned = int.Parse(mention.Groups["number"].Value, CultureInfo.InvariantCulture);
+
+                if (mentioned == ownNumber)
                     continue;
+
+                // A label that names a recipe must open that recipe: the number in the target's recipe-NN-slug.md
+                // file name is the evidence, so [Recipe 21](recipe-20-x.md) is rejected like a bare mention.
+                if (labelOf is not null)
+                {
+                    var path = LinkedFile(labelOf.Url);
+
+                    // A relative file link only: an absolute URL can end in a matching file name and still open elsewhere.
+                    if (!Uri.TryCreate(path, UriKind.Absolute, out _) && RecipeNumber(Path.GetFileName(path)) == mentioned)
+                        continue;
+
+                    findings.Add(new RecipeLinkFinding("TRLDOC019", line + 1,
+                        $"'{mention.Value}' is the label of a link to '{labelOf.Url}', which is not recipe {mentioned}; point the link at the file of recipe {mentioned} (recipe-{mentioned:00}-name.md)."));
+                    continue;
+                }
 
                 var fix = codeLike
                     ? "name the recipe file stem (for example recipe-02-command-handler)"
@@ -155,10 +173,11 @@ internal static class RecipeLinkAudit
                 _ => null,
             };
 
-            if (raw is null || insideLink.Contains(inline) || ParentBlockOf(inline) is HeadingBlock { Level: 1 })
+            if (raw is null || ParentBlockOf(inline) is HeadingBlock { Level: 1 })
                 continue;
 
-            Scan(inline.Line, raw, codeLike: false);
+            linkOfLabelNode.TryGetValue(inline, out var labelOf);
+            Scan(inline.Line, raw, codeLike: false, labelOf);
         }
 
         // Text the parser keeps as lines: code fences and indented code, YAML front matter and HTML blocks (including
