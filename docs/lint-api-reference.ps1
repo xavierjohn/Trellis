@@ -861,49 +861,8 @@ foreach ($recipeDoc in $recipeDocs) {
         }
     }
 
-    # TRLDOC019 - a recipe is loaded on demand, and an agent that holds only this one has no way to resolve "Recipe 4": the
-    # skill name is `recipe-04-<slug>`, not "Recipe 4". So a mention of another recipe in prose is a markdown link to its
-    # file, and one in a code comment names its file stem. The recipe's own number, its heading, and the separate
-    # Microservices cookbook are exempt.
-    $ownNumber = [int] [regex]::Match($recipeDoc.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
-    $insideFence = $false
-
-    for ($lineIndex = 0; $lineIndex -lt $recipeDocLines.Count; $lineIndex++) {
-        $lineText = $recipeDocLines[$lineIndex].TrimStart([char] 0xFEFF)
-
-        if ($lineText -match '^\s*(>\s*)?```') {
-            $insideFence = -not $insideFence
-            continue
-        }
-
-        if ($lineText -match '^#\s+Recipe\s+\d+' -or $lineText -match 'microservices cookbook') {
-            continue
-        }
-
-        # Outside a code fence, a mention inside a Markdown link ([...Recipe 21...](file.md) or [...Recipe 21...][ref]) is
-        # already a link, whatever its label says. Inline code is not a link, so a number in backticks still counts as bare.
-        $linkSpans = if ($insideFence) { @() } else { @([regex]::Matches($lineText, '\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])')) }
-
-        foreach ($referenceMatch in [regex]::Matches($lineText, 'Recipes?\s+(?<number>\d+)')) {
-            $insideLink = @($linkSpans | Where-Object { $referenceMatch.Index -ge $_.Index -and $referenceMatch.Index -lt ($_.Index + $_.Length) }).Count -gt 0
-
-            if (-not $insideLink -and [int] $referenceMatch.Groups['number'].Value -ne $ownNumber) {
-                $where = if ($insideFence) { 'name the recipe file stem (for example recipe-02-command-handler)' } else { 'link it, as [Recipe N](recipe-NN-name.md)' }
-                Write-Host "$($recipeDoc.FullName)($($lineIndex + 1),1): error TRLDOC019: '$($referenceMatch.Value)' is a bare recipe number that an agent holding only this recipe cannot resolve; $where, and say in a clause what the other recipe supplies."
-                $failed = $true
-            }
-        }
-    }
-
-    # TRLDOC020 - a recipe split across several documents (the same recipe number, for example the two parts of
-    # recipe 13) is read one document at a time, so each document must link to every sibling; otherwise an agent that
-    # opened one part has no route to the rest.
-    $ownPrefix = [regex]::Match($recipeDoc.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
-    $siblingDocs = @($recipeDocs | Where-Object {
-            $_.Name -cne $recipeDoc.Name -and
-            [regex]::Match($_.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value -eq $ownPrefix
-        })
-
+    # The prose of this recipe as the renderer sees it: code fences, inline code spans and HTML comments removed. Both
+    # TRLDOC019 and TRLDOC020 need it to decide what is a real link.
     # Only real Markdown links count, as the renderer sees them: prose outside code fences, inline code spans and HTML
     # comments, written as an inline link `[label](target)` or as a reference link (`[label][ref]`, `[ref][]` or `[ref]`)
     # whose `[ref]: target` definition names the sibling. A fenced comment, an HTML comment, inline code or plain text that
@@ -960,6 +919,69 @@ foreach ($recipeDoc in $recipeDocs) {
     }
 
     $siblingProse = $siblingProseLines -join "`n"
+    $siblingDefinitionPattern = '(?m)^ {0,3}\[(?<label>[^\]]+)\]:[ \t]*(?:<(?<target>[^>\s]+)>|(?<target>[^\s<>]+))(?:[ \t]+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?[ \t]*$'
+
+    # A reference link ([text][ref], [ref][] or [ref]) is a link only when a `[ref]: target` definition exists for its label.
+    $definedLabels = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+
+    foreach ($definition in [regex]::Matches($siblingProse, $siblingDefinitionPattern)) {
+        [void] $definedLabels.Add(($definition.Groups['label'].Value -replace '\s+', ' ').Trim().ToLowerInvariant())
+    }
+
+    # TRLDOC019 - a recipe is loaded on demand, and an agent that holds only this one has no way to resolve "Recipe 4": the
+    # skill name is `recipe-04-<slug>`, not "Recipe 4". So a mention of another recipe in prose is a markdown link to its
+    # file, and one in a code comment names its file stem. The recipe's own number, its heading, and the separate
+    # Microservices cookbook are exempt.
+    $ownNumber = [int] [regex]::Match($recipeDoc.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
+    $insideFence = $false
+
+    for ($lineIndex = 0; $lineIndex -lt $recipeDocLines.Count; $lineIndex++) {
+        $lineText = $recipeDocLines[$lineIndex].TrimStart([char] 0xFEFF)
+
+        if ($lineText -match '^\s*(>\s*)?```') {
+            $insideFence = -not $insideFence
+            continue
+        }
+
+        if ($lineText -match '^#\s+Recipe\s+\d+' -or $lineText -match 'microservices cookbook' -or
+            (-not $insideFence -and $lineText -match '^ {0,3}\[[^\]]+\]:[ \t]*\S')) {
+            continue
+        }
+
+        # Outside a code fence, a mention inside a Markdown link ([...Recipe 21...](file.md) or [...Recipe 21...][ref]) is
+        # already a link, whatever its label says. Inline code is not a link, so a number in backticks still counts as bare.
+        $linkSpans = if ($insideFence) {
+            @()
+        }
+        else {
+            # An inline link always counts. A reference link counts only when its label has a definition: an undefined
+            # [Recipe 21][missing] renders as literal text, with no navigation.
+            @([regex]::Matches($lineText, '\[(?<text>[^\]]*)\](?:\([^)]*\)|\[(?<ref>[^\]]*)\])') | Where-Object {
+                    -not $_.Groups['ref'].Success -or
+                    $definedLabels.Contains((($(if ($_.Groups['ref'].Value.Length -gt 0) { $_.Groups['ref'].Value } else { $_.Groups['text'].Value })) -replace '\s+', ' ').Trim().ToLowerInvariant())
+                })
+        }
+
+        foreach ($referenceMatch in [regex]::Matches($lineText, 'Recipes?\s+(?<number>\d+)')) {
+            $insideLink = @($linkSpans | Where-Object { $referenceMatch.Index -ge $_.Index -and $referenceMatch.Index -lt ($_.Index + $_.Length) }).Count -gt 0
+
+            if (-not $insideLink -and [int] $referenceMatch.Groups['number'].Value -ne $ownNumber) {
+                $where = if ($insideFence) { 'name the recipe file stem (for example recipe-02-command-handler)' } else { 'link it, as [Recipe N](recipe-NN-name.md)' }
+                Write-Host "$($recipeDoc.FullName)($($lineIndex + 1),1): error TRLDOC019: '$($referenceMatch.Value)' is a bare recipe number that an agent holding only this recipe cannot resolve; $where, and say in a clause what the other recipe supplies."
+                $failed = $true
+            }
+        }
+    }
+
+    # TRLDOC020 - a recipe split across several documents (the same recipe number, for example the two parts of
+    # recipe 13) is read one document at a time, so each document must link to every sibling; otherwise an agent that
+    # opened one part has no route to the rest.
+    $ownPrefix = [regex]::Match($recipeDoc.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
+    $siblingDocs = @($recipeDocs | Where-Object {
+            $_.Name -cne $recipeDoc.Name -and
+            [regex]::Match($_.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value -eq $ownPrefix
+        })
+
     $siblingLinkTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $siblingTargetPattern = '(?:<(?<target>[^>\s]+)>|(?<target>[^)\s<>]+))'
     $siblingTitlePattern = '(?:\s+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?'
@@ -970,7 +992,6 @@ foreach ($recipeDoc in $recipeDocs) {
     }
 
     # Reference links: a definition counts only when some link actually uses its label.
-    $siblingDefinitionPattern = '(?m)^ {0,3}\[(?<label>[^\]]+)\]:[ \t]*(?:<(?<target>[^>\s]+)>|(?<target>[^\s<>]+))(?:[ \t]+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?[ \t]*$'
     $siblingUsage = [regex]::Replace($siblingProse, $siblingDefinitionPattern, '')
 
     foreach ($siblingDefinition in [regex]::Matches($siblingProse, $siblingDefinitionPattern)) {
