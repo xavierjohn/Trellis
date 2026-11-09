@@ -880,9 +880,9 @@ foreach ($recipeDoc in $recipeDocs) {
             continue
         }
 
-        # Outside a code fence, a mention inside a Markdown link ([...Recipe 21...](file.md)) is already a link, whatever its
-        # label says. Inline code is not a link, so a number in backticks still counts as bare.
-        $linkSpans = if ($insideFence) { @() } else { @([regex]::Matches($lineText, '\[[^\]]*\]\([^)]*\)')) }
+        # Outside a code fence, a mention inside a Markdown link ([...Recipe 21...](file.md) or [...Recipe 21...][ref]) is
+        # already a link, whatever its label says. Inline code is not a link, so a number in backticks still counts as bare.
+        $linkSpans = if ($insideFence) { @() } else { @([regex]::Matches($lineText, '\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])')) }
 
         foreach ($referenceMatch in [regex]::Matches($lineText, 'Recipes?\s+(?<number>\d+)')) {
             $insideLink = @($linkSpans | Where-Object { $referenceMatch.Index -ge $_.Index -and $referenceMatch.Index -lt ($_.Index + $_.Length) }).Count -gt 0
@@ -904,15 +904,18 @@ foreach ($recipeDoc in $recipeDocs) {
             [regex]::Match($_.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value -eq $ownPrefix
         })
 
-    # Only real Markdown links count: a `[label](target)` outside a code fence whose target path (before any #anchor)
-    # is exactly the sibling's file name. A fenced comment or plain text that merely contains the file name does not.
-    $siblingLinkTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    # Only real Markdown links count, as the renderer sees them: prose outside code fences, inline code spans and HTML
+    # comments, written as an inline link `[label](target)` or as a reference link (`[label][ref]`, `[ref][]` or `[ref]`)
+    # whose `[ref]: target` definition names the sibling. A fenced comment, an HTML comment, inline code or plain text that
+    # merely contains the file name does not count, and neither does a definition that nothing uses.
     $siblingInsideFence = $false
+    $siblingInsideComment = $false
+    $siblingProseLines = [System.Collections.Generic.List[string]]::new()
 
     foreach ($siblingLine in $recipeDocLines) {
         $siblingText = $siblingLine.TrimStart([char] 0xFEFF)
 
-        if ($siblingText -match '^\s*(>\s*)?```') {
+        if (-not $siblingInsideComment -and $siblingText -match '^\s*(>\s*)?```') {
             $siblingInsideFence = -not $siblingInsideFence
             continue
         }
@@ -921,12 +924,61 @@ foreach ($recipeDoc in $recipeDocs) {
             continue
         }
 
-        # Link syntax inside an inline code span is literal text, not a link, so blank the spans out first. An optional
-        # link title ("title", 'title' or (title)) after the target is part of valid Markdown link syntax.
-        $siblingProse = [regex]::Replace($siblingText, '(?<ticks>`+)(?:(?!\k<ticks>).)+?\k<ticks>', '')
+        # Link syntax inside an inline code span is literal text, not a link, so blank the spans out first.
+        $siblingText = [regex]::Replace($siblingText, '(?<ticks>`+)(?:(?!\k<ticks>).)+?\k<ticks>', '')
 
-        foreach ($siblingLink in [regex]::Matches($siblingProse, '\[[^\]]*\]\((?<target>[^)\s#]+)(?:#[^)\s]*)?(?:\s+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?\s*\)')) {
-            [void] $siblingLinkTargets.Add(($siblingLink.Groups['target'].Value -replace '^\./', ''))
+        # An HTML comment (possibly spanning lines) is not rendered, so a link inside it is not a link.
+        $siblingVisible = ''
+        $siblingRest = $siblingText
+
+        while ($siblingRest.Length -gt 0) {
+            if ($siblingInsideComment) {
+                $commentEnd = $siblingRest.IndexOf('-->', [System.StringComparison]::Ordinal)
+
+                if ($commentEnd -lt 0) {
+                    break
+                }
+
+                $siblingRest = $siblingRest.Substring($commentEnd + 3)
+                $siblingInsideComment = $false
+            }
+            else {
+                $commentStart = $siblingRest.IndexOf('<!--', [System.StringComparison]::Ordinal)
+
+                if ($commentStart -lt 0) {
+                    $siblingVisible += $siblingRest
+                    break
+                }
+
+                $siblingVisible += $siblingRest.Substring(0, $commentStart)
+                $siblingRest = $siblingRest.Substring($commentStart + 4)
+                $siblingInsideComment = $true
+            }
+        }
+
+        $siblingProseLines.Add($siblingVisible)
+    }
+
+    $siblingProse = $siblingProseLines -join "`n"
+    $siblingLinkTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $siblingTargetPattern = '(?:<(?<target>[^>\s]+)>|(?<target>[^)\s<>]+))'
+    $siblingTitlePattern = '(?:\s+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?'
+
+    # Inline links: [label](target "optional title"), with an optional #anchor on the target.
+    foreach ($siblingLink in [regex]::Matches($siblingProse, '\[[^\]]*\]\(\s*' + $siblingTargetPattern + $siblingTitlePattern + '\s*\)')) {
+        [void] $siblingLinkTargets.Add((($siblingLink.Groups['target'].Value -replace '#.*$', '') -replace '^\./', ''))
+    }
+
+    # Reference links: a definition counts only when some link actually uses its label.
+    $siblingDefinitionPattern = '(?m)^ {0,3}\[(?<label>[^\]]+)\]:[ \t]*(?:<(?<target>[^>\s]+)>|(?<target>[^\s<>]+))(?:[ \t]+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?[ \t]*$'
+    $siblingUsage = [regex]::Replace($siblingProse, $siblingDefinitionPattern, '')
+
+    foreach ($siblingDefinition in [regex]::Matches($siblingProse, $siblingDefinitionPattern)) {
+        $siblingLabel = [regex]::Escape((($siblingDefinition.Groups['label'].Value -replace '\s+', ' ').Trim())) -replace '\\ ', '\s+'
+        $siblingUsed = [regex]::IsMatch($siblingUsage, "\[[^\]]*\]\[$siblingLabel\]|\[$siblingLabel\](?:\[\])?(?![\[(])", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+
+        if ($siblingUsed) {
+            [void] $siblingLinkTargets.Add((($siblingDefinition.Groups['target'].Value -replace '#.*$', '') -replace '^\./', ''))
         }
     }
 
