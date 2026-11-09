@@ -537,7 +537,7 @@ configuration still throw. The parser and writer remain ASP-independent.
 
 If trimming does remove the interface, the converter throws at first use naming the unreduced property types, rather than silently emitting a different JSON shape — so the failure is loud, but it is a *runtime* failure, which is why an AOT publish probe covering the composite path is worth having.
 
-> **Pattern reference.** For the full Domain + API JSON binding + EF Core ownership walkthrough on a multi-field VO (`ShippingAddress`-style), see [Cookbook Recipe 13](recipes/recipe-13-composite-value-object.md). Without this `[JsonConverter]` attribute on a request DTO's composite `[OwnedEntity]` property, model binding falls back to default construction and **silently bypasses `TryCreate`** — the inner-field validation never runs and an invalid payload propagates into the domain layer.
+> **Pattern reference.** For the full Domain + API JSON binding + EF Core ownership walkthrough on a multi-field VO (`ShippingAddress`-style), see [Recipe 13](recipes/recipe-13-composite-value-object.md). Without this `[JsonConverter]` attribute on a request DTO's composite `[OwnedEntity]` property, binding the composite (whose generated parameterless constructor is private) throws `NotSupportedException` instead of validating; adding the converter restores valid deserialization and structured validation failures.
 
 ### `Money`
 

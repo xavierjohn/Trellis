@@ -921,7 +921,11 @@ foreach ($recipeDoc in $recipeDocs) {
             continue
         }
 
-        foreach ($siblingLink in [regex]::Matches($siblingText, '\[[^\]]*\]\((?<target>[^)\s#]+)(?:#[^)\s]*)?\)')) {
+        # Link syntax inside an inline code span is literal text, not a link, so blank the spans out first. An optional
+        # link title ("title", 'title' or (title)) after the target is part of valid Markdown link syntax.
+        $siblingProse = [regex]::Replace($siblingText, '(?<ticks>`+)(?:(?!\k<ticks>).)+?\k<ticks>', '')
+
+        foreach ($siblingLink in [regex]::Matches($siblingProse, '\[[^\]]*\]\((?<target>[^)\s#]+)(?:#[^)\s]*)?(?:\s+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?\s*\)')) {
             [void] $siblingLinkTargets.Add(($siblingLink.Groups['target'].Value -replace '^\./', ''))
         }
     }
