@@ -20,7 +20,7 @@ agent_description: "Shows computed pagination with validated, query-bound contin
 - [Bounded application-computed fallback](#bounded-application-computed-fallback)
 
 **Problem.** Page a computed distance (or score), preserve a deterministic tie-breaker,
-reject impossible boundaries, and reject tokens from a different
+reject malformed boundaries (non-finite or negative distances, and on the translated path distances beyond the radius), and reject tokens from a different
 origin/filter/algorithm context. Spherical latitude/longitude queries have a translated EF
 Core path; other computations remain application-owned and must start from a complete,
 bounded candidate set.
@@ -228,7 +228,7 @@ public static class DistancePagination
 
 **What it shows.**
 
-- `CursorCodec.Composite` safely nests boundary `(distance, id)` with query context. `CursorCodec.Map` gives that wire tuple a named state and validates finite, nonnegative distance and exact context identity. Validation also runs when encoding server boundaries; corrupt state throws rather than generating an unusable next token.
+- `CursorCodec.Composite` safely nests boundary `(distance, id)` with query context. `CursorCodec.Map` gives that wire tuple a named state and validates a finite, nonnegative distance and exact context identity. The translated path also bounds the distance by the radius; the application-computed fallback has no radius, so it accepts any finite nonnegative boundary and a forged huge value (for example `1e100`) returns an empty successful page rather than an error. Add an upper bound to that validation if you know one. Validation also runs when encoding server boundaries; corrupt state throws rather than generating an unusable next token.
 - Context uses invariant round-trip coordinates (normalizing signed zero), a length-prefixed scope/snapshot identity, fixed sort directions, and an algorithm version before hashing. Include every additional filter/parameter that affects membership or ordering in the canonical identity. The hash is **not a signature**: a malicious client can still construct unsigned state. Protection requires a caller-owned codec wrapper, and every request must reapply authorization.
 - The boundary filter runs **before** `Take`. Ascending distance ties use ascending `Guid.CompareTo`, matching the in-memory `ThenBy` comparator; GUIDs do not have a C# `>` operator. A descending score needs the corresponding reversed predicate. Never round the boundary for display before encoding it.
 - `PageBuilder` does not search, sort, calculate distances, or decode. It calls the encoder once on the last retained row only if over-fetch finds another row. Provider-owned continuation tokens instead belong in a directly constructed `Page<T>`.

@@ -44,12 +44,13 @@ public Task<Result<Maybe<OrderDto>>> FindOrderAsync(HttpClient client, Guid id, 
 - Bare `ToResultAsync()` is strict: 2xx responses stay on the success track; non-2xx responses become typed Trellis errors.
 - The JSON context must match the upstream's property naming. Without `JsonSerializerDefaults.Web`, a camelCase body deserializes to a record of default values and the call still succeeds.
 - Use `ReadJsonOrNoneOn404Async(...)` when `404` is expected domain absence, not failure. It returns `None` for 404, 204, 205, an empty body and a JSON `null`; other non-2xx statuses fail with the same typed errors as bare `ToResultAsync()`.
-- A supplied status map replaces the strict mapping: statuses for which it returns `null` stay on the success track, and a later `ReadJsonAsync` reports them as a generic `Error.Unexpected` (code `http.response-not-success`), losing the typed 401, 403, 429 and 503 errors. To keep the strict errors for every other status, use `.ToResultAsync()` and handle the one expected status separately (for example with `HandleNotFoundAsync(new Error.NotFound(...))`), or return an explicit error for every status the map should cover. A map is for when the upstream status needs a domain-specific resource or policy:
+- A supplied status map replaces the strict mapping: statuses for which it returns `null` stay on the success track, and a later `ReadJsonAsync` reports them as a generic `Error.Unexpected` (code `http.response-not-success`), losing the typed 401, 403, 429 and 503 errors. To keep the strict typed errors for every other status and still give one status a domain-specific error, use bare `.ToResultAsync()` and rewrite only that error afterwards. (`HandleNotFoundAsync(...)` is a different, status-map-style step on the pending response: it cannot follow `.ToResultAsync()`, and used alone it passes every other status through unmapped, so a 401 would surface as `Error.Unexpected`.)
 
 ```csharp
 client.GetAsync($"/orders/{id}", ct)
-    .ToResultAsync(status => status == HttpStatusCode.NotFound
-        ? new Error.NotFound(ResourceRef.For<OrderDto>(id))
-        : null)
+    .ToResultAsync()                                   // strict: 401, 403, 429, 503 ... stay typed
+    .RecoverOnFailureAsync(e => e is Error.NotFound
+        ? Result.Fail<HttpResponseMessage>(new Error.NotFound(ResourceRef.For<OrderDto>(id)))
+        : Result.Fail<HttpResponseMessage>(e))         // only the 404 gets the domain-specific resource
     .ReadJsonAsync(OrderJsonContext.Default.OrderDto, ct);
 ```

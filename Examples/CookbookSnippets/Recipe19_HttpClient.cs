@@ -28,11 +28,12 @@ public static class Recipe19CompiledSurface
         client.GetAsync($"/orders/{id}", ct)
             .ReadJsonOrNoneOn404Async(OrderJsonContext.Default.OrderDto, ct);
 
-    public static Task<Result<OrderDto>> GetRequiredOrderWithStatusMapAsync(HttpClient client, Guid id, CancellationToken ct) =>
+    public static Task<Result<OrderDto>> GetRequiredOrderWithDomainNotFoundAsync(HttpClient client, Guid id, CancellationToken ct) =>
         client.GetAsync($"/orders/{id}", ct)
-            .ToResultAsync(status => status == HttpStatusCode.NotFound
-                ? new Error.NotFound(ResourceRef.For<OrderDto>(id))
-                : null)
+            .ToResultAsync()
+            .RecoverOnFailureAsync(e => e is Error.NotFound
+                ? Result.Fail<HttpResponseMessage>(new Error.NotFound(ResourceRef.For<OrderDto>(id)))
+                : Result.Fail<HttpResponseMessage>(e))
             .ReadJsonAsync(OrderJsonContext.Default.OrderDto, ct);
 }
 

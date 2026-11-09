@@ -894,6 +894,24 @@ foreach ($recipeDoc in $recipeDocs) {
             }
         }
     }
+
+    # TRLDOC020 - a recipe split across several documents (the same recipe number, for example the two parts of
+    # recipe 13) is read one document at a time, so each document must link to every sibling; otherwise an agent that
+    # opened one part has no route to the rest.
+    $ownPrefix = [regex]::Match($recipeDoc.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
+    $siblingDocs = @($recipeDocs | Where-Object {
+            $_.Name -cne $recipeDoc.Name -and
+            [regex]::Match($_.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value -eq $ownPrefix
+        })
+
+    foreach ($siblingDoc in $siblingDocs) {
+        $linksSibling = @($recipeDocLines | Where-Object { $_.Contains("]($($siblingDoc.Name)") }).Count -gt 0
+
+        if (-not $linksSibling) {
+            Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC020: '$($recipeDoc.Name)' shares recipe number $ownPrefix with '$($siblingDoc.Name)' but does not link to it. Link every sibling document of a split recipe, as [Recipe $ownPrefix part N]($($siblingDoc.Name)), so an agent holding one part can find the others."
+            $failed = $true
+        }
+    }
 }
 
 if ($failed) {
