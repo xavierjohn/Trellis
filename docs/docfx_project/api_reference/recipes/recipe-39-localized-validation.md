@@ -171,7 +171,7 @@ public static class ViolationReader
 }
 ```
 
-`Location.In` says where the value came from. For `body` and `unknown` locations `Location.Pointer` (RFC 6901) binds the message to a form control; for `query`, `path` and `header` it is absent and `Location.Name` carries the parameter name.
+A violation's location (`ViolationLocation`) says where the value came from through its `In` member. For `body` and `unknown` locations `ViolationLocation.Pointer` (RFC 6901) binds the message to a form control; for `query`, `path` and `header` it is absent and `ViolationLocation.Name` carries the parameter name.
 
 A failure raised with `Error.InvalidInput.ForRule(...)` (a form-level or multi-field rule) has no `fieldViolations`: it arrives as `ruleViolations`, each with its own `code`, `detail`, `locations` and `args` (`RuleViolationProblemDetail[]`). Read that member the same way and render by `Code` and `Args` through the same table. A 400 for a body that never parsed may carry no problem body at all unless `AddProblemDetails()` is configured, so handle a null `ProblemDetails`.
 
