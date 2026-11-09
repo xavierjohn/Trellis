@@ -948,17 +948,25 @@ foreach ($recipeDoc in $recipeDocs) {
             continue
         }
 
-        # Outside a code fence, a mention inside a Markdown link ([...Recipe 21...](file.md) or [...Recipe 21...][ref]) is
-        # already a link, whatever its label says. Inline code is not a link, so a number in backticks still counts as bare.
+        # Outside a code fence, a mention inside a Markdown link ([...Recipe 21...](file.md), [...Recipe 21...][ref] or a
+        # defined shortcut [Recipe 21]) is already a link, whatever its label says. Inline code is not a link, so a number
+        # in backticks still counts as bare, and link syntax inside a code span is literal text: mask each span with blanks
+        # of the same length (so the match offsets still line up with the original line) before looking for links.
         $linkSpans = if ($insideFence) {
             @()
         }
         else {
+            $linkText = [regex]::Replace($lineText, '(?<ticks>`+)(?:(?!\k<ticks>).)+?\k<ticks>', [System.Text.RegularExpressions.MatchEvaluator] { param($codeSpan) ' ' * $codeSpan.Value.Length })
+
             # An inline link always counts. A reference link counts only when its label has a definition: an undefined
-            # [Recipe 21][missing] renders as literal text, with no navigation.
-            @([regex]::Matches($lineText, '\[(?<text>[^\]]*)\](?:\([^)]*\)|\[(?<ref>[^\]]*)\])') | Where-Object {
+            # [Recipe 21][missing] renders as literal text, with no navigation. A shortcut reference [label] (not followed
+            # by (, [ or :) is a link only when its label is defined too.
+            @([regex]::Matches($linkText, '\[(?<text>[^\]]*)\](?:\([^)]*\)|\[(?<ref>[^\]]*)\])') | Where-Object {
                     -not $_.Groups['ref'].Success -or
                     $definedLabels.Contains((($(if ($_.Groups['ref'].Value.Length -gt 0) { $_.Groups['ref'].Value } else { $_.Groups['text'].Value })) -replace '\s+', ' ').Trim().ToLowerInvariant())
+                }) +
+            @([regex]::Matches($linkText, '\[(?<label>[^\[\]]+)\](?![\[(:])') | Where-Object {
+                    $definedLabels.Contains(($_.Groups['label'].Value -replace '\s+', ' ').Trim().ToLowerInvariant())
                 })
         }
 
