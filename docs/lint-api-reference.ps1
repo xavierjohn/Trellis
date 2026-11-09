@@ -785,6 +785,14 @@ if ($requiredDocs.Count -ne 1 -or $requiredDocs[0] -ne 'trellis-start-here.md') 
 # platform allows 1,024 characters; the AgentDocs manifest allows 200, which TRLDOC016 enforces), a body of fewer than 500
 # lines, and a `## Contents` section in any recipe longer than 100 lines.
 # The folder is the signal: a new recipe goes here and is held to these rules; reference documents stay outside it.
+# Blank each inline code span with spaces of the same length, so link syntax inside it is literal text while offsets still
+# line up with the original line.
+function Hide-InlineCode {
+    param([string] $Text)
+
+    return [regex]::Replace($Text, '(?<ticks>`+)(?:(?!\k<ticks>).)+?\k<ticks>', [System.Text.RegularExpressions.MatchEvaluator] { param($codeSpan) ' ' * $codeSpan.Value.Length })
+}
+
 $recipeDocs = @($markdownFiles | Where-Object { $_.Directory.Name -eq 'recipes' })
 
 foreach ($recipeDoc in $recipeDocs) {
@@ -861,121 +869,56 @@ foreach ($recipeDoc in $recipeDocs) {
         }
     }
 
-    # The prose of this recipe as the renderer sees it: code fences, inline code spans and HTML comments removed. Both
-    # TRLDOC019 and TRLDOC020 need it to decide what is a real link.
-    # Only real Markdown links count, as the renderer sees them: prose outside code fences, inline code spans and HTML
-    # comments, written as an inline link `[label](target)` or as a reference link (`[label][ref]`, `[ref][]` or `[ref]`)
-    # whose `[ref]: target` definition names the sibling. A fenced comment, an HTML comment, inline code or plain text that
-    # merely contains the file name does not count, and neither does a definition that nothing uses.
-    $siblingInsideFence = $false
-    $siblingInsideComment = $false
-    $siblingProseLines = [System.Collections.Generic.List[string]]::new()
+    # TRLDOC019 and TRLDOC020 need to know what is a real link, so they look at the document the way the renderer does.
+    # Links are inline links only, [label](target). Reference-style links ([label][ref], [ref]) and their definitions are
+    # not recognized, so a recipe uses the inline form. $linkView is the document with the same line numbers and offsets as
+    # the file, but with code fences emptied and inline code spans and HTML comments blanked, so link syntax inside any of
+    # them is not seen as a link.
+    $docLines = @($recipeDocLines | ForEach-Object { $_.TrimStart([char] 0xFEFF) })
+    $lineKind = [int[]]::new($docLines.Count)   # 0 prose, 1 code-fence marker, 2 code-fence content
+    $linkView = [string[]]::new($docLines.Count)
+    $insideFence = $false
 
-    foreach ($siblingLine in $recipeDocLines) {
-        $siblingText = $siblingLine.TrimStart([char] 0xFEFF)
-
-        if (-not $siblingInsideComment -and $siblingText -match '^\s*(>\s*)?```') {
-            $siblingInsideFence = -not $siblingInsideFence
-            continue
+    for ($lineIndex = 0; $lineIndex -lt $docLines.Count; $lineIndex++) {
+        if ($docLines[$lineIndex] -match '^\s*(>\s*)?```') {
+            $insideFence = -not $insideFence
+            $lineKind[$lineIndex] = 1
+            $linkView[$lineIndex] = ''
         }
-
-        if ($siblingInsideFence) {
-            continue
+        elseif ($insideFence) {
+            $lineKind[$lineIndex] = 2
+            $linkView[$lineIndex] = ''
         }
-
-        # Link syntax inside an inline code span is literal text, not a link, so blank the spans out first.
-        $siblingText = [regex]::Replace($siblingText, '(?<ticks>`+)(?:(?!\k<ticks>).)+?\k<ticks>', '')
-
-        # An HTML comment (possibly spanning lines) is not rendered, so a link inside it is not a link.
-        $siblingVisible = ''
-        $siblingRest = $siblingText
-
-        while ($siblingRest.Length -gt 0) {
-            if ($siblingInsideComment) {
-                $commentEnd = $siblingRest.IndexOf('-->', [System.StringComparison]::Ordinal)
-
-                if ($commentEnd -lt 0) {
-                    break
-                }
-
-                $siblingRest = $siblingRest.Substring($commentEnd + 3)
-                $siblingInsideComment = $false
-            }
-            else {
-                $commentStart = $siblingRest.IndexOf('<!--', [System.StringComparison]::Ordinal)
-
-                if ($commentStart -lt 0) {
-                    $siblingVisible += $siblingRest
-                    break
-                }
-
-                $siblingVisible += $siblingRest.Substring(0, $commentStart)
-                $siblingRest = $siblingRest.Substring($commentStart + 4)
-                $siblingInsideComment = $true
-            }
+        else {
+            $linkView[$lineIndex] = Hide-InlineCode $docLines[$lineIndex]
         }
-
-        $siblingProseLines.Add($siblingVisible)
     }
 
-    $siblingProse = $siblingProseLines -join "`n"
-    $siblingDefinitionPattern = '(?m)^ {0,3}\[(?<label>[^\]]+)\]:[ \t]*(?:<(?<target>[^>\s]+)>|(?<target>[^\s<>]+))(?:[ \t]+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?[ \t]*$'
-
-    # A reference link ([text][ref], [ref][] or [ref]) is a link only when a `[ref]: target` definition exists for its label.
-    $definedLabels = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-
-    foreach ($definition in [regex]::Matches($siblingProse, $siblingDefinitionPattern)) {
-        [void] $definedLabels.Add(($definition.Groups['label'].Value -replace '\s+', ' ').Trim().ToLowerInvariant())
-    }
+    # An HTML comment is not rendered. It can span lines, so blank it in the whole text, keeping the newlines.
+    $linkView = [regex]::Replace(($linkView -join "`n"), '<!--.*?(?:-->|\z)', [System.Text.RegularExpressions.MatchEvaluator] { param($comment) $comment.Value -replace '[^\n]', ' ' }, [System.Text.RegularExpressions.RegexOptions]::Singleline) -split "`n"
 
     # TRLDOC019 - a recipe is loaded on demand, and an agent that holds only this one has no way to resolve "Recipe 4": the
     # skill name is `recipe-04-<slug>`, not "Recipe 4". So a mention of another recipe in prose is a markdown link to its
     # file, and one in a code comment names its file stem. The recipe's own number, its heading, and the separate
-    # Microservices cookbook are exempt.
+    # Microservices cookbook are exempt. A number in inline code is still bare, and a mention inside a link label is already
+    # a link, whatever its label says.
     $ownNumber = [int] [regex]::Match($recipeDoc.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
-    $insideFence = $false
 
-    for ($lineIndex = 0; $lineIndex -lt $recipeDocLines.Count; $lineIndex++) {
-        $lineText = $recipeDocLines[$lineIndex].TrimStart([char] 0xFEFF)
+    for ($lineIndex = 0; $lineIndex -lt $docLines.Count; $lineIndex++) {
+        $lineText = $docLines[$lineIndex]
 
-        if ($lineText -match '^\s*(>\s*)?```') {
-            $insideFence = -not $insideFence
+        if ($lineKind[$lineIndex] -eq 1 -or $lineText -match '^#\s+Recipe\s+\d+' -or $lineText -match 'microservices cookbook') {
             continue
         }
 
-        if ($lineText -match '^#\s+Recipe\s+\d+' -or $lineText -match 'microservices cookbook' -or
-            (-not $insideFence -and $lineText -match '^ {0,3}\[[^\]]+\]:[ \t]*\S')) {
-            continue
-        }
-
-        # Outside a code fence, a mention inside a Markdown link ([...Recipe 21...](file.md), [...Recipe 21...][ref] or a
-        # defined shortcut [Recipe 21]) is already a link, whatever its label says. Inline code is not a link, so a number
-        # in backticks still counts as bare, and link syntax inside a code span is literal text: mask each span with blanks
-        # of the same length (so the match offsets still line up with the original line) before looking for links.
-        $linkSpans = if ($insideFence) {
-            @()
-        }
-        else {
-            $linkText = [regex]::Replace($lineText, '(?<ticks>`+)(?:(?!\k<ticks>).)+?\k<ticks>', [System.Text.RegularExpressions.MatchEvaluator] { param($codeSpan) ' ' * $codeSpan.Value.Length })
-
-            # An inline link always counts. A reference link counts only when its label has a definition: an undefined
-            # [Recipe 21][missing] renders as literal text, with no navigation. A shortcut reference [label] (not followed
-            # by (, [ or :) is a link only when its label is defined too.
-            @([regex]::Matches($linkText, '\[(?<text>[^\]]*)\](?:\([^)]*\)|\[(?<ref>[^\]]*)\])') | Where-Object {
-                    -not $_.Groups['ref'].Success -or
-                    $definedLabels.Contains((($(if ($_.Groups['ref'].Value.Length -gt 0) { $_.Groups['ref'].Value } else { $_.Groups['text'].Value })) -replace '\s+', ' ').Trim().ToLowerInvariant())
-                }) +
-            @([regex]::Matches($linkText, '\[(?<label>[^\[\]]+)\](?![\[(:])') | Where-Object {
-                    $definedLabels.Contains(($_.Groups['label'].Value -replace '\s+', ' ').Trim().ToLowerInvariant())
-                })
-        }
+        $linkSpans = @([regex]::Matches($linkView[$lineIndex], '\[[^\]]*\]\([^)]*\)'))
 
         foreach ($referenceMatch in [regex]::Matches($lineText, 'Recipes?\s+(?<number>\d+)')) {
             $insideLink = @($linkSpans | Where-Object { $referenceMatch.Index -ge $_.Index -and $referenceMatch.Index -lt ($_.Index + $_.Length) }).Count -gt 0
 
             if (-not $insideLink -and [int] $referenceMatch.Groups['number'].Value -ne $ownNumber) {
-                $where = if ($insideFence) { 'name the recipe file stem (for example recipe-02-command-handler)' } else { 'link it, as [Recipe N](recipe-NN-name.md)' }
-                Write-Host "$($recipeDoc.FullName)($($lineIndex + 1),1): error TRLDOC019: '$($referenceMatch.Value)' is a bare recipe number that an agent holding only this recipe cannot resolve; $where, and say in a clause what the other recipe supplies."
+                $where = if ($lineKind[$lineIndex] -eq 2) { 'name the recipe file stem (for example recipe-02-command-handler)' } else { 'link it, as [Recipe N](recipe-NN-name.md)' }
+                Write-Host "$($recipeDoc.FullName)($($lineIndex + 1),1): error TRLDOC019: '$($referenceMatch.Value)' is a bare recipe number that an agent holding only this recipe cannot resolve; $where, and say in a clause what the other recipe supplies. Recipes use inline links only."
                 $failed = $true
             }
         }
@@ -990,32 +933,16 @@ foreach ($recipeDoc in $recipeDocs) {
             [regex]::Match($_.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value -eq $ownPrefix
         })
 
-    $siblingLinkTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-    $siblingTargetPattern = '(?:<(?<target>[^>\s]+)>|(?<target>[^)\s<>]+))'
-    $siblingTitlePattern = '(?:\s+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?'
+    # The link target is the sibling's file name, before any #anchor, with an optional ./ and an optional link title.
+    $linkedFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 
-    # Inline links: [label](target "optional title"), with an optional #anchor on the target.
-    foreach ($siblingLink in [regex]::Matches($siblingProse, '\[[^\]]*\]\(\s*' + $siblingTargetPattern + $siblingTitlePattern + '\s*\)')) {
-        [void] $siblingLinkTargets.Add((($siblingLink.Groups['target'].Value -replace '#.*$', '') -replace '^\./', ''))
-    }
-
-    # Reference links: a definition counts only when some link actually uses its label.
-    $siblingUsage = [regex]::Replace($siblingProse, $siblingDefinitionPattern, '')
-
-    foreach ($siblingDefinition in [regex]::Matches($siblingProse, $siblingDefinitionPattern)) {
-        $siblingLabel = [regex]::Escape((($siblingDefinition.Groups['label'].Value -replace '\s+', ' ').Trim())) -replace '\\ ', '\s+'
-        $siblingUsed = [regex]::IsMatch($siblingUsage, "\[[^\]]*\]\[$siblingLabel\]|\[$siblingLabel\](?:\[\])?(?![\[(])", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-
-        if ($siblingUsed) {
-            [void] $siblingLinkTargets.Add((($siblingDefinition.Groups['target'].Value -replace '#.*$', '') -replace '^\./', ''))
-        }
+    foreach ($link in [regex]::Matches(($linkView -join "`n"), '\[[^\]]*\]\(\s*(?:<(?<target>[^>\s]+)>|(?<target>[^)\s<>]+))(?:\s+(?:"[^"]*"|''[^'']*''|\([^)]*\)))?\s*\)')) {
+        [void] $linkedFiles.Add((($link.Groups['target'].Value -replace '#.*$', '') -replace '^\./', ''))
     }
 
     foreach ($siblingDoc in $siblingDocs) {
-        $linksSibling = $siblingLinkTargets.Contains($siblingDoc.Name)
-
-        if (-not $linksSibling) {
-            Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC020: '$($recipeDoc.Name)' shares recipe number $ownPrefix with '$($siblingDoc.Name)' but does not link to it. Link every sibling document of a split recipe, as [Recipe $ownPrefix part N]($($siblingDoc.Name)), so an agent holding one part can find the others."
+        if (-not $linkedFiles.Contains($siblingDoc.Name)) {
+            Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC020: '$($recipeDoc.Name)' shares recipe number $ownPrefix with '$($siblingDoc.Name)' but does not link to it. Link every sibling document of a split recipe, as [Recipe $ownPrefix part N]($($siblingDoc.Name)), so an agent holding one part can find the others. Recipes use inline links only."
             $failed = $true
         }
     }
