@@ -8,6 +8,9 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Markdig;
+using Markdig.Extensions.AutoIdentifiers;
+using Markdig.Extensions.EmphasisExtras;
+using Markdig.Extensions.Mathematics;
 using Markdig.Extensions.Yaml;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -37,10 +40,19 @@ internal sealed record RecipeLinkFinding(string Rule, int Line, string Message);
 /// </summary>
 internal static class RecipeLinkAudit
 {
+    // The Markdig extensions DocFX 2.80.1 enables in UseDocfxExtensions (docfx.json sets no markdigExtensions), so the
+    // audit parses text the way the site renders it: ~~21~~ is strikethrough, $21$ is math. DocFX's own extensions
+    // (xref, include, tabs, containers) add no recipe-number text and are not reproduced. Front matter is Markdig's,
+    // and source locations are precise so a finding names its line.
     private static readonly MarkdownPipeline s_pipeline = new MarkdownPipelineBuilder()
         .UseYamlFrontMatter()
+        .UseMathematics()
+        .UseEmphasisExtras(EmphasisExtraOptions.Strikethrough)
+        .UseAutoIdentifiers(AutoIdentifierOptions.GitHub)
+        .UseMediaLinks()
         .UsePipeTables()
         .UseAutoLinks()
+        .UseEmojiAndSmiley(false)
         .UsePreciseSourceLocation()
         .Build();
 
@@ -179,7 +191,18 @@ internal static class RecipeLinkAudit
             Scan(prose.Text, offset => prose.Lines[offset], codeLike: false);
         }
 
-        // What no flattened text holds: an image's alt text and the tag text of raw inline HTML. Neither is a label.
+        // An image's alt text is not a label: ![Recipe **21**](x.png) renders "Recipe 21" with no link, so it is read
+        // across its formatting like the prose around it.
+        foreach (var image in document.Descendants<LinkInline>().Where(link => link.IsImage))
+        {
+            if (ParentBlockOf(image) is HeadingBlock { Level: 1 })
+                continue;
+
+            var alt = Flatten(image, flattened);
+            Scan(alt.Text, offset => alt.Lines[offset], codeLike: false);
+        }
+
+        // What no flattened text holds: the tag text of raw inline HTML, which is not a label.
         foreach (var inline in document.Descendants<Inline>())
         {
             var raw = inline switch
@@ -258,6 +281,11 @@ internal static class RecipeLinkAudit
                         break;
                     case CodeInline code:
                         Add(code.Content, child.Line);
+                        consumed.Add(child);
+                        break;
+                    case MathInline math:
+                        // $21$ renders as the numeral 21.
+                        Add(math.Content.ToString(), child.Line);
                         consumed.Add(child);
                         break;
                     case HtmlEntityInline entity:

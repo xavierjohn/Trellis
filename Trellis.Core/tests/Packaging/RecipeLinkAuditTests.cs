@@ -39,6 +39,10 @@ public class RecipeLinkAuditTests
     [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-21-x.md) |")]
     [InlineData("# Recipe 5 — This recipe\n\nBody.")]
     [InlineData("This recipe is Recipe 5 and says so.")]
+    // Strikethrough and math are parsed as DocFX parses them.
+    [InlineData("See [Recipe ~~21~~](recipe-21-x.md).")]
+    [InlineData("See [Recipe $21$](recipe-21-x.md).")]
+    [InlineData("This recipe is Recipe ~~5~~ and says so.")]
     // A character reference decodes to the character the page shows.
     [InlineData("See [Recipe 2&#49;](recipe-21-x.md).")]
     [InlineData("See [Recipe&nbsp;21](recipe-21-x.md).")]
@@ -56,6 +60,23 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // DocFX renders ~~21~~ as struck-through text and $21$ as math: the text still reads "Recipe 21".
+    [InlineData("See [Recipe ~~21~~](recipe-20-x.md).")]
+    [InlineData("See [Recipe $21$](recipe-20-x.md).")]
+    [InlineData("See Recipe ~~21~~.")]
+    [InlineData("See ~~Recipe~~ 21.")]
+    [InlineData("See Recipe $21$.")]
+    // An image's alt text is unlinked text, however it is written.
+    [InlineData("![Recipe 21](x.png)")]
+    [InlineData("![Recipe **21**](x.png)")]
+    [InlineData("![Recipe&nbsp;21](x.png)")]
+    [InlineData("![Recipe 2&#49;](x.png)")]
+    [InlineData("![**Recipe** *21*](x.png)")]
+    [InlineData("![Recipe ~~21~~](x.png)")]
+    [InlineData("![Recipe `21`](x.png)")]
+    [InlineData("See [![Recipe **21**](x.png)](recipe-21-x.md).")]
+    [InlineData("![Recipe\n21](x.png)")]
+    [InlineData("![Recipe **21**][i].\n\n[i]: x.png")]
     // The same decoding, for text that is not a link.
     [InlineData("See Recipe&nbsp;21.")]
     [InlineData("See Recipe 2&#49;.")]
