@@ -39,6 +39,8 @@ public class RecipeLinkAuditTests
     [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-21-x.md) |")]
     [InlineData("# Recipe 5 — This recipe\n\nBody.")]
     [InlineData("This recipe is Recipe 5 and says so.")]
+    // A link written inside an image description is alt text, not a link, so its words are not a mention that needs one.
+    [InlineData("![See [diagram](x.md)](d.svg)")]
     // The alt text of an image in a link is part of that link's label.
     [InlineData("See [![Recipe 21](x.png)](recipe-21-x.md).")]
     [InlineData("See [![Recipe **21**](x.png)](recipe-21-x.md).")]
@@ -67,6 +69,12 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // A link inside an image description is not a link: its label is unlinked alt text.
+    [InlineData("![See [Recipe 21](recipe-21-x.md)](d.svg)")]
+    [InlineData("![See [Recipe 21](recipe-20-x.md)](d.svg)")]
+    [InlineData("![See [Recipe **21**](recipe-21-x.md)](d.svg)")]
+    [InlineData("![See [Recipe 21][r]](d.svg)\n\n[r]: recipe-21-x.md")]
+    [InlineData("See [Recipe ![[21](recipe-21-x.md)](d.svg)](recipe-20-x.md).")]
     // The alt text of an image in a link names a recipe the link does not open.
     [InlineData("See [![Recipe 21](x.png)](recipe-20-x.md).")]
     [InlineData("See [Recipe ![21](x.svg)](recipe-20-x.md).")]
@@ -209,6 +217,11 @@ public class RecipeLinkAuditTests
     [InlineData("[part one]\n\n<!--\n[part one]: recipe-13-part-one.md\n-->")]
     [InlineData("A definition nothing uses.\n\n[p1]: recipe-13-part-one.md")]
     [InlineData("![part one](recipe-13-part-one.md)")]
+    // A sibling linked only from inside an image description is not linked.
+    [InlineData("![See [part one](recipe-13-part-one.md)](d.svg)")]
+    [InlineData("![[part one](recipe-13-part-one.md)](d.svg)")]
+    [InlineData("![See [part one][p1]](d.svg)\n\n[p1]: recipe-13-part-one.md")]
+    [InlineData("[![[part one](recipe-13-part-one.md)](d.svg)](other.md)")]
     public void Sibling_NotLinked_IsRejected(string markdown) =>
         RecipeLinkAudit.Check(Part, markdown, [Sibling]).Should().Contain(f => f.Rule == "TRLDOC020");
 

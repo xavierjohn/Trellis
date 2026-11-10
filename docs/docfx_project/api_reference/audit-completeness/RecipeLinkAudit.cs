@@ -124,9 +124,10 @@ internal static class RecipeLinkAudit
         var ownNumber = RecipeNumber(fileName);
         var findings = new List<RecipeLinkFinding>();
 
-        // Images are not navigation; every other LinkInline is a link the parser resolved (inline, reference, shortcut or
-        // autolink). An unresolved reference is plain text and never appears here.
-        var links = document.Descendants<LinkInline>().Where(link => !link.IsImage).ToList();
+        // Images are not navigation, and neither is a link written inside an image's description: DocFX renders that as
+        // plain alt text. Every other LinkInline is a link the parser resolved (inline, reference, shortcut or autolink).
+        // An unresolved reference is plain text and never appears here.
+        var links = document.Descendants<LinkInline>().Where(link => !link.IsImage && !IsInsideImage(link)).ToList();
         linkCount = links.Count;
 
         // Text is read as a reader sees it, not as the parser splits it: Recipe **21** is the text "Recipe 21" even though
@@ -299,8 +300,9 @@ internal static class RecipeLinkAudit
                     case LineBreakInline:
                         Add(" ", child.Line);
                         break;
-                    case LinkInline image when throughImages && image.IsImage:
-                        Append(image);
+                    case LinkInline link when (throughImages && link.IsImage) || IsInsideImage(link):
+                        // Alt text, however it is written: the words of a link inside it are text, not a link.
+                        Append(link);
                         break;
                     case LinkInline:
                         Add("\u0001", child.Line);
@@ -311,6 +313,18 @@ internal static class RecipeLinkAudit
                 }
             }
         }
+    }
+
+    // Whether a link sits inside an image's description, where DocFX renders it as plain alt text.
+    private static bool IsInsideImage(LinkInline link)
+    {
+        for (var parent = link.Parent; parent is not null; parent = parent.Parent)
+        {
+            if (parent is LinkInline { IsImage: true })
+                return true;
+        }
+
+        return false;
     }
 
     // Whether a link or image sits inside another link or image, so its text is part of that one's text.
