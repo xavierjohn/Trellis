@@ -39,6 +39,14 @@ public class RecipeLinkAuditTests
     [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-21-x.md) |")]
     [InlineData("# Recipe 5 — This recipe\n\nBody.")]
     [InlineData("This recipe is Recipe 5 and says so.")]
+    // Every character reference decodes, including the HTML5 names, in a raw <img> alt attribute.
+    [InlineData("See [<img alt=\"Recipe&NonBreakingSpace;21\" src=\"x.png\">](recipe-21-x.md).")]
+    [InlineData("See [<img alt=\"Recipe&#32;21\" src=\"x.png\">](recipe-21-x.md).")]
+    [InlineData("See [<img alt=\"Recipe&#x20;21\" src=\"x.png\">](recipe-21-x.md).")]
+    // Raw HTML inside a Markdown image's description is dropped from the alt text, so it adds nothing to a label.
+    [InlineData("See [Recipe ![x <img alt=\"21\" src=\"z.svg\">](y.png)](recipe-20-x.md).")]
+    [InlineData("See [Recipe ![x <b>21</b>](y.png)](recipe-20-x.md).")]
+    [InlineData("See ![Recipe <img alt=\"21\" src=\"x.svg\">](y.png).")]
     // Only the alt attribute is the alt text: not data-alt, not text inside another value, and a quoted > ends nothing.
     [InlineData("See [<img data-alt=\"Recipe 20\" alt=\"Recipe 21\" src=\"x.png\">](recipe-21-x.md).")]
     [InlineData("See [<img title=\"alt=\x27Recipe 20\x27\" alt=\"Recipe 21\" src=\"x.png\">](recipe-21-x.md).")]
@@ -84,6 +92,12 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // The same decoding for a raw <img> that names the other recipe or is not in a link.
+    [InlineData("See [<img alt=\"Recipe&NonBreakingSpace;21\" src=\"x.png\">](recipe-20-x.md).")]
+    [InlineData("See [<img alt=\"Recipe&#32;21\" src=\"x.png\">](recipe-20-x.md).")]
+    [InlineData("See <img alt=\"Recipe&#32;21\" src=\"x.png\">.")]
+    [InlineData("See <img alt=\"Recipe&NonBreakingSpace;21\" src=\"x.png\">.")]
+    [InlineData("See <span title=\"Recipe&#32;21\">x</span>.")]
     // The same attributes, with a link that opens the other recipe.
     [InlineData("See [<img data-alt=\"Recipe 20\" alt=\"Recipe 21\" src=\"x.png\">](recipe-20-x.md).")]
     [InlineData("See [<img title=\"alt=\x27Recipe 20\x27\" alt=\"Recipe 21\" src=\"x.png\">](recipe-20-x.md).")]
@@ -99,7 +113,6 @@ public class RecipeLinkAuditTests
     [InlineData("See [<img alt=\"Recipe&nbsp;21\" src=\"x.png\">](recipe-20-x.md).")]
     [InlineData("See [<img alt=\"Recipe 21\" src=\"x.png\">](https://example.com/recipe-21-x.md).")]
     [InlineData("See <img src=\"x.png\" alt=\"Recipe 21\">.")]
-    [InlineData("See ![Recipe <img alt=\"21\" src=\"x.svg\">](y.png).")]
     // A link inside an image description is not a link: its label is unlinked alt text.
     [InlineData("![See [Recipe 21](recipe-21-x.md)](d.svg)")]
     [InlineData("![See [Recipe 21](recipe-20-x.md)](d.svg)")]

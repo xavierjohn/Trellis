@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using Markdig;
@@ -13,6 +12,7 @@ using Markdig.Extensions.AutoIdentifiers;
 using Markdig.Extensions.EmphasisExtras;
 using Markdig.Extensions.Mathematics;
 using Markdig.Extensions.Yaml;
+using Markdig.Helpers;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 
@@ -222,7 +222,7 @@ internal static class RecipeLinkAudit
                 LiteralInline literal => literal.Content.ToString(),
                 CodeInline code => code.Content,
                 HtmlEntityInline entity => entity.Transcoded.ToString(),
-                HtmlInline html => html.Tag,
+                HtmlInline html => HtmlHelper.Unescape(html.Tag, removeBackSlash: false),
                 _ => null,
             };
 
@@ -274,6 +274,7 @@ internal static class RecipeLinkAudit
     {
         var text = new StringBuilder();
         var lines = new List<int>();
+        var imageDepth = root is LinkInline { IsImage: true } ? 1 : 0;
         Append(root);
         return (text.ToString(), lines);
 
@@ -310,14 +311,17 @@ internal static class RecipeLinkAudit
                     case LineBreakInline:
                         Add(" ", child.Line);
                         break;
-                    case HtmlInline html when throughImages && ImgAlt(html.Tag) is { } alt:
-                        // A raw <img> in a label or in alt text is an image like ![alt](src): its alt text is read as text.
+                    case HtmlInline html when throughImages && imageDepth == 0 && ImgAlt(html.Tag) is { } alt:
+                        // A raw <img> directly in a link label is an image like ![alt](src): its alt text is label text.
+                        // Inside a Markdown image's description DocFX drops raw HTML from the alt text, so nothing is read.
                         Add(alt, child.Line);
                         consumed.Add(child);
                         break;
                     case LinkInline link when (throughImages && link.IsImage) || IsInsideImage(link):
                         // Alt text, however it is written: the words of a link inside it are text, not a link.
+                        imageDepth += link.IsImage ? 1 : 0;
                         Append(link);
+                        imageDepth -= link.IsImage ? 1 : 0;
                         break;
                     case LinkInline:
                         Add("\u0001", child.Line);
@@ -342,7 +346,7 @@ internal static class RecipeLinkAudit
         while (s_attribute.Match(tag, position) is { Success: true } attribute)
         {
             if (string.Equals(attribute.Groups["name"].Value, "alt", StringComparison.OrdinalIgnoreCase))
-                return WebUtility.HtmlDecode(attribute.Groups["v"].Value);
+                return HtmlHelper.Unescape(attribute.Groups["v"].Value, removeBackSlash: false);
 
             position = attribute.Index + attribute.Length;
         }
