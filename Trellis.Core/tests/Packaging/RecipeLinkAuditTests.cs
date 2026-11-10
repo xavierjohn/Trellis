@@ -39,6 +39,13 @@ public class RecipeLinkAuditTests
     [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-21-x.md) |")]
     [InlineData("# Recipe 5 — This recipe\n\nBody.")]
     [InlineData("This recipe is Recipe 5 and says so.")]
+    // Only the alt attribute is the alt text: not data-alt, not text inside another value, and a quoted > ends nothing.
+    [InlineData("See [<img data-alt=\"Recipe 20\" alt=\"Recipe 21\" src=\"x.png\">](recipe-21-x.md).")]
+    [InlineData("See [<img title=\"alt=\x27Recipe 20\x27\" alt=\"Recipe 21\" src=\"x.png\">](recipe-21-x.md).")]
+    [InlineData("See [<img title=\"a > b\" alt=\"Recipe 21\" src=\"x.png\">](recipe-21-x.md).")]
+    [InlineData("See [<img alt=\"a > Recipe 21\" src=\"x.png\">](recipe-21-x.md).")]
+    [InlineData("See [<img alt = \"Recipe 21\" src=\"x.png\">](recipe-21-x.md).")]
+    [InlineData("See [<img alt=\"Recipe 21\" alt=\"Recipe 20\" src=\"x.png\">](recipe-21-x.md).")]
     // The alt text of a raw <img> inside a link is part of that link's label.
     [InlineData("See [<img src=\"x.png\" alt=\"Recipe 21\">](recipe-21-x.md).")]
     [InlineData("See [<img alt=\"Recipe 21\" src=\"x.png\" />](recipe-21-x.md).")]
@@ -77,6 +84,14 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // The same attributes, with a link that opens the other recipe.
+    [InlineData("See [<img data-alt=\"Recipe 20\" alt=\"Recipe 21\" src=\"x.png\">](recipe-20-x.md).")]
+    [InlineData("See [<img title=\"alt=\x27Recipe 20\x27\" alt=\"Recipe 21\" src=\"x.png\">](recipe-20-x.md).")]
+    [InlineData("See [<img title=\"a > b\" alt=\"Recipe 21\" src=\"x.png\">](recipe-20-x.md).")]
+    [InlineData("See [<img alt=\"a > Recipe 21\" src=\"x.png\">](recipe-20-x.md).")]
+    [InlineData("See [<img alt=\"Recipe 21\" alt=\"Recipe 20\" src=\"x.png\">](recipe-20-x.md).")]
+    // Not alt text, but a recipe number in raw HTML that no link carries.
+    [InlineData("See [<img src=\"x.png\" data-alt=\"Recipe 21\">](recipe-21-x.md).")]
     // A raw <img> in a link names a recipe the link does not open, or is not in a link at all.
     [InlineData("See [<img src=\"x.png\" alt=\"Recipe 21\">](recipe-20-x.md).")]
     [InlineData("See [Recipe <img alt=\"21\" src=\"x.svg\">](recipe-20-x.md).")]

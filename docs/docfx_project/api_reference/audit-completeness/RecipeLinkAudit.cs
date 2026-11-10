@@ -58,10 +58,14 @@ internal static class RecipeLinkAudit
         .Build();
 
     private static readonly Regex s_recipeFile = new(@"^recipe-(?<number>\d+)-", RegexOptions.Compiled);
-    // The alt attribute of a raw <img> tag: quoted with " or ', or a bare word.
-    private static readonly Regex s_imgAlt = new(
-        @"^<img\b[^>]*?\balt\s*=\s*(?:""(?<v>[^""]*)""|'(?<v>[^']*)'|(?<v>[^\s""'>]+))",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    // The start of a raw <img> tag, and one attribute of it at a time: a name, then optionally = and a value that is
+    // double-quoted, single-quoted or a bare word. Reading attributes in order is what keeps data-alt, a quoted > and
+    // text inside another attribute's value from being taken for the alt attribute.
+    private static readonly Regex s_imgTag = new(@"^<img(?=[\s/>])", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex s_attribute = new(
+        @"\G[\s/]*(?<name>[^\s""'<>/=]+)(?:\s*=\s*(?:""(?<v>[^""]*)""|'(?<v>[^']*)'|(?<v>[^\s""'=<>`]+)))?",
+        RegexOptions.Compiled);
 
     private static readonly Regex s_mention = new(@"Recipes?\s+(?<number>\d+)", RegexOptions.Compiled);
 
@@ -306,9 +310,9 @@ internal static class RecipeLinkAudit
                     case LineBreakInline:
                         Add(" ", child.Line);
                         break;
-                    case HtmlInline html when throughImages && s_imgAlt.Match(html.Tag) is { Success: true } alt:
+                    case HtmlInline html when throughImages && ImgAlt(html.Tag) is { } alt:
                         // A raw <img> in a label or in alt text is an image like ![alt](src): its alt text is read as text.
-                        Add(WebUtility.HtmlDecode(alt.Groups["v"].Value), child.Line);
+                        Add(alt, child.Line);
                         consumed.Add(child);
                         break;
                     case LinkInline link when (throughImages && link.IsImage) || IsInsideImage(link):
@@ -324,6 +328,26 @@ internal static class RecipeLinkAudit
                 }
             }
         }
+    }
+
+    // The alt text of a raw <img> tag with character references decoded, or null when the tag is not an <img> or has no
+    // alt attribute. As in a browser, the first alt attribute wins and attribute names are not case sensitive.
+    private static string? ImgAlt(string tag)
+    {
+        if (!s_imgTag.IsMatch(tag))
+            return null;
+
+        var position = "<img".Length;
+
+        while (s_attribute.Match(tag, position) is { Success: true } attribute)
+        {
+            if (string.Equals(attribute.Groups["name"].Value, "alt", StringComparison.OrdinalIgnoreCase))
+                return WebUtility.HtmlDecode(attribute.Groups["v"].Value);
+
+            position = attribute.Index + attribute.Length;
+        }
+
+        return null;
     }
 
     // Whether a link sits inside an image's description, where DocFX renders it as plain alt text.
