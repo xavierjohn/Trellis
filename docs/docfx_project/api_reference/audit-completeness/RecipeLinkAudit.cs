@@ -1,10 +1,11 @@
-﻿﻿namespace Trellis.Docs.Audit;
+﻿namespace Trellis.Docs.Audit;
 
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Markdig;
 using Markdig.Extensions.Yaml;
@@ -116,15 +117,12 @@ internal static class RecipeLinkAudit
         var links = document.Descendants<LinkInline>().Where(link => !link.IsImage).ToList();
         linkCount = links.Count;
 
-        var linkOfLabelNode = new Dictionary<MarkdownObject, LinkInline>(ReferenceEqualityComparer.Instance);
+        // The label of a link is its text as a reader sees it: Recipe **21** is one label "Recipe 21" even though the
+        // parser splits it into a literal and an emphasis. Text nodes that make up a label are scanned once, as that label.
+        var inLabel = new HashSet<MarkdownObject>(ReferenceEqualityComparer.Instance);
+        var labelOf = links.ToDictionary(link => link, link => LabelText(link, inLabel));
 
-        foreach (var link in links)
-        {
-            foreach (var node in link.Descendants())
-                linkOfLabelNode[node] = link;
-        }
-
-        void Scan(int zeroBasedLine, string raw, bool codeLike, LinkInline? labelOf = null)
+        void Scan(int zeroBasedLine, string raw, bool codeLike, LinkInline? owner = null)
         {
             var line = Math.Clamp(zeroBasedLine, 0, sourceLines.Length - 1);
 
@@ -140,16 +138,16 @@ internal static class RecipeLinkAudit
 
                 // A label that names a recipe must open that recipe: the number in the target's recipe-NN-slug.md
                 // file name is the evidence, so [Recipe 21](recipe-20-x.md) is rejected like a bare mention.
-                if (labelOf is not null)
+                if (owner is not null)
                 {
-                    var path = LinkedFile(labelOf.Url);
+                    var path = LinkedFile(owner.Url);
 
                     // A relative file link only: an absolute URL can end in a matching file name and still open elsewhere.
                     if (!Uri.TryCreate(path, UriKind.Absolute, out _) && RecipeNumber(Path.GetFileName(path)) == mentioned)
                         continue;
 
                     findings.Add(new RecipeLinkFinding("TRLDOC019", line + 1,
-                        $"'{mention.Value}' is the label of a link to '{labelOf.Url}', which is not recipe {mentioned}; point the link at the file of recipe {mentioned} (recipe-{mentioned:00}-name.md)."));
+                        $"'{mention.Value}' is the label of a link to '{owner.Url}', which is not recipe {mentioned}; point the link at the file of recipe {mentioned} (recipe-{mentioned:00}-name.md)."));
                     continue;
                 }
 
@@ -162,7 +160,14 @@ internal static class RecipeLinkAudit
             }
         }
 
-        // Text the parser reads as inlines: a mention counts only inside the label of a link.
+        // A mention counts only inside the label of a link, so each label is scanned as a whole.
+        foreach (var (link, label) in labelOf)
+        {
+            if (ParentBlockOf(link) is not HeadingBlock { Level: 1 })
+                Scan(link.Line, label, codeLike: false, link);
+        }
+
+        // Every other text the parser reads as inlines is outside any label (or in an image's alt text) and cannot count.
         foreach (var inline in document.Descendants<Inline>())
         {
             var raw = inline switch
@@ -173,11 +178,10 @@ internal static class RecipeLinkAudit
                 _ => null,
             };
 
-            if (raw is null || ParentBlockOf(inline) is HeadingBlock { Level: 1 })
+            if (raw is null || inLabel.Contains(inline) || ParentBlockOf(inline) is HeadingBlock { Level: 1 })
                 continue;
 
-            linkOfLabelNode.TryGetValue(inline, out var labelOf);
-            Scan(inline.Line, raw, codeLike: false, labelOf);
+            Scan(inline.Line, raw, codeLike: false);
         }
 
         // Text the parser keeps as lines: code fences and indented code, YAML front matter and HTML blocks (including
@@ -210,6 +214,42 @@ internal static class RecipeLinkAudit
         }
 
         return findings.OrderBy(f => f.Line).ThenBy(f => f.Rule, StringComparer.Ordinal).ToList();
+    }
+
+    // The text of a link's label, in reading order. Literals and code spans contribute their text, emphasis is looked
+    // through, and a line break reads as a space. An image's alt text, raw HTML and anything else stay out: they are not
+    // the label, so they are left to the caller's per-node scan. Each node used is added to consumed.
+    private static string LabelText(LinkInline link, HashSet<MarkdownObject> consumed)
+    {
+        var text = new StringBuilder();
+        Append(link);
+        return text.ToString();
+
+        void Append(ContainerInline container)
+        {
+            foreach (var child in container)
+            {
+                switch (child)
+                {
+                    case LiteralInline literal:
+                        text.Append(literal.Content.ToString());
+                        consumed.Add(child);
+                        break;
+                    case CodeInline code:
+                        text.Append(code.Content);
+                        consumed.Add(child);
+                        break;
+                    case LineBreakInline:
+                        text.Append(' ');
+                        break;
+                    case LinkInline { IsImage: true }:
+                        break;
+                    case ContainerInline nested:
+                        Append(nested);
+                        break;
+                }
+            }
+        }
     }
 
     // An inline's block is recorded on the root of its inline tree.

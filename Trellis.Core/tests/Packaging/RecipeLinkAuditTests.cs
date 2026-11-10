@@ -16,6 +16,12 @@ public class RecipeLinkAuditTests
     // TRLDOC019: a mention of Recipe 21 (not this recipe's own number) that is the label of a real link.
     [Theory]
     [InlineData("See [Recipe 21](recipe-21-x.md).")]
+    // A label the parser splits into several inlines is still one label.
+    [InlineData("See [Recipe **21**](recipe-21-x.md).")]
+    [InlineData("See [**Recipe 21**](recipe-21-x.md).")]
+    [InlineData("See [Recipe *21*](recipe-21-x.md).")]
+    [InlineData("See [Recipe `21`](recipe-21-x.md).")]
+    [InlineData("See [Recipe\n21](recipe-21-x.md).")]
     [InlineData("See [Recipe 4](recipe-04-x.md).")]
     [InlineData("See [Recipe 21](../recipes/recipe-21-x.md#heading).")]
     [InlineData("See [Recipe 4][r].\n\n[r]: recipe-04-x.md")]
@@ -41,6 +47,16 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // A split label that names the wrong recipe.
+    [InlineData("See [Recipe **21**](recipe-20-x.md).")]
+    [InlineData("See [**Recipe 21**](recipe-20-x.md).")]
+    [InlineData("See [Recipe *21*](recipe-20-x.md).")]
+    [InlineData("See [Recipe `21`](recipe-20-x.md).")]
+    [InlineData("See [Recipe 2**1**](recipe-20-x.md).")]
+    [InlineData("See [Recipe\n21](recipe-20-x.md).")]
+    [InlineData("See [Recipe **21**][r].\n\n[r]: recipe-20-x.md")]
+    [InlineData("See [Recipe **21**](https://example.com/recipe-21-x.md).")]
+    [InlineData("See **Recipe 21**.")]
     // The label names a recipe the link does not open.
     [InlineData("See [Recipe 21](recipe-20-x.md).")]
     [InlineData("See [the Recipe 21 guide](recipe-22-x.md).")]
