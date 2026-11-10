@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using Markdig;
@@ -57,6 +58,11 @@ internal static class RecipeLinkAudit
         .Build();
 
     private static readonly Regex s_recipeFile = new(@"^recipe-(?<number>\d+)-", RegexOptions.Compiled);
+    // The alt attribute of a raw <img> tag: quoted with " or ', or a bare word.
+    private static readonly Regex s_imgAlt = new(
+        @"^<img\b[^>]*?\balt\s*=\s*(?:""(?<v>[^""]*)""|'(?<v>[^']*)'|(?<v>[^\s""'>]+))",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
     private static readonly Regex s_mention = new(@"Recipes?\s+(?<number>\d+)", RegexOptions.Compiled);
 
     public static int Run(string docsDir)
@@ -299,6 +305,11 @@ internal static class RecipeLinkAudit
                         break;
                     case LineBreakInline:
                         Add(" ", child.Line);
+                        break;
+                    case HtmlInline html when throughImages && s_imgAlt.Match(html.Tag) is { Success: true } alt:
+                        // A raw <img> in a label or in alt text is an image like ![alt](src): its alt text is read as text.
+                        Add(WebUtility.HtmlDecode(alt.Groups["v"].Value), child.Line);
+                        consumed.Add(child);
                         break;
                     case LinkInline link when (throughImages && link.IsImage) || IsInsideImage(link):
                         // Alt text, however it is written: the words of a link inside it are text, not a link.

@@ -39,6 +39,14 @@ public class RecipeLinkAuditTests
     [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-21-x.md) |")]
     [InlineData("# Recipe 5 — This recipe\n\nBody.")]
     [InlineData("This recipe is Recipe 5 and says so.")]
+    // The alt text of a raw <img> inside a link is part of that link's label.
+    [InlineData("See [<img src=\"x.png\" alt=\"Recipe 21\">](recipe-21-x.md).")]
+    [InlineData("See [<img alt=\"Recipe 21\" src=\"x.png\" />](recipe-21-x.md).")]
+    [InlineData("See [<img alt='Recipe 21' src='x.png'>](recipe-21-x.md).")]
+    [InlineData("See [<img alt=Recipe&nbsp;21 src=x.png>](recipe-21-x.md).")]
+    [InlineData("See [Recipe <img alt=\"21\" src=\"x.svg\">](recipe-21-x.md).")]
+    [InlineData("See [<IMG ALT=\"Recipe 21\" SRC=\"x.png\">](recipe-21-x.md).")]
+    [InlineData("See [<img src=\"x.png\">](recipe-21-x.md).")]
     // A link written inside an image description is alt text, not a link, so its words are not a mention that needs one.
     [InlineData("![See [diagram](x.md)](d.svg)")]
     // The alt text of an image in a link is part of that link's label.
@@ -69,6 +77,14 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // A raw <img> in a link names a recipe the link does not open, or is not in a link at all.
+    [InlineData("See [<img src=\"x.png\" alt=\"Recipe 21\">](recipe-20-x.md).")]
+    [InlineData("See [Recipe <img alt=\"21\" src=\"x.svg\">](recipe-20-x.md).")]
+    [InlineData("See [Recipe <img src=\"x.svg\" alt=\"21\">][r].\n\n[r]: recipe-20-x.md")]
+    [InlineData("See [<img alt=\"Recipe&nbsp;21\" src=\"x.png\">](recipe-20-x.md).")]
+    [InlineData("See [<img alt=\"Recipe 21\" src=\"x.png\">](https://example.com/recipe-21-x.md).")]
+    [InlineData("See <img src=\"x.png\" alt=\"Recipe 21\">.")]
+    [InlineData("See ![Recipe <img alt=\"21\" src=\"x.svg\">](y.png).")]
     // A link inside an image description is not a link: its label is unlinked alt text.
     [InlineData("![See [Recipe 21](recipe-21-x.md)](d.svg)")]
     [InlineData("![See [Recipe 21](recipe-20-x.md)](d.svg)")]
