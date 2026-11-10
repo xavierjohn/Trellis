@@ -39,6 +39,13 @@ public class RecipeLinkAuditTests
     [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-21-x.md) |")]
     [InlineData("# Recipe 5 — This recipe\n\nBody.")]
     [InlineData("This recipe is Recipe 5 and says so.")]
+    // The alt text of an image in a link is part of that link's label.
+    [InlineData("See [![Recipe 21](x.png)](recipe-21-x.md).")]
+    [InlineData("See [![Recipe **21**](x.png)](recipe-21-x.md).")]
+    [InlineData("See [Recipe ![21](x.svg)](recipe-21-x.md).")]
+    [InlineData("See [![Recipe&nbsp;21](x.png)][r].\n\n[r]: recipe-21-x.md")]
+    [InlineData("![diagram](x.png)")]
+    [InlineData("See [![diagram](x.png)](recipe-21-x.md).")]
     // Strikethrough and math are parsed as DocFX parses them.
     [InlineData("See [Recipe ~~21~~](recipe-21-x.md).")]
     [InlineData("See [Recipe $21$](recipe-21-x.md).")]
@@ -60,6 +67,15 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // The alt text of an image in a link names a recipe the link does not open.
+    [InlineData("See [![Recipe 21](x.png)](recipe-20-x.md).")]
+    [InlineData("See [Recipe ![21](x.svg)](recipe-20-x.md).")]
+    [InlineData("See [![Recipe **21**](x.png)](recipe-20-x.md).")]
+    [InlineData("See [Recipe ![2**1**](x.svg)](recipe-20-x.md).")]
+    [InlineData("See [Recipe ![21](x.svg)](https://example.com/recipe-21-x.md).")]
+    [InlineData("See [Recipe ![21](x.svg)][r].\n\n[r]: recipe-20-x.md")]
+    [InlineData("See [![Recipe 21](x.png)](#top).")]
+    [InlineData("See ![Recipe ![21](x.svg)](y.png).")]
     // DocFX renders ~~21~~ as struck-through text and $21$ as math: the text still reads "Recipe 21".
     [InlineData("See [Recipe ~~21~~](recipe-20-x.md).")]
     [InlineData("See [Recipe $21$](recipe-20-x.md).")]
@@ -74,7 +90,6 @@ public class RecipeLinkAuditTests
     [InlineData("![**Recipe** *21*](x.png)")]
     [InlineData("![Recipe ~~21~~](x.png)")]
     [InlineData("![Recipe `21`](x.png)")]
-    [InlineData("See [![Recipe **21**](x.png)](recipe-21-x.md).")]
     [InlineData("![Recipe\n21](x.png)")]
     [InlineData("![Recipe **21**][i].\n\n[i]: x.png")]
     // The same decoding, for text that is not a link.

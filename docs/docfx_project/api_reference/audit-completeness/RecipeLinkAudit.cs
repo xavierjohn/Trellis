@@ -133,7 +133,7 @@ internal static class RecipeLinkAudit
         // the parser makes a literal and an emphasis of it. Every text node that goes into a flattened text is recorded
         // here so it is scanned once, as part of that text.
         var flattened = new HashSet<MarkdownObject>(ReferenceEqualityComparer.Instance);
-        var labelOf = links.ToDictionary(link => link, link => Flatten(link, flattened));
+        var labelOf = links.ToDictionary(link => link, link => Flatten(link, flattened, throughImages: true));
 
         void Scan(string raw, Func<int, int> zeroBasedLineAt, bool codeLike, LinkInline? owner = null)
         {
@@ -187,18 +187,19 @@ internal static class RecipeLinkAudit
             if (block.Inline is null || block is HeadingBlock { Level: 1 })
                 continue;
 
-            var prose = Flatten(block.Inline, flattened);
+            var prose = Flatten(block.Inline, flattened, throughImages: false);
             Scan(prose.Text, offset => prose.Lines[offset], codeLike: false);
         }
 
-        // An image's alt text is not a label: ![Recipe **21**](x.png) renders "Recipe 21" with no link, so it is read
-        // across its formatting like the prose around it.
-        foreach (var image in document.Descendants<LinkInline>().Where(link => link.IsImage))
+        // The alt text of an image inside a link is part of that link's label, flattened above, and so is the alt text of
+        // an image inside another image. Any other image's alt text is unlinked: ![Recipe **21**](x.png) shows "Recipe 21"
+        // with no link, so it is read across its formatting like the prose around it.
+        foreach (var image in document.Descendants<LinkInline>().Where(link => link.IsImage && !IsInsideLink(link)))
         {
             if (ParentBlockOf(image) is HeadingBlock { Level: 1 })
                 continue;
 
-            var alt = Flatten(image, flattened);
+            var alt = Flatten(image, flattened, throughImages: true);
             Scan(alt.Text, offset => alt.Lines[offset], codeLike: false);
         }
 
@@ -254,9 +255,11 @@ internal static class RecipeLinkAudit
 
     // A document's text in reading order, with the source line of each character. Literals and code spans contribute
     // their text, character references are decoded, emphasis is looked through, and a line break reads as a space. A link or an image is a boundary (text on
-    // either side must not join into a mention) and raw HTML contributes nothing; both are left to the caller's own scan.
+    // either side must not join into a mention) unless throughImages reads an image's alt text as part of the text, as a
+    // link label does. Raw HTML contributes nothing and is left to the caller's own scan.
     // Each text node used is added to consumed.
-    private static (string Text, IReadOnlyList<int> Lines) Flatten(ContainerInline root, HashSet<MarkdownObject> consumed)
+    private static (string Text, IReadOnlyList<int> Lines) Flatten(
+        ContainerInline root, HashSet<MarkdownObject> consumed, bool throughImages)
     {
         var text = new StringBuilder();
         var lines = new List<int>();
@@ -296,6 +299,9 @@ internal static class RecipeLinkAudit
                     case LineBreakInline:
                         Add(" ", child.Line);
                         break;
+                    case LinkInline image when throughImages && image.IsImage:
+                        Append(image);
+                        break;
                     case LinkInline:
                         Add("\u0001", child.Line);
                         break;
@@ -305,6 +311,18 @@ internal static class RecipeLinkAudit
                 }
             }
         }
+    }
+
+    // Whether a link or image sits inside another link or image, so its text is part of that one's text.
+    private static bool IsInsideLink(LinkInline link)
+    {
+        for (var parent = link.Parent; parent is not null; parent = parent.Parent)
+        {
+            if (parent is LinkInline)
+                return true;
+        }
+
+        return false;
     }
 
     // An inline's block is recorded on the root of its inline tree.
