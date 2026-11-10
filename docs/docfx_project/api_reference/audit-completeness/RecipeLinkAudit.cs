@@ -186,6 +186,7 @@ internal static class RecipeLinkAudit
             {
                 LiteralInline literal => literal.Content.ToString(),
                 CodeInline code => code.Content,
+                HtmlEntityInline entity => entity.Transcoded.ToString(),
                 HtmlInline html => html.Tag,
                 _ => null,
             };
@@ -229,7 +230,7 @@ internal static class RecipeLinkAudit
     }
 
     // A document's text in reading order, with the source line of each character. Literals and code spans contribute
-    // their text, emphasis is looked through, and a line break reads as a space. A link or an image is a boundary (text on
+    // their text, character references are decoded, emphasis is looked through, and a line break reads as a space. A link or an image is a boundary (text on
     // either side must not join into a mention) and raw HTML contributes nothing; both are left to the caller's own scan.
     // Each text node used is added to consumed.
     private static (string Text, IReadOnlyList<int> Lines) Flatten(ContainerInline root, HashSet<MarkdownObject> consumed)
@@ -257,6 +258,11 @@ internal static class RecipeLinkAudit
                         break;
                     case CodeInline code:
                         Add(code.Content, child.Line);
+                        consumed.Add(child);
+                        break;
+                    case HtmlEntityInline entity:
+                        // &nbsp; and &#49; read as the character they decode to, which is what the page shows.
+                        Add(entity.Transcoded.ToString(), child.Line);
                         consumed.Add(child);
                         break;
                     case LineBreakInline:

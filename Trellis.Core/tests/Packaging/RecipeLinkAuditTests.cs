@@ -39,6 +39,11 @@ public class RecipeLinkAuditTests
     [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-21-x.md) |")]
     [InlineData("# Recipe 5 — This recipe\n\nBody.")]
     [InlineData("This recipe is Recipe 5 and says so.")]
+    // A character reference decodes to the character the page shows.
+    [InlineData("See [Recipe 2&#49;](recipe-21-x.md).")]
+    [InlineData("See [Recipe&nbsp;21](recipe-21-x.md).")]
+    [InlineData("See [Recipe&#32;21](recipe-21-x.md).")]
+    [InlineData("This recipe is Recipe&nbsp;5 and says so.")]
     [InlineData("This recipe is **Recipe 5** and says so.")]
     [InlineData("# Recipe **21** — a heading")]
     // A link between the words is a boundary, not a mention that joins them.
@@ -51,6 +56,14 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // The same decoding, for text that is not a link.
+    [InlineData("See Recipe&nbsp;21.")]
+    [InlineData("See Recipe 2&#49;.")]
+    [InlineData("See Recipe&#x20;21.")]
+    [InlineData("See **Recipe**&nbsp;**21**.")]
+    [InlineData("See [Recipe&nbsp;21](recipe-20-x.md).")]
+    [InlineData("See [Recipe 2&#49;](recipe-20-x.md).")]
+    [InlineData("See [Recipe&#32;21][r].\n\n[r]: recipe-20-x.md")]
     // Unlinked prose is read across its formatting, as the rendered page shows it.
     [InlineData("See Recipe **21**.")]
     [InlineData("See **Recipe** 21.")]
