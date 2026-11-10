@@ -117,20 +117,21 @@ internal static class RecipeLinkAudit
         var links = document.Descendants<LinkInline>().Where(link => !link.IsImage).ToList();
         linkCount = links.Count;
 
-        // The label of a link is its text as a reader sees it: Recipe **21** is one label "Recipe 21" even though the
-        // parser splits it into a literal and an emphasis. Text nodes that make up a label are scanned once, as that label.
-        var inLabel = new HashSet<MarkdownObject>(ReferenceEqualityComparer.Instance);
-        var labelOf = links.ToDictionary(link => link, link => LabelText(link, inLabel));
+        // Text is read as a reader sees it, not as the parser splits it: Recipe **21** is the text "Recipe 21" even though
+        // the parser makes a literal and an emphasis of it. Every text node that goes into a flattened text is recorded
+        // here so it is scanned once, as part of that text.
+        var flattened = new HashSet<MarkdownObject>(ReferenceEqualityComparer.Instance);
+        var labelOf = links.ToDictionary(link => link, link => Flatten(link, flattened));
 
-        void Scan(int zeroBasedLine, string raw, bool codeLike, LinkInline? owner = null)
+        void Scan(string raw, Func<int, int> zeroBasedLineAt, bool codeLike, LinkInline? owner = null)
         {
-            var line = Math.Clamp(zeroBasedLine, 0, sourceLines.Length - 1);
-
-            if (sourceLines[line].Contains("microservices cookbook", StringComparison.OrdinalIgnoreCase))
-                return;
-
             foreach (Match mention in s_mention.Matches(raw))
             {
+                var line = Math.Clamp(zeroBasedLineAt(mention.Index), 0, sourceLines.Length - 1);
+
+                if (sourceLines[line].Contains("microservices cookbook", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 var mentioned = int.Parse(mention.Groups["number"].Value, CultureInfo.InvariantCulture);
 
                 if (mentioned == ownNumber)
@@ -164,10 +165,21 @@ internal static class RecipeLinkAudit
         foreach (var (link, label) in labelOf)
         {
             if (ParentBlockOf(link) is not HeadingBlock { Level: 1 })
-                Scan(link.Line, label, codeLike: false, link);
+                Scan(label.Text, offset => label.Lines[offset], codeLike: false, link);
         }
 
-        // Every other text the parser reads as inlines is outside any label (or in an image's alt text) and cannot count.
+        // Prose outside any label is scanned across its formatting too, so See Recipe **21** is the bare mention that
+        // DocFX renders without a link. A link or an image inside it is a boundary: text on either side does not join.
+        foreach (var block in document.Descendants<LeafBlock>())
+        {
+            if (block.Inline is null || block is HeadingBlock { Level: 1 })
+                continue;
+
+            var prose = Flatten(block.Inline, flattened);
+            Scan(prose.Text, offset => prose.Lines[offset], codeLike: false);
+        }
+
+        // What no flattened text holds: an image's alt text and the tag text of raw inline HTML. Neither is a label.
         foreach (var inline in document.Descendants<Inline>())
         {
             var raw = inline switch
@@ -178,10 +190,10 @@ internal static class RecipeLinkAudit
                 _ => null,
             };
 
-            if (raw is null || inLabel.Contains(inline) || ParentBlockOf(inline) is HeadingBlock { Level: 1 })
+            if (raw is null || flattened.Contains(inline) || ParentBlockOf(inline) is HeadingBlock { Level: 1 })
                 continue;
 
-            Scan(inline.Line, raw, codeLike: false);
+            Scan(raw, _ => inline.Line, codeLike: false);
         }
 
         // Text the parser keeps as lines: code fences and indented code, YAML front matter and HTML blocks (including
@@ -196,7 +208,7 @@ internal static class RecipeLinkAudit
             for (var i = 0; i < leaf.Lines.Count; i++)
             {
                 var line = leaf.Lines.Lines[i];
-                Scan(line.Line, line.Slice.ToString(), codeLike);
+                Scan(line.Slice.ToString(), _ => line.Line, codeLike);
             }
         }
 
@@ -216,14 +228,22 @@ internal static class RecipeLinkAudit
         return findings.OrderBy(f => f.Line).ThenBy(f => f.Rule, StringComparer.Ordinal).ToList();
     }
 
-    // The text of a link's label, in reading order. Literals and code spans contribute their text, emphasis is looked
-    // through, and a line break reads as a space. An image's alt text, raw HTML and anything else stay out: they are not
-    // the label, so they are left to the caller's per-node scan. Each node used is added to consumed.
-    private static string LabelText(LinkInline link, HashSet<MarkdownObject> consumed)
+    // A document's text in reading order, with the source line of each character. Literals and code spans contribute
+    // their text, emphasis is looked through, and a line break reads as a space. A link or an image is a boundary (text on
+    // either side must not join into a mention) and raw HTML contributes nothing; both are left to the caller's own scan.
+    // Each text node used is added to consumed.
+    private static (string Text, IReadOnlyList<int> Lines) Flatten(ContainerInline root, HashSet<MarkdownObject> consumed)
     {
         var text = new StringBuilder();
-        Append(link);
-        return text.ToString();
+        var lines = new List<int>();
+        Append(root);
+        return (text.ToString(), lines);
+
+        void Add(string value, int line)
+        {
+            text.Append(value);
+            lines.AddRange(Enumerable.Repeat(line, value.Length));
+        }
 
         void Append(ContainerInline container)
         {
@@ -232,17 +252,18 @@ internal static class RecipeLinkAudit
                 switch (child)
                 {
                     case LiteralInline literal:
-                        text.Append(literal.Content.ToString());
+                        Add(literal.Content.ToString(), child.Line);
                         consumed.Add(child);
                         break;
                     case CodeInline code:
-                        text.Append(code.Content);
+                        Add(code.Content, child.Line);
                         consumed.Add(child);
                         break;
                     case LineBreakInline:
-                        text.Append(' ');
+                        Add(" ", child.Line);
                         break;
-                    case LinkInline { IsImage: true }:
+                    case LinkInline:
+                        Add("\u0001", child.Line);
                         break;
                     case ContainerInline nested:
                         Append(nested);

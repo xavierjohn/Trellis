@@ -39,6 +39,10 @@ public class RecipeLinkAuditTests
     [InlineData("| A | B |\n| --- | --- |\n| x | [Recipe 21](recipe-21-x.md) |")]
     [InlineData("# Recipe 5 — This recipe\n\nBody.")]
     [InlineData("This recipe is Recipe 5 and says so.")]
+    [InlineData("This recipe is **Recipe 5** and says so.")]
+    [InlineData("# Recipe **21** — a heading")]
+    // A link between the words is a boundary, not a mention that joins them.
+    [InlineData("Recipe [x](recipe-21-x.md) 21 items")]
     [InlineData("The Microservices cookbook has its own Recipe 4.")]
     [InlineData("```csharp\n// see recipe-21-x for the handler\n```")]
     public void Mention_IsRealLink_OrExempt_IsAccepted(string markdown) =>
@@ -47,6 +51,19 @@ public class RecipeLinkAuditTests
     // TRLDOC019: the same mention, but what looks like a link is not one.
     [Theory]
     [InlineData("See Recipe 21.")]
+    // Unlinked prose is read across its formatting, as the rendered page shows it.
+    [InlineData("See Recipe **21**.")]
+    [InlineData("See **Recipe** 21.")]
+    [InlineData("See *Recipe* **21**.")]
+    [InlineData("See Recipe *21*.")]
+    [InlineData("See Recipe 2**1**.")]
+    [InlineData("See Recipe `21`.")]
+    [InlineData("See Recipe\n**21**.")]
+    [InlineData("See Recipe <b>21</b>.")]
+    [InlineData("## Recipe **21**")]
+    [InlineData("- Recipe **21**")]
+    [InlineData("> Recipe **21**")]
+    [InlineData("| A | B |\n| --- | --- |\n| x | Recipe **21** |")]
     // A split label that names the wrong recipe.
     [InlineData("See [Recipe **21**](recipe-20-x.md).")]
     [InlineData("See [**Recipe 21**](recipe-20-x.md).")]
@@ -95,6 +112,15 @@ public class RecipeLinkAuditTests
     [InlineData("| A | B |\n| --- | --- |\n| `a`b`c | see [Recipe 21](recipe-21-x.md) and `d` |")]
     public void Mention_NotARealLink_IsRejected(string markdown) =>
         RecipeLinkAudit.Check(Own, markdown, []).Should().Contain(f => f.Rule == "TRLDOC019");
+
+    // The line of a mention split by formatting is the line its first word is on.
+    [Fact]
+    public void Mention_SplitByFormatting_ReportsItsLine()
+    {
+        var findings = RecipeLinkAudit.Check(Own, "# Recipe 5 — Title\n\nFirst line.\nSee Recipe\n**21**.\n\nSee **Recipe** *22*.", []);
+
+        findings.Select(f => (f.Rule, f.Line)).Should().Equal(("TRLDOC019", 4), ("TRLDOC019", 7));
+    }
 
     [Fact]
     public void Mention_ReportsItsLine()
