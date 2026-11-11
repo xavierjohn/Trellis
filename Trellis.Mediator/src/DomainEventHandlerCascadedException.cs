@@ -9,10 +9,11 @@
 /// be side-effect-only. In the multi-aggregate tracked-dispatch variant, every aggregate
 /// in the snapshot is validated and offenders are reported together in <see cref="Offenders"/>.
 /// <para>
-/// Note: this exception fires AFTER the inner <c>TransactionalCommandBehavior</c> commits.
-/// The database state is durable, but the dispatch-stage response is failure-shaped.
-/// Consumers retrying the same command will hit "already committed" semantics; durable
-/// at-least-once dispatch requires the outbox pattern (planned, not shipped).
+/// Note: with <c>TransactionalCommandBehavior</c> registered, this exception fires AFTER the inner
+/// commit succeeded. The database state is durable, but the dispatch-stage response is failure-shaped,
+/// so retrying the same command is not the way to recover. Without a transaction behavior the pipeline
+/// commits nothing, and the same failure does not mean the write is durable. Durable at-least-once
+/// dispatch is provided by the transactional outbox (<c>Trellis.EntityFrameworkCore.Outbox</c>).
 /// </para>
 /// </summary>
 public sealed class DomainEventHandlerCascadedException : InvalidOperationException

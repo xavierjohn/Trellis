@@ -2708,7 +2708,7 @@ public sealed class EnumValueAttribute : Attribute
 public sealed class ResourceCollectionNameAttribute : Attribute
 ```
 
-Overrides the default URI collection name (`{TypeName.ToLowerInvariant()}s`) used when `Trellis.Asp` synthesises `ProblemDetails.Instance` from a failing `ResourceRef`. Apply to the aggregate type whose default naive plural is wrong or unwanted (for example `[ResourceCollectionName("people")]` on `Person`, or `[ResourceCollectionName("statuses")]` on `Status`).
+Overrides the default URI collection name (`{TypeName.ToLowerInvariant()}s`) used when `Trellis.Asp` synthesises `ProblemDetails.Instance` from a failing `ResourceRef`. Apply to the aggregate type whose default naive plural is wrong or unwanted (for example `[ResourceCollectionName("people")]` on `Person`, or `[ResourceCollectionName("statuses")]` on `Status`). The attribute takes effect only when `Trellis.Asp`'s `services.AddResourceCollectionNames(assembly)` scans the assembly at startup (a reflection scan, not trim- or AOT-safe); in trimmed or AOT apps register each override with `services.AddResourceCollectionName<T>(name)` instead.
 
 The attribute validates the supplied name at construction time so misconfiguration fails fast at host start when `services.AddResourceCollectionNames(...)` scans the assembly. The name must be a non-empty single URL path segment composed entirely of RFC 3986 `unreserved` characters: ASCII letters and digits plus `-`, `.`, `_`, and `~`. Reserved characters (`/`, `?`, `#`), percent (`%`), `+`, and whitespace are rejected because the value is emitted unencoded into the synthesised URI. When the attribute is absent and no DI override is registered, the writer falls back to `{TypeName.ToLowerInvariant()}s`.
 

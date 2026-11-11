@@ -646,8 +646,9 @@ public sealed class TrellisServiceBuilder
     /// <c>AddTrellisInterceptors</c> is applied on the context.
     /// </para>
     /// <para>
-    /// When the outbox is enabled the capture interceptor clears each aggregate's events inside the
-    /// commit, so the in-pipeline <c>DomainEventDispatchBehavior</c> observes none and the relay becomes
+    /// When the outbox is enabled the capture interceptor clears each aggregate's events in the
+    /// <c>SavedChanges</c> callback, after EF's own per-save transaction has committed, so the in-pipeline
+    /// <c>DomainEventDispatchBehavior</c> observes none and the relay becomes
     /// the single, durable dispatch path. Pair this with <see cref="UseDomainEvents()"/> (or an explicit
     /// <c>AddDomainEventDispatch</c>) so the relay has handlers and an <see cref="IDomainEventPublisher"/>
     /// to fan out to. The relay registration is order-independent: it adds a hosted service and does not
