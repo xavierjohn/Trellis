@@ -221,8 +221,8 @@ public static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "HasIndex with a Maybe<T> property silently fails to create the index because MaybeConvention maps " +
-                 "Maybe<T> via generated storage members, so the CLR property is invisible to EF Core's index builder. " +
+        description: "HasIndex with a Maybe<T> property throws an InvalidOperationException when the model is built, because MaybeConvention maps " +
+                 "Maybe<T> via generated storage members, so the CLR property cannot be indexed as a scalar. " +
                  "Prefer HasTrellisIndex so regular properties stay strongly typed and Maybe<T> properties resolve to their mapped storage automatically. " +
                  "If needed, you can also use string-based HasIndex with the storage member name directly. " +
                  "Examples: builder.HasTrellisIndex(e => new { e.Status, e.SubmittedAt }); or builder.HasIndex(\"Status\", \"_submittedAt\").",

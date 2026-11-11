@@ -7,7 +7,7 @@
 Flags `EntityTypeBuilder.HasIndex(...)` lambda expressions that reference a `Maybe<T>` property when Trellis.EntityFrameworkCore's Maybe convention is active.
 
 ## Why it matters
-EF Core indexes the generated storage member, not the `Maybe<T>` CLR property. A normal `HasIndex` call can silently fail to create the index you thought you configured.
+EF Core indexes the generated storage member, not the `Maybe<T>` CLR property. A normal `HasIndex` call against the CLR property throws an `InvalidOperationException` when the model is built, because the property is mapped through the generated storage member and cannot be indexed as a scalar.
 
 > [!WARNING]
 > The diagnostic tells you both the `Maybe<T>` property name and the generated storage-member fallback name so you can see what EF Core actually maps.
@@ -27,10 +27,10 @@ sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
     }
 }
 
-sealed class Order
+sealed partial class Order
 {
     public string Status { get; set; } = string.Empty;
-    public Maybe<DateTime> SubmittedAt { get; set; }
+    public partial Maybe<DateTime> SubmittedAt { get; set; }
 }
 ```
 
@@ -50,10 +50,10 @@ sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
     }
 }
 
-sealed class Order
+sealed partial class Order
 {
     public string Status { get; set; } = string.Empty;
-    public Maybe<DateTime> SubmittedAt { get; set; }
+    public partial Maybe<DateTime> SubmittedAt { get; set; }
 }
 ```
 
@@ -72,6 +72,9 @@ dotnet_diagnostic.TRLS016.severity = none
 // Intentional: documented exception or test-only pattern.
 #pragma warning restore TRLS016
 ```
+
+> [!NOTE]
+> The generated storage member exists only when the `Maybe<T>` property is `partial` on a `partial` entity class; that is what `HasTrellisIndex(...)` resolves. A plain, non-partial `Maybe<T>` property has no storage member to index.
 
 > [!TIP]
 > Prefer `HasTrellisIndex(...)` for mixed regular and `Maybe<T>` properties. Use string-based `HasIndex(...)` only when you need the storage member directly.

@@ -19,7 +19,7 @@ agent_description: "Open when running FluentValidation validators inside the Tre
 
 > **Why this is a separate package.** `Trellis.FluentValidation` carries the Mediator-agnostic helpers — the `ValidationResult → Result<T>` extensions and the `JsonPointerNormalizer`. The Mediator-specific bits (the adapter and its DI extension) live here so an application that only wants the standalone helpers does not pull in `Trellis.Mediator`. The adapter's behavior, idempotency guarantees, and AOT/trim contract are unchanged from prior versions; only the package and namespace moved.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-2--command--handler--fluentvalidation--ef-persistence) — recipes using this package.
+See also: [recipe-02-command-handler.md](recipes/recipe-02-command-handler.md) — recipes using this package.
 
 ## Use this file when
 

@@ -202,12 +202,16 @@ Console.WriteLine($"Report written: {outPath}");
 var symbolAuditExit = DocSymbolAudit.Run(docsDir, auditAssemblyPaths, auditMlc);
 var memberAuditExit = DocMemberAudit.Run(docsDir, auditAssemblyPaths, auditMlc);
 var attributionAuditExit = DocAttributionAudit.Run(docsDir, auditAssemblyPaths, auditMlc);
+var recipeLinkAuditExit = RecipeLinkAudit.Run(docsDir);
 
 if (memberAuditExit != 0)
     symbolAuditExit = memberAuditExit;
 
 if (attributionAuditExit != 0)
     symbolAuditExit = attributionAuditExit;
+
+if (recipeLinkAuditExit != 0)
+    symbolAuditExit = recipeLinkAuditExit;
 
 var gapPackages = summary.Where(s => s.Item3 > 0 || s.Item5 > 0).ToList();
 if (gapPackages.Count == 0)

@@ -819,4 +819,4 @@ Full surface: [`trellis-api-testing-worker.md`](../api_reference/trellis-api-tes
 - API surface (background-worker harness): [`trellis-api-testing-worker.md`](../api_reference/trellis-api-testing-worker.md)
 - `Result<T>`, `Maybe<T>`, closed `Error` ADT, `ResourceRef`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
 - Authorization primitives (`Actor`, `IActorProvider`): [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md)
-- Cookbook recipes (incl. **Recipe 16 — Unit of work in handlers**): [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md)
+- Cookbook recipes (incl. **Recipe 16 — Unit of work in handlers**): [`trellis-start-here.md`](../api_reference/trellis-start-here.md#task---recipe-lookup)

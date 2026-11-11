@@ -122,7 +122,7 @@ followed by `dotnet tool run agentdocs sync`, and commit the tool manifest, mana
 pointers, `.agentdocs/policy.json`, and `.agentdocs/` with the package update.
 
 `init` adds the same pointer to an existing `CLAUDE.md`, which Claude Code reads instead of `AGENTS.md`, and `sync`
-writes one Agent Skill stub per listed guide (28 for `Trellis.Core`) to `.agents/skills`, the folder GitHub Copilot and
+writes one Agent Skill stub per listed guide (67 for `Trellis.Core`, 39 of them recipes, one task guide each) to `.agents/skills`, the folder GitHub Copilot and
 other agents scan. Claude Code reads `.claude/skills` instead: add `"skillDirectories": [".agents/skills",
 ".claude/skills"]` to `.agentdocs/policy.json`, or link `.claude/skills` to `.agents/skills`; see the
 [`Trellis.AgentDocs` README](https://github.com/xavierjohn/Trellis.AgentDocs.Packaging/blob/main/Trellis.AgentDocs/README.md#agent-skills). Skills are an extra route for agents that load them; agents that

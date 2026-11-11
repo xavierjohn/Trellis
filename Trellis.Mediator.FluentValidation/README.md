@@ -37,7 +37,7 @@ builder.Services.AddScoped<IValidator<CreateOrderCommand>, CreateOrderCommandVal
 ## Documentation
 
 - [Package API reference](../docs/docfx_project/api_reference/trellis-api-mediator-fluentvalidation.md)
-- [Cookbook Recipe 2](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-cookbook.html#recipe-2--command--handler--fluentvalidation--ef-persistence)
+- [Cookbook Recipe 2](https://xavierjohn.github.io/Trellis/api_reference/recipes/recipe-02-command-handler.html)
 - [FluentValidation integration guide](https://xavierjohn.github.io/Trellis/articles/integration-fluentvalidation.html)
 
 ## Development

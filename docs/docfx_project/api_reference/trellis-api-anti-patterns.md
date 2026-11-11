@@ -2,7 +2,7 @@
 package: Trellis.Analyzers (applied form)
 namespaces: [Trellis, Trellis.Analyzers]
 types: [TRLS001, TRLS003, TRLS010, TRLS013, TRLS014, TRLS015, TRLS016, TRLS018, TRLS019, TRLS020, TRLS021, TRLS035, TRLS036, TRLS037, TRLS038, TRLS039, TRLS054, TRLS055, TRLS056, TRLS059, TRLS062, TRLS063, TRLS064, TRLS065, TRLS066, TRLS067]
-related_docs: [trellis-api-analyzers.md, trellis-api-cookbook.md]
+related_docs: [trellis-api-analyzers.md, trellis-start-here.md]
 version: v4
 last_verified: 2026-10-11
 audience: [llm]
@@ -13,9 +13,9 @@ agent_description: "Open when fixing a Trellis analyzer diagnostic (TRLSxxx): re
 
 > **Analyzer rules require `Trellis.Analyzers`; bundled generator diagnostics do not.** This gallery includes both. Standalone analyzer rules need a `PackageReference` to `Trellis.Analyzers`; source-generator diagnostics ship with their hosting packages (`Trellis.Core`, `Trellis.EntityFrameworkCore`, and `Trellis.Asp`) and can fire without it. This file is delivered by `Trellis.Core`, so its presence under `.agentdocs/packages/trellis.core/trellis/` does **not** mean the standalone analyzers are active. Check the `.csproj` and the emitter table in the analyzer reference. The FIX shapes below remain correct either way.
 
-> A condensed atlas mapping each common Trellis analyzer trigger to its idiomatic fix. **Read this file alongside `trellis-api-cookbook.md` whenever you are touching a Trellis pipeline.** Each section's WRONG/FIX pair captures the canonical control-flow shape the analyzer expects — preserve that shape and adapt identifiers, types, and error values to your caller. The snippets are pattern examples, not drop-in replacements.
+> A condensed atlas mapping each common Trellis analyzer trigger to its idiomatic fix. **Read this file alongside the recipe documents (`recipe-*.md`) whenever you are touching a Trellis pipeline.** Each section's WRONG/FIX pair captures the canonical control-flow shape the analyzer expects — preserve that shape and adapt identifiers, types, and error values to your caller. The snippets are pattern examples, not drop-in replacements.
 
-This file is the canonical reference for analyzer-triggered anti-patterns. It used to live as Recipe 11 in `trellis-api-cookbook.md` and was extracted so that:
+This file is the canonical reference for analyzer-triggered anti-patterns. It used to live as Recipe 11 (`recipe-11-analyzer-fixes.md`) and was extracted so that:
 
 1. It can be loaded independently when you are debugging an analyzer warning.
 2. The reference list in `AGENTS.md` can name it directly, so AI sessions are more likely to load it.
@@ -119,7 +119,7 @@ Prefer the early-return guard in ROP code: it keeps the happy path unindented an
 
 ```csharp
 // WRONG
-b.HasIndex(c => c.Email);                          // TRLS016 — silently no-op
+b.HasIndex(c => c.Email);                          // TRLS016 — throws InvalidOperationException at model build
 
 // FIX
 b.HasTrellisIndex(c => new { c.Email });

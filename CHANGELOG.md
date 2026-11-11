@@ -15,6 +15,27 @@ NuGet README, the payload and satellite probes, and the two contract tests that 
 `AGENTS.md`, and writes one Agent Skill stub per listed guide to `.agents/skills`. Claude Code reads `.claude/skills`, so the
 READMEs say how to give it the same skills: list that folder in `skillDirectories`, or link it to `.agents/skills`.
 
+### Changed - the cookbook is split into one document per recipe
+
+`docs/docfx_project/api_reference/trellis-api-cookbook.md` (about 300 KB, 38 live recipes) is replaced by one
+document per recipe, `recipes/recipe-NN-<topic>.md`, plus `trellis-cross-cutting-tips.md` for the former
+"Cross-cutting tips" section. The recipes live in their own `recipes/` folder, ship as `trellis/recipes/...` in the package and are written to
+Claude's skill authoring best practices, because `agentdocs` publishes each guide as an Agent Skill stub for agents that load skills: each has a front matter `name` equal to its file name and an `agent_description` in the
+third person that says what the recipe covers and when to use it ("Shows ... Use when ..."). The AgentDocs index therefore lists
+every recipe with the task it covers, and an agent opens the one recipe it needs instead of the whole file. The recipe text is unchanged apart from heading levels (each
+recipe's `##` heading is now its document's `#`, and its subheadings move up one level) and a few links that now
+cross documents. The router (`trellis-start-here.md`) keeps its task-lookup and mistake-regression tables, retargeted
+at the recipe documents, and quotes "The 39 recipe documents" (Recipe 13 is two documents, so each stays under the best-practices guidance of about 5,000 tokens). The retired Recipe 15 and the moved Recipes 33 and 34
+no longer have stub sections; links to them point at Recipe 8, which absorbed Recipe 15, and at the microservices
+repository.
+
+The documentation gates follow the split: TRLDOC004 treats `recipe-*.md` as cross-cutting through the new
+`CrossCuttingDocPatterns` list that the freshness audit shares, TRLDOC006 and TRLDOC007 check each recipe document
+(file name and heading must agree on the number), TRLDOC010 counts recipe documents, TRLDOC013 reads only the router,
+the new TRLDOC017 holds everything under `recipes/` to Claude's skill authoring best practices (name, third-person description with
+a `Use when` clause, no XML tag, under 500 lines, a `## Contents` section once past 100 lines), the new TRLDOC018 requires every recipe to name the packages it needs in a `**Requires:**` line, and the DocFX navigation check verifies one rendered page and one TOC link per recipe. The published site URL
+`api_reference/trellis-api-cookbook.html` no longer exists; each recipe has its own page under `api_reference/recipes/`.
+
 ### Added - tuple `Match`, `Switch`, `MatchAsync` and `SwitchAsync` for arities 6 to 9
 
 The tuple overloads of `Match`, `Switch`, `MatchAsync` and `SwitchAsync` were generated only for 2 to 5 elements,

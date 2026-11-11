@@ -8,11 +8,17 @@
     #   docs/audit-doc-freshness.ps1  compares these against every package's source, since any
     #                                 package's change can invalidate them.
     CrossCuttingDocs = @(
-        'trellis-api-cookbook.md',
+        'trellis-cross-cutting-tips.md',
         'trellis-api-anti-patterns.md',
         'trellis-api-migration.md',
         'trellis-value-object-taxonomy.md',
         'trellis-start-here.md'
+    )
+
+    # File-name patterns (PowerShell -like) for cross-cutting docs that come in a numbered family. Each
+    # recipe-NN-*.md is one recipe of the former single cookbook. Both consumers below honor these.
+    CrossCuttingDocPatterns = @(
+        'recipe-*.md'
     )
 
     # Generated or repo-internal reports that live alongside the references but are never

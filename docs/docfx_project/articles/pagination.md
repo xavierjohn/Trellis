@@ -256,7 +256,7 @@ its candidate bounds. Use:
 4. The matching boundary predicate **before** `Take(Applied + 1)`.
 5. `PageBuilder.FromOverFetch` with a callback that encodes the last retained boundary.
 
-The [computed pagination recipe](../api_reference/trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state)
+The [computed pagination recipe](../api_reference/recipes/recipe-40-computed-pagination.md)
 shows both paths, including finite nonnegative state, canonical query-context binding,
 translated spherical filtering, and a bounded in-memory fallback with a GUID tie-breaker.
 The fallback deliberately uses a complete bounded snapshot; it is not a reason to
@@ -338,5 +338,5 @@ for response-envelope and link-builder overloads. Do not serialize a raw
 
 - [Core pagination API](../api_reference/trellis-api-core.md#pagination)
 - [EF pagination API](../api_reference/trellis-api-efcore.md#paginationqueryableextensions)
-- [Paginated query-handler recipe](../api_reference/trellis-api-cookbook.md#recipe-3--query-handler-returning-paget-paginated-list-with-cursor)
-- [Computed pagination recipe](../api_reference/trellis-api-cookbook.md#recipe-40--computed-pagination-with-validated-query-bound-continuation-state)
+- [Paginated query-handler recipe](../api_reference/recipes/recipe-03-paginated-query.md)
+- [Computed pagination recipe](../api_reference/recipes/recipe-40-computed-pagination.md)

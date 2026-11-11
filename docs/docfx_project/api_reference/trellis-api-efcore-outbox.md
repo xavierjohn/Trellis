@@ -16,7 +16,7 @@ agent_description: "Open when configuring transactional outbox delivery, retry/p
 
 This package composes `Trellis.EntityFrameworkCore` (the capture interceptor and table mapping) with `Trellis.Mediator` (the `IDomainEventPublisher` dispatch seam the relay reuses). It opts out of AOT/trim, exactly like `Trellis.EntityFrameworkCore`.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#trellis-cross-package-cookbook) — recipes using this package.
+See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) — recipes using this package.
 
 ## Use this file when
 

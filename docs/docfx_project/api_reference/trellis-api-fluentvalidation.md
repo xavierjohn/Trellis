@@ -20,7 +20,7 @@ agent_description: "Open when converting FluentValidation results to Result or E
 
 > **v3 package split.** The Mediator integration (`AddTrellisFluentValidation()` + `FluentValidationMessageValidatorAdapter<TMessage>`) moved to the new `Trellis.Mediator.FluentValidation` package so consumers of these standalone helpers do not have to take a Mediator dependency. See [trellis-api-mediator-fluentvalidation.md](trellis-api-mediator-fluentvalidation.md#header) for the adapter API.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-2--command--handler--fluentvalidation--ef-persistence) — recipes using these helpers.
+See also: [recipe-02-command-handler.md](recipes/recipe-02-command-handler.md) — recipes using these helpers.
 
 ## Use this file when
 

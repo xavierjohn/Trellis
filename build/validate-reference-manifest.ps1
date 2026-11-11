@@ -96,7 +96,7 @@ try {
             if ($field -cnotin @('path', 'sha256', 'usage', 'description')) { throw "unexpected document field: $field" }
         }
         $path = [string]$doc.path
-        if ($path -notmatch '^trellis/[^/\\]+\.md$' -or $path.Contains('..')) { throw "invalid path: $path" }
+        if ($path -notmatch '^trellis/(?:recipes/)?[^/\\]+\.md$' -or $path.Contains('..')) { throw "invalid path: $path" }
         if ($doc.sha256 -cnotmatch '^[0-9a-f]{64}$') { throw "invalid sha256 for $path" }
         if (-not $seen.Add($path.Normalize([System.Text.NormalizationForm]::FormC))) {
             throw "duplicate document path: $path"
@@ -122,7 +122,7 @@ try {
 
         # Usage and description come from the document's own front matter; a mismatch means the
         # manifest was not generated from the shipped source.
-        $lines = @(Get-Content -LiteralPath (Join-Path $docsRoot ([System.IO.Path]::GetFileName($path))))
+        $lines = @(Get-Content -LiteralPath (Join-Path $docsRoot ($path -replace '^trellis/', '')))
         if ((Get-FrontMatterValue $lines 'agent_usage') -cne $doc.usage) { throw "usage of $path differs from its front matter" }
         $sourceDescription = Get-FrontMatterValue $lines 'agent_description'
         $expectedDescription = if ($sourceDescription) { $sourceDescription.Normalize([System.Text.NormalizationForm]::FormC) } else { '' }
@@ -136,8 +136,11 @@ try {
     }
     if ($packedDocs.Count -ne $seen.Count) { throw "packed documents $($packedDocs.Count) != listed $($seen.Count)" }
 
+    # The reference documents, plus the recipe documents in the recipes subfolder (packed under trellis/recipes/).
     $expected = @(Get-ChildItem -Path $docsRoot -Filter '*.md' -File |
-        Where-Object Name -NE 'completeness-report.md' | ForEach-Object { "trellis/$($_.Name)" })
+        Where-Object Name -NE 'completeness-report.md' | ForEach-Object { "trellis/$($_.Name)" }) +
+        @(Get-ChildItem -Path (Join-Path $docsRoot 'recipes') -Filter '*.md' -File -ErrorAction SilentlyContinue |
+            ForEach-Object { "trellis/recipes/$($_.Name)" })
     if (@($expected | Where-Object { -not $seen.Contains($_) }).Count -gt 0 -or $expected.Count -ne $seen.Count) {
         throw 'manifest document set differs from the source reference set'
     }

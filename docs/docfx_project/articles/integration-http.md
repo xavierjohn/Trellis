@@ -321,5 +321,5 @@ public sealed class CheckoutClient(HttpClient httpClient)
 
 - API surface: [`trellis-api-http.md`](../api_reference/trellis-api-http.md)
 - `Result<T>` and `Maybe<T>` semantics: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
-- Cookbook recipe (HTTP client → result pipelines): [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md)
+- Cookbook recipe (HTTP client → result pipelines): [`trellis-start-here.md`](../api_reference/trellis-start-here.md#task---recipe-lookup)
 - Migration from v1 (full collapsed-verbs table): [`trellis-api-http.md` → Breaking changes](../api_reference/trellis-api-http.md#breaking-changes-from-v1)

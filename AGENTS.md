@@ -16,7 +16,7 @@ Before writing or changing code that uses Trellis APIs, read the relevant files 
 
 **`docs/docfx_project/api_reference/trellis-start-here.md` is the start file. Read all of it first and keep it resident for the whole session.**
 
-The full reference set is larger than a narrow task needs and is not meant to be held in context. The router is self-contained: its task-lookup table maps a task to the right recipe or API section, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. It is the one `required` document AgentDocs delivers to consumers. The 38 recipe bodies in `trellis-api-cookbook.md` are on demand, and a typical end-to-end task reads one to three of them.
+The full reference set is larger than a narrow task needs and is not meant to be held in context. The router is self-contained: its task-lookup table maps a task to the right recipe or API section, its mistake-regression table maps a recurring error to the reference that prevents it, and its preflight table names exactly which package references a task needs. It is the one `required` document AgentDocs delivers to consumers. The 39 recipe documents (`recipes/recipe-*.md`) are on demand, and a typical end-to-end task reads one to three of them.
 
 **So hold the router, and read recipe bodies on demand.** Do not spend context on bodies the task will not use. Read a body the moment the router sends you to one; do not work from a recipe's title. For a focused subtask, use the recipe's section routes and read their complete constraints and solution.
 
@@ -26,11 +26,11 @@ Then pull in only the area-specific references the router points you at. Start a
 
 If context is too tight to hold the router plus one area reference, you are too tight to write correct Trellis code — say so rather than guessing at API shapes.
 
-`trellis-start-here.md` is the only start file, here and for consumers: the optional, separately versioned `Trellis.AgentDocs` local tool (command `agentdocs`) installs the reference set under Git-root `.agentdocs/packages/trellis.core/trellis/` and makes this router the one required read. The cookbook is `onDemand` and holds recipe bodies only. Keep the router self-contained, and keep the recipe count it quotes correct (TRLDOC010).
+`trellis-start-here.md` is the only start file, here and for consumers: the optional, separately versioned `Trellis.AgentDocs` local tool (command `agentdocs`) installs the reference set under Git-root `.agentdocs/packages/trellis.core/trellis/` and makes this router the one required read. Each recipe is its own `onDemand` document (`recipes/recipe-*.md`) and holds one recipe body only. Keep the router self-contained, and keep the recipe count it quotes correct (TRLDOC010).
 
 ### Do not delegate reference reading to a sub-agent
 
-**Read the cookbook and the package references directly, in your own context. Never send a sub-agent to read them for you.**
+**Read the recipes and the package references directly, in your own context. Never send a sub-agent to read them for you.**
 
 A sub-agent returns a summary; the reference content itself never enters your context, so you end up writing code from the sub-agent's paraphrase instead of from the exact signatures. That is precisely the failure mode the references exist to prevent, and it reintroduces invented APIs and wrong overloads.
 
@@ -38,7 +38,7 @@ Sub-agents are still appropriate for work whose *output* is a verdict rather tha
 
 ### Recommended context size
 
-The reference set is the shipped `*.md` files under `docs/docfx_project/api_reference/`, excluding the generated `completeness-report.md`. Only `trellis-start-here.md` is held resident; package sections, cookbook bodies and historical migration guidance are on demand. File sizes and tokenizer costs grow with the APIs, so measure the current files when estimating a context budget rather than relying on a fixed set-wide token claim. Allow room for framework source, project source and tool output as well as the selected references.
+The reference set is the shipped `*.md` files under `docs/docfx_project/api_reference/`, excluding the generated `completeness-report.md`. Only `trellis-start-here.md` is held resident; package sections, recipe documents and historical migration guidance are on demand. File sizes and tokenizer costs grow with the APIs, so measure the current files when estimating a context budget rather than relying on a fixed set-wide token claim. Allow room for framework source, project source and tool output as well as the selected references.
 
 | Tier | Context | When this is enough |
 |---|---|---|
@@ -50,7 +50,7 @@ The reference set is the shipped `*.md` files under `docs/docfx_project/api_refe
 
 For any non-trivial Trellis work, load these **yourself** (see the sub-agent rule above) **before** writing the first line of code:
 
-1. `trellis-start-here.md` — always, in full. It stays resident; cookbook recipe bodies are read on demand as its index routes you to them.
+1. `trellis-start-here.md` — always, in full. It stays resident; recipe documents are read on demand as its index routes you to them.
 2. `trellis-api-servicedefaults.md` — always. Composition-root features have a matching `TrellisServiceBuilder.UseXxx()` slot for their `services.AddXxx()` extension; leaf/store/adapter-author registrations deliberately have **no** slot. See "Adding a new public registration API" below for the rule, which is enforced by `RegistrationSurfaceTests`. Designing or modifying a registration helper without reading this file either silently misses a builder slot that should exist, or wrongly adds one where none belongs.
 3. The area-specific reference for the package being modified (from the table below).
 4. The reference for **every package whose pipeline this work composes with**. Specifically: anything touching the Mediator pipeline must also load `trellis-api-efcore.md` (transactional behavior) and `trellis-api-authorization.md` (resource-authorization behavior); anything touching ASP must also load `trellis-api-mediator.md`.
@@ -86,8 +86,8 @@ For any non-trivial Trellis work, load these **yourself** (see the sub-agent rul
 
 Reading the references is necessary but not sufficient. Before producing any non-trivial Trellis code, **explicitly answer these in your reasoning** (one or two lines is enough, but skipping the step is not allowed):
 
-1. **Which task am I doing?** Name the task in the cookbook's task-lookup table — verbatim if possible.
-2. **Which recipe applies?** Cite the recipe number (e.g. *"Recipe 1 — CRUD aggregate"* or *"Recipe 21 — Parallel independent loads"*). If no recipe applies, name the cookbook section or package reference that does.
+1. **Which task am I doing?** Name the task in the router's task-lookup table — verbatim if possible.
+2. **Which recipe applies?** Cite the recipe number (e.g. *"Recipe 1 — CRUD aggregate"* or *"Recipe 21 — Parallel independent loads"*). If no recipe applies, name the recipe section or package reference that does.
 3. **Which inherited surface does my type already get?** For any type derived from `Aggregate<TId>`, `Entity<TId>`, `RequiredGuid<T>`, `RequiredString<T>`, `RequiredEnum<T>`, the scalar `Required*<T>` primitives (`RequiredInt<T>`, `RequiredLong<T>`, `RequiredDecimal<T>`, `RequiredBool<T>`, `RequiredDateTime<T>`, `RequiredDateTimeOffset<T>`), `ValueObject`, or `ScalarValueObject<TSelf, T>`, list the inherited members you will *not* redeclare. Recipe 1 in the cookbook enumerates the standard set for `RequiredGuid<T>`, `RequiredString<T>`, `ValueObject`, and `Aggregate<TId>`; for `Entity<TId>`, `RequiredEnum<T>`, and the other scalar primitives, consult `trellis-api-primitives.md` and `trellis-api-core.md`. The most common Recipe 1 mistake is redeclaring `Id`, equality methods, or `TryCreate` that the base class already provides.
 4. **Am I about to invent an API?** If you cannot point at a specific reference file + line range for the method/extension/attribute you are about to use, stop and load that reference. Do not synthesize the signature from prior knowledge.
 5. **What does the analyzer say?** If the change is in a `Result`/`Maybe`/EF-Core/value-object pipeline, list which `TRLSxxx` IDs are relevant. Cite the matching section in `trellis-api-anti-patterns.md` if one exists; otherwise cite `trellis-api-analyzers.md` and the relevant package reference. Preserve the WRONG/FIX control-flow shape from the anti-pattern file, adapting identifiers, types, and error values to the caller — the snippets are pattern examples, not self-contained replacements.
@@ -215,7 +215,7 @@ This is enforced, not advisory. **TRLDOC008** fails the build when any public ty
 
 When the hit is a static extension class, prefer giving it its own `###` section over name-dropping it in prose: the usual cause is that its methods were documented under a neighbouring class's heading, which is an accuracy defect in its own right.
 
-Keep framework usage guidance in the API reference and cookbook files, not in `AGENTS.md`.
+Keep framework usage guidance in the API reference and recipe files, not in `AGENTS.md`.
 
 DocFX artifact checklist for package or public API changes:
 

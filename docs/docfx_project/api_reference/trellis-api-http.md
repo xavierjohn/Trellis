@@ -14,7 +14,7 @@ agent_description: "Open when adapting HttpClient calls into Trellis Result pipe
 **Namespace:** `Trellis.Http`
 **Purpose:** Bridge `Task<HttpResponseMessage>` into `Task<Result<HttpResponseMessage>>` pipelines and deserialize JSON payloads into `Result<T>` / `Result<Maybe<T>>`.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-19--http-client-result-safety-and-optional-reads) — recipes using this package, [trellis-api-http-abstractions.md](trellis-api-http-abstractions.md#package-role) for the wrapped `HttpError` and moved HTTP value types.
+See also: [recipe-19-http-client.md](recipes/recipe-19-http-client.md) — recipes using this package, [trellis-api-http-abstractions.md](trellis-api-http-abstractions.md#package-role) for the wrapped `HttpError` and moved HTTP value types.
 
 > Bare `ToResultAsync()` is strict by default: non-2xx responses become typed Trellis failures instead of remaining on the success track.
 

@@ -60,7 +60,7 @@ failures. Use named endpoint policies without policy-level `OnRejected` callback
 gives those callbacks precedence and skips the options handler for inline
 `RequireRateLimiting(policy)` even when the policy callback is null.
 
-[Recipe 41](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-cookbook.html#recipe-41--actor-aware-rate-limiting-without-loading-permissions)
+[Recipe 41](https://xavierjohn.github.io/Trellis/api_reference/recipes/recipe-41-actor-rate-limiting.html)
 shows actor-aware partitions through a shared synchronous normalizer (no prefetch) or
 route-scoped async identity prefetch, network fallback and middleware-order consequences.
 Idempotency continues resolving the full actor.

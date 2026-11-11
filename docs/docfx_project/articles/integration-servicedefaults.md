@@ -2,7 +2,7 @@
 title: Service Defaults (Composition Root)
 package: Trellis.ServiceDefaults
 topics: [composition-root, service-collection, di-wiring, builder, pipeline-ordering, messaging]
-related_api_reference: [trellis-api-servicedefaults.md, trellis-api-mediator.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-efcore-inbox.md, trellis-api-efcore-outbox.md, trellis-api-messaging-azureservicebus.md, trellis-api-fluentvalidation.md, trellis-api-cookbook.md]
+related_api_reference: [trellis-api-servicedefaults.md, trellis-api-mediator.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-efcore-inbox.md, trellis-api-efcore-outbox.md, trellis-api-messaging-azureservicebus.md, trellis-api-fluentvalidation.md]
 last_verified: 2026-10-20
 audience: [developer]
 ---
@@ -84,7 +84,7 @@ behaviors, closer to the handler.
 Identical bindings deduplicate. Behaviors nest in selection order and unwind in reverse
 order. They own outcome checks, recorder checkpoints, and cleanup in `finally`.
 An ordinary failure skips this invocation's commit, without rollback or permanent
-rejection of an outer/later commit. See [Recipe 16](../api_reference/trellis-api-cookbook.md#same-commit-audit-staging)
+rejection of an outer/later commit. See [Recipe 16](../api_reference/recipes/recipe-16-unit-of-work.md#same-commit-audit-staging)
 for a complete same-context audit example and direct handler tests.
 
 Explicitly closed/generated pipelines instead list their application behavior after
@@ -200,5 +200,5 @@ builder.Services.AddTrellis(o => o
 ## See also
 
 - [API reference](../api_reference/trellis-api-servicedefaults.md) — type tables and method signatures.
-- [Cookbook Recipe 12: DI wiring playbook](../api_reference/trellis-api-cookbook.md#recipe-12--di-wiring-playbook-addtrellis-composition-builder).
+- [Cookbook Recipe 12: DI wiring playbook](../api_reference/recipes/recipe-12-di-wiring.md).
 - Per-package articles: [`integration-aspnet.md`](integration-aspnet.md), [`integration-mediator.md`](integration-mediator.md), [`integration-fluentvalidation.md`](integration-fluentvalidation.md), [`integration-ef.md`](integration-ef.md), [`integration-asp-authorization.md`](integration-asp-authorization.md).

@@ -266,7 +266,7 @@ with bounded backoff and jitter when the operation is safe to retry. See the
 [limiter comparison and adapter contract](../api_reference/trellis-api-asp.md#ratelimiteroptionsextensions).
 
 For actor-aware partitioning without loading permissions, use the optional canonical
-identity contract and [Recipe 41](../api_reference/trellis-api-cookbook.md#recipe-41--actor-aware-rate-limiting-without-loading-permissions).
+identity contract and [Recipe 41](../api_reference/recipes/recipe-41-actor-rate-limiting.md).
 It covers shared synchronous normalization without prefetch, route-scoped async prefetch,
 network fallback and limiter/authorization/idempotency ordering. The limiter must actually
 precede costly work to protect it; idempotency continues resolving the full actor.
@@ -802,7 +802,7 @@ When you genuinely need a custom payload shape (non-Problem-Details body, endpoi
 - `Actor`, `IActorProvider`, `IAuthorize`: [`trellis-api-authorization.md`](../api_reference/trellis-api-authorization.md)
 - [`IScalarValue<TSelf, TPrimitive>`](xref:Trellis.IScalarValue`2), [`Maybe<T>`](xref:Trellis.Maybe`1), and [ready-to-use value objects](built-in-primitives.md)
 - Integration-test helpers (`CreateClientWithActor` for `X-Test-Actor`): [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md)
-- Composite value object end-to-end pattern (Recipe 13): [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md#recipe-13--composite-value-object-end-to-end-domain--api-json-binding--ef-core-ownership)
+- Composite value object end-to-end pattern (Recipe 13): [`recipe-13-composite-value-object.md`](../api_reference/recipes/recipe-13-composite-value-object.md)
 - HTTP client side (consuming results): [`integration-http.md`](integration-http.md)
 - FluentValidation pipeline: [`integration-fluentvalidation.md`](integration-fluentvalidation.md)
 - EF Core integration (`FirstOrDefaultResultAsync`, `SaveChangesResultUnitAsync`): [`integration-ef.md`](integration-ef.md)

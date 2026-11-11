@@ -4,12 +4,14 @@ namespace CookbookSnippets.Recipe19;
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Trellis;
 using Trellis.Http;
 
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]   // match the upstream's camelCase property names
 [JsonSerializable(typeof(OrderDto))]
 public sealed partial class OrderJsonContext : JsonSerializerContext;
 
@@ -26,11 +28,12 @@ public static class Recipe19CompiledSurface
         client.GetAsync($"/orders/{id}", ct)
             .ReadJsonOrNoneOn404Async(OrderJsonContext.Default.OrderDto, ct);
 
-    public static Task<Result<OrderDto>> GetRequiredOrderWithStatusMapAsync(HttpClient client, Guid id, CancellationToken ct) =>
+    public static Task<Result<OrderDto>> GetRequiredOrderWithDomainNotFoundAsync(HttpClient client, Guid id, CancellationToken ct) =>
         client.GetAsync($"/orders/{id}", ct)
-            .ToResultAsync(status => status == HttpStatusCode.NotFound
-                ? new Error.NotFound(ResourceRef.For<OrderDto>(id))
-                : null)
+            .ToResultAsync()
+            .RecoverOnFailureAsync(e => e is Error.NotFound
+                ? Result.Fail<HttpResponseMessage>(new Error.NotFound(ResourceRef.For<OrderDto>(id)))
+                : Result.Fail<HttpResponseMessage>(e))
             .ReadJsonAsync(OrderJsonContext.Default.OrderDto, ct);
 }
 

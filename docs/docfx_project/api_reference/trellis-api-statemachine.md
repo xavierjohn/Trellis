@@ -16,7 +16,7 @@ agent_description: "Open when wrapping Stateless transitions in Trellis Result v
 - **Namespace:** `Trellis.StateMachine`
 - **Purpose:** Wraps Stateless state transitions in Trellis `Result<TState>` APIs and provides lazy state-machine construction for aggregate materialization scenarios.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) — recipes using this package.
+See also: [recipe-09-state-machine.md](recipes/recipe-09-state-machine.md) — recipes using this package.
 
 ## Use this file when
 
@@ -31,7 +31,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-9--state-mach
 | Fire a Stateless trigger and get a Trellis result | `stateMachine.FireResult(trigger)` | [`StateMachineExtensions`](#statemachineextensions) |
 | Store a state machine inside an aggregate | `LazyStateMachine<TState,TTrigger>` with state accessor/mutator delegates | [`LazyStateMachine<TState, TTrigger>`](#lazystatemachinetstate-ttrigger) |
 | Treat invalid transitions as domain-invariant breaches | Let `FireResult` short-circuit when `CanFire` returns `false` and return `Error.InvariantViolation` | [Behavioral notes](#behavioral-notes) |
-| Apply business mutations after successful transition | Call `.FireResult(...)`, then mutate/domain-event in a `.Tap(...)` or explicit success branch | [Code examples](#code-examples), [Cookbook Recipe 9](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) |
+| Apply business mutations after successful transition | Call `.FireResult(...)`, then mutate/domain-event in a `.Tap(...)` or explicit success branch | [Code examples](#code-examples), [Cookbook Recipe 9](recipes/recipe-09-state-machine.md) |
 
 ## Common traps
 
@@ -169,7 +169,7 @@ enum DocumentTrigger { Publish }
 ## Cross-references
 
 - [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error) — `Result<T>`, `Error.InvariantViolation`.
-- [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-9--state-machine-canfire--fire-pattern-with-fireresult) — Recipe 9: state-machine `CanFire` + `Fire` pattern with `FireResult`.
+- [recipe-09-state-machine.md](recipes/recipe-09-state-machine.md) — Recipe 9: state-machine `CanFire` + `Fire` pattern with `FireResult`.
 - [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping) — how `Error.InvariantViolation` renders as HTTP 422 (top-level `detail` reads `Error.Detail`).
 
 ## Breaking changes from v1

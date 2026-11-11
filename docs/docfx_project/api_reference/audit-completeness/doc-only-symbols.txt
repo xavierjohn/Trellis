@@ -60,6 +60,28 @@ EnsureSuccess
 EnsureSuccessAsync
 Some
 
+# --- Application-owned types the recipes name in their prerequisites; the recipe says the reader defines them.
+AppDbContext
+EfOrderRepository
+GetOrderQuery
+OrdersController
+InMemoryOrderRepository
+IOrderRepository
+CreateCustomerCommand
+CustomerResponse
+GetByIdsAsync
+StockQuantity
+MatchLoader
+TeamLoader
+ProbeId
+HealthProbe
+ProbeCompletedDomainEvent
+RunProbeCommand
+IHealthProbeRepository
+FakeHealthProbeRepository
+UserRows
+ContactRows
+
 # --- Recipe 41 application-owned prefetch/normalization, explicitly not Trellis APIs.
 UseIdentityPrefetch
 IdentitySnapshot

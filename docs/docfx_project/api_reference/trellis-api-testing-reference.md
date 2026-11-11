@@ -14,7 +14,7 @@ agent_description: "Open when writing unit or handler tests: Result/Maybe/error,
 - **Namespace:** `Trellis.Testing`
 - **Purpose:** FluentAssertions extensions, unwrap helpers, and test doubles (FakeRepository, FakeUnitOfWork, TestActorProvider) for Trellis applications.
 
-See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror) — recipes using this package.
+See also: [recipe-10-handler-tests.md](recipes/recipe-10-handler-tests.md) — recipes using this package.
 
 > **ASP.NET Core integration test helpers** (WebApplicationFactory, DI replacement, fake time, MSAL tokens, and `.http` replay) are in a separate package: [`Trellis.Testing.AspNetCore`](trellis-api-testing-aspnetcore.md#use-this-file-when).
 
@@ -62,7 +62,7 @@ See also: [trellis-api-cookbook.md](trellis-api-cookbook.md#recipe-10--test-hand
 
 - `Unwrap()` and `UnwrapError()` are test helpers. Do not copy them into production code or documentation snippets for application logic.
 - Test both the success path and the expected error branch; a compiling handler that never asserts failure semantics can still miss Trellis behavior.
-- Actor-aware handlers require Mediator dispatch even in tests. Their actor/resource `Handle` overload is protected; there is no public business-only seam. `TestActorProvider` supplies identity but does not create an authorized frame. Keep the normal pipeline/resource registrations and substitute fake business, loader, commit, and event dependencies as appropriate. See [Recipe 10](trellis-api-cookbook.md#recipe-10--test-handler-test-using-trellistesting-shouldbe--unwraperror).
+- Actor-aware handlers require Mediator dispatch even in tests. Their actor/resource `Handle` overload is protected; there is no public business-only seam. `TestActorProvider` supplies identity but does not create an authorized frame. Keep the normal pipeline/resource registrations and substitute fake business, loader, commit, and event dependencies as appropriate. See [Recipe 10](recipes/recipe-10-handler-tests.md).
 - ASP.NET Core integration helpers are in [trellis-api-testing-aspnetcore.md](trellis-api-testing-aspnetcore.md#use-this-file-when), not this package.
 - **Trellis analyzers in test code.** Idiomatic assertions already satisfy `TRLS001` (Result not handled): a FluentAssertions chain (`result.Should().BeSuccess()`) and an explicit discard (`_ = await repo.AddAsync(...)`) both count as *handled*. For a deliberate fire-and-forget call in *arrange*/seeding, prefer the discard (`_ = ...`) over a blanket `<NoWarn>TRLS001</NoWarn>` so the rule keeps protecting the rest of the project. Seeding through `DbContext.SaveChangesAsync()` trips `TRLS015`; call `SaveChangesResultAsync()` (then assert or discard it), or relax just that one rule in the test project if you intentionally seed with the raw EF method.
 - **Relax a rule across test projects with one shared file, not a per-project `<NoWarn>`.** In a Clean Architecture layout the test projects are scattered (`Domain/tests/`, `Application/tests/`, …) with no common folder, so a per-directory `.editorconfig` is awkward. Keep a single global analyzer config and apply it to every `*.Tests` project from the root `Directory.Build.props`; a severity override (rather than `<NoWarn>`) keeps the rule visible as guidance:

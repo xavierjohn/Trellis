@@ -165,8 +165,11 @@ function Add-Finding {
 function Get-DocFiles {
     param([string] $Directory)
     if (-not (Test-Path $Directory)) { return @() }
-    Get-ChildItem -Path $Directory -Filter '*.md' -File |
-        Where-Object { $FrontmatterExcludedFiles -notcontains $_.Name }
+    $found = @(Get-ChildItem -Path $Directory -Filter '*.md' -File)
+    # The api_reference recipe documents live in a subfolder of it.
+    $recipes = Join-Path $Directory 'recipes'
+    if (Test-Path $recipes) { $found += @(Get-ChildItem -Path $recipes -Filter '*.md' -File) }
+    $found | Where-Object { $FrontmatterExcludedFiles -notcontains $_.Name }
 }
 
 function Read-Frontmatter {

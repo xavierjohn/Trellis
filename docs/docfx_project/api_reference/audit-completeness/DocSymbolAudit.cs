@@ -43,7 +43,7 @@ internal static class DocSymbolAudit
         var unusedAllowlistEntries = new HashSet<string>(allowlist, StringComparer.Ordinal);
         int unknownCount = 0;
 
-        foreach (var file in Directory.EnumerateFiles(docsDir, "*.md").OrderBy(p => p, StringComparer.Ordinal))
+        foreach (var file in ReferenceDocuments.Enumerate(docsDir))
         {
             var name = Path.GetFileName(file);
 
@@ -51,6 +51,10 @@ internal static class DocSymbolAudit
             // it scans. Its contents are echoed from the assemblies, so auditing it is circular.
             if (string.Equals(name, "completeness-report.md", StringComparison.OrdinalIgnoreCase))
                 continue;
+
+            // Findings are keyed by the path under docsDir, not the bare file name: a recipe lives in a subfolder, and
+            // the diagnostic joins this key back onto docsDir, so a bare name would point at a file that does not exist.
+            var relativePath = Path.GetRelativePath(docsDir, file);
 
             var lines = File.ReadAllLines(file);
 
@@ -72,10 +76,10 @@ internal static class DocSymbolAudit
                         if (known.Contains(segment) || allowlist.Contains(segment))
                             continue;
 
-                        if (!unknownByFile.TryGetValue(name, out var bucket))
+                        if (!unknownByFile.TryGetValue(relativePath, out var bucket))
                         {
                             bucket = [];
-                            unknownByFile[name] = bucket;
+                            unknownByFile[relativePath] = bucket;
                         }
 
                         if (!bucket.Any(entry => entry.Symbol == segment))

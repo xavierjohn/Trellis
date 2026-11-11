@@ -426,4 +426,4 @@ For the "no payload" success case, prefer `Result<Unit>` (`Result.Ok()` returns 
 - LINQ query syntax, tuple destructuring, parallel flows: [Advanced Features](advanced-features.md)
 - JSON converter for `Maybe<scalar value object>`: [`trellis-api-asp.md`](../api_reference/trellis-api-asp.md)
 - EF Core query/update/index helpers and interceptors: [`trellis-api-efcore.md`](../api_reference/trellis-api-efcore.md)
-- Cookbook recipes that use `Maybe<T>`: [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md)
+- Cookbook recipes that use `Maybe<T>`: [`trellis-start-here.md`](../api_reference/trellis-start-here.md#task---recipe-lookup)

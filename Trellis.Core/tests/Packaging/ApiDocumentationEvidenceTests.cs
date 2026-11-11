@@ -236,6 +236,32 @@ public class ApiDocumentationEvidenceTests
             .Lines.ToString();
     }
 
+    // A finding in a recipe must name the recipe's real path, under recipes/, so CI and editors can open it.
+    [Theory]
+    [InlineData("`NoSuchTypeAnywhere`", "TRLDOC005")]
+    [InlineData("`Probe.NoSuchMember`", "TRLDOC014")]
+    public async Task Audit_RecipeFinding_NamesThePathUnderRecipes(string markdown, string rule)
+    {
+        using var fixture = new DocumentationAuditFixture();
+        fixture.WritePackage("Primary", """
+            public sealed class Probe
+            {
+                public int Id => 1;
+            }
+            public static class AuditSentinel
+            {
+                public static void Ping() { }
+            }
+            """, "### Probe\n\n| Member | Meaning |\n| --- | --- |\n| Id | Identifier. |\n\n```csharp\nAuditSentinel.Ping();\n```\n");
+        fixture.WriteDocument(Path.Combine("recipes", "recipe-02-fixture.md"), "# Recipe 2 — Fixture\n\nUse " + markdown + ".\n");
+
+        var result = await fixture.RunAsync();
+
+        var expected = Path.Combine("api_reference", "recipes", "recipe-02-fixture.md") + "(3,1): error " + rule;
+        result.Output.Should().Contain(expected);
+        result.Output.Should().NotContain(Path.Combine("api_reference", "recipe-02-fixture.md"));
+    }
+
     private static async Task<(int ExitCode, string Output)> RunAuditAsync(string documentation)
     {
         using var fixture = new DocumentationAuditFixture();

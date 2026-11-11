@@ -67,7 +67,8 @@ Moving an aggregate from in-memory to EF Core surfaces a few constraints that do
 | `RepositoryBase<TAggregate, TId>` | Aggregate repo base | `FindByIdAsync` (Maybe), `QueryAsync(spec)`, `ExistsAsync`, `CountAsync`, `Add`, `Remove`, `RemoveByIdAsync` (`Task<Result<Unit>>`). Staging only — never calls `SaveChanges`. |
 | `IUnitOfWork.CommitAsync(ct)` | Commit boundary | `Task<Result<Unit>>`. Implemented by `EfUnitOfWork<TContext>`. Scope-aware via `BeginScope()`: only the outermost scope's commit persists. |
 | `TransactionalCommandBehavior<TMessage, TResponse>` | Pipeline behavior | Auto-commits after a successful `ICommand<TResponse>` handler; only fires for commands. Wraps each command in `using var scope = unitOfWork.BeginScope();` so a nested command (dispatched via `IMediator` from another handler) defers its commit until the outermost handler returns. |
-| `UnitOfWorkServiceCollectionExtensions.AddTrellisUnitOfWork<TContext>()` / `AddTrellisUnitOfWorkWithoutBehavior<TContext>()` | DI | Registers `EfUnitOfWork<TContext>` (scoped) and inserts the commit behavior innermost. |
+| `UnitOfWorkServiceCollectionExtensions.AddTrellisUnitOfWork<TContext>()` | DI | Registers `EfUnitOfWork<TContext>` (scoped) and the commit behavior, which sits in its own pipeline slot, inside telemetry and event dispatch and outside any inside-transaction behaviors. |
+| `UnitOfWorkServiceCollectionExtensions.AddTrellisUnitOfWorkWithoutBehavior<TContext>()` | DI | Registers `EfUnitOfWork<TContext>` (scoped) only. It deliberately registers no commit behavior, for manual commit control (for example background jobs) or when the Mediator pipeline is not in use. |
 | `DbExceptionClassifier.IsDuplicateKey` / `IsForeignKeyViolation` / `ExtractConstraintDetail` / `ExtractConstraintIdentity` | Diagnostics | Cross-provider DB exception classification used by the save helpers. Recognizes SQL Server, PostgreSQL, SQLite, and MySQL/MariaDB (works with both `MySql.Data.MySqlClient` and `MySqlConnector`); provider exception types are detected by name so consumers don't take a transitive driver dependency. `ExtractConstraintIdentity(ex)` returns `(ConstraintName, TableName)` for structured logs and is the primitive `SaveChangesResultAsync` / `SaveChangesWithRetryAsync` / `TryInsertUniqueAsync` use to populate the new `Error.Conflict` telemetry fields. |
 | `MaybeModelExtensions.GetMaybePropertyMappings()` / `ToMaybeMappingDebugString()` | Diagnostics | Inspect resolved `Maybe<T>` storage strategies, table/schema, every owned/nested column, physical column nullability, and known separate-table convention reasons. Honors explicit overrides; not a schema-diff engine. |
 | `TrellisPersistenceMappingException` | Exception | Thrown when a persisted scalar value object value fails materialization. |
@@ -457,7 +458,7 @@ services.AddDbContext<AppDbContext>(options =>
         .AddTrellisInterceptors());
 
 services.AddTrellisBehaviors();           // outer behaviors first
-services.AddTrellisUnitOfWork<AppDbContext>(); // commit behavior goes innermost
+services.AddTrellisUnitOfWork<AppDbContext>(); // commit behavior goes in its own slot, inside telemetry and event dispatch
 ```
 
 > [!IMPORTANT]
@@ -551,6 +552,6 @@ For non-pipeline scenarios, the equivalent is `await uow.CommitAsync(ct)` after 
 - API surface: [`trellis-api-efcore.md`](../api_reference/trellis-api-efcore.md)
 - Acl layer `ValueConverter` pattern for providers that cannot translate `DateTimeOffset` in `ORDER BY` on inherited audit columns: [Provider-specific column mapping](../api_reference/trellis-api-efcore.md#provider-specific-column-mapping)
 - `Result<T>`, `Maybe<T>`, `Error`, `Aggregate<TId>`, `Specification<T>`: [`trellis-api-core.md`](../api_reference/trellis-api-core.md)
-- Recipes (specifications with `Maybe<T>`, repository patterns, UoW): [`trellis-api-cookbook.md`](../api_reference/trellis-api-cookbook.md)
+- Recipes (specifications with `Maybe<T>`, repository patterns, UoW): [`trellis-start-here.md`](../api_reference/trellis-start-here.md#task---recipe-lookup)
 - Mediator pipeline behaviors and registration order: [`trellis-api-mediator.md`](../api_reference/trellis-api-mediator.md)
 - Analyzer rules referenced here (`TRLS013`, `TRLS015`, `TRLS016`, `TRLS022`): [`trellis-api-analyzers.md`](../api_reference/trellis-api-analyzers.md)

@@ -18,7 +18,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $apiReferenceDir = Join-Path $RepositoryRoot 'docs' | Join-Path -ChildPath 'docfx_project' | Join-Path -ChildPath 'api_reference'
-$bareCrossDocLinkPattern = '\]\(trellis-api-[a-z-]+\.md\)'
+$bareCrossDocLinkPattern = '\]\((?:\.\./)?trellis-api-[a-z-]+\.md\)'
 $fillerTableRowPattern = '\| — \| — \| No (public properties|methods|public methods|properties)\.'
 $anchoredLinkPattern = '\]\((?:(?<targetFile>[^#?)\s]+\.md)(?:\?[^#)\s]*)?)?#(?<anchor>[^)\s]+)\)'
 # CommonMark fences allow at most three leading literal spaces; four spaces start indented code.
@@ -242,7 +242,11 @@ if (-not (Test-Path -LiteralPath $apiReferenceDir)) {
 }
 
 $failed = $false
-$markdownFiles = Get-ChildItem -LiteralPath $apiReferenceDir -Filter '*.md' -File | Sort-Object FullName
+# The reference documents, plus the recipe documents in the recipes subfolder (see TRLDOC017 and TRLDOC018).
+$recipesDirectory = Join-Path $apiReferenceDir 'recipes'
+$markdownFiles = @(Get-ChildItem -LiteralPath $apiReferenceDir -Filter '*.md' -File) +
+    @(if (Test-Path -LiteralPath $recipesDirectory) { Get-ChildItem -LiteralPath $recipesDirectory -Filter '*.md' -File }) |
+    Sort-Object FullName
 $headingIndexByPath = New-HeadingIndex -MarkdownFiles $markdownFiles
 
 # TRLDOC009 - no carriage return may appear without a following line feed. This deliberately
@@ -335,7 +339,7 @@ foreach ($file in $markdownFiles) {
                     continue
                 }
 
-                if ($targetFile -notmatch '^[A-Za-z0-9._-]+\.md$') {
+                if ($targetFile -notmatch '^(?:\.\./|recipes/)?[A-Za-z0-9._-]+\.md$') {
                     continue
                 }
             }
@@ -403,6 +407,12 @@ foreach ($projectFile in Get-ChildItem -Path $RepositoryRoot -Filter '*.csproj' 
 
 foreach ($crossCutting in $docManifest.CrossCuttingDocs) {
     [void] $ownedDocNames.Add($crossCutting)
+}
+
+foreach ($pattern in @($docManifest.CrossCuttingDocPatterns)) {
+    foreach ($file in $markdownFiles | Where-Object { $_.Name -like $pattern }) {
+        [void] $ownedDocNames.Add($file.Name)
+    }
 }
 
 foreach ($unshipped in $docManifest.UnshippedDocs) {
@@ -482,14 +492,17 @@ foreach ($guardrailDoc in $docManifest.GuardrailDocs) {
     }
 }
 
-# TRLDOC006 - every cookbook recipe must be pinned by a compiled snippet in
+# TRLDOC006 - every recipe must be pinned by a compiled snippet in
 # Examples/CookbookSnippets. Recipes are the most-copied code in the doc set, so an
 # unpinned recipe is the shape most likely to rot into code that does not compile.
-$cookbookPath = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference/trellis-api-cookbook.md'
+# Each recipe is its own document, docs/docfx_project/api_reference/recipes/recipe-NN-<topic>.md,
+# whose first heading is `# Recipe N - <title>`; the file name and the heading must agree on N.
+$recipeDirectory = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference/recipes'
 $snippetDirectory = Join-Path $RepositoryRoot 'Examples/CookbookSnippets'
+$recipeFiles = @(Get-ChildItem -LiteralPath $recipeDirectory -Filter 'recipe-*.md' -File | Sort-Object Name)
 
-if (-not (Test-Path -LiteralPath $cookbookPath)) {
-    Write-Host "$cookbookPath(1,1): error TRLDOC006: The cookbook is missing, so recipe snippet coverage cannot be verified. Restore the file or update the path in this script."
+if ($recipeFiles.Count -eq 0) {
+    Write-Host "$recipeDirectory(1,1): error TRLDOC006: No recipe documents (recipe-*.md) were found, so recipe snippet coverage cannot be verified. Restore the files or update the path in this script."
     $failed = $true
 }
 elseif (-not (Test-Path -LiteralPath $snippetDirectory)) {
@@ -507,14 +520,12 @@ else {
         }
     }
 
-    $cookbookLines = Get-Content -LiteralPath $cookbookPath
-
-    # The routing head (task lookup, preflight, Patterns Index) lives in the required router, not the cookbook.
+    # The routing head (task lookup, preflight, Patterns Index) lives in the required router, not in a recipe.
     $routingPath = Join-Path $RepositoryRoot 'docs/docfx_project/api_reference/trellis-start-here.md'
     $routingLines = if (Test-Path -LiteralPath $routingPath) { @(Get-Content -LiteralPath $routingPath) } else { @() }
 
     # TRLDOC007 - every live recipe must be reachable from the Patterns Index. Agents are
-    # instructed to hold only the index resident and load recipe bodies on demand, so a
+    # instructed to hold only the index resident and load recipe documents on demand, so a
     # recipe the index never links to is a recipe no agent will ever find.
     $patternsIndexStart = -1
     $patternsIndexEnd = $routingLines.Count
@@ -534,7 +545,7 @@ else {
         }
     }
 
-    $indexedRecipes = [System.Collections.Generic.HashSet[int]]::new()
+    $indexedRecipes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
     if ($patternsIndexStart -lt 0) {
         Write-Host "$routingPath(1,1): error TRLDOC007: The router (trellis-start-here.md) has no '## Patterns Index' section, so recipe reachability cannot be verified. Restore the section or update the heading in this script."
@@ -543,37 +554,50 @@ else {
     else {
         $patternsIndexText = ($routingLines[$patternsIndexStart..($patternsIndexEnd - 1)] -join "`n")
 
-        foreach ($anchorMatch in [regex]::Matches($patternsIndexText, '#recipe-(?<number>\d+)')) {
-            [void] $indexedRecipes.Add([int] $anchorMatch.Groups['number'].Value)
+        foreach ($linkMatch in [regex]::Matches($patternsIndexText, 'recipe-\d+-[A-Za-z0-9-]+\.md')) {
+            [void] $indexedRecipes.Add($linkMatch.Value)
         }
     }
 
     $liveRecipeCount = 0
 
-    for ($index = 0; $index -lt $cookbookLines.Count; $index++) {
-        $headingMatch = [regex]::Match($cookbookLines[$index], '^##\s+Recipe\s+(?<number>\d+)\s+(?<rest>.*)$')
+    foreach ($recipeFile in $recipeFiles) {
+        $recipeLines = @(Get-Content -LiteralPath $recipeFile.FullName)
+        $headingMatch = $null
+        $headingIndex = 0
 
-        if (-not $headingMatch.Success) {
-            continue
+        for ($index = 0; $index -lt $recipeLines.Count; $index++) {
+            $candidate = [regex]::Match($recipeLines[$index], '^#\s+Recipe\s+(?<number>\d+)\s+(?<rest>.*)$')
+
+            if ($candidate.Success) {
+                $headingMatch = $candidate
+                $headingIndex = $index
+                break
+            }
         }
 
-        # Retired recipes keep their heading so existing anchors and cross-references
-        # stay valid, but they intentionally carry no code to pin. Match only the exact
-        # marker, so a live recipe whose title merely mentions the word is still gated.
-        if ($headingMatch.Groups['rest'].Value -match '\*\(retired\)\*') {
+        if ($null -eq $headingMatch) {
+            Write-Host "$($recipeFile.FullName)(1,1): error TRLDOC006: '$($recipeFile.Name)' has no '# Recipe N' heading, so its snippet and index coverage cannot be verified."
+            $failed = $true
             continue
         }
 
         $recipeNumber = [int] $headingMatch.Groups['number'].Value
+        $fileNumber = [int] [regex]::Match($recipeFile.Name, '^recipe-(?<number>\d+)-').Groups['number'].Value
         $liveRecipeCount++
 
-        if (-not $snippetNumbers.Contains($recipeNumber)) {
-            Write-Host "$cookbookPath($($index + 1),1): error TRLDOC006: Recipe $recipeNumber has no compiled snippet. Add Examples/CookbookSnippets/Recipe$('{0:D2}' -f $recipeNumber)_<Name>.cs so the recipe's code is compiler-verified."
+        if ($fileNumber -ne $recipeNumber) {
+            Write-Host "$($recipeFile.FullName)($($headingIndex + 1),1): error TRLDOC006: The file name says recipe $fileNumber but the heading says recipe $recipeNumber. Rename the file or fix the heading so they agree."
             $failed = $true
         }
 
-        if ($patternsIndexStart -ge 0 -and -not $indexedRecipes.Contains($recipeNumber)) {
-            Write-Host "$cookbookPath($($index + 1),1): error TRLDOC007: Recipe $recipeNumber is not reachable from the Patterns Index. Add a task-phrased row linking to #recipe-$recipeNumber-... so agents that load only the index can discover it."
+        if (-not $snippetNumbers.Contains($recipeNumber)) {
+            Write-Host "$($recipeFile.FullName)($($headingIndex + 1),1): error TRLDOC006: Recipe $recipeNumber has no compiled snippet. Add Examples/CookbookSnippets/Recipe$('{0:D2}' -f $recipeNumber)_<Name>.cs so the recipe's code is compiler-verified."
+            $failed = $true
+        }
+
+        if ($patternsIndexStart -ge 0 -and -not $indexedRecipes.Contains($recipeFile.Name)) {
+            Write-Host "$($recipeFile.FullName)($($headingIndex + 1),1): error TRLDOC007: '$($recipeFile.Name)' is not reachable from the Patterns Index (each recipe document needs its own link, even when two documents share a recipe number). Add a task-phrased row linking to $($recipeFile.Name) so agents that load only the index can discover it."
             $failed = $true
         }
     }
@@ -588,8 +612,8 @@ else {
     # places and the unguarded copy drifted; the routing head now lives only in the router, so
     # a second copy anywhere else should be added to this list rather than left unguarded.
     $recipeCountClaims = @(
-        @{ File = 'trellis-start-here.md'; Pattern = 'The (?<count>\d+) recipe bodies in `trellis-api-cookbook\.md`'; Phrase = 'The <n> recipe bodies in `trellis-api-cookbook.md`' }
-        @{ File = '../../../AGENTS.md'; Pattern = 'The (?<count>\d+) recipe bodies in `trellis-api-cookbook\.md`'; Phrase = 'The <n> recipe bodies in `trellis-api-cookbook.md`' }
+        @{ File = 'trellis-start-here.md'; Pattern = 'The (?<count>\d+) recipe documents'; Phrase = 'The <n> recipe documents' }
+        @{ File = '../../../AGENTS.md'; Pattern = 'The (?<count>\d+) recipe documents'; Phrase = 'The <n> recipe documents' }
     )
 
     foreach ($claim in $recipeCountClaims) {
@@ -607,7 +631,7 @@ else {
             $failed = $true
         }
         elseif ([int] $countMatch.Groups['count'].Value -ne $liveRecipeCount) {
-            Write-Host "$claimPath(1,1): error TRLDOC010: States $($countMatch.Groups['count'].Value) recipe bodies, but the cookbook has $liveRecipeCount live recipes (retired headings excluded). Update the count."
+            Write-Host "$claimPath(1,1): error TRLDOC010: States $($countMatch.Groups['count'].Value) recipe documents, but there are $liveRecipeCount live recipe documents (recipe-*.md). Update the count."
             $failed = $true
         }
     }
@@ -633,18 +657,16 @@ else {
     # failure to verify - not a pass. Skipping silently here is exactly how a source-layout move
     # or a path-filter mistake would disarm this gate without anyone noticing.
     if ($diagnosticIds.Count -eq 0) {
-        Write-Host "$cookbookPath(1,1): error TRLDOC013: Found no TRLS diagnostic ids under any src/ or generator/ directory, so the analyzer range quoted in the routing head cannot be verified. Update the scan paths in this script."
+        Write-Host "$routingPath(1,1): error TRLDOC013: Found no TRLS diagnostic ids under any src/ or generator/ directory, so the analyzer range quoted in the routing head cannot be verified. Update the scan paths in this script."
         $failed = $true
     }
     else {
         $highestDiagnosticId = [int] ($diagnosticIds | Measure-Object -Maximum).Maximum
         $actualUpper = '{0:D3}' -f $highestDiagnosticId
 
-        # The router is the document agents keep resident, so it must quote the range; the cookbook's
-        # companion list quotes it too and is checked whenever it does.
+        # The router is the document agents keep resident, so it must quote the range.
         $rangeClaims = @(
             @{ Path = $routingPath; Lines = $routingLines; Required = $true }
-            @{ Path = $cookbookPath; Lines = $cookbookLines; Required = $false }
         )
 
         foreach ($rangeClaim in $rangeClaims) {
@@ -742,7 +764,7 @@ foreach ($doc in $shippedDocs) {
             $failed = $true
         }
 
-        if ($usage -eq 'onDemand' -and $description -notmatch '^Open when ') {
+        if ($usage -eq 'onDemand' -and $doc.Directory.Name -ne 'recipes' -and $description -notmatch '^Open when ') {
             Write-Host "$($doc.FullName)(1,1): error TRLDOC016: An onDemand agent_description must start with 'Open when ' so the index says what task triggers the document."
             $failed = $true
         }
@@ -752,6 +774,92 @@ foreach ($doc in $shippedDocs) {
 if ($requiredDocs.Count -ne 1 -or $requiredDocs[0] -ne 'trellis-start-here.md') {
     Write-Host "$apiReferenceDir(1,1): error TRLDOC016: Exactly one document, trellis-start-here.md, may be agent_usage: required (found: $($requiredDocs -join ', ')). Every required document is read before any Trellis work, so the required set must stay one self-contained router."
     $failed = $true
+}
+
+# TRLDOC017 - documents under api_reference/recipes/ are recipes: one task guide per document. They are written to the
+# platform's skill authoring best practices (https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
+# because AgentDocs publishes each one as an Agent Skill stub for agents that load skills; the recipe itself is the reference
+# file behind the stub. This is the machine-checkable part: a front matter `name` equal to the file name (at most 64
+# characters of lowercase letters, digits and hyphens; no reserved word `anthropic` or `claude`; no XML tag), a description
+# that says what the recipe covers and when to use it ("Use when"), written in the third person and without an XML tag (the
+# platform allows 1,024 characters; the AgentDocs manifest allows 200, which TRLDOC016 enforces), a body of fewer than 500
+# lines, and a `## Contents` section in any recipe longer than 100 lines.
+# The folder is the signal: a new recipe goes here and is held to these rules; reference documents stay outside it.
+$recipeDocs = @($markdownFiles | Where-Object { $_.Directory.Name -eq 'recipes' })
+
+foreach ($recipeDoc in $recipeDocs) {
+    $recipeDocLines = @(Get-Content -LiteralPath $recipeDoc.FullName)
+    $stem = [System.IO.Path]::GetFileNameWithoutExtension($recipeDoc.Name)
+    $nameLines = @($recipeDocLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^name:' })
+    $recipeName = if ($nameLines.Count -eq 1) { ($nameLines[0] -replace '^name:\s*', '').Trim() } else { '' }
+
+    if ($recipeName -cne $stem) {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe must declare 'name: $stem' in its front matter, equal to its file name (found '$recipeName')."
+        $failed = $true
+    }
+
+    if ($recipeName -cnotmatch '^[a-z0-9-]{1,64}$' -or $recipeName -match 'anthropic|claude') {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe name is at most 64 characters of lowercase letters, digits and hyphens and cannot contain the reserved words 'anthropic' or 'claude'."
+        $failed = $true
+    }
+
+    $descLines = @($recipeDocLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^agent_description:' })
+    $recipeDescription = if ($descLines.Count -eq 1) { ($descLines[0] -replace '^agent_description:\s*', '').Trim() -replace '^"(.*)"$', '$1' } else { '' }
+
+    if ($recipeDescription -notmatch 'Use when ') {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe description must say what the recipe covers and when to use it, with a 'Use when ...' clause."
+        $failed = $true
+    }
+
+    if ($recipeDescription -cmatch '\bI\b' -or $recipeDescription -match '\b(you|your|yours|we|our|us|my)\b' -or $recipeDescription -match '^Open when ') {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe description is written in the third person (for example 'Shows ... Use when ...'), not as an instruction or in the first or second person, because it is injected into the system prompt."
+        $failed = $true
+    }
+
+    if ($recipeDescription -match '<[^>]*>') {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe description cannot contain XML tags; write 'Page' or 'Maybe of T' instead of 'Page<T>'."
+        $failed = $true
+    }
+
+    if ($recipeDocLines.Count -ge 500) {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe is kept under 500 lines (found $($recipeDocLines.Count)). Split the content into a second recipe or a linked reference."
+        $failed = $true
+    }
+
+    # The best practices ask for a table of contents at the top of any reference file longer than 100 lines, so a partial
+    # read (for example the first 100 lines) still shows the whole scope.
+    if ($recipeDocLines.Count -gt 100 -and -not ($recipeDocLines | Where-Object { $_.TrimEnd() -ceq '## Contents' })) {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC017: A recipe longer than 100 lines (found $($recipeDocLines.Count)) starts with a '## Contents' section listing its parts, so a partial read still shows the whole scope."
+        $failed = $true
+    }
+
+    # TRLDOC018 - Trellis.Core ships every recipe, but a recipe can need other packages, so each one says which in a
+    # `**Requires:**` line near the top. Every `using Trellis.<Package>;` whose namespace is a package built from this
+    # repository must be named there, so a recipe cannot quietly depend on a package it does not list.
+    $requiresLine = @($recipeDocLines | Select-Object -First 30 | Where-Object { $_ -cmatch '^\*\*Requires:\*\*' }) | Select-Object -First 1
+    if (-not $requiresLine) {
+        Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC018: A recipe states the packages it needs in a '**Requires:**' line within its first 30 lines (for example '**Requires:** ``Trellis.Core``, plus ``Trellis.Asp``.')."
+        $failed = $true
+    }
+    else {
+        foreach ($namespace in @($recipeDocLines | ForEach-Object { if ($_ -cmatch '^using (Trellis(?:\.\w+)+);') { $Matches[1] } } | Sort-Object -Unique)) {
+            if ((Test-Path -LiteralPath (Join-Path $RepositoryRoot "$namespace/src/$namespace.csproj")) -and
+                -not $requiresLine.Contains("``$namespace``")) {
+                Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC018: The code uses 'using $namespace;' but the Requires line does not name the package ``$namespace``."
+                $failed = $true
+            }
+        }
+
+        # Trellis.Core does not reference Mediator. A recipe that uses the Mediator contracts needs Trellis.Mediator,
+        # which brings Mediator.Abstractions with it.
+        $usesMediator = @($recipeDocLines | Where-Object { $_ -cmatch '^using Mediator;|\bIMediator\b' }).Count -gt 0
+        $namesMediator = $requiresLine.Contains('`Trellis.Mediator`')
+
+        if ($usesMediator -and -not $namesMediator) {
+            Write-Host "$($recipeDoc.FullName)(1,1): error TRLDOC018: The code uses the Mediator contracts ('using Mediator;' or IMediator) but the Requires line does not name the package ``Trellis.Mediator``, which brings Mediator.Abstractions."
+            $failed = $true
+        }
+    }
 }
 
 if ($failed) {
