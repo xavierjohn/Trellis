@@ -127,6 +127,10 @@ internal static class DocMemberAudit
             if (string.Equals(name, "completeness-report.md", StringComparison.OrdinalIgnoreCase))
                 continue;
 
+            // Findings are keyed by the path under docsDir, not the bare file name: a recipe lives in a subfolder, and
+            // the diagnostic joins this key back onto docsDir, so a bare name would point at a file that does not exist.
+            var relativePath = Path.GetRelativePath(docsDir, file);
+
             filesScanned++;
             var text = File.ReadAllText(file);
             var lineStarts = BuildLineStarts(text);
@@ -196,10 +200,10 @@ internal static class DocMemberAudit
                     }
 
                     int line = LineOf(lineStarts, region.Offset + chain.Index);
-                    if (!findings.TryGetValue(name, out var bucket))
+                    if (!findings.TryGetValue(relativePath, out var bucket))
                     {
                         bucket = [];
-                        findings[name] = bucket;
+                        findings[relativePath] = bucket;
                     }
 
                     if (!bucket.Any(f => f.Receiver == receiver && f.Member == member))

@@ -52,6 +52,10 @@ internal static class DocSymbolAudit
             if (string.Equals(name, "completeness-report.md", StringComparison.OrdinalIgnoreCase))
                 continue;
 
+            // Findings are keyed by the path under docsDir, not the bare file name: a recipe lives in a subfolder, and
+            // the diagnostic joins this key back onto docsDir, so a bare name would point at a file that does not exist.
+            var relativePath = Path.GetRelativePath(docsDir, file);
+
             var lines = File.ReadAllLines(file);
 
             for (int i = 0; i < lines.Length; i++)
@@ -72,10 +76,10 @@ internal static class DocSymbolAudit
                         if (known.Contains(segment) || allowlist.Contains(segment))
                             continue;
 
-                        if (!unknownByFile.TryGetValue(name, out var bucket))
+                        if (!unknownByFile.TryGetValue(relativePath, out var bucket))
                         {
                             bucket = [];
-                            unknownByFile[name] = bucket;
+                            unknownByFile[relativePath] = bucket;
                         }
 
                         if (!bucket.Any(entry => entry.Symbol == segment))
