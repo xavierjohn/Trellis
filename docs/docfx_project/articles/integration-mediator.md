@@ -109,7 +109,7 @@ public sealed class PublishDocumentHandler : ICommandHandler<PublishDocumentComm
 ```
 
 > [!IMPORTANT]
-> Pass `opts => opts.ServiceLifetime = ServiceLifetime.Scoped`. The Trellis behaviors depend on per-request services (`IActorProvider`, `IUnitOfWork`, `IMessageValidator<>` adapters). Mediator's default lifetime is `Singleton`, which fails ASP.NET's root-scope validation as soon as a behavior tries to resolve a scoped dependency. `AddTrellisBehaviors()` fails fast with an actionable message if it sees a `Singleton` Mediator.
+> Pass `opts => opts.ServiceLifetime = ServiceLifetime.Scoped`. The Trellis behaviors depend on per-request services (`IActorProvider`, `IUnitOfWork`, `IMessageValidator<>` adapters). Mediator's default lifetime is `Singleton`. With scope validation on (the ASP.NET Core Development default) the first `Send` throws because a behavior resolves a scoped dependency from the root provider; with validation off it succeeds and the Singleton captures scoped dependencies across requests and scopes. `AddTrellisBehaviors()` fails fast with an actionable message when it sees a `Singleton` Mediator registered before it; a Singleton registered after it is not detected.
 
 > [!NOTE]
 > A file that imports both the `Trellis` and `Mediator` namespaces has two `Unit` types in scope — `Trellis.Unit` (the success-without-payload value a command returns) and `Mediator.Unit` — so a bare `Result<Unit>` is *ambiguous*. The examples here abbreviate it; in real code either qualify it as `Result<Trellis.Unit>` (what the compiled samples do) or add a one-line alias to your `GlobalUsings.cs` so the short form keeps working:
@@ -940,7 +940,7 @@ app.Run();
 
 ## Practical guidance
 
-- **Use the `Scoped` Mediator lifetime.** All Trellis behaviors depend on per-request services; `Singleton` (the Mediator default) fails the root-scope check on first request.
+- **Use the `Scoped` Mediator lifetime.** All Trellis behaviors depend on per-request services; `Singleton` (the Mediator default) throws on the first `Send` when scope validation is on, and silently captures scoped dependencies when it is off.
 - **`IAuthorize` for coarse gates, `IAuthorizeResource<T>` for fine rules.** Static permissions (`documents:edit`) belong on `IAuthorize`; ownership / tenancy / state rules belong on `IAuthorizeResource<T>`.
 - **Prefer shared resource loaders.** Register one `SharedResourceLoaderById<TResource, TId>` per resource and let messages implement `IIdentifyResource<,>` — avoids one loader class per command.
 - **Don't forget `AddResourceAuthorization(...)`.** Implementing `IAuthorizeResource<T>` is not enough; the behavior must be registered or it never runs.

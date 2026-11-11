@@ -28,7 +28,7 @@ builder.Services.AddTrellisBehaviors();
 ```
 
 > [!IMPORTANT]
-> Use `ServiceLifetime.Scoped` when calling `AddMediator(...)` in a host with a request scope. The Trellis behaviors are scoped (they depend on per-request services); the Mediator default of `Singleton` will fail ASP.NET's root-scope validation as soon as the first behavior tries to resolve a scoped dependency.
+> Use `ServiceLifetime.Scoped` when calling `AddMediator(...)` in a host with a request scope. The Trellis behaviors are scoped (they depend on per-request services); with the Mediator default of `Singleton`, a host with scope validation on (the ASP.NET Core Development default) throws on the first `Send`, and a host with validation off sends successfully while the Singleton captures scoped dependencies across requests. Call `AddMediator` before `AddTrellis`, which rejects an earlier Singleton registration.
 
 ## Key Features
 - Six parameterless actor-aware bases: `ActorCommandHandler`, `ActorQueryHandler`, direct `ActorResourceCommandHandler` / `ActorResourceQueryHandler`, and indirect `ActorResourceViaCommandHandler` / `ActorResourceViaQueryHandler`. Override protected `Handle(message, actor[, resource/leaf], token)`; concrete constructors keep business dependencies only.

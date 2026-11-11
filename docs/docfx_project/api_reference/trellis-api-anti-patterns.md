@@ -109,10 +109,12 @@ Prefer the early-return guard in ROP code: it keeps the happy path unindented an
 
 ```csharp
 // WRONG
-.Bind(o => throw new InvalidOperationException("bad"))   // TRLS010
+order.Bind(o => o.IsOpen ? Result.Ok(o) : throw new InvalidOperationException("closed"))   // TRLS010
 
 // FIX
-.Bind(o => Result.Fail<Order>(new Error.Conflict(Resource: ResourceRef.For<Order>(o.Id), Code: "invalid-state")))
+order.Bind(o => o.IsOpen
+    ? Result.Ok(o)
+    : Result.Fail<Order>(new Error.Conflict(Resource: ResourceRef.For<Order>(o.Id), Code: "order.closed")))
 ```
 
 ## TRLS016 — `HasIndex` on a `Maybe<T>` property
