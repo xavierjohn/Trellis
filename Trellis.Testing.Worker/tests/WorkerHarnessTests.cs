@@ -624,6 +624,26 @@ public class WorkerHarnessTests
     }
 
     [Fact]
+    public async Task StopAsync_ServiceProviderDisposedDuringShutdown_PreservesOriginalFailure()
+    {
+        var execution = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        execution.SetResult();
+        var failure = new InvalidOperationException("shutdown failed after disposing services");
+        await using var harness = await WorkerHarness<FailingWorker>.CreateAsync(
+            options => options.ConfigureServices(services =>
+            {
+                services.AddSingleton(execution);
+                services.AddSingleton<IHostedService>(provider => new ProviderDisposingHostedService(provider, failure));
+            }),
+            TestContext.Current.CancellationToken);
+        await harness.StartAsync(TestContext.Current.CancellationToken);
+
+        var stop = () => harness.StopAsync(TestContext.Current.CancellationToken);
+        var thrown = await stop.Should().ThrowAsync<InvalidOperationException>();
+        thrown.Which.Should().BeSameAs(failure);
+    }
+
+    [Fact]
     public async Task DisposeAsync_WorkerCancellationException_NoTeardownTimeout_PropagatesFailure()
     {
         var execution = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -731,6 +751,17 @@ public class WorkerHarnessTests
     private sealed class FailingWorker(TaskCompletionSource execution) : BackgroundService
     {
         protected override Task ExecuteAsync(CancellationToken stoppingToken) => execution.Task;
+    }
+
+    private sealed class ProviderDisposingHostedService(IServiceProvider services, Exception failure) : IHostedService
+    {
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await ((IAsyncDisposable)services).DisposeAsync();
+            throw failure;
+        }
     }
 
     private sealed class LifecycleTrackerHostedService : IHostedService, IAsyncDisposable

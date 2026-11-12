@@ -60,26 +60,10 @@ internal static class JsonPathSegments
                 if (i + 1 < jsonExceptionPath.Length && jsonExceptionPath[i + 1] == '\'')
                 {
                     var contentStart = i + 2;
-                    var closeIdx = -1;
-                    for (var j = contentStart; j + 1 < jsonExceptionPath.Length; j++)
-                    {
-                        if (jsonExceptionPath[j] == '\\' && jsonExceptionPath[j + 1] is '\\' or '\'')
-                        {
-                            j++;
-                            continue;
-                        }
-
-                        if (jsonExceptionPath[j] != '\'') continue;
-                        if (jsonExceptionPath[j + 1] != ']') continue;
-                        var afterIdx = j + 2;
-                        if (afterIdx == jsonExceptionPath.Length
-                            || jsonExceptionPath[afterIdx] == '.'
-                            || jsonExceptionPath[afterIdx] == '[')
-                        {
-                            closeIdx = j;
-                            break;
-                        }
-                    }
+                    var closeIdx = FindPropertyEnd(jsonExceptionPath, contentStart, usesEscapes: true);
+                    var usesEscapes = closeIdx >= 0;
+                    if (!usesEscapes)
+                        closeIdx = FindPropertyEnd(jsonExceptionPath, contentStart, usesEscapes: false);
 
                     string content;
                     if (closeIdx >= 0)
@@ -93,7 +77,8 @@ internal static class JsonPathSegments
                         i = jsonExceptionPath.Length;
                     }
 
-                    content = UnescapePropertyName(content);
+                    if (usesEscapes)
+                        content = UnescapePropertyName(content);
                     segments.Add(new Segment(SegmentKind.Property, content, content));
                 }
                 else
@@ -115,6 +100,31 @@ internal static class JsonPathSegments
         }
 
         return segments;
+    }
+
+    private static int FindPropertyEnd(string path, int contentStart, bool usesEscapes)
+    {
+        for (var j = contentStart; j + 1 < path.Length; j++)
+        {
+            if (usesEscapes && path[j] == '\\' && path[j + 1] is '\\' or '\'')
+            {
+                j++;
+                continue;
+            }
+
+            if (path[j] != '\'')
+                continue;
+
+            var afterIdx = j + 2;
+            if (path[j + 1] == ']'
+                && (afterIdx == path.Length || path[afterIdx] is '.' or '['))
+                return j;
+
+            if (usesEscapes)
+                return -1;
+        }
+
+        return -1;
     }
 
     private static string UnescapePropertyName(string content)

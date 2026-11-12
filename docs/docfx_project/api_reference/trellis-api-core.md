@@ -659,8 +659,16 @@ The catalog is closed to these 12 cases: `InvalidInput`, `InvariantViolation`, `
 With C# 15, list every case in a switch expression without a catch-all to have omitted cases
 diagnosed by the compiler. Switch statements do not provide this guarantee. Retain defaults
 for intentionally partial policies such as `GetRetryAdvice`, and handle nullable inputs
-explicitly. Adding a public case can require consumers to update exhaustive matches when
-recompiling. `Result<T>`, `Maybe<T>`, error payloads, equality, and HTTP wire shapes are unchanged.
+explicitly. `Result<T>`, `Maybe<T>`, error payloads, equality, and HTTP wire shapes are unchanged.
+
+**Catalog evolution is a breaking API change.** Adding or removing a public case requires
+a major version after a stable release; it is not a compatible additive change. Rebuild
+consumers against the changed catalog and update their exhaustive matches. Replacing only
+the runtime package does not update a previously compiled switch: if it receives a new case,
+its compiler-generated unmatched arm throws `System.Runtime.CompilerServices.SwitchExpressionException`.
+Use an existing case's `Code` for new application failure reasons instead of extending the catalog.
+The same compatibility policy applies to the closed HTTP-fault, write-outcome, and
+idempotency-reservation catalogs.
 
 #### Error.TransportFault envelope
 
@@ -2650,10 +2658,11 @@ public sealed class RangeAttribute : Attribute
 | `public RangeAttribute(long minimum, long maximum)` | `RangeAttribute` | Range metadata for `RequiredLong<TSelf>`. |
 | `public RangeAttribute(double minimum, double maximum)` | `RangeAttribute` | Fractional range metadata for `RequiredDecimal<TSelf>`. |
 
-Generated decimal bounds retain 15 significant decimal digits, matching the pre-.NET 11
-double-to-decimal conversion. This keeps fractional boundaries such as `0.01m` and `99.99m`
-stable when the generator runs in different compiler-host runtimes; binary floating-point
-artifacts must not tighten the declared range.
+Generated decimal bounds explicitly reproduce the pre-.NET 11 double-to-decimal scaling and
+round-to-even conversion, including its 15-significant-digit precision, zero underflow and
+overflow rejection (`TRLS034`). This keeps fractional boundaries such as `0.01m` and `99.99m`
+stable across compiler-host runtimes. Formatting a double with `G15` is not equivalent at
+rounding boundaries and must not replace that conversion.
 
 ### `StringLengthAttribute`
 

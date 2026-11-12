@@ -1078,6 +1078,10 @@ All three operations must support an empty `key`. It represents the valid RFC St
 `IIdempotencyStore.TryReserveAsync`. C# 15 switch expressions can cover its four sealed
 cases without a catch-all; the middleware uses this compiler-checked dispatch. Payloads,
 status codes, headers, replay bodies, and reservation semantics are unchanged.
+Case additions or removals follow the [closed-catalog breaking-change policy](trellis-api-core.md#closed-union--exhaustive-matching):
+a major version after a stable release and a consumer rebuild are required. An older
+compiled exhaustive switch can throw `System.Runtime.CompilerServices.SwitchExpressionException`
+if a new case reaches it.
 
 | Case | Payload | Meaning |
 | --- | --- | --- |
@@ -1916,7 +1920,10 @@ with all field/rule violations retained. `Cause` remains internal.
 
 .NET 11's escaped single quotes and backslashes in `JsonException.Path` are decoded before
 producing MVC keys or RFC 6901 pointers, so unusual input property names retain their
-original spelling. Legacy unescaped paths remain supported on a best-effort basis.
+original spelling. If a quoted segment cannot be parsed with those escapes, the parser
+falls back to legacy unescaped syntax, including a literal trailing backslash. When a path
+is valid in both dialects, the .NET 11 escaped interpretation wins; legacy paths therefore
+remain best-effort rather than unambiguous.
 
 ### `ScalarValuePathTracking`
 

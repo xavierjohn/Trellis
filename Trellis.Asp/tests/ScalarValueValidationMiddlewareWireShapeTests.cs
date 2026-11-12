@@ -664,6 +664,10 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
     [InlineData("a\\b")]
     [InlineData("a\\\\b")]
     [InlineData("a\\'b")]
+    [InlineData("a\\")]
+    [InlineData("a\\\\")]
+    [InlineData("a'].b")]
+    [InlineData("a']['child name")]
     [InlineData("a\"b")]
     [InlineData("a\nb")]
     [InlineData("a\tb")]
@@ -693,6 +697,28 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         var problem = await ReadProblemAsync(ctx);
         var errors = ReadErrors(problem);
         errors.Should().ContainKey(propertyName);
+    }
+
+    [Theory]
+    [InlineData("$['a\\']", "a\\", "/a\\")]
+    [InlineData("$['a\\'].name", "a\\.name", "/a\\/name")]
+    [InlineData("$['a\\']['child name']", "a\\.child name", "/a\\/child name")]
+    [InlineData("$['a\\'b\\']", "a\\'b\\", "/a\\'b\\")]
+    public async Task JsonException_LegacyUnescapedBackslash_EmitsOriginalMvcKeyAndPointer(
+        string path, string expectedMvcKey, string expectedPointer)
+    {
+        ScalarValueValidationMiddleware.JsonPathToPointer(path).Should().Be(expectedPointer);
+
+        var ctx = NewContext();
+        var inner = new JsonException("conversion failure");
+        typeof(JsonException).GetProperty("Path")!.SetValue(inner, path);
+        var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, inner);
+        var middleware = new ScalarValueValidationMiddleware(_ => throw bre);
+        await middleware.InvokeAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(400);
+        var errors = ReadErrors(await ReadProblemAsync(ctx));
+        errors.Should().ContainKey(expectedMvcKey);
     }
 
     private sealed class DotNamedModel

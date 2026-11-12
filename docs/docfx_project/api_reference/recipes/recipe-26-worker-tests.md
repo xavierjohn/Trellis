@@ -136,6 +136,8 @@ public class HealthProbeWorkerTests
         harness.Time.Advance(TimeSpan.FromMinutes(5));
         await harness.WaitForTickAsync("probe", after: cursor, TimeSpan.FromSeconds(2));
 
+        await harness.StopAsync(TestContext.Current.CancellationToken);
+
         // Once WaitForTickAsync returns, PublishAsync for this iteration has already
         // returned (the worker signals AFTER the publish loop), so the captured-event
         // list is fully populated and the synchronous read is race-free.
@@ -151,5 +153,8 @@ On .NET 11, the default `StopHost` policy rethrows worker failures from host shu
 and simultaneous shutdown/disposal failures are aggregated. A completed shutdown is not
 retried just because it reported a worker failure. Only cancellation of the harness's own
 10-second stop budget is suppressed, not an ordinary worker-origin cancellation exception.
+The recipe stops the worker before final assertions: a throwing `DisposeAsync` in `await using`
+can otherwise replace a pending assertion exception, just as with any throwing async disposable.
+The harness cannot aggregate an exception from the body because disposal does not receive it.
 
 `Trellis.Testing.Worker` references `Trellis.Testing` transitively, so handler-test assertions like `Should().BeSuccess()` and `FakeRepository<,>` are available from the same test project without an extra package.

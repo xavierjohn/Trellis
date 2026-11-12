@@ -48,6 +48,7 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
     where TWorker : BackgroundService
 {
     private readonly IHost _host;
+    private readonly CancellationToken _applicationStopped;
     private readonly DomainEventCapture _capture;
     private readonly WorkerTickSignal _tickSignal;
     private readonly TimeSpan _defaultWaitTimeout;
@@ -63,6 +64,7 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
         TimeSpan defaultWaitTimeout)
     {
         _host = host;
+        _applicationStopped = host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopped;
         Time = time;
         Actor = actor;
         _capture = capture;
@@ -294,7 +296,7 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
         }
         catch
         {
-            if (!_host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopped.IsCancellationRequested)
+            if (!_applicationStopped.IsCancellationRequested)
                 Volatile.Write(ref _started, 1);
             throw;
         }
@@ -491,6 +493,8 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
     /// <remarks>
     /// Worker failures propagate; only cancellation of the harness's stop budget is suppressed.
     /// The host is always disposed, and simultaneous stop and disposal failures are aggregated.
+    /// During await using, a shutdown exception can replace a pending test-body exception.
+    /// Call StopAsync before final assertions to observe worker health separately.
     /// </remarks>
     /// <exception cref="AggregateException">Both host shutdown and disposal failed.</exception>
     public async ValueTask DisposeAsync()

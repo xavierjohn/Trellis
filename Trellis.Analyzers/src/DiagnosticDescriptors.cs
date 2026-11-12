@@ -394,17 +394,19 @@ public static class DiagnosticDescriptors
         helpLinkUri: HelpLinkBase);
 
     /// <summary>
-    /// TRLS065: A <c>[Produces]</c> media-type list contains a JSON-family type, so it rewrites
-    /// problem responses (or, when problem+json leads, success responses).
+    /// TRLS065: A <c>[Produces]</c> list mislabels successful responses, or problem responses on legacy MVC.
     /// </summary>
     public static readonly DiagnosticDescriptor ProducesClobbersProblemDetails = new(
         id: TrellisDiagnosticIds.ProducesClobbersProblemDetails,
-        title: "[Produces] media type overrides RFC 9457 problem responses",
+        title: "[Produces] media type mislabels problem or success responses",
         messageFormat: "[Produces] lists \"{0}\", so {1}; trim the output formatters in MvcOptions instead of narrowing with [Produces]",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "ProducesAttribute replaces ObjectResult.ContentTypes wholesale, and the JSON output formatter " +
+        description: "On ASP.NET Core 11 and later, MVC preserves ProblemDetails media types, so JSON-first lists " +
+                     "are allowed. A list whose first JSON-family entry is application/problem+json still mislabels " +
+                     "successful ObjectResult responses. For older or unknown MVC versions, " +
+                     "ProducesAttribute replaces ObjectResult.ContentTypes wholesale, and the JSON output formatter " +
                      "advertises application/json, text/json and application/*+json — so it will happily serialise a " +
                      "ProblemDetails as whichever of those the attribute names, and the response loses the " +
                      "application/problem+json media type that RFC 9457 clients content-negotiate on. Listing " +

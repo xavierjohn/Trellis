@@ -65,8 +65,10 @@ Trellis requires the **.NET SDK 11.0.100 or later** and **.NET 11**. Runtime lib
 
 `Error`, `HttpError`, `WriteOutcome<T>`, and `IdempotencyReservationOutcome` use C# 15
 `closed` records for compiler-checked exhaustive switch expressions. Their cases, payloads,
-equality, and HTTP representations are unchanged. Adding a case can require consumers to
-update exhaustive matches when recompiling.
+equality, and HTTP representations are unchanged. Changing a published case catalog is a
+breaking change, requiring a major version after a stable release and a consumer rebuild.
+A precompiled exhaustive switch can throw `SwitchExpressionException` when given a new
+case; replacing only the runtime package is not sufficient.
 
 Source generators and analyzers remain `netstandard2.0` compiler-host components built
 against Roslyn 5.9. Older compiler hosts report `CS9057` and skip them. This host target

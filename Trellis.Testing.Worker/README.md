@@ -8,6 +8,8 @@ Requires .NET 11. With the default `StopHost` policy, worker failures propagate 
 `StopAsync` or `DisposeAsync`. Completed shutdown is not repeated; disposal always runs,
 and simultaneous shutdown/disposal failures are aggregated. Only the harness's own
 10-second stop-budget cancellation is suppressed.
+Await `StopAsync` before final assertions: a shutdown exception from `await using` disposal
+can otherwise replace a pending assertion exception.
 
 ## Installation
 ```bash
@@ -47,6 +49,7 @@ await harness.SettleAsync(); // yield real time so the worker registers its firs
 harness.Time.Advance(TimeSpan.FromDays(1));
 
 var reminded = await harness.WaitForEventAsync<SubscriptionReminderSent>();
+await harness.StopAsync();
 reminded.SubscriptionId.Should().Be(expectedId);
 ```
 

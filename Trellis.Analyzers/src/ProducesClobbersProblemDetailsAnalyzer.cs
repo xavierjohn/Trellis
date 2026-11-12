@@ -9,10 +9,10 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
-/// TRLS065: Warns when a <c>[Produces(...)]</c> media-type list contains a JSON-family media type
-/// in a project that uses Trellis.Asp.
+/// TRLS065: Warns when a <c>[Produces(...)]</c> list mislabels problem or successful responses
+/// in a project that uses Trellis.Asp, according to the referenced MVC version.
 /// <para>
-/// <c>ProducesAttribute</c> is a result filter that overwrites <c>ObjectResult.ContentTypes</c>
+/// On legacy MVC, <c>ProducesAttribute</c> overwrites <c>ObjectResult.ContentTypes</c>
 /// wholesale. Because the JSON output formatter advertises <c>application/json</c>,
 /// <c>text/json</c> and <c>application/*+json</c>, it can write a <c>ProblemDetails</c> as any of
 /// them — so an RFC 9457 failure response silently loses its <c>application/problem+json</c>
@@ -102,8 +102,8 @@ public sealed class ProducesClobbersProblemDetailsAnalyzer : DiagnosticAnalyzer
         // SelectFormatterUsingAnyAcceptableContentType loops over formatters in the outer loop and
         // acceptable media types in the inner one, so a JSON-family entry anywhere in the list can
         // be claimed by the JSON formatter ahead of an earlier non-JSON entry. Which one wins
-        // depends on formatter registration order, which is invisible from here — so any
-        // JSON-family entry is reported rather than modelled.
+        // depends on formatter registration order, which is invisible from here. Legacy
+        // MVC reports any JSON-family entry; MVC 11+ only reports success mislabeling.
         var consequence = IsProblemJson(offender)
             ? "MVC will write successful ObjectResult responses as application/problem+json"
             : "MVC will write RFC 9457 problem responses as that media type instead of application/problem+json";

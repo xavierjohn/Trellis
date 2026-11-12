@@ -88,6 +88,11 @@ of `StopHost`, do not treat successful `StartAsync` or an observed tick as proof
 remained healthy: await `StopAsync` or allow `DisposeAsync` to surface failures. A worker-origin
 `OperationCanceledException` is not silently discarded when the teardown budget has not expired.
 
+As with any throwing async disposable, an exception from `DisposeAsync` during `await using`
+can replace a pending exception from the test body; the disposal API receives no body exception
+to aggregate. Await `StopAsync` before final assertions to observe worker health separately.
+Worker failures are not suppressed merely to avoid this language-level limitation.
+
 ### `WorkerHarnessOptions`
 
 ```csharp

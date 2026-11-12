@@ -6,12 +6,13 @@ using Xunit;
 /// <summary>
 /// Tests for <see cref="ProducesClobbersProblemDetailsAnalyzer"/> (TRLS065).
 /// <para>
-/// The rule reports a <c>[Produces]</c> whose media types include a JSON-family type, because
+/// On legacy MVC, the rule reports a <c>[Produces]</c> whose media types include a JSON-family type, because
 /// <c>ProducesAttribute</c> rewrites <c>ObjectResult.ContentTypes</c> wholesale and the JSON
 /// output formatter will then write a <c>ProblemDetails</c> as the listed type instead of
 /// <c>application/problem+json</c>. Non-JSON media types are deliberately silent: their
 /// formatters decline <c>ProblemDetails</c>, so MVC falls back and the problem keeps its media
-/// type. Both facts are pinned by behavioural tests in <c>Trellis.Asp.Tests</c>.
+/// type. MVC 11+ preserves problem-response media types; only success-mislabeling lists
+/// are reported there. Framework behavior is pinned separately in <c>Trellis.Asp.Tests</c>.
 /// </para>
 /// </summary>
 public sealed class ProducesClobbersProblemDetailsAnalyzerTests

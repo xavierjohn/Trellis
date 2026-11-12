@@ -767,17 +767,20 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("BadSequence");
     }
 
-    [Fact]
-    public void DecimalRangeExceedsDecimalRange_Reports_TRLS034()
+    [Theory]
+    [InlineData("0.0, 1e30")]
+    [InlineData("0.0, 7.922816251426434e28")]
+    [InlineData("-7.922816251426434e28, 0.0")]
+    public void DecimalRangeExceedsDecimalRange_Reports_TRLS034(string bounds)
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        const string source = """
+        var source = $$"""
             using Trellis;
 
             namespace TestNamespace;
 
-            [Range(0.0, 1e30)]
+            [Range({{bounds}})]
             public partial class TooBigPrice : RequiredDecimal<TooBigPrice>
             {
             }
@@ -803,5 +806,44 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
         var diagnostic = diagnostics.Single(d => d.Id == "TRLS034");
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("TooBigPrice");
+    }
+
+    [Theory]
+    [InlineData("1e-29", "0")]
+    [InlineData("5e-29", "0")]
+    [InlineData("1.2345678901234567", "1.23456789012346")]
+    [InlineData("7.072999056928325e-10", "0.000000000707299905692832")]
+    [InlineData("608192971259.4454", "608192971259.446")]
+    [InlineData("-608192971259.4454", "-608192971259.446")]
+    [InlineData("3.354019696523445e25", "33540196965234400000000000")]
+    public void DecimalRange_CompilerHostConversion_UsesStableLiterals(string bound, string expectedLiteral)
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var source = $$"""
+            using Trellis;
+
+            namespace TestNamespace;
+
+            [Range({{bound}}, {{bound}})]
+            public partial class ExactPrice : RequiredDecimal<ExactPrice>
+            {
+            }
+            """;
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken);
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "GeneratorDecimalConversionTests",
+            syntaxTrees: [syntaxTree],
+            references: GetMetadataReferences(),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new RequiredPartialClassGenerator());
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation, out var outputCompilation, out var generatorDriverDiagnostics, cancellationToken);
+
+        generatorDriverDiagnostics.Concat(outputCompilation.GetDiagnostics(cancellationToken))
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .Should().BeEmpty();
+        var generated = driver.GetRunResult().Results.Single().GeneratedSources.Single().SourceText.ToString();
+        generated.Should().Contain($"if (value < {expectedLiteral}m)");
+        generated.Should().Contain($"if (value > {expectedLiteral}m)");
     }
 }
