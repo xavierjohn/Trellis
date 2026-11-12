@@ -61,10 +61,24 @@ internal sealed class MaybeConvention : IModelFinalizingConvention
         IConventionModelBuilder modelBuilder,
         IConventionContext<IConventionModelBuilder> context)
     {
-        foreach (var entityType in modelBuilder.Metadata.GetEntityTypes().ToList())
+        // Mapping a Maybe<TOwned> navigation can make EF replace an entity type that is already in the snapshot: when
+        // another owned navigation of the same CLR type exists, both become shared-type entity types and the original
+        // is removed. So re-read the model until every entity type still in it has been processed exactly once.
+        var processed = new HashSet<IConventionEntityType>(ReferenceEqualityComparer.Instance);
+        bool foundNew;
+        do
         {
-            ProcessEntityType(modelBuilder, entityType);
+            foundNew = false;
+            foreach (var entityType in modelBuilder.Metadata.GetEntityTypes().ToList())
+            {
+                if (processed.Contains(entityType))
+                    continue;
+
+                foundNew = true;
+                ProcessEntityType(modelBuilder, entityType, processed);
+            }
         }
+        while (foundNew);
     }
 
     /// <summary>
@@ -73,8 +87,14 @@ internal sealed class MaybeConvention : IModelFinalizingConvention
     /// </summary>
     private void ProcessEntityType(
         IConventionModelBuilder modelBuilder,
-        IConventionEntityType entityType)
+        IConventionEntityType entityType,
+        HashSet<IConventionEntityType> processed)
     {
+        // An entity type EF removed after it was snapshotted (replaced by a shared-type twin) has no builder; its
+        // replacement is picked up by the next pass in ProcessModelFinalizing.
+        if (!entityType.IsInModel || !processed.Add(entityType))
+            return;
+
         if (entityType.ClrType is null)
             return;
 
@@ -92,7 +112,7 @@ internal sealed class MaybeConvention : IModelFinalizingConvention
             // Owned types (e.g., Money) need ownership navigations, not scalar columns.
             if (modelBuilder.Metadata.IsOwned(maybeProperty.InnerType))
             {
-                ConfigureOwnedMaybe(modelBuilder, entityType, maybeProperty, storageMember);
+                ConfigureOwnedMaybe(modelBuilder, entityType, maybeProperty, storageMember, processed);
                 continue;
             }
 
@@ -128,7 +148,8 @@ internal sealed class MaybeConvention : IModelFinalizingConvention
         IConventionModelBuilder modelBuilder,
         IConventionEntityType entityType,
         MaybePropertyDescriptor maybeProperty,
-        FieldInfo storageMember)
+        FieldInfo storageMember,
+        HashSet<IConventionEntityType> processed)
     {
         // Ignore the Maybe<T> CLR property — EF Core cannot navigate through a struct
         entityType.Builder.Ignore(maybeProperty.PropertyName);
@@ -147,7 +168,7 @@ internal sealed class MaybeConvention : IModelFinalizingConvention
         // The owned entity type was just created and is not in the outer .ToList() snapshot.
         // Process its Maybe<T> properties now so they don't get missed.
         if (navigation?.TargetEntityType is { } ownedEntityType)
-            ProcessEntityType(modelBuilder, ownedEntityType);
+            ProcessEntityType(modelBuilder, ownedEntityType, processed);
     }
 
     /// <summary>
