@@ -491,7 +491,9 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
     /// Stops the host (if started) and disposes the underlying <see cref="IHost"/>.
     /// </summary>
     /// <remarks>
-    /// Worker failures propagate; only cancellation of the harness's stop budget is suppressed.
+    /// Worker failures propagate unless they are cancellation exceptions observed after the
+    /// harness's 10-second stop budget expires. A worker cancellation racing that deadline
+    /// cannot reliably be distinguished from cancellation of the host's linked shutdown token.
     /// The host is always disposed, and simultaneous stop and disposal failures are aggregated.
     /// During await using, a shutdown exception can replace a pending test-body exception.
     /// Call StopAsync before final assertions to observe worker health separately.

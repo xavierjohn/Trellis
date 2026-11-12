@@ -6,8 +6,9 @@ Integration-test harness for `BackgroundService` workers built on Trellis.
 
 Requires .NET 11. With the default `StopHost` policy, worker failures propagate from
 `StopAsync` or `DisposeAsync`. Completed shutdown is not repeated; disposal always runs,
-and simultaneous shutdown/disposal failures are aggregated. Only the harness's own
-10-second stop-budget cancellation is suppressed.
+and simultaneous shutdown/disposal failures are aggregated. Cancellation exceptions are
+suppressed only after the harness's 10-second stop budget expires; a worker cancellation
+racing that deadline can also be suppressed.
 Await `StopAsync` before final assertions: a shutdown exception from `await using` disposal
 can otherwise replace a pending assertion exception.
 

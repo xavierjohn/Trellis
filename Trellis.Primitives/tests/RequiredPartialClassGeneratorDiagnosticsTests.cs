@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Primitives.Tests;
 
 using System.Globalization;
+using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using SourceGenerator;
@@ -10,6 +11,11 @@ using SourceGenerator;
 /// </summary>
 public class RequiredPartialClassGeneratorDiagnosticsTests
 {
+    private static readonly Func<double, string?> s_formatDecimalLiteral =
+        typeof(RequiredPartialClassGenerator)
+            .GetMethod("FormatDecimalLiteral", BindingFlags.NonPublic | BindingFlags.Static)!
+            .CreateDelegate<Func<double, string?>>();
+
     [Fact]
     public void InvalidStringLengthRange_Reports_TRLS032()
     {
@@ -806,6 +812,31 @@ public class RequiredPartialClassGeneratorDiagnosticsTests
         var diagnostic = diagnostics.Single(d => d.Id == "TRLS034");
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Error);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should().Contain("TooBigPrice");
+    }
+
+    [Theory]
+    [MemberData(nameof(LegacyDecimalLiteralCases))]
+    public void FormatDecimalLiteral_LegacyNet10_OracleInput_MatchesExpectedLiteral(string bits, string? expected)
+    {
+        var value = BitConverter.Int64BitsToDouble(unchecked((long)ulong.Parse(bits, NumberStyles.HexNumber, CultureInfo.InvariantCulture)));
+
+        s_formatDecimalLiteral(value).Should().Be(expected, "binary64 input 0x{0} must retain its .NET 10 conversion", bits);
+    }
+
+    public static IEnumerable<TheoryDataRow<string, string?>> LegacyDecimalLiteralCases()
+    {
+        using var stream = typeof(RequiredPartialClassGeneratorDiagnosticsTests).Assembly
+            .GetManifestResourceStream("TestData.LegacyDecimalLiterals.csv")
+            ?? throw new InvalidOperationException("Missing embedded .NET 10 decimal oracle.");
+        using var reader = new StreamReader(stream);
+        while (reader.ReadLine() is { } line)
+        {
+            if (line.StartsWith('#'))
+                continue;
+
+            var columns = line.Split(',');
+            yield return new(columns[0], columns[1] == "overflow" ? null : columns[1]);
+        }
     }
 
     [Theory]

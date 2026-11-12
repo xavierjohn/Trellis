@@ -611,31 +611,20 @@ internal static class ResponseFailureWriter
 
     private static void ProjectHttpErrorPayload(Dictionary<string, object?> ext, HttpError fault)
     {
-        switch (fault)
+        ReadOnlySpan<KeyValuePair<string, object?>> payload = fault switch
         {
-            case HttpError.MethodNotAllowed { Allow: var allow }:
-                ext["allow"] = allow.Items.ToArray();
-                break;
-            case HttpError.NotAcceptable { Available: var avail }:
-                ext["available"] = avail.Items.ToArray();
-                break;
-            case HttpError.UnsupportedMediaType { Supported: var sup }:
-                ext["supported"] = sup.Items.ToArray();
-                break;
-            case HttpError.RangeNotSatisfiable rnse:
-                ext["completeLength"] = rnse.CompleteLength;
-                ext["unit"] = rnse.Unit;
-                break;
-            case HttpError.ContentTooLarge { MaxBytes: { } max }:
-                ext["maxBytes"] = max;
-                break;
-            case HttpError.PreconditionFailed pf:
-                ext["preconditionKind"] = pf.Condition.ToString();
-                break;
-            case HttpError.PreconditionRequired pr:
-                ext["preconditionKind"] = pr.Condition.ToString();
-                break;
-        }
+            HttpError.MethodNotAllowed { Allow: var allow } => [new("allow", allow.Items.ToArray())],
+            HttpError.NotAcceptable { Available: var available } => [new("available", available.Items.ToArray())],
+            HttpError.UnsupportedMediaType { Supported: var supported } => [new("supported", supported.Items.ToArray())],
+            HttpError.RangeNotSatisfiable range => [new("completeLength", range.CompleteLength), new("unit", range.Unit)],
+            HttpError.ContentTooLarge { MaxBytes: { } max } => [new("maxBytes", max)],
+            HttpError.ContentTooLarge => [],
+            HttpError.PreconditionFailed failed => [new("preconditionKind", failed.Condition.ToString())],
+            HttpError.PreconditionRequired required => [new("preconditionKind", required.Condition.ToString())],
+        };
+
+        foreach (var entry in payload)
+            ext[entry.Key] = entry.Value;
     }
 }
 

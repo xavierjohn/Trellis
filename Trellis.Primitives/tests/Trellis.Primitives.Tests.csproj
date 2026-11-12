@@ -16,6 +16,8 @@
     <ProjectReference Include="..\..\Trellis.Testing\src\Trellis.Testing.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="TestData\LegacyDecimalLiterals.csv"
+                      LogicalName="TestData.LegacyDecimalLiterals.csv" />
     <EmbeddedResource Include="..\..\docs\docfx_project\api_reference\trellis-value-object-taxonomy.md"
                       LogicalName="References.Taxonomy.md" />
     <EmbeddedResource Include="..\..\docs\docfx_project\api_reference\trellis-api-core.md"

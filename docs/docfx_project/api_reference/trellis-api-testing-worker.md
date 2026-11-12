@@ -79,7 +79,7 @@ The `TWorker` type parameter carries `[DynamicallyAccessedMembers(PublicConstruc
 | `public int TickCount { get; }` | `int` | Total number of ticks captured so far (across all names). `TickCount - 1` is a valid `after:` cursor for the unnamed overload. |
 | `public int TickCountOf(string name)` | `int` | Number of ticks captured so far with the given `name`. **Not** a valid `after:` cursor for the named overload (it is a per-name count, not a global index); use `LastTickIndexOf(name)` instead. Appropriate for assertions such as `harness.TickCountOf("probe").Should().Be(3)`. |
 | `public int LastTickIndexOf(string name)` | `int` | Global signal index of the most recent tick captured with the given `name`, or `-1` if none. Pass this value as `after:` to `WaitForTickAsync(name, after, ...)` for a baseline named cursor that is correct even when other tick names are interleaved in the history. |
-| `public ValueTask DisposeAsync()` | `ValueTask` | Stops the host (capped at a 10-second real-time budget) and always disposes the underlying `IHost`. Worker/stop failures propagate; simultaneous stop and disposal failures become an `AggregateException`. Suppresses only cancellation of its own stop budget. Idempotent. |
+| `public ValueTask DisposeAsync()` | `ValueTask` | Stops the host with a 10-second real-time cancellation budget and always disposes the underlying `IHost`. Worker/stop failures propagate; simultaneous stop and disposal failures become an `AggregateException`. Suppresses `OperationCanceledException` only after that budget expires, including worker cancellations racing the deadline. Idempotent. |
 
 `Events<TEvent>()` and `WaitForEventAsync<TEvent>` both use runtime `is` matching, so derived events appear in queries for their base type.
 
@@ -87,6 +87,10 @@ The package requires .NET 11. With the default `HostOptions.BackgroundServiceExc
 of `StopHost`, do not treat successful `StartAsync` or an observed tick as proof the worker
 remained healthy: await `StopAsync` or allow `DisposeAsync` to surface failures. A worker-origin
 `OperationCanceledException` is not silently discarded when the teardown budget has not expired.
+Once the budget expires, however, an independent worker cancellation can also be suppressed:
+the host uses a linked shutdown token, so the cancellation's origin cannot reliably be inferred
+from the exception token. Await `StopAsync` explicitly to observe failures without this
+best-effort disposal timeout policy.
 
 As with any throwing async disposable, an exception from `DisposeAsync` during `await using`
 can replace a pending exception from the test body; the disposal API receives no body exception

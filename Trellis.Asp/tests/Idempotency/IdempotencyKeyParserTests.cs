@@ -74,6 +74,21 @@ public sealed class IdempotencyKeyParserTests
     }
 
     [Theory]
+    [InlineData("A=")]
+    [InlineData("AAAAA")]
+    [InlineData("YWI==")]
+    [InlineData("YWJj=")]
+    [InlineData("YQ==AA")]
+    [InlineData("YQ\t==")]
+    public void TryParse_ByteSequenceParameter_InvalidStructure_ReturnsFalse(string bytes)
+    {
+        IdempotencyKeyParser.TryParse($"\"key\";bytes=:{bytes}:", "Idempotency-Key", out var parsed, out var error)
+            .Should().BeFalse();
+        parsed.Should().BeEmpty();
+        error.Should().NotBeNullOrEmpty();
+    }
+
+    [Theory]
     [InlineData("0")]
     [InlineData("-0")]
     [InlineData("012")]

@@ -503,16 +503,21 @@ public sealed class ResponseFailureWriterPhase3Tests
         body.RootElement.GetProperty("unit").GetString().Should().Be("bytes");
     }
 
-    [Fact]
-    public async Task ContentTooLarge_extension_carries_maxBytes_when_set()
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0L)]
+    [InlineData(1_000_000L)]
+    public async Task ProjectHttpErrorPayload_ContentTooLarge_OptionalLimit_PreservesPayload(long? maxBytes)
     {
         var ctx = NewContext();
-        var r = Result.Fail<T>(new Error.TransportFault(new HttpError.ContentTooLarge(1_000_000)));
+        var r = Result.Fail<T>(new Error.TransportFault(new HttpError.ContentTooLarge(maxBytes)));
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
         using var body = await ReadBody(ctx);
-        body.RootElement.GetProperty("maxBytes").GetInt64().Should().Be(1_000_000);
+        body.RootElement.TryGetProperty("maxBytes", out var limit).Should().Be(maxBytes.HasValue);
+        if (maxBytes.HasValue)
+            limit.GetInt64().Should().Be(maxBytes.Value);
     }
 
     [Fact]
@@ -524,6 +529,19 @@ public sealed class ResponseFailureWriterPhase3Tests
 
         await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
 
+        using var body = await ReadBody(ctx);
+        body.RootElement.GetProperty("preconditionKind").GetString().Should().Be("IfMatch");
+    }
+
+    [Fact]
+    public async Task ProjectHttpErrorPayload_PreconditionRequired_Condition_PreservesPayload()
+    {
+        var ctx = NewContext();
+        var r = Result.Fail<T>(new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch)));
+
+        await r.ToHttpResponse(t => t).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(StatusCodes.Status428PreconditionRequired);
         using var body = await ReadBody(ctx);
         body.RootElement.GetProperty("preconditionKind").GetString().Should().Be("IfMatch");
     }

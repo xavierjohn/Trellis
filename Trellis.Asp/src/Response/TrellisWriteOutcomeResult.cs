@@ -86,57 +86,72 @@ internal sealed class TrellisWriteOutcomeResult<TDomain, TBody> :
         // Preference-Applied when the caller explicitly enabled HonorPrefer.
         var prefer = _options.HonorPrefer ? PreferHeader.Parse(httpContext.Request) : null;
 
-        switch (outcome)
+        return outcome switch
         {
-            case WriteOutcome<TDomain>.Created created:
-                if (created.Metadata is not null)
-                    ApplyMetadataHeaders(response, created.Metadata);
-                if (_body is not null)
-                    return Results.Created(createdLocation, _body(created.Value)).ExecuteAsync(httpContext);
-                return Results.Created(createdLocation, created.Value).ExecuteAsync(httpContext);
+            WriteOutcome<TDomain>.Created created => ExecuteCreatedAsync(httpContext, created, createdLocation),
+            WriteOutcome<TDomain>.Updated updated => ExecuteUpdatedAsync(httpContext, updated, prefer),
+            WriteOutcome<TDomain>.UpdatedNoContent noContent => ExecuteUpdatedNoContentAsync(httpContext, noContent),
+            WriteOutcome<TDomain>.Accepted accepted => ExecuteAcceptedAsync(httpContext, accepted),
+            WriteOutcome<TDomain>.AcceptedNoContent acceptedNoContent => ExecuteAcceptedNoContentAsync(httpContext, acceptedNoContent),
+        };
+    }
 
-            case WriteOutcome<TDomain>.Updated replaced:
-                if (replaced.Metadata is not null)
-                    ApplyMetadataHeaders(response, replaced.Metadata);
+    private Task ExecuteCreatedAsync(HttpContext httpContext, WriteOutcome<TDomain>.Created created, string? location)
+    {
+        if (created.Metadata is not null)
+            ApplyMetadataHeaders(httpContext.Response, created.Metadata);
+        if (_body is not null)
+            return Results.Created(location, _body(created.Value)).ExecuteAsync(httpContext);
+        return Results.Created(location, created.Value).ExecuteAsync(httpContext);
+    }
 
-                if (prefer is not null)
-                {
-                    if (prefer.ReturnMinimal)
-                    {
-                        response.Headers["Preference-Applied"] = "return=minimal";
-                        return Results.NoContent().ExecuteAsync(httpContext);
-                    }
+    private Task ExecuteUpdatedAsync(HttpContext httpContext, WriteOutcome<TDomain>.Updated updated, PreferHeader? prefer)
+    {
+        var response = httpContext.Response;
+        if (updated.Metadata is not null)
+            ApplyMetadataHeaders(response, updated.Metadata);
 
-                    if (prefer.ReturnRepresentation)
-                        response.Headers["Preference-Applied"] = "return=representation";
-                }
-
-                if (_body is not null)
-                    return Results.Ok(_body(replaced.Value)).ExecuteAsync(httpContext);
-                return Results.Ok(replaced.Value).ExecuteAsync(httpContext);
-
-            case WriteOutcome<TDomain>.UpdatedNoContent noContent:
-                if (noContent.Metadata is not null)
-                    ApplyMetadataHeaders(response, noContent.Metadata);
+        if (prefer is not null)
+        {
+            if (prefer.ReturnMinimal)
+            {
+                response.Headers["Preference-Applied"] = "return=minimal";
                 return Results.NoContent().ExecuteAsync(httpContext);
+            }
 
-            case WriteOutcome<TDomain>.Accepted accepted:
-                if (accepted.RetryAfter is not null)
-                    response.Headers["Retry-After"] = accepted.RetryAfter.ToHeaderValue();
-                if (_body is not null)
-                    return Results.Accepted(accepted.MonitorUri, _body(accepted.StatusBody)).ExecuteAsync(httpContext);
-                return Results.Accepted(accepted.MonitorUri, accepted.StatusBody).ExecuteAsync(httpContext);
-
-            case WriteOutcome<TDomain>.AcceptedNoContent acceptedNoContent:
-                if (acceptedNoContent.MonitorUri is not null)
-                    response.Headers.Location = acceptedNoContent.MonitorUri;
-                if (acceptedNoContent.RetryAfter is not null)
-                    response.Headers["Retry-After"] = acceptedNoContent.RetryAfter.ToHeaderValue();
-                return Results.StatusCode(StatusCodes.Status202Accepted).ExecuteAsync(httpContext);
-
-            default:
-                throw new InvalidOperationException($"Unknown WriteOutcome type: {outcome.GetType().Name}");
+            if (prefer.ReturnRepresentation)
+                response.Headers["Preference-Applied"] = "return=representation";
         }
+
+        if (_body is not null)
+            return Results.Ok(_body(updated.Value)).ExecuteAsync(httpContext);
+        return Results.Ok(updated.Value).ExecuteAsync(httpContext);
+    }
+
+    private static Task ExecuteUpdatedNoContentAsync(HttpContext httpContext, WriteOutcome<TDomain>.UpdatedNoContent noContent)
+    {
+        if (noContent.Metadata is not null)
+            ApplyMetadataHeaders(httpContext.Response, noContent.Metadata);
+        return Results.NoContent().ExecuteAsync(httpContext);
+    }
+
+    private Task ExecuteAcceptedAsync(HttpContext httpContext, WriteOutcome<TDomain>.Accepted accepted)
+    {
+        if (accepted.RetryAfter is not null)
+            httpContext.Response.Headers["Retry-After"] = accepted.RetryAfter.ToHeaderValue();
+        if (_body is not null)
+            return Results.Accepted(accepted.MonitorUri, _body(accepted.StatusBody)).ExecuteAsync(httpContext);
+        return Results.Accepted(accepted.MonitorUri, accepted.StatusBody).ExecuteAsync(httpContext);
+    }
+
+    private static Task ExecuteAcceptedNoContentAsync(HttpContext httpContext, WriteOutcome<TDomain>.AcceptedNoContent acceptedNoContent)
+    {
+        var response = httpContext.Response;
+        if (acceptedNoContent.MonitorUri is not null)
+            response.Headers.Location = acceptedNoContent.MonitorUri;
+        if (acceptedNoContent.RetryAfter is not null)
+            response.Headers["Retry-After"] = acceptedNoContent.RetryAfter.ToHeaderValue();
+        return Results.StatusCode(StatusCodes.Status202Accepted).ExecuteAsync(httpContext);
     }
 
     private static void ApplyMetadataHeaders(HttpResponse response, RepresentationMetadata metadata)

@@ -624,6 +624,39 @@ public class WorkerHarnessTests
     }
 
     [Fact]
+    public async Task StopAsync_CallerCancellation_CompletedShutdown_DoesNotRetryServices()
+    {
+        var execution = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        execution.SetResult();
+        var earlier = new LifecycleTrackerHostedService();
+        var cancellationAware = new LifecycleTrackerHostedService { ThrowIfStopCanceled = true };
+        await using var harness = await WorkerHarness<FailingWorker>.CreateAsync(
+            options => options.ConfigureServices(services =>
+            {
+                services.AddSingleton(execution);
+                services.AddSingleton<IHostedService>(_ => earlier);
+                services.AddSingleton<IHostedService>(_ => cancellationAware);
+            }),
+            TestContext.Current.CancellationToken);
+        await harness.StartAsync(TestContext.Current.CancellationToken);
+        var lifetime = harness.Services.GetRequiredService<IHostApplicationLifetime>();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var stop = () => harness.StopAsync(cancellation.Token);
+        await stop.Should().ThrowAsync<OperationCanceledException>();
+
+        lifetime.ApplicationStopped.IsCancellationRequested.Should().BeTrue();
+        earlier.StopCount.Should().Be(1, "the host visits remaining services even when an earlier stop is cancelled");
+        cancellationAware.StopCount.Should().Be(1);
+
+        await harness.StopAsync(TestContext.Current.CancellationToken);
+        await harness.DisposeAsync();
+        earlier.StopCount.Should().Be(1);
+        cancellationAware.StopCount.Should().Be(1);
+    }
+
+    [Fact]
     public async Task StopAsync_ServiceProviderDisposedDuringShutdown_PreservesOriginalFailure()
     {
         var execution = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -770,6 +803,7 @@ public class WorkerHarnessTests
         public int StopCount;
         public bool ThrowOnNextStart;
         public bool ThrowOnStop;
+        public bool ThrowIfStopCanceled;
         public Exception? DisposalFailure;
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -787,6 +821,8 @@ public class WorkerHarnessTests
         public Task StopAsync(CancellationToken cancellationToken)
         {
             StopCount++;
+            if (ThrowIfStopCanceled)
+                cancellationToken.ThrowIfCancellationRequested();
             if (ThrowOnStop)
                 throw new InvalidOperationException("Lifecycle tracker deliberately failed StopAsync.");
 

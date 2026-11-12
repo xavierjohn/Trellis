@@ -36,13 +36,13 @@ public class ClosedHierarchyCompilationTests
                 RedirectStandardError = true,
                 UseShellExecute = false,
             };
-            foreach (var argument in new[] { "build", projectPath, "--verbosity", "quiet" })
+            foreach (var argument in new[] { "build", projectPath, "--disable-build-servers", "--verbosity", "quiet" })
                 startInfo.ArgumentList.Add(argument);
 
             using var process = Process.Start(startInfo)
                 ?? throw new InvalidOperationException("Could not start the closed-hierarchy consumer build.");
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(60));
+            timeout.CancelAfter(TimeSpan.FromMinutes(2));
             var stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
             var stderr = process.StandardError.ReadToEndAsync(timeout.Token);
             try

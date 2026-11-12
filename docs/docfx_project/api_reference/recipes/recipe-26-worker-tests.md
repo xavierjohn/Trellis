@@ -151,8 +151,10 @@ public class HealthProbeWorkerTests
 On .NET 11, the default `StopHost` policy rethrows worker failures from host shutdown.
 `harness.StopAsync(ct)` and `DisposeAsync` preserve those failures; disposal always runs,
 and simultaneous shutdown/disposal failures are aggregated. A completed shutdown is not
-retried just because it reported a worker failure. Only cancellation of the harness's own
-10-second stop budget is suppressed, not an ordinary worker-origin cancellation exception.
+retried just because it reported a worker failure, including when a caller-cancelled stop
+still reaches `ApplicationStopped`. Cancellation exceptions are suppressed only after the
+harness's 10-second stop budget expires; a worker cancellation racing that deadline can
+also be suppressed. Explicit `StopAsync` does not apply this disposal timeout policy.
 The recipe stops the worker before final assertions: a throwing `DisposeAsync` in `await using`
 can otherwise replace a pending assertion exception, just as with any throwing async disposable.
 The harness cannot aggregate an exception from the body because disposal does not receive it.
