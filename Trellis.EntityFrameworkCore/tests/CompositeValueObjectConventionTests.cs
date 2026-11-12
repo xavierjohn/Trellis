@@ -1009,6 +1009,58 @@ public partial class CompositeValueObjectConventionTests : IDisposable
         public partial Maybe<TestContactInfo> Contact { get; set; }
     }
 
+    // The same composite, which has Maybe<> members of its own, held once as required and once as Maybe<>. Mapping the
+    // Maybe<> navigation makes EF replace the already-snapshotted owned entity type with shared-type twins, and model
+    // finalization used to throw "The object 'ContactInfo' has been removed from the model".
+    [Fact]
+    public async Task SameCompositeRequiredAndMaybe_WithMaybeMembers_BuildsModelAndRoundTrips()
+    {
+        using var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+
+        var options = new DbContextOptionsBuilder<RequiredAndMaybeContactDbContext>()
+            .UseSqlite(connection).IgnoreManyServiceProvidersCreatedWarning()
+            .Options;
+
+        using var context = new RequiredAndMaybeContactDbContext(options);
+        context.Database.EnsureCreated();
+
+        var ct = TestContext.Current.CancellationToken;
+        var phone = PhoneNumber.Create("+15551234567");
+        context.Entities.Add(new RequiredAndMaybeContactEntity
+        {
+            Id = 1,
+            Primary = TestContactInfo.Create("Alice", Maybe.From(phone)),
+            Backup = Maybe.From(TestContactInfo.Create("Bob", Maybe<PhoneNumber>.None))
+        });
+        await context.SaveChangesAsync(ct);
+        context.ChangeTracker.Clear();
+
+        var loaded = await context.Entities.FindAsync([1], ct);
+        loaded.Should().NotBeNull();
+        loaded!.Primary.Name.Should().Be("Alice");
+        ((string)loaded.Primary.Phone.Should().HaveValue().Which).Should().Be("+15551234567");
+        loaded.Backup.Should().HaveValue().Which.Name.Should().Be("Bob");
+        loaded.Backup.Value.Phone.HasValue.Should().BeFalse();
+    }
+
+    private partial class RequiredAndMaybeContactEntity
+    {
+        public int Id { get; set; }
+        public TestContactInfo Primary { get; set; } = null!;
+        public partial Maybe<TestContactInfo> Backup { get; set; }
+    }
+
+    private class RequiredAndMaybeContactDbContext : DbContext
+    {
+        public DbSet<RequiredAndMaybeContactEntity> Entities => Set<RequiredAndMaybeContactEntity>();
+
+        public RequiredAndMaybeContactDbContext(DbContextOptions<RequiredAndMaybeContactDbContext> options) : base(options) { }
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+            configurationBuilder.ApplyTrellisConventions(typeof(TestContactInfo).Assembly);
+    }
+
     private class MaybeContactInfoDbContext : DbContext
     {
         public DbSet<MaybeContactInfoEntity> Entities => Set<MaybeContactInfoEntity>();
