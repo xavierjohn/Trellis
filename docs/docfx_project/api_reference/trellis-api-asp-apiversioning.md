@@ -42,6 +42,7 @@ See also: [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdom
 | Link to an `[ApiVersionNeutral]` destination | `.WithVersionedRoute()` skips injection and removes supplied `api-version` values from the cloned dictionary | [Behavioral notes](#behavioral-notes) |
 | URL-segment Location, including cross-route links or explicit pins | `.WithVersionedRoute(...)` writes the resolved version into the target's actual `:apiVersion` parameter name, without a duplicate query value | [Behavioral notes](#behavioral-notes) |
 | Detect mid-migration silent skips (`.WithVersionedRoute()` left in place after `AddApiVersioning(...)` was removed) | Default: warn once per `(endpoint, AppDomain)` to the `Trellis.Asp.ApiVersioning` `ILogger` category. Opt-in fail-fast: `services.AddTrellisAsp(o => o.FailFastOnSilentVersionInjection = true)` | [Behavioral notes](#behavioral-notes) |
+| Generate version-isolated OpenAPI documents on .NET 11 | Native OpenAPI 11 documents plus versioned ApiExplorer groups | [Native versioned OpenAPI](#native-versioned-openapi-on-net-11) |
 
 ## Common traps
 
@@ -53,6 +54,52 @@ See also: [trellis-api-asp.md](trellis-api-asp.md#httpresponseoptionsbuildertdom
 - The route values selector must return a non-null `RouteValueDictionary`. The runtime clones it before applying resolvers, so callbacks do not mutate a shared selector dictionary. Application code must not modify a shared dictionary concurrently.
 - For a target with multiple mapped declared versions, supply a mapped requested version or configure a mapped `DefaultApiVersion`. If neither is available, resolution throws rather than silently picking one. Controller declarations alone do not make an action multi-version.
 - `HttpContext.PageUrl(routeName, ...)` requires the target action to carry a route name (`[HttpGet("...", Name = "Things_List")]`). Without a name the helper cannot resolve the endpoint and the returned builder throws `InvalidOperationException` on first invocation. The route name typically matches the current paginated endpoint (self-referential pagination) but cross-route pagination is supported — supply path parameters in the callback's `RouteValueDictionary` for the target route's template.
+
+## Native versioned OpenAPI on .NET 11
+
+This package targets .NET 11 but still owns **link generation**, not document generation.
+For a versioned MVC host, add `Microsoft.AspNetCore.OpenApi` 11 and keep
+`Asp.Versioning.Mvc` / `Asp.Versioning.Mvc.ApiExplorer`. Do not add `Asp.Versioning.OpenApi`
+10.2.3: its Microsoft.OpenApi 2.x dependency conflicts with native OpenAPI 11's 3.x model.
+
+```csharp
+using Microsoft.OpenApi;
+
+services.AddControllers();
+services.AddApiVersioning()
+    .AddMvc()
+    .AddApiExplorer(options => options.GroupNameFormat = "'v'VVV");
+
+foreach (var (name, version) in new[] { ("v1", "1.0"), ("v2", "2.0") })
+{
+    services.AddOpenApi(name, options =>
+    {
+        options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
+        options.AddDocumentTransformer((document, _, _) =>
+        {
+            document.Info.Version = version;
+            return Task.CompletedTask;
+        });
+    });
+}
+
+// After building the host:
+app.MapControllers();
+app.MapOpenApi();
+```
+
+Choose document names matching the ApiExplorer groups; native inclusion then separates
+operations by version and retains ApiExplorer's version parameters. Configure each
+document's API version explicitly rather than retaining the default `1.0.0` for every
+document. The explicit OpenAPI 3.1 setting avoids .NET 11's new 3.2 default. Keep normal
+API-version readers, controller declarations, and route/link policies unchanged.
+
+The current versioning analyzers' `AV0029` / `AV0030` require the incompatible bridge.
+For a host deliberately using this native setup, suppress only those two diagnostics
+at project scope and cover document isolation, version parameters, and metadata with
+integration tests. Trellis's tested example is
+[`ResponseFailureWriterMvcIntegrationTests`](https://github.com/xavierjohn/Trellis/blob/main/Trellis.Asp/tests/ResponseFailureWriterMvcIntegrationTests.cs).
+There is no new Trellis registration helper or builder slot.
 
 ## Types
 

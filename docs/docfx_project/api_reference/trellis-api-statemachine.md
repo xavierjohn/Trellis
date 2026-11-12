@@ -168,7 +168,7 @@ enum DocumentTrigger { Publish }
 
 ## Cross-references
 
-- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error) — `Result<T>`, `Error.InvariantViolation`.
+- [trellis-api-core.md](trellis-api-core.md#public-closed-record-error) — `Result<T>`, `Error.InvariantViolation`.
 - [recipe-09-state-machine.md](recipes/recipe-09-state-machine.md) — Recipe 9: state-machine `CanFire` + `Fire` pattern with `FireResult`.
 - [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping) — how `Error.InvariantViolation` renders as HTTP 422 (top-level `detail` reads `Error.Detail`).
 

@@ -601,7 +601,7 @@ public sealed class TracingBehavior<TMessage, TResponse> : IPipelineBehavior<TMe
 ```csharp
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
-        .AddAspNetCoreInstrumentation()
+        .AddSource("Microsoft.AspNetCore")
         .AddTrellisMediatorInstrumentation()
         .AddOtlpExporter());
 ```

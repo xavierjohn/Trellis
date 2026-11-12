@@ -8,7 +8,7 @@ This example demonstrates ETag-based conditional GETs and optimistic concurrency
 - How Trellis maps ETags into response metadata and update guards
 
 ## Prerequisites
-- .NET 10 SDK
+- .NET 11 SDK (11.0.100 or later)
 
 ## Run It
 ```bash

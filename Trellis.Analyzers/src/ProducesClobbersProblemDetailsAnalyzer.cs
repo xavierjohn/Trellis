@@ -25,6 +25,10 @@ using Microsoft.CodeAnalysis.Diagnostics;
 /// <c>MvcOptions</c>.
 /// </para>
 /// <para>
+/// ASP.NET Core 11 preserves problem-response media types. For those references, only lists
+/// that select <c>application/problem+json</c> for successful responses are reported.
+/// </para>
+/// <para>
 /// Lists containing no JSON-family type are deliberately not reported. A <c>text/csv</c> or
 /// <c>application/pdf</c> formatter declines <c>ProblemDetails</c> in <c>CanWriteType</c>, so MVC
 /// falls back and the problem response keeps <c>application/problem+json</c>. Mixing a non-JSON
@@ -53,11 +57,15 @@ public sealed class ProducesClobbersProblemDetailsAnalyzer : DiagnosticAnalyzer
             var producesAttribute = start.Compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Mvc.ProducesAttribute");
             if (producesAttribute is null) return;
 
-            start.RegisterSyntaxNodeAction(ctx => AnalyzeAttribute(ctx, producesAttribute), SyntaxKind.Attribute);
+            var preservesProblemMediaType = producesAttribute.ContainingAssembly.Identity.Version.Major >= 11;
+            start.RegisterSyntaxNodeAction(
+                ctx => AnalyzeAttribute(ctx, producesAttribute, preservesProblemMediaType),
+                SyntaxKind.Attribute);
         });
     }
 
-    private static void AnalyzeAttribute(SyntaxNodeAnalysisContext context, INamedTypeSymbol producesAttribute)
+    private static void AnalyzeAttribute(
+        SyntaxNodeAnalysisContext context, INamedTypeSymbol producesAttribute, bool preservesProblemMediaType)
     {
         var attribute = (AttributeSyntax)context.Node;
 
@@ -87,6 +95,7 @@ public sealed class ProducesClobbersProblemDetailsAnalyzer : DiagnosticAnalyzer
         if (firstJsonIndex < 0) return;
 
         var offender = mediaTypes[firstJsonIndex];
+        if (preservesProblemMediaType && !IsProblemJson(offender)) return;
 
         // Reporting the FIRST JSON-family entry is what makes a trailing "application/problem+json"
         // non-exculpatory. Note that this is *not* the same as "first entry in the list": MVC's

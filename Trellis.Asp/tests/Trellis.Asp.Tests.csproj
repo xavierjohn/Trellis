@@ -9,7 +9,9 @@
       value object). Suppressed here so the test project still compiles when the generator is
       wired in to enable the M-2 runtime integration tests.
     -->
-    <NoWarn>$(NoWarn);TRLS039</NoWarn>
+    <!-- Native version-named documents use ApiExplorer groups, not the OpenAPI 2.x
+         bridge required by AV0029/AV0030. Integration tests verify version isolation. -->
+    <NoWarn>$(NoWarn);TRLS039;AV0029;AV0030</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Using Include="Trellis.Asp" />
@@ -38,7 +40,6 @@
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="Asp.Versioning.Mvc" />
     <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
-    <PackageReference Include="Asp.Versioning.OpenApi" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
   </ItemGroup>
 </Project>

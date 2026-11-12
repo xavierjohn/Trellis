@@ -5,8 +5,8 @@
 [![NuGet](https://img.shields.io/nuget/v/Trellis.Core.svg)](https://www.nuget.org/packages/Trellis.Core)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Trellis.Core.svg)](https://www.nuget.org/packages/Trellis.Core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download)
-[![C#](https://img.shields.io/badge/C%23-14.0-blue.svg)](https://docs.microsoft.com/en-us/dotnet/csharp/)
+[![.NET](https://img.shields.io/badge/.NET-11.0-purple.svg)](https://dotnet.microsoft.com/download)
+[![C#](https://img.shields.io/badge/C%23-15.0-blue.svg)](https://docs.microsoft.com/en-us/dotnet/csharp/)
 [![GitHub Stars](https://img.shields.io/github/stars/xavierjohn/Trellis?style=social)](https://github.com/xavierjohn/Trellis/stargazers)
 [![YouTube Channel Subscribers](https://img.shields.io/youtube/channel/subscribers/UC30bqiObz9ML3NMP6a0U7jw?style=social&label=%40trellisdev)](https://www.youtube.com/@trellisdev)
 [![Documentation](https://img.shields.io/badge/docs-online-blue.svg)](https://xavierjohn.github.io/Trellis/)
@@ -60,9 +60,17 @@ return EmailAddress.TryCreate(request.Email)
 
 ## Requirements
 
-Trellis requires the **.NET SDK 10.0.300 or later** (Roslyn 5.6+).
+Trellis requires the **.NET SDK 11.0.100 or later** and **.NET 11**. Runtime libraries target
+`net11.0` only; .NET 10 assets are no longer published. The repository explicitly selects C# 15.
 
-`Trellis.Core`, `Trellis.Asp`, and `Trellis.EntityFrameworkCore` ship source generators, and `Trellis.Analyzers` ships analyzers, all compiled against Roslyn 5.6. On an older SDK the compiler reports `CS9057` and skips them — the generated members simply never appear, which surfaces as confusing "missing member" build errors rather than an obvious version complaint.
+`Error`, `HttpError`, `WriteOutcome<T>`, and `IdempotencyReservationOutcome` use C# 15
+`closed` records for compiler-checked exhaustive switch expressions. Their cases, payloads,
+equality, and HTTP representations are unchanged. Adding a case can require consumers to
+update exhaustive matches when recompiling.
+
+Source generators and analyzers remain `netstandard2.0` compiler-host components built
+against Roslyn 5.9. Older compiler hosts report `CS9057` and skip them. This host target
+does not lower the runtime libraries' .NET 11 requirement.
 
 ## Quick Start
 

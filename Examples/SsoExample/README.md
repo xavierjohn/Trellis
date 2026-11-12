@@ -8,7 +8,7 @@ This example shows how to turn an authenticated principal into a Trellis `Actor`
 - How to switch between development and production authentication paths
 
 ## Prerequisites
-- .NET 10 SDK
+- .NET 11 SDK (11.0.100 or later)
 - For `Production`, a configured OIDC provider and valid JWT
 
 ## Run It

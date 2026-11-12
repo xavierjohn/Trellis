@@ -63,6 +63,12 @@ internal static class JsonPathSegments
                     var closeIdx = -1;
                     for (var j = contentStart; j + 1 < jsonExceptionPath.Length; j++)
                     {
+                        if (jsonExceptionPath[j] == '\\' && jsonExceptionPath[j + 1] is '\\' or '\'')
+                        {
+                            j++;
+                            continue;
+                        }
+
                         if (jsonExceptionPath[j] != '\'') continue;
                         if (jsonExceptionPath[j + 1] != ']') continue;
                         var afterIdx = j + 2;
@@ -87,6 +93,7 @@ internal static class JsonPathSegments
                         i = jsonExceptionPath.Length;
                     }
 
+                    content = UnescapePropertyName(content);
                     segments.Add(new Segment(SegmentKind.Property, content, content));
                 }
                 else
@@ -108,6 +115,23 @@ internal static class JsonPathSegments
         }
 
         return segments;
+    }
+
+    private static string UnescapePropertyName(string content)
+    {
+        if (!content.Contains('\\'))
+            return content;
+
+        var builder = new StringBuilder(content.Length);
+        for (var i = 0; i < content.Length; i++)
+        {
+            if (content[i] == '\\' && i + 1 < content.Length && content[i + 1] is '\\' or '\'')
+                i++;
+
+            builder.Append(content[i]);
+        }
+
+        return builder.ToString();
     }
 
     /// <summary>

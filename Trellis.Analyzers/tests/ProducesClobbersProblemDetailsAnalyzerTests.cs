@@ -45,7 +45,8 @@ public sealed class ProducesClobbersProblemDetailsAnalyzerTests
         }
         """;
 
-    private static async Task VerifyAsync(string source, string mediaType, bool successClobbered = false)
+    private static async Task VerifyAsync(
+        string source, string mediaType, bool successClobbered = false, bool aspNetCore11 = false)
     {
         var expected = AnalyzerTestHelper
             .Diagnostic(DiagnosticDescriptors.ProducesClobbersProblemDetails)
@@ -58,15 +59,20 @@ public sealed class ProducesClobbersProblemDetailsAnalyzerTests
 
         var test = AnalyzerTestHelper.CreateDiagnosticTest<ProducesClobbersProblemDetailsAnalyzer>(source, expected);
         test.TestState.Sources.Add(("Stubs.cs", StubSource));
+        if (aspNetCore11)
+            test.TestState.Sources.Add(("AssemblyInfo.cs", "[assembly: System.Reflection.AssemblyVersion(\"11.0.0.0\")]"));
         await test.RunAsync();
     }
 
-    private static async Task VerifyNoDiagnosticAsync(string source, bool includeTrellisAsp = true)
+    private static async Task VerifyNoDiagnosticAsync(
+        string source, bool includeTrellisAsp = true, bool aspNetCore11 = false)
     {
         var test = AnalyzerTestHelper.CreateNoDiagnosticTest<ProducesClobbersProblemDetailsAnalyzer>(source);
         test.TestState.Sources.Add(("Stubs.cs", includeTrellisAsp
             ? StubSource
             : StubSource.Replace("public sealed class TrellisAspOptions { }", "public sealed class SomethingElse { }")));
+        if (aspNetCore11)
+            test.TestState.Sources.Add(("AssemblyInfo.cs", "[assembly: System.Reflection.AssemblyVersion(\"11.0.0.0\")]"));
         await test.RunAsync();
     }
 
@@ -120,6 +126,40 @@ public sealed class ProducesClobbersProblemDetailsAnalyzerTests
             """;
 
         await VerifyAsync(source, "application/json");
+    }
+
+    [Theory]
+    [InlineData("application/json", false)]
+    [InlineData("application/json", true)]
+    [InlineData("text/json", false)]
+    [InlineData("application/vnd.contoso+json", false)]
+    public async Task Produces_AspNetCore11_JsonSuccessMediaType_DoesNotReport(
+        string mediaType, bool includeProblemJson)
+    {
+        var additional = includeProblemJson ? ", \"application/problem+json\"" : "";
+        var source = $$"""
+            using Microsoft.AspNetCore.Mvc;
+            [ApiController]
+            [Produces("{{mediaType}}"{{additional}})]
+            public sealed class OrdersController : ControllerBase { }
+            """;
+
+        await VerifyNoDiagnosticAsync(source, aspNetCore11: true);
+    }
+
+    [Theory]
+    [InlineData("\"application/problem+json\", \"application/json\"")]
+    [InlineData("\"text/csv\", \"application/problem+json\"")]
+    public async Task Produces_AspNetCore11_ProblemMediaTypeForSuccess_StillReports(string mediaTypes)
+    {
+        var source = $$"""
+            using Microsoft.AspNetCore.Mvc;
+            [ApiController]
+            [{|#0:Produces({{mediaTypes}})|}]
+            public sealed class OrdersController : ControllerBase { }
+            """;
+
+        await VerifyAsync(source, "application/problem+json", successClobbered: true, aspNetCore11: true);
     }
 
     [Fact]

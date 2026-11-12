@@ -36,7 +36,10 @@ audience: [developer]
 
 ## Surface at a glance
 
-`Error` is an `abstract record` with **12 nested `sealed record` cases**. The base type has a `private` constructor, so the catalog is closed and `switch` over an `Error` reference is exhaustive at the language level.
+`Error` is a C# 15 `closed record` with **12 nested `sealed record` cases**. The modifier
+enables compiler-checked exhaustive switch expressions without a catch-all; private
+constructors retain the nested construction boundary. Switch statements do not provide
+the same coverage check. New cases can require consumer matches to be updated on recompilation.
 
 | Category | Cases |
 |---|---|
@@ -48,7 +51,7 @@ audience: [developer]
 | Transport envelope | `TransportFault` |
 | Composition | `Aggregate` |
 
-Every case carries a strongly-typed payload, an init-only `Detail` property, and a structured (never `Exception`) `Cause` chain. Full per-case constructor signatures, payload notes, and the supporting types (`ResourceRef`, `InputPointer`, `FieldViolation`, `RuleViolation`, `RetryAdvice`, `ITransportFault`, `EquatableArray<T>`) live in [`trellis-api-core.md` → `Error`](../api_reference/trellis-api-core.md#public-abstract-record-error).
+Every case carries a strongly-typed payload, an init-only `Detail` property, and a structured (never `Exception`) `Cause` chain. Full per-case constructor signatures, payload notes, and the supporting types (`ResourceRef`, `InputPointer`, `FieldViolation`, `RuleViolation`, `RetryAdvice`, `ITransportFault`, `EquatableArray<T>`) live in [`trellis-api-core.md` → `Error`](../api_reference/trellis-api-core.md#public-closed-record-error).
 
 > [!NOTE]
 > `Unexpected(code, faultId?)` covers both unhandled faults (set `FaultId` to correlate with telemetry) and internal invariant violations ("shouldn't happen"). The optional `FaultId` surfaces as a `faultId` problem-details extension at the ASP boundary when set. Use the `Code == FaultCodes.NotImplemented` convention if you need the boundary to map to HTTP 501; the default maps to 500.

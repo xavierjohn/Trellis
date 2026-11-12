@@ -49,7 +49,7 @@ internal sealed class PathTrackingDictionaryConverter<TDictionary, TValue> : Jso
         if (reader.TokenType != JsonTokenType.StartObject)
             throw new JsonException($"Expected the start of an object for '{_propertyName}'.");
 
-        var valueTypeInfo = (JsonTypeInfo<TValue?>)options.GetTypeInfo(typeof(TValue));
+        var valueTypeInfo = options.GetTypeInfo<TValue?>();
         var entries = new Dictionary<string, TValue?>(StringComparer.Ordinal);
 
         using (ValidationErrorsContext.PushPathSegment(_propertyName))
@@ -86,5 +86,5 @@ internal sealed class PathTrackingDictionaryConverter<TDictionary, TValue> : Jso
 
     /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, TDictionary? value, JsonSerializerOptions options) =>
-        JsonSerializer.Serialize(writer, value!, (JsonTypeInfo<TDictionary>)options.GetTypeInfo(typeof(TDictionary)));
+        JsonSerializer.Serialize(writer, value!, options.GetTypeInfo<TDictionary>());
 }

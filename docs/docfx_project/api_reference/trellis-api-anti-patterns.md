@@ -610,6 +610,12 @@ Setting `Code` to a name of your own is the documented reason the property exist
 
 ## TRLS065 — `[Produces]` that lists a JSON media type
 
+**Version boundary:** ASP.NET Core 11 preserves problem-response media types under a
+JSON-first `[Produces]` list. On MVC 11+, TRLS065 therefore reports only lists whose first
+JSON-family entry is `application/problem+json`, because those can mislabel successful
+`ObjectResult` responses. The failure-clobbering examples below apply to older MVC versions;
+the success-mislabeling examples and formatter-based remedy apply to both.
+
 `ProducesAttribute` is a result filter that replaces `ObjectResult.ContentTypes` wholesale. The JSON output formatter advertises `application/json`, `text/json` and `application/*+json`, so it can serialise a `ProblemDetails` as any of them — and an RFC 9457 failure quietly ships as `application/json`, breaking clients that content-negotiate or branch on the media type.
 
 ```csharp

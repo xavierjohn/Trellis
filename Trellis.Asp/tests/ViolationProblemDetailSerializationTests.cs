@@ -17,7 +17,7 @@ public class ViolationProblemDetailSerializationTests
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 
     private static JsonElement Serialize<T>(T value) =>
-        JsonDocument.Parse(JsonSerializer.Serialize(value, Options)).RootElement;
+        JsonElement.Parse(JsonSerializer.Serialize(value, Options));
 
     [Fact]
     public void Field_violation_omits_detail_and_args_when_absent()

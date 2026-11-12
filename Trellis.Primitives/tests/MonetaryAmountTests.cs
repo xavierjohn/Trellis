@@ -301,10 +301,16 @@ public class MonetaryAmountTests
 
     #region TryCreate from string
 
+    public static TheoryData<string, decimal> ValidStringAmounts =>
+        new()
+        {
+            { "0", 0m },
+            { "29.99", 29.99m },
+            { "1234.56", 1234.56m },
+        };
+
     [Theory]
-    [InlineData("0", 0)]
-    [InlineData("29.99", 29.99)]
-    [InlineData("1234.56", 1234.56)]
+    [MemberData(nameof(ValidStringAmounts))]
     public void TryCreate_string_valid_returns_success(string input, decimal expected)
     {
         // Act

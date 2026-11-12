@@ -53,7 +53,7 @@ public sealed class RateLimiterOptionsExtensionsTests
     [Theory]
     [InlineData(nameof(FixedWindowRateLimiter), true)]
     [InlineData(nameof(TokenBucketRateLimiter), true)]
-    [InlineData(nameof(SlidingWindowRateLimiter), false)]
+    [InlineData(nameof(SlidingWindowRateLimiter), true)]
     [InlineData(nameof(ConcurrencyLimiter), false)]
     public async Task UseTrellisRejectionHandler_BuiltInLimiter_Exhausted_UsesAvailableRetryMetadata(
         string limiterName,
@@ -72,7 +72,7 @@ public sealed class RateLimiterOptionsExtensionsTests
         if (hasRetryAfter)
             response.Headers.GetValues("Retry-After").Should().Equal(
                 ["30"],
-                "this test pins {0}'s .NET 10 BCL estimate to one configured 30-second period; "
+                "this test pins {0}'s .NET 11 BCL estimate to one configured 30-second period; "
                 + "a runtime change may require updating this characterization",
                 limiterName);
         else

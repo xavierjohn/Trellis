@@ -6,7 +6,9 @@ Roslyn analyzers that keep Trellis usage safe, idiomatic, and review-friendly.
 
 ## Requirements
 
-Requires the **.NET SDK 10.0.300 or later** (Roslyn 5.6+). The analyzers are compiled against Roslyn 5.6; on an older host the compiler reports `CS9057` and skips them, so the `TRLS` diagnostics stop firing.
+Trellis runtime libraries require **.NET SDK 11.0.100 or later**. The analyzers remain
+`netstandard2.0` components compiled against Roslyn 5.9 and need a Roslyn 5.9+ compiler
+host. Older hosts report `CS9057` and skip the `TRLS` diagnostics.
 
 ## Installation
 

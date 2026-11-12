@@ -150,5 +150,5 @@ services.AddTrellisFluentValidation(typeof(CreateOrderCommandValidator).Assembly
 
 - [trellis-api-fluentvalidation.md](trellis-api-fluentvalidation.md#header) — the standalone `ValidationResult → Result<T>` helpers and `JsonPointerNormalizer` that this package builds on.
 - [trellis-api-mediator.md](trellis-api-mediator.md#validationbehaviortmessage-tresponse) — the pipeline stage this adapter participates in.
-- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error) — `Error.InvalidInput` shape.
+- [trellis-api-core.md](trellis-api-core.md#public-closed-record-error) — `Error.InvalidInput` shape.
 - [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping) — how `Error.InvalidInput` lands on the wire.

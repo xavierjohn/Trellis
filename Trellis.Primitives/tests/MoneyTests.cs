@@ -81,10 +81,16 @@ public class MoneyTests
             .WithMessage("Failed to create Money:*");
     }
 
+    public static TheoryData<decimal, string, decimal> CurrencyRoundingAmounts =>
+        new()
+        {
+            { 19.995m, "USD", 20.00m },
+            { 10000.5m, "JPY", 10001m },
+            { 45.1235m, "BHD", 45.124m },
+        };
+
     [Theory]
-    [InlineData(19.995, "USD", 20.00)]  // USD rounds to 2 decimals
-    [InlineData(10000.5, "JPY", 10001)] // JPY rounds to 0 decimals
-    [InlineData(45.1235, "BHD", 45.124)] // BHD rounds to 3 decimals
+    [MemberData(nameof(CurrencyRoundingAmounts))]
     public void Money_rounds_to_currency_decimal_places(decimal input, string currency, decimal expected)
     {
         // Act
@@ -1025,11 +1031,16 @@ public class MoneyTests
         result.Should().BeSuccess().Which.Amount.Should().Be(expected, $"{currency} has 0 minor units per ISO 4217");
     }
 
+    public static TheoryData<string, decimal, decimal> ThreeMinorUnitAmounts =>
+        new()
+        {
+            { "IQD", 100.12345m, 100.123m },
+            { "JOD", 50.6789m, 50.679m },
+            { "LYD", 75.4321m, 75.432m },
+        };
+
     [Theory]
-    // 3-decimal currencies beyond BHD/KWD/OMR/TND.
-    [InlineData("IQD", 100.12345, 100.123)] // Iraqi Dinar
-    [InlineData("JOD", 50.6789, 50.679)]    // Jordanian Dinar
-    [InlineData("LYD", 75.4321, 75.432)]    // Libyan Dinar
+    [MemberData(nameof(ThreeMinorUnitAmounts))]
     public void TryCreate_ThreeMinorUnitCurrencies_RoundToThreeDecimals(string currency, decimal input, decimal expected)
     {
         var result = Money.TryCreate(input, currency);
@@ -1037,10 +1048,15 @@ public class MoneyTests
         result.Should().BeSuccess().Which.Amount.Should().Be(expected, $"{currency} has 3 minor units per ISO 4217");
     }
 
+    public static TheoryData<string, decimal, decimal> FourMinorUnitAmounts =>
+        new()
+        {
+            { "CLF", 1.23456789m, 1.2346m },
+            { "UYW", 2.34567m, 2.3457m },
+        };
+
     [Theory]
-    // 4-decimal currencies (CLF / UYW are unidad-de-fomento types).
-    [InlineData("CLF", 1.23456789, 1.2346)]  // Chilean Unidad de Fomento
-    [InlineData("UYW", 2.34567, 2.3457)]     // Unidad Previsional (Uruguay)
+    [MemberData(nameof(FourMinorUnitAmounts))]
     public void TryCreate_FourMinorUnitCurrencies_RoundToFourDecimals(string currency, decimal input, decimal expected)
     {
         var result = Money.TryCreate(input, currency);

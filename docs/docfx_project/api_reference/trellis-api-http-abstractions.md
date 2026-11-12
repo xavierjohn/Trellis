@@ -32,8 +32,13 @@ See also: [trellis-api-core.md](trellis-api-core.md#moved-http-transport-types),
 
 ## `HttpError`
 
-`HttpError` is a closed HTTP-fault union that implements `ITransportFault`.
+`public closed record HttpError : ICodedTransportFault` is a C# 15 closed HTTP-fault union.
+Its `ICodedTransportFault` interface also implements `ITransportFault`.
 Construct it only in HTTP-aware boundaries and wrap it in `new Error.TransportFault(...)` when you need to move it through a `Result` pipeline.
+
+The package targets .NET 11. Switch expressions covering all sealed cases need no
+catch-all; missing cases produce compiler diagnostics. New cases can require consumer
+matches to be updated on recompilation. Case payloads and HTTP representations are unchanged.
 
 | Case | Constructor | Typical status | Notes |
 | --- | --- | --- | --- |
@@ -124,6 +129,8 @@ Fluent builder returned by `RepresentationMetadata.Create()`; every setter retur
 | `Build()` | Produces the `RepresentationMetadata`; the result is a snapshot, so later changes to the builder do not alter it. Empty `Vary` / `ContentLanguage` collections (including ones that held only blank entries) are normalised to `null`. |
 
 ### `WriteOutcome<T>` case payloads
+
+`public closed record WriteOutcome<T>` supplies the same C# 15 exhaustive-switch contract.
 
 | Case | Parameters | Transports as |
 | --- | --- | --- |

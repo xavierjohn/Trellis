@@ -2617,19 +2617,19 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 
     /// <summary>
     /// Formats a double value as a string suitable for use as a C# decimal literal (without 'm' suffix).
-    /// Returns null if the value exceeds the decimal range.
+    /// Preserves the pre-.NET 11 conversion's 15 significant digits across compiler hosts.
+    /// Returns null if the value exceeds the decimal range or is not finite.
     /// </summary>
     private static string? FormatDecimalLiteral(double value)
     {
-        try
-        {
-            var decimalValue = (decimal)value;
-            return decimalValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        }
-        catch (OverflowException)
-        {
-            return null;
-        }
+        var text = value.ToString("G15", System.Globalization.CultureInfo.InvariantCulture);
+        return decimal.TryParse(
+            text,
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var decimalValue)
+            ? decimalValue.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : null;
     }
 
     /// <summary>

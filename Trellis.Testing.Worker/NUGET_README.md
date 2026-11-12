@@ -4,6 +4,10 @@
 
 Integration-test harness for `BackgroundService` workers built on Trellis.
 
+Requires .NET 11. Worker failures propagate during shutdown under the default `StopHost`
+policy. Disposal still runs, preserves simultaneous shutdown/disposal failures, and
+suppresses only cancellation of the harness's own 10-second stop budget.
+
 ## Installation
 ```bash
 dotnet add package Trellis.Testing.Worker

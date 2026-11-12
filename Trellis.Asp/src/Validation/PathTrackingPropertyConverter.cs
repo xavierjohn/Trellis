@@ -47,5 +47,5 @@ internal sealed class PathTrackingPropertyConverter<T> : JsonConverter<T?>
         JsonSerializer.Serialize(writer, value!, TypeInfo(options));
 
     private static JsonTypeInfo<T> TypeInfo(JsonSerializerOptions options) =>
-        (JsonTypeInfo<T>)options.GetTypeInfo(typeof(T));
+        options.GetTypeInfo<T>();
 }

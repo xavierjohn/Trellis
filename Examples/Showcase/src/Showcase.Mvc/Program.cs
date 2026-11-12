@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.OpenApi;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -48,10 +49,9 @@ builder.Services.AddTrellisRouteConstraint<AccountId>();
 // advertising formatter capability rather than actual behaviour, and it disagreed with the
 // Minimal API document for no real reason.
 //
-// Trim the formatters rather than applying [Produces("application/json")]. [Produces] is a result
-// filter that overwrites ObjectResult.ContentTypes wholesale, which also rewrites the automatic
-// model-validation 422 from application/problem+json to application/json -- silently breaking
-// RFC 9457 for the one response that still goes through MVC's formatter pipeline.
+// Narrow the formatter capabilities rather than applying [Produces]. ASP.NET Core 11 protects
+// ProblemDetails media types, but [Produces] still replaces ordinary ObjectResult content types.
+// Restricting the formatters keeps ApiExplorer aligned with the supported representations.
 builder.Services.PostConfigure<MvcOptions>(o =>
 {
     o.OutputFormatters.RemoveType<StringOutputFormatter>();
@@ -66,7 +66,7 @@ builder.Services.PostConfigure<MvcOptions>(o =>
     }
 });
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();
@@ -98,7 +98,7 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracing =>
     {
         tracing
-            .AddAspNetCoreInstrumentation()
+            .AddSource("Microsoft.AspNetCore")
             .AddHttpClientInstrumentation()
             .AddTrellisPrimitivesInstrumentation();
 

@@ -909,16 +909,16 @@ The standard writer maps it to HTTP 429, the `too-many-requests` kind, the froze
 the response is still a normal 429 Problem Details document and omits `Retry-After`.
 `AddTrellisProblemDetails()` adds the standard trace-id customization.
 
-**Built-in limiter guidance (.NET 10):** for ordinary immediate capacity rejections:
+**Built-in limiter guidance (.NET 11):** for ordinary immediate capacity rejections:
 
 | Limiter | `MetadataName.RetryAfter` | Trellis `Retry-After` |
 | --- | --- | --- |
 | `FixedWindowRateLimiter` | Window-based estimate | Emitted from the estimate |
 | `TokenBucketRateLimiter` | Replenishment-based estimate | Emitted from the estimate |
-| `SlidingWindowRateLimiter` | Not supplied | Omitted |
+| `SlidingWindowRateLimiter` | Window-based estimate | Emitted from the estimate |
 | `ConcurrencyLimiter` | Not supplied | Omitted |
 
-Choose fixed-window or token-bucket policies when retry advice matters. Even these do not
+Choose fixed-window, sliding-window or token-bucket policies when retry advice matters. Even these do not
 guarantee a header for every rejection: queued requests rejected by newest-first queue eviction
 or limiter disposal can have no retry metadata. The actual rejected lease is authoritative.
 Trellis does not infer a delay from policy names or invent a fallback estimate; the adapter
@@ -1029,6 +1029,10 @@ public static class IdempotencyKeyParser
 
 Leading and trailing **SP** characters outside the Item are discarded; whitespace inside the String is preserved. Tabs are not SP and are rejected. Valid [Item parameters](https://www.rfc-editor.org/rfc/rfc9651#section-3.1.2) are accepted and validated in full, including all eight RFC 9651 bare-Item value types: Integer, Decimal, String, Token, Byte Sequence, Boolean, Date and Display String. Dates use `@` followed by an Integer, never a Decimal. Display Strings use `%"..."`, lowercase percent-encoded octets, and valid UTF-8; raw backslashes are literal, not escapes. The header defines no parameter semantics, so parameters do not contribute to the key; duplicate parameter names are permitted. Malformed parameters, lists, dictionaries, and any other trailing content fail parsing.
 
+Byte Sequence parameters accept missing Base64 padding and non-zero pad bits as recommended
+by RFC 9651 section 4.2.7, independently of the runtime decoder's stricter defaults.
+Invalid alphabet characters, misplaced padding and impossible lengths remain rejected.
+
 | Header value | Result |
 | --- | --- |
 | `"abc"` | Accepted as `abc`. |
@@ -1070,7 +1074,10 @@ All three operations must support an empty `key`. It represents the valid RFC St
 
 ### `IdempotencyReservationOutcome`
 
-Closed record hierarchy returned by `IIdempotencyStore.TryReserveAsync`.
+`public closed record IdempotencyReservationOutcome` is returned by
+`IIdempotencyStore.TryReserveAsync`. C# 15 switch expressions can cover its four sealed
+cases without a catch-all; the middleware uses this compiler-checked dispatch. Payloads,
+status codes, headers, replay bodies, and reservation semantics are unchanged.
 
 | Case | Payload | Meaning |
 | --- | --- | --- |
@@ -1907,6 +1914,10 @@ The scalar compatibility path uses the same complete-error collection policy as 
 failure preserves its root metadata and rule payloads; combined failures have a neutral root
 with all field/rule violations retained. `Cause` remains internal.
 
+.NET 11's escaped single quotes and backslashes in `JsonException.Path` are decoded before
+producing MVC keys or RFC 6901 pointers, so unusual input property names retain their
+original spelling. Legacy unescaped paths remain supported on a best-effort basis.
+
 ### `ScalarValuePathTracking`
 
 **Declaration**
@@ -2015,7 +2026,7 @@ public static class ValidationErrorsContext
   - **Serialization is by runtime type**, resolved through `JsonSerializerOptions.GetTypeInfo` so the path stays trim- and AOT-clean, and so a validation document keeps the `errors` member that only the derived type declares. `ResponseFailureWriter` uses `Microsoft.AspNetCore.Http.Json.JsonOptions`; `ProblemDetailsActionResult` uses MVC's `JsonOptions`, which keeps its bodies byte-identical to what the JSON output formatter produced. An application that customized MVC's options and expected them to shape *handler* failure documents should mirror the relevant settings onto `services.ConfigureHttpJsonOptions(...)`.
   - `ProblemDetailsActionResult` no longer declares `application/problem+xml` among its content types. That entry existed to match what MVC's `ObjectResultExecutor` infers, so a `[Produces]` attribute could not overwrite the list; the parity it bought was itself the defect, and it was never a promise that Trellis can render XML.
 
-- **`[Produces("application/json")]` breaks problem responses your application builds itself.** `ProducesAttribute` replaces `ObjectResult.ContentTypes` wholesale, and the JSON output formatter will then write a `ProblemDetails` as `application/json` instead of `application/problem+json`. Trellis-owned responses are immune — `AsActionResult<T>()` returns a plain `ActionResult` the filter cannot see, and `ScalarValueValidationFilter` owns every invalid `ModelState` — but an `ObjectResult` you construct yourself, chiefly `Problem(...)` and `ValidationProblem(...)`, is fully exposed. Adding `application/problem+json` to the list does not repair it in any position: MVC selects via `SelectFormatterUsingAnyAcceptableContentType`, which loops over *formatters* outer and media types inner, so the JSON formatter claims whichever of its media types the list names and a `problem+json` entry either sits inert behind an earlier `application/json` or rewrites *successful* responses. Trim `MvcOptions.OutputFormatters` instead of narrowing with `[Produces]`, as `Examples/Showcase/src/Showcase.Mvc/Program.cs` does. **`TRLS065`** reports this; see [trellis-api-analyzers.md](trellis-api-analyzers.md#producesclobbersproblemdetailsanalyzer--trls065). A list naming no JSON-family type at all — `[Produces("text/csv")]`, `[Produces("application/pdf")]` — is safe and is not reported, because those formatters decline `ProblemDetails`.
+- **`[Produces]` can still mislabel successful responses.** ASP.NET Core 11 preserves `application/problem+json` for MVC's automatic validation and application-created `Problem(...)` / `ValidationProblem(...)` responses, even under `[Produces("application/json")]`. However, selecting `application/problem+json` for a successful `ObjectResult` still mislabels success. MVC loops over *formatters* outer and media types inner, so a preceding non-JSON media type does not reliably prevent that. Prefer trimming `MvcOptions.OutputFormatters`, as `Examples/Showcase/src/Showcase.Mvc/Program.cs` does. **`TRLS065`** recognizes the referenced MVC version: on .NET 11+ it reports the success-mislabeling shapes; on older MVC versions it also reports JSON-family lists that overwrite problem-response media types. Trellis-owned `IResult` responses remain independent of MVC output formatters. See [the analyzer contract](trellis-api-analyzers.md#producesclobbersproblemdetailsanalyzer--trls065).
 
 ## Code examples
 

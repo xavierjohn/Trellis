@@ -46,7 +46,7 @@ Every recipe follows the same shape:
 Conventions used throughout:
 
 - Types use namespace `Trellis` unless noted (`Trellis.Asp`, `Trellis.Asp.Authorization`, `Trellis.EntityFrameworkCore`, `Trellis.Analyzers`).
-- Snippets use C# 12+ (file-scoped namespaces, primary constructors, collection expressions); Trellis targets `net10.0`.
+- Snippets use C# 12+ syntax; Trellis targets `net11.0` and requires SDK 11.0.100+. C# 15 enables compiler-checked exhaustive matching over its `closed` error/outcome records.
 - Construct results with `Result.Ok` / `Result.Fail`. `default(Result<T>)` is a typed failure, not success.
 - Async pipelines use `*Async` extensions; sync chain methods on `Task<Result<T>>` trigger `TRLS009`.
 - Examples use `OrderId : RequiredGuid<OrderId>` and an `Order` aggregate; substitute your types, not the structure.
@@ -119,6 +119,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Add Minimal API or MVC endpoints | [Recipe 4](recipes/recipe-04-minimal-api-endpoint.md), [Recipe 5](recipes/recipe-05-mvc-controller.md) |
 | Return 201 for a PUT upsert without an application-layer URL, or let the endpoint supply a Created Location | [Recipe 4](recipes/recipe-04-minimal-api-endpoint.md), then [write outcomes](trellis-api-http-abstractions.md#writeoutcomet-case-payloads) |
 | Generate versioned Location links to a named route or MVC action, including cross-route segment pins | [Recipe 4](recipes/recipe-04-minimal-api-endpoint.md), then [target-aware API versioning](trellis-api-asp-apiversioning.md#behavioral-notes) |
+| Generate separate native OpenAPI documents per API version on .NET 11 | [Native versioned OpenAPI](trellis-api-asp-apiversioning.md#native-versioned-openapi-on-net-11) |
 | Map primitive DTO fields to value objects | [Recipe 18](recipes/recipe-18-dto-to-value-object.md) |
 | Require an exact monetary input before rounding or normalized comparison/deduplication | [Recipe 18's monetary boundary](recipes/recipe-18-dto-to-value-object.md#exact-input-monetary-boundaries-before-normalization) |
 | Require nullable values without `!`, or guard a nullable-returning query | [`Result.EnsureNotNull` / `EnsureNotNullAsync`](trellis-api-core.md#value-returning-null-guards); add [Recipe 18](recipes/recipe-18-dto-to-value-object.md) for command-factory composition |

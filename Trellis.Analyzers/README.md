@@ -6,7 +6,9 @@ Roslyn analyzers that keep Trellis usage safe, idiomatic, and review-friendly.
 
 ## Requirements
 
-Requires the **.NET SDK 10.0.300 or later** (Roslyn 5.6+). The analyzers are compiled against Roslyn 5.6; on an older host the compiler reports `CS9057` and skips them, so the `TRLS` diagnostics stop firing.
+Trellis runtime libraries require **.NET SDK 11.0.100 or later**. The analyzers remain
+`netstandard2.0` components compiled against Roslyn 5.9; they require a Roslyn 5.9+ compiler
+host. Older hosts report `CS9057` and skip them, so the `TRLS` diagnostics stop firing.
 
 ## Installation
 
@@ -62,7 +64,10 @@ Run the analyzer tests from the repository root:
 dotnet test --project Trellis.Analyzers\tests\Trellis.Analyzers.Tests.csproj -c Release
 ```
 
-Analyzer and code-fix test compilations use .NET 10 reference metadata (`ReferenceAssemblies.Net.Net100`) and C# 14, matching the SDK guard fixtures. Shared helpers and tests that construct their own Roslyn harnesses use the same defaults; other parse options are preserved.
+Analyzer and code-fix unit compilations intentionally retain .NET 10 reference metadata
+(`ReferenceAssemblies.Net.Net100`) and C# 14 for older compiler-host coverage. Shared
+helpers preserve those defaults and other parse options. SDK guard fixtures now compile
+`net11.0` with the repository's C# 15 compiler policy.
 
 `Net10ReferenceParityTests` compiles all 18 reason-code guard source scenarios, verifies actual .NET 10 API bindings and Roslyn operation shapes, and checks exact diagnostic IDs, severities, and source spans. Two additional checks exercise the analyzer and code-fix helpers with .NET 10 APIs. These tests use real framework metadata, not framework API shims; the existing minimal Trellis stubs do not establish shipped-package compatibility.
 

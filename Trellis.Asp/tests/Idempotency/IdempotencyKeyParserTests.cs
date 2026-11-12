@@ -62,6 +62,9 @@ public sealed class IdempotencyKeyParserTests
     [InlineData("\"key\";bytes=:YWI:")]
     [InlineData("\"key\";bytes=:YWJj:")]
     [InlineData("\"key\";bytes=:YR==:")]
+    [InlineData("\"key\";bytes=:Yf:")]
+    [InlineData("\"key\";bytes=:Yf=:")]
+    [InlineData("\"key\";bytes=:YWJ=:")]
     [InlineData(" \"key\";n=42;text=\"note\";token=AbC/a:b;bytes=:YQ:;flag  ")]
     public void TryParse_StringItem_WithParameters_ReturnsStringValue(string raw)
     {

@@ -597,8 +597,8 @@ public class ClaimsActorProviderTests
             var nested = identity.FindFirst("app_metadata")?.Value;
             var permissions = nested is null
                 ? new HashSet<string>()
-                : System.Text.Json.JsonDocument.Parse(nested)
-                    .RootElement.GetProperty("roles")
+                : System.Text.Json.JsonElement.Parse(nested)
+                    .GetProperty("roles")
                     .EnumerateArray()
                     .Select(e => e.GetString()!)
                     .ToHashSet();

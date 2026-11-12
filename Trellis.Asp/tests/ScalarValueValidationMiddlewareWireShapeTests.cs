@@ -657,14 +657,20 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
             "MVC indexer keys must not contain a '.' separator before '['");
     }
 
-    [Fact]
-    public async Task real_STJ_deserialization_failure_with_single_quote_in_property_name_emits_MVC_property_key()
+    [Theory]
+    [InlineData("a'b")]
+    [InlineData("a'][")]
+    [InlineData("a'.b']['foo")]
+    [InlineData("a\\b")]
+    [InlineData("a\\\\b")]
+    [InlineData("a\\'b")]
+    [InlineData("a\"b")]
+    [InlineData("a\nb")]
+    [InlineData("a\tb")]
+    [InlineData("a\\nb")]
+    public async Task JsonException_NativeEscapedPropertyName_EmitsOriginalMvcKeyAndPointer(string propertyName)
     {
-        // Integration-style guard for finding 1 of GPT-5.5 round-7 review.
-        // STJ does NOT escape embedded single quotes in bracket-quoted JSONPath segments;
-        // it emits "$['a'b']" for a dictionary key "a'b". The forward-scan tokenizer
-        // must recover the property name correctly.
-        const string payload = "{\"a'b\":\"not-a-number\"}";
+        var payload = JsonSerializer.Serialize(new Dictionary<string, string> { [propertyName] = "not-a-number" });
         JsonException? captured = null;
         try
         {
@@ -676,8 +682,7 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         }
 
         captured.Should().NotBeNull("the deserialize call must throw a JsonException");
-        captured!.Path.Should().Be("$['a'b']",
-            "STJ emits the embedded single quote without escaping");
+        ScalarValueValidationMiddleware.JsonPathToPointer(captured!.Path).Should().Be("/" + propertyName);
 
         var ctx = NewContext();
         var bre = new BadHttpRequestException("Failed to read body", StatusCodes.Status400BadRequest, captured);
@@ -687,8 +692,7 @@ public sealed class ScalarValueValidationMiddlewareWireShapeTests
         ctx.Response.StatusCode.Should().Be(400);
         var problem = await ReadProblemAsync(ctx);
         var errors = ReadErrors(problem);
-        errors.Should().ContainKey("a'b",
-            "the embedded single-quote property name must round-trip through the tokenizer");
+        errors.Should().ContainKey(propertyName);
     }
 
     private sealed class DotNamedModel

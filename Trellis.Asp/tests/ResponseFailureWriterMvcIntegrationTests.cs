@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.OpenApi;
 using Trellis;
 
 /// <summary>
@@ -20,6 +21,8 @@ using Trellis;
 /// </summary>
 public sealed class ResponseFailureWriterMvcIntegrationTests
 {
+    private static readonly (string Name, string Version)[] OpenApiDocuments = [("v1", "1.0"), ("v2", "2.0")];
+
     private static IHost CreateHost(bool addVersionedOpenApi = false)
     {
         var builder = Host.CreateDefaultBuilder()
@@ -38,14 +41,30 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
                             o.DefaultApiVersion = new global::Asp.Versioning.ApiVersion(1, 0);
                         });
                         apiv.AddMvc();
-                        apiv.AddApiExplorer();
-                        apiv.AddOpenApi();
+                        apiv.AddApiExplorer(options => options.GroupNameFormat = "'v'VVV");
+                        foreach (var (name, version) in OpenApiDocuments)
+                        {
+                            s.AddOpenApi(name, options =>
+                            {
+                                options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
+                                options.AddDocumentTransformer((document, _, _) =>
+                                {
+                                    document.Info.Version = version;
+                                    return Task.CompletedTask;
+                                });
+                            });
+                        }
                     }
                 })
                 .Configure(app =>
                 {
                     app.UseRouting();
-                    app.UseEndpoints(e => e.MapControllers());
+                    app.UseEndpoints(e =>
+                    {
+                        e.MapControllers();
+                        if (addVersionedOpenApi)
+                            e.MapOpenApi();
+                    });
                 }));
         return builder.Start();
     }
@@ -123,6 +142,28 @@ public sealed class ResponseFailureWriterMvcIntegrationTests
             .Should().BeTrue($"errors dict missing under MVC + ApiVersioning + OpenApi. body={raw}");
         errors.GetProperty("email").EnumerateArray().Should().HaveCount(2);
     }
+
+    [Theory]
+    [InlineData("v1", "/diag/422-fields", "/diag/v2-only")]
+    [InlineData("v2", "/diag/v2-only", "/diag/422-fields")]
+    public async Task OpenApi_VersionedDocuments_RequestedVersion_ContainsOnlyMatchingOperations(
+        string version, string includedPath, string excludedPath)
+    {
+        using var host = CreateHost(addVersionedOpenApi: true);
+        using var client = host.GetTestClient();
+
+        using var response = await client.GetAsync($"/openapi/{version}.json", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var body = await ReadBodyAsync(response);
+        body.RootElement.GetProperty("openapi").GetString().Should().StartWith("3.1.");
+        body.RootElement.GetProperty("info").GetProperty("version").GetString().Should().Be($"{version[1..]}.0");
+        var paths = body.RootElement.GetProperty("paths");
+        paths.TryGetProperty(includedPath, out var operation).Should().BeTrue();
+        paths.TryGetProperty(excludedPath, out _).Should().BeFalse();
+        operation.GetProperty("get").GetProperty("parameters").EnumerateArray()
+            .Should().Contain(parameter => parameter.GetProperty("name").GetString() == "api-version");
+    }
 }
 
 [ApiController]
@@ -164,6 +205,15 @@ public sealed class DiagController : ControllerBase
             .ToHttpResponse(t => t)
             .AsActionResult<T>()
             .ToTask();
+}
+
+[ApiController]
+[Route("diag")]
+[global::Asp.Versioning.ApiVersion("2.0")]
+public sealed class DiagV2Controller : ControllerBase
+{
+    [HttpGet("v2-only")]
+    public ActionResult<int> Get() => 2;
 }
 
 internal static class TaskEx

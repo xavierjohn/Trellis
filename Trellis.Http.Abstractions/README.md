@@ -4,6 +4,9 @@
 
 HTTP-aware error and representation primitives shared by `Trellis.Asp` on the server side and `Trellis.Http` on the client side.
 
+Requires .NET 11. `HttpError` and `WriteOutcome<T>` are C# 15 `closed` records,
+enabling compiler-checked exhaustive switch expressions without changing case payloads or HTTP contracts.
+
 `Trellis.Core` keeps its domain error union transport-neutral. HTTP-specific failures live in the closed `HttpError` union and flow through `Result<T>` via `Error.TransportFault(ITransportFault)`. This package also owns the HTTP vocabulary that used to live in Core: entity tags, precondition kinds, authentication challenges, retry-after values, representation metadata, and write outcomes.
 
 Use this package when boundary code needs to construct, inspect, or round-trip HTTP failure or context payloads without reintroducing HTTP/RFC concepts into the domain core.

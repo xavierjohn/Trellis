@@ -43,7 +43,8 @@ gives the recommended migration order. For new Trellis code, use the [router](tr
 Update package references and centrally managed versions together. Replace `using FunctionalDdd;`
 and global imports with `using Trellis;`. FunctionalDDD's response extensions also lived in
 the root namespace; add `using Trellis.Asp;` where the new response-mapping APIs are used.
-Trellis targets .NET 10, so update the consuming project's target framework and SDK.
+Trellis targets .NET 11, so update the consuming project to `net11.0` and SDK 11.0.100+
+before restoring. C# 15 enables compiler-checked exhaustive matching over the closed catalogs.
 Packages such as `Trellis.Mediator`, `Trellis.Authorization`, `Trellis.EntityFrameworkCore`,
 `Trellis.Http`, and `Trellis.StateMachine` are optional additions, not renamed FunctionalDDD packages.
 

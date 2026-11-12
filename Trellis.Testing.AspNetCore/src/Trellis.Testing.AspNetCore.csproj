@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <LangVersion>14.0</LangVersion>
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>15.0</LangVersion>
     <AssemblyName>Trellis.Testing.AspNetCore</AssemblyName>
     <RootNamespace>Trellis.Testing.AspNetCore</RootNamespace>
     <Nullable>enable</Nullable>

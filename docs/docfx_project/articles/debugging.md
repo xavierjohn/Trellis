@@ -229,7 +229,7 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracerBuilder => tracerBuilder
         .AddTrellisResultsInstrumentation()
         .AddTrellisPrimitivesInstrumentation()
-        .AddAspNetCoreInstrumentation()
+        .AddSource("Microsoft.AspNetCore")
         .AddHttpClientInstrumentation());
 ```
 
