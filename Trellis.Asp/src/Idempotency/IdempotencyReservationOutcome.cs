@@ -7,7 +7,7 @@ using System;
 /// one of <see cref="Reserved"/>, <see cref="AlreadyInFlight"/>, <see cref="Replay"/>, or
 /// <see cref="BodyHashMismatch"/> is returned for every call.
 /// </summary>
-public abstract record IdempotencyReservationOutcome
+public closed record IdempotencyReservationOutcome
 {
     private IdempotencyReservationOutcome()
     {

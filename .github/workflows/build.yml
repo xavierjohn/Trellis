@@ -49,7 +49,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '10.0.x'
+        global-json-file: global.json
         
     - name: Cache NuGet packages
       uses: actions/cache@v6
@@ -236,7 +236,7 @@ jobs:
           /p:TreatWarningsAsErrors=true
 
     - name: Native scalar converter contract smoke (Showcase.MinimalApi)
-      run: Examples/Showcase/src/Showcase.MinimalApi/bin/Release/net10.0/linux-x64/publish/Showcase.MinimalApi --scalar-converter-smoke
+      run: Examples/Showcase/src/Showcase.MinimalApi/bin/Release/net11.0/linux-x64/publish/Showcase.MinimalApi --scalar-converter-smoke
 
     - name: AOT publish gate (bare non-ASP console)
       # The Showcase gate above references Trellis.Asp, which roots the scalar-value surface
@@ -251,7 +251,7 @@ jobs:
           -c Release -r linux-x64 \
           /p:PublishAot=true \
           /p:TreatWarningsAsErrors=true
-        Examples/AotConsoleProbe/bin/Release/net10.0/linux-x64/publish/AotConsoleProbe
+        Examples/AotConsoleProbe/bin/Release/net11.0/linux-x64/publish/AotConsoleProbe
 
     - name: Native actor-handler generated-dispatch contracts
       run: |
@@ -261,7 +261,7 @@ jobs:
             -c Release -r linux-x64 \
             /p:PublishAot=true \
             /p:TreatWarningsAsErrors=true
-          "$project/bin/Release/net10.0/linux-x64/publish/$consumer"
+          "$project/bin/Release/net11.0/linux-x64/publish/$consumer"
         done
 
     - name: Showcase runtime smoke tests (AOT MinimalApi + JIT MVC)
@@ -409,7 +409,7 @@ jobs:
         }
 
         # --- AOT MinimalApi: published native binary ---
-        AOT_BIN=Examples/Showcase/src/Showcase.MinimalApi/bin/Release/net10.0/linux-x64/publish/Showcase.MinimalApi
+        AOT_BIN=Examples/Showcase/src/Showcase.MinimalApi/bin/Release/net11.0/linux-x64/publish/Showcase.MinimalApi
         if [ ! -x "$AOT_BIN" ]; then
           echo "AOT binary not found: $AOT_BIN"
           ls -la "$(dirname "$AOT_BIN")" || true
@@ -421,7 +421,7 @@ jobs:
         # MVC is intentionally not AOT-published (controller binding + filter
         # pipeline are not currently AOT-supported). The smoke test runs the
         # JIT-compiled assembly to prove the sample actually serves traffic.
-        MVC_DLL=Examples/Showcase/src/Showcase.Mvc/bin/Release/net10.0/Showcase.Mvc.dll
+        MVC_DLL=Examples/Showcase/src/Showcase.Mvc/bin/Release/net11.0/Showcase.Mvc.dll
         if [ ! -f "$MVC_DLL" ]; then
           echo "MVC assembly not found: $MVC_DLL"
           ls -la "$(dirname "$MVC_DLL")" || true

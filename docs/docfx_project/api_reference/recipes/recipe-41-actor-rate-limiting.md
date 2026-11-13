@@ -241,9 +241,9 @@ two paths sequentially and checks full-actor IDs without treating identity prese
 as authorization.
 
 **Retry-After.** The Trellis rejection adapter emits `Retry-After` only when the limiter lease
-carries retry advice. On .NET 10 fixed-window and token-bucket limiters supply it for an immediate
-capacity rejection (the sample above returns `Retry-After: 60`); sliding-window and concurrency
-limiters never do, and a queued request that is evicted from the queue or rejected by limiter
+carries retry advice. On .NET 11 fixed-window, sliding-window and token-bucket limiters supply it for an immediate
+capacity rejection (the sample above returns `Retry-After: 60`); concurrency
+limiters do not, and a queued request that is evicted from the queue or rejected by limiter
 disposal has none. No delay is invented. Clients handle a 429 without the header using bounded
 backoff and jitter, subject to the operation's retry safety.
 

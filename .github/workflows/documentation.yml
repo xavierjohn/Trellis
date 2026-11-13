@@ -52,7 +52,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: '10.0.x'
+        global-json-file: global.json
 
     - name: Setup versioning
       uses: dotnet/nbgv@master
@@ -77,12 +77,12 @@ jobs:
         dotnet build Trellis.EntityFrameworkCore/generator/Trellis.EntityFrameworkCore.Generator.csproj --no-restore -c Release
 
     - name: Build library projects for DocFX
-      # DocFX 2.80.1 runs source generators through Roslyn; no on-disk generated
+      # DocFX runs source generators through Roslyn; no on-disk generated
       # partials are included in Compile. Build first so project references are available.
       run: dotnet build --no-restore -c Release
 
     - name: Install DocFX
-      run: dotnet tool update -g docfx --version 2.80.1
+      run: dotnet tool update -g docfx --version 2.81.0 --framework net11.0
 
     - name: Gate stale v1 Error.X(...) factory references
       shell: bash

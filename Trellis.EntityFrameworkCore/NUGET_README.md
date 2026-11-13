@@ -4,6 +4,10 @@
 
 EF Core conventions, interceptors, Result-based persistence helpers, and translated spherical nearby-query expressions for Trellis aggregates, value objects, and `Maybe<T>`.
 
+Requires .NET 11 and EF Core 11. Owned/composite mappings and query rewriting are unchanged.
+Review SQL Server compatibility level 160, SqlClient 7's optional Azure/Entra authentication
+package, and EF11's failure on empty migration assemblies before upgrading a deployed host.
+
 > This package opts out of NativeAOT and trimming because EF Core model building, change tracking, and query translation rely on runtime reflection.
 
 ## Installation

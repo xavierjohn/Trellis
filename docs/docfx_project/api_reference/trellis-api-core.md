@@ -61,7 +61,7 @@ Use this table before searching the long type catalog.
 | Treat null, empty, or whitespace-only optional text as absent before validation | `Maybe.OptionalNonBlank(value, function)` | [`Maybe`](#public-static-class-maybe) |
 | Convert absence to a domain failure | `maybe.ToResult(error)` / `maybe.ToResult(errorFactory)` | [`MaybeExtensions`](#maybeextensions) |
 | Migrate universal or nullable `ToResult` calls | Use `Result.Ok(value)` for deliberate success wrapping, `Result.EnsureNotNull(value, error)` for required nullables, and `task.EnsureNotNullAsync(error)` for nullable tasks. Only `Maybe<T>` keeps Core's `ToResult(error/factory)` conversions. | [Choosing a Result entry point](#choosing-a-result-entry-point) |
-| Create HTTP-oriented domain errors | Closed `Error` cases plus `ResourceRef.For<TResource>(id)` | [`Error`](#public-abstract-record-error), [`Error Cases`](#error-cases-closed-adt) |
+| Create HTTP-oriented domain errors | Closed `Error` cases plus `ResourceRef.For<TResource>(id)` | [`Error`](#public-closed-record-error), [`Error Cases`](#error-cases-closed-adt) |
 | Validate pagination controls and return a page | `PageRequest.TryCreate(cursor, limit)` → typed `Decode(codec)` or EF `ToPageAsync`; `PageBuilder.FromOverFetch(rows, size, row => codec.Encode(state))` or direct `new Page<T>(...)` for provider tokens | [`Pagination`](#pagination) |
 | Model aggregates/entities/events | `Aggregate<TId>`, `Entity<TId>`, `IDomainEvent` | [`Domain-Driven Design`](#domain-driven-design) |
 | Define a stable published integration contract | `IIntegrationEvent` | [`IIntegrationEvent`](#iintegrationevent) |
@@ -556,9 +556,14 @@ Inherited only.
 
 ---
 
-### `public abstract record Error`
+<a id="public-abstract-record-error"></a>
 
-Closed discriminated union of domain error values. Each case is a nested `sealed record` carrying a typed payload. The base record has a `private` constructor — only the cases declared in `Error.cs` may inherit, which makes `switch` over an `Error` reference exhaustive at the language level.
+### `public closed record Error`
+
+Closed discriminated union of domain error values. Each case is a nested `sealed record`
+carrying a typed payload. The C# 15 `closed` modifier is implicitly abstract and enables
+compiler-checked exhaustive **switch expressions**; private constructors retain the nested
+construction boundary. A private constructor alone does not provide compiler exhaustiveness.
 
 #### Properties
 
@@ -649,7 +654,21 @@ Nested `sealed record` cases under `Error`. The base constructor is `private`, s
 
 #### Closed union — exhaustive matching
 
-The catalog is closed to these 12 cases: `InvalidInput`, `InvariantViolation`, `NotFound`, `Forbidden`, `Conflict`, `Gone`, `AuthenticationRequired`, `Unavailable`, `RateLimited`, `Unexpected`, `Aggregate`, and `TransportFault`. Pattern matching over `Error` stays explicit and exhaustive at the language level.
+The catalog is closed to these 12 cases: `InvalidInput`, `InvariantViolation`, `NotFound`, `Forbidden`, `Conflict`, `Gone`, `AuthenticationRequired`, `Unavailable`, `RateLimited`, `Unexpected`, `Aggregate`, and `TransportFault`.
+
+With C# 15, list every case in a switch expression without a catch-all to have omitted cases
+diagnosed by the compiler. Switch statements do not provide this guarantee. Retain defaults
+for intentionally partial policies such as `GetRetryAdvice`, and handle nullable inputs
+explicitly. `Result<T>`, `Maybe<T>`, error payloads, equality, and HTTP wire shapes are unchanged.
+
+**Catalog evolution is a breaking API change.** Adding or removing a public case requires
+a major version after a stable release; it is not a compatible additive change. Rebuild
+consumers against the changed catalog and update their exhaustive matches. Replacing only
+the runtime package does not update a previously compiled switch: if it receives a new case,
+its compiler-generated unmatched arm throws `System.Runtime.CompilerServices.SwitchExpressionException`.
+Use an existing case's `Code` for new application failure reasons instead of extending the catalog.
+The same compatibility policy applies to the closed HTTP-fault, write-outcome, and
+idempotency-reservation catalogs.
 
 #### Error.TransportFault envelope
 
@@ -1124,7 +1143,7 @@ The per-operation tracing is essentially free when no listener is registered. `A
 
 Per-Result-extension spans add limited signal beyond the outer pipeline span (`Trellis.Mediator.TracingBehavior`) or the ASP.NET request span. They appear as a deeply nested tree under the outer span with no business context — most observability backends collapse or charge per span.
 
-- **Production / high-throughput services**: instrument at the pipeline-behavior altitude (already covered by `Trellis.Mediator.TracingBehavior`) and the HTTP-boundary altitude (`AddAspNetCoreInstrumentation`); skip `AddTrellisResultsInstrumentation`.
+- **Production / high-throughput services**: instrument at the pipeline-behavior altitude (already covered by `Trellis.Mediator.TracingBehavior`) and the .NET 11 HTTP-boundary source (`AddSource("Microsoft.AspNetCore")`); skip `AddTrellisResultsInstrumentation`.
 - **Development / debugging / low-rate paths**: register `AddTrellisResultsInstrumentation` to get step-by-step ROP visibility. The cost is intentional — you opted in.
 
 The cost is bounded by the consumer's choice; the framework does not gate it further. If `AddTrellisResultsInstrumentation` is registered, the spans appear; if not, they don't, and the cost is noise-floor.
@@ -2638,6 +2657,12 @@ public sealed class RangeAttribute : Attribute
 | `public RangeAttribute(int minimum, int maximum)` | `RangeAttribute` | Range metadata for `RequiredInt<TSelf>` and whole-number `RequiredDecimal<TSelf>`. |
 | `public RangeAttribute(long minimum, long maximum)` | `RangeAttribute` | Range metadata for `RequiredLong<TSelf>`. |
 | `public RangeAttribute(double minimum, double maximum)` | `RangeAttribute` | Fractional range metadata for `RequiredDecimal<TSelf>`. |
+
+Generated decimal bounds explicitly reproduce the pre-.NET 11 double-to-decimal scaling and
+round-to-even conversion, including its 15-significant-digit precision, zero underflow and
+overflow rejection (`TRLS034`). This keeps fractional boundaries such as `0.01m` and `99.99m`
+stable across compiler-host runtimes. Formatting a double with `G15` is not equivalent at
+rounding boundaries and must not replace that conversion.
 
 ### `StringLengthAttribute`
 

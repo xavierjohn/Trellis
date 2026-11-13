@@ -4,7 +4,11 @@ using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 
 var config = ManualConfig.Create(DefaultConfig.Instance)
-    .AddJob(Job.ShortRun);
+    .AddJob(Job.ShortRun)
+    .AddJob(Job.Default
+        .DontEnforcePowerPlan()
+        .WithMsBuildArguments("/p:IsPackable=false")
+        .AsMutator());
 
 if (args.Length == 0)
 {

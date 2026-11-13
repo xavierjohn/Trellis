@@ -3,7 +3,7 @@ title: Performance
 package: Trellis (multiple)
 topics: [performance, benchmarks, allocations, rop, overhead, optimization]
 related_api_reference: [trellis-api-core.md]
-last_verified: 2026-05-01
+last_verified: 2026-11-13
 audience: [developer]
 ---
 # Performance
@@ -17,18 +17,18 @@ Trellis adds a very small amount of CPU overhead so you can get explicit errors,
 
 ## The practical answer
 
-On the latest benchmark run captured in this repository, the simple happy-path comparison showed Trellis adding roughly **4-5 ns** over imperative code on a fast desktop CPU. Older runs on different hardware landed in the **11-16 ns** range. The exact number moves with hardware and JIT behavior, but the conclusion does not: **the overhead is tiny**.
+On the November 12, 2026 **.NET 11.0.0 / SDK 11.0.100** run, the simple happy-path means were **90.49 ns** for ROP and **69.78 ns** for imperative code: an observed **20.71 ns** gap. The larger pipeline gap was **94.67 ns**. These are complete workload costs, not a fixed per-step overhead, and the three-sample ShortRun confidence intervals limit timing conclusions.
 
 | Question | Practical answer |
 | --- | --- |
-| Does Trellis allocate more than equivalent imperative code? | Usually **no** on the same path. |
+| Does Trellis allocate more than equivalent imperative code? | It depends: the basic comparisons allocate **136 B more**; the larger pipeline allocations match. |
 | Is the happy path fast? | Yes — common `Map`, `Bind`, and `Tap` calls stay in the low-nanosecond range. |
 | Is the failure path expensive? | Usually no — short-circuiting keeps it predictable. |
 | Should I optimize Trellis before I optimize I/O? | Almost never. |
 
 ## Why the overhead usually does not matter
 
-A few nanoseconds sounds real in a benchmark because the benchmark is isolating the framework cost. Your production code usually is not.
+Microbenchmarks isolate small workloads. Production code adds database, network, serialization, and business-logic costs around those operations.
 
 | Operation | Typical scale |
 | --- | ---: |
@@ -92,20 +92,20 @@ These figures come from the benchmark data checked into this repository. Treat t
 
 | Method | Mean | Allocated |
 | --- | ---: | ---: |
-| `RopStyleHappy` | 98.32 ns | 296 B |
-| `IfStyleHappy` | 93.86 ns | 296 B |
-| `RopStyleSad` | 65.63 ns | 336 B |
-| `IfStyleSad` | 75.08 ns | 336 B |
+| `RopStyleHappy` | 90.49 ns | 280 B |
+| `IfStyleHappy` | 69.78 ns | 144 B |
+| `RopStyleSad` | 86.54 ns | 384 B |
+| `IfStyleSad` | 59.15 ns | 248 B |
 
 ### Core operations
 
 | Operation | Representative result |
 | --- | --- |
-| `Bind` | ~4.85 ns for a single happy-path bind |
-| `Map` | ~3.24 ns for a single happy-path map |
-| `Tap` | ~2.88 ns for a single happy-path tap |
-| `Ensure` | ~12.06 ns for one predicate |
-| `Combine` | ~7.27 ns for two successful results |
+| `Bind` | ~4.82 ns for a single happy-path bind |
+| `Map` | ~4.02 ns for a single happy-path map |
+| `Tap` | ~3.86 ns for a single happy-path tap |
+| `Ensure` | ~6.33 ns / 56 B for one predicate with an eagerly constructed error |
+| `Combine` | ~4.14 ns for two successful results |
 
 > [!NOTE]
 > Benchmarks vary by CPU, runtime version, and benchmark shape. Compare **relative cost** and **allocation behavior** more than any single absolute number.
@@ -122,12 +122,13 @@ Once a result is failed, downstream success-path work is skipped. That makes fai
 
 ### 3. The memory story is good
 
-For equivalent logic, the benchmark suite repeatedly shows **matching allocations** between Trellis and imperative code. When allocations do appear, they usually come from:
+The basic ROP happy/sad comparisons allocate **280 B / 384 B**, versus **144 B / 248 B** for imperative code. The larger pipeline allocates **632 B** in either style. Individual successful `Map`, `Bind`, and `Tap` workloads allocate nothing, but that does not make every complete pipeline allocation-free. Costs can include:
 
 - constructing errors
 - allocating strings or objects in your mapping code
 - async machinery
 - logging or collection growth
+- pipeline infrastructure and callback handling
 
 ## Performance advice that actually pays off
 
@@ -184,16 +185,18 @@ Those costs dwarf the framework overhead.
 
 ## Running the benchmarks yourself
 
-Run the full benchmark suite:
+The current results were captured with an isolated **BenchmarkDotNet 0.16.0-preview.2** runner, preserving the Balanced power plan. The checked-in benchmark project now uses the same version and leaves the active power plan unchanged, so these commands need no dependency changes. See [Benchmarks](BENCHMARKS.md#reproducing-the-results-locally) for the recorded configuration.
 
-```bash
-dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release
+Run the full benchmark suite, including tracing:
+
+```powershell
+dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release -- --filter '*'
 ```
 
 Run one subset:
 
-```bash
-dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release -- --filter *Combine*
+```powershell
+dotnet run --project Trellis.Benchmark\Trellis.Benchmark.csproj -c Release -- --filter '*Combine*'
 ```
 
 ## When you should care more
@@ -209,7 +212,7 @@ If that is your world, benchmark your exact workload. Trellis is still viable in
 
 ## Bottom line
 
-Trellis is a trade: a few nanoseconds for clearer control flow, explicit errors, and easier composition.
+Trellis is a trade: lightweight pipeline steps and workload-dependent allocation costs for clearer control flow, explicit errors, and easier composition.
 
 For most systems, that is an excellent trade.
 

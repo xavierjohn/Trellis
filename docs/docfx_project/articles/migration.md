@@ -44,7 +44,9 @@ not this guide.
 Update `PackageReference` items and `Directory.Packages.props` together. Change
 `FunctionalDdd` namespace imports, including global usings, to `Trellis`. The old response
 extensions lived in that root namespace; add `Trellis.Asp` imports for their replacements.
-Trellis targets .NET 10, so update the consuming project's SDK and target framework before restoring.
+Trellis targets .NET 11, so update the consuming project to `net11.0` and SDK 11.0.100+
+before restoring. The error/outcome catalogs use C# 15 `closed` records; exhaustive switch
+expressions can omit their catch-all, but new cases may require updates when recompiling.
 
 Trellis's Mediator, authorization, EF Core, HTTP client, state-machine, and testing
 packages are optional additions. Do not invent corresponding old FunctionalDDD package

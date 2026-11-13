@@ -125,7 +125,6 @@ public static class ErrorRetryExtensions
             Error.Gone => RetryClassification.Permanent,
             Error.Conflict => RetryClassification.Permanent,
             Error.Aggregate agg => ClassifyAggregate(agg),
-            _ => RetryClassification.Permanent,
         };
     }
 

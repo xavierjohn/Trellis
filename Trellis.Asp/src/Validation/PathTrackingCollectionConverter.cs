@@ -59,7 +59,7 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
             }
         }
 
-        var elementTypeInfo = (JsonTypeInfo<TElement?>)options.GetTypeInfo(typeof(TElement));
+        var elementTypeInfo = options.GetTypeInfo<TElement?>();
         var items = new List<TElement?>();
         using (ValidationErrorsContext.PushPathSegment(_propertyName))
         {
@@ -92,7 +92,7 @@ internal sealed class PathTrackingCollectionConverter<TCollection, TElement> : J
 
     /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, TCollection? value, JsonSerializerOptions options) =>
-        JsonSerializer.Serialize(writer, value!, (JsonTypeInfo<TCollection>)options.GetTypeInfo(typeof(TCollection)));
+        JsonSerializer.Serialize(writer, value!, options.GetTypeInfo<TCollection>());
 
     private static TCollection Materialize(List<TElement?> items)
     {

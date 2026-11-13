@@ -606,6 +606,125 @@ public class WorkerHarnessTests
         await harness.DisposeAsync();
     }
 
+    [Fact]
+    public async Task StopAsync_WorkerFailure_CompletedShutdown_PropagatesWithoutStoppingAgain()
+    {
+        var execution = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var failure = new InvalidOperationException("worker failed");
+        var tracker = new LifecycleTrackerHostedService();
+        await using var harness = await CreateFailingHarnessAsync(execution, tracker);
+        await FailWorkerAsync(harness, execution, failure);
+
+        var stop = () => harness.StopAsync(TestContext.Current.CancellationToken);
+        var thrown = await stop.Should().ThrowAsync<InvalidOperationException>();
+        thrown.Which.Should().BeSameAs(failure);
+
+        await harness.DisposeAsync();
+        tracker.StopCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StopAsync_CallerCancellation_CompletedShutdown_DoesNotRetryServices()
+    {
+        var execution = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        execution.SetResult();
+        var earlier = new LifecycleTrackerHostedService();
+        var cancellationAware = new LifecycleTrackerHostedService { ThrowIfStopCanceled = true };
+        await using var harness = await WorkerHarness<FailingWorker>.CreateAsync(
+            options => options.ConfigureServices(services =>
+            {
+                services.AddSingleton(execution);
+                services.AddSingleton<IHostedService>(_ => earlier);
+                services.AddSingleton<IHostedService>(_ => cancellationAware);
+            }),
+            TestContext.Current.CancellationToken);
+        await harness.StartAsync(TestContext.Current.CancellationToken);
+        var lifetime = harness.Services.GetRequiredService<IHostApplicationLifetime>();
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        var stop = () => harness.StopAsync(cancellation.Token);
+        await stop.Should().ThrowAsync<OperationCanceledException>();
+
+        lifetime.ApplicationStopped.IsCancellationRequested.Should().BeTrue();
+        earlier.StopCount.Should().Be(1, "the host visits remaining services even when an earlier stop is cancelled");
+        cancellationAware.StopCount.Should().Be(1);
+
+        await harness.StopAsync(TestContext.Current.CancellationToken);
+        await harness.DisposeAsync();
+        earlier.StopCount.Should().Be(1);
+        cancellationAware.StopCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StopAsync_ServiceProviderDisposedDuringShutdown_PreservesOriginalFailure()
+    {
+        var execution = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        execution.SetResult();
+        var failure = new InvalidOperationException("shutdown failed after disposing services");
+        await using var harness = await WorkerHarness<FailingWorker>.CreateAsync(
+            options => options.ConfigureServices(services =>
+            {
+                services.AddSingleton(execution);
+                services.AddSingleton<IHostedService>(provider => new ProviderDisposingHostedService(provider, failure));
+            }),
+            TestContext.Current.CancellationToken);
+        await harness.StartAsync(TestContext.Current.CancellationToken);
+
+        var stop = () => harness.StopAsync(TestContext.Current.CancellationToken);
+        var thrown = await stop.Should().ThrowAsync<InvalidOperationException>();
+        thrown.Which.Should().BeSameAs(failure);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WorkerCancellationException_NoTeardownTimeout_PropagatesFailure()
+    {
+        var execution = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var failure = new OperationCanceledException("worker failed without a teardown timeout");
+        await using var harness = await CreateFailingHarnessAsync(execution, new LifecycleTrackerHostedService());
+        await FailWorkerAsync(harness, execution, failure);
+
+        var dispose = async () => await harness.DisposeAsync();
+        var thrown = await dispose.Should().ThrowAsync<OperationCanceledException>();
+        thrown.Which.Should().BeSameAs(failure);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WorkerAndDisposalFailures_CompletedShutdown_PreservesBothFailures()
+    {
+        var execution = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var workerFailure = new InvalidOperationException("worker failed");
+        var disposalFailure = new InvalidOperationException("service disposal failed");
+        var tracker = new LifecycleTrackerHostedService { DisposalFailure = disposalFailure };
+        await using var harness = await CreateFailingHarnessAsync(execution, tracker);
+        await FailWorkerAsync(harness, execution, workerFailure);
+
+        var dispose = async () => await harness.DisposeAsync();
+        var thrown = await dispose.Should().ThrowAsync<AggregateException>();
+        thrown.Which.Flatten().InnerExceptions.Should().Equal([workerFailure, disposalFailure]);
+    }
+
+    private static Task<WorkerHarness<FailingWorker>> CreateFailingHarnessAsync(
+        TaskCompletionSource execution, LifecycleTrackerHostedService tracker) =>
+        WorkerHarness<FailingWorker>.CreateAsync(
+            options => options.ConfigureServices(services =>
+            {
+                services.AddSingleton(execution);
+                services.AddSingleton<IHostedService>(_ => tracker);
+            }),
+            TestContext.Current.CancellationToken);
+
+    private static async Task FailWorkerAsync(
+        WorkerHarness<FailingWorker> harness, TaskCompletionSource execution, Exception failure)
+    {
+        await harness.StartAsync(TestContext.Current.CancellationToken);
+        var lifetime = harness.Services.GetRequiredService<IHostApplicationLifetime>();
+        var stopping = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var registration = lifetime.ApplicationStopping.Register(() => stopping.TrySetResult());
+        execution.SetException(failure);
+        await stopping.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+    }
+
     private static Task<WorkerHarness<TestWorker>> CreateMinimalHarnessAsync(TimeSpan? interval = null) =>
         WorkerHarness<TestWorker>.CreateAsync(
             ConfigureMinimalWorker(interval),
@@ -662,12 +781,30 @@ public class WorkerHarnessTests
         }
     }
 
-    private sealed class LifecycleTrackerHostedService : IHostedService
+    private sealed class FailingWorker(TaskCompletionSource execution) : BackgroundService
+    {
+        protected override Task ExecuteAsync(CancellationToken stoppingToken) => execution.Task;
+    }
+
+    private sealed class ProviderDisposingHostedService(IServiceProvider services, Exception failure) : IHostedService
+    {
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await ((IAsyncDisposable)services).DisposeAsync();
+            throw failure;
+        }
+    }
+
+    private sealed class LifecycleTrackerHostedService : IHostedService, IAsyncDisposable
     {
         public int StartCount;
         public int StopCount;
         public bool ThrowOnNextStart;
         public bool ThrowOnStop;
+        public bool ThrowIfStopCanceled;
+        public Exception? DisposalFailure;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
@@ -684,10 +821,15 @@ public class WorkerHarnessTests
         public Task StopAsync(CancellationToken cancellationToken)
         {
             StopCount++;
+            if (ThrowIfStopCanceled)
+                cancellationToken.ThrowIfCancellationRequested();
             if (ThrowOnStop)
                 throw new InvalidOperationException("Lifecycle tracker deliberately failed StopAsync.");
 
             return Task.CompletedTask;
         }
+
+        public ValueTask DisposeAsync() =>
+            DisposalFailure is null ? ValueTask.CompletedTask : ValueTask.FromException(DisposalFailure);
     }
 }

@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +48,7 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
     where TWorker : BackgroundService
 {
     private readonly IHost _host;
+    private readonly CancellationToken _applicationStopped;
     private readonly DomainEventCapture _capture;
     private readonly WorkerTickSignal _tickSignal;
     private readonly TimeSpan _defaultWaitTimeout;
@@ -62,6 +64,7 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
         TimeSpan defaultWaitTimeout)
     {
         _host = host;
+        _applicationStopped = host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStopped;
         Time = time;
         Actor = actor;
         _capture = capture;
@@ -276,12 +279,15 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
     /// <summary>
     /// Stops the worker host. Safe to call multiple times — subsequent calls are no-ops.
     /// </summary>
+    /// <remarks>
+    /// With the default StopHost policy, .NET 11 rethrows background-service failures even
+    /// after shutdown completes. A completed shutdown is not retried by disposal.
+    /// </remarks>
     /// <param name="cancellationToken">A token to observe during stop.</param>
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        // Transition started→stopped atomically so a concurrent caller observes the change
-        // and DisposeAsync does not double-stop the host. Restore the flag if the host's
-        // own StopAsync throws so the caller can retry.
+        // A fault can be reported after the host has fully stopped. Only an incomplete
+        // shutdown should restore the flag and allow a retry.
         if (Interlocked.CompareExchange(ref _started, 0, 1) != 1)
             return;
         try
@@ -290,7 +296,8 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
         }
         catch
         {
-            Volatile.Write(ref _started, 1);
+            if (!_applicationStopped.IsCancellationRequested)
+                Volatile.Write(ref _started, 1);
             throw;
         }
     }
@@ -483,30 +490,49 @@ public sealed class WorkerHarness<[System.Diagnostics.CodeAnalysis.DynamicallyAc
     /// <summary>
     /// Stops the host (if started) and disposes the underlying <see cref="IHost"/>.
     /// </summary>
+    /// <remarks>
+    /// Worker failures propagate unless they are cancellation exceptions observed after the
+    /// harness's 10-second stop budget expires. A worker cancellation racing that deadline
+    /// cannot reliably be distinguished from cancellation of the host's linked shutdown token.
+    /// The host is always disposed, and simultaneous stop and disposal failures are aggregated.
+    /// During await using, a shutdown exception can replace a pending test-body exception.
+    /// Call StopAsync before final assertions to observe worker health separately.
+    /// </remarks>
+    /// <exception cref="AggregateException">Both host shutdown and disposal failed.</exception>
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
             return;
 
+        ExceptionDispatchInfo? stopFailure = null;
         try
         {
             if (Interlocked.CompareExchange(ref _started, 0, 1) == 1)
             {
-                // The host may have been stopped already; StopAsync is idempotent at the
-                // host level too. Cap stop with a short real-time budget so a misbehaving
-                // worker does not hang test teardown forever.
                 using var stopCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 try { await _host.StopAsync(stopCts.Token).ConfigureAwait(false); }
-                catch (OperationCanceledException) { /* tests should still tear down */ }
+                catch (OperationCanceledException) when (stopCts.IsCancellationRequested) { }
             }
         }
-        finally
+        catch (Exception exception)
+        {
+            stopFailure = ExceptionDispatchInfo.Capture(exception);
+        }
+
+        try
         {
             if (_host is IAsyncDisposable hostAsync)
                 await hostAsync.DisposeAsync().ConfigureAwait(false);
             else
                 _host.Dispose();
         }
+        catch (Exception exception) when (stopFailure is not null)
+        {
+            throw new AggregateException("Worker host shutdown and disposal both failed.",
+                stopFailure.SourceException, exception);
+        }
+
+        stopFailure?.Throw();
     }
 
     private WorkerHarnessTimeoutException BuildEventTimeoutException<TEvent>(TimeSpan timeout, bool hadPredicate)

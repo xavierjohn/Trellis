@@ -4,6 +4,9 @@
 
 Target-aware API-versioning helpers for URLs emitted by `Trellis.Asp`, including `Location` headers and pagination links.
 
+Requires .NET 11. Use native OpenAPI 11 documents grouped by versioned ApiExplorer
+metadata, not the incompatible OpenAPI 2.x bridge. See the [versioned OpenAPI setup](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-asp-apiversioning.html#native-versioned-openapi-on-net-11).
+
 ## Installation
 
 ```bash

@@ -31,8 +31,8 @@ string? FindDll(PackageInfo package)
 {
     var projectDir = Path.GetDirectoryName(package.ProjectPath)!;
     var candidates = new[] {
-        Path.Combine(projectDir, "bin", "Release", "net10.0", $"{package.AssemblyName}.dll"),
-        Path.Combine(projectDir, "bin", "Debug",   "net10.0", $"{package.AssemblyName}.dll"),
+        Path.Combine(projectDir, "bin", "Release", "net11.0", $"{package.AssemblyName}.dll"),
+        Path.Combine(projectDir, "bin", "Debug",   "net11.0", $"{package.AssemblyName}.dll"),
         Path.Combine(projectDir, "bin", "Release", "netstandard2.0", $"{package.AssemblyName}.dll"),
         Path.Combine(projectDir, "bin", "Debug",   "netstandard2.0", $"{package.AssemblyName}.dll"),
     };
@@ -244,7 +244,7 @@ static IEnumerable<string> ResolveCentrallyManagedPackageAssemblies(string fwRoo
         yield break;
 
     // Most-preferred target framework first; the first one present in the package wins.
-    string[] preferredTfms = ["net10.0", "net9.0", "net8.0", "netstandard2.1", "netstandard2.0"];
+    string[] preferredTfms = ["net11.0", "net10.0", "net9.0", "net8.0", "netstandard2.1", "netstandard2.0"];
 
     foreach (var element in XDocument.Load(propsPath).Descendants().Where(e => e.Name.LocalName == "PackageVersion"))
     {

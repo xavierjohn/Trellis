@@ -146,31 +146,21 @@ public sealed partial class IdempotencyMiddleware
 
         var outcome = await store.TryReserveAsync(scope, key, fingerprint, context.RequestAborted).ConfigureAwait(false);
 
-        switch (outcome)
+        await (outcome switch
         {
-            case IdempotencyReservationOutcome.Reserved reserved:
-                await ExecuteAndCaptureAsync(context, store, scope, key, reserved.ReservationId, fingerprint).ConfigureAwait(false);
-                return;
-
-            case IdempotencyReservationOutcome.AlreadyInFlight inFlight:
-                await WriteInFlightAsync(context, inFlight.RetryAfter, _options.HeaderName).ConfigureAwait(false);
-                return;
-
-            case IdempotencyReservationOutcome.Replay replay:
-                await WriteReplayAsync(context, replay.Snapshot).ConfigureAwait(false);
-                return;
-
-            case IdempotencyReservationOutcome.BodyHashMismatch:
-                await WriteProblemAsync(
+            IdempotencyReservationOutcome.Reserved reserved =>
+                ExecuteAndCaptureAsync(context, store, scope, key, reserved.ReservationId, fingerprint),
+            IdempotencyReservationOutcome.AlreadyInFlight inFlight =>
+                WriteInFlightAsync(context, inFlight.RetryAfter, _options.HeaderName),
+            IdempotencyReservationOutcome.Replay replay =>
+                WriteReplayAsync(context, replay.Snapshot),
+            IdempotencyReservationOutcome.BodyHashMismatch =>
+                WriteProblemAsync(
                     context,
                     _options.MismatchStatusCode,
                     "idempotency.key_reused_with_different_body",
-                    $"The {_options.HeaderName} value was reused with a different request fingerprint (method, path, query, headers, or body).").ConfigureAwait(false);
-                return;
-
-            default:
-                throw new InvalidOperationException($"Unhandled idempotency outcome {outcome.GetType().Name}.");
-        }
+                    $"The {_options.HeaderName} value was reused with a different request fingerprint (method, path, query, headers, or body)."),
+        }).ConfigureAwait(false);
     }
 
     private static async Task<byte[]?> BufferRequestBodyAsync(HttpContext context, long maxBytes)

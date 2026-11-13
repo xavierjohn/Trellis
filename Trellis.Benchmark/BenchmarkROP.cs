@@ -10,36 +10,21 @@ using static Trellis.Result;
 /// <summary>
 /// Benchmark ROP vs If.
 /// 
-/// Latest Run (ShortRun - 3 iterations, .NET 10.0.1, Intel Core i7-1185G7 @ 3.00GHz, Windows 11):
+/// Latest Run (2026-11-12, ShortRun - 3 iterations, .NET 11.0.0, AMD Ryzen 9 9900X, Windows 11, Balanced power plan):
 /// | Method        | Mean      | Error     | StdDev    | Gen0   | Allocated |
 /// |-------------- |----------:|----------:|----------:|-------:|----------:|
-/// | RopStyleHappy | 146.89 ns | 24.45 ns  | 1.340 ns  | 0.0229 |     144 B |
-/// | IfStyleHappy  | 131.27 ns | 30.31 ns  | 1.662 ns  | 0.0229 |     144 B |
-/// | RopStyleSad   |  99.16 ns | 63.06 ns  | 3.457 ns  | 0.0293 |     184 B |
-/// | IfStyleSad    |  87.60 ns | 57.17 ns  | 3.134 ns  | 0.0293 |     184 B |
+/// | RopStyleHappy |  90.49 ns | 25.816 ns | 1.415 ns  | 0.0167 |     280 B |
+/// | IfStyleHappy  |  69.78 ns | 11.771 ns | 0.645 ns  | 0.0086 |     144 B |
+/// | RopStyleSad   |  86.54 ns | 24.633 ns | 1.350 ns  | 0.0229 |     384 B |
+/// | IfStyleSad    |  59.15 ns |  0.967 ns | 0.053 ns  | 0.0148 |     248 B |
+/// | RopSample1    | 308.12 ns | 45.790 ns | 2.510 ns  | 0.0377 |     632 B |
+/// | IfSample1     | 213.45 ns | 36.471 ns | 1.999 ns  | 0.0377 |     632 B |
 /// 
 /// Analysis:
-/// - ROP adds ~16 ns overhead on happy path (~12% slower than imperative)
-/// - ROP adds ~11 ns overhead on sad path (~13% slower than imperative)
-/// - Memory allocations are identical between ROP and imperative styles
-/// - The overhead is negligible compared to typical I/O operations (database, HTTP, etc.)
-/// 
-/// Previous Runs (for reference):
-/// Run 1
-/// | Method        | Mean      | Error    | StdDev   | Gen0   | Allocated |
-/// |-------------- |----------:|---------:|---------:|-------:|----------:|
-/// | RopStyleHappy | 147.62 ns | 1.529 ns | 1.430 ns | 0.0229 |     144 B |
-/// | IfStyleHappy  | 126.27 ns | 0.916 ns | 0.812 ns | 0.0229 |     144 B |
-/// | RopStyleSad   |  77.76 ns | 1.169 ns | 1.093 ns | 0.0331 |     208 B |
-/// | IfStyleSad    |  72.32 ns | 1.400 ns | 1.309 ns | 0.0331 |     208 B |
-/// 
-/// Run 2
-/// | Method        | Mean      | Error    | StdDev   | Gen0   | Allocated |
-/// |-------------- |----------:|---------:|---------:|-------:|----------:|
-/// | RopStyleHappy | 145.82 ns | 2.058 ns | 1.825 ns | 0.0229 |     144 B |
-/// | IfStyleHappy  | 123.99 ns | 2.309 ns | 2.047 ns | 0.0229 |     144 B |
-/// | RopStyleSad   |  79.50 ns | 1.395 ns | 1.305 ns | 0.0331 |     208 B |
-/// | IfStyleSad    |  73.71 ns | 1.151 ns | 0.961 ns | 0.0331 |     208 B |
+/// - Observed mean gaps: 20.71 ns happy, 27.39 ns sad, 94.67 ns larger pipeline
+/// - Basic ROP cases allocate 136 B more; the larger pipeline allocates 632 B in either style
+/// - Three-sample ShortRun confidence intervals limit timing conclusions
+/// - Full results and isolated BenchmarkDotNet 0.16.0-preview.2 runner details are in BENCHMARKS.md
 /// </summary>
 
 public partial class FirstName : RequiredString<FirstName>

@@ -138,6 +138,13 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 {
     private const string HelpLinkBase = "https://xavierjohn.github.io/Trellis/api_reference/trellis-api-analyzers.html";
 
+    private static readonly double[] s_decimalPowersOfTen =
+    [
+        1, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9,
+        1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
+        1e20, 1e21, 1e22, 1e23, 1e24, 1e25, 1e26, 1e27, 1e28
+    ];
+
     private static readonly SymbolDisplayFormat s_signatureTypeDisplayFormat = new(
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameOnly,
         genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
@@ -2617,19 +2624,55 @@ public class RequiredPartialClassGenerator : IIncrementalGenerator
 
     /// <summary>
     /// Formats a double value as a string suitable for use as a C# decimal literal (without 'm' suffix).
-    /// Returns null if the value exceeds the decimal range.
+    /// Preserves the pre-.NET 11 conversion's 15 significant digits across compiler hosts.
+    /// Returns null if the value exceeds the decimal range or is not finite.
     /// </summary>
     private static string? FormatDecimalLiteral(double value)
     {
-        try
-        {
-            var decimalValue = (decimal)value;
-            return decimalValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        }
-        catch (OverflowException)
-        {
+        var exponent = (int)((BitConverter.DoubleToInt64Bits(value) >> 52) & 0x7ff) - 1022;
+        if (exponent < -94)
+            return "0";
+        if (exponent > 96)
             return null;
+
+        // Legacy conversion scales the binary value before rounding; G15 differs at
+        // halfway values. The fixed-point log10(2) estimate preserves that scaling.
+        var scaled = Math.Abs(value);
+        var scale = 14 - ((exponent * 19728) >> 16);
+        if (scale >= 0)
+        {
+            scale = Math.Min(scale, 28);
+            scaled *= s_decimalPowersOfTen[scale];
         }
+        else if (scale != -1 || scaled >= 1e15)
+            scaled /= s_decimalPowersOfTen[-scale];
+        else
+            scale = 0;
+
+        if (scaled < 1e14 && scale < 28)
+        {
+            scaled *= 10;
+            scale++;
+        }
+
+        var coefficient = (ulong)Math.Round(scaled, MidpointRounding.ToEven);
+        if (coefficient == 0)
+            return "0";
+
+        var removableZeros = Math.Min(scale, 14);
+        while (removableZeros > 0 && coefficient % 10 == 0)
+        {
+            coefficient /= 10;
+            scale--;
+            removableZeros--;
+        }
+
+        var decimalValue = new decimal(unchecked((int)coefficient), (int)(coefficient >> 32),
+            0, value < 0, (byte)Math.Max(scale, 0));
+        for (; scale < 0; scale++)
+            decimalValue *= 10m;
+
+        return decimalValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
     /// <summary>

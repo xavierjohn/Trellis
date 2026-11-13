@@ -31,7 +31,7 @@ New-Item -ItemType Directory -Path $source, $feed, $consumer, $unrelated -Force 
 [System.IO.File]::WriteAllText((Join-Path $unrelated 'Unrelated.csproj'), @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <PackageId>Unrelated.Probe</PackageId>
     <Version>1.0.0</Version>
     <IncludeBuildOutput>false</IncludeBuildOutput>
@@ -89,7 +89,7 @@ finally { $helperArchive.Dispose() }
 [System.IO.File]::WriteAllText((Join-Path $source 'Satellite.csproj'), @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <PackageId>Trellis.SatelliteProbe</PackageId>
     <Version>1.0.0</Version>
     <PackageGuidanceDocument>$reference</PackageGuidanceDocument>
@@ -152,7 +152,7 @@ finally { $archive.Dispose() }
 
 [System.IO.File]::WriteAllText((Join-Path $consumer 'Consumer.csproj'), @'
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <PropertyGroup><TargetFramework>net11.0</TargetFramework></PropertyGroup>
   <ItemGroup><PackageReference Include="Trellis.SatelliteProbe" Version="1.0.0" /></ItemGroup>
 </Project>
 '@)

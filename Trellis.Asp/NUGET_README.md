@@ -65,7 +65,7 @@ shows actor-aware partitions through a shared synchronous normalizer (no prefetc
 route-scoped async identity prefetch, network fallback and middleware-order consequences.
 Idempotency continues resolving the full actor.
 
-On .NET 10, fixed-window and token-bucket limiters normally supply retry estimates;
+On .NET 11, fixed-window and token-bucket limiters normally supply retry estimates;
 sliding-window and concurrency limiters do not. Queue eviction or limiter disposal can also
 omit retry advice. Choose fixed window or token bucket when the header matters, but clients
 must still handle a 429 without it; Trellis does not invent a fallback delay.

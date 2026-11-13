@@ -255,7 +255,7 @@ Trellis 429 Problem Details response. Use named endpoint policies without policy
 rejection handlers; inline policies bypass this adapter.
 
 `Retry-After` is optional: the adapter only emits it when the rejected lease supplies
-retry metadata. On .NET 10, fixed-window and token-bucket limiters normally supply estimates
+retry metadata. On .NET 11, fixed-window and token-bucket limiters normally supply estimates
 for immediate capacity rejections, while sliding-window and concurrency limiters do not.
 Queued requests rejected by eviction or limiter disposal can omit metadata even with
 fixed-window or token-bucket policies.

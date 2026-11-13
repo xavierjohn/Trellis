@@ -9,10 +9,10 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 /// <summary>
-/// TRLS065: Warns when a <c>[Produces(...)]</c> media-type list contains a JSON-family media type
-/// in a project that uses Trellis.Asp.
+/// TRLS065: Warns when a <c>[Produces(...)]</c> list mislabels problem or successful responses
+/// in a project that uses Trellis.Asp, according to the referenced MVC version.
 /// <para>
-/// <c>ProducesAttribute</c> is a result filter that overwrites <c>ObjectResult.ContentTypes</c>
+/// On legacy MVC, <c>ProducesAttribute</c> overwrites <c>ObjectResult.ContentTypes</c>
 /// wholesale. Because the JSON output formatter advertises <c>application/json</c>,
 /// <c>text/json</c> and <c>application/*+json</c>, it can write a <c>ProblemDetails</c> as any of
 /// them — so an RFC 9457 failure response silently loses its <c>application/problem+json</c>
@@ -23,6 +23,10 @@ using Microsoft.CodeAnalysis.Diagnostics;
 /// <c>application/json</c>, and one the JSON formatter reaches first rewrites successful
 /// responses to <c>problem+json</c>. The remedy is to trim the formatters registered in
 /// <c>MvcOptions</c>.
+/// </para>
+/// <para>
+/// ASP.NET Core 11 preserves problem-response media types. For those references, only lists
+/// that select <c>application/problem+json</c> for successful responses are reported.
 /// </para>
 /// <para>
 /// Lists containing no JSON-family type are deliberately not reported. A <c>text/csv</c> or
@@ -53,11 +57,15 @@ public sealed class ProducesClobbersProblemDetailsAnalyzer : DiagnosticAnalyzer
             var producesAttribute = start.Compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Mvc.ProducesAttribute");
             if (producesAttribute is null) return;
 
-            start.RegisterSyntaxNodeAction(ctx => AnalyzeAttribute(ctx, producesAttribute), SyntaxKind.Attribute);
+            var preservesProblemMediaType = producesAttribute.ContainingAssembly.Identity.Version.Major >= 11;
+            start.RegisterSyntaxNodeAction(
+                ctx => AnalyzeAttribute(ctx, producesAttribute, preservesProblemMediaType),
+                SyntaxKind.Attribute);
         });
     }
 
-    private static void AnalyzeAttribute(SyntaxNodeAnalysisContext context, INamedTypeSymbol producesAttribute)
+    private static void AnalyzeAttribute(
+        SyntaxNodeAnalysisContext context, INamedTypeSymbol producesAttribute, bool preservesProblemMediaType)
     {
         var attribute = (AttributeSyntax)context.Node;
 
@@ -87,14 +95,15 @@ public sealed class ProducesClobbersProblemDetailsAnalyzer : DiagnosticAnalyzer
         if (firstJsonIndex < 0) return;
 
         var offender = mediaTypes[firstJsonIndex];
+        if (preservesProblemMediaType && !IsProblemJson(offender)) return;
 
         // Reporting the FIRST JSON-family entry is what makes a trailing "application/problem+json"
         // non-exculpatory. Note that this is *not* the same as "first entry in the list": MVC's
         // SelectFormatterUsingAnyAcceptableContentType loops over formatters in the outer loop and
         // acceptable media types in the inner one, so a JSON-family entry anywhere in the list can
         // be claimed by the JSON formatter ahead of an earlier non-JSON entry. Which one wins
-        // depends on formatter registration order, which is invisible from here — so any
-        // JSON-family entry is reported rather than modelled.
+        // depends on formatter registration order, which is invisible from here. Legacy
+        // MVC reports any JSON-family entry; MVC 11+ only reports success mislabeling.
         var consequence = IsProblemJson(offender)
             ? "MVC will write successful ObjectResult responses as application/problem+json"
             : "MVC will write RFC 9457 problem responses as that media type instead of application/problem+json";

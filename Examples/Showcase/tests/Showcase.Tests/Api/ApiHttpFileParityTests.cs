@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -31,6 +32,40 @@ public class ApiHttpFileParityTests : IClassFixture<ApiHttpFileParityTests.Parit
         "createdAtUtc", "lastModifiedUtc", "openedAtUtc", "asOfUtc",
         "next", "previous",
     };
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HttpTracing_NativeAspNetCore_RequestCompletes_PreservesSemanticAttributes(bool minimalApi)
+    {
+        using var parent = new Activity("showcase-native-http-tracing")
+            .SetParentId(ActivityTraceId.CreateRandom(), ActivitySpanId.CreateRandom(), ActivityTraceFlags.Recorded)
+            .Start();
+        var completed = new TaskCompletionSource<Activity>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Microsoft.AspNetCore",
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                if (activity.TraceId == parent.TraceId)
+                    completed.TrySetResult(activity);
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+        using var client = minimalApi ? _fixture.Minimal.CreateClient() : _fixture.Mvc.CreateClient();
+        client.DefaultRequestHeaders.Add("traceparent", parent.Id);
+        var path = $"/api/accounts/{Guid.NewGuid()}";
+
+        using var response = await client.GetAsync(new Uri(path, UriKind.Relative), Ct);
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
+
+        var server = await completed.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        server.Kind.Should().Be(ActivityKind.Server);
+        server.GetTagItem("http.request.method").Should().Be("GET");
+        server.GetTagItem("url.path").Should().Be(path);
+        Convert.ToInt32(server.GetTagItem("http.response.status_code"), CultureInfo.InvariantCulture).Should().Be(404);
+    }
 
     [Fact]
     public async Task MvcAndMinimalApi_ProduceEquivalentResponses_ForApiHttpFile()

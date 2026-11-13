@@ -11,16 +11,11 @@
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
   </PropertyGroup>
   <ItemGroup>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\Trellis.EntityFrameworkCore\src\Trellis.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\Trellis.Mediator\src\Trellis.Mediator.csproj" />
     <ProjectReference Include="..\..\Trellis.Persistence.Abstractions\src\Trellis.Persistence.Abstractions.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Trellis.EntityFrameworkCore.Inbox.Tests" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 </Project>

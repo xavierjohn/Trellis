@@ -10,7 +10,7 @@
 /// <c>Trellis.Http.Abstractions</c> so server/client HTTP packages can share the same vocabulary.
 /// </remarks>
 /// <typeparam name="T">The representation/body type returned for Created/Updated and the status payload type used by Accepted.</typeparam>
-public abstract record WriteOutcome<T>
+public closed record WriteOutcome<T>
 {
     private WriteOutcome() { }
 

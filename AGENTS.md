@@ -255,7 +255,7 @@ Before considering code work complete:
 2. Run `dotnet test` from the repository root.
 3. Confirm public API changes are reflected in the API references and related package docs.
 
-Tests run on **Microsoft.Testing.Platform** (xUnit v3), not VSTest. `--nologo` and `--filter` are **not** valid arguments and make the run exit with code 5 and "Zero tests ran" — which looks like a passing no-op. Invoke as `dotnet test <project-or-Trellis.slnx> -c <config>` and narrow output with `Select-String` instead. To iterate quickly, run the single affected test project rather than the solution.
+Tests run on **Microsoft.Testing.Platform** (xUnit v3), not VSTest. SDK 11 accepts `--nologo`. For focused runs, use `dotnet test --project <test-project.csproj> -c <config>` with xUnit v3 selectors such as `--filter-class '*ClassName'`, rather than VSTest filter syntax. From the repository root, `dotnet test -c <config>` selects `Trellis.slnx`. Always confirm the summary contains the intended tests: an argument error or a zero-test run is not successful validation.
 
 Before committing, also complete the **Pre-commit checklist** below — it adds the code review and the diff check.
 

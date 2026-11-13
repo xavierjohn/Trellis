@@ -4,6 +4,9 @@
 
 HTTP-aware abstractions for Trellis boundary code.
 
+Requires .NET 11. `HttpError` and `WriteOutcome<T>` use C# 15 `closed` records for
+compiler-checked exhaustive matching; case payloads and HTTP contracts are unchanged.
+
 ## Installation
 
 ```bash

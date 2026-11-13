@@ -4,6 +4,9 @@
 
 Railway-oriented error handling and domain foundations for .NET with `Result<T>`, `Maybe<T>`, typed errors, value-object bases, and DDD primitives.
 
+Requires .NET 11 and SDK 11.0.100+. `Error` uses C# 15 `closed` matching; an exhaustive
+switch expression needs no catch-all, and new cases can require updates when recompiling.
+
 ## Installation
 
 ```bash

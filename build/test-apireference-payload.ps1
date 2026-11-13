@@ -182,7 +182,7 @@ try {
         [System.IO.File]::WriteAllText((Join-Path $consumer 'Directory.Build.targets'), '<Project/>')
         [System.IO.File]::WriteAllText((Join-Path $consumer 'Consumer.csproj'), @"
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <PropertyGroup><TargetFramework>net11.0</TargetFramework></PropertyGroup>
   <ItemGroup><PackageReference Include="Trellis.Core" Version="$version" /></ItemGroup>
 </Project>
 "@)

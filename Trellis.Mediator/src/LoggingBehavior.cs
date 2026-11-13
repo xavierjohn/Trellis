@@ -99,7 +99,6 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
                 or Error.RateLimited => LogLevel.Information,
             Error.Aggregate aggregate => ClassifyAggregateFailureLogLevel(aggregate),
             Error.Unavailable or Error.Unexpected or Error.TransportFault => LogLevel.Warning,
-            _ => LogLevel.Warning,
         };
 
     private static LogLevel ClassifyAggregateFailureLogLevel(Error.Aggregate aggregate)

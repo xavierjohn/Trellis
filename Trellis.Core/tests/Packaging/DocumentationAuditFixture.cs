@@ -122,5 +122,5 @@ internal sealed class DocumentationAuditFixture : IDisposable
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
     private string AssemblyPath(string name, string configuration) =>
-        Path.Combine(_directory, name, "src", "bin", configuration, "net10.0", name + ".dll");
+        Path.Combine(_directory, name, "src", "bin", configuration, "net11.0", name + ".dll");
 }

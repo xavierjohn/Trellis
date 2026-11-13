@@ -17,15 +17,15 @@ using Trellis;
 
 /// <summary>
 /// Pins how <see cref="ProducesAttribute"/> interacts with the two response shapes
-/// <c>Trellis.Asp</c> ships, because the two behave in opposite ways and the difference
-/// decides what the planned <c>[Produces]</c> analyzer is allowed to say.
+/// <c>Trellis.Asp</c> ships and ASP.NET Core 11's protection of problem-response media types.
 /// <para>
 /// <see cref="ProducesAttribute"/> is a result filter that rewrites
 /// <see cref="ObjectResult.ContentTypes"/> and touches nothing else. A Trellis failure is an
 /// <c>IResult</c> that writes its own media type when it executes, and
 /// <c>AsActionResult&lt;T&gt;()</c> wraps it in a plain <see cref="ActionResult"/> rather than an
-/// <see cref="ObjectResult"/> -- so the filter cannot see it. MVC's own automatic
-/// model-validation response *is* an <see cref="ObjectResult"/>, so it is fully exposed.
+/// <see cref="ObjectResult"/> -- so the filter cannot see it. ASP.NET Core 11 also preserves
+/// the media type of MVC-owned and application-created <c>ProblemDetails</c> responses.
+/// A <c>problem+json</c> entry can still rewrite successful <see cref="ObjectResult"/> responses.
 /// </para>
 /// </summary>
 public sealed class ProducesAttributeContentTypeTests
@@ -91,18 +91,17 @@ public sealed class ProducesAttributeContentTypeTests
             .Should().Be("application/problem+json");
 
     [Fact]
-    public async Task Automatic_model_validation_is_clobbered_by_json_only_Produces() =>
+    public async Task Automatic_model_validation_keeps_problem_json_under_json_only_Produces() =>
         (await MediaTypeOfEmptyPostAsync("/produces-json/binder"))
-            .Should().Be("application/json", "this is the RFC 9457 regression the analyzer must catch");
+            .Should().Be("application/problem+json");
 
     [Fact]
-    public async Task Appending_problem_json_does_not_repair_automatic_model_validation() =>
+    public async Task Appending_problem_json_preserves_automatic_model_validation_media_type() =>
         (await MediaTypeOfEmptyPostAsync("/produces-append/binder"))
-            .Should().Be("application/json",
-                "selection follows list order, so problem+json is inert anywhere but first -- an analyzer keyed on 'omits problem+json' would go green here");
+            .Should().Be("application/problem+json");
 
     [Fact]
-    public async Task Prepending_problem_json_repairs_automatic_model_validation() =>
+    public async Task Prepending_problem_json_preserves_automatic_model_validation_media_type() =>
         (await MediaTypeOfEmptyPostAsync("/produces-prepend/binder"))
             .Should().Be("application/problem+json");
 
@@ -193,15 +192,14 @@ public sealed class ProducesAttributeContentTypeTests
                 "[Produces] is a result filter wherever it is declared, so action-level must behave as class-level does");
 
     [Fact]
-    public async Task Action_level_Produces_clobbers_the_stock_seam_exactly_as_class_level_does() =>
+    public async Task Action_level_Produces_preserves_stock_model_validation_media_type() =>
         (await MediaTypeOfEmptyPostAsync("/produces-action-scalar/binder"))
-            .Should().Be("application/json",
-                "[Produces] is the same result filter wherever it is declared, so action-level clobbers an unowned ObjectResult exactly as class-level does");
+            .Should().Be("application/problem+json");
 
     // When ScalarValueValidationFilter is registered, it takes over EVERY invalid ModelState --
     // not just value-object failures but plain DataAnnotations ones too (its final
     // `else if (!ModelState.IsValid)` branch). So in a Trellis-configured app that seam is
-    // Trellis-owned and the fix covers it; the clobbering above is stock MVC with no filter.
+    // Trellis-owned, independently of ASP.NET Core's protection of stock ProblemDetails.
     [Theory]
     [InlineData("produces-action-scalar")]
     [InlineData("produces-scalar")]
@@ -244,15 +242,14 @@ public sealed class ProducesAttributeContentTypeTests
     private const string BodyFailingConversion = """{"visitedOn":"not-a-date"}""";
 
     [Fact]
-    public async Task Body_conversion_failure_is_clobbered_by_Produces_when_no_filter_is_registered()
+    public async Task Body_conversion_failure_keeps_problem_json_under_Produces_without_Trellis_filter()
     {
         using var host = CreateHost();
         using var client = host.GetTestClient();
         using var content = new StringContent(BodyFailingConversion, System.Text.Encoding.UTF8, "application/json");
         var resp = await client.PostAsync("/produces-json/bad-date", content, TestContext.Current.CancellationToken);
 
-        resp.Content.Headers.ContentType?.MediaType.Should().Be("application/json",
-            "the stock response is an ObjectResult, so [Produces] rewrites it -- this row is what makes the Trellis row below non-vacuous");
+        resp.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
     }
 
     [Theory]
@@ -301,8 +298,7 @@ public sealed class ProducesAttributeContentTypeTests
 
     // ---- Explicit Problem()/ValidationProblem(): the seam Trellis does NOT own ----
     // These build a ProblemDetails ObjectResult directly, so no ModelState filter ever sees them.
-    // They remain exposed to [Produces] even in a fully-configured Trellis application, which is
-    // what stops TRLS065 from being vacuous for consumers who use AsActionResult everywhere.
+    // ASP.NET Core 11 protects their media type independently of Trellis's filter.
 
     [Theory]
     [InlineData("explicit-problem")]
@@ -314,10 +310,9 @@ public sealed class ProducesAttributeContentTypeTests
     [Theory]
     [InlineData("explicit-problem")]
     [InlineData("explicit-validation-problem")]
-    public async Task Explicit_problem_response_is_clobbered_by_json_Produces_even_with_Trellis_configured(string action) =>
+    public async Task Explicit_problem_response_keeps_problem_json_under_json_Produces(string action) =>
         (await ScalarHostGetMediaTypeAsync($"/produces-json/{action}"))
-            .Should().Be("application/json",
-                "the scalar validation filter only owns invalid ModelState, so an explicitly constructed ProblemDetails stays exposed -- this is the case TRLS065 exists for");
+            .Should().Be("application/problem+json");
 
     // ---- Non-JSON [Produces] is safe, which is why TRLS065 stays silent on it ----
     // Harm needs a formatter that can write a ProblemDetails AS the listed media type. The JSON

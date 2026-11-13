@@ -257,12 +257,14 @@ public static class IdempotencyKeyParser
 
         var encoded = input[start..position];
         position++;
-        var paddedLength = (encoded.Length + 3) / 4 * 4;
-        Span<char> padded = stackalloc char[paddedLength];
-        encoded.CopyTo(padded);
-        padded[encoded.Length..].Fill('=');
-        Span<byte> decoded = stackalloc byte[paddedLength / 4 * 3];
-        return Convert.TryFromBase64Chars(padded, decoded, out _);
+        // RFC 9651 permits missing padding and non-zero pad bits; parameter bytes are discarded.
+        var paddingStart = encoded.IndexOf('=');
+        if (paddingStart < 0)
+            return encoded.Length % 4 != 1;
+
+        return paddingStart % 4 is 2 or 3
+            && encoded.Length <= (paddingStart + 3) / 4 * 4
+            && encoded[paddingStart..].IndexOfAnyExcept('=') < 0;
     }
 
     private static void SkipSpaces(ReadOnlySpan<char> input, ref int position)

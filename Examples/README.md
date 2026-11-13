@@ -13,7 +13,7 @@ A curated set of runnable samples that demonstrate the canonical Trellis pattern
 
 ## Prerequisites
 
-- .NET 10 SDK
+- .NET 11 SDK (11.0.100 or later)
 
 ## Sample map
 

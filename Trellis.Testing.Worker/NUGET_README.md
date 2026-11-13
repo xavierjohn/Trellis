@@ -4,6 +4,13 @@
 
 Integration-test harness for `BackgroundService` workers built on Trellis.
 
+Requires .NET 11. Worker failures propagate during shutdown under the default `StopHost`
+policy. Disposal still runs, preserves simultaneous shutdown/disposal failures, and
+suppresses cancellation exceptions only after the harness's 10-second stop budget expires.
+A worker cancellation racing that deadline can also be suppressed.
+Await `StopAsync` before final assertions: a shutdown exception from `await using` disposal
+can otherwise replace a pending assertion exception.
+
 ## Installation
 ```bash
 dotnet add package Trellis.Testing.Worker
@@ -42,6 +49,7 @@ await harness.SettleAsync(); // yield real time so the worker registers its firs
 harness.Time.Advance(TimeSpan.FromDays(1));
 
 var reminded = await harness.WaitForEventAsync<SubscriptionReminderSent>();
+await harness.StopAsync();
 reminded.SubscriptionId.Should().Be(expectedId);
 ```
 

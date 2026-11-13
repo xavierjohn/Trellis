@@ -57,6 +57,12 @@ dotnet add package OpenTelemetry.Instrumentation.Http
 
 `Trellis.Core` already references the OpenTelemetry SDK so `AddTrellisResultsInstrumentation()` and `AddTrellisPrimitivesInstrumentation()` work without extra packages. The exporter and ASP.NET Core / HTTP instrumentation packages above are standard OTel — Trellis does not wrap them.
 
+On .NET 11, subscribe HTTP tracing to the built-in `"Microsoft.AspNetCore"` source. It
+supplies HTTP semantic attributes without the tracing instrumentation extension. Keep
+`OpenTelemetry.Instrumentation.AspNetCore` and its metrics registration when collecting
+ASP.NET metrics; review custom enrichment/filtering separately rather than dropping it
+with the tracing extension. Exporters, resource names, and Trellis sources remain unchanged.
+
 ## Quick start
 
 Register Trellis (which wires `TracingBehavior<,>` and `LoggingBehavior<,>` into the mediator pipeline) and subscribe an OpenTelemetry `TracerProvider` to the mediator activity source.
@@ -77,7 +83,7 @@ builder.Services.AddTrellis(options => options
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
-        .AddAspNetCoreInstrumentation()
+        .AddSource("Microsoft.AspNetCore")
         .AddHttpClientInstrumentation()
         .AddTrellisMediatorInstrumentation()
         .AddTrellisPrimitivesInstrumentation()
@@ -137,7 +143,7 @@ using Trellis.Mediator;
 
 builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing
-        .AddAspNetCoreInstrumentation()
+        .AddSource("Microsoft.AspNetCore")
         .AddHttpClientInstrumentation()
         .AddTrellisMediatorInstrumentation()
         .AddTrellisPrimitivesInstrumentation()

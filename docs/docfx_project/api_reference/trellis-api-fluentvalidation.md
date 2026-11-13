@@ -407,6 +407,6 @@ var pointer = new InputPointer(JsonPointerNormalizer.ToJsonPointer("Items[0].Sku
 ## Cross-references
 
 - [trellis-api-mediator-fluentvalidation.md](trellis-api-mediator-fluentvalidation.md#header) — the Mediator integration (`AddTrellisFluentValidation` + adapter) that builds on `JsonPointerNormalizer`.
-- [trellis-api-core.md](trellis-api-core.md#public-abstract-record-error) — `Error.InvalidInput` shape and `InputPointer` semantics.
+- [trellis-api-core.md](trellis-api-core.md#public-closed-record-error) — `Error.InvalidInput` shape and `InputPointer` semantics.
 - [trellis-api-asp.md](trellis-api-asp.md#domain--http-boundary-mapping) — how `Error.InvalidInput` lands on the wire.
 - [trellis-api-mediator.md](trellis-api-mediator.md#validationbehaviortmessage-tresponse) — the pipeline stage the Mediator adapter participates in.

@@ -14,6 +14,26 @@ agent_description: "Open when using Trellis.EntityFrameworkCore for persistence,
 **Namespace:** `Trellis.EntityFrameworkCore`  
 **Purpose:** EF Core conventions, interceptors, converters, and query/update helpers for Trellis aggregates, value objects, `Maybe<T>`, and spherical nearby searches.
 
+## .NET 11 / EF Core 11 upgrade boundary
+
+This package targets `net11.0` and uses EF Core 11. Keep matching provider major versions.
+EF11 can remove no-op SQL casts over value-converted columns; Trellis's scalar/Maybe
+expression rewriting remains required for its supported query shapes. This is not a
+blanket removal of casts: converting a scalar value object to its primitive can still
+produce a SQL `CAST`, including widening a bounded string to `nvarchar(max)`. Keep typed
+value-object comparisons/projections when no primitive conversion is needed, and inspect
+provider SQL rather than assuming every conversion is a no-op. Existing owned,
+composite, optional, and Money mappings are retained: this upgrade does not opt into
+complex types or require a schema migration.
+
+SQL Server now defaults to compatibility level 160. For an older database, explicitly
+configure the provider, for example `UseSqlServer(connectionString, sql => sql.UseCompatibilityLevel(150))`,
+after checking the database's actual level. Version 7 of the SQL Server client driver moves Azure/Entra authentication
+support to the optional [Microsoft.Data.SqlClient.Extensions.Azure](https://www.nuget.org/packages/Microsoft.Data.SqlClient.Extensions.Azure) package; hosts using
+those authentication modes must add it. EF11 migration APIs throw when no migrations
+exist: deploy a real migration assembly rather than relying on an empty migration run.
+Review generated model/schema differences before applying any migration.
+
 See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) — recipes using this package.
 
 ## Use this file when

@@ -390,10 +390,10 @@ public sealed class ScalarValueValidationMiddleware
     /// STJ uses JSONPath: <c>$</c> for root, <c>$.foo.bar</c> for dot-property segments,
     /// <c>$[0]</c> for array indices, and <c>$['weird name']</c> bracket-quoted notation
     /// for property names containing characters that are not valid JSONPath identifiers
-    /// (space, dot, slash, bracket, single quote, etc.). STJ does <b>not</b> escape
-    /// embedded single quotes in bracket-quoted segments — for the dictionary key
-    /// <c>a'b</c> it emits the literal string <c>$['a'b']</c>. The forward-scan-with-
-    /// lookahead heuristic below closes a bracket-quoted segment only at <c>'</c>
+    /// (space, dot, slash, bracket, single quote, etc.). .NET 11 escapes embedded
+    /// single quotes and backslashes; these escapes are decoded after finding the
+    /// unescaped closing delimiter. Legacy unescaped paths are also accepted.
+    /// The forward-scan-with-lookahead heuristic closes a bracket-quoted segment only at <c>'</c>
     /// followed by <c>]</c> followed by <c>.</c>, <c>[</c>, or end-of-string, which
     /// recovers the property name correctly for every observed STJ output (including
     /// nested cases like <c>$['a'b'].foo</c>, <c>$['a'b'][0]</c>, <c>$['a'.b']</c>).
@@ -407,7 +407,7 @@ public sealed class ScalarValueValidationMiddleware
     /// equivalent JSON Pointer (<c>/</c> → <c>[""]</c>).
     /// </para>
     /// <para>
-    /// <b>Known limitation:</b> STJ's path serialization is genuinely lossy for property
+    /// <b>Known limitation:</b> legacy unescaped path serialization is genuinely lossy for property
     /// names containing the literal sequence <c>'][</c> (e.g. dictionary keys
     /// <c>a'][</c>, <c>a'][b</c>, <c>a'.b']['foo</c>). For these adversarial inputs the
     /// heuristic prefers the "multiple segments" interpretation over the

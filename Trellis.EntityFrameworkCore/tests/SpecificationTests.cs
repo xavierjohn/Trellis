@@ -281,6 +281,28 @@ public class SpecificationTests(SqlServerTestcontainersFixture sqlServerFixture)
     #region Edge cases — .Value on ParameterExpression (Select then filter)
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ScalarQuery_ValueObject_PredicateAndProjection_DoesNotAddNoOpCasts(bool sqlServer)
+    {
+        var options = new DbContextOptionsBuilder<ScalarValueTestDbContext>();
+        if (sqlServer)
+            options.UseSqlServer("Server=localhost;Database=TrellisSqlTranslation;Trusted_Connection=True;TrustServerCertificate=True");
+        else
+            options.UseSqlite(_sqliteConnection);
+        options.IgnoreManyServiceProvidersCreatedWarning().AddTrellisInterceptors();
+        using var context = new ScalarValueTestDbContext(options.Options);
+
+        var name = TestCustomerName.Create("Alice");
+        var sql = context.Customers
+            .Where(customer => customer.Name == name)
+            .Select(customer => customer.Name)
+            .ToQueryString();
+
+        sql.Should().NotContainEquivalentOf("CAST(");
+    }
+
+    [Theory]
     [MemberData(nameof(EfBackends))]
     public async Task Select_VO_then_Where_equals(string backend)
     {

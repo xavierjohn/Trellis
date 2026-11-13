@@ -4,6 +4,9 @@
 
 Railway-oriented error handling for .NET with `Result<T>`, `Maybe<T>`, and typed errors.
 
+Requires .NET 11 and SDK 11.0.100+. `Error` is a C# 15 `closed record`: switch
+expressions covering all cases need no catch-all, and omitted cases produce compiler diagnostics.
+
 ## Installation
 ```bash
 dotnet add package Trellis.Core

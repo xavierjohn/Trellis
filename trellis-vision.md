@@ -20,7 +20,7 @@ A trellis is a structure that guides growth in the right direction. In a garden,
 - **Open source** (MIT license) — no vendor lock-in, no licensing cost
 - **Zero runtime overhead** — adds 11–16 nanoseconds per operation (0.002% of a typical database call)
 - **Incremental adoption** — install one package into an existing project, no rewrite required
-- **.NET 10 / C# 14** — targets the latest platform
+- **.NET 11 / C# 15** — targets the latest platform
 
 ## The Vision
 
@@ -153,7 +153,7 @@ All packages are versioned together and follow semantic versioning. MIT licensed
 **Repository:** github.com/xavierjohn/Trellis
 **Documentation:** xavierjohn.github.io/Trellis/
 **License:** MIT
-**Target platform:** .NET 10 / C# 14
+**Target platform:** .NET 11 / C# 15
 
 ---
 
@@ -280,7 +280,7 @@ Semantic versioning. All packages versioned together. Migration guide with every
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Name | Trellis | Structure + guided growth. Scales beyond "railway" to the AI-native vision. |
-| Target framework | .NET 10 / C# 14 | Latest features, forward-looking audience. |
+| Target framework | .NET 11 / C# 15 | Latest features, forward-looking audience. |
 | Mediator library | martinothamar/Mediator | Source-generated, AOT-friendly, philosophically aligned. |
 | License | MIT | Maximum adoption, zero friction. |
 

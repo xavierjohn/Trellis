@@ -27,6 +27,30 @@ public class ReasonCodeGuardBuildTests
     }
 
     [Theory]
+    [InlineData("Guid.NewGuid().ToString(\"N\")", 1)]
+    [InlineData("\"order.failed\"", 0)]
+    public async Task Build_CSharp15ClosedRecord_ReasonCode_ReportsExpectedDiagnostic(string code, int exitCode)
+    {
+        var result = await BuildAsync("", additionalDeclarations: $$"""
+            public closed record GuardOutcome
+            {
+                public sealed record Failed : GuardOutcome
+                {
+                    public static Error.Unexpected CreateError() =>
+                        new(Code: {{code}}, FaultId: Guid.NewGuid().ToString("N"));
+                }
+            }
+            """);
+
+        result.ExitCode.Should().Be(exitCode, result.Output);
+        result.Output.Should().NotContain("AD0001");
+        if (exitCode != 0)
+            result.Output.Should().Contain("error TRLS067");
+        else
+            result.Output.Should().NotContain("TRLS067");
+    }
+
+    [Theory]
     [InlineData("generator", true)]
     [InlineData("generator", false)]
     [InlineData("samples", true)]
@@ -134,7 +158,8 @@ public class ReasonCodeGuardBuildTests
 
     private static async Task<(int ExitCode, string Output)> BuildAsync(
         string statements, bool includeAnalyzer = true, bool includeConfiguration = true,
-        bool alreadyLoaded = false, bool enableGuard = true, bool runAnalyzers = true, string projectArea = "src")
+        bool alreadyLoaded = false, bool enableGuard = true, bool runAnalyzers = true, string projectArea = "src",
+        string additionalDeclarations = "")
     {
         var repository = FindRepositoryRoot();
         var temporaryDirectory = Path.Combine(Path.GetTempPath(), $"trellis reason guard {Guid.NewGuid():N}");
@@ -170,7 +195,8 @@ public class ReasonCodeGuardBuildTests
             File.WriteAllText(project, $$"""
                 <Project Sdk="Microsoft.NET.Sdk">
                   <PropertyGroup>
-                    <TargetFramework>net10.0</TargetFramework>
+                    <TargetFramework>net11.0</TargetFramework>
+                    <LangVersion>15.0</LangVersion>
                     <ImplicitUsings>enable</ImplicitUsings>
                     <Nullable>enable</Nullable>
                     <EnableNETAnalyzers>false</EnableNETAnalyzers>
@@ -180,7 +206,8 @@ public class ReasonCodeGuardBuildTests
                 </Project>
                 """, new UTF8Encoding(true));
             File.WriteAllText(Path.Combine(projectDirectory, "Probe.cs"),
-                ReasonCodeGuardTestHelper.CreateProbeSource(statements), new UTF8Encoding(true));
+                ReasonCodeGuardTestHelper.CreateProbeSource(statements) + Environment.NewLine + additionalDeclarations,
+                new UTF8Encoding(true));
 
             var startInfo = new ProcessStartInfo("dotnet")
             {
@@ -200,7 +227,7 @@ public class ReasonCodeGuardBuildTests
 
             using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start the reason-code guard build.");
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(60));
+            timeout.CancelAfter(TimeSpan.FromMinutes(2));
             var stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
             var stderr = process.StandardError.ReadToEndAsync(timeout.Token);
             try

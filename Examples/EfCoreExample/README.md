@@ -8,7 +8,7 @@ This example shows how Trellis value objects and result-based workflows stay cle
 - How an order state machine can be created, queried, and saved through EF Core
 
 ## Prerequisites
-- .NET 10 SDK
+- .NET 11 SDK (11.0.100 or later)
 
 ## Run It
 ```bash

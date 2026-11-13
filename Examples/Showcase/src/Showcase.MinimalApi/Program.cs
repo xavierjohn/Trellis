@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using Mediator;
+using Microsoft.OpenApi;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -42,7 +43,7 @@ builder.Services.AddTrellisRouteConstraint<AccountId>();
 // each carries its own [JsonConverter(typeof(RequiredEnumJsonConverter<T>))] attribute
 // (added by the Trellis source generator), so no JsonStringEnumConverter<T> registration
 // is needed — the wire format is still the symbolic name (e.g., "Active").
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();
@@ -86,7 +87,7 @@ builder.Services.AddOpenTelemetry()
         // Unlike the MVC host, this one dispatches through the mediator, so the
         // per-command pipeline span is worth collecting.
         tracing
-            .AddAspNetCoreInstrumentation()
+            .AddSource("Microsoft.AspNetCore")
             .AddHttpClientInstrumentation()
             .AddTrellisMediatorInstrumentation()
             .AddTrellisPrimitivesInstrumentation();

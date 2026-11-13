@@ -12,9 +12,9 @@ using System.Text.Json.Serialization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Closure.</b> The base record has a private constructor; only nested cases declared in this
-/// file may inherit from <see cref="Error"/>. External code cannot extend the catalog, so
-/// <c>switch</c> over an <see cref="Error"/> reference is exhaustive at the language level.
+/// <b>Closure.</b> The C# 15 <c>closed</c> modifier enables compiler-checked exhaustive
+/// switch expressions. The private constructor limits construction to the nested sealed
+/// cases declared in this file; external code cannot extend the catalog.
 /// </para>
 /// <para>
 /// <b>Identity.</b> <see cref="Kind"/> is a stable domain slug suitable for telemetry and wire
@@ -43,7 +43,7 @@ using System.Text.Json.Serialization;
 /// </remarks>
 [DebuggerDisplay("{Kind,nq}: {Detail ?? Code,nq}")]
 #pragma warning disable CA1716
-public abstract record Error
+public closed record Error
 #pragma warning restore CA1716
 {
     private readonly Error? _cause;

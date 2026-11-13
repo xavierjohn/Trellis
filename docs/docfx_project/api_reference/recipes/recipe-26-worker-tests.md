@@ -136,6 +136,8 @@ public class HealthProbeWorkerTests
         harness.Time.Advance(TimeSpan.FromMinutes(5));
         await harness.WaitForTickAsync("probe", after: cursor, TimeSpan.FromSeconds(2));
 
+        await harness.StopAsync(TestContext.Current.CancellationToken);
+
         // Once WaitForTickAsync returns, PublishAsync for this iteration has already
         // returned (the worker signals AFTER the publish loop), so the captured-event
         // list is fully populated and the synchronous read is race-free.
@@ -145,5 +147,16 @@ public class HealthProbeWorkerTests
 ```
 
 **What it shows.** `WorkerHarness<TWorker>.CreateAsync(...)` builds an `IHost` with `TWorker` registered as the hosted service under test (it fails fast if the test's `ConfigureServices` also registers `TWorker`), wires `TimeProvider` to `FakeTimeProvider`, registers a `TestActorProvider` returning `WorkerHarnessOptions.SystemActor`, and installs an open-generic `IDomainEventHandler<>` that captures every published event for `harness.Events<TEvent>()` and `harness.WaitForEventAsync<TEvent>()`. The harness does **not** register `AddMediator(...)` or `AddDomainEventDispatch()` — those are part of the production composition root and belong in the test's `ConfigureServices` callback so the worker exercises the same wiring it uses in production. `harness.StartAsync(...)` returns as soon as `ExecuteAsync` is scheduled on the thread pool, NOT after the worker has registered its first `Task.Delay` with `FakeTimeProvider`; the recipe makes the readiness barrier deterministic by REGISTERING the first `Task.Delay(...)` before signaling `"ready"` (because `Task.Delay(TimeSpan, TimeProvider, CancellationToken)` eagerly calls `timeProvider.CreateTimer(...)`, the callback exists by the time `SignalAsync("ready")` completes), then `await harness.WaitForTickAsync("ready", ...)` in the test releases when the test can safely call `Time.Advance`. Signaling first and registering the delay second would leave a gap during which the test could `Advance` before any callback was registered — losing the `Advance`. The lazier alternative when you cannot change the worker is `await harness.SettleAsync()`, at the cost of a real-time yield. `harness.Time.Advance(...)` is the deterministic equivalent of `Task.Delay` — the worker's `Task.Delay(interval, time, ct)` resumes synchronously and runs the next iteration. Tests should pair `Advance` with `WaitForTickAsync(name, after: cursor, ...)` so the wait observes the *next* tick rather than racing with one already in the history; `LastTickIndexOf(name)` is the right baseline-cursor source. The harness's `DisposeAsync` stops the host with a real-time cap; if `StartAsync` itself throws, the harness drives a best-effort `StopAsync` so any earlier-registered `IHostedService` that succeeded still observes its stop hook.
+
+On .NET 11, the default `StopHost` policy rethrows worker failures from host shutdown.
+`harness.StopAsync(ct)` and `DisposeAsync` preserve those failures; disposal always runs,
+and simultaneous shutdown/disposal failures are aggregated. A completed shutdown is not
+retried just because it reported a worker failure, including when a caller-cancelled stop
+still reaches `ApplicationStopped`. Cancellation exceptions are suppressed only after the
+harness's 10-second stop budget expires; a worker cancellation racing that deadline can
+also be suppressed. Explicit `StopAsync` does not apply this disposal timeout policy.
+The recipe stops the worker before final assertions: a throwing `DisposeAsync` in `await using`
+can otherwise replace a pending assertion exception, just as with any throwing async disposable.
+The harness cannot aggregate an exception from the body because disposal does not receive it.
 
 `Trellis.Testing.Worker` references `Trellis.Testing` transitively, so handler-test assertions like `Should().BeSuccess()` and `FakeRepository<,>` are available from the same test project without an extra package.
