@@ -1,132 +1,219 @@
 name: Publish to NuGet.org
 
+# NuGet.org must trust this workflow in the nuget environment for Trellis.*.
+# Configure the NuGet profile name as the environment variable NUGET_USER.
 on:
   workflow_dispatch:
     inputs:
+      build_run_id:
+        description: Successful main or release Build run ID to promote
+        required: true
+        type: string
       dry_run:
-        description: 'Dry run (do not publish)'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
+        description: Validate packages and matching CI SBOMs without publishing
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
-  build:
+  prepare:
+    name: Prepare validated release
     runs-on: ubuntu-latest
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+      artifact_id: ${{ steps.source.outputs.artifact_id }}
+      sbom_artifact_id: ${{ steps.source.outputs.sbom_artifact_id }}
+      version: ${{ steps.packages.outputs.version }}
 
     steps:
-    - name: Checkout code
+    - name: Checkout release workflow
+      uses: actions/checkout@v7
+
+    - name: Select trusted Build artifacts
+      id: source
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_RUN_ID: ${{ inputs.build_run_id }}
+        REPOSITORY: ${{ github.repository }}
+        RELEASE_REF: ${{ github.ref }}
+      run: |
+        . ./build/release-policy.ps1
+        if ($env:RELEASE_REF -ne 'refs/heads/main' -and
+            $env:RELEASE_REF -notmatch '^refs/heads/release/v[0-9]+\.[0-9]+[A-Za-z0-9.-]*$') {
+          throw 'Run the publishing workflow from main or a release branch.'
+        }
+        $source = Get-ReleaseBuild -RunId $env:SOURCE_RUN_ID -Repository $env:REPOSITORY
+        "commit=$($source.commit)", "artifact_id=$($source.artifact_id)", "sbom_artifact_id=$($source.sbom_artifact_id)" |
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8
+        "## Release source", "", "Build: $($source.url)", "Commit: $($source.commit)" |
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
+    - name: Checkout package source
       uses: actions/checkout@v7
       with:
-        fetch-depth: 0 # depth is needed for nbgv
+        ref: ${{ steps.source.outputs.commit }}
+        path: release-source
+
+    - name: Download immutable Build packages
+      uses: actions/download-artifact@v8
+      with:
+        artifact-ids: ${{ steps.source.outputs.artifact_id }}
+        github-token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        run-id: ${{ inputs.build_run_id }}
+        path: nupkgs
+        digest-mismatch: error
+
+    - name: Download immutable Build SBOM
+      uses: actions/download-artifact@v8
+      with:
+        artifact-ids: ${{ steps.source.outputs.sbom_artifact_id }}
+        github-token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        run-id: ${{ inputs.build_run_id }}
+        path: sbom
+        digest-mismatch: error
+
+    - name: Validate package cohort and provenance
+      id: packages
+      shell: pwsh
+      env:
+        REPOSITORY: ${{ github.repository }}
+        SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+      run: |
+        . ./build/release-policy.ps1
+        $version = Get-ReleasePackageVersion -PackagesDirectory (Join-Path $PWD 'nupkgs') `
+          -RepositoryRoot (Join-Path $PWD 'release-source') `
+          -Repository $env:REPOSITORY -Commit $env:SOURCE_COMMIT
+        Assert-ReleaseSbom -Directory (Join-Path $PWD 'sbom') `
+          -PackagesDirectory (Join-Path $PWD 'nupkgs') -Version $version
+        "version=$version" | Add-Content -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8
+        "Version: $version", "", "Packages:" |
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+        Get-ChildItem -LiteralPath 'nupkgs' -Filter *.nupkg |
+          ForEach-Object { "- $($_.Name)" } |
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
+    - name: Upload SBOMs
+      uses: actions/upload-artifact@v7
+      with:
+        name: sbom-spdx
+        path: sbom/**
+        if-no-files-found: error
+
+    - name: Dry run summary
+      if: inputs.dry_run
+      shell: pwsh
+      run: |
+        'DRY RUN: verified packages and SBOMs; no NuGet authentication or publication was attempted.' |
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
+  publish:
+    name: Publish approved release
+    needs: prepare
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+
+    steps:
+    - name: Checkout release workflow
+      uses: actions/checkout@v7
+
+    - name: Revalidate approved source
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_RUN_ID: ${{ inputs.build_run_id }}
+        REPOSITORY: ${{ github.repository }}
+        SOURCE_COMMIT: ${{ needs.prepare.outputs.commit }}
+        ARTIFACT_ID: ${{ needs.prepare.outputs.artifact_id }}
+        SBOM_ARTIFACT_ID: ${{ needs.prepare.outputs.sbom_artifact_id }}
+        NUGET_USER: ${{ vars.NUGET_USER }}
+      run: |
+        . ./build/release-policy.ps1
+        if ([string]::IsNullOrWhiteSpace($env:NUGET_USER)) {
+          throw 'Configure NUGET_USER in the nuget environment and its NuGet.org trusted publishing policy.'
+        }
+        $source = Get-ReleaseBuild -RunId $env:SOURCE_RUN_ID -Repository $env:REPOSITORY
+        if ($source.commit -ne $env:SOURCE_COMMIT -or $source.artifact_id -ne $env:ARTIFACT_ID -or
+            $source.sbom_artifact_id -ne $env:SBOM_ARTIFACT_ID) {
+          throw 'The approved source build, packages or SBOM artifact changed.'
+        }
+
+    - name: Checkout package source
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ needs.prepare.outputs.commit }}
+        path: release-source
+
+    - name: Download approved Build packages
+      uses: actions/download-artifact@v8
+      with:
+        artifact-ids: ${{ needs.prepare.outputs.artifact_id }}
+        github-token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        run-id: ${{ inputs.build_run_id }}
+        path: nupkgs
+        digest-mismatch: error
+
+    - name: Download approved Build SBOM
+      uses: actions/download-artifact@v8
+      with:
+        artifact-ids: ${{ needs.prepare.outputs.sbom_artifact_id }}
+        github-token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        run-id: ${{ inputs.build_run_id }}
+        path: sbom
+        digest-mismatch: error
+
+    - name: Revalidate approved packages
+      shell: pwsh
+      env:
+        REPOSITORY: ${{ github.repository }}
+        SOURCE_COMMIT: ${{ needs.prepare.outputs.commit }}
+        PACKAGE_VERSION: ${{ needs.prepare.outputs.version }}
+      run: |
+        . ./build/release-policy.ps1
+        $version = Get-ReleasePackageVersion -PackagesDirectory (Join-Path $PWD 'nupkgs') `
+          -RepositoryRoot (Join-Path $PWD 'release-source') `
+          -Repository $env:REPOSITORY -Commit $env:SOURCE_COMMIT
+        if ($version -ne $env:PACKAGE_VERSION) {
+          throw 'The approved package version changed.'
+        }
+        Assert-ReleaseSbom -Directory (Join-Path $PWD 'sbom') `
+          -PackagesDirectory (Join-Path $PWD 'nupkgs') -Version $version
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v6
       with:
         global-json-file: global.json
 
-    - name: Cache NuGet packages
-      uses: actions/cache@v6
+    - name: NuGet login with OIDC
+      uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+      id: login
       with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
-
-    - name: Setup versioning
-      run: |
-        dotnet tool install --global nbgv
-        nbgv cloud
-
-    - name: Restore dependencies
-      run: dotnet restore
-
-    - name: Build
-      run: dotnet build --no-restore --configuration Release
-
-    - name: Run tests
-      run: dotnet test --no-build --configuration Release --filter-not-trait "Category=Integration"
-
-    - name: Pack
-      run: dotnet pack --no-build --configuration Release --output nupkgs
-
-    - name: Install SBOM tool
-      run: dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.1.5
-
-    - name: Generate SBOM
-      shell: pwsh
-      run: |
-        $packagesDirectory = Join-Path $PWD 'nupkgs'
-        $sbomDirectory = Join-Path $PWD 'sbom'
-        $dropDirectory = Join-Path $sbomDirectory 'drop'
-
-        New-Item -ItemType Directory -Force -Path $sbomDirectory | Out-Null
-        New-Item -ItemType Directory -Force -Path $dropDirectory | Out-Null
-
-        $packageFiles = Get-ChildItem -Path $packagesDirectory -Filter *.nupkg
-
-        if ($packageFiles.Count -eq 0) {
-          throw 'No NuGet packages were produced for SBOM generation.'
-        }
-
-        foreach ($packageFile in $packageFiles) {
-          Copy-Item -Path $packageFile.FullName -Destination $dropDirectory -Force
-        }
-
-        # Must come from nbgv, not `dotnet msbuild --getProperty:PackageVersion`.
-        # Nerdbank.GitVersioning computes the version inside the GetBuildVersion
-        # target, which --getProperty does not run, so it reports the static
-        # evaluation-time default (1.0.0) and stamps the SBOM with a version no
-        # package in the drop carries.
-        $packageVersion = (nbgv get-version -v NuGetPackageVersion).Trim()
-
-        $packagePattern = "Trellis.Core.$packageVersion.nupkg"
-        if (-not (Test-Path -LiteralPath (Join-Path $dropDirectory $packagePattern))) {
-          throw "SBOM version '$packageVersion' does not match the packed artifacts; expected $packagePattern in the drop."
-        }
-
-        sbom-tool generate `
-          -b $dropDirectory `
-          -bc $PWD `
-          -pn 'Trellis' `
-          -pv $packageVersion `
-          -ps 'Xavier John' `
-          -nsb 'https://github.com/xavierjohn/Trellis/sbom' `
-          -m $sbomDirectory `
-          -mi SPDX:3.0 `
-          -D true `
-          -V Information
-
-        Write-Host 'Generated SBOM manifests:'
-        Get-ChildItem -Path $sbomDirectory -Recurse -Filter *.spdx.json |
-          Select-Object FullName, Length |
-          Format-Table -AutoSize
-
-    - name: List packages
-      run: |
-        echo "Packages to be published:"
-        ls -lh nupkgs/*.nupkg
-
-    - name: Upload SBOMs
-      uses: actions/upload-artifact@v7
-      with:
-        name: sbom-spdx
-        path: sbom/_manifest/**
+        user: ${{ vars.NUGET_USER }}
 
     - name: Publish to NuGet
-      if: ${{ inputs.dry_run == 'false' }}
+      shell: pwsh
+      env:
+        NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
       run: |
-        dotnet nuget push nupkgs/*.nupkg \
-          --api-key ${{ secrets.NUGET_API_KEY }} \
-          --source https://api.nuget.org/v3/index.json \
-          --skip-duplicate
-
-    - name: Dry run summary
-      if: ${{ inputs.dry_run == 'true' }}
-      run: |
-        echo "DRY RUN - Packages NOT published:"
-        ls -lh nupkgs/*.nupkg
-        echo ""
-        echo "To publish for real, re-run with dry_run = false"
+        foreach ($package in Get-ChildItem -LiteralPath 'nupkgs' -Filter *.nupkg) {
+          dotnet nuget push $package.FullName `
+            --api-key $env:NUGET_API_KEY `
+            --source https://api.nuget.org/v3/index.json `
+            --skip-duplicate
+          if ($LASTEXITCODE -ne 0) {
+            throw "Publishing $($package.Name) failed."
+          }
+        }
