@@ -3,7 +3,7 @@ title: Benchmarks
 package: Trellis (multiple)
 topics: [benchmarks, performance, allocations, rop, microbenchmarks]
 related_api_reference: [trellis-api-core.md]
-last_verified: 2026-11-12
+last_verified: 2026-11-13
 audience: [developer]
 ---
 # Benchmarks
@@ -171,7 +171,7 @@ That does **not** mean Trellis suddenly became slow. It means async has a baseli
 
 ## Reproducing the results locally
 
-The recorded run used **BenchmarkDotNet 0.16.0-preview.2** in an isolated runner because the repository's 0.15.8 pin does not recognize .NET 11. Use a .NET 11-compatible BenchmarkDotNet version before running the commands below. To match the recorded power policy, add `Job.Default.DontEnforcePowerPlan().AsMutator()` to the runner configuration.
+The recorded run used **BenchmarkDotNet 0.16.0-preview.2** in an isolated runner. The checked-in benchmark project now uses that same version and preserves the host's active power plan with a `DontEnforcePowerPlan()` job mutator. Its benchmark toolchain builds are non-packable to avoid applying NuGet package-baseline checks to the generated executable; normal repository package validation is unchanged. Run the commands below from the repository root without changing dependencies. The recorded run used the Balanced power plan.
 
 Run everything, including the parameterized tracing benchmarks:
 

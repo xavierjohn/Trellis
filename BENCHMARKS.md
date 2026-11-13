@@ -608,17 +608,22 @@ Testing five workloads at depths 1, 5, and 10, with and without a Trellis activi
 
 ## Running Benchmarks
 
-The recorded run used an isolated runner with **BenchmarkDotNet 0.16.0-preview.2**, which recognizes .NET 11. The repository still pins 0.15.8, which does not recognize this runtime; use a .NET 11-compatible BenchmarkDotNet version before using the commands below.
+The recorded run used an isolated runner with **BenchmarkDotNet 0.16.0-preview.2**, which recognizes .NET 11. The checked-in benchmark project now pins that same version, so the commands below work without dependency changes.
 
-The isolated runner compiled the same benchmark source files and used the same `ShortRun` job, with a mutator to preserve the host's Balanced power plan:
+Both runners use the same benchmark workloads and `ShortRun` job, with a mutator that leaves the host's active power plan unchanged. The recorded run used Balanced. The checked-in configuration also marks benchmark toolchain builds as non-packable so the generated executable does not inherit NuGet package-baseline checks:
 
 ```csharp
 var config = ManualConfig.Create(DefaultConfig.Instance)
     .AddJob(Job.ShortRun)
-    .AddJob(Job.Default.DontEnforcePowerPlan().AsMutator());
+    .AddJob(Job.Default
+        .DontEnforcePowerPlan()
+        .WithMsBuildArguments("/p:IsPackable=false")
+        .AsMutator());
 ```
 
-Once using a compatible runner:
+The non-packable setting applies only to benchmark toolchain builds; normal repository builds retain package validation.
+
+Run from the repository root:
 
 ```powershell
 # Run all classes, including parameterized tracing benchmarks

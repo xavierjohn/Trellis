@@ -3,7 +3,7 @@ title: Performance
 package: Trellis (multiple)
 topics: [performance, benchmarks, allocations, rop, overhead, optimization]
 related_api_reference: [trellis-api-core.md]
-last_verified: 2026-11-12
+last_verified: 2026-11-13
 audience: [developer]
 ---
 # Performance
@@ -185,7 +185,7 @@ Those costs dwarf the framework overhead.
 
 ## Running the benchmarks yourself
 
-The current results were captured with an isolated **BenchmarkDotNet 0.16.0-preview.2** runner, preserving the Balanced power plan. The repository's 0.15.8 pin does not recognize .NET 11; use a compatible version before running these commands. See [Benchmarks](BENCHMARKS.md#reproducing-the-results-locally) for the recorded configuration.
+The current results were captured with an isolated **BenchmarkDotNet 0.16.0-preview.2** runner, preserving the Balanced power plan. The checked-in benchmark project now uses the same version and leaves the active power plan unchanged, so these commands need no dependency changes. See [Benchmarks](BENCHMARKS.md#reproducing-the-results-locally) for the recorded configuration.
 
 Run the full benchmark suite, including tracing:
 
