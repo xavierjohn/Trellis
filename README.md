@@ -188,7 +188,7 @@ Start with `Trellis.Core`; add only the integrations your application uses. `Tre
 
 ## Performance
 
-Typical overhead is measured in single-digit to low double-digit nanoseconds—tiny next to a database call or HTTP request. [Benchmarks](BENCHMARKS.md)
+On .NET 11, single successful `Bind`, `Map`, and `Tap` benchmarks measure about 4-5 ns with no managed allocations. Complete pipeline costs depend on validation, callbacks, and tracing. [Benchmarks](BENCHMARKS.md)
 
 ## Learn
 
