@@ -43,7 +43,7 @@ function Assert-ReleaseBuild {
     if ($Run.event -ne 'push' -or $Run.status -ne 'completed' -or $Run.conclusion -ne 'success') {
         throw 'Packages must come from a completed, successful push build.'
     }
-    if ($Run.head_branch -cne 'main' -and $Run.head_branch -cnotmatch '^release/v[^/]*$') {
+    if ($Run.head_branch -cne 'main' -and $Run.head_branch -cnotmatch '^release/v[0-9]+\.[0-9]+[^/]*$') {
         throw 'Packages must come from main or a release branch.'
     }
     if ($Run.head_sha -notmatch '^[0-9a-f]{40}$') {
@@ -233,6 +233,14 @@ function Get-ReleasePublishOrder {
     }
 
     return $ordered.ToArray()
+}
+
+function Assert-PublicReleaseVersion {
+    param([Parameter(Mandatory)] [string] $Version)
+
+    if ($Version -match '[.-]g[0-9a-f]{7,40}$') {
+        throw "Package version $Version is a non-public version stamped with a commit hash."
+    }
 }
 
 function Assert-ReleaseSbom {

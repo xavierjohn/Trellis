@@ -286,7 +286,7 @@ function Invoke-BuildRepositoryCase {
     if ($parts.Count -ne 2) {
         throw 'Could not isolate package validation before SBOM generation.'
     }
-    $prefix = $parts[0].Replace('./build/release-policy.ps1', '.\build\release-policy.ps1')
+    $prefix = $parts[0]
     $validate = [scriptblock]::Create($prefix + "`n" + '$version')
     $previous = @{
         ENFORCE_REPOSITORY = $env:ENFORCE_REPOSITORY
@@ -495,15 +495,27 @@ try {
         param($run, $jobs)
         $run.head_branch = 'release/v3.0'
     } -DispatchRef 'refs/heads/release/v3.0'
-    Invoke-BuildCase 'release branch suffix case remains unrestricted' {
-        param($run, $jobs)
-        $run.head_branch = 'release/v3.0-RC.1'
-    } -DispatchRef 'refs/heads/release/v3.0-RC.1'
-    foreach ($branch in @('release/v', 'release/v3', 'release/v3-rc', 'release/v3_maintenance')) {
-        Invoke-BuildCase "release prefix branch $branch is promotable" {
+    foreach ($branch in @('release/v3.0-RC.1', 'release/v10.12', 'release/v3.0.x')) {
+        Invoke-BuildCase "public release branch $branch is promotable" {
             param($run, $jobs)
             $run.head_branch = $branch
         } -DispatchRef "refs/heads/$branch"
+    }
+    foreach ($branch in @('release/v', 'release/v3', 'release/v3-rc', 'release/v3_maintenance', 'release/v.3.0')) {
+        Invoke-BuildCase "non-public release branch $branch is rejected" {
+            param($run, $jobs)
+            $run.head_branch = $branch
+        } 'main or a release branch' -DispatchRef "refs/heads/$branch"
+    }
+    Invoke-PolicyCase 'every promotable branch is a public release ref in version.json' {
+        $publicRefs = @((Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' 'version.json') -Raw |
+            ConvertFrom-Json).publicReleaseRefSpec)
+        foreach ($branch in @('main', 'release/v3.0', 'release/v3.0-RC.1', 'release/v10.12', 'release/v3.0.x')) {
+            $ref = "refs/heads/$branch"
+            if (-not @($publicRefs | Where-Object { $ref -match $_ })) {
+                throw "$branch is promotable but nbgv would version it as non-public."
+            }
+        }
     }
     Invoke-BuildCase 'nested release branches are not promotable' {
         param($run, $jobs)
@@ -701,6 +713,14 @@ try {
         New-FixturePackage $packages 'Trellis.Authorization' -Dependencies @('Trellis.Asp')
     } 'dependency cycle'
 
+    Invoke-PolicyCase 'a public package version is releasable' { Assert-PublicReleaseVersion '3.0.0-alpha.525' }
+    Invoke-PolicyCase 'a stable package version is releasable' { Assert-PublicReleaseVersion '3.1.0' }
+    Invoke-PolicyCase 'a commit-suffixed package version is rejected' {
+        Assert-PublicReleaseVersion '3.0.0-alpha.525.g0d7ade3ab3'
+    } 'non-public'
+    Invoke-PolicyCase 'a commit-suffixed prerelease label is rejected' {
+        Assert-PublicReleaseVersion '3.0.0-g0d7ade3'
+    } 'non-public'
     Invoke-SbomCase 'the SBOM matches the package version and bytes'
     Invoke-SbomCase 'a fresh-source SBOM without dependencies is rejected' {
         param($manifest)

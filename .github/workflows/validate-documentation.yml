@@ -28,7 +28,7 @@ jobs:
         global-json-file: global.json
 
     - name: Setup versioning
-      uses: dotnet/nbgv@master
+      uses: dotnet/nbgv@705dad19ab067f12f4e9eeaa60812e01edef5d25 # v0.5.2
       with:
         setAllVars: true
 

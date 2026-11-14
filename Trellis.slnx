@@ -6,7 +6,8 @@
     <File Path=".github/workflows/build.yml" />
     <File Path=".github/workflows/codeql.yml" />
     <File Path=".github/workflows/documentation.yml" />
-    <File Path=".github/workflows/publish.yml" />
+    <File Path=".github/workflows/publish-nuget-org.yml" />
+    <File Path=".github/workflows/validate-documentation.yml" />
   </Folder>
   <Folder Name="/Docs/">
     <Project Path="docs/Trellis.DocsLint.csproj" />
@@ -57,6 +58,8 @@
     <File Path=".editorconfig" />
     <File Path="AGENTS.md" />
     <File Path="BENCHMARKS.md" />
+    <File Path="build/release-policy.ps1" />
+    <File Path="build/test-release-policy.ps1" />
     <File Path="build/test.props" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />

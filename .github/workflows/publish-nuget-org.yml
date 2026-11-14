@@ -89,6 +89,7 @@ jobs:
         $version = Get-ReleasePackageVersion -PackagesDirectory (Join-Path $PWD 'nupkgs') `
           -RepositoryRoot $PWD `
           -Repository $env:REPOSITORY -Commit $env:SOURCE_COMMIT
+        Assert-PublicReleaseVersion $version
         Assert-ReleaseSbom -Directory (Join-Path $PWD 'sbom') `
           -PackagesDirectory (Join-Path $PWD 'nupkgs') -Version $version
         "version=$version" | Add-Content -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8
@@ -195,6 +196,7 @@ jobs:
         if ($version -ne $env:PACKAGE_VERSION) {
           throw 'The approved package version changed.'
         }
+        Assert-PublicReleaseVersion $version
         Assert-ReleaseSbom -Directory (Join-Path $PWD 'sbom') `
           -PackagesDirectory (Join-Path $PWD 'nupkgs') -Version $version
 
