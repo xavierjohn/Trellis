@@ -98,7 +98,7 @@ jobs:
         "version=$version" | Add-Content -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8
         "Version: $version", "", "Packages:" |
           Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
-        Get-ChildItem -LiteralPath 'nupkgs' -Filter *.nupkg |
+        Get-ReleasePublishOrder -PackagesDirectory (Join-Path $PWD 'nupkgs') |
           ForEach-Object { "- $($_.Name)" } |
           Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
 
@@ -217,7 +217,8 @@ jobs:
       env:
         NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
       run: |
-        foreach ($package in Get-ChildItem -LiteralPath 'nupkgs' -Filter *.nupkg) {
+        . ./build/release-policy.ps1
+        foreach ($package in Get-ReleasePublishOrder -PackagesDirectory (Join-Path $PWD 'nupkgs')) {
           dotnet nuget push $package.FullName `
             --api-key $env:NUGET_API_KEY `
             --source https://api.nuget.org/v3/index.json `

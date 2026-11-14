@@ -139,9 +139,13 @@ function New-FixturePackage {
         [string] $PackageVersion = $version,
         [string] $PackageCommit = $commit,
         [string] $PackageRepository = $repository,
-        [string] $FileId = $Id
+        [string] $FileId = $Id,
+        [string[]] $Dependencies = @()
     )
 
+    $dependenciesXml = ($Dependencies | ForEach-Object {
+        "<dependency id=`"$_`" version=`"[$PackageVersion]`" />"
+    }) -join ''
     $path = Join-Path $Directory "$FileId.$PackageVersion.nupkg"
     $archive = [IO.Compression.ZipFile]::Open($path, [IO.Compression.ZipArchiveMode]::Create)
     try {
@@ -153,6 +157,7 @@ function New-FixturePackage {
     <id>$Id</id>
     <version>$PackageVersion</version>
     <repository type="git" url="https://github.com/$PackageRepository.git" commit="$PackageCommit" />
+    <dependencies>$dependenciesXml</dependencies>
   </metadata>
 </package>
 "@)
@@ -172,11 +177,16 @@ function New-FixtureProject {
     $directory = Join-Path $Source "$Id\src"
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
     [IO.File]::WriteAllText((Join-Path $directory "$Id.csproj"),
-        "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup><TargetFramework>net11.0</TargetFramework>$Properties</PropertyGroup></Project>", $utf8)
+        "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup><TargetFramework>net11.0</TargetFramework><RepositoryUrl Condition=`"'`$(RepositoryUrl)' == ''`">https://github.com/$repository.git</RepositoryUrl>$Properties</PropertyGroup></Project>", $utf8)
 }
 
 function Invoke-PackageCase {
-    param([string] $Name, [scriptblock] $Change, [string] $ExpectedFailure)
+    param(
+        [string] $Name,
+        [scriptblock] $Change,
+        [string] $ExpectedFailure,
+        [string] $ExpectedRepository = $repository
+    )
 
     $directory = Join-Path $work ([Guid]::NewGuid().ToString('N'))
     $packages = Join-Path $directory 'packages'
@@ -192,9 +202,67 @@ function Invoke-PackageCase {
     }
     Invoke-PolicyCase $Name {
         $actual = Get-ReleasePackageVersion -PackagesDirectory $packages -RepositoryRoot $source `
-            -Repository $repository -Commit $commit
+            -Repository $ExpectedRepository -Commit $commit
         if ($actual -ne $version) {
             throw "Expected version $version, received $actual."
+        }
+    } $ExpectedFailure
+}
+
+function Invoke-MetadataDiagnosticCase {
+    param([string] $Name, [int] $ExitCode, [string] $ExpectedFailure)
+
+    $directory = Join-Path $work ([Guid]::NewGuid().ToString('N'))
+    $packages = Join-Path $directory 'packages'
+    $source = Join-Path $directory 'source'
+    New-Item -ItemType Directory -Path $packages | Out-Null
+    New-FixtureProject $source 'Trellis.Core'
+    New-FixturePackage $packages 'Trellis.Core'
+
+    function dotnet {
+        $command = @"
+[Console]::Error.WriteLine('Simulated SDK diagnostic')
+'{"Properties":{"IsPackable":"true","PackageId":"Trellis.Core","RepositoryUrl":"https://github.com/$repository.git"}}'
+exit $ExitCode
+"@
+        & (Get-Process -Id $PID).Path -NoProfile -NonInteractive -Command $command
+        $global:LASTEXITCODE = $LASTEXITCODE
+    }
+
+    Invoke-PolicyCase $Name {
+        Get-ReleasePackageVersion -PackagesDirectory $packages -RepositoryRoot $source `
+            -Repository $repository -Commit $commit
+    } $ExpectedFailure
+}
+
+function Invoke-PublishOrderCase {
+    param([string] $Name, [scriptblock] $Change, [string] $ExpectedFailure)
+
+    $packages = Join-Path $work ([Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $packages | Out-Null
+    New-FixturePackage $packages 'Trellis.Asp.ApiVersioning' -Dependencies @('Trellis.Asp')
+    New-FixturePackage $packages 'Trellis.Asp' -Dependencies @('Trellis.Authorization')
+    New-FixturePackage $packages 'Trellis.Authorization' -Dependencies @('Trellis.Core')
+    New-FixturePackage $packages 'Trellis.Core'
+    if ($Change) {
+        & $Change $packages
+    }
+    Invoke-PolicyCase $Name {
+        $emitted = [Collections.Generic.List[IO.FileInfo]]::new()
+        try {
+            Get-ReleasePublishOrder -PackagesDirectory $packages |
+                ForEach-Object { $emitted.Add($_) }
+        }
+        catch {
+            if ($emitted.Count -ne 0) {
+                throw 'A partial publishing order was emitted before dependency validation failed.'
+            }
+            throw
+        }
+        $expected = @('Trellis.Core', 'Trellis.Authorization', 'Trellis.Asp', 'Trellis.Asp.ApiVersioning') |
+            ForEach-Object { "$_.$version.nupkg" }
+        if (($emitted.Name -join ',') -cne ($expected -join ',')) {
+            throw "Unexpected publishing order: $($emitted.Name -join ', ')."
         }
     } $ExpectedFailure
 }
@@ -396,7 +464,30 @@ try {
         $pages[0].artifacts[0].digest = ''
     } 'unexpired, digest-verified SBOM artifact'
 
+    Invoke-MetadataDiagnosticCase 'SDK stderr does not corrupt evaluated metadata' -ExitCode 0
+    Invoke-MetadataDiagnosticCase 'metadata command failures retain an actionable error' -ExitCode 1 `
+        -ExpectedFailure 'Could not evaluate release package metadata'
+
     Invoke-PackageCase 'the complete same-version package cohort is promotable'
+    Invoke-PackageCase 'Build validates the configured repository rather than checkout ownership' `
+        -ExpectedRepository ''
+    Invoke-PackageCase 'Build rejects a package inconsistent with configured RepositoryUrl' {
+        param($packages, $source)
+        Remove-Item -LiteralPath (Join-Path $packages "Trellis.Adapter.$version.nupkg")
+        New-FixturePackage $packages 'Trellis.Adapter' -PackageRepository 'other/Trellis'
+    } 'package provenance' -ExpectedRepository ''
+    Invoke-PackageCase 'Build accepts a renamed configured repository' {
+        param($packages, $source)
+        [IO.File]::WriteAllText((Join-Path $source 'Directory.Build.props'), @'
+<Project><PropertyGroup><RepositoryUrl>https://github.com/renamed/Framework.git</RepositoryUrl></PropertyGroup></Project>
+'@, $utf8)
+        foreach ($id in @('Trellis.Core', 'Trellis.Adapter')) {
+            Remove-Item -LiteralPath (Join-Path $packages "$id.$version.nupkg")
+            New-FixturePackage $packages $id -PackageRepository 'renamed/Framework'
+        }
+    } -ExpectedRepository ''
+    Invoke-PackageCase 'publish still rejects packages from a different publishing repository' `
+        -ExpectedRepository 'other/Trellis' -ExpectedFailure 'package provenance'
     Invoke-PackageCase 'package IDs expand MSBuild properties' {
         param($packages, $source)
         New-FixtureProject $source 'Trellis.Adapter' '<PackageId>$(AssemblyName)</PackageId>'
@@ -458,6 +549,23 @@ try {
         Remove-Item -LiteralPath (Join-Path $packages "Trellis.Adapter.$version.nupkg")
         New-FixturePackage $packages 'Trellis.Adapter' -FileId 'Trellis.Misnamed'
     } 'package filename'
+
+    Invoke-PublishOrderCase 'cohort dependencies are published before their dependents'
+    Invoke-PublishOrderCase 'external feed dependencies do not block publishing order' {
+        param($packages)
+        Remove-Item -LiteralPath (Join-Path $packages "Trellis.Core.$version.nupkg")
+        New-FixturePackage $packages 'Trellis.Core' -Dependencies @('System.Text.Json')
+    }
+    Invoke-PublishOrderCase 'dependency IDs are matched case-insensitively' {
+        param($packages)
+        Remove-Item -LiteralPath (Join-Path $packages "Trellis.Authorization.$version.nupkg")
+        New-FixturePackage $packages 'Trellis.Authorization' -Dependencies @('trellis.core')
+    }
+    Invoke-PublishOrderCase 'dependency cycles fail before any package is emitted' {
+        param($packages)
+        Remove-Item -LiteralPath (Join-Path $packages "Trellis.Authorization.$version.nupkg")
+        New-FixturePackage $packages 'Trellis.Authorization' -Dependencies @('Trellis.Asp')
+    } 'dependency cycle'
 
     Invoke-SbomCase 'the SBOM matches the package version and bytes'
     Invoke-SbomCase 'a fresh-source SBOM without dependencies is rejected' {

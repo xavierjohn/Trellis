@@ -114,14 +114,38 @@ function Get-ReleaseBuild {
     }
 }
 
+function Read-ReleasePackageMetadata {
+    param([Parameter(Mandatory)] [IO.FileInfo] $Package)
+
+    $archive = [IO.Compression.ZipFile]::OpenRead($Package.FullName)
+    try {
+        $nuspecs = @($archive.Entries | Where-Object { $_.FullName -match '^[^/]+\.nuspec$' })
+        if ($nuspecs.Count -ne 1) {
+            throw "Package $($Package.Name) must contain exactly one root nuspec."
+        }
+        $reader = [IO.StreamReader]::new($nuspecs[0].Open())
+        try {
+            [xml] $nuspec = $reader.ReadToEnd()
+        }
+        finally {
+            $reader.Dispose()
+        }
+        return $nuspec.SelectSingleNode('/*[local-name()="package"]/*[local-name()="metadata"]')
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 function Get-ReleasePackageVersion {
     param(
         [Parameter(Mandatory)] [string] $PackagesDirectory,
         [Parameter(Mandatory)] [string] $RepositoryRoot,
-        [Parameter(Mandatory)] [string] $Repository,
+        [string] $Repository,
         [Parameter(Mandatory)] [ValidatePattern('^[0-9a-f]{40}$')] [string] $Commit
     )
 
+    $repositoryUrls = @{}
     $expectedIds = @(
         Get-ChildItem -LiteralPath $RepositoryRoot -Directory -Filter 'Trellis.*' |
             ForEach-Object {
@@ -131,7 +155,7 @@ function Get-ReleasePackageVersion {
                 }
             } | ForEach-Object {
                 $output = & dotnet msbuild $_.FullName -nologo -p:Configuration=Release `
-                    -getProperty:IsPackable,PackageId 2>&1
+                    -getProperty:IsPackable,PackageId,RepositoryUrl
                 if ($LASTEXITCODE -ne 0) {
                     throw "Could not evaluate release package metadata for $($_.Name): $output"
                 }
@@ -140,6 +164,7 @@ function Get-ReleasePackageVersion {
                     if ([string]::IsNullOrWhiteSpace($properties.PackageId)) {
                         throw "The packable source project $($_.Name) must have an evaluated PackageId."
                     }
+                    $repositoryUrls[$properties.PackageId] = $properties.RepositoryUrl
                     $properties.PackageId
                 }
             }
@@ -153,45 +178,61 @@ function Get-ReleasePackageVersion {
     $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $versions = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($package in $packages) {
-        $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
-        try {
-            $nuspecs = @($archive.Entries | Where-Object { $_.FullName -match '^[^/]+\.nuspec$' })
-            if ($nuspecs.Count -ne 1) {
-                throw "Package $($package.Name) must contain exactly one root nuspec."
-            }
-            $reader = [IO.StreamReader]::new($nuspecs[0].Open())
-            try {
-                [xml] $nuspec = $reader.ReadToEnd()
-            }
-            finally {
-                $reader.Dispose()
-            }
-            $metadata = $nuspec.SelectSingleNode('/*[local-name()="package"]/*[local-name()="metadata"]')
-            $id = $metadata.SelectSingleNode('*[local-name()="id"]').InnerText
-            $version = $metadata.SelectSingleNode('*[local-name()="version"]').InnerText
-            $source = $metadata.SelectSingleNode('*[local-name()="repository"]')
-            if ($id -notin $expectedIds -or -not $seen.Add($id)) {
-                throw "Unexpected or duplicated member of the release package cohort: $id."
-            }
-            if ($version -notmatch '^[0-9A-Za-z.+-]+$' -or $package.Name -cne "$id.$version.nupkg") {
-                throw "Invalid release package filename: $($package.Name)."
-            }
-            $url = if ($source) { $source.GetAttribute('url').TrimEnd('/') } else { '' }
-            if (-not $source -or $source.GetAttribute('commit') -cne $Commit -or
-                ($url -ine "https://github.com/$Repository" -and $url -ine "https://github.com/$Repository.git")) {
-                throw "Invalid release package provenance: $($package.Name)."
-            }
-            $versions.Add($version) | Out-Null
+        $metadata = Read-ReleasePackageMetadata -Package $package
+        $id = $metadata.SelectSingleNode('*[local-name()="id"]').InnerText
+        $version = $metadata.SelectSingleNode('*[local-name()="version"]').InnerText
+        $source = $metadata.SelectSingleNode('*[local-name()="repository"]')
+        if ($id -notin $expectedIds -or -not $seen.Add($id)) {
+            throw "Unexpected or duplicated member of the release package cohort: $id."
         }
-        finally {
-            $archive.Dispose()
+        if ($version -notmatch '^[0-9A-Za-z.+-]+$' -or $package.Name -cne "$id.$version.nupkg") {
+            throw "Invalid release package filename: $($package.Name)."
         }
+        $url = if ($source) { $source.GetAttribute('url').TrimEnd('/') -replace '\.git$', '' } else { '' }
+        $expectedUrl = if ($Repository) { "https://github.com/$Repository" } else { [string] $repositoryUrls[$id] }
+        $expectedUrl = $expectedUrl.TrimEnd('/') -replace '\.git$', ''
+        if (-not $source -or $source.GetAttribute('commit') -cne $Commit -or
+            [string]::IsNullOrWhiteSpace($expectedUrl) -or $url -ine $expectedUrl) {
+            throw "Invalid release package provenance: $($package.Name)."
+        }
+        $versions.Add($version) | Out-Null
     }
     if ($versions.Count -ne 1) {
         throw 'Every release package must have the same version.'
     }
 
     return @($versions)[0]
+}
+
+function Get-ReleasePublishOrder {
+    param([Parameter(Mandatory)] [string] $PackagesDirectory)
+
+    $pending = @{}
+    foreach ($package in Get-ChildItem -LiteralPath $PackagesDirectory -File -Filter *.nupkg) {
+        $metadata = Read-ReleasePackageMetadata -Package $package
+        $id = $metadata.SelectSingleNode('*[local-name()="id"]').InnerText
+        $pending.Add($id, @{
+            Package = $package
+            Dependencies = @($metadata.SelectNodes('.//*[local-name()="dependency"]') |
+                ForEach-Object { $_.GetAttribute('id') } | Sort-Object -Unique)
+        })
+    }
+
+    $ordered = [Collections.Generic.List[IO.FileInfo]]::new()
+    while ($pending.Count -ne 0) {
+        $ready = @($pending.Keys | Where-Object {
+            @($pending[$_].Dependencies | Where-Object { $pending.ContainsKey($_) }).Count -eq 0
+        } | Sort-Object @{ Expression = { $_ -cne 'Trellis.Core' } }, { $_ })
+        if ($ready.Count -eq 0) {
+            throw "The release package cohort contains a dependency cycle: $($pending.Keys -join ', ')."
+        }
+        foreach ($id in $ready) {
+            $ordered.Add($pending[$id].Package)
+            $pending.Remove($id)
+        }
+    }
+
+    return $ordered.ToArray()
 }
 
 function Assert-ReleaseSbom {
