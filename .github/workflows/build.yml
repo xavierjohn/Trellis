@@ -17,6 +17,10 @@ permissions:
   checks: write
   pull-requests: write
 
+concurrency:
+  group: build-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   encoding-policy:
     name: Encoding policy (${{ matrix.os }})
@@ -37,7 +41,17 @@ jobs:
       shell: pwsh
       run: ./build/verify-encoding.ps1
 
-  build:
+    - name: Test CI and release policies
+      shell: pwsh
+      run: ./build/test-release-policy.ps1
+
+  documentation:
+    uses: ./.github/workflows/validate-documentation.yml
+    permissions:
+      contents: read
+
+  build-and-test:
+    name: Build, tests and packages
     runs-on: ubuntu-latest
 
     steps:
@@ -436,10 +450,73 @@ jobs:
     - name: Pack
       if: ${{ success() }}
       run: dotnet pack --no-build --verbosity normal -c Release -o artifacts/
-        
+
+    # The pinned SBOM tool targets .NET 8; library builds still use global.json.
+    - name: Setup SBOM runtime
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Install SBOM tool
+      run: dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.1.5
+
+    - name: Generate matching SBOM
+      shell: pwsh
+      env:
+        REPOSITORY: ${{ github.repository }}
+        SOURCE_COMMIT: ${{ github.sha }}
+      run: |
+        . ./build/release-policy.ps1
+        $packagesDirectory = Join-Path $PWD 'artifacts'
+        $version = Get-ReleasePackageVersion -PackagesDirectory $packagesDirectory `
+          -RepositoryRoot $PWD -Repository $env:REPOSITORY -Commit $env:SOURCE_COMMIT
+        $sbomDirectory = Join-Path $PWD 'sbom'
+        $dropDirectory = Join-Path $sbomDirectory 'drop'
+        New-Item -ItemType Directory -Force -Path $dropDirectory | Out-Null
+        Get-ChildItem -LiteralPath $packagesDirectory -Filter *.nupkg |
+          Copy-Item -Destination $dropDirectory
+        sbom-tool generate -b $dropDirectory -bc $PWD `
+          -pn 'Trellis' -pv $version -ps 'Xavier John' `
+          -nsb 'https://github.com/xavierjohn/Trellis/sbom' `
+          -m $sbomDirectory -mi SPDX:3.0 -D true -V Information
+        if ($LASTEXITCODE -ne 0) {
+          throw 'SBOM generation failed.'
+        }
+        Assert-ReleaseSbom -Directory (Join-Path $sbomDirectory '_manifest') `
+          -PackagesDirectory $packagesDirectory -Version $version
+
+    - name: Upload matching SBOM
+      uses: actions/upload-artifact@v7
+      if: ${{ success() && !github.base_ref }}
+      with:
+        name: sbom-spdx
+        path: sbom/_manifest/**
+        if-no-files-found: error
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v7
       if: ${{ success() && !github.base_ref }}
       with:
         name: artifact
         path: artifacts/
+        if-no-files-found: error
+
+  build:
+    needs: [encoding-policy, build-and-test, documentation]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    # Release promotion verifies this name in the successful source run.
+    - name: Require all quality gates
+      shell: pwsh
+      env:
+        CI_JOB_RESULTS: ${{ toJSON(needs) }}
+      run: |
+        . ./build/release-policy.ps1
+        Assert-CiJobResults ($env:CI_JOB_RESULTS | ConvertFrom-Json -AsHashtable)
