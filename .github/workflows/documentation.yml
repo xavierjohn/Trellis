@@ -19,18 +19,7 @@ on:
       - '**/*.tt'
       - 'global.json'
       - '.github/workflows/documentation.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'docs/**'
-      - '**/*.cs'
-      - '**/*.csproj'
-      - '**/*.props'
-      - '**/*.targets'
-      - '**/*.slnx'
-      - '**/*.tt'
-      - 'global.json'
-      - '.github/workflows/documentation.yml'
+      - '.github/workflows/validate-documentation.yml'
 
 permissions:
   contents: read
@@ -41,128 +30,15 @@ concurrency:
 
 jobs:
   publish-docs:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-      with:
-        fetch-depth: 0 # depth is needed for nbgv
-        
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v6
-      with:
-        global-json-file: global.json
-
-    - name: Setup versioning
-      uses: dotnet/nbgv@master
-      with:
-        setAllVars: true
-
-    - name: Cache NuGet packages
-      uses: actions/cache@v6
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
-
-    - name: Restore dependencies
-      run: dotnet restore
-
-    - name: Build source generators for DocFX
-      run: |
-        dotnet build Trellis.Core/generator/Trellis.Core.Generator.csproj --no-restore -c Release
-        dotnet build Trellis.Asp/generator/Trellis.AspSourceGenerator.csproj --no-restore -c Release
-        dotnet build Trellis.EntityFrameworkCore/generator/Trellis.EntityFrameworkCore.Generator.csproj --no-restore -c Release
-
-    - name: Build library projects for DocFX
-      # DocFX runs source generators through Roslyn; no on-disk generated
-      # partials are included in Compile. Build first so project references are available.
-      run: dotnet build --no-restore -c Release
-
-    - name: Install DocFX
-      run: dotnet tool update -g docfx --version 2.81.0 --framework net11.0
-
-    - name: Gate stale v1 Error.X(...) factory references
-      shell: bash
-      run: |
-        set -o pipefail
-        # Catches stale v1-style references that a v2 user/AI could mistakenly copy.
-        # Patterns:
-        #   1. `Error.Validation(`, `Error.Domain(`, `Error.Failure(`  — names removed from the current API  v1-stale-ok
-        #   2. `Error.<case>(`  not preceded on the same line by `new <whitespace> Error.` —
-        #      case names that exist in v2 only via `new Error.<case>(...)` ctor.
-        #      Case list mirrors the 20 sealed nested records in Trellis.Core/src/Errors/Error.cs.
-        #      We grep all `Error.<case>(` then filter out lines containing `new<ws>Error.` so that
-        #      multi-space (`new  Error.X`) and lookbehind-fragile cases are handled robustly.
-        # Allowlist:
-        #   - Historical files: MIGRATION_v3.md, CHANGELOG.md, docs/docfx_project/adr/**
-        #   - Anti-pattern teaching: AGENTS.md
-        #   - Synthetic test stubs: Trellis.Analyzers/tests/**, Trellis.Asp/generator-tests/**
-        #   - Per-line opt-out marker: append  v1-stale-ok  on the same line
-        ALLOWLIST_RE='^(MIGRATION_v3\.md|CHANGELOG\.md|AGENTS\.md|docs/docfx_project/adr/|Trellis\.Analyzers/tests/|Trellis\.Asp/generator-tests/)'
-        V2_CASES='BadRequest|Unauthorized|Forbidden|NotFound|MethodNotAllowed|NotAcceptable|Conflict|Gone|PreconditionFailed|ContentTooLarge|UnsupportedMediaType|RangeNotSatisfiable|UnprocessableContent|PreconditionRequired|TooManyRequests|InternalServerError|Unexpected|NotImplemented|ServiceUnavailable|Aggregate'
-        HITS=$( {
-          git grep -nE '\bError\.(Validation|Domain|Failure)\(' -- '*.cs' '*.md' || true;
-          git grep -nE "\\bError\\.($V2_CASES)\\(" -- '*.cs' '*.md' \
-            | grep -vE '\bnew[[:space:]]+Error\.' \
-            || true;
-        } | grep -v 'v1-stale-ok' \
-          | grep -vE "$ALLOWLIST_RE" \
-          || true)
-        if [ -n "$HITS" ]; then
-          echo "::error::Found stale v1 Error.X(...) factory references."
-          echo "Use closed-ADT form: 'new Error.X(payload) { Detail = \"...\" }' or"
-          echo "'Error.UnprocessableContent.ForField/ForRule(field, reasonCode, detail)'."
-          echo "To intentionally allow a single line, append the marker:  v1-stale-ok"
-          echo ""
-          echo "$HITS"
-          exit 1
-        fi
-        echo "No stale v1 Error.X factory references found."
-
-    - name: Gate stale current-facing docs
-      shell: pwsh
-      run: ./docs/docfx_project/api_reference/audit-stale-docs.ps1
-
-    - name: Report documentation freshness (advisory)
-      # Advisory on purpose. Failing every source-touching PR would turn last_verified into a
-      # rubber-stamped field, bumped to silence CI rather than because anyone re-read the doc,
-      # which destroys the signal the date exists to carry. The run writes a table to the job
-      # summary so the drift stays visible; use -FailOnStale for a periodic re-verification sweep.
-      shell: pwsh
-      run: ./docs/audit-doc-freshness.ps1
-
-    - name: Build docs (warnings as errors)
-      run: docfx docs/docfx_project/docfx.json --warningsAsErrors
-
-    - name: Verify documentation build
-      run: |
-        if [ ! -d "docs/docfx_project/_site" ]; then
-          echo "Documentation build failed - _site directory not found"
-          exit 1
-        fi
-        echo "Documentation build successful"
-
-    - name: Verify cookbook navigation
-      shell: pwsh
-      run: ./docs/test-cookbook-navigation.ps1
-
-    - name: Upload documentation site
-      # Production docs follow explicitly published NuGet releases, not every merge to main.
-      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish == true
-      uses: actions/upload-artifact@v7
-      with:
-        name: documentation-site
-        path: docs/docfx_project/_site
-        if-no-files-found: error
-        include-hidden-files: true
-        retention-days: 1
+    # Main PRs use Build's required docs gate; preserve checks for other PR targets.
+    if: github.event_name == 'workflow_dispatch' || github.base_ref != 'main'
+    uses: ./.github/workflows/validate-documentation.yml
+    with:
+      upload_site: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish }}
 
   deploy-docs:
     needs: publish-docs
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish == true
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
