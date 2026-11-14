@@ -41,7 +41,7 @@ function Assert-ReleaseBuild {
     if ($Run.event -ne 'push' -or $Run.status -ne 'completed' -or $Run.conclusion -ne 'success') {
         throw 'Packages must come from a completed, successful push build.'
     }
-    if ($Run.head_branch -ne 'main' -and $Run.head_branch -notmatch '^release/v[0-9]+\.[0-9]+[A-Za-z0-9.-]*$') {
+    if ($Run.head_branch -cne 'main' -and $Run.head_branch -cnotmatch '^release/v[0-9]+\.[0-9]+[A-Za-z0-9.-]*$') {
         throw 'Packages must come from main or a release branch.'
     }
     if ($Run.head_sha -notmatch '^[0-9a-f]{40}$') {

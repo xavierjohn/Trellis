@@ -273,6 +273,16 @@ try {
         param($run, $jobs)
         $run.head_branch = 'release/v3.0'
     }
+    Invoke-BuildCase 'release branch suffix case remains unrestricted' {
+        param($run, $jobs)
+        $run.head_branch = 'release/v3.0-RC.1'
+    }
+    foreach ($branch in @('MAIN', 'Main', 'release/V3.0', 'Release/v3.0', 'RELEASE/v3.0')) {
+        Invoke-BuildCase "differently cased source branch $branch is rejected" {
+            param($run, $jobs)
+            $run.head_branch = $branch
+        } 'main or a release branch'
+    }
     Invoke-BuildCase 'PR builds cannot be promoted' {
         param($run, $jobs)
         $run.event = 'pull_request'

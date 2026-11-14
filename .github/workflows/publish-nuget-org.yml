@@ -43,8 +43,8 @@ jobs:
         RELEASE_REF: ${{ github.ref }}
       run: |
         . ./build/release-policy.ps1
-        if ($env:RELEASE_REF -ne 'refs/heads/main' -and
-            $env:RELEASE_REF -notmatch '^refs/heads/release/v[0-9]+\.[0-9]+[A-Za-z0-9.-]*$') {
+        if ($env:RELEASE_REF -cne 'refs/heads/main' -and
+            $env:RELEASE_REF -cnotmatch '^refs/heads/release/v[0-9]+\.[0-9]+[A-Za-z0-9.-]*$') {
           throw 'Run the publishing workflow from main or a release branch.'
         }
         $source = Get-ReleaseBuild -RunId $env:SOURCE_RUN_ID -Repository $env:REPOSITORY
