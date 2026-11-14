@@ -3,7 +3,7 @@
 on:
   workflow_dispatch:
   push:
-    branches: [ main, release/v** ]
+    branches: [ main, release/v* ]
   pull_request:
     branches: [ main ]
 
@@ -40,6 +40,11 @@ jobs:
     - name: Verify tracked-file encodings
       shell: pwsh
       run: ./build/verify-encoding.ps1
+
+    - name: Setup .NET for release policy tests
+      uses: actions/setup-dotnet@v6
+      with:
+        global-json-file: global.json
 
     - name: Test CI and release policies
       shell: pwsh

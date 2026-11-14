@@ -16,7 +16,6 @@ $runId = '12345678901'
 $version = '3.0.0-alpha.1'
 $caseCount = 0
 $work = Join-Path ([IO.Path]::GetTempPath()) "trellis-release-policy-$PID-$([Guid]::NewGuid().ToString('N'))"
-$source = Join-Path $work 'source'
 $utf8 = [Text.UTF8Encoding]::new($false)
 
 function Invoke-PolicyCase {
@@ -57,7 +56,13 @@ function New-BuildFixture {
 }
 
 function Invoke-BuildCase {
-    param([string] $Name, [scriptblock] $Change, [string] $ExpectedFailure)
+    param(
+        [string] $Name,
+        [scriptblock] $Change,
+        [string] $ExpectedFailure,
+        [string] $DispatchRef = 'refs/heads/main',
+        [string] $DispatchCommit = $commit
+    )
 
     $run = New-BuildFixture
     $jobs = @(@{
@@ -69,7 +74,8 @@ function Invoke-BuildCase {
         & $Change $run $jobs
     }
     Invoke-PolicyCase $Name {
-        Assert-ReleaseBuild -Run $run -Jobs $jobs -Repository $repository -RunId $runId
+        Assert-ReleaseBuild -Run $run -Jobs $jobs -Repository $repository -RunId $runId `
+            -DispatchRef $DispatchRef -DispatchCommit $DispatchCommit
     } $ExpectedFailure
 }
 
@@ -118,7 +124,8 @@ function Invoke-ArtifactCase {
         & $Change $script:artifactPages
     }
     Invoke-PolicyCase $Name {
-        $actual = Get-ReleaseBuild -RunId $runId -Repository $repository
+        $actual = Get-ReleaseBuild -RunId $runId -Repository $repository `
+            -DispatchRef 'refs/heads/main' -DispatchCommit $commit
         if ($actual.artifact_id -ne '12345' -or $actual.sbom_artifact_id -ne '67890' -or $actual.commit -ne $commit) {
             throw 'The selected immutable artifact or commit changed.'
         }
@@ -159,15 +166,29 @@ function New-FixturePackage {
     }
 }
 
+function New-FixtureProject {
+    param([string] $Source, [string] $Id, [string] $Properties = '')
+
+    $directory = Join-Path $Source "$Id\src"
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $directory "$Id.csproj"),
+        "<Project Sdk=`"Microsoft.NET.Sdk`"><PropertyGroup><TargetFramework>net11.0</TargetFramework>$Properties</PropertyGroup></Project>", $utf8)
+}
+
 function Invoke-PackageCase {
     param([string] $Name, [scriptblock] $Change, [string] $ExpectedFailure)
 
-    $packages = Join-Path $work ([Guid]::NewGuid().ToString('N'))
+    $directory = Join-Path $work ([Guid]::NewGuid().ToString('N'))
+    $packages = Join-Path $directory 'packages'
+    $source = Join-Path $directory 'source'
     New-Item -ItemType Directory -Path $packages | Out-Null
+    New-FixtureProject $source 'Trellis.Core' '<IsPackable>true</IsPackable>'
+    New-FixtureProject $source 'Trellis.Adapter' '<IsPackable>true</IsPackable>'
+    New-FixtureProject $source 'Trellis.NotShipped' '<IsPackable>false</IsPackable>'
     New-FixturePackage $packages 'Trellis.Core'
     New-FixturePackage $packages 'Trellis.Adapter'
     if ($Change) {
-        & $Change $packages
+        & $Change $packages $source
     }
     Invoke-PolicyCase $Name {
         $actual = Get-ReleasePackageVersion -PackagesDirectory $packages -RepositoryRoot $source `
@@ -214,15 +235,6 @@ function Invoke-SbomCase {
 }
 
 try {
-    New-Item -ItemType Directory -Path $source | Out-Null
-    foreach ($id in @('Trellis.Core', 'Trellis.Adapter', 'Trellis.NotShipped')) {
-        $directory = Join-Path $source "$id\src"
-        New-Item -ItemType Directory -Path $directory -Force | Out-Null
-        $packable = if ($id -eq 'Trellis.NotShipped') { 'false' } else { 'true' }
-        [IO.File]::WriteAllText((Join-Path $directory "$id.csproj"),
-            "<Project><PropertyGroup><IsPackable>$packable</IsPackable></PropertyGroup></Project>", $utf8)
-    }
-
     Invoke-PolicyCase 'all required jobs must succeed' {
         Assert-CiJobResults @{
             'encoding-policy' = @{ result = 'success' }
@@ -269,13 +281,35 @@ try {
     }
 
     Invoke-BuildCase 'successful protected main build is promotable'
+    Invoke-BuildCase 'a build from a different protected branch is rejected' {
+        param($run, $jobs)
+        $run.head_branch = 'release/v3.0'
+    } 'publishing branch'
+    Invoke-BuildCase 'a stale main build is rejected' {
+        param($run, $jobs)
+        $run.head_sha = 'b' * 40
+    } 'dispatch commit'
     Invoke-BuildCase 'successful release branch build is promotable' {
         param($run, $jobs)
         $run.head_branch = 'release/v3.0'
-    }
+    } -DispatchRef 'refs/heads/release/v3.0'
     Invoke-BuildCase 'release branch suffix case remains unrestricted' {
         param($run, $jobs)
         $run.head_branch = 'release/v3.0-RC.1'
+    } -DispatchRef 'refs/heads/release/v3.0-RC.1'
+    foreach ($branch in @('release/v', 'release/v3', 'release/v3-rc', 'release/v3_maintenance')) {
+        Invoke-BuildCase "release prefix branch $branch is promotable" {
+            param($run, $jobs)
+            $run.head_branch = $branch
+        } -DispatchRef "refs/heads/$branch"
+    }
+    Invoke-BuildCase 'nested release branches are not promotable' {
+        param($run, $jobs)
+        $run.head_branch = 'release/v3/nested'
+    } 'main or a release branch'
+    foreach ($dispatchRef in @('refs/heads/MAIN', 'refs/HEADS/main', 'refs/tags/main')) {
+        Invoke-BuildCase "dispatch ref $dispatchRef is rejected" -DispatchRef $dispatchRef `
+            -ExpectedFailure 'publishing branch'
     }
     foreach ($branch in @('MAIN', 'Main', 'release/V3.0', 'Release/v3.0', 'RELEASE/v3.0')) {
         Invoke-BuildCase "differently cased source branch $branch is rejected" {
@@ -329,6 +363,14 @@ try {
     } 'aggregate quality gate'
 
     Invoke-ArtifactCase 'paginated metadata selects one immutable package artifact'
+    Invoke-ArtifactCase 'source selection rejects a different protected branch' {
+        param($pages)
+        $script:apiRun.head_branch = 'release/v3.0'
+    } 'publishing branch'
+    Invoke-ArtifactCase 'source revalidation rejects a stale commit' {
+        param($pages)
+        $script:apiRun.head_sha = 'b' * 40
+    } 'dispatch commit'
     Invoke-ArtifactCase 'expired artifacts block publication' {
         param($pages)
         $pages[1].artifacts[0].expired = $true
@@ -355,6 +397,39 @@ try {
     } 'unexpired, digest-verified SBOM artifact'
 
     Invoke-PackageCase 'the complete same-version package cohort is promotable'
+    Invoke-PackageCase 'package IDs expand MSBuild properties' {
+        param($packages, $source)
+        New-FixtureProject $source 'Trellis.Adapter' '<PackageId>$(AssemblyName)</PackageId>'
+    }
+    Invoke-PackageCase 'packability uses the Release configuration' {
+        param($packages, $source)
+        New-FixtureProject $source 'Trellis.Adapter' @'
+<IsPackable Condition="'$(Configuration)' == 'Debug'">false</IsPackable>
+'@
+    }
+    Invoke-PackageCase 'conditional package IDs use the Release configuration' {
+        param($packages, $source)
+        New-FixtureProject $source 'Trellis.Adapter' @'
+<PackageId Condition="'$(Configuration)' == 'Debug'">Trellis.DebugAdapter</PackageId>
+<PackageId Condition="'$(Configuration)' == 'Release'">Trellis.Adapter</PackageId>
+'@
+    }
+    Invoke-PackageCase 'imported properties determine packability' {
+        param($packages, $source)
+        New-FixtureProject $source 'Trellis.NotShipped'
+        [IO.File]::WriteAllText((Join-Path $source 'Directory.Build.props'),
+            '<Project><PropertyGroup><IsPackable>false</IsPackable></PropertyGroup></Project>', $utf8)
+    }
+    Invoke-PackageCase 'imported properties determine package IDs' {
+        param($packages, $source)
+        [IO.File]::WriteAllText((Join-Path $source 'Directory.Build.props'), @'
+<Project><PropertyGroup>
+  <PackageId Condition="'$(MSBuildProjectName)' == 'Trellis.Adapter'">Trellis.Renamed</PackageId>
+</PropertyGroup></Project>
+'@, $utf8)
+        Remove-Item -LiteralPath (Join-Path $packages "Trellis.Adapter.$version.nupkg")
+        New-FixturePackage $packages 'Trellis.Renamed'
+    }
     Invoke-PackageCase 'a missing package blocks publication' {
         param($packages)
         Remove-Item -LiteralPath (Join-Path $packages "Trellis.Adapter.$version.nupkg")

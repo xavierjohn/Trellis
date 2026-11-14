@@ -26,7 +26,9 @@ function Assert-ReleaseBuild {
         [Parameter(Mandatory)] [hashtable] $Run,
         [Parameter(Mandatory)] [object[]] $Jobs,
         [Parameter(Mandatory)] [string] $Repository,
-        [Parameter(Mandatory)] [string] $RunId
+        [Parameter(Mandatory)] [string] $RunId,
+        [Parameter(Mandatory)] [string] $DispatchRef,
+        [Parameter(Mandatory)] [ValidatePattern('^[0-9a-f]{40}$')] [string] $DispatchCommit
     )
 
     if ([string] $Run.id -ne $RunId) {
@@ -41,11 +43,17 @@ function Assert-ReleaseBuild {
     if ($Run.event -ne 'push' -or $Run.status -ne 'completed' -or $Run.conclusion -ne 'success') {
         throw 'Packages must come from a completed, successful push build.'
     }
-    if ($Run.head_branch -cne 'main' -and $Run.head_branch -cnotmatch '^release/v[0-9]+\.[0-9]+[A-Za-z0-9.-]*$') {
+    if ($Run.head_branch -cne 'main' -and $Run.head_branch -cnotmatch '^release/v[^/]*$') {
         throw 'Packages must come from main or a release branch.'
     }
     if ($Run.head_sha -notmatch '^[0-9a-f]{40}$') {
         throw 'The source build commit is invalid.'
+    }
+    if ($DispatchRef -cne "refs/heads/$($Run.head_branch)") {
+        throw 'The source build must match the publishing branch.'
+    }
+    if ($Run.head_sha -cne $DispatchCommit) {
+        throw 'The source build must match the dispatch commit.'
     }
 
     $gates = @($Jobs | Where-Object { $_.name -eq 'build' })
@@ -60,7 +68,9 @@ function Assert-ReleaseBuild {
 function Get-ReleaseBuild {
     param(
         [Parameter(Mandatory)] [ValidatePattern('^[0-9]+$')] [string] $RunId,
-        [Parameter(Mandatory)] [ValidatePattern('^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$')] [string] $Repository
+        [Parameter(Mandatory)] [ValidatePattern('^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$')] [string] $Repository,
+        [Parameter(Mandatory)] [string] $DispatchRef,
+        [Parameter(Mandatory)] [ValidatePattern('^[0-9a-f]{40}$')] [string] $DispatchCommit
     )
 
     $endpoint = "repos/$Repository/actions/runs/$RunId"
@@ -75,7 +85,8 @@ function Get-ReleaseBuild {
         throw 'Could not read the source build jobs.'
     }
     $jobs = @($output | ConvertFrom-Json -AsHashtable | ForEach-Object { $_.jobs })
-    Assert-ReleaseBuild -Run $run -Jobs $jobs -Repository $Repository -RunId $RunId
+    Assert-ReleaseBuild -Run $run -Jobs $jobs -Repository $Repository -RunId $RunId `
+        -DispatchRef $DispatchRef -DispatchCommit $DispatchCommit
 
     $output = & gh api --hostname github.com "$endpoint/artifacts?per_page=100" --paginate --slurp
     if ($LASTEXITCODE -ne 0) {
@@ -119,13 +130,17 @@ function Get-ReleasePackageVersion {
                     Get-ChildItem -LiteralPath $src -File -Filter '*.csproj'
                 }
             } | ForEach-Object {
-                [xml] $project = [IO.File]::ReadAllText($_.FullName)
-                if ($project.SelectSingleNode('//IsPackable')?.InnerText -ne 'false') {
-                    $id = $project.SelectSingleNode('//PackageId')?.InnerText
-                    if (-not $id) {
-                        $id = $_.BaseName
+                $output = & dotnet msbuild $_.FullName -nologo -p:Configuration=Release `
+                    -getProperty:IsPackable,PackageId 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Could not evaluate release package metadata for $($_.Name): $output"
+                }
+                $properties = ($output | ConvertFrom-Json -AsHashtable).Properties
+                if ($properties.IsPackable -eq 'true') {
+                    if ([string]::IsNullOrWhiteSpace($properties.PackageId)) {
+                        throw "The packable source project $($_.Name) must have an evaluated PackageId."
                     }
-                    $id
+                    $properties.PackageId
                 }
             }
     )

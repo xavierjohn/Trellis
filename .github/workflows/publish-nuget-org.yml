@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       build_run_id:
-        description: Successful main or release Build run ID to promote
+        description: Successful Build run ID for this branch and dispatch commit
         required: true
         type: string
       dry_run:
@@ -41,16 +41,14 @@ jobs:
         SOURCE_RUN_ID: ${{ inputs.build_run_id }}
         REPOSITORY: ${{ github.repository }}
         RELEASE_REF: ${{ github.ref }}
+        DISPATCH_COMMIT: ${{ github.sha }}
       run: |
         . ./build/release-policy.ps1
-        if ($env:RELEASE_REF -cne 'refs/heads/main' -and
-            $env:RELEASE_REF -cnotmatch '^refs/heads/release/v[0-9]+\.[0-9]+[A-Za-z0-9.-]*$') {
-          throw 'Run the publishing workflow from main or a release branch.'
-        }
-        $source = Get-ReleaseBuild -RunId $env:SOURCE_RUN_ID -Repository $env:REPOSITORY
+        $source = Get-ReleaseBuild -RunId $env:SOURCE_RUN_ID -Repository $env:REPOSITORY `
+          -DispatchRef $env:RELEASE_REF -DispatchCommit $env:DISPATCH_COMMIT
         "commit=$($source.commit)", "artifact_id=$($source.artifact_id)", "sbom_artifact_id=$($source.sbom_artifact_id)" |
           Add-Content -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8
-        "## Release source", "", "Build: $($source.url)", "Commit: $($source.commit)" |
+        "## Release source", "", "Branch: $env:RELEASE_REF", "Build: $($source.url)", "Commit: $($source.commit)" |
           Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
 
     - name: Checkout package source
@@ -78,6 +76,11 @@ jobs:
         run-id: ${{ inputs.build_run_id }}
         path: sbom
         digest-mismatch: error
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        global-json-file: global.json
 
     - name: Validate package cohort and provenance
       id: packages
@@ -137,6 +140,8 @@ jobs:
         GH_TOKEN: ${{ github.token }}
         SOURCE_RUN_ID: ${{ inputs.build_run_id }}
         REPOSITORY: ${{ github.repository }}
+        RELEASE_REF: ${{ github.ref }}
+        DISPATCH_COMMIT: ${{ github.sha }}
         SOURCE_COMMIT: ${{ needs.prepare.outputs.commit }}
         ARTIFACT_ID: ${{ needs.prepare.outputs.artifact_id }}
         SBOM_ARTIFACT_ID: ${{ needs.prepare.outputs.sbom_artifact_id }}
@@ -146,7 +151,8 @@ jobs:
         if ([string]::IsNullOrWhiteSpace($env:NUGET_USER)) {
           throw 'Configure NUGET_USER in the nuget environment and its NuGet.org trusted publishing policy.'
         }
-        $source = Get-ReleaseBuild -RunId $env:SOURCE_RUN_ID -Repository $env:REPOSITORY
+        $source = Get-ReleaseBuild -RunId $env:SOURCE_RUN_ID -Repository $env:REPOSITORY `
+          -DispatchRef $env:RELEASE_REF -DispatchCommit $env:DISPATCH_COMMIT
         if ($source.commit -ne $env:SOURCE_COMMIT -or $source.artifact_id -ne $env:ARTIFACT_ID -or
             $source.sbom_artifact_id -ne $env:SBOM_ARTIFACT_ID) {
           throw 'The approved source build, packages or SBOM artifact changed.'
@@ -178,6 +184,11 @@ jobs:
         path: sbom
         digest-mismatch: error
 
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        global-json-file: global.json
+
     - name: Revalidate approved packages
       shell: pwsh
       env:
@@ -194,11 +205,6 @@ jobs:
         }
         Assert-ReleaseSbom -Directory (Join-Path $PWD 'sbom') `
           -PackagesDirectory (Join-Path $PWD 'nupkgs') -Version $version
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v6
-      with:
-        global-json-file: global.json
 
     - name: NuGet login with OIDC
       uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
