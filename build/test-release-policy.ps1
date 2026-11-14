@@ -507,13 +507,33 @@ try {
             $run.head_branch = $branch
         } 'main or a release branch' -DispatchRef "refs/heads/$branch"
     }
-    Invoke-PolicyCase 'every promotable branch is a public release ref in version.json' {
+    Invoke-PolicyCase 'Build push branch filters match public release eligibility' {
         $publicRefs = @((Get-Content -LiteralPath (Join-Path $PSScriptRoot '..' 'version.json') -Raw |
             ConvertFrom-Json).publicReleaseRefSpec)
+        $push = [regex]::Match($buildWorkflow, '(?m)^  push:\r?\n    branches:[ \t]*\[(?<patterns>[^\r\n]+)\][ \t]*\r?$')
+        if (-not $push.Success) {
+            throw 'The Build workflow must declare its static push branch filters.'
+        }
+        $quotes = [char[]] @("'", '"')
+        $filterRegexes = @(
+            foreach ($pattern in ($push.Groups['patterns'].Value -split ',')) {
+                $regex = [regex]::Escape($pattern.Trim().Trim($quotes))
+                $regex = $regex.Replace('\[0-9]', '[0-9]').Replace('\+', '+')
+                '^' + $regex.Replace('\*\*', '.*').Replace('\*', '[^/]*') + '$'
+            }
+        )
         foreach ($branch in @('main', 'release/v3.0', 'release/v3.0-RC.1', 'release/v10.12', 'release/v3.0.x')) {
             $ref = "refs/heads/$branch"
             if (-not @($publicRefs | Where-Object { $ref -match $_ })) {
                 throw "$branch is promotable but nbgv would version it as non-public."
+            }
+            if (-not @($filterRegexes | Where-Object { [regex]::IsMatch($branch, $_) })) {
+                throw "$branch is promotable but does not trigger push Build."
+            }
+        }
+        foreach ($branch in @('release/v3foo.0', 'release/v3-rc.0', 'release/v3.0/hotfix')) {
+            if (@($filterRegexes | Where-Object { [regex]::IsMatch($branch, $_) })) {
+                throw "$branch must not trigger push Build."
             }
         }
     }
