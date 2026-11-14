@@ -15,6 +15,7 @@ $commit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 $runId = '12345678901'
 $version = '3.0.0-alpha.1'
 $buildWorkflow = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\.github\workflows\build.yml') -Raw
+$publishWorkflow = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\.github\workflows\publish-nuget-org.yml') -Raw
 $caseCount = 0
 $work = Join-Path ([IO.Path]::GetTempPath()) "trellis-release-policy-$PID-$([Guid]::NewGuid().ToString('N'))"
 $utf8 = [Text.UTF8Encoding]::new($false)
@@ -187,6 +188,34 @@ function Assert-BuildWorkflowContract {
     $script:artifactPages = @(@{ artifacts = $artifacts })
     Get-ReleaseBuild -RunId $runId -Repository $repository `
         -DispatchRef 'refs/heads/main' -DispatchCommit $commit | Out-Null
+}
+
+function Assert-PublishWorkflowContract {
+    param([string] $Workflow)
+
+    $publish = [regex]::Match($Workflow, '(?ms)^  publish:[ \t]*\r?\n(?<body>.*?)(?=^  [A-Za-z0-9_-]+:[ \t]*\r?\n|\z)')
+    if (-not $publish.Success) {
+        throw 'The publish workflow must define its publish job.'
+    }
+    $body = $publish.Groups['body'].Value
+    $permissions = [regex]::Match($body, '(?ms)^    permissions:[ \t]*\r?\n(?<body>.*?)(?=^    [A-Za-z0-9_-]+:|\z)')
+    $oidcWrites = [regex]::Matches($Workflow, '(?m)^[ \t]*id-token:[ \t]*[''"]?write[''"]?[ \t]*\r?$')
+    if (-not $permissions.Success -or
+        -not [regex]::IsMatch($permissions.Groups['body'].Value, '(?m)^      id-token:[ \t]*[''"]?write[''"]?[ \t]*\r?$') -or
+        $oidcWrites.Count -ne 1 -or
+        [regex]::IsMatch($Workflow, '(?m)^[ \t]*permissions:[ \t]*[''"]?write-all[''"]?[ \t]*\r?$')) {
+        throw 'Only the publish job may request OIDC write permission.'
+    }
+    if (-not [regex]::IsMatch($body, '(?m)^    if:[ \t]*[''"]?\$\{\{[ \t]*![ \t]*inputs\.dry_run[ \t]*\}\}[''"]?[ \t]*\r?$')) {
+        throw 'The publish job must retain its live-only dry-run gate.'
+    }
+
+    $source = [regex]::Match($body, '(?ms)^    - name: Revalidate approved source[ \t]*\r?\n(?<body>.*?)(?=^    - |\z)')
+    $run = [regex]::Match($source.Groups['body'].Value, '(?ms)^      run:[ \t]*\|[ \t]*\r?\n(?<body>.*?)(?=^      [A-Za-z0-9_-]+:|\z)')
+    if (-not $source.Success -or -not $run.Success -or
+        -not [regex]::IsMatch($run.Groups['body'].Value, '(?m)^        \$source[ \t]*=[ \t]*Get-ReleaseBuild\b')) {
+        throw 'The publish job must retain approved-source revalidation.'
+    }
 }
 
 function New-FixturePackage {
@@ -429,6 +458,35 @@ try {
     Invoke-PolicyCase 'a renamed YAML SBOM artifact breaks promotion' {
         Assert-BuildWorkflowContract ($buildWorkflow.Replace('        name: sbom-spdx', '        name: renamed-sbom'))
     } 'digest-verified SBOM artifact'
+
+    Invoke-PolicyCase 'the real publish YAML preserves release contracts' {
+        Assert-PublishWorkflowContract $publishWorkflow
+    }
+    Invoke-PolicyCase 'workflow-level OIDC write permission breaks the publish contract' {
+        $changed = [regex]::Replace($publishWorkflow, '(?m)^  actions: read\r?$', "  actions: read`n  id-token: write")
+        Assert-PublishWorkflowContract $changed
+    } 'OIDC write permission'
+    Invoke-PolicyCase 'workflow-wide write-all permissions break the publish contract' {
+        $changed = [regex]::Replace($publishWorkflow, '(?ms)^permissions:[ \t]*\r?\n.*?(?=^jobs:)', "permissions: write-all`n`n")
+        Assert-PublishWorkflowContract $changed
+    } 'OIDC write permission'
+    Invoke-PolicyCase 'omitting publish-job OIDC permission breaks the publish contract' {
+        $changed = [regex]::Replace($publishWorkflow, '(?m)^      id-token: write\r?\n', '')
+        Assert-PublishWorkflowContract $changed
+    } 'OIDC write permission'
+    Invoke-PolicyCase 'publishing during dry runs breaks the publish contract' {
+        Assert-PublishWorkflowContract ($publishWorkflow.Replace('    if: ${{ !inputs.dry_run }}', '    if: ${{ inputs.dry_run }}'))
+    } 'live-only dry-run gate'
+    Invoke-PolicyCase 'omitting the publish dry-run gate breaks the publish contract' {
+        Assert-PublishWorkflowContract ($publishWorkflow.Replace('    if: ${{ !inputs.dry_run }}', ''))
+    } 'live-only dry-run gate'
+    Invoke-PolicyCase 'omitting approved-source revalidation breaks the publish contract' {
+        $changed = [regex]::Replace($publishWorkflow, '(?ms)^    - name: Revalidate approved source\r?\n.*?(?=^    - |\z)', '')
+        Assert-PublishWorkflowContract $changed
+    } 'approved-source revalidation'
+    Invoke-PolicyCase 'approved-source revalidation must call the real source policy' {
+        Assert-PublishWorkflowContract ($publishWorkflow.Replace('$source = Get-ReleaseBuild', '$source = Read-UnverifiedBuild'))
+    } 'approved-source revalidation'
 
     Invoke-BuildRepositoryCase 'non-fork push Build rejects a stale configured repository URL' `
         -EnforceRepository $true -ActualRepository 'renamed/Framework' -ExpectedFailure 'Invalid release package provenance'
