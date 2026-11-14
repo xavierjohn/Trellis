@@ -14,6 +14,7 @@ $repository = 'xavierjohn/Trellis'
 $commit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 $runId = '12345678901'
 $version = '3.0.0-alpha.1'
+$buildWorkflow = Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\.github\workflows\build.yml') -Raw
 $caseCount = 0
 $work = Join-Path ([IO.Path]::GetTempPath()) "trellis-release-policy-$PID-$([Guid]::NewGuid().ToString('N'))"
 $utf8 = [Text.UTF8Encoding]::new($false)
@@ -132,6 +133,62 @@ function Invoke-ArtifactCase {
     } $ExpectedFailure
 }
 
+function Assert-BuildWorkflowContract {
+    param([string] $Workflow)
+
+    $gate = [regex]::Match($Workflow, '(?ms)^  build:[ \t]*\r?\n(?<body>.*?)(?=^  [A-Za-z0-9_-]+:[ \t]*\r?\n|\z)')
+    if (-not $gate.Success) {
+        throw 'The Build workflow must define the aggregate build job.'
+    }
+    $body = $gate.Groups['body'].Value
+    $quotes = [char[]] @("'", '"')
+    $needs = [ordered] @{}
+    $dependencies = [regex]::Match($body, '(?m)^    needs:[ \t]*\[(?<names>[^\]]*)\]')
+    if (-not $dependencies.Success) {
+        throw 'The aggregate job must declare its static needs list.'
+    }
+    foreach ($name in ($dependencies.Groups['names'].Value -split ',')) {
+        $id = $name.Trim().Trim($quotes)
+        if (-not [regex]::IsMatch($Workflow, "(?m)^  $([regex]::Escape($id)):[ \t]*\r?$")) {
+            throw "The aggregate dependency job does not exist: $id."
+        }
+        $needs.Add($id, @{ result = 'success' })
+    }
+    Assert-CiJobResults $needs
+
+    $displayName = [regex]::Match($body, '(?m)^    name:[ \t]*(?<name>[^\r\n]+)')
+    $gateName = if ($displayName.Success) { $displayName.Groups['name'].Value.Trim().Trim($quotes) } else { 'build' }
+    $steps = @([regex]::Matches($body, '(?m)^    - name:[ \t]*(?<name>[^\r\n]+)') | ForEach-Object {
+        @{ name = $_.Groups['name'].Value.Trim().Trim($quotes); conclusion = 'success' }
+    })
+    $script:apiRun = New-BuildFixture
+    $script:apiRun.html_url = "https://github.com/$repository/actions/runs/$runId"
+    $script:jobPages = @(@{ jobs = @(@{ name = $gateName; conclusion = 'success'; steps = $steps }) })
+    $artifactId = 1000
+    $artifacts = @(
+        foreach ($step in [regex]::Matches($Workflow, '(?ms)^    - (?<body>.*?)(?=^    - |\z)')) {
+            $stepBody = $step.Value -replace '^    - ', '      '
+            $uses = [regex]::Match($stepBody, '(?m)^      uses:[ \t]*(?<action>[^\r\n]+)')
+            if (-not $uses.Success -or $uses.Groups['action'].Value.Trim().Trim($quotes) -notlike 'actions/upload-artifact@*') {
+                continue
+            }
+            $artifact = [regex]::Match($stepBody, '(?m)^        name:[ \t]*(?<name>[^\r\n]+)')
+            if (-not $artifact.Success) {
+                throw 'Build artifact uploads must declare a static artifact name.'
+            }
+            @{
+                name = $artifact.Groups['name'].Value.Trim().Trim($quotes)
+                id = [string] $artifactId++
+                expired = $false
+                digest = 'sha256:' + ('c' * 64)
+            }
+        }
+    )
+    $script:artifactPages = @(@{ artifacts = $artifacts })
+    Get-ReleaseBuild -RunId $runId -Repository $repository `
+        -DispatchRef 'refs/heads/main' -DispatchCommit $commit | Out-Null
+}
+
 function New-FixturePackage {
     param(
         [string] $Directory,
@@ -207,6 +264,53 @@ function Invoke-PackageCase {
             throw "Expected version $version, received $actual."
         }
     } $ExpectedFailure
+}
+
+function Invoke-BuildRepositoryCase {
+    param([string] $Name, [bool] $EnforceRepository, [string] $ActualRepository, [string] $ExpectedFailure)
+
+    $directory = Join-Path $work ([Guid]::NewGuid().ToString('N'))
+    $source = Join-Path $directory 'source'
+    $packages = Join-Path $source 'artifacts'
+    $build = Join-Path $source 'build'
+    New-Item -ItemType Directory -Path $packages, $build -Force | Out-Null
+    New-FixtureProject $source 'Trellis.Core'
+    New-FixturePackage $packages 'Trellis.Core'
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'release-policy.ps1') -Destination $build
+
+    $run = [regex]::Match($buildWorkflow, '(?ms)^    - name: Generate matching SBOM\r?\n.*?^      run: \|\r?\n(?<body>.*?)(?=^    - |\z)')
+    if (-not $run.Success) {
+        throw 'Could not read the Build package-validation run block.'
+    }
+    $parts = ($run.Groups['body'].Value -replace '(?m)^        ', '') -split '(?m)^\$sbomDirectory[ \t]*='
+    if ($parts.Count -ne 2) {
+        throw 'Could not isolate package validation before SBOM generation.'
+    }
+    $prefix = $parts[0].Replace('./build/release-policy.ps1', '.\build\release-policy.ps1')
+    $validate = [scriptblock]::Create($prefix + "`n" + '$version')
+    $previous = @{
+        ENFORCE_REPOSITORY = $env:ENFORCE_REPOSITORY
+        REPOSITORY = $env:REPOSITORY
+        SOURCE_COMMIT = $env:SOURCE_COMMIT
+    }
+    Push-Location -LiteralPath $source
+    try {
+        $env:ENFORCE_REPOSITORY = $EnforceRepository.ToString().ToLowerInvariant()
+        $env:REPOSITORY = $ActualRepository
+        $env:SOURCE_COMMIT = $commit
+        Invoke-PolicyCase $Name {
+            $actual = & $validate
+            if ($actual -cne $version) {
+                throw "Expected version $version, received $actual."
+            }
+        } $ExpectedFailure
+    }
+    finally {
+        Pop-Location
+        foreach ($name in $previous.Keys) {
+            [Environment]::SetEnvironmentVariable($name, $previous[$name])
+        }
+    }
 }
 
 function Invoke-MetadataDiagnosticCase {
@@ -303,6 +407,36 @@ function Invoke-SbomCase {
 }
 
 try {
+    Invoke-PolicyCase 'the real Build YAML preserves release policy contracts' {
+        Assert-BuildWorkflowContract $buildWorkflow
+    }
+    Invoke-PolicyCase 'a renamed aggregate YAML job breaks the release contract' {
+        Assert-BuildWorkflowContract ($buildWorkflow.Replace('  build:', '  release-gate:'))
+    } 'aggregate build job'
+    Invoke-PolicyCase 'a renamed aggregate display name breaks the release contract' {
+        $changed = [regex]::Replace($buildWorkflow, '(?m)^  build:[ \t]*\r?\n', "  build:`n    name: Release gate`n")
+        Assert-BuildWorkflowContract $changed
+    } 'aggregate quality gate'
+    Invoke-PolicyCase 'a renamed YAML gate marker breaks the release contract' {
+        Assert-BuildWorkflowContract ($buildWorkflow.Replace('Require all quality gates', 'Require release gates'))
+    } 'aggregate quality gate'
+    Invoke-PolicyCase 'omitting YAML documentation needs breaks the required gate' {
+        Assert-BuildWorkflowContract ($buildWorkflow.Replace('needs: [encoding-policy, build-and-test, documentation]', 'needs: [encoding-policy, build-and-test]'))
+    } 'Required CI jobs did not succeed'
+    Invoke-PolicyCase 'a renamed YAML package artifact breaks promotion' {
+        Assert-BuildWorkflowContract ($buildWorkflow.Replace('        name: artifact', '        name: packages'))
+    } 'digest-verified package artifact'
+    Invoke-PolicyCase 'a renamed YAML SBOM artifact breaks promotion' {
+        Assert-BuildWorkflowContract ($buildWorkflow.Replace('        name: sbom-spdx', '        name: renamed-sbom'))
+    } 'digest-verified SBOM artifact'
+
+    Invoke-BuildRepositoryCase 'non-fork push Build rejects a stale configured repository URL' `
+        -EnforceRepository $true -ActualRepository 'renamed/Framework' -ExpectedFailure 'Invalid release package provenance'
+    Invoke-BuildRepositoryCase 'fork push Build retains configured provenance' `
+        -EnforceRepository $false -ActualRepository 'fork-owner/Trellis'
+    Invoke-BuildRepositoryCase 'non-fork push Build accepts correct repository provenance' `
+        -EnforceRepository $true -ActualRepository $repository
+
     Invoke-PolicyCase 'all required jobs must succeed' {
         Assert-CiJobResults @{
             'encoding-policy' = @{ result = 'success' }
@@ -420,7 +554,7 @@ try {
     Invoke-BuildCase 'an invalid commit is rejected' {
         param($run, $jobs)
         $run.head_sha = 'not-a-commit'
-    } 'commit'
+    } 'The source build commit is invalid.'
     Invoke-BuildCase 'legacy builds without the aggregate gate cannot be promoted' {
         param($run, $jobs)
         $jobs[0].steps = @(@{ name = 'Pack'; conclusion = 'success' })
@@ -575,7 +709,7 @@ try {
     Invoke-SbomCase 'a mismatched SBOM version is rejected' {
         param($manifest)
         $manifest['@graph'][0].software_packageVersion = '3.0.0-alpha.2'
-    } 'package version'
+    } 'The SBOM must match the release package version.'
     Invoke-SbomCase 'an incomplete SBOM file list is rejected' {
         param($manifest)
         $manifest['@graph'] = @($manifest['@graph'] | Where-Object { $_.name -ne "./Trellis.Core.$version.nupkg" })

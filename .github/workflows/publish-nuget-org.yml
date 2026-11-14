@@ -32,6 +32,8 @@ jobs:
     steps:
     - name: Checkout release workflow
       uses: actions/checkout@v7
+      with:
+        ref: ${{ github.sha }}
 
     - name: Select trusted Build artifacts
       id: source
@@ -50,12 +52,6 @@ jobs:
           Add-Content -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8
         "## Release source", "", "Branch: $env:RELEASE_REF", "Build: $($source.url)", "Commit: $($source.commit)" |
           Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
-
-    - name: Checkout package source
-      uses: actions/checkout@v7
-      with:
-        ref: ${{ steps.source.outputs.commit }}
-        path: release-source
 
     - name: Download immutable Build packages
       uses: actions/download-artifact@v8
@@ -91,7 +87,7 @@ jobs:
       run: |
         . ./build/release-policy.ps1
         $version = Get-ReleasePackageVersion -PackagesDirectory (Join-Path $PWD 'nupkgs') `
-          -RepositoryRoot (Join-Path $PWD 'release-source') `
+          -RepositoryRoot $PWD `
           -Repository $env:REPOSITORY -Commit $env:SOURCE_COMMIT
         Assert-ReleaseSbom -Directory (Join-Path $PWD 'sbom') `
           -PackagesDirectory (Join-Path $PWD 'nupkgs') -Version $version
@@ -133,6 +129,8 @@ jobs:
     steps:
     - name: Checkout release workflow
       uses: actions/checkout@v7
+      with:
+        ref: ${{ github.sha }}
 
     - name: Revalidate approved source
       shell: pwsh
@@ -157,12 +155,6 @@ jobs:
             $source.sbom_artifact_id -ne $env:SBOM_ARTIFACT_ID) {
           throw 'The approved source build, packages or SBOM artifact changed.'
         }
-
-    - name: Checkout package source
-      uses: actions/checkout@v7
-      with:
-        ref: ${{ needs.prepare.outputs.commit }}
-        path: release-source
 
     - name: Download approved Build packages
       uses: actions/download-artifact@v8
@@ -198,7 +190,7 @@ jobs:
       run: |
         . ./build/release-policy.ps1
         $version = Get-ReleasePackageVersion -PackagesDirectory (Join-Path $PWD 'nupkgs') `
-          -RepositoryRoot (Join-Path $PWD 'release-source') `
+          -RepositoryRoot $PWD `
           -Repository $env:REPOSITORY -Commit $env:SOURCE_COMMIT
         if ($version -ne $env:PACKAGE_VERSION) {
           throw 'The approved package version changed.'
