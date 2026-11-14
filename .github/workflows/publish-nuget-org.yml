@@ -119,6 +119,9 @@ jobs:
     if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     environment: nuget
+    concurrency:
+      group: nuget-org-publish
+      cancel-in-progress: false
     permissions:
       contents: read
       actions: read

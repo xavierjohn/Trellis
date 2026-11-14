@@ -249,6 +249,24 @@ try {
             'build-and-test' = @{ result = 'success' }
         }
     } 'Required CI jobs did not succeed'
+    Invoke-PolicyCase 'an additional successful dependency passes the gate' {
+        Assert-CiJobResults @{
+            'encoding-policy' = @{ result = 'success' }
+            'build-and-test' = @{ result = 'success' }
+            documentation = @{ result = 'success' }
+            'additional-policy' = @{ result = 'success' }
+        }
+    }
+    foreach ($result in @('failure', 'cancelled', 'skipped')) {
+        Invoke-PolicyCase "an additional $result dependency blocks the gate" {
+            Assert-CiJobResults @{
+                'encoding-policy' = @{ result = 'success' }
+                'build-and-test' = @{ result = 'success' }
+                documentation = @{ result = 'success' }
+                'additional-policy' = @{ result = $result }
+            }
+        } 'Required CI jobs did not succeed'
+    }
 
     Invoke-BuildCase 'successful protected main build is promotable'
     Invoke-BuildCase 'successful release branch build is promotable' {

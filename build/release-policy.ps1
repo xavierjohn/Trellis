@@ -8,8 +8,9 @@ Set-StrictMode -Version Latest
 function Assert-CiJobResults {
     param([Parameter(Mandatory)] [System.Collections.IDictionary] $Needs)
 
+    $names = @('encoding-policy', 'build-and-test', 'documentation') + @($Needs.Keys)
     $failed = @(
-        foreach ($name in @('encoding-policy', 'build-and-test', 'documentation')) {
+        foreach ($name in ($names | Select-Object -Unique)) {
             if (-not $Needs.Contains($name) -or $Needs[$name].result -ne 'success') {
                 $name
             }

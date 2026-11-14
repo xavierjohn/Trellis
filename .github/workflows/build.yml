@@ -17,6 +17,10 @@ permissions:
   checks: write
   pull-requests: write
 
+concurrency:
+  group: build-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   encoding-policy:
     name: Encoding policy (${{ matrix.os }})
@@ -449,17 +453,14 @@ jobs:
 
     # The pinned SBOM tool targets .NET 8; library builds still use global.json.
     - name: Setup SBOM runtime
-      if: ${{ success() && !github.base_ref }}
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: '8.0.x'
 
     - name: Install SBOM tool
-      if: ${{ success() && !github.base_ref }}
       run: dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.1.5
 
     - name: Generate matching SBOM
-      if: ${{ success() && !github.base_ref }}
       shell: pwsh
       env:
         REPOSITORY: ${{ github.repository }}
