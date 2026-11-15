@@ -12,10 +12,6 @@ using Trellis.Asp;
 using Trellis.Mediator;
 using Trellis.Primitives;
 
-public sealed partial class EmailAddress : RequiredString<EmailAddress>;
-
-public sealed partial class PhoneNumber : RequiredString<PhoneNumber>;
-
 // Pattern A — scalar Maybe<T> directly on the DTO.
 // AddTrellisAspWithScalarValidation() registers MaybeScalarValueJsonConverterFactory and MaybeModelBinder;
 // MVC child-validation suppression is handled internally so this round-trips correctly.
@@ -66,8 +62,7 @@ public sealed class CustomersControllerB(ISender sender) : ControllerBase
 
 public static class WiringFix
 {
-    // FIX — call AddTrellisAspWithScalarValidation() before AddControllers(); idempotent and configures
-    // both MVC and Minimal API JSON pipelines for ScalarValue/Maybe support.
+    // Order relative to AddControllers() does not matter; register once to avoid duplicate JSON converters.
     public static IServiceCollection ConfigureMvc(IServiceCollection services)
     {
         services.AddTrellisAspWithScalarValidation();

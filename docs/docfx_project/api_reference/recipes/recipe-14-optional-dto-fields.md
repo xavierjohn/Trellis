@@ -38,7 +38,10 @@ The answer depends on whether the inner type is a **scalar** (single-primitive) 
 ## Pattern A — scalar `Maybe<T>` directly on the DTO
 
 ```csharp
+using Mediator;
+using Microsoft.AspNetCore.Mvc;
 using Trellis;
+using Trellis.Asp;
 using Trellis.Primitives;
 
 // EmailAddress and PhoneNumber are the shipped, validating value objects from Trellis.Primitives
@@ -83,6 +86,8 @@ public sealed record CreateCustomerRequest(
     EmailAddress       Email,
     ShippingAddress?   ShippingAddress);   // nullable transport — NOT Maybe<ShippingAddress>
 
+[ApiController]
+[Route("customers")]
 public sealed class CustomersController(ISender sender) : ControllerBase
 {
     [HttpPost]
@@ -127,4 +132,4 @@ services.AddTrellisAspWithScalarValidation();
 services.AddControllers();
 ```
 
-> Nullable transport plus controller-seam adaptation is the supported pattern.
+> Nullable transport plus controller-seam adaptation is the supported pattern for optional composite value objects.

@@ -2,10 +2,12 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Trellis.Asp.Validation;
 using Trellis.Authorization;
 using Trellis.EntityFrameworkCore;
 using Trellis.Testing;
@@ -14,6 +16,11 @@ using Returns = Recipe22;
 
 public class RecipeBehaviorTests
 {
+    private static readonly JsonSerializerOptions s_optionalScalarJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new MaybeScalarValueJsonConverterFactory() },
+    };
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -280,6 +287,31 @@ public class RecipeBehaviorTests
             billing.PostalCode.Value.Should().Be("98004");
             billing.Country.Value.Should().Be("US");
         }
+    }
+
+    [Theory]
+    [InlineData("not-an-email", "+12025550123")]
+    [InlineData("ada@example.com", "not-a-phone")]
+    public void Deserialize_OptionalScalarDto_InvalidFormat_RejectsInput(string email, string phoneNumber)
+    {
+        var json = JsonSerializer.Serialize(new { email, phoneNumber });
+
+        Action deserialize = () => JsonSerializer.Deserialize<Recipe14.CreateCustomerRequestA>(json, s_optionalScalarJsonOptions);
+
+        deserialize.Should().Throw<TrellisJsonValidationException>();
+    }
+
+    [Theory]
+    [InlineData("""{"email":"ada@example.com"}""", null)]
+    [InlineData("""{"email":"ada@example.com","phoneNumber":null}""", null)]
+    [InlineData("""{"email":"ada@example.com","phoneNumber":"+12025550123"}""", "+12025550123")]
+    public void Deserialize_OptionalScalarDto_ValidJson_PreservesValues(string json, string? expectedPhoneNumber)
+    {
+        var request = JsonSerializer.Deserialize<Recipe14.CreateCustomerRequestA>(json, s_optionalScalarJsonOptions);
+
+        Assert.NotNull(request);
+        request.Email.Value.Should().Be("ada@example.com");
+        request.PhoneNumber.Match<string?>(phone => phone.Value, () => null).Should().Be(expectedPhoneNumber);
     }
 
     [Fact]
