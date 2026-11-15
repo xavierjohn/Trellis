@@ -18,7 +18,9 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  # Not named `build`: the gate below looks up the Build workflow's `build` check on this
+  # commit, and a job with the same name here would be returned as the latest check instead.
+  package:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -143,7 +145,7 @@ jobs:
         echo "To publish for real, re-run with dry_run = false and approve the nuget deployment."
 
   publish:
-    needs: build
+    needs: package
     if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     environment: nuget
