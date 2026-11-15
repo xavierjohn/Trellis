@@ -58,8 +58,6 @@
     <File Path=".editorconfig" />
     <File Path="AGENTS.md" />
     <File Path="BENCHMARKS.md" />
-    <File Path="build/release-policy.ps1" />
-    <File Path="build/test-release-policy.ps1" />
     <File Path="build/test.props" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
