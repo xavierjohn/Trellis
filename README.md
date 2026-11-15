@@ -8,7 +8,7 @@
 [![.NET](https://img.shields.io/badge/.NET-11.0-purple.svg)](https://dotnet.microsoft.com/download)
 [![C#](https://img.shields.io/badge/C%23-15.0-blue.svg)](https://docs.microsoft.com/en-us/dotnet/csharp/)
 [![GitHub Stars](https://img.shields.io/github/stars/xavierjohn/Trellis?style=social)](https://github.com/xavierjohn/Trellis/stargazers)
-[![YouTube Channel Subscribers](https://img.shields.io/youtube/channel/subscribers/UC30bqiObz9ML3NMP6a0U7jw?style=social&label=%40trellisdev)](https://www.youtube.com/@trellisdev)
+[![YouTube Channel](https://img.shields.io/badge/YouTube-%40trellisdev-red?style=social&logo=youtube)](https://www.youtube.com/@trellisdev)
 [![Documentation](https://img.shields.io/badge/docs-online-blue.svg)](https://xavierjohn.github.io/Trellis/)
 
 <p align="center">
