@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - .NET 11 package compatibility baseline
+
+All 23 packable packages now validate against the published `3.0.0-alpha.721`
+baseline. Retired the 22 `PKV006` suppressions for `net10.0`: runtime packages
+deliberately require .NET 11 and no longer ship .NET 10 assets, as already reflected
+in the new baseline. The analyzer package continues to target .NET Standard 2.0.
+No new runtime or public API behavior changes.
+
 ### Fixed - reference wording that contradicted behavior
 
 Documentation and XML comments only; no runtime change. `[ResourceCollectionName]` takes effect only through `AddResourceCollectionNames(assembly)` (a reflection scan), so `AddResourceCollectionName<T>` is the trim- and AOT-safe route. A Singleton Mediator throws on the first `Send` when scope validation is on and silently captures scoped dependencies when it is off, instead of always failing the root-scope check. `Maybe<TComposite>` in a JSON DTO reads an object payload or an omitted property as `None`. The `DomainEventHandlerCascadedException` comment no longer calls the outbox "planned", and says the write is durable only when a transaction behavior committed it. The `UseOutbox` comment says events are cleared in the `SavedChanges` callback. The TRLS010 anti-pattern example now compiles.
