@@ -66,7 +66,8 @@ app.MapGet("/orders", (HttpContext context, ISender sender, CancellationToken ct
                 }),
             body: item => item))
     .WithName("Orders_List")
-    .WithInputOrigin(InputLocation.Query);
+    .WithInputOrigin(InputLocation.Query)
+    .WithPagination();
 ```
 
 **What it shows.** `HttpRequest.TryCreatePageRequest` is the ASP untrusted-input boundary: only
@@ -96,7 +97,12 @@ the application query. `SeekDefinition` owns ordering, extraction, and the match
 Do not replace the raw parser with bound `string? cursor` / `int? limit` endpoint parameters:
 MVC can normalize `?cursor=` to null, and host parsing can return 400 before Trellis produces its
 coded 422. `TryCreatePageRequest` deliberately adds no ApiExplorer/OpenAPI parameters; declare
-the two query parameters separately in endpoint metadata when documentation is required.
+them with `.WithPagination()` (or `[Pagination]` on MVC actions/controllers) when using native
+ASP.NET Core OpenAPI. The host calls `AddOpenApi()` / `MapOpenApi()` alongside its existing
+`AddTrellisAsp()` / `UseAsp()` setup. The marker adds documentation, not request binding.
+Keep custom names, default/max sizes and clamp/reject policy aligned with the parser call;
+see [pagination metadata](../trellis-api-asp.md#paginationattribute). Other OpenAPI generators
+still need their own parameter declarations.
 
 For non-unique primary sorts, change the definition rather than hand-writing a second predicate:
 

@@ -29,6 +29,8 @@ public static class HttpRequestPaginationExtensions
     /// rules, then both values are validated by <see cref="PageRequest.TryCreate"/>.
     /// This extension is usable from Minimal API handlers and MVC actions, but does not add
     /// ApiExplorer or OpenAPI parameter metadata.
+    /// Declare native OpenAPI parameters separately with <see cref="PaginationAttribute"/> or
+    /// <see cref="PaginationEndpointConventionBuilderExtensions"/>.
     /// Downstream cursor decoding remains transport-neutral; query-only endpoints should declare
     /// <see cref="InputLocation.Query"/> through endpoint input-origin metadata.
     /// </remarks>

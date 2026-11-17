@@ -11,6 +11,7 @@ using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -841,6 +842,11 @@ public static class ServiceCollectionExtensions
     /// to customize specific mappings.
     /// </para>
     /// <para>
+    /// Also configures native ASP.NET Core OpenAPI to document opted-in
+    /// <see cref="PaginationAttribute"/> metadata. The host still registers
+    /// <c>AddOpenApi</c>/<c>MapOpenApi</c>; request binding and parsing remain unchanged.
+    /// </para>
+    /// <para>
     /// <b>Does NOT register scalar-value validation.</b> If your endpoints accept request bodies
     /// containing Trellis value objects (<see cref="IScalarValue{TSelf, TPrimitive}"/>,
     /// <see cref="Maybe{T}"/>) bound from JSON / route / query, you must additionally call
@@ -923,6 +929,8 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IOptions<TrellisAspOptions>>().Value));
 
         services.TryAddSingleton<ResourceCollectionNameRegistry>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IConfigureOptions<OpenApiOptions>, PaginationOpenApiOptionsSetup>());
 
         // Scalar-value validation is NOT auto-registered. The previous behavior silently
         // mutated MvcOptions and JsonOptions, which surprised consumers who had already
