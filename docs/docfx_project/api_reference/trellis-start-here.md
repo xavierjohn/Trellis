@@ -203,5 +203,11 @@ references for discovery, including uninstalled modules. `agentdocs` installs ap
 references and removes them when approval or published guidance ends. Other repositories' packages
 (e.g. `Trellis.ServiceLevelIndicators`) ship their own references, visible only once installed.
 
-Before coding, confirm the project's package reference in its `.csproj` or `Directory.Packages.props`.
-If absent, explain what adoption would enable; do not emit code that cannot compile.
+Before coding, confirm the target project's effective `PackageReference`/`ProjectReference`
+graph, including transitive dependencies. A `PackageVersion` entry in `Directory.Packages.props`
+alone does not add a reference.
+
+If a required package is absent, name it explicitly from the selected recipe's **Requires**
+line (or the owning reference's **Package** entry), explain what it enables, and point to
+that recipe (or the relevant API section when no recipe applies). Do not generate dependent
+code until the reference is present.
