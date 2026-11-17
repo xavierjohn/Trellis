@@ -12,7 +12,7 @@ agent_description: "Shows reconstituting an aggregate in a non-EF repository wit
 ---
 # Recipe 37 — Reconstituting an aggregate without its factory (non-EF repositories)
 
-**Requires:** `Trellis.Core`, plus `Trellis.Http.Abstractions`.
+**Requires:** `Trellis.Core`, plus `Trellis.Http.Abstractions`. The repository example also requires the third-party Dapper package.
 
 ## Contents
 
@@ -42,8 +42,6 @@ public sealed class Order : Aggregate<OrderId>
         Status = OrderStatus.Draft;
     }
 
-    public static Result<Order> Create(CustomerId customerId) => /* invariant checks */ ;
-
     private Order(OrderId id, CustomerId customerId, OrderStatus status, IEnumerable<OrderLine> lines)
         : base(id)                                                // reconstitution ctor — pure assignment
     {
@@ -63,7 +61,13 @@ public sealed class Order : Aggregate<OrderId>
 
 Rehydrate the value objects (fail-loud per [Recipe 30](recipe-30-rehydration.md)), call `Reconstitute`, then cast to `IReconstitutionStampable` to restore the audit timestamps and the concurrency token in one call. `StampReconstitutedState` validates the ETag and clears any uncommitted events, so the loaded aggregate has no uncommitted events (`IsChanged == false` under the default event-based change tracking).
 
+The SQL placeholders, repository interface and row DTOs below are application-owned; replace the placeholders with queries for your store. `OrderLine.Reconstitute` follows the same assignment-only factory pattern as `Order.Reconstitute` above.
+
 ```csharp
+using System.Data;
+using Dapper;
+using Trellis;
+
 public sealed class DapperOrderRepository(IDbConnection db) : IOrderRepository
 {
     public async Task<Result<Order>> FindByIdAsync(OrderId id, CancellationToken ct)
