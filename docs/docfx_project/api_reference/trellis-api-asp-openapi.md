@@ -121,13 +121,13 @@ Its pattern lists .NET whitespace characters explicitly because ECMAScript `\s` 
 The limit schema is a positive `int32`: under `Reject`, its maximum is `Max`; under `Clamp`,
 its maximum is `Int32.MaxValue`, not the applied cap. The raw parser enforces that accepted-input
 bound through `Int32` parsing; `Max` limits `PageSize.Applied`, not `PageSize.Requested`.
-The description explains the configured cap and policy. Its schema default is the applied
-missing-limit size, `min(DefaultSize, Max)`; the description also preserves the requested
-`DefaultSize`, including when the missing default is capped under `Reject`.
+The description explains the configured cap, policy and requested `DefaultSize`.
 
-When `DefaultSize > Max`, a client that sends the schema default explicitly changes
-`PageSize.Requested` and `PageSize.WasCapped` compared with omitting the limit; only
-`PageSize.Applied` matches. With default 50 and cap 10, omission requests 50/applies 10
-and is capped, while `?limit=10` requests/applies 10 and is not capped. The applied schema
-default keeps an explicitly filled-in request valid under `Reject`; clients that need
-omission's requested-size semantics must leave the parameter absent.
+The schema default is published only when sending it explicitly is equivalent to omitting the
+limit. Under `Clamp` it is `DefaultSize`: with default 50 and cap 10, omission and `?limit=50`
+both request 50, apply 10 and report `PageSize.WasCapped`. Under `Reject` it is `DefaultSize`
+when that does not exceed `Max`; otherwise the default is omitted, because sending the value
+explicitly would be rejected and the capped applied size would change `PageSize.Requested`
+and `PageSize.WasCapped` relative to omission. With default 50, cap 10 and `Reject`, omission
+requests 50/applies 10, `?limit=10` requests/applies 10, and clients that need omission's
+requested size leave the parameter absent.

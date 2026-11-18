@@ -64,11 +64,11 @@ Accept: application/json
 GET {{host}}/api/accounts
 Accept: application/json
 
-### List accounts — explicit OpenAPI schema default (requested/applied 5, wasCapped false).
+### List accounts — explicit OpenAPI schema default (requested 10, applied 5, wasCapped true).
 ### Scalar and generated clients may send this default instead of omitting the parameter.
 # @expect status: 200
 # @expect header: Link
-GET {{host}}/api/accounts?limit=5
+GET {{host}}/api/accounts?limit=10
 Accept: application/json
 
 ### List accounts — malformed raw limit (422, format.integer at query parameter limit).

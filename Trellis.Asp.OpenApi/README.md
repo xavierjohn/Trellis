@@ -50,9 +50,9 @@ participating document; neither `AddTrellisAsp()` nor `UseAsp()` enables it auto
 - Leaves request parsing, binding, ApiExplorer parameters and input-origin inference unchanged.
 - Keeps native SDK dependencies isolated from the base ASP and ServiceDefaults packages.
 
-When the configured default exceeds the cap, the schema default is the applied size.
-Sending it explicitly preserves `Applied`, but changes `Requested` and `WasCapped` compared
-with omission; see the schema behavior reference.
+The schema default is published only when sending it explicitly equals omission: always under
+`Clamp`, and under `Reject` when the default does not exceed the cap. A `Reject` default above
+the cap is omitted from the schema; see the schema behavior reference.
 
 ## Documentation
 

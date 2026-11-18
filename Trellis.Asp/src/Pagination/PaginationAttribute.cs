@@ -32,15 +32,9 @@ public sealed class PaginationAttribute : Attribute
         int defaultSize = PageSize.Default,
         PageSizeLimitPolicy policy = PageSizeLimitPolicy.Clamp)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(cursorParameter);
-        ArgumentException.ThrowIfNullOrWhiteSpace(limitParameter);
-        if (string.Equals(cursorParameter, limitParameter, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Cursor and limit parameter names must be distinct.", nameof(limitParameter));
-        if (max is <= 0 or > PageSize.MaxApplied)
-            throw new ArgumentOutOfRangeException(nameof(max), "Max must allow over-fetching one additional row.");
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(defaultSize);
-        if (policy is not PageSizeLimitPolicy.Clamp and not PageSizeLimitPolicy.Reject)
-            throw new ArgumentOutOfRangeException(nameof(policy));
+        PaginationParameterNames.ThrowIfInvalid(cursorParameter, limitParameter);
+        // Core owns the range rules; creating a default request throws for an invalid max, default or policy.
+        _ = PageRequest.TryCreate(cursor: null, limit: null, max, defaultSize, policy);
 
         CursorParameter = cursorParameter;
         LimitParameter = limitParameter;

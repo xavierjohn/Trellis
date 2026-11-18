@@ -197,7 +197,7 @@ public sealed class PaginationOpenApiIntegrationTests
     [InlineData("/pagination-docs/mvc/capped-default", OpenApiSpecVersion.OpenApi3_0)]
     [InlineData("/pagination-docs/minimal/capped-default", null)]
     [InlineData("/pagination-docs/mvc/capped-default", null)]
-    public async Task WithPagination_CrossHost_DefaultAboveCap_DocumentsAppliedDefault(
+    public async Task WithPagination_CrossHost_RejectDefaultAboveCap_OmitsSchemaDefault(
         string path, OpenApiSpecVersion? openApiVersion)
     {
         using var host = CreateHost(openApiVersion);
@@ -206,25 +206,57 @@ public sealed class PaginationOpenApiIntegrationTests
 
         var limit = Parameter(document, path, "limit");
         var schema = limit.GetProperty("schema");
-        schema.GetProperty("default").GetInt32().Should().Be(10);
+        schema.TryGetProperty("default", out _).Should().BeFalse(
+            "the requested default exceeds the cap, so sending it explicitly would be rejected");
         schema.GetProperty("maximum").GetInt32().Should().Be(10);
         limit.GetProperty("description").GetString().Should().Contain("50").And.Contain("10");
 
+        var omitted = await ReadSizeAsync(client, path);
+        omitted.Requested.Should().Be(50);
+        omitted.Applied.Should().Be(10);
+
+        var explicitApplied = await ReadSizeAsync(client, path + "?limit=10");
+        explicitApplied.Requested.Should().Be(10);
+        explicitApplied.Applied.Should().Be(10);
+    }
+
+    [Theory]
+    [InlineData("/pagination-docs/minimal/clamp-default", OpenApiSpecVersion.OpenApi3_1)]
+    [InlineData("/pagination-docs/mvc/clamp-default", OpenApiSpecVersion.OpenApi3_1)]
+    [InlineData("/pagination-docs/minimal/clamp-default", OpenApiSpecVersion.OpenApi3_0)]
+    [InlineData("/pagination-docs/mvc/clamp-default", OpenApiSpecVersion.OpenApi3_0)]
+    [InlineData("/pagination-docs/minimal/clamp-default", null)]
+    [InlineData("/pagination-docs/mvc/clamp-default", null)]
+    public async Task WithPagination_CrossHost_ClampDefaultAboveCap_SchemaDefaultMatchesOmission(
+        string path, OpenApiSpecVersion? openApiVersion)
+    {
+        using var host = CreateHost(openApiVersion);
+        using var client = host.GetTestClient();
+        using var document = await ReadOpenApiAsync(client);
+
+        var schema = Parameter(document, path, "limit").GetProperty("schema");
+        var schemaDefault = schema.GetProperty("default").GetInt32();
+        schemaDefault.Should().Be(50);
+        schema.GetProperty("maximum").GetInt32().Should().Be(int.MaxValue);
+
+        var omitted = await ReadSizeAsync(client, path);
+        var explicitDefault = await ReadSizeAsync(client, path + "?limit=" + schemaDefault);
+
+        omitted.Should().Be((50, 10, true));
+        explicitDefault.Should().Be(omitted, "a client that fills in the schema default must see the same result");
+    }
+
+    private static async Task<(int Requested, int Applied, bool WasCapped)> ReadSizeAsync(
+        HttpClient client, string path)
+    {
         using var response = await client.GetAsync(path, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var body = JsonDocument.Parse(
             await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
         var size = body.RootElement.GetProperty("size");
-        size.GetProperty("requested").GetInt32().Should().Be(50);
-        size.GetProperty("applied").GetInt32().Should().Be(10);
-
-        using var explicitResponse = await client.GetAsync(path + "?limit=10", TestContext.Current.CancellationToken);
-        explicitResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        using var explicitBody = JsonDocument.Parse(
-            await explicitResponse.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
-        var explicitSize = explicitBody.RootElement.GetProperty("size");
-        explicitSize.GetProperty("requested").GetInt32().Should().Be(10);
-        explicitSize.GetProperty("applied").GetInt32().Should().Be(10);
+        var requested = size.GetProperty("requested").GetInt32();
+        var applied = size.GetProperty("applied").GetInt32();
+        return (requested, applied, applied < requested);
     }
 
     [Fact]
@@ -312,6 +344,10 @@ public sealed class PaginationOpenApiIntegrationTests
                             request.TryCreatePageRequest(max: 10, defaultSize: 50, policy: PageSizeLimitPolicy.Reject)
                                 .ToHttpResponse())
                             .WithPagination(max: 10, defaultSize: 50, policy: PageSizeLimitPolicy.Reject);
+                        endpoints.MapGet("/pagination-docs/minimal/clamp-default", (HttpRequest request) =>
+                            request.TryCreatePageRequest(max: 10, defaultSize: 50)
+                                .ToHttpResponse())
+                            .WithPagination(max: 10, defaultSize: 50);
                         endpoints.MapGet("/pagination-docs/minimal/no-parser", () => Results.NoContent())
                             .WithPagination();
 
@@ -352,6 +388,11 @@ public sealed class PaginationMetadataController : ControllerBase
     public Microsoft.AspNetCore.Http.IResult CappedDefault() =>
         Request.TryCreatePageRequest(max: 10, defaultSize: 50, policy: PageSizeLimitPolicy.Reject)
             .ToHttpResponse();
+
+    [HttpGet("clamp-default")]
+    [Pagination(max: 10, defaultSize: 50)]
+    public Microsoft.AspNetCore.Http.IResult ClampDefault() =>
+        Request.TryCreatePageRequest(max: 10, defaultSize: 50).ToHttpResponse();
 
     [HttpGet("no-parser")]
     public NoContentResult NoParser() => NoContent();

@@ -568,8 +568,9 @@ See [adapter setup and compatibility](../api_reference/trellis-api-asp-openapi.m
 The metadata carries cursor/limit names, default/max sizes and clamp/reject policy, but never
 binds inputs or changes parsing. Keep its settings aligned with `TryCreatePageRequest(...)`.
 Under `Clamp`, the schema accepts positive `int32` values above the applied cap; under `Reject`,
-the schema maximum is that cap. The schema default is the applied missing-limit size, while
-its description also records the requested default. More-specific endpoint/action declarations
+the schema maximum is that cap. The schema default is the requested default whenever sending
+it explicitly is equivalent to omission; under `Reject` with a default above the cap it is
+omitted, and the description records the requested default. More-specific endpoint/action declarations
 override group/controller declarations, and existing query parameters are not duplicated.
 Other OpenAPI generators need their own declarations; native registration remains host-owned.
 

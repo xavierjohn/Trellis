@@ -63,7 +63,7 @@ public class ApiHttpFileParityTests : IClassFixture<ApiHttpFileParityTests.Parit
         schema.GetProperty("format").GetString().Should().Be("int32");
         schema.GetProperty("minimum").GetInt32().Should().Be(1);
         schema.GetProperty("maximum").GetInt32().Should().Be(int.MaxValue);
-        schema.GetProperty("default").GetInt32().Should().Be(5);
+        schema.GetProperty("default").GetInt32().Should().Be(10);
         limit.GetProperty("description").GetString().Should().Contain("requests 10").And.Contain("clamped");
         var responses = operation.GetProperty("responses");
         responses.GetProperty("200").GetProperty("content").GetProperty("application/json")
@@ -75,7 +75,7 @@ public class ApiHttpFileParityTests : IClassFixture<ApiHttpFileParityTests.Parit
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task List_AccountPagination_SchemaDefaultDiffersFromOmission_PreservesAppliedSize(bool minimalApi)
+    public async Task List_AccountPagination_SchemaDefaultMatchesOmission(bool minimalApi)
     {
         using var client = minimalApi ? _fixture.Minimal.CreateClient() : _fixture.Mvc.CreateClient();
         using var document = JsonDocument.Parse(
@@ -91,12 +91,13 @@ public class ApiHttpFileParityTests : IClassFixture<ApiHttpFileParityTests.Parit
         using var explicitDefault = JsonDocument.Parse(
             await client.GetStringAsync(new Uri($"{path}?limit={appliedDefault}", UriKind.Relative), Ct));
 
-        omitted.RootElement.GetProperty("requestedLimit").GetInt32().Should().Be(10);
-        omitted.RootElement.GetProperty("appliedLimit").GetInt32().Should().Be(5);
-        omitted.RootElement.GetProperty("wasCapped").GetBoolean().Should().BeTrue();
-        explicitDefault.RootElement.GetProperty("requestedLimit").GetInt32().Should().Be(5);
-        explicitDefault.RootElement.GetProperty("appliedLimit").GetInt32().Should().Be(5);
-        explicitDefault.RootElement.GetProperty("wasCapped").GetBoolean().Should().BeFalse();
+        appliedDefault.Should().Be(10);
+        foreach (var body in new[] { omitted, explicitDefault })
+        {
+            body.RootElement.GetProperty("requestedLimit").GetInt32().Should().Be(10);
+            body.RootElement.GetProperty("appliedLimit").GetInt32().Should().Be(5);
+            body.RootElement.GetProperty("wasCapped").GetBoolean().Should().BeTrue();
+        }
     }
 
     [Theory]

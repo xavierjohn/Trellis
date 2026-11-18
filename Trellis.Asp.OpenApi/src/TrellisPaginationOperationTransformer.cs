@@ -63,10 +63,17 @@ public sealed class TrellisPaginationOperationTransformer : IOpenApiOperationTra
                 Minimum = "1",
                 Maximum = (pagination.Policy == PageSizeLimitPolicy.Reject ? pagination.Max : int.MaxValue)
                     .ToString(CultureInfo.InvariantCulture),
-                Default = JsonValue.Create(appliedDefault)
+                Default = SchemaDefault(pagination)
             }
         };
     }
+
+    // Sending the default explicitly must equal omitting it: Clamp accepts any positive value, while
+    // Reject would turn a default above the cap into a 422, so there is no honest value to publish.
+    private static JsonValue? SchemaDefault(PaginationAttribute pagination) =>
+        pagination.Policy == PageSizeLimitPolicy.Clamp || pagination.DefaultSize <= pagination.Max
+            ? JsonValue.Create(pagination.DefaultSize)
+            : null;
 
     private static void AddIfMissing(IList<IOpenApiParameter> parameters, OpenApiParameter parameter)
     {

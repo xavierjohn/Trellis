@@ -49,8 +49,8 @@ alone do not enable documentation, and the marker never enables parsing or bindi
 - OpenAPI 3.0, 3.1 and .NET 11's default 3.2 support.
 - No request-binding, ApiExplorer or input-origin side effects.
 
-When the requested default exceeds the cap, the schema default is the applied size.
-Explicitly sending it changes `Requested` and `WasCapped` compared with omission, but not `Applied`.
+The schema default is published only when sending it explicitly equals omission: always under
+`Clamp`, and under `Reject` when the default does not exceed the cap.
 
 ## Documentation
 

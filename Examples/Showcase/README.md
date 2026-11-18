@@ -125,8 +125,8 @@ The applied cap is **5**, while the requested default is **10**:
 | `/api/accounts?limit=5` | 5 | 5 | `false` |
 | `/api/accounts?limit=10` | 10 | 5 | `true` |
 
-The schema default is the applied size, **5**. Scalar or a generated client that sends it
-explicitly therefore differs from omission in requested size and capping metadata.
+The schema default is the requested default, **10**, so Scalar or a generated client that
+sends it explicitly gets the same result as omission.
 Under `Clamp`, the schema maximum describes accepted positive `int32` input, not the applied
 cap; the parameter description states the cap. Following `next.href` preserves the applied
 limit and returns the next distinct page.

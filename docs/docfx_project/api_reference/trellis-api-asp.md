@@ -276,7 +276,7 @@ case; invalid names throw `ArgumentException`. Invalid `max`, `defaultSize`, or 
 Keep the declaration's settings aligned with the explicit `TryCreatePageRequest(...)` call.
 The marker remains passive without a generator-specific adapter. The optional native adapter
 preserves existing query parameters; its [schema behavior](trellis-api-asp-openapi.md#schema-behavior)
-documents cursor whitespace rules, clamp/reject limits and requested-versus-applied defaults.
+documents cursor whitespace rules, clamp/reject limits and requested-versus-applied defaults and when a schema default is published.
 
 ### `PaginationEndpointConventionBuilderExtensions`
 

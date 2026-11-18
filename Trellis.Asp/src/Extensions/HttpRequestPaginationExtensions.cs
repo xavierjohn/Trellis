@@ -50,10 +50,7 @@ public static class HttpRequestPaginationExtensions
         PageSizeLimitPolicy policy = PageSizeLimitPolicy.Clamp)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentException.ThrowIfNullOrWhiteSpace(cursorParameter);
-        ArgumentException.ThrowIfNullOrWhiteSpace(limitParameter);
-        if (string.Equals(cursorParameter, limitParameter, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Cursor and limit parameter names must be distinct.", nameof(limitParameter));
+        PaginationParameterNames.ThrowIfInvalid(cursorParameter, limitParameter);
 
         // Validate server-owned settings before malformed query text can return a client-shaped failure.
         var defaultRequest = PageRequest.TryCreate(
