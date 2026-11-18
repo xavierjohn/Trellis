@@ -54,6 +54,7 @@ other OpenAPI generators remain host-owned.
 | Return paginated list responses | `Result<Page<T>>.ToHttpResponse(urlBuilder, bodySelector, ...)` with `(cursor, PageDirection, appliedLimit)`; the two-argument `nextUrlBuilder` convenience remains available | [`PagedResponse<TResponse>`](#pagedresponsetresponse), [`PageDirection`](#pagedirection) |
 | Build pagination links with or without API versioning | `HttpContext.PageUrl(routeName, routeValues)`; configure the optional version-aware policy once when using `Trellis.Asp.ApiVersioning` | [`HttpContextPaginationExtensions`](#httpcontextpaginationextensions) |
 | Resolve actors from requests | `AddClaimsActorProvider`, `AddNestedJsonPathClaimsActorProvider`, `AddEntraActorProvider`, or `AddDevelopmentActorProvider`. For microservices consuming gateway-minted internal JWTs, see [`Trellis.Microservices.AspNetCore`](https://github.com/xavierjohn/Trellis.Microservices) (the `TrellisInternalJwtActorProvider` types moved out of this repo in v3 cleanup). | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
+| Reject an invalid supplied Development test-actor header as a protocol 400 | Explicitly call `app.UseDevelopmentActorHeaderValidation()` before actor/identity resolution | [`DevelopmentActorApplicationBuilderExtensions`](#developmentactorapplicationbuilderextensions) |
 | Compose a system actor for background workers | `AddTrellisWorkerActor` | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
 | Bind scalar value objects from routes/query/body | `AddTrellisAspWithScalarValidation()` (or `AddTrellisAsp()` + `AddScalarValueValidation()`), plus route constraints / validation middleware as needed | [`Trellis.Asp.ModelBinding`](#namespace-trellisaspmodelbinding), [`Trellis.Asp.Validation`](#namespace-trellisaspvalidation) |
 | Collect scalar/composite JSON failures without exception-driven binding, including Native AOT | Validation scope + endpoint filter; shared Result readers and closed registrations | [Semantic JSON validation](#minimal-api-semantic-json-validation), [`ScalarValuePathTracking`](#scalarvaluepathtracking) |
@@ -1556,6 +1557,53 @@ Reads the `X-Test-Actor` header (JSON: `{ "Id": ..., "Permissions": [...], "Forb
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Throws `InvalidOperationException` whenever `!hostEnvironment.IsDevelopment()`, regardless of header presence. In Development, always returns `Maybe.From(actor)` — never `Maybe.None` — so dev workflows are unaffected by the 401 contract: `Maybe.From(Actor.Create(DefaultActorId, DefaultPermissions))` when `HttpContext` is null or the header is missing/empty, otherwise the parsed actor wrapped via `Maybe.From`. Malformed JSON throws `InvalidOperationException` by default (`ThrowOnMalformedHeader` defaults to `true`); set it to `false` to instead log a warning and fall back to the default actor. |
+
+### `DevelopmentActorApplicationBuilderExtensions`
+
+```csharp
+public static class DevelopmentActorApplicationBuilderExtensions
+{
+    public static IApplicationBuilder UseDevelopmentActorHeaderValidation(this IApplicationBuilder app);
+}
+```
+
+Explicitly opts the HTTP pipeline into strict supplied `X-Test-Actor` header validation.
+Register before actor/identity resolution, rate limiting, idempotency, or Mediator dispatch.
+The middleware applies to every request passing through it, not just authorized endpoints.
+It is not enabled by `AddDevelopmentActorProvider()` or `UseDevelopmentActorProvider()`.
+There is no new service registration, options flag, or builder slot.
+
+| Input | Strict HTTP behavior |
+| --- | --- |
+| Header absent | Continues; the provider's configured default actor still applies. |
+| Header supplied | Requires exactly one nonempty/non-whitespace value containing a JSON object. |
+| `Id` | Required nonblank JSON string; provider trimming and canonical identity are unchanged. |
+| `Permissions` / `ForbiddenPermissions` | Optional arrays containing only JSON strings; empty arrays are valid. |
+| `Attributes` | Optional object containing only JSON string values; empty objects and empty strings are valid. Attribute keys remain case-sensitive. |
+| Null known fields/elements, invalid string escapes (including in unknown fields), duplicate root or attribute properties, or incorrect known-field shapes | Rejected. Root property names are case-insensitive and must be unique; attribute keys must be unique with ordinal comparison. Unknown root properties are otherwise ignored. |
+
+Invalid supplied headers return **400** `application/problem+json` before downstream
+execution, with `code: "development-actor.header.invalid"`, `kind: "bad-request"`, an
+`errors["X-Test-Actor"]` entry, and the request path/query as `instance`. Header contents
+are not echoed. The shared Problem Details writer preserves Trellis/host customization
+and the configured `Content-Language`, and does not negotiate an XML response.
+
+This boundary policy takes precedence over `ThrowOnMalformedHeader = false` for requests
+passing through the middleware. Without the explicit opt-in, existing missing/empty
+fallback, malformed-header handling, full-actor resolution, identity-only resolution,
+and direct provider calls are unchanged. This is not authentication and is never a
+production trust boundary. Calling the extension outside Development throws
+`InvalidOperationException` while configuring the pipeline; null `app` throws
+`ArgumentNullException`. The provider's existing non-Development guard is unchanged.
+
+```csharp
+// Register AddDevelopmentActorProvider (or the existing builder slot) in Development.
+var app = builder.Build();
+if (app.Environment.IsDevelopment())
+    app.UseDevelopmentActorHeaderValidation();
+
+// Place rate limiting, idempotency, and endpoints that resolve actors after this point.
+```
 
 ### `CachingActorProvider`
 

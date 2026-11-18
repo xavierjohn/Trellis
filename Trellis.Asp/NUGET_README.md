@@ -40,6 +40,7 @@ app.MapGet("/widgets/{id}", (string id) =>
 - Supplies endpoint-builder locations for `WriteOutcome.Created` when its optional location is absent; an explicit outcome location wins.
 - Validates scalar value objects during MVC and Minimal API binding and JSON deserialization.
 - Provides claims, Entra, Easy Auth, development, caching, and worker actor-provider composition.
+- Offers opt-in Development-only strict test-actor header validation with 400 Problem Details, preserving existing provider defaults.
 - Built-in registrations expose identity-only resolution. `AddCachingActorProvider<T>()` binds both supported interfaces to one scoped wrapper with separate lazy caches; custom providers/subclasses opt in explicitly. See [registration semantics](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-asp.html#identity-only-provider-registration).
 - Maps ASP.NET Core rate-limit middleware rejections to the standard Trellis 429 Problem Details envelope, with `Retry-After` when supplied by the rejected lease.
 - Adds opt-in `Idempotency-Key` middleware with pluggable stores.
@@ -63,6 +64,14 @@ including eligible application-owned ones, as Problem Details.
 JSON options configured for scalar validation also reject missing/null required value-object
 inputs outside a request scope, such as manual `ReadFromJsonAsync` or persisted-payload reads.
 These reads throw `TrellisJsonValidationException` rather than returning invalid DTOs.
+
+After registering the Development actor provider, optionally call
+`app.UseDevelopmentActorHeaderValidation()` from `Trellis.Asp.Authorization` inside
+`if (app.Environment.IsDevelopment())`, before actor/identity resolution, rate limiting,
+idempotency, or endpoints. A missing header still uses the default actor. Supplied empty,
+repeated, malformed, or wrong-shaped headers return 400 with code
+`development-actor.header.invalid`. No provider default changes; this is not authentication.
+See [the strict header contract](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-asp.html#developmentactorapplicationbuilderextensions).
 
 For ASP.NET Core rate limiting, keep policies and partitioning in the application and call
 `options.UseTrellisRejectionHandler()` inside `AddRateLimiter(...)`. The adapter owns

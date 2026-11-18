@@ -149,6 +149,7 @@ Use this table before writing code. If a task matches a row, read that recipe fi
 | Make POST / PATCH safe under client retries with a quoted RFC 9651 `Idempotency-Key` String | [Recipe 29](recipes/recipe-29-idempotency-key.md) |
 | Render ASP.NET Core rate-limit rejections as Trellis 429 Problem Details with optional `Retry-After` | [`RateLimiterOptionsExtensions` in the ASP reference](trellis-api-asp.md#ratelimiteroptionsextensions) |
 | Partition ASP.NET rate limits by canonical identity without permission loads | [Recipe 41](recipes/recipe-41-actor-rate-limiting.md) |
+| Reject a supplied invalid Development test-actor header with 400 before actor resolution or Mediator dispatch | [Strict Development header validation](trellis-api-asp.md#developmentactorapplicationbuilderextensions) |
 | Define domain events | [Recipe 17](recipes/recipe-17-domain-events.md) |
 | Make domain events survive a crash (transactional outbox) | [Recipe 35](recipes/recipe-35-outbox.md) |
 | Publish stable integration contracts locally or through outbox/broker/Azure Service Bus | [Recipe 36](recipes/recipe-36-integration-events.md), [messaging roles](trellis-api-servicedefaults.md#messaging-setup-by-deployment-role), and [Azure registration](trellis-api-messaging-azureservicebus.md#registration) |

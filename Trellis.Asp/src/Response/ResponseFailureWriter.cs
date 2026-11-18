@@ -107,7 +107,6 @@ internal static class ResponseFailureWriter
         // request URL under Extensions["request"]. Best-effort: any malformed ResourceRef or
         // resolver error keeps the original behaviour.
         var (instance, originalRequest) = TrySynthesizeInstance(httpContext, error, requestPath, aspOptions);
-        EmitContentLanguage(httpContext, aspOptions);
 
         Microsoft.AspNetCore.Http.IResult inner;
 
@@ -194,7 +193,7 @@ internal static class ResponseFailureWriter
                 extensions: extensions);
         }
 
-        await WriteProblemJsonAsync(httpContext, inner).ConfigureAwait(false);
+        await WriteProblemJsonAsync(httpContext, inner, aspOptions).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -223,10 +222,14 @@ internal static class ResponseFailureWriter
     /// nothing else writes the response afterwards, the hook runs exactly once.
     /// </para>
     /// </remarks>
-    private static async Task WriteProblemJsonAsync(
+    internal static async Task WriteProblemJsonAsync(
         HttpContext httpContext,
-        Microsoft.AspNetCore.Http.IResult inner)
+        Microsoft.AspNetCore.Http.IResult inner,
+        TrellisAspOptions? options = null)
     {
+        EmitContentLanguage(httpContext,
+            options ?? httpContext.RequestServices.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault);
+
         // Every construction site above goes through Results.Problem or Results.ValidationProblem,
         // and both return a ProblemHttpResult — ValidationProblem differs only in carrying the
         // derived HttpValidationProblemDetails, which the runtime-typed serialization below keeps

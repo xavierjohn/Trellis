@@ -185,6 +185,7 @@ See [Cache partitioning across actors (`VaryForActor()`)](#cache-partitioning-ac
 | Resolve actors from Azure Entra ID v2.0 tokens | `AddEntraActorProvider(options?)` | [Entra ID provider](#entra-id-provider) |
 | Resolve actors from any flat-claim OIDC/JWT provider | `AddClaimsActorProvider(options?)` | [Generic claims provider](#generic-claims-provider) |
 | Inject a fake actor in Development / integration tests | `AddDevelopmentActorProvider(options?)` | [Development provider](#development-provider) |
+| Reject invalid supplied Development headers with protocol 400s | Explicit `app.UseDevelopmentActorHeaderValidation()` before actor/identity resolution | [Strict supplied-header validation](#strict-supplied-header-validation) |
 | Cache an async actor resolution per request | `AddCachingActorProvider<T>()` | [Caching wrapper](#caching-wrapper) |
 | Resolve canonical identity without permission loading | Optional `IActorIdentityProvider`; same registration when caching a supported provider | [Identity-only resolution](#identity-only-resolution) |
 | Resolve a system actor when there is no `HttpContext` (background workers) | `AddTrellisWorkerActor(systemActor)` | [Worker actor composition](#worker-actor-composition) |
@@ -213,6 +214,7 @@ See [Cache partitioning across actors (`VaryForActor()`)](#cache-partitioning-ac
 | `AddEntraActorProvider(this IServiceCollection, Action<EntraActorOptions>?)` | DI extension | Scoped `IActorProvider` → `EntraActorProvider` | Entra v2.0 (`oid`/`roles`/`tid`/`amr` ...) → `Actor`. |
 | `AddClaimsActorProvider(this IServiceCollection, Action<ClaimsActorOptions>?)` | DI extension | Scoped `IActorProvider` → `ClaimsActorProvider` | Generic flat-claim mapping (configurable `ActorIdClaim`, `PermissionsClaim`). |
 | `AddDevelopmentActorProvider(this IServiceCollection, Action<DevelopmentActorOptions>?)` | DI extension | Scoped `IActorProvider` → `DevelopmentActorProvider` | Reads `X-Test-Actor` JSON header; throws outside `IsDevelopment()`. |
+| `UseDevelopmentActorHeaderValidation(this IApplicationBuilder)` | Middleware extension | `IApplicationBuilder` | Explicit Development-only strict HTTP policy; invalid supplied headers become 400 Problem Details before downstream actor resolution. |
 | `AddEasyAuthActorProvider(this IServiceCollection, Action<ClaimsActorOptions>?)` + `AddEasyAuth(this AuthenticationBuilder, ...)` | DI extensions | Scoped `IActorProvider` → `EasyAuthClaimsActorProvider` (+ Easy Auth scheme) | Azure "Easy Auth": decode `X-MS-CLIENT-PRINCIPAL` → `HttpContext.User` → `Actor`; varies cache by the principal headers, not `Authorization`. |
 | `AddCachingActorProvider<T>(this IServiceCollection)` | DI extension | Scoped `IActorProvider` → `CachingActorProvider` wrapping `T` | Caches one resolution task per request scope. |
 | `AddTrellisWorkerActor(this IServiceCollection, Actor)` | DI extension | Scoped `IActorProvider` → `WorkerComposedActorProvider` wrapping the prior slot | Returns the supplied system actor when `IHttpContextAccessor.HttpContext` is null; delegates to the inner provider otherwise. |
@@ -421,6 +423,46 @@ else
 > `DevelopmentActorProvider.GetCurrentActorAsync` throws `InvalidOperationException` whenever `IHostEnvironment.IsDevelopment()` is `false` — even when the header is absent. Registering it in Production is a fail-fast safety net.
 
 For test clients, the `WebApplicationFactoryExtensions.CreateClientWithActor(...)` helper in `Trellis.Testing.AspNetCore` writes the same header for you; see [`trellis-api-testing-aspnetcore.md`](../api_reference/trellis-api-testing-aspnetcore.md).
+
+### Strict supplied-header validation
+
+The provider's defaults are unchanged: missing/empty headers use its configured default
+actor, and malformed nonempty headers follow `ThrowOnMalformedHeader`. To instead reject
+invalid supplied headers at the HTTP boundary, explicitly opt in after building the host:
+
+```csharp
+using Trellis.Asp.Authorization;
+
+var app = builder.Build();
+if (app.Environment.IsDevelopment())
+    app.UseDevelopmentActorHeaderValidation();
+
+// Actor-aware rate limiting, idempotency, and endpoints follow this middleware.
+```
+
+An absent header still permits the default actor. A supplied header must have exactly
+one value containing a JSON object with a nonblank string `Id`. Optional `Permissions`
+and `ForbiddenPermissions` must be arrays of strings; optional `Attributes` must be a
+string-valued object. Empty collections are valid; null known fields/elements, incorrect shapes,
+invalid string escapes (including in unknown fields), and duplicate root or attribute
+properties are rejected. Root property names are case-insensitive; attribute keys are
+ordinal/case-sensitive. Unknown root properties are otherwise ignored, and `ActorId`
+normalization remains the provider's responsibility.
+
+Rejections are 400 `application/problem+json` with code
+`development-actor.header.invalid`, kind `bad-request`, and an
+`errors["X-Test-Actor"]` entry. Header contents are not echoed. Problem Details
+customization still runs, including Trellis trace IDs when configured, and the response
+respects the configured `Content-Language`.
+
+This middleware applies to every request that passes through it and must precede
+any actor/identity resolution or Mediator dispatch. It overrides lenient fallback
+for invalid supplied headers even when `ThrowOnMalformedHeader = false`, but does
+not change direct provider calls or register an actor provider. Neither the direct
+registration nor `UseDevelopmentActorProvider()` enables it automatically; no new
+options flag, service registration, or builder slot is needed.
+Calling it outside Development throws while configuring the pipeline. This
+remains a development/testing convenience, **not production authentication**.
 
 ## Easy Auth provider (Azure App Service / Container Apps)
 
