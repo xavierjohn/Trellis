@@ -1,12 +1,12 @@
 ﻿---
 package: Trellis.Asp
 namespaces: [Trellis.Asp, Trellis.Asp.Authorization, Trellis.Asp.Idempotency, Trellis.Asp.ModelBinding, Trellis.Asp.Routing, Trellis.Asp.Validation]
-types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpRequestPaginationExtensions, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, RateLimiterOptionsExtensions, UseTrellisRejectionHandler, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
+types: [TrellisHttpResult, ToHttpResponse, AsActionResult, HttpRequestPaginationExtensions, PaginationAttribute, PaginationEndpointConventionBuilderExtensions, HttpResponseOptionsBuilder<T>, CacheControl, InputOriginAttribute, WithInputOrigin, MaybePrimitiveJsonConverter<T>, MaybePrimitiveJsonConverterFactory, MaybePrimitiveModelBinder<T>, MaybePrimitives, IProvideActorVaryHeaders, ClaimsActorProvider, NestedJsonPathClaimsActorOptions, NestedJsonPathClaimsActorProvider, EntraActorProvider, DevelopmentActorProvider, CachingActorProvider, AddTrellisProblemDetails, UseTrellisProblemDetails, RateLimiterOptionsExtensions, UseTrellisRejectionHandler, ResourceCollectionNameRegistry, ResourceCollectionNameOverride, AddResourceCollectionName, AddResourceCollectionNames, IdempotentAttribute, IdempotencyOptions, IIdempotencyStore, InMemoryIdempotencyStore, IIdempotencyScopeResolver, DefaultIdempotencyScopeResolver, AnonymousIdempotencyScopeResolver, ActorIdempotencyScopeResolver, IdempotencyReservationOutcome, IdempotencyResponseSnapshot, IdempotencyKeyParser, IdempotencyFingerprint, CapturingResponseBodyFeature, IdempotencyMiddleware, AddTrellisIdempotency, AddInMemoryIdempotencyStore, UseTrellisIdempotency, EasyAuthDefaults, EasyAuthAuthenticationExtensions, IdempotencyApplicationBuilderExtensions, IdempotencyServiceCollectionExtensions, ResourceCollectionNameServiceCollectionExtensions]
 version: v3
 last_verified: 2026-10-13
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Open when wiring ASP.NET Core endpoints that parse pagination input or return Trellis Result, WriteOutcome or Page: response mapping, Problem Details, ETags, actors and route binding."
+agent_description: "Open when parsing pagination, declaring generator-neutral metadata or wiring ASP.NET Core Result, WriteOutcome or Page responses: Problem Details, ETags, actors and scalar binding."
 ---
 # Trellis.Asp — API Reference
 
@@ -17,6 +17,15 @@ agent_description: "Open when wiring ASP.NET Core endpoints that parse paginatio
 The single supported response verb is `result.ToHttpResponse(...)`. It returns `Microsoft.AspNetCore.Http.IResult` and works in both Minimal API and MVC hosts (.NET 7+ executes `IResult` natively in MVC). For typed `ActionResult<T>` signatures, chain `.AsActionResult<T>()`. Configure protocol semantics via the fluent `HttpResponseOptionsBuilder<T>` (`WithETag`, `WithLastModified`, `Vary`, `WithCacheControl`, `Created`/`CreatedAtRoute`/`CreatedAtAction`, `EvaluatePreconditions`, `HonorPrefer`, `WithErrorMapping`, …).
 
 See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) — recipes using this package.
+
+## Optional OpenAPI integration
+
+`Trellis.Asp` and `Trellis.ServiceDefaults` have no native OpenAPI SDK dependency.
+`PaginationAttribute` / `WithPagination` are generator-neutral metadata. Native ASP.NET Core
+documentation requires the optional [`Trellis.Asp.OpenApi`](trellis-api-asp-openapi.md#setup)
+adapter and explicit transformer registration in each participating document.
+Only that adapter references `Microsoft.AspNetCore.OpenApi` 11.x and `Microsoft.OpenApi` 3.x;
+other OpenAPI generators remain host-owned.
 
 ## Use this file when
 
@@ -41,6 +50,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) �
 | Add `Cache-Control` directive (per endpoint) | `.WithCacheControl(CacheControl.NoStore())` / `.WithCacheControl(CacheControl.Public(TimeSpan.FromMinutes(5)))` / `.WithCacheControl(t => …)` | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain), [`CacheControl`](#cachecontrol) |
 | Honor `Prefer: return=minimal` | `.HonorPrefer()` on write responses | [`HttpResponseOptionsBuilder<TDomain>`](#httpresponseoptionsbuildertdomain) |
 | Parse pagination query input in MVC or Minimal APIs | `Request.TryCreatePageRequest()`; bind its `Result<PageRequest>` before dispatching the query | [`HttpRequestPaginationExtensions`](#httprequestpaginationextensions) |
+| Document pagination query parameters without binding inputs | `[Pagination]` on MVC actions/controllers, or `.WithPagination()` on Minimal API endpoints/groups; add the optional adapter for native OpenAPI | [`PaginationAttribute`](#paginationattribute), [adapter setup](trellis-api-asp-openapi.md#setup) |
 | Return paginated list responses | `Result<Page<T>>.ToHttpResponse(urlBuilder, bodySelector, ...)` with `(cursor, PageDirection, appliedLimit)`; the two-argument `nextUrlBuilder` convenience remains available | [`PagedResponse<TResponse>`](#pagedresponsetresponse), [`PageDirection`](#pagedirection) |
 | Build pagination links with or without API versioning | `HttpContext.PageUrl(routeName, routeValues)`; configure the optional version-aware policy once when using `Trellis.Asp.ApiVersioning` | [`HttpContextPaginationExtensions`](#httpcontextpaginationextensions) |
 | Resolve actors from requests | `AddClaimsActorProvider`, `AddNestedJsonPathClaimsActorProvider`, `AddEntraActorProvider`, or `AddDevelopmentActorProvider`. For microservices consuming gateway-minted internal JWTs, see [`Trellis.Microservices.AspNetCore`](https://github.com/xavierjohn/Trellis.Microservices) (the `TrellisInternalJwtActorProvider` types moved out of this repo in v3 cleanup). | [`Trellis.Asp.Authorization`](#namespace-trellisaspauthorization) |
@@ -56,7 +66,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) �
 
 - Composition root calls `AddTrellisAsp()` or `UseAsp()`.
 - Every endpoint that returns a Trellis `Result` ultimately calls `ToHttpResponse` / `AsActionResult`.
-- Pagination endpoints parse raw query values with `Request.TryCreatePageRequest()` when missing-vs-empty cursor semantics matter, and declare `cursor` / `limit` explicitly in OpenAPI because the parser adds no endpoint metadata.
+- Pagination endpoints parse raw query values with `Request.TryCreatePageRequest()` when missing-vs-empty cursor semantics matter. Declare metadata separately with `[Pagination]` / `.WithPagination()` and enable the optional adapter for native OpenAPI; the parser adds no endpoint metadata.
 - OpenAPI metadata includes the success code and every failure code listed by the product spec.
 - Supply a usable `Location` for a newly created resource when its URI differs from the request URL; a PUT that creates at the request URL can return `WriteOutcome.Created(value)` without a Location. Prefer `.WithVersionedRoute()` from `Trellis.Asp.ApiVersioning` on route/action locations to resolve the destination's mapped query/segment version. If using manual query values, include `["api-version"]` only for a versioned target and ensure it accepts that version. Test dereferencing emitted links, not just the response status.
 - `[Consumes("application/json")]` is **not** safe at the controller level when the controller has trigger-style POSTs without bodies (e.g., `POST /orders/{id}/submission`). ASP.NET Core returns `415 Unsupported Media Type` for any request without a `Content-Type` header. Apply `[Consumes]` per-action on body-bearing endpoints only, or scope it to a route convention.
@@ -228,10 +238,63 @@ already explicitly located.
 
 > [!WARNING]
 > `TryCreatePageRequest` is a parser, not a model binder or endpoint-metadata provider. It does
-> not add `cursor` or `limit` to ApiExplorer/OpenAPI. Declare those parameters in the endpoint's
-> OpenAPI metadata separately when they are part of the public contract; do not add bound
+> not add `cursor` or `limit` to ApiExplorer/OpenAPI. Use `[Pagination]` / `.WithPagination()`
+> with the optional `Trellis.Asp.OpenApi` adapter, or declare them through another generator's metadata. Do not add bound
 > `string? cursor` / `int? limit` handler parameters merely for documentation, because host
 > binding can answer malformed input before Trellis or normalize `?cursor=` to null.
+
+### `PaginationAttribute`
+
+Generator-neutral pagination metadata for MVC actions/controllers and Minimal API endpoints.
+It does not bind inputs, parse requests, change input-origin metadata, or configure a generator.
+For native OpenAPI, install [`Trellis.Asp.OpenApi`](trellis-api-asp-openapi.md#setup) and
+register its transformer in each participating document's `AddOpenApi` callback.
+`AddTrellisAsp()` / `UseAsp()` alone do not enable documentation.
+
+```csharp
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+public sealed class PaginationAttribute : Attribute
+{
+    public PaginationAttribute(
+        string cursorParameter = "cursor", string limitParameter = "limit",
+        int max = PageSize.Max, int defaultSize = PageSize.Default,
+        PageSizeLimitPolicy policy = PageSizeLimitPolicy.Clamp);
+
+    public string CursorParameter { get; }
+    public string LimitParameter { get; }
+    public int Max { get; }
+    public int DefaultSize { get; }
+    public PageSizeLimitPolicy Policy { get; }
+}
+```
+
+Apply `[Pagination]` to an MVC action/controller. Action metadata overrides controller metadata;
+endpoint metadata overrides route-group metadata. Names must be nonblank and distinct ignoring
+case; invalid names throw `ArgumentException`. Invalid `max`, `defaultSize`, or `policy` throws
+`ArgumentOutOfRangeException`, with the same configuration limits as `PageSize.TryCreate`.
+
+Keep the declaration's settings aligned with the explicit `TryCreatePageRequest(...)` call.
+The marker remains passive without a generator-specific adapter. The optional native adapter
+preserves existing query parameters; its [schema behavior](trellis-api-asp-openapi.md#schema-behavior)
+documents cursor whitespace rules, clamp/reject limits and requested-versus-applied defaults and when a schema default is published.
+
+### `PaginationEndpointConventionBuilderExtensions`
+
+```csharp
+public static class PaginationEndpointConventionBuilderExtensions
+{
+    public static TBuilder WithPagination<TBuilder>(
+        this TBuilder builder,
+        string cursorParameter = "cursor", string limitParameter = "limit",
+        int max = PageSize.Max, int defaultSize = PageSize.Default,
+        PageSizeLimitPolicy policy = PageSizeLimitPolicy.Clamp)
+        where TBuilder : IEndpointConventionBuilder;
+}
+```
+
+`WithPagination()` attaches the same `PaginationAttribute` to a Minimal API endpoint or route
+group and returns the original builder. A null builder throws `ArgumentNullException`;
+configuration validation is identical to constructing the attribute.
 
 ### `HttpResponseOptionsBuilder<TDomain>`
 
@@ -821,7 +884,7 @@ The main DI surface for `Trellis.Asp` (in folder `Extensions/`).
 | `public static IServiceCollection AddScalarValueValidationForMinimalApi(this IServiceCollection services)` | `IServiceCollection` | Configures only the Minimal API JSON pipeline. A strict subset of `AddScalarValueValidation()`, which already configures it — call **one or the other**, never both, or the JSON type-info modifier and converter factories are applied twice. Prefer `AddScalarValueValidation()` (surfaced as `UseScalarValueValidation()`) unless you want to avoid the inert `MvcOptions` / `MvcJsonOptions` callbacks in a controller-less host. |
 | `public static RouteHandlerBuilder WithScalarValueValidation(this RouteHandlerBuilder builder)` | `RouteHandlerBuilder` | Adds `ScalarValueValidationEndpointFilter` to the route handler. |
 | `public static TBuilder WithInputOrigin<TBuilder>(this TBuilder builder, InputLocation location) where TBuilder : IEndpointConventionBuilder` | `TBuilder` | Declares where validation failures reaching this endpoint without a location of their own came from, so they project as that location rather than `unknown`. Adds `InputOriginAttribute` to the endpoint; the MVC equivalent is `[InputOrigin(...)]` on the action or controller. Accepts `Body`, `Query`, or `Unspecified` to opt out of a route group's declaration; throws `ArgumentOutOfRangeException` otherwise. See [`InputOriginAttribute`](#inputoriginattribute) above. |
-| `public static IServiceCollection AddTrellisAsp(this IServiceCollection services)` | `IServiceCollection` | Registers `TrellisAspOptions` with default error mappings and `ResourceCollectionNameRegistry`. **Does NOT register scalar-value validation** — see `AddTrellisAspWithScalarValidation` or call `AddScalarValueValidation()` explicitly. The split exists so the global `MvcOptions`/`JsonOptions` mutation that scalar validation performs is opt-in instead of silent. |
+| `public static IServiceCollection AddTrellisAsp(this IServiceCollection services)` | `IServiceCollection` | Registers `TrellisAspOptions` with default error mappings and `ResourceCollectionNameRegistry`. Does not reference or register native OpenAPI; use the optional adapter explicitly. **Does NOT register scalar-value validation** — see `AddTrellisAspWithScalarValidation` or call `AddScalarValueValidation()` explicitly. The split exists so the global `MvcOptions`/`JsonOptions` mutation that scalar validation performs is opt-in instead of silent. |
 | `public static IServiceCollection AddTrellisAsp(this IServiceCollection services, Action<TrellisAspOptions> configure)` | `IServiceCollection` | Same as above, with a `MapError<TError>(...)` callback for overrides. **Calls compose** — when `AddTrellisAsp(o => ...)` is invoked more than once (e.g. by a library and the application), every `configure` delegate runs in registration order against the same `TrellisAspOptions` instance built lazily by `OptionsFactory<TrellisAspOptions>`. Same-`TError` mappings still follow last-wins, but mappings for different error types from earlier calls are preserved. |
 | `public static IServiceCollection AddTrellisAspWithScalarValidation(this IServiceCollection services)` | `IServiceCollection` | Convenience composition of `AddTrellisAsp()` and `AddScalarValueValidation()` for greenfield projects that want error mapping plus scalar-value model binding / JSON converters in a single call. |
 | `public static IServiceCollection AddTrellisAspWithScalarValidation(this IServiceCollection services, Action<TrellisAspOptions> configure)` | `IServiceCollection` | Convenience composition of `AddTrellisAsp(configure)` and `AddScalarValueValidation()`. |

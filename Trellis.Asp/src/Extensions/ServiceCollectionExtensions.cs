@@ -841,6 +841,13 @@ public static class ServiceCollectionExtensions
     /// to customize specific mappings.
     /// </para>
     /// <para>
+    /// Does not configure native ASP.NET Core OpenAPI. To document
+    /// <see cref="PaginationAttribute"/> metadata, install the optional
+    /// <c>Trellis.Asp.OpenApi</c> package and register its
+    /// <c>TrellisPaginationOperationTransformer</c> in each <c>AddOpenApi</c> callback;
+    /// request binding and parsing are unaffected.
+    /// </para>
+    /// <para>
     /// <b>Does NOT register scalar-value validation.</b> If your endpoints accept request bodies
     /// containing Trellis value objects (<see cref="IScalarValue{TSelf, TPrimitive}"/>,
     /// <see cref="Maybe{T}"/>) bound from JSON / route / query, you must additionally call
@@ -923,7 +930,6 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IOptions<TrellisAspOptions>>().Value));
 
         services.TryAddSingleton<ResourceCollectionNameRegistry>();
-
         // Scalar-value validation is NOT auto-registered. The previous behavior silently
         // mutated MvcOptions and JsonOptions, which surprised consumers who had already
         // configured their own converters / naming policies. Call AddScalarValueValidation()

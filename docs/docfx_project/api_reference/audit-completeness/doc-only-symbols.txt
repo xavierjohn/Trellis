@@ -121,6 +121,7 @@ StackExchange
 
 # --- Tooling/build vocabulary, not C# symbols.
 PackageReference
+ProjectReference
 GlobalUsings
 
 # --- Dotted-segment names surfaced by the multi-segment TRLDOC005 check ---

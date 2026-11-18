@@ -22,6 +22,7 @@ the two hosting styles side-by-side over a single, identical contract.
 | `CheckAsync` / `CheckIfAsync` preserve the account through sequential fraud and MFA checks | `Showcase.Application/Workflows/BankingWorkflow.cs` (`SecureWithdrawAsync`) |
 | `Trellis.Asp.ToHttpResponse(...).AsActionResult<T>()` mapping (MVC) | `Showcase.Mvc/Controllers/*` |
 | `Trellis.Asp.ToHttpResponseAsync(...)` mapping (Minimal API) | `Showcase.MinimalApi/Endpoints/*` |
+| **Optional pagination OpenAPI adapter** with `[Pagination]` / `.WithPagination()` and raw-query parsing | Both hosts' `Program.cs`, `AccountsController.List`, and `AccountEndpoints.MapAccountEndpoints` |
 | **Mediator pipeline** (`AddMediator` + `AddTrellisBehaviors`) | `Showcase.MinimalApi/Program.cs` |
 | **`IValidate` + FluentValidation composition** in one `ValidationBehavior` stage | `Showcase.Application/Features/SubmitBatchTransfers/*` |
 | **JSON Pointer normalization** for FluentValidation nested (`/metadata/reference`) and indexer (`/lines/0/memo`) paths (translated to MVC `metadata.reference` / `lines[0].memo` on the wire by `Trellis.Asp`) | `Showcase.Application/Features/SubmitBatchTransfers/SubmitBatchTransfersValidator.cs` |
@@ -100,6 +101,39 @@ Seed accounts (created on startup):
 | Alice    | aaaaaaa1-0000-0000-0000-000000000000    | Checking | $1,000  |
 | Alice    | aaaaaaa2-0000-0000-0000-000000000000    | Savings  | $5,000  |
 | Bob      | bbbbbbb1-0000-0000-0000-000000000000    | Checking | $250    |
+
+### Pagination in OpenAPI and Scalar
+
+Both hosts explicitly reference `Trellis.Asp.OpenApi` and register
+`TrellisPaginationOperationTransformer` in their native `AddOpenApi` callback. They retain
+a direct `Microsoft.AspNetCore.OpenApi` reference for the SDK's source-generator build targets.
+The base `Trellis.Asp` package does not depend on OpenAPI.
+
+Open `/scalar/v1` and expand **GET `/api/accounts`**, or inspect `/openapi/v1.json`.
+MVC declares `[Pagination(max: 5, defaultSize: 10)]`; the Minimal API uses
+`.WithPagination(max: 5, defaultSize: 10)`. Both document optional `cursor` and `limit`
+parameters, a non-whitespace cursor pattern, the clamp policy, and 422 Problem Details.
+Neither binds nullable query parameters for documentation: both call
+`Request.TryCreatePageRequest(max: 5, defaultSize: 10)` before passing the validated
+`PageRequest` to the shared repository.
+
+The applied cap is **5**, while the requested default is **10**:
+
+| Request | `requestedLimit` | `appliedLimit` | `wasCapped` |
+|---|---|---|---|
+| `/api/accounts` | 10 | 5 | `true` |
+| `/api/accounts?limit=5` | 5 | 5 | `false` |
+| `/api/accounts?limit=10` | 10 | 5 | `true` |
+
+The schema default is the requested default, **10**, so Scalar or a generated client that
+sends it explicitly gets the same result as omission.
+Under `Clamp`, the schema maximum describes accepted positive `int32` input, not the applied
+cap; the parameter description states the cap. Following `next.href` preserves the applied
+limit and returns the next distinct page.
+
+Try the pagination requests in `api.http`, including omitted/explicit defaults, malformed
+and repeated limits, and whitespace cursors. Invalid raw inputs return query-located
+422 Problem Details rather than host-binding 400s; a missing cursor starts at page one.
 
 ### Scalar converter smoke
 

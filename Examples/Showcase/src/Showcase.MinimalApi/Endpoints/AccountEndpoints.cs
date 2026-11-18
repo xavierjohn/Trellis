@@ -40,12 +40,11 @@ public static class AccountEndpoints
             opts.WithLink("service-desc", ApiDescriptionUrl);
 
         group.MapGet("/", (
-            int? limit,
-            string? cursor,
             IAccountRepository repo,
             LinkGenerator links,
             HttpContext http) =>
-                repo.GetPage(limit, cursor)
+                http.Request.TryCreatePageRequest(max: 5, defaultSize: 10)
+                    .Bind(repo.GetPage)
                     .ToHttpResponse(
                         nextUrlBuilder: (c, applied) =>
                             links.GetUriByName(http, "Showcase_GetAccounts",
@@ -58,7 +57,10 @@ public static class AccountEndpoints
                         body: AccountResponse.From,
                         configure: AdvertiseDescription))
             .WithName("Showcase_GetAccounts")
-            .Produces<PagedResponse<AccountResponse>>();
+            .WithInputOrigin(InputLocation.Query)
+            .WithPagination(max: 5, defaultSize: 10)
+            .Produces<PagedResponse<AccountResponse>>()
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapGet("/{id:AccountId}", (AccountId id, IAccountRepository repo) =>
             repo.GetById(id)

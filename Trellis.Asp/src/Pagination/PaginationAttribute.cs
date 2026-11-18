@@ -1,0 +1,60 @@
+namespace Trellis.Asp;
+
+/// <summary>
+/// Describes cursor pagination query parameters without binding or parsing request values.
+/// </summary>
+/// <remarks>
+/// Apply to an MVC action or controller, or use
+/// <see cref="PaginationEndpointConventionBuilderExtensions"/> for Minimal APIs.
+/// Keep these settings aligned with the explicit
+/// <see cref="HttpRequestPaginationExtensions.TryCreatePageRequest"/> call.
+/// Native OpenAPI documentation requires the optional <c>Trellis.Asp.OpenApi</c> adapter.
+/// </remarks>
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+public sealed class PaginationAttribute : Attribute
+{
+    /// <summary>Initializes a generator-neutral pagination declaration.</summary>
+    /// <param name="cursorParameter">The query parameter containing the opaque cursor.</param>
+    /// <param name="limitParameter">The query parameter containing the requested page size.</param>
+    /// <param name="max">The maximum applied page size.</param>
+    /// <param name="defaultSize">The requested page size when the limit is absent.</param>
+    /// <param name="policy">How explicitly requested page sizes above the maximum are handled.</param>
+    /// <exception cref="ArgumentException">
+    /// A parameter name is null, empty, or whitespace, or the names differ only by case.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The maximum, default size, or policy is invalid.
+    /// </exception>
+    public PaginationAttribute(
+        string cursorParameter = "cursor",
+        string limitParameter = "limit",
+        int max = PageSize.Max,
+        int defaultSize = PageSize.Default,
+        PageSizeLimitPolicy policy = PageSizeLimitPolicy.Clamp)
+    {
+        PaginationParameterNames.ThrowIfInvalid(cursorParameter, limitParameter);
+        // Core owns the range rules; creating a default request throws for an invalid max, default or policy.
+        _ = PageRequest.TryCreate(cursor: null, limit: null, max, defaultSize, policy);
+
+        CursorParameter = cursorParameter;
+        LimitParameter = limitParameter;
+        Max = max;
+        DefaultSize = defaultSize;
+        Policy = policy;
+    }
+
+    /// <summary>Gets the name of the cursor query parameter.</summary>
+    public string CursorParameter { get; }
+
+    /// <summary>Gets the name of the page-size query parameter.</summary>
+    public string LimitParameter { get; }
+
+    /// <summary>Gets the maximum applied page size.</summary>
+    public int Max { get; }
+
+    /// <summary>Gets the requested page size when no limit is supplied.</summary>
+    public int DefaultSize { get; }
+
+    /// <summary>Gets the policy for an explicitly requested size above the maximum.</summary>
+    public PageSizeLimitPolicy Policy { get; }
+}

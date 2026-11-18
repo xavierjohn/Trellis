@@ -84,6 +84,10 @@
     <Project Path="Trellis.Asp.Idempotency.Cosmos/src/Trellis.Asp.Idempotency.Cosmos.csproj" />
     <Project Path="Trellis.Asp.Idempotency.Cosmos/tests/Trellis.Asp.Idempotency.Cosmos.Tests.csproj" />
   </Folder>
+  <Folder Name="/Trellis.Asp.OpenApi/">
+    <Project Path="Trellis.Asp.OpenApi/src/Trellis.Asp.OpenApi.csproj" />
+    <Project Path="Trellis.Asp.OpenApi/tests/Trellis.Asp.OpenApi.Tests.csproj" />
+  </Folder>
   <Folder Name="/Trellis.Authorization/">
     <Project Path="Trellis.Authorization/src/Trellis.Authorization.csproj" />
     <Project Path="Trellis.Authorization/tests/Trellis.Authorization.Tests.csproj" />

@@ -29,6 +29,8 @@ public static class HttpRequestPaginationExtensions
     /// rules, then both values are validated by <see cref="PageRequest.TryCreate"/>.
     /// This extension is usable from Minimal API handlers and MVC actions, but does not add
     /// ApiExplorer or OpenAPI parameter metadata.
+    /// Declare native OpenAPI parameters separately with <see cref="PaginationAttribute"/> or
+    /// <see cref="PaginationEndpointConventionBuilderExtensions"/>.
     /// Downstream cursor decoding remains transport-neutral; query-only endpoints should declare
     /// <see cref="InputLocation.Query"/> through endpoint input-origin metadata.
     /// </remarks>
@@ -48,10 +50,7 @@ public static class HttpRequestPaginationExtensions
         PageSizeLimitPolicy policy = PageSizeLimitPolicy.Clamp)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentException.ThrowIfNullOrWhiteSpace(cursorParameter);
-        ArgumentException.ThrowIfNullOrWhiteSpace(limitParameter);
-        if (string.Equals(cursorParameter, limitParameter, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Cursor and limit parameter names must be distinct.", nameof(limitParameter));
+        PaginationParameterNames.ThrowIfInvalid(cursorParameter, limitParameter);
 
         // Validate server-owned settings before malformed query text can return a client-shaped failure.
         var defaultRequest = PageRequest.TryCreate(

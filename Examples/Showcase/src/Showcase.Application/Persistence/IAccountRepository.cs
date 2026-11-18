@@ -12,13 +12,12 @@ public interface IAccountRepository
     IReadOnlyList<BankAccount> All();
 
     /// <summary>
-    /// Returns at most <paramref name="limit"/> accounts after <paramref name="cursor"/> (or
-    /// from the start when <paramref name="cursor"/> is <c>null</c>), ordered by
-    /// <see cref="AccountId"/> ascending. The server applies a hard cap of 5 regardless of
-    /// the requested limit. A malformed cursor produces <see cref="Error.InvalidInput"/>
+    /// Returns accounts for the validated <paramref name="request"/>, ordered by
+    /// <see cref="AccountId"/> ascending and bounded by <see cref="PageSize.Applied"/>.
+    /// A malformed continuation token produces <see cref="Error.InvalidInput"/>
     /// carrying a field violation on <c>cursor</c>.
     /// </summary>
-    Result<Page<BankAccount>> GetPage(int? limit, string? cursor);
+    Result<Page<BankAccount>> GetPage(PageRequest request);
 }
 
 /// <summary>
@@ -65,12 +64,7 @@ public sealed class InMemoryAccountRepository : IAccountRepository
         }
     }
 
-    private const int ServerCap = 5;
-
-    public Result<Page<BankAccount>> GetPage(int? limit, string? cursor) =>
-        PageRequest.TryCreate(cursor, limit, max: ServerCap, defaultSize: 10).Bind(GetPage);
-
-    private Result<Page<BankAccount>> GetPage(PageRequest request) =>
+    public Result<Page<BankAccount>> GetPage(PageRequest request) =>
         request.Decode(CursorCodec.Scalar<Guid>()).Map(boundary =>
         {
             Guid? afterId = boundary.AsNullable();

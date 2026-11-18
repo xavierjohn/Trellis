@@ -57,7 +57,39 @@
 GET {{host}}/api/accounts?limit=10
 Accept: application/json
 
-### List accounts — follow the `next` cursor returned by the previous request.
+### List accounts — omit limit (requested default 10, applied cap 5, wasCapped true).
+### Compare with the explicit OpenAPI schema default in the next request.
+# @expect status: 200
+# @expect header: Link
+GET {{host}}/api/accounts
+Accept: application/json
+
+### List accounts — explicit OpenAPI schema default (requested 10, applied 5, wasCapped true).
+### Scalar and generated clients may send this default instead of omitting the parameter.
+# @expect status: 200
+# @expect header: Link
+GET {{host}}/api/accounts?limit=10
+Accept: application/json
+
+### List accounts — malformed raw limit (422, format.integer at query parameter limit).
+# @expect status: 422
+# @expect content-type: application/problem+json
+GET {{host}}/api/accounts?limit=bad
+Accept: application/json
+
+### List accounts — repeated raw limit (422; the parameter may occur at most once).
+# @expect status: 422
+# @expect content-type: application/problem+json
+GET {{host}}/api/accounts?limit=1&limit=2
+Accept: application/json
+
+### List accounts — whitespace cursor is invalid, not the first page (422, cursor.malformed).
+# @expect status: 422
+# @expect content-type: application/problem+json
+GET {{host}}/api/accounts?cursor=%20
+Accept: application/json
+
+### List accounts — follow the `next` cursor returned by a successful list request above.
 ### Replace the placeholder below with the value of `next.cursor` from the
 ### body (or just GET the URL from the `Link: <…>; rel="next"` header).
 ### (Under automated replay the placeholder is still sent verbatim, which is
@@ -90,6 +122,8 @@ Accept: application/json
 ### this request fails and the advertisement above is revealed as dangling.
 ### Parity is status-only: both hosts serve a description, but MVC and Minimal API
 ### legitimately describe themselves differently, so the bodies are not comparable.
+### GET /api/accounts documents the optional adapter's cursor pattern, applied default 5,
+### requested default 10, applied cap 5 and clamp policy without binding query parameters.
 ### @parity: status-only
 # @expect status: 200
 GET {{host}}/openapi/v1.json

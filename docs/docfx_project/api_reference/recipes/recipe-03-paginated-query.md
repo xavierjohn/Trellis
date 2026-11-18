@@ -1,9 +1,9 @@
 ﻿---
 name: recipe-03-paginated-query
 package: Trellis (cross-package recipes)
-namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator]
+namespaces: [Trellis, Trellis.Asp, Trellis.Asp.OpenApi, Trellis.EntityFrameworkCore, Trellis.Mediator]
 types: [recipes]
-related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
+related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-asp-openapi.md, trellis-api-efcore.md, trellis-api-mediator.md]
 version: v3
 last_verified: 2026-10-22
 audience: [llm]
@@ -12,7 +12,7 @@ agent_description: "Shows a query handler that returns Page with a cursor. Use w
 ---
 # Recipe 3 — Query handler returning `Page<T>` (paginated list with cursor)
 
-**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.Mediator`.
+**Requires:** `Trellis.Core`, plus `Trellis.Asp`, `Trellis.EntityFrameworkCore`, `Trellis.Mediator`; optional native OpenAPI documentation also requires `Trellis.Asp.OpenApi` and a direct host reference to `Microsoft.AspNetCore.OpenApi` 11.x.
 
 ## Contents
 
@@ -66,7 +66,8 @@ app.MapGet("/orders", (HttpContext context, ISender sender, CancellationToken ct
                 }),
             body: item => item))
     .WithName("Orders_List")
-    .WithInputOrigin(InputLocation.Query);
+    .WithInputOrigin(InputLocation.Query)
+    .WithPagination();
 ```
 
 **What it shows.** `HttpRequest.TryCreatePageRequest` is the ASP untrusted-input boundary: only
@@ -96,7 +97,25 @@ the application query. `SeekDefinition` owns ordering, extraction, and the match
 Do not replace the raw parser with bound `string? cursor` / `int? limit` endpoint parameters:
 MVC can normalize `?cursor=` to null, and host parsing can return 400 before Trellis produces its
 coded 422. `TryCreatePageRequest` deliberately adds no ApiExplorer/OpenAPI parameters; declare
-the two query parameters separately in endpoint metadata when documentation is required.
+them with `.WithPagination()` (or `[Pagination]` on MVC actions/controllers). The metadata
+is generator-neutral; native documentation additionally requires the optional
+`Trellis.Asp.OpenApi` package, a direct host reference to `Microsoft.AspNetCore.OpenApi` 11.x
+for its source-generator build targets, and explicit registration for each participating document:
+
+```csharp
+using Trellis.Asp.OpenApi;
+
+builder.Services.AddOpenApi("v1", options =>
+    options.AddOperationTransformer<TrellisPaginationOperationTransformer>());
+```
+
+The host also calls `MapOpenApi()` alongside its existing `AddTrellisAsp()` / `UseAsp()`
+setup. Those Trellis registrations do not reference or enable OpenAPI themselves.
+The marker enables neither request binding nor parsing.
+Keep custom names, default/max sizes and clamp/reject policy aligned with the parser call;
+see [pagination metadata](../trellis-api-asp.md#paginationattribute). Other OpenAPI generators
+still need their own parameter declarations. See [adapter setup](../trellis-api-asp-openapi.md#setup)
+for dependency compatibility and per-document behavior.
 
 For non-unique primary sorts, change the definition rather than hand-writing a second predicate:
 

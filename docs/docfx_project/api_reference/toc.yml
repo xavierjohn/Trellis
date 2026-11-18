@@ -106,6 +106,8 @@
       href: trellis-api-asp.md
     - name: Trellis.Asp.ApiVersioning
       href: trellis-api-asp-apiversioning.md
+    - name: Trellis.Asp.OpenApi
+      href: trellis-api-asp-openapi.md
     - name: Trellis.Authorization
       href: trellis-api-authorization.md
     - name: Trellis.Mediator
