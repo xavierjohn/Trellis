@@ -8,6 +8,30 @@ using Microsoft.OpenApi;
 
 public sealed class TrellisPaginationOperationTransformerTests
 {
+    [Fact]
+    public async Task TransformAsync_ReadOnlyParameters_CopiesThemAndPreservesExistingDefinitions()
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var context = new OpenApiOperationTransformerContext
+        {
+            DocumentName = "v1",
+            ApplicationServices = services,
+            Description = new ApiDescription
+            {
+                ActionDescriptor = new ActionDescriptor { EndpointMetadata = [new PaginationAttribute()] }
+            }
+        };
+        var existing = new OpenApiParameter { Name = "filter", In = ParameterLocation.Query };
+        var operation = new OpenApiOperation { Parameters = new IOpenApiParameter[] { existing } };
+        var transformer = new TrellisPaginationOperationTransformer();
+
+        await transformer.TransformAsync(operation, context, TestContext.Current.CancellationToken);
+
+        operation.Parameters.Should().NotBeNull();
+        operation.Parameters!.Select(parameter => parameter.Name).Should().Equal("filter", "cursor", "limit");
+        operation.Parameters[0].Should().BeSameAs(existing);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

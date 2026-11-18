@@ -27,7 +27,7 @@ public sealed class TrellisPaginationOperationTransformer : IOpenApiOperationTra
         if (pagination is null)
             return Task.CompletedTask;
 
-        var parameters = operation.Parameters ??= [];
+        var parameters = MutableParameters(operation);
         AddIfMissing(parameters, new OpenApiParameter
         {
             Name = pagination.CursorParameter,
@@ -45,6 +45,12 @@ public sealed class TrellisPaginationOperationTransformer : IOpenApiOperationTra
         AddIfMissing(parameters, CreateLimitParameter(pagination));
         return Task.CompletedTask;
     }
+
+    // An earlier transformer may have assigned an array or other fixed-size list.
+    private static IList<IOpenApiParameter> MutableParameters(OpenApiOperation operation) =>
+        operation.Parameters is { IsReadOnly: false } mutable
+            ? mutable
+            : operation.Parameters = [.. operation.Parameters ?? []];
 
     private static OpenApiParameter CreateLimitParameter(PaginationAttribute pagination)
     {

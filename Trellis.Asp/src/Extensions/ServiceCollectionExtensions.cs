@@ -841,9 +841,11 @@ public static class ServiceCollectionExtensions
     /// to customize specific mappings.
     /// </para>
     /// <para>
-    /// Also configures native ASP.NET Core OpenAPI to document opted-in
-    /// <see cref="PaginationAttribute"/> metadata. The host still registers
-    /// <c>AddOpenApi</c>/<c>MapOpenApi</c>; request binding and parsing remain unchanged.
+    /// Does not configure native ASP.NET Core OpenAPI. To document
+    /// <see cref="PaginationAttribute"/> metadata, install the optional
+    /// <c>Trellis.Asp.OpenApi</c> package and register its
+    /// <c>TrellisPaginationOperationTransformer</c> in each <c>AddOpenApi</c> callback;
+    /// request binding and parsing are unaffected.
     /// </para>
     /// <para>
     /// <b>Does NOT register scalar-value validation.</b> If your endpoints accept request bodies

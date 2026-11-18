@@ -102,7 +102,8 @@ public sealed class TrellisPaginationOperationTransformer : IOpenApiOperationTra
 Action/endpoint declarations therefore override controller/route-group declarations.
 Unmarked operations, or descriptions without an action descriptor or endpoint metadata,
 are left unchanged. Existing query parameters are preserved case-insensitively rather than
-duplicated or overwritten. The transformation completes synchronously.
+duplicated or overwritten. A fixed-size or read-only parameter list assigned by an earlier
+transformer is copied to a mutable list first. The transformation completes synchronously.
 
 This is documentation only: it does not bind or parse requests, configure the parser,
 add ApiExplorer parameter descriptions, or change Trellis input-origin inference.
