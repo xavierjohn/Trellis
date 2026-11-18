@@ -1,24 +1,28 @@
-namespace Trellis.Asp;
+namespace Trellis.Asp.OpenApi;
 
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
-internal sealed class PaginationOpenApiOptionsSetup : IConfigureNamedOptions<OpenApiOptions>
+/// <summary>
+/// Documents cursor and limit query parameters declared by <see cref="PaginationAttribute"/>.
+/// </summary>
+/// <remarks>
+/// Register with <c>options.AddOperationTransformer&lt;TrellisPaginationOperationTransformer&gt;()</c>
+/// inside the host's <c>AddOpenApi</c> callback for each participating document.
+/// This transformer does not bind or parse request values, change input-origin metadata,
+/// or overwrite existing query parameters.
+/// </remarks>
+public sealed class TrellisPaginationOperationTransformer : IOpenApiOperationTransformer
 {
-    public void Configure(OpenApiOptions options) => Configure(Options.DefaultName, options);
-
-    public void Configure(string? name, OpenApiOptions options) =>
-        options.AddOperationTransformer(TransformAsync);
-
-    private static Task TransformAsync(
+    /// <inheritdoc />
+    public Task TransformAsync(
         OpenApiOperation operation,
         OpenApiOperationTransformerContext context,
         CancellationToken cancellationToken)
     {
-        var pagination = context.Description.ActionDescriptor.EndpointMetadata
+        var pagination = context.Description.ActionDescriptor?.EndpointMetadata?
             .OfType<PaginationAttribute>().LastOrDefault();
         if (pagination is null)
             return Task.CompletedTask;
@@ -33,7 +37,9 @@ internal sealed class PaginationOpenApiOptionsSetup : IConfigureNamedOptions<Ope
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                MinLength = 1
+                MinLength = 1,
+                // Match .NET whitespace rules, not ECMAScript's different \s character set.
+                Pattern = @"[^\u0009-\u000D\u0020\u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]"
             }
         });
         AddIfMissing(parameters, CreateLimitParameter(pagination));

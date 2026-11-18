@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TrellisApiRefName>asp-openapi</TrellisApiRefName>
+    <Description>Optional native ASP.NET Core OpenAPI adapter for Trellis.Asp pagination metadata. Explicitly register TrellisPaginationOperationTransformer to document cursor and limit query parameters without binding inputs or adding OpenAPI dependencies to Trellis.Asp.</Description>
+    <PackageTags>trellis;aspnetcore;openapi;pagination;cursor;minimal-api;mvc</PackageTags>
+    <IsAotCompatible>true</IsAotCompatible>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- A new package has no published version to use as an API compatibility baseline. -->
+    <PackageValidationBaselineVersion></PackageValidationBaselineVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Trellis.Asp\src\Trellis.Asp.csproj" />
+  </ItemGroup>
+</Project>

@@ -8,11 +8,12 @@ namespace Trellis.Asp;
 /// <see cref="PaginationEndpointConventionBuilderExtensions"/> for Minimal APIs.
 /// Keep these settings aligned with the explicit
 /// <see cref="HttpRequestPaginationExtensions.TryCreatePageRequest"/> call.
+/// Native OpenAPI documentation requires the optional <c>Trellis.Asp.OpenApi</c> adapter.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 public sealed class PaginationAttribute : Attribute
 {
-    /// <summary>Initializes a pagination declaration for native ASP.NET Core OpenAPI.</summary>
+    /// <summary>Initializes a generator-neutral pagination declaration.</summary>
     /// <param name="cursorParameter">The query parameter containing the opaque cursor.</param>
     /// <param name="limitParameter">The query parameter containing the requested page size.</param>
     /// <param name="max">The maximum applied page size.</param>

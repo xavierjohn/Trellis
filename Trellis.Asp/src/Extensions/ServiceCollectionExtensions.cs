@@ -11,7 +11,6 @@ using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -929,9 +928,6 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<IOptions<TrellisAspOptions>>().Value));
 
         services.TryAddSingleton<ResourceCollectionNameRegistry>();
-        services.TryAddEnumerable(
-            ServiceDescriptor.Singleton<IConfigureOptions<OpenApiOptions>, PaginationOpenApiOptionsSetup>());
-
         // Scalar-value validation is NOT auto-registered. The previous behavior silently
         // mutated MvcOptions and JsonOptions, which surprised consumers who had already
         // configured their own converters / naming policies. Call AddScalarValueValidation()

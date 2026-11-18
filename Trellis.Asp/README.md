@@ -10,6 +10,10 @@ ASP.NET Core integration for mapping Trellis results to HTTP, binding scalar val
 dotnet add package Trellis.Asp
 ```
 
+`Trellis.Asp` has no native OpenAPI SDK dependency. For pagination documentation with native
+ASP.NET Core OpenAPI, install the optional [Trellis.Asp.OpenApi](../Trellis.Asp.OpenApi/README.md)
+adapter and explicitly register its transformer. Other generators remain host-owned.
+
 ## Quick Example
 
 ```csharp
@@ -22,13 +26,13 @@ app.MapGet("/widgets/{id}", (string id) =>
     Result.Ok(id).ToHttpResponse());
 ```
 
-`AddTrellisAsp()` registers Result-to-HTTP mapping and support for opt-in pagination OpenAPI metadata. Use `AddTrellisAspWithScalarValidation()` when the application also binds Trellis scalar value objects from route, query, or JSON input.
+`AddTrellisAsp()` registers Result-to-HTTP mapping, not OpenAPI generation. Use `AddTrellisAspWithScalarValidation()` when the application also binds Trellis scalar value objects from route, query, or JSON input.
 
 ## Key Features
 
 - Converts `Result<T>`, `Result<Unit>`, `Result<Page<T>>`, and `Result<WriteOutcome<T>>` into consistent ASP.NET Core responses.
 - Parses raw cursor/limit query input into `PageRequest` consistently across MVC and Minimal APIs without collapsing an empty cursor into absence.
-- Documents pagination names, defaults and limits through `[Pagination]` / `.WithPagination()` in native ASP.NET Core OpenAPI, without binding request parameters.
+- Declares generator-neutral pagination names, defaults and limits through `[Pagination]` / `.WithPagination()` without binding request parameters; the optional OpenAPI adapter renders them.
 - Builds named-route pagination URLs through `HttpContext.PageUrl(...)` without an API-versioning dependency.
 - Caches pagination endpoint discovery and compatible route groups until routing changes, without caching request values or selected versions.
 - Emits RFC 9457 Problem Details for typed Trellis failures.
@@ -55,13 +59,14 @@ Default failure mappings include 401 for `AuthenticationRequired`, 403 for `Forb
 - On .NET 11, fixed-window, sliding-window and token-bucket limiters normally supply retry estimates; concurrency limiters do not. Queue eviction or limiter disposal can also omit retry advice. Clients must still handle a 429 without the header; Trellis does not invent a fallback delay. See [client retry guidance](../docs/docfx_project/api_reference/trellis-api-asp.md#ratelimiteroptionsextensions) for bounded backoff, jitter and retry-safety considerations.
 - Idempotency requires `AddTrellisIdempotency(...)`, exactly one store registration, `app.UseTrellisIdempotency()`, and `[Idempotent]` on opted-in endpoints.
 - `PageUrl` is part of this package. Versioned hosts add `Trellis.Asp.ApiVersioning` and enable `AddTrellisAsp(o => o.UseVersionedPageUrls())` (or the existing `UseAsp` callback) once. Typed pins and `WithVersionedRoute()` remain optional-package helpers.
-- Pagination OpenAPI metadata requires the host's `AddOpenApi()` / `MapOpenApi()` setup. Keep its settings aligned with `TryCreatePageRequest(...)`; parsing and input-origin declarations remain separate. See [pagination metadata](../docs/docfx_project/api_reference/trellis-api-asp.md#paginationattribute).
+- Native pagination documentation requires `Trellis.Asp.OpenApi`, a direct host reference to `Microsoft.AspNetCore.OpenApi` 11.x, its transformer in each participating `AddOpenApi()` callback, and `MapOpenApi()`. Keep metadata settings aligned with `TryCreatePageRequest(...)`; parsing and input-origin declarations remain separate. See [adapter setup](../docs/docfx_project/api_reference/trellis-api-asp-openapi.md#setup).
 
 ## Documentation
 
 - [Package API reference](../docs/docfx_project/api_reference/trellis-api-asp.md)
 - [ASP.NET Core integration guide](https://xavierjohn.github.io/Trellis/articles/integration-aspnet.html)
 - [API-versioning package](https://www.nuget.org/packages/Trellis.Asp.ApiVersioning)
+- [Optional native OpenAPI adapter](../Trellis.Asp.OpenApi/README.md)
 
 ## Development
 

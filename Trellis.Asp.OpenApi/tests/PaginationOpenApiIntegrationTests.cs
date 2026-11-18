@@ -1,7 +1,8 @@
-namespace Trellis.Asp.Tests;
+namespace Trellis.Asp.OpenApi.Tests;
 
 using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -10,21 +11,34 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi;
+using Trellis.Testing;
 
 public sealed class PaginationOpenApiIntegrationTests
 {
+    private static readonly string[] DocumentNames = ["v1", "v2"];
+
     [Theory]
-    [InlineData("v1", "/pagination-docs/minimal")]
-    [InlineData("v2", "/pagination-docs/minimal")]
-    [InlineData("v1", "/pagination-docs/mvc")]
-    [InlineData("v2", "/pagination-docs/mvc")]
+    [InlineData("v1", "/pagination-docs/minimal", OpenApiSpecVersion.OpenApi3_1)]
+    [InlineData("v2", "/pagination-docs/minimal", OpenApiSpecVersion.OpenApi3_1)]
+    [InlineData("v1", "/pagination-docs/mvc", OpenApiSpecVersion.OpenApi3_1)]
+    [InlineData("v2", "/pagination-docs/mvc", OpenApiSpecVersion.OpenApi3_1)]
+    [InlineData("v1", "/pagination-docs/minimal", OpenApiSpecVersion.OpenApi3_0)]
+    [InlineData("v1", "/pagination-docs/mvc", OpenApiSpecVersion.OpenApi3_0)]
+    [InlineData("v1", "/pagination-docs/minimal", null)]
+    [InlineData("v1", "/pagination-docs/mvc", null)]
     public async Task WithPagination_CrossHost_NamedDocuments_EmitsOptionalQueryParameters(
-        string document, string path)
+        string document, string path, OpenApiSpecVersion? openApiVersion)
     {
-        using var host = CreateHost();
+        using var host = CreateHost(openApiVersion);
         using var client = host.GetTestClient();
         using var body = await ReadOpenApiAsync(client, document);
 
+        body.RootElement.GetProperty("openapi").GetString().Should().StartWith(openApiVersion switch
+        {
+            OpenApiSpecVersion.OpenApi3_0 => "3.0.",
+            OpenApiSpecVersion.OpenApi3_1 => "3.1.",
+            _ => "3.2."
+        });
         var parameters = Parameters(body, path);
         parameters.Should().HaveCount(2);
         parameters.Should().OnlyContain(parameter => parameter.GetProperty("in").GetString() == "query");
@@ -43,6 +57,63 @@ public sealed class PaginationOpenApiIntegrationTests
         schema.GetProperty("maximum").GetInt32().Should().Be(int.MaxValue);
         schema.GetProperty("default").GetInt32().Should().Be(PageSize.Default);
         limit.GetProperty("description").GetString().Should().Contain("100").And.Contain("clamped");
+    }
+
+    [Theory]
+    [InlineData("", false)]
+    [InlineData(" ", false)]
+    [InlineData(" \t\r\n", false)]
+    [InlineData("\u0085", false)]
+    [InlineData("\u00A0", false)]
+    [InlineData("\u3000", false)]
+    [InlineData("\uFEFF", true)]
+    [InlineData(" opaque ", true)]
+    public async Task WithPagination_CursorSchema_Whitespace_MatchesParser(string token, bool valid)
+    {
+        using var host = CreateHost();
+        using var client = host.GetTestClient();
+        using var body = await ReadOpenApiAsync(client);
+        var schema = Parameter(body, "/pagination-docs/minimal", "cursor").GetProperty("schema");
+
+        if (valid)
+            Cursor.TryCreate(token).Should().BeSuccess();
+        else
+            Cursor.TryCreate(token).Should().BeFailure();
+
+        Regex.IsMatch(token, schema.GetProperty("pattern").GetString()!, RegexOptions.CultureInvariant)
+            .Should().Be(valid);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AddTrellisAsp_RegistrationOrder_NamedDocuments_EmitsPaginationParameters(
+        bool registerAspFirst)
+    {
+        using var host = CreateHost(registerAspFirst: registerAspFirst);
+        using var client = host.GetTestClient();
+
+        foreach (var document in DocumentNames)
+        {
+            using var body = await ReadOpenApiAsync(client, document);
+            Parameters(body, "/pagination-docs/minimal").Select(parameter =>
+                parameter.GetProperty("name").GetString()).Should().Equal(["cursor", "limit"]);
+        }
+    }
+
+    [Theory]
+    [InlineData("/pagination-docs/minimal")]
+    [InlineData("/pagination-docs/mvc")]
+    public async Task TransformAsync_NamedDocuments_UnregisteredDocument_LeavesParametersUnchanged(string path)
+    {
+        using var host = CreateHost(paginationDocument: "v1");
+        using var client = host.GetTestClient();
+        using var enabled = await ReadOpenApiAsync(client, "v1");
+        using var disabled = await ReadOpenApiAsync(client, "v2");
+
+        Parameters(enabled, path).Select(parameter => parameter.GetProperty("name").GetString())
+            .Should().Equal(["cursor", "limit"]);
+        Parameters(disabled, path).Should().BeEmpty();
     }
 
     [Theory]
@@ -120,11 +191,16 @@ public sealed class PaginationOpenApiIntegrationTests
     }
 
     [Theory]
-    [InlineData("/pagination-docs/minimal/capped-default")]
-    [InlineData("/pagination-docs/mvc/capped-default")]
-    public async Task WithPagination_CrossHost_DefaultAboveCap_DocumentsAppliedDefault(string path)
+    [InlineData("/pagination-docs/minimal/capped-default", OpenApiSpecVersion.OpenApi3_1)]
+    [InlineData("/pagination-docs/mvc/capped-default", OpenApiSpecVersion.OpenApi3_1)]
+    [InlineData("/pagination-docs/minimal/capped-default", OpenApiSpecVersion.OpenApi3_0)]
+    [InlineData("/pagination-docs/mvc/capped-default", OpenApiSpecVersion.OpenApi3_0)]
+    [InlineData("/pagination-docs/minimal/capped-default", null)]
+    [InlineData("/pagination-docs/mvc/capped-default", null)]
+    public async Task WithPagination_CrossHost_DefaultAboveCap_DocumentsAppliedDefault(
+        string path, OpenApiSpecVersion? openApiVersion)
     {
-        using var host = CreateHost();
+        using var host = CreateHost(openApiVersion);
         using var client = host.GetTestClient();
         using var document = await ReadOpenApiAsync(client);
 
@@ -141,6 +217,14 @@ public sealed class PaginationOpenApiIntegrationTests
         var size = body.RootElement.GetProperty("size");
         size.GetProperty("requested").GetInt32().Should().Be(50);
         size.GetProperty("applied").GetInt32().Should().Be(10);
+
+        using var explicitResponse = await client.GetAsync(path + "?limit=10", TestContext.Current.CancellationToken);
+        explicitResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var explicitBody = JsonDocument.Parse(
+            await explicitResponse.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
+        var explicitSize = explicitBody.RootElement.GetProperty("size");
+        explicitSize.GetProperty("requested").GetInt32().Should().Be(10);
+        explicitSize.GetProperty("applied").GetInt32().Should().Be(10);
     }
 
     [Fact]
@@ -185,17 +269,31 @@ public sealed class PaginationOpenApiIntegrationTests
             await response.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
     }
 
-    private static IHost CreateHost() =>
+    private static IHost CreateHost(
+        OpenApiSpecVersion? openApiVersion = OpenApiSpecVersion.OpenApi3_1,
+        bool registerAspFirst = true,
+        string? paginationDocument = null) =>
         Host.CreateDefaultBuilder()
             .ConfigureWebHostDefaults(web => web
                 .UseTestServer()
                 .ConfigureServices(services =>
                 {
                     services.AddProblemDetails();
-                    services.AddTrellisAsp();
-                    services.AddOpenApi("v1", options => options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);
-                    services.AddOpenApi("v2", options => options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);
-                    services.AddTrellisAsp();
+                    if (registerAspFirst)
+                        services.AddTrellisAsp();
+                    foreach (var document in DocumentNames)
+                    {
+                        services.AddOpenApi(document, options =>
+                        {
+                            if (openApiVersion is { } version)
+                                options.OpenApiVersion = version;
+                            if (paginationDocument is null || paginationDocument == document)
+                                options.AddOperationTransformer<TrellisPaginationOperationTransformer>();
+                        });
+                    }
+
+                    if (!registerAspFirst)
+                        services.AddTrellisAsp();
                     services.AddControllers().AddApplicationPart(typeof(PaginationMetadataController).Assembly);
                 })
                 .Configure(app =>

@@ -27,7 +27,7 @@ Problem Details, ETags, `Prefer`, paginated envelopes) using the single verb
 | Honor `Prefer: return=minimal` / `return=representation` | `opts.HonorPrefer()` on a `WriteOutcome` response | [Prefer header](#prefer-header) |
 | Emit `201 Created` with a `Location` header | `opts.CreatedAtRoute(name, values)` (AOT-safe) / `Created(...)` / `CreatedAtAction(...)` | [Created responses](#created-responses) |
 | Parse cursor/limit query input consistently in MVC and Minimal APIs | `Request.TryCreatePageRequest()` | [Pagination](#pagination) |
-| Document pagination without adding bound parameters | `[Pagination]` / `.WithPagination()` with native ASP.NET Core OpenAPI | [Pagination](#pagination) |
+| Document pagination without adding bound parameters | `[Pagination]` / `.WithPagination()` plus the optional `Trellis.Asp.OpenApi` adapter | [Pagination](#pagination) |
 | Return paginated JSON + RFC 8288 `Link` header | `Result<Page<T>>.ToHttpResponse(nextUrlBuilder, body)` | [Pagination](#pagination) |
 | Make `POST` / `PATCH` retry-safe with the IETF `Idempotency-Key` header | `AddTrellisIdempotency` + `AddInMemoryIdempotencyStore` + `UseTrellisIdempotency`; mark endpoints `[Idempotent]` | [Idempotency-Key middleware](#idempotency-key-middleware) |
 | Make idempotency survive restarts and span replicas | `AddCosmosIdempotencyStore(...)` (`Trellis.Asp.Idempotency.Cosmos`) | [Choosing a store](#idempotency-key-middleware) |
@@ -549,9 +549,21 @@ values, parses the limit invariantly, and locates failures at the query paramete
 either the request or page result short-circuits through the standard error pipeline (Problem
 Details, default mapping). The query input-origin metadata keeps downstream opaque-cursor decode
 failures query-located. The parser does not add ApiExplorer/OpenAPI parameter metadata.
-`.WithPagination()` documents the two optional query parameters in native ASP.NET Core OpenAPI;
-MVC actions/controllers use `[Pagination]`. The host registers `AddOpenApi()` / `MapOpenApi()`
-alongside `AddTrellisAsp()` / `UseAsp()`.
+`.WithPagination()` declares generator-neutral query metadata; MVC actions/controllers use
+`[Pagination]`. For native documentation, install the optional `Trellis.Asp.OpenApi` package
+alongside a direct host reference to `Microsoft.AspNetCore.OpenApi` 11.x, then explicitly
+enable its transformer for each participating document:
+
+```csharp
+using Trellis.Asp.OpenApi;
+
+builder.Services.AddOpenApi("v1", options =>
+    options.AddOperationTransformer<TrellisPaginationOperationTransformer>());
+```
+
+The host also maps `MapOpenApi()`. `AddTrellisAsp()` / `UseAsp()` do not reference or
+register native OpenAPI, so hosts using another generator do not inherit its SDK dependencies.
+See [adapter setup and compatibility](../api_reference/trellis-api-asp-openapi.md#setup).
 
 The metadata carries cursor/limit names, default/max sizes and clamp/reject policy, but never
 binds inputs or changes parsing. Keep its settings aligned with `TryCreatePageRequest(...)`.

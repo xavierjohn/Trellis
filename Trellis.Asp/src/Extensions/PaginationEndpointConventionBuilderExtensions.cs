@@ -6,8 +6,7 @@ using Microsoft.AspNetCore.Builder;
 public static class PaginationEndpointConventionBuilderExtensions
 {
     /// <summary>
-    /// Documents cursor and limit query parameters in native ASP.NET Core OpenAPI without
-    /// binding or parsing request values.
+    /// Declares cursor and limit query metadata without binding or parsing request values.
     /// </summary>
     /// <typeparam name="TBuilder">The endpoint convention builder type.</typeparam>
     /// <param name="builder">The endpoint convention builder.</param>
@@ -18,9 +17,9 @@ public static class PaginationEndpointConventionBuilderExtensions
     /// <param name="policy">How explicitly requested page sizes above the maximum are handled.</param>
     /// <returns>The original builder for chaining.</returns>
     /// <remarks>
-    /// Requires <c>AddTrellisAsp</c> and the host's native <c>AddOpenApi</c>/<c>MapOpenApi</c>
-    /// registration. Endpoint declarations override route-group declarations. Existing
-    /// OpenAPI query parameters are preserved. Keep the settings aligned with
+    /// Native OpenAPI documentation requires the optional <c>Trellis.Asp.OpenApi</c>
+    /// adapter and its transformer registration in the host's <c>AddOpenApi</c> callback.
+    /// Endpoint declarations override route-group declarations. Keep the settings aligned with
     /// <see cref="HttpRequestPaginationExtensions.TryCreatePageRequest"/>.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="builder"/> is null.</exception>

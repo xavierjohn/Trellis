@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Description>ASP.NET Core integration for Trellis. Result-to-HTTP response mapping, raw pagination query parsing and opt-in native OpenAPI parameters, named-route pagination links without an API-versioning dependency, rate-limit rejection handling, scalar value validation, JSON converters (with bundled AOT source generator), and ASP.NET actor providers (Claims, Entra, Easy Auth, Development) for Trellis.Authorization.</Description>
+    <Description>ASP.NET Core integration for Trellis. Result-to-HTTP response mapping, raw pagination query parsing and generator-neutral pagination metadata, named-route pagination links without an API-versioning dependency, rate-limit rejection handling, scalar value validation, JSON converters (with bundled AOT source generator), and ASP.NET actor providers (Claims, Entra, Easy Auth, Development) for Trellis.Authorization.</Description>
     <PackageTags>trellis;aspnetcore;mvc;minimal-api;web-api;railway-oriented;result;http;error-handling;pagination;openapi;rate-limiting;authorization;actor;entra;claims;easy-auth</PackageTags>
     <IsAotCompatible>true</IsAotCompatible>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -11,7 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" />
   </ItemGroup>
   <ItemGroup>
