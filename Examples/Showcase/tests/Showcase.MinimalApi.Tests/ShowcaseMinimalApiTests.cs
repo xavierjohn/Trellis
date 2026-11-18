@@ -328,7 +328,7 @@ public class ShowcaseMinimalApiTests : IClassFixture<WebApplicationFactory<Progr
         var location = body.GetProperty("fieldViolations")[0].GetProperty("location");
         location.GetProperty("in").GetString().Should().Be(
             "query",
-            "the endpoint binds cursor from the query string, which outranks the group's body declaration");
+            "the endpoint declares query origin for downstream cursor decoding failures");
         location.GetProperty("name").GetString().Should().Be("cursor");
     }
 

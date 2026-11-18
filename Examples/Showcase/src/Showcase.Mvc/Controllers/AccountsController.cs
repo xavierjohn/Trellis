@@ -33,14 +33,13 @@ public class AccountsController : ControllerBase
         opts.WithLink("service-desc", ApiDescriptionUrl);
 
     [HttpGet(Name = "Showcase_GetAccounts")]
-    public ActionResult<PagedResponse<AccountResponse>> List(
-        [FromQuery] int? limit,
-        [FromQuery] string? cursor,
-        [FromServices] LinkGenerator links)
-    {
-        // MVC normalizes empty strings to null; preserve a supplied empty cursor for validation.
-        var rawCursor = Request.Query.TryGetValue(nameof(cursor), out var token) ? token.ToString() : cursor;
-        return _repository.GetPage(limit, rawCursor)
+    [Pagination(max: 5, defaultSize: 10)]
+    [InputOrigin(InputLocation.Query)]
+    [ProducesResponseType<PagedResponse<AccountResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity, "application/problem+json")]
+    public ActionResult<PagedResponse<AccountResponse>> List([FromServices] LinkGenerator links) =>
+        Request.TryCreatePageRequest(max: 5, defaultSize: 10)
+            .Bind(_repository.GetPage)
             .ToHttpResponse(
                 nextUrlBuilder: (c, applied) =>
                     links.GetUriByName(HttpContext, "Showcase_GetAccounts",
@@ -49,7 +48,6 @@ public class AccountsController : ControllerBase
                 body: AccountResponse.From,
                 configure: AdvertiseDescription)
             .AsActionResult<PagedResponse<AccountResponse>>();
-    }
 
     [HttpGet("{id:AccountId}", Name = "Showcase_GetAccount")]
     public ActionResult<AccountResponse> Get(AccountId id) =>

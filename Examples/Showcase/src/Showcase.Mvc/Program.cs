@@ -11,6 +11,7 @@ using Trellis;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
 using Trellis.Asp.Idempotency;
+using Trellis.Asp.OpenApi;
 using Trellis.Asp.Routing;
 using Trellis.Showcase.Application;
 using Trellis.Showcase.Application.Persistence;
@@ -66,7 +67,11 @@ builder.Services.PostConfigure<MvcOptions>(o =>
     }
 });
 
-builder.Services.AddOpenApi(options => options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);
+builder.Services.AddOpenApi(options =>
+{
+    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
+    options.AddOperationTransformer<TrellisPaginationOperationTransformer>();
+});
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();

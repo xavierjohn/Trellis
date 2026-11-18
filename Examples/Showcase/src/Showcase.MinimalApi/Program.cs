@@ -10,6 +10,7 @@ using Trellis;
 using Trellis.Asp;
 using Trellis.Asp.Authorization;
 using Trellis.Asp.Idempotency;
+using Trellis.Asp.OpenApi;
 using Trellis.Asp.Routing;
 using Trellis.FluentValidation;
 using Trellis.Mediator;
@@ -43,7 +44,11 @@ builder.Services.AddTrellisRouteConstraint<AccountId>();
 // each carries its own [JsonConverter(typeof(RequiredEnumJsonConverter<T>))] attribute
 // (added by the Trellis source generator), so no JsonStringEnumConverter<T> registration
 // is needed — the wire format is still the symbolic name (e.g., "Active").
-builder.Services.AddOpenApi(options => options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);
+builder.Services.AddOpenApi(options =>
+{
+    options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
+    options.AddOperationTransformer<TrellisPaginationOperationTransformer>();
+});
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IAccountRepository, InMemoryAccountRepository>();

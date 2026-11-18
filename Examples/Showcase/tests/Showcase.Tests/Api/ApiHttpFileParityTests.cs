@@ -36,6 +36,91 @@ public class ApiHttpFileParityTests : IClassFixture<ApiHttpFileParityTests.Parit
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task OpenApi_AccountPagination_CustomClampSettings_DescribesQueryContract(bool minimalApi)
+    {
+        using var client = minimalApi ? _fixture.Minimal.CreateClient() : _fixture.Mvc.CreateClient();
+        using var document = JsonDocument.Parse(
+            await client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), Ct));
+        const string path = "/api/accounts";
+        var operation = document.RootElement.GetProperty("paths").GetProperty(path).GetProperty("get");
+        var parameters = operation.GetProperty("parameters").EnumerateArray().ToArray();
+
+        parameters.Should().HaveCount(2);
+        parameters.Should().OnlyContain(parameter => parameter.GetProperty("in").GetString() == "query");
+        parameters.Where(parameter =>
+                parameter.TryGetProperty("required", out var required) && required.GetBoolean())
+            .Should().BeEmpty();
+
+        var cursor = parameters.Single(parameter => parameter.GetProperty("name").GetString() == "cursor")
+            .GetProperty("schema");
+        cursor.GetProperty("type").GetString().Should().Be("string");
+        cursor.GetProperty("minLength").GetInt32().Should().Be(1);
+        cursor.GetProperty("pattern").GetString().Should().NotBeNullOrEmpty();
+
+        var limit = parameters.Single(parameter => parameter.GetProperty("name").GetString() == "limit");
+        var schema = limit.GetProperty("schema");
+        schema.GetProperty("type").GetString().Should().Be("integer");
+        schema.GetProperty("format").GetString().Should().Be("int32");
+        schema.GetProperty("minimum").GetInt32().Should().Be(1);
+        schema.GetProperty("maximum").GetInt32().Should().Be(int.MaxValue);
+        schema.GetProperty("default").GetInt32().Should().Be(5);
+        limit.GetProperty("description").GetString().Should().Contain("requests 10").And.Contain("clamped");
+        var responses = operation.GetProperty("responses");
+        responses.GetProperty("200").GetProperty("content").GetProperty("application/json")
+            .GetProperty("schema").GetProperty("$ref").GetString().Should().NotBeNullOrEmpty();
+        responses.GetProperty("422").GetProperty("content")
+            .EnumerateObject().Select(content => content.Name).Should().Contain("application/problem+json");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task List_AccountPagination_SchemaDefaultDiffersFromOmission_PreservesAppliedSize(bool minimalApi)
+    {
+        using var client = minimalApi ? _fixture.Minimal.CreateClient() : _fixture.Mvc.CreateClient();
+        using var document = JsonDocument.Parse(
+            await client.GetStringAsync(new Uri("/openapi/v1.json", UriKind.Relative), Ct));
+        const string path = "/api/accounts";
+        var appliedDefault = document.RootElement.GetProperty("paths").GetProperty(path).GetProperty("get")
+            .GetProperty("parameters").EnumerateArray()
+            .Single(parameter => parameter.GetProperty("name").GetString() == "limit")
+            .GetProperty("schema").GetProperty("default").GetInt32();
+
+        using var omitted = JsonDocument.Parse(
+            await client.GetStringAsync(new Uri(path, UriKind.Relative), Ct));
+        using var explicitDefault = JsonDocument.Parse(
+            await client.GetStringAsync(new Uri($"{path}?limit={appliedDefault}", UriKind.Relative), Ct));
+
+        omitted.RootElement.GetProperty("requestedLimit").GetInt32().Should().Be(10);
+        omitted.RootElement.GetProperty("appliedLimit").GetInt32().Should().Be(5);
+        omitted.RootElement.GetProperty("wasCapped").GetBoolean().Should().BeTrue();
+        explicitDefault.RootElement.GetProperty("requestedLimit").GetInt32().Should().Be(5);
+        explicitDefault.RootElement.GetProperty("appliedLimit").GetInt32().Should().Be(5);
+        explicitDefault.RootElement.GetProperty("wasCapped").GetBoolean().Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(false, "limit=bad")]
+    [InlineData(true, "limit=bad")]
+    [InlineData(false, "limit=1&limit=2")]
+    [InlineData(true, "limit=1&limit=2")]
+    public async Task List_AccountPagination_InvalidRawLimit_Returns422QueryViolation(bool minimalApi, string query)
+    {
+        using var client = minimalApi ? _fixture.Minimal.CreateClient() : _fixture.Mvc.CreateClient();
+        using var response = await client.GetAsync(new Uri("/api/accounts?" + query, UriKind.Relative), Ct);
+
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.UnprocessableEntity);
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+        var violation = problem.RootElement.GetProperty("fieldViolations")[0];
+        violation.GetProperty("code").GetString().Should().Be("format.integer");
+        violation.GetProperty("location").GetProperty("in").GetString().Should().Be("query");
+        violation.GetProperty("location").GetProperty("name").GetString().Should().Be("limit");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task HttpTracing_NativeAspNetCore_RequestCompletes_PreservesSemanticAttributes(bool minimalApi)
     {
         using var parent = new Activity("showcase-native-http-tracing")
