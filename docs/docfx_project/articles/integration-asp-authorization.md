@@ -428,8 +428,8 @@ For test clients, the `WebApplicationFactoryExtensions.CreateClientWithActor(...
 
 Without the middleware, an absent or empty header uses the configured default actor.
 Whitespace-only or otherwise malformed nonempty headers follow `ThrowOnMalformedHeader`.
-Repeated exact property names in the root object, or in `Attributes` when read, now
-follow that same policy instead of leaking `ArgumentException`. To reject invalid
+Repeated exact property names at any depth now follow that same policy instead of
+leaking `ArgumentException`. To reject invalid
 supplied headers at the HTTP boundary, explicitly opt in after building the host:
 
 ```csharp
@@ -447,9 +447,9 @@ empty or whitespace-only header returns 400. A supplied header must have exactly
 value containing a JSON object with a nonblank string `Id`. Optional `Permissions`
 and `ForbiddenPermissions` must be arrays of strings; optional `Attributes` must be a
 string-valued object. Empty collections are valid; null known fields/elements, incorrect shapes,
-invalid string escapes (including in unknown fields), and duplicate root or attribute
-properties are rejected. Root property names are case-insensitive; attribute keys are
-ordinal/case-sensitive. Unknown root properties are otherwise ignored, and `ActorId`
+invalid string escapes (including in unknown fields), duplicate property names at any
+depth, and root names that differ only by case are rejected. Root property names are
+case-insensitive; attribute keys are ordinal/case-sensitive. Unknown root properties are otherwise ignored, and `ActorId`
 normalization remains the provider's responsibility.
 
 Rejections are 400 `application/problem+json` with code

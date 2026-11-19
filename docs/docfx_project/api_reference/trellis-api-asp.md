@@ -1555,11 +1555,10 @@ public sealed partial class DevelopmentActorProvider(
 Reads the `X-Test-Actor` header (JSON: `{ "Id": ..., "Permissions": [...], "ForbiddenPermissions": [...], "Attributes": {...} }`, case-insensitive property matching).
 
 An absent or empty header uses the configured default actor. A whitespace-only
-header follows the malformed-header policy. Repeated exact property names in the
-root object, or in `Attributes` when read, now follow that policy instead of
-leaking `ArgumentException`. With the default throw policy, identity-only resolution
-does not inspect `Attributes`; with the fallback policy it checks `Attributes` so
-that the identity agrees with full actor resolution.
+header follows the malformed-header policy. Repeated exact property names at any
+depth, including in unknown fields, are rejected at parse time and follow that
+policy instead of leaking `ArgumentException`. Identity-only and full actor
+resolution agree on this rule.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -1588,7 +1587,7 @@ There is no new service registration, options flag, or builder slot.
 | `Id` | Required nonblank JSON string; provider trimming and canonical identity are unchanged. |
 | `Permissions` / `ForbiddenPermissions` | Optional arrays containing only JSON strings; empty arrays are valid. |
 | `Attributes` | Optional object containing only JSON string values; empty objects and empty strings are valid. Attribute keys remain case-sensitive. |
-| Null known fields/elements, invalid string escapes (including in unknown fields), duplicate root or attribute properties, or incorrect known-field shapes | Rejected. Root property names are case-insensitive and must be unique; attribute keys must be unique with ordinal comparison. Unknown root properties are otherwise ignored. |
+| Null known fields/elements, invalid string escapes (including in unknown fields), duplicate property names at any depth, root names that differ only by case, or incorrect known-field shapes | Rejected. Root property names are matched case-insensitively and must be unique that way; attribute keys are ordinal/case-sensitive. Unknown root properties are otherwise ignored. |
 
 Invalid supplied headers return **400** `application/problem+json` before downstream
 execution, with `code: "development-actor.header.invalid"`, `kind: "bad-request"`, an
@@ -1599,7 +1598,7 @@ Problem Details writer preserves Trellis/host customization and the configured
 
 This boundary policy takes precedence over `ThrowOnMalformedHeader = false` for requests
 passing through the middleware. Without the explicit opt-in, the provider applies its own
-policy described above, including the separate duplicate-key fix. Direct provider calls
+policy described above, including its parse-time duplicate-key rejection. Direct provider calls
 do not apply the stricter HTTP rules. This is not authentication and is never a
 production trust boundary. Calling the extension outside Development throws
 `InvalidOperationException` while configuring the pipeline; null `app` throws

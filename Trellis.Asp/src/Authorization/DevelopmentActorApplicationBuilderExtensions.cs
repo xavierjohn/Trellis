@@ -23,8 +23,8 @@ public static class DevelopmentActorApplicationBuilderExtensions
     /// Supplied headers must contain exactly one JSON object with a nonblank string Id,
     /// optional string arrays for Permissions and ForbiddenPermissions, and an optional
     /// string-valued Attributes object. Null known fields/elements, invalid string escapes,
-    /// and duplicate root or Attributes property names are rejected; unknown root properties
-    /// are otherwise ignored.
+    /// duplicate property names at any depth, and root names that differ only by case are
+    /// rejected; unknown root properties are otherwise ignored.
     /// The problem instance contains the encoded request path without the query string.
     /// This opt-in HTTP policy does not change direct actor-provider calls or their options.
     /// </remarks>
@@ -75,10 +75,10 @@ public static class DevelopmentActorApplicationBuilderExtensions
 
         try
         {
-            using var document = JsonDocument.Parse(values[0]!);
+            using var document = JsonDocument.Parse(values[0]!, DevelopmentActorProvider.HeaderDocumentOptions);
             return IsValidActor(document.RootElement);
         }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException)
         {
             return false;
         }
@@ -130,12 +130,7 @@ public static class DevelopmentActorApplicationBuilderExtensions
         if (attributes.ValueKind != JsonValueKind.Object)
             return false;
 
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var property in attributes.EnumerateObject())
-            if (!names.Add(property.Name) || !IsReadableString(property.Value))
-                return false;
-
-        return true;
+        return attributes.EnumerateObject().All(property => IsReadableString(property.Value));
     }
 
     private static bool IsReadableString(JsonElement value)

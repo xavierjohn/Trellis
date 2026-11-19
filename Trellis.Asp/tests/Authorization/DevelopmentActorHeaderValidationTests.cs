@@ -44,6 +44,8 @@ public class DevelopmentActorHeaderValidationTests
     [InlineData("""{"Id":"user","Id":"other"}""")]
     [InlineData("""{"Id":"user","id":"other"}""")]
     [InlineData("""{"Id":"user","Attributes":{"tid":"one","tid":"two"}}""")]
+    [InlineData("""{"Id":"user","Extra":{"a":1,"a":2}}""")]
+    [InlineData("""{"Id":"user","Extra":[{"a":1,"a":2}]}""")]
     public async Task UseDevelopmentActorHeaderValidation_Strict_InvalidSuppliedHeader_ReturnsBadRequestBeforeActorResolution(
         string header)
     {
@@ -68,6 +70,19 @@ public class DevelopmentActorHeaderValidationTests
         root.GetProperty("instance").GetString().Should().Be("/actor");
         root.GetProperty("errors").GetProperty("X-Test-Actor").GetArrayLength().Should().Be(1);
         root.GetProperty("traceId").GetString().Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task UseDevelopmentActorHeaderValidation_Strict_LoneSurrogateInHeader_ReturnsBadRequest()
+    {
+        var actorResolutionReached = false;
+        await using var app = await CreateAppAsync(onResolveActor: () => actorResolutionReached = true);
+        var header = "{\"Id\":\"user" + (char)0xD800 + "\"}";
+
+        var response = await SendAsync(app, "/actor", header);
+
+        response.Response.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        actorResolutionReached.Should().BeFalse();
     }
 
     [Theory]
