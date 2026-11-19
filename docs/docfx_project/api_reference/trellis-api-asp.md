@@ -1554,10 +1554,12 @@ public sealed partial class DevelopmentActorProvider(
 
 Reads the `X-Test-Actor` header (JSON: `{ "Id": ..., "Permissions": [...], "ForbiddenPermissions": [...], "Attributes": {...} }`, case-insensitive property matching).
 
-Repeated exact property names in the root object, or in `Attributes` when read, follow
-the malformed-header policy. With the default throw policy, identity-only resolution
-does not inspect `Attributes`; with the fallback policy it checks `Attributes` so that
-the identity agrees with full actor resolution.
+An absent or empty header uses the configured default actor. A whitespace-only
+header follows the malformed-header policy. Repeated exact property names in the
+root object, or in `Attributes` when read, now follow that policy instead of
+leaking `ArgumentException`. With the default throw policy, identity-only resolution
+does not inspect `Attributes`; with the fallback policy it checks `Attributes` so
+that the identity agrees with full actor resolution.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -1581,7 +1583,8 @@ There is no new service registration, options flag, or builder slot.
 | Input | Strict HTTP behavior |
 | --- | --- |
 | Header absent | Continues; the provider's configured default actor still applies. |
-| Header supplied | Requires exactly one nonempty/non-whitespace value containing a JSON object. |
+| Header supplied but empty or whitespace-only | Returns 400 instead of using the default actor. |
+| Other supplied header | Requires exactly one value containing a JSON object. |
 | `Id` | Required nonblank JSON string; provider trimming and canonical identity are unchanged. |
 | `Permissions` / `ForbiddenPermissions` | Optional arrays containing only JSON strings; empty arrays are valid. |
 | `Attributes` | Optional object containing only JSON string values; empty objects and empty strings are valid. Attribute keys remain case-sensitive. |
@@ -1595,9 +1598,9 @@ Problem Details writer preserves Trellis/host customization and the configured
 `Content-Language`, and does not negotiate an XML response.
 
 This boundary policy takes precedence over `ThrowOnMalformedHeader = false` for requests
-passing through the middleware. Without the explicit opt-in, existing missing/empty
-fallback, malformed-header handling, full-actor resolution, identity-only resolution,
-and direct provider calls are unchanged. This is not authentication and is never a
+passing through the middleware. Without the explicit opt-in, the provider applies its own
+policy described above, including the separate duplicate-key fix. Direct provider calls
+do not apply the stricter HTTP rules. This is not authentication and is never a
 production trust boundary. Calling the extension outside Development throws
 `InvalidOperationException` while configuring the pipeline; null `app` throws
 `ArgumentNullException`. The provider's existing non-Development guard is unchanged.

@@ -426,9 +426,11 @@ For test clients, the `WebApplicationFactoryExtensions.CreateClientWithActor(...
 
 ### Strict supplied-header validation
 
-The provider's defaults are unchanged: missing/empty headers use its configured default
-actor, and malformed nonempty headers follow `ThrowOnMalformedHeader`. To instead reject
-invalid supplied headers at the HTTP boundary, explicitly opt in after building the host:
+Without the middleware, an absent or empty header uses the configured default actor.
+Whitespace-only or otherwise malformed nonempty headers follow `ThrowOnMalformedHeader`.
+Repeated exact property names in the root object, or in `Attributes` when read, now
+follow that same policy instead of leaking `ArgumentException`. To reject invalid
+supplied headers at the HTTP boundary, explicitly opt in after building the host:
 
 ```csharp
 using Trellis.Asp.Authorization;
@@ -440,8 +442,9 @@ if (app.Environment.IsDevelopment())
 // Actor-aware rate limiting, idempotency, and endpoints follow this middleware.
 ```
 
-An absent header still permits the default actor. A supplied header must have exactly
-one value containing a JSON object with a nonblank string `Id`. Optional `Permissions`
+With the middleware, an absent header still permits the default actor, but a supplied
+empty or whitespace-only header returns 400. A supplied header must have exactly one
+value containing a JSON object with a nonblank string `Id`. Optional `Permissions`
 and `ForbiddenPermissions` must be arrays of strings; optional `Attributes` must be a
 string-valued object. Empty collections are valid; null known fields/elements, incorrect shapes,
 invalid string escapes (including in unknown fields), and duplicate root or attribute
@@ -458,9 +461,9 @@ respects the configured `Content-Language`.
 
 This middleware applies to every request that passes through it and must precede
 any actor/identity resolution or Mediator dispatch. It overrides lenient fallback
-for invalid supplied headers even when `ThrowOnMalformedHeader = false`, but does
-not change direct provider calls or register an actor provider. Neither the direct
-registration nor `UseDevelopmentActorProvider()` enables it automatically; no new
+for invalid supplied headers even when `ThrowOnMalformedHeader = false`. It neither
+changes the provider's parsing rules nor registers an actor provider. Neither the
+direct registration nor `UseDevelopmentActorProvider()` enables it automatically; no new
 options flag, service registration, or builder slot is needed.
 Calling it outside Development throws while configuring the pipeline. This
 remains a development/testing convenience, **not production authentication**.
