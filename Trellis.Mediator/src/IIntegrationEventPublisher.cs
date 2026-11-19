@@ -31,8 +31,9 @@
 /// <see cref="OutboundIntegrationMessage.MessageId"/> verbatim onto the wire is what lets consumer-side
 /// <c>(ConsumerId, MessageId)</c> deduplication recognize a redelivery. An adapter that minted its own id
 /// per attempt would make every redelivery look like a new message and silently defeat the inbox.
-/// The default in-process fan-out ignores the id. An adapter routing through <see cref="IInboxDispatcher"/>
-/// must preserve it even within one process; registration alone does not route publication through an inbox.
+/// The default in-process fan-out ignores the id. Registering an <see cref="IInboxDispatcher"/> alone
+/// does not change it. Select <see cref="IntegrationEventDispatchServiceCollectionExtensions.AddLocalInboxDelivery"/>
+/// to use the built-in inbox publisher, which preserves the id and propagates inbox failures to the relay.
 /// </para>
 /// </remarks>
 public interface IIntegrationEventPublisher
@@ -47,8 +48,8 @@ public interface IIntegrationEventPublisher
     /// <param name="cancellationToken">A token to observe while publishing.</param>
     /// <returns>
     /// A <see cref="ValueTask"/> that completes after the implementation's publication step: best-effort
-    /// local fan-out for the default publisher, or broker acceptance for a broker adapter. Normal
-    /// completion is not a guarantee that every consumer succeeded.
+    /// local fan-out, broker acceptance, or successful dispatch for a local inbox publisher.
+    /// The completion boundary differs by publisher.
     /// </returns>
     ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken);
 }

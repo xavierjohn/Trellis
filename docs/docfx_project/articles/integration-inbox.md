@@ -81,6 +81,8 @@ the message as processed and silently loses the remaining work.
 
 **Registration is not routing.** `UseIntegrationEvents(...)` supplies handler bindings shared by the default publisher and the inbox. `UseInbox<TContext>()` does not reroute default publication: local fan-out still logs and swallows ordinary consumer failures and the integration outbox row is processed without retrying them. An adapter must actually call the non-swallowing `IInboxDispatcher` with the stable message id and expose failures to a transport that redelivers.
 
+For brokerless transactional delivery, explicitly select [`.UseLocalInboxDelivery()`](../api_reference/trellis-api-servicedefaults.md#local-inbox-delivery) with the outbox and inbox. The outbox relay retries failures, and the same message ID lets the inbox skip a redelivery after its earlier commit.
+
 Then an **application-owned** transport adapter turns each received message into an `IntegrationEnvelope` and hands it to the dispatcher:
 
 ```csharp

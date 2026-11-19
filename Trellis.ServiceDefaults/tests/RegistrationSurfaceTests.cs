@@ -70,6 +70,7 @@ public class RegistrationSurfaceTests
         ["Trellis.Mediator::AddRelatedResourceAuthorization"] = new("UseRelatedResourceAuthorization", "Related-resource authorization behavior."),
         ["Trellis.Mediator::AddDomainEventDispatch"] = new("UseDomainEvents", "Domain-event dispatcher."),
         ["Trellis.Mediator::AddIntegrationEventDispatch"] = new("UseIntegrationEvents", "Integration-event dispatcher."),
+        ["Trellis.Mediator::AddLocalInboxDelivery"] = new("UseLocalInboxDelivery", "Opt-in local publisher that delivers through the inbox."),
         ["Trellis.Mediator::AddTrackedAggregateDomainEventDispatch"] = new("UseTrackedAggregateDomainEvents", "Tracked-aggregate domain-event dispatcher."),
         ["Trellis.Mediator.FluentValidation::AddTrellisFluentValidation"] = new("UseFluentValidation", "Validation behavior."),
         ["Trellis.EntityFrameworkCore::AddTrellisUnitOfWork"] = new("UseEntityFrameworkUnitOfWork", "Unit of work plus transactional behavior."),

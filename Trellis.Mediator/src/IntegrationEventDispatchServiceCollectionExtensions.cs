@@ -13,7 +13,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 /// they are produced via the <see cref="IIntegrationEventCollector"/> during domain-event handling and
 /// published by the transactional outbox relay. These helpers register the default best-effort
 /// in-process publisher, the scoped collector, and any consumers. The same handler registrations are
-/// used by <see cref="IInboxDispatcher"/>, but these helpers do not route messages through an inbox.
+/// used by <see cref="IInboxDispatcher"/>. Select <see cref="AddLocalInboxDelivery"/> explicitly to
+/// route messages through an inbox.
 /// </remarks>
 public static class IntegrationEventDispatchServiceCollectionExtensions
 {
@@ -39,6 +40,41 @@ public static class IntegrationEventDispatchServiceCollectionExtensions
         services.TryAddScoped<IIntegrationEventCollector, IntegrationEventCollector>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Selects the registered <see cref="IInboxDispatcher"/> as the destination for local integration-event delivery.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// Replaces the default best-effort publisher. Register the inbox, its handlers, and the outbox separately.
+    /// Every event published to the built-in inbox needs a local handler. A new message with no handler
+    /// fails delivery instead of being skipped and is retried or parked by the relay.
+    /// Publication completes after the inbox processes the message or skips a duplicate; failures propagate to the relay.
+    /// This registration is idempotent and can run before or after <see cref="AddIntegrationEventDispatch(IServiceCollection)"/>.
+    /// Do not combine it with a broker or another unkeyed publisher. The host rejects a later addition
+    /// or replacement at startup.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">A custom unkeyed integration-event publisher is already registered.</exception>
+    public static IServiceCollection AddLocalInboxDelivery(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        var publishers = services.Where(descriptor =>
+            descriptor.ServiceType == typeof(IIntegrationEventPublisher) && !descriptor.IsKeyedService).ToArray();
+        if (publishers.Any(descriptor => descriptor.ImplementationType != typeof(MediatorIntegrationEventPublisher)
+            && descriptor.ImplementationType != typeof(LocalInboxIntegrationEventPublisher)))
+        {
+            throw new InvalidOperationException(
+                "Local inbox delivery cannot be combined with a custom integration-event publisher. Select one publisher.");
+        }
+
+        foreach (var publisher in publishers)
+            services.Remove(publisher);
+
+        services.AddHostedService<LocalInboxDeliveryRegistrationValidator>();
+        return services.AddScoped<IIntegrationEventPublisher, LocalInboxIntegrationEventPublisher>();
     }
 
     /// <summary>

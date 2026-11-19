@@ -50,6 +50,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#patterns-index) — reci
 | Consume an integration event in-process | Implement `IIntegrationEventHandler<TEvent>` | [`IIntegrationEventHandler`](#iintegrationeventhandler) |
 | Register integration-event publishing | `services.AddIntegrationEventDispatch(...)` or `services.AddIntegrationEventHandler<TEvent, THandler>()` | [`IntegrationEventDispatchServiceCollectionExtensions`](#integrationeventdispatchservicecollectionextensions) |
 | Distinguish best-effort local notification from broker acceptance and transactional consumption | The publisher implementation defines the handoff boundary; an inbox is a separate inbound path | [`IIntegrationEventPublisher`](#iintegrationeventpublisher), [`IIntegrationEventHandler`](#iintegrationeventhandler) |
+| Deliver integration events through a local inbox instead of best-effort fan-out | `services.AddLocalInboxDelivery()` plus a separately registered inbox, handlers, and outbox | [`IntegrationEventDispatchServiceCollectionExtensions`](#integrationeventdispatchservicecollectionextensions) |
 
 ## Common traps
 
@@ -791,7 +792,7 @@ The default domain publisher's post-commit/no-retry rationale does **not** estab
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)` | `ValueTask` | Completes after the implementation's publication step: best-effort local fan-out for the default publisher, or broker acceptance for a broker adapter. Normal completion is not proof that every consumer succeeded. The internal default (`MediatorIntegrationEventPublisher`, registered by `AddIntegrationEventDispatch()`) resolves handlers using `message.Event.GetType()` and ignores the id; a transport or inbox-routing adapter must preserve it. |
+| `ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)` | `ValueTask` | Completes at the selected boundary: best-effort fan-out, broker acceptance, or a successful local inbox dispatch. Only the local inbox mode waits for transactional local processing or a duplicate skip. The default (`MediatorIntegrationEventPublisher`, registered by `AddIntegrationEventDispatch()`) resolves handlers using `message.Event.GetType()` and ignores the id; transport and inbox adapters must preserve it. |
 
 > **The message identity is part of the contract, not an optional extra.** This is the interface's only method, so a transport cannot publish without the id. Outbox delivery is at-least-once, so the same row can be published more than once; carrying `OutboundIntegrationMessage.MessageId` verbatim onto the wire is what makes redeliveries look like one message to the consumer's `(ConsumerId, MessageId)` inbox dedup. An adapter that minted its own id per publish attempt would silently defeat the inbox — making that unrepresentable is why the bare-event overload was removed rather than kept alongside.
 
@@ -1023,8 +1024,19 @@ DI registration helpers for integration-event publishing. Unlike domain-event di
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public static IServiceCollection AddIntegrationEventDispatch(this IServiceCollection services)` | `IServiceCollection` | Adds the default best-effort `IIntegrationEventPublisher` (`MediatorIntegrationEventPublisher`, scoped) and scoped `IIntegrationEventCollector` (`IntegrationEventCollector`, scoped) only when absent. AOT/trim-friendly. **Idempotent**. Replace the publisher with a broker adapter that awaits acceptance and propagates publication failures when reliable handoff is required. |
+| `public static IServiceCollection AddLocalInboxDelivery(this IServiceCollection services)` | `IServiceCollection` | Selects a scoped `IIntegrationEventPublisher` that uses the registered `IInboxDispatcher`. Replaces only the default best-effort publisher and rejects an existing custom unkeyed publisher. Idempotent and order-independent with the default dispatch/handler helpers. Does not register the dispatcher, collector, handlers, or relay. The helper does not scan assemblies; the chosen persistence stack determines AOT support. |
 | `public static IServiceCollection AddIntegrationEventHandler<TEvent, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler>(this IServiceCollection services) where TEvent : IIntegrationEvent where THandler : class, IIntegrationEventHandler<TEvent>` | `IServiceCollection` | Registers a single `IIntegrationEventHandler<TEvent>` implementation as scoped, and ensures the publisher + collector are wired. Use this for AOT/trim scenarios. **Idempotent**. |
 | `[RequiresUnreferencedCode("Assembly scanning requires unreferenced types. Use AddIntegrationEventHandler<TEvent, THandler> for AOT/trim scenarios.")] [RequiresDynamicCode("Constructs closed generic IIntegrationEventHandler<TEvent> at runtime.")] public static IServiceCollection AddIntegrationEventDispatch(this IServiceCollection services, params Assembly[] assemblies)` | `IServiceCollection` | Scans the assemblies for concrete `IIntegrationEventHandler<TEvent>` implementations and registers each as scoped. A type implementing handlers for multiple event types is registered once per interface. Also wires the publisher + collector (idempotent). Throws `ArgumentNullException` when `services` or `assemblies` is null and `ArgumentException` when the array is empty or contains null. |
+
+`AddLocalInboxDelivery()` forwards the event, original `MessageId`, metadata, and
+cancellation token. Only `Processed` and `SkippedDuplicate` count as successful
+publication; dispatch failures propagate. With the built-in inbox, each event type
+needs a local handler: a new message without one fails delivery and can be retried
+or parked by the relay. Do not combine local inbox delivery with any other unkeyed
+publisher. The registration rejects an existing custom publisher, and a Generic
+Host rejects later additions or replacements before starting hosted services.
+Use [the composition builder](trellis-api-servicedefaults.md#local-inbox-delivery)
+for complete wiring.
 
 ### TrackedAggregateDomainEventDispatchBehavior
 **Declaration**

@@ -176,6 +176,8 @@ builder.Services.AddTrellis(trellis => trellis
 
 The default `IIntegrationEventPublisher` provides **best-effort** local fan-out, suitable for modular monoliths and tests only when durable consumer retry is not required. Ordinary consumer failures are logged and swallowed, so the relay processes the row without retrying them. Replacing the publisher with a broker adapter leaves aggregates, translators, and the outbox unchanged, but that adapter must expose publication failures for retry. The post-commit/no-retry rationale for the default domain publisher does not apply here: the integration relay owns retries and can react only to failures it sees.
 
+For durable delivery within one process, opt into [`UseLocalInboxDelivery()`](../api_reference/trellis-api-servicedefaults.md#local-inbox-delivery) with the outbox, inbox, and a local handler for each published event type. The publisher awaits inbox processing or a duplicate skip; a missing handler, handler exception, or save failure reaches the relay for retry or parking. The inbox commits its receipt with handler writes staged on the inbox's context, not with the relay's bookkeeping save.
+
 Publication can repeat under the **same** integration row id after an exposed failure or a crash before bookkeeping; preserve that id for inbox deduplication. A translator that failed or whose success was not saved can also run again and create a fresh row with a **different** id, which needs business-identity deduplication. Ordinary domain retries skip translators already recorded as complete; a failed sibling does not by itself re-enroll their output.
 
 ### Writing a broker adapter

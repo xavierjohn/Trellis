@@ -50,6 +50,7 @@ public sealed class TrellisServiceBuilder
     private Action<IServiceCollection>? _outboxRegistration;
     private Action<IServiceCollection>? _outboxReadinessRegistration;
     private Action<IServiceCollection>? _inboxRegistration;
+    private bool _useLocalInboxDelivery;
     private bool _useAsp;
     private bool _useScalarValueValidation;
     private bool _useProblemDetails;
@@ -757,6 +758,22 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
+    /// Selects transactional inbox delivery instead of best-effort local fan-out for integration events.
+    /// </summary>
+    /// <remarks>
+    /// Select <see cref="UseInbox{TContext}"/> or register an <see cref="IInboxDispatcher"/> before
+    /// applying the builder. Register the outbox and a handler for each event delivered to the built-in inbox.
+    /// Missing handlers fail delivery rather than being skipped. Do not select a broker publisher as well.
+    /// This slot adds no pipeline behavior and is applied after the selected inbox registration.
+    /// </remarks>
+    /// <returns>The same builder for chaining.</returns>
+    public TrellisServiceBuilder UseLocalInboxDelivery()
+    {
+        _useLocalInboxDelivery = true;
+        return this;
+    }
+
+    /// <summary>
     /// Registers the domain-event dispatch behavior and (optionally) scans assemblies for
     /// <see cref="IDomainEventHandler{TEvent}"/> implementations. Implies <see cref="UseMediator"/>.
     /// </summary>
@@ -1080,6 +1097,13 @@ public sealed class TrellisServiceBuilder
         Justification = "Apply() only invokes the assembly-scanning AddTrellisFluentValidation / AddResourceAuthorization / AddDomainEventDispatch overloads when the consumer explicitly passed assemblies to the matching builder method, which has already surfaced the IL2026/IL3050 warning at the consumer's call site.")]
     internal void Apply()
     {
+        if (_useLocalInboxDelivery && _inboxRegistration is null
+            && !_services.Any(d => d.ServiceType == typeof(IInboxDispatcher) && !d.IsKeyedService))
+        {
+            throw new InvalidOperationException(
+                "UseLocalInboxDelivery() requires UseInbox<TContext>() or an unkeyed IInboxDispatcher registered before AddTrellis().");
+        }
+
         if (_useAsp)
         {
             if (_configureAsp is null)
@@ -1162,6 +1186,8 @@ public sealed class TrellisServiceBuilder
         _outboxRegistration?.Invoke(_services);
         _outboxReadinessRegistration?.Invoke(_services);
         _inboxRegistration?.Invoke(_services);
+        if (_useLocalInboxDelivery)
+            _services.AddLocalInboxDelivery();
     }
 
     private void SetActorProvider(ActorProviderKind kind, Action<IServiceCollection> registration)

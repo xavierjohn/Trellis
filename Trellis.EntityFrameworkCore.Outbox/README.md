@@ -67,6 +67,7 @@ public sealed class OrderPlacedTranslator(
 - Supports configurable batching, locking, lease recovery, retry scheduling, and dead-lettering.
 - Exposes an explicit retryability contract for publisher failures.
 - Requires no broker dependency; transport packages implement `IIntegrationEventPublisher`.
+- For same-process delivery with durable consumer retries, use `UseLocalInboxDelivery()` with `UseInbox<TContext>()` and registered handlers. The relay treats inbox completion or a duplicate skip as successful publication.
 
 ## Delivery Semantics
 

@@ -88,6 +88,11 @@ Register the consumer side with `services.AddIntegrationEventDispatch(...)` / `A
 
 A retry skips translators already recorded in `CompletedHandlers`; an unrelated sibling failure does not rerun them. A translator that failed after adding an event, or whose successful progress was not saved (crash/bookkeeping failure), can run again and produce a distinct integration row with a new ID. Deduplicate these logical duplicates on business identity, in addition to inbox message-ID deduplication.
 
+For brokerless transactional consumption, [`UseLocalInboxDelivery()`](trellis-api-servicedefaults.md#local-inbox-delivery)
+selects an inbox-backed publisher. It lets the relay retry or park on inbox failures
+and complete the row on inbox commit or duplicate skip. Handler effects share the
+inbox receipt's save, not the relay's bookkeeping save.
+
 ### Two different duplicates — only one is the message id's job
 
 These are easy to conflate, and they need different defences:
