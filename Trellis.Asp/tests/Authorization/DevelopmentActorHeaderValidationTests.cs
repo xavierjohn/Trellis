@@ -185,11 +185,13 @@ public class DevelopmentActorHeaderValidationTests
     public async Task UseDevelopmentActorHeaderValidation_Strict_XmlAccept_PreservesJsonAndProblemCustomization()
     {
         var customizations = 0;
-        await using var app = await CreateAppAsync(customizeProblem: context =>
-        {
-            customizations++;
-            context.ProblemDetails.Extensions["application"] = "customized";
-        });
+        await using var app = await CreateAppAsync(
+            observeRequest: context => context.Request.PathBase = "/dev app",
+            customizeProblem: context =>
+            {
+                customizations++;
+                context.ProblemDetails.Extensions["application"] = "customized";
+            });
         using var client = app.GetTestClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, "/actor?attempt=1");
         request.Headers.Accept.ParseAdd("application/xml");
@@ -204,7 +206,7 @@ public class DevelopmentActorHeaderValidationTests
         body.Should().NotContain("private-value");
         using var problem = JsonDocument.Parse(body);
         problem.RootElement.GetProperty("application").GetString().Should().Be("customized");
-        problem.RootElement.GetProperty("instance").GetString().Should().Be("/actor?attempt=1");
+        problem.RootElement.GetProperty("instance").GetString().Should().Be("/dev%20app/actor");
         customizations.Should().Be(1);
     }
 

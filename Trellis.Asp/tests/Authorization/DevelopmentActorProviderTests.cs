@@ -270,6 +270,37 @@ public class DevelopmentActorProviderTests
         actor.Id.Value.Should().Be("development");
     }
 
+    [Theory]
+    [InlineData("""{"Id":"first","Id":"second"}""", false)]
+    [InlineData("""{"Id":"user","Attributes":{"tid":"first","tid":"second"}}""", true)]
+    public async Task ResolveDevelopmentActor_DuplicateProperties_FollowsMalformedHeaderPolicy(
+        string header, bool attributesOnly)
+    {
+        var context = CreateHttpContextWithHeader(header);
+        var token = TestContext.Current.CancellationToken;
+        var strict = CreateProvider(context);
+        var lenient = CreateProvider(context, options: new DevelopmentActorOptions
+        {
+            ThrowOnMalformedHeader = false,
+            DefaultActorId = "configured-fallback"
+        });
+
+        Func<Task> resolveActor = async () => await strict.GetCurrentActorAsync(token);
+        await resolveActor.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Malformed*duplicate*");
+        if (attributesOnly)
+        {
+            (await strict.ResolveCurrentActorIdAsync(token)).Unwrap().Value.Should().Be("user");
+        }
+        else
+        {
+            Func<Task> resolveIdentity = async () => await strict.ResolveCurrentActorIdAsync(token);
+            await resolveIdentity.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Malformed*duplicate*");
+        }
+
+        (await lenient.GetCurrentActorAsync(token)).Unwrap().Id.Value.Should().Be("configured-fallback");
+        (await lenient.ResolveCurrentActorIdAsync(token)).Unwrap().Value.Should().Be("configured-fallback");
+    }
+
     [Fact]
     public async Task GetCurrentActor_Development_MissingId_FallsBackToDefault()
     {

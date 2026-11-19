@@ -54,6 +54,9 @@ internal static class ResponseFailureWriter
     /// </summary>
     internal static void ResetDiagnosticThrottlesForTests() => _loggedExceptionTypes.Clear();
 
+    internal static TrellisAspOptions ResolveOptions(HttpContext httpContext) =>
+        httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
+
     /// <summary>
     /// Writes an <see cref="Error"/> to the response as an RFC 9457 problem document.
     /// </summary>
@@ -99,7 +102,7 @@ internal static class ResponseFailureWriter
         // disclosure while still letting clients correlate the response with the request that
         // produced it.
         var requestPath = httpContext.Request.GetEncodedPathAndQuery();
-        var aspOptions = httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
+        var aspOptions = ResolveOptions(httpContext);
 
         // When the failing resource is identified by a ResourceRef whose Id does NOT appear in
         // the request URL (typical for POST-to-collection that references some other missing
@@ -225,10 +228,9 @@ internal static class ResponseFailureWriter
     internal static async Task WriteProblemJsonAsync(
         HttpContext httpContext,
         Microsoft.AspNetCore.Http.IResult inner,
-        TrellisAspOptions? options = null)
+        TrellisAspOptions options)
     {
-        EmitContentLanguage(httpContext,
-            options ?? httpContext.RequestServices.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault);
+        EmitContentLanguage(httpContext, options);
 
         // Every construction site above goes through Results.Problem or Results.ValidationProblem,
         // and both return a ProblemHttpResult — ValidationProblem differs only in carrying the

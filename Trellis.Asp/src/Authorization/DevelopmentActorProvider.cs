@@ -109,6 +109,7 @@ public sealed partial class DevelopmentActorProvider(
 
     private static ActorId? ReadActorId(JsonObject obj)
     {
+        EnsureUniquePropertyNames(obj);
         var id = GetPropertyCaseInsensitive(obj, "Id")?.GetValue<string>();
         return string.IsNullOrWhiteSpace(id) ? null : ActorId.Create(id);
     }
@@ -154,13 +155,29 @@ public sealed partial class DevelopmentActorProvider(
         if (GetPropertyCaseInsensitive(obj, "ForbiddenPermissions") is JsonArray forbidden)
             ValidateStrings(forbidden, "ForbiddenPermissions");
         if (GetPropertyCaseInsensitive(obj, "Attributes") is JsonObject attributes)
+        {
+            EnsureUniquePropertyNames(attributes);
             ValidateStrings(attributes.Select(pair => pair.Value), "Attributes");
+        }
 
         static void ValidateStrings(IEnumerable<JsonNode?> nodes, string property)
         {
             foreach (var node in nodes)
                 if (node is not null && node.GetValueKind() != JsonValueKind.String)
                     throw new InvalidOperationException($"'{property}' values must be JSON strings or null.");
+        }
+    }
+
+    private static void EnsureUniquePropertyNames(JsonObject obj)
+    {
+        try
+        {
+            // JsonObject materializes its dictionary lazily and throws ArgumentException for duplicates.
+            _ = obj.Count;
+        }
+        catch (ArgumentException ex)
+        {
+            throw new JsonException("JSON object contains duplicate property names.", ex);
         }
     }
 

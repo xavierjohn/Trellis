@@ -451,7 +451,8 @@ normalization remains the provider's responsibility.
 
 Rejections are 400 `application/problem+json` with code
 `development-actor.header.invalid`, kind `bad-request`, and an
-`errors["X-Test-Actor"]` entry. Header contents are not echoed. Problem Details
+`errors["X-Test-Actor"]` entry. The `instance` is the encoded request path, including any
+path base but excluding the query string. Header contents are not echoed. Problem Details
 customization still runs, including Trellis trace IDs when configured, and the response
 respects the configured `Content-Language`.
 

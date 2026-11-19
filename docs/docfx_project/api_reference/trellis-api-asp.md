@@ -1554,6 +1554,11 @@ public sealed partial class DevelopmentActorProvider(
 
 Reads the `X-Test-Actor` header (JSON: `{ "Id": ..., "Permissions": [...], "ForbiddenPermissions": [...], "Attributes": {...} }`, case-insensitive property matching).
 
+Repeated exact property names in the root object, or in `Attributes` when read, follow
+the malformed-header policy. With the default throw policy, identity-only resolution
+does not inspect `Attributes`; with the fallback policy it checks `Attributes` so that
+the identity agrees with full actor resolution.
+
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public Task<Maybe<Actor>> GetCurrentActorAsync(CancellationToken cancellationToken = default)` | `Task<Maybe<Actor>>` | Throws `InvalidOperationException` whenever `!hostEnvironment.IsDevelopment()`, regardless of header presence. In Development, always returns `Maybe.From(actor)` — never `Maybe.None` — so dev workflows are unaffected by the 401 contract: `Maybe.From(Actor.Create(DefaultActorId, DefaultPermissions))` when `HttpContext` is null or the header is missing/empty, otherwise the parsed actor wrapped via `Maybe.From`. Malformed JSON throws `InvalidOperationException` by default (`ThrowOnMalformedHeader` defaults to `true`); set it to `false` to instead log a warning and fall back to the default actor. |
@@ -1584,9 +1589,10 @@ There is no new service registration, options flag, or builder slot.
 
 Invalid supplied headers return **400** `application/problem+json` before downstream
 execution, with `code: "development-actor.header.invalid"`, `kind: "bad-request"`, an
-`errors["X-Test-Actor"]` entry, and the request path/query as `instance`. Header contents
-are not echoed. The shared Problem Details writer preserves Trellis/host customization
-and the configured `Content-Language`, and does not negotiate an XML response.
+`errors["X-Test-Actor"]` entry, and the encoded request path (including any path base)
+as `instance`. Neither the query string nor the header contents are echoed. The shared
+Problem Details writer preserves Trellis/host customization and the configured
+`Content-Language`, and does not negotiate an XML response.
 
 This boundary policy takes precedence over `ThrowOnMalformedHeader = false` for requests
 passing through the middleware. Without the explicit opt-in, existing missing/empty

@@ -25,6 +25,7 @@ public static class DevelopmentActorApplicationBuilderExtensions
     /// string-valued Attributes object. Null known fields/elements, invalid string escapes,
     /// and duplicate root or Attributes property names are rejected; unknown root properties
     /// are otherwise ignored.
+    /// The problem instance contains the encoded request path without the query string.
     /// This opt-in HTTP policy does not change direct actor-provider calls or their options.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="app"/> is null.</exception>
@@ -58,10 +59,11 @@ public static class DevelopmentActorApplicationBuilderExtensions
                     "Permissions and ForbiddenPermissions, and an optional string-valued Attributes object."
                 ]
             },
-            instance: context.Request.GetEncodedPathAndQuery(),
+            instance: UriHelper.BuildRelative(context.Request.PathBase, context.Request.Path),
             statusCode: StatusCodes.Status400BadRequest,
             extensions: extensions);
-        await ResponseFailureWriter.WriteProblemJsonAsync(context, problem).ConfigureAwait(false);
+        await ResponseFailureWriter.WriteProblemJsonAsync(
+            context, problem, ResponseFailureWriter.ResolveOptions(context)).ConfigureAwait(false);
     }
 
     private static bool HasValidSuppliedHeader(IHeaderDictionary headers)
@@ -136,8 +138,14 @@ public static class DevelopmentActorApplicationBuilderExtensions
         return true;
     }
 
-    private static bool IsReadableString(JsonElement value) =>
-        value.ValueKind == JsonValueKind.String && value.GetString() is not null;
+    private static bool IsReadableString(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.String)
+            return false;
+
+        _ = value.GetString();
+        return true;
+    }
 
     private static void EnsureReadableStrings(JsonElement value)
     {
