@@ -110,8 +110,9 @@ public sealed class StageShipmentHandler(AppDbContext db)
 
 Keep the capture setup from [Recipe 35](recipe-35-outbox.md) on your existing
 `AddDbContext<AppDbContext>` registration. Configure a relational provider and
-apply migrations for the application, outbox, and inbox tables before starting the relay. The example uses SQLite
-(`Microsoft.EntityFrameworkCore.Sqlite`); use your application's provider in production.
+apply migrations for the application, outbox, and inbox tables before starting
+the relay. The example uses the [Microsoft.EntityFrameworkCore.Sqlite](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Sqlite)
+NuGet package; use your application's provider in production.
 
 ```csharp
 services.AddDbContext<AppDbContext>(options => options
