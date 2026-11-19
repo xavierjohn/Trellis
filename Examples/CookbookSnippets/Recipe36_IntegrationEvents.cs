@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Trellis;
+using Trellis.EntityFrameworkCore;
 using Trellis.Mediator;
 using Trellis.ServiceDefaults;
 
@@ -54,15 +55,54 @@ public sealed class NotifyShippingHandler : IIntegrationEventHandler<OrderPlaced
         CancellationToken cancellationToken) => ValueTask.CompletedTask;
 }
 
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options);
+public sealed record ShipmentRequest(Guid Id, Guid OrderId);
+
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    public DbSet<ShipmentRequest> ShipmentRequests => Set<ShipmentRequest>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.AddTrellisOutbox();
+        modelBuilder.AddTrellisInbox();
+    }
+}
+
+public sealed class StageShipmentHandler(AppDbContext db)
+    : IIntegrationEventHandler<OrderPlacedIntegrationEvent>
+{
+    public ValueTask HandleAsync(OrderPlacedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    {
+        db.ShipmentRequests.Add(new ShipmentRequest(Guid.NewGuid(), integrationEvent.OrderId));
+        return ValueTask.CompletedTask;
+    }
+}
 
 public static class IntegrationEventWiring
 {
     // 4. Add to Recipe 35's persistence/capture setup; the outbox delivers both kinds.
     public static IServiceCollection Wire(IServiceCollection services) =>
         services.AddTrellis(trellis => trellis
-            .UseDomainEvents(typeof(IntegrationEventWiring).Assembly)
-            .UseIntegrationEvents(typeof(IntegrationEventWiring).Assembly)
+            .UseDomainEvents<OrderPlaced, OrderPlacedTranslator>()
+            .UseIntegrationEvents<OrderPlacedIntegrationEvent, NotifyShippingHandler>()
             .UseEntityFrameworkUnitOfWork<AppDbContext>()
             .UseOutbox<AppDbContext>());
+
+    public static IServiceCollection WireLocalInbox(
+        IServiceCollection services, Action<DbContextOptionsBuilder> configureDatabase)
+    {
+        services.AddDbContext<AppDbContext>(options =>
+        {
+            configureDatabase(options);
+            options.AddTrellisInterceptors().AddTrellisOutboxInterceptor();
+        });
+
+        return services.AddTrellis(trellis => trellis
+            .UseDomainEvents<OrderPlaced, OrderPlacedTranslator>()
+            .UseIntegrationEvents<OrderPlacedIntegrationEvent, StageShipmentHandler>()
+            .UseEntityFrameworkUnitOfWork<AppDbContext>()
+            .UseOutbox<AppDbContext>()
+            .UseInbox<AppDbContext>(options => options.ConsumerId = "shipping")
+            .UseLocalInboxDelivery());
+    }
 }
