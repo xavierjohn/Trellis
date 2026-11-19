@@ -3,16 +3,24 @@ name: recipe-36-integration-events
 package: Trellis (cross-package recipes)
 namespaces: [Trellis, Trellis.Asp, Trellis.EntityFrameworkCore, Trellis.Mediator]
 types: [recipes]
-related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-asp.md, trellis-api-efcore.md, trellis-api-mediator.md]
+related_docs: [trellis-start-here.md, trellis-api-core.md, trellis-api-efcore.md, trellis-api-mediator.md, trellis-api-efcore-outbox.md, trellis-api-efcore-inbox.md, trellis-api-servicedefaults.md]
 version: v3
 last_verified: 2026-10-22
 audience: [llm]
 agent_usage: onDemand
-agent_description: "Shows translating a domain event into a stable integration event and publishing it through the outbox, a broker or Azure Service Bus. Use when publishing integration events or linking traces."
+agent_description: "Shows domain-event translation, outbox publishing, and transactional local inbox writes. Use when wiring best-effort, broker, or reliable local delivery, or linking message traces."
 ---
 # Recipe 36 — Translating a domain event into an integration event
 
 **Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.EntityFrameworkCore.Outbox`, `Trellis.Mediator`, `Trellis.ServiceDefaults`.
+
+## Contents
+
+- [Translate and publish an integration event](#translate-and-publish-an-integration-event)
+- [Delivery and retry semantics](#delivery-and-retry-semantics)
+- [Optional: reliable local delivery](#optional-reliable-local-delivery)
+
+### Translate and publish an integration event
 
 **Problem.** You want to publish that an order was placed to another module or service, but your `OrderPlaced` domain event carries internal value objects (`OrderId`, `CustomerEmail`, `Money`). Relaying it as-is couples consumers to your domain model, and every refactor becomes a breaking contract change.
 
@@ -42,13 +50,13 @@ public sealed class NotifyShippingHandler : IIntegrationEventHandler<OrderPlaced
 
 // 4. Wire it — domain rows report handler outcomes; integration rows use one publisher handoff.
 services.AddTrellis(trellis => trellis
-    .UseDomainEvents(typeof(Program).Assembly)
-    .UseIntegrationEvents(typeof(Program).Assembly)
+    .UseDomainEvents<OrderPlaced, OrderPlacedTranslator>()
+    .UseIntegrationEvents<OrderPlacedIntegrationEvent, NotifyShippingHandler>()
     .UseEntityFrameworkUnitOfWork<AppDbContext>()
     .UseOutbox<AppDbContext>());
 ```
 
-**Semantics to remember.**
+### Delivery and retry semantics
 
 - The integration event is enrolled **only after** its source domain event is durably committed and dispatched by the relay — never for state that rolled back. The relay stages drained collector events as `OutboxMessageKind.Integration` rows atomically with the source row's saved handler progress (or overall completion), then publishes them on a later drain. There is no per-handler collector rollback: an event added by a translator that subsequently throws can still be enrolled, as can output from a successful translator whose sibling fails. The source row can remain pending while those integration rows are already eligible for publication; integration publication is not proof that the translator or every local handler completed.
 - Each translated integration row receives its own UTC `CapturedAt` when the relay stages
@@ -66,20 +74,68 @@ See [trellis-api-efcore-outbox.md](../trellis-api-efcore-outbox.md#integration-e
 ### Optional: reliable local delivery
 
 When Shipping runs in the same process but needs durable retries, add
-`Trellis.EntityFrameworkCore.Inbox`, map and migrate the inbox table via
-`modelBuilder.AddTrellisInbox()`, and add these calls to the builder above:
+`Trellis.EntityFrameworkCore.Inbox` and use this setup **instead of** the
+best-effort registration above. Keep the same domain event, integration contract,
+and translator. Extend your existing `AppDbContext` with the shipment and inbox
+mappings; keep the order and outbox mappings. Order repositories, the unit of
+work, the outbox, and the inbox all use this context type. The shipping handler
+stages its write on the inbox's scoped context; it does not call
+`SaveChangesAsync` or dispatch a command that commits the context.
 
 ```csharp
-.UseInbox<AppDbContext>(options => options.ConsumerId = "local")
-.UseLocalInboxDelivery()
+public sealed record ShipmentRequest(Guid Id, Guid OrderId);
+
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    public DbSet<ShipmentRequest> ShipmentRequests => Set<ShipmentRequest>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Keep your existing order mappings here.
+        modelBuilder.AddTrellisOutbox();
+        modelBuilder.AddTrellisInbox();
+    }
+}
+
+public sealed class StageShipmentHandler(AppDbContext db)
+    : IIntegrationEventHandler<OrderPlacedIntegrationEvent>
+{
+    public ValueTask HandleAsync(OrderPlacedIntegrationEvent integrationEvent, CancellationToken cancellationToken)
+    {
+        db.ShipmentRequests.Add(new ShipmentRequest(Guid.NewGuid(), integrationEvent.OrderId));
+        return ValueTask.CompletedTask;
+    }
+}
 ```
 
-Use the local publisher **instead of** a broker publisher. With the built-in inbox,
-register a local handler for every integration event this outbox publishes. There
-is no per-event routing to the broker; a new message with no local handler fails
-and is retried or parked instead of being skipped. Stage consumer writes
-on the inbox's `AppDbContext` and return without saving. The inbox receipt and those
-writes commit together. The relay retries handler or save failures; if the inbox
-commits before relay bookkeeping fails, the same message ID lets the next attempt
-skip the committed work. External effects need their own idempotency.
+Keep the capture setup from [Recipe 35](recipe-35-outbox.md) on your existing
+`AddDbContext<AppDbContext>` registration. Configure a relational provider and
+apply migrations for the application, outbox, and inbox tables before starting the relay. The example uses SQLite
+(`Microsoft.EntityFrameworkCore.Sqlite`); use your application's provider in production.
+
+```csharp
+services.AddDbContext<AppDbContext>(options => options
+    .UseSqlite(connectionString)
+    .AddTrellisInterceptors()
+    .AddTrellisOutboxInterceptor());
+
+services.AddTrellis(trellis => trellis
+    .UseDomainEvents<OrderPlaced, OrderPlacedTranslator>()
+    .UseIntegrationEvents<OrderPlacedIntegrationEvent, StageShipmentHandler>()
+    .UseEntityFrameworkUnitOfWork<AppDbContext>()
+    .UseOutbox<AppDbContext>()
+    .UseInbox<AppDbContext>(options => options.ConsumerId = "shipping")
+    .UseLocalInboxDelivery());
+```
+
+The inbox saves the shipment request and receipt together. A handler or save
+failure reaches the relay for retry. If the inbox commits but the relay fails
+to mark the outbox row processed, the next attempt uses the same message ID
+and skips the handler. A separate outbox row for the same order has a different
+message ID, so use business-level idempotency if that, too, must be suppressed.
+External effects such as calling a carrier are not covered by the inbox save.
+
+Register a local handler for every event type this outbox publishes. The local
+publisher is an alternative to a broker, not a per-event router: a new message
+with no local handler fails and is retried or parked instead of being skipped.
 See [local delivery setup](../trellis-api-servicedefaults.md#local-inbox-delivery).
