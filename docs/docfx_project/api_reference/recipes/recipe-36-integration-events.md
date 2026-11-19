@@ -12,7 +12,7 @@ agent_description: "Shows domain-event translation, outbox publishing, and trans
 ---
 # Recipe 36 — Translating a domain event into an integration event
 
-**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.EntityFrameworkCore.Outbox`, `Trellis.Mediator`, `Trellis.ServiceDefaults`.
+**Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.EntityFrameworkCore.Outbox`, `Trellis.Mediator`, `Trellis.ServiceDefaults`; reliable local delivery also requires `Trellis.EntityFrameworkCore.Inbox`.
 
 ## Contents
 

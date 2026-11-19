@@ -19,6 +19,7 @@ public sealed class Recipe36LocalInboxTests
         var services = new ServiceCollection().AddLogging();
         IntegrationEventWiring.WireLocalInbox(services, options => options.UseSqlite(connection));
         var failOnce = new FailOnceHandler();
+        // Register after StageShipmentHandler so the failure occurs after staging the shipment.
         services.AddSingleton<IIntegrationEventHandler<OrderPlacedIntegrationEvent>>(failOnce);
         await using var provider = services.BuildServiceProvider(validateScopes: true);
         await using var scope = provider.CreateAsyncScope();
