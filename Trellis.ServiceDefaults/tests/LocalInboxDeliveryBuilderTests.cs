@@ -4,6 +4,7 @@ using global::Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Trellis.EntityFrameworkCore;
 using Trellis.Mediator;
 
@@ -63,13 +64,33 @@ public sealed class LocalInboxDeliveryBuilderTests
     }
 
     [Fact]
-    public void UseLocalInboxDelivery_WithoutInbox_NamesRequiredRegistration()
+    public async Task UseLocalInboxDelivery_DispatcherRegisteredAfterAddTrellis_UsesIt()
     {
         var services = new ServiceCollection();
+        var inbox = new RecordingInbox();
 
-        var act = () => services.AddTrellis(builder => builder.UseLocalInboxDelivery());
+        services.AddTrellis(builder => builder.UseLocalInboxDelivery());
+        services.AddSingleton<IInboxDispatcher>(inbox);
+        await using var provider = services.BuildServiceProvider(validateScopes: true);
+        await using var scope = provider.CreateAsyncScope();
+        var message = new OutboundIntegrationMessage(Guid.NewGuid(), new DeliveryEvent(DateTimeOffset.UnixEpoch));
 
-        act.Should().Throw<InvalidOperationException>().WithMessage("*UseInbox<TContext>()*");
+        await scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>()
+            .PublishAsync(message, TestContext.Current.CancellationToken);
+
+        inbox.Received.Should().Be(new IntegrationEnvelope(message.MessageId, message.Event));
+    }
+
+    [Fact]
+    public async Task UseLocalInboxDelivery_WithoutDispatcher_FailsAtHostStart()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddTrellis(trellis => trellis.UseLocalInboxDelivery());
+        using var host = builder.Build();
+
+        var start = () => host.StartAsync(TestContext.Current.CancellationToken);
+
+        await start.Should().ThrowAsync<InvalidOperationException>().WithMessage("*requires an unkeyed IInboxDispatcher*");
     }
 
     [Fact]

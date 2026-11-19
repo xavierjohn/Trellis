@@ -64,6 +64,40 @@ public class AzureServiceBusRegistrationTests
     }
 
     [Fact]
+    public async Task StartAsync_ConflictingPublisherFactoryThrows_ReportsConfigurationConflictWithoutBuildingIt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddScoped<IInboxDispatcher, NoOpInbox>();
+        builder.Services.AddLocalInboxDelivery();
+        builder.Services.AddSingleton<IIntegrationEventPublisher>(
+            _ => throw new InvalidOperationException("Broker connection is not configured."));
+
+        using var host = builder.Build();
+        var start = () => host.StartAsync(ct);
+
+        await start.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Local inbox delivery*only*publisher*");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StartAsync_LocalInboxWithoutUnkeyedDispatcher_RejectsConfiguration(bool keyedOnly)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddLocalInboxDelivery();
+        if (keyedOnly)
+            builder.Services.AddKeyedScoped<IInboxDispatcher, NoOpInbox>("other");
+
+        using var host = builder.Build();
+        var start = () => host.StartAsync(ct);
+
+        await start.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*requires an unkeyed IInboxDispatcher*");
+    }
+
+    [Fact]
     public async Task StartAsync_LocalInboxWithKeyedPublisher_AllowsStartup()
     {
         var ct = TestContext.Current.CancellationToken;

@@ -1,11 +1,14 @@
 ﻿namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 public sealed class LocalInboxDeliveryTests
 {
     [Theory]
     [InlineData(true, InboxDispatchOutcome.Processed)]
+    [InlineData(true, InboxDispatchOutcome.SkippedDuplicate)]
+    [InlineData(false, InboxDispatchOutcome.Processed)]
     [InlineData(false, InboxDispatchOutcome.SkippedDuplicate)]
     public async Task PublishAsync_SelectedBeforeOrAfterDefault_ForwardsEnvelopeAndAwaitsDispatch(
         bool selectFirst, InboxDispatchOutcome outcome)
@@ -16,7 +19,9 @@ public sealed class LocalInboxDeliveryTests
         services.AddScoped<IInboxDispatcher>(sp => sp.GetRequiredService<RecordingInbox>());
         if (selectFirst)
             services.AddLocalInboxDelivery();
-        services.AddIntegrationEventDispatch().AddLocalInboxDelivery().AddIntegrationEventDispatch();
+        services.AddIntegrationEventDispatch();
+        if (!selectFirst)
+            services.AddLocalInboxDelivery();
         await using var provider = services.BuildServiceProvider(validateScopes: true);
         await using var scope = provider.CreateAsyncScope();
         var inbox = scope.ServiceProvider.GetRequiredService<RecordingInbox>();
@@ -51,6 +56,42 @@ public sealed class LocalInboxDeliveryTests
         }
 
         await publication.WaitAsync(ct);
+    }
+
+    [Fact]
+    public void AddLocalInboxDelivery_RegisteredTwice_SelectsOnePublisher()
+    {
+        var services = new ServiceCollection();
+
+        services.AddLocalInboxDelivery().AddLocalInboxDelivery();
+
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IIntegrationEventPublisher));
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IHostedService));
+    }
+
+    [Fact]
+    public async Task AddLocalInboxDelivery_Alone_RegistersCollectorForTranslators()
+    {
+        await using var provider = new ServiceCollection()
+            .AddLocalInboxDelivery()
+            .BuildServiceProvider(validateScopes: true);
+        await using var scope = provider.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<IIntegrationEventCollector>()
+            .Should().BeOfType<IntegrationEventCollector>();
+    }
+
+    [Fact]
+    public void AddLocalInboxDelivery_ThenScanningDispatch_KeepsLocalPublisherAndRegistersHandlers()
+    {
+        var services = new ServiceCollection();
+
+        services.AddLocalInboxDelivery().AddIntegrationEventDispatch(typeof(RegHandlerA).Assembly);
+
+        services.Should().ContainSingle(d => d.ServiceType == typeof(IIntegrationEventPublisher))
+            .Which.ImplementationType.Should().Be<LocalInboxIntegrationEventPublisher>();
+        services.Should().Contain(d =>
+            d.ServiceType == typeof(IIntegrationEventHandler<RegEventA>) && d.ImplementationType == typeof(RegHandlerA));
     }
 
     [Fact]

@@ -48,7 +48,8 @@ public static class IntegrationEventDispatchServiceCollectionExtensions
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
-    /// Replaces the default best-effort publisher. Register the inbox, its handlers, and the outbox separately.
+    /// Replaces the default best-effort publisher and registers the scoped <see cref="IIntegrationEventCollector"/>
+    /// as <see cref="AddIntegrationEventDispatch(IServiceCollection)"/> does. Register the inbox, its handlers, and the outbox separately.
     /// Every event published to the built-in inbox needs a local handler. A new message with no handler
     /// fails delivery instead of being skipped and is retried or parked by the relay.
     /// Publication completes after the inbox processes the message or skips a duplicate; failures propagate to the relay.
@@ -61,21 +62,25 @@ public static class IntegrationEventDispatchServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var publishers = services.Where(descriptor =>
-            descriptor.ServiceType == typeof(IIntegrationEventPublisher) && !descriptor.IsKeyedService).ToArray();
-        if (publishers.Any(descriptor => descriptor.ImplementationType != typeof(MediatorIntegrationEventPublisher)
+        if (UnkeyedPublishers(services).Any(descriptor => descriptor.ImplementationType != typeof(MediatorIntegrationEventPublisher)
             && descriptor.ImplementationType != typeof(LocalInboxIntegrationEventPublisher)))
         {
             throw new InvalidOperationException(
                 "Local inbox delivery cannot be combined with a custom integration-event publisher. Select one publisher.");
         }
 
-        foreach (var publisher in publishers)
+        services.AddIntegrationEventDispatch();
+        foreach (var publisher in UnkeyedPublishers(services))
             services.Remove(publisher);
 
+        services.TryAddSingleton(new LocalInboxDeliveryRegistrations(services));
         services.AddHostedService<LocalInboxDeliveryRegistrationValidator>();
         return services.AddScoped<IIntegrationEventPublisher, LocalInboxIntegrationEventPublisher>();
     }
+
+    private static ServiceDescriptor[] UnkeyedPublishers(IServiceCollection services) =>
+        [.. services.Where(descriptor =>
+            descriptor.ServiceType == typeof(IIntegrationEventPublisher) && !descriptor.IsKeyedService)];
 
     /// <summary>
     /// Registers a single <see cref="IIntegrationEventHandler{TEvent}"/> and ensures the publisher and
