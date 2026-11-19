@@ -54,6 +54,9 @@ internal static class ResponseFailureWriter
     /// </summary>
     internal static void ResetDiagnosticThrottlesForTests() => _loggedExceptionTypes.Clear();
 
+    internal static TrellisAspOptions ResolveOptions(HttpContext httpContext) =>
+        httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
+
     /// <summary>
     /// Writes an <see cref="Error"/> to the response as an RFC 9457 problem document.
     /// </summary>
@@ -99,7 +102,7 @@ internal static class ResponseFailureWriter
         // disclosure while still letting clients correlate the response with the request that
         // produced it.
         var requestPath = httpContext.Request.GetEncodedPathAndQuery();
-        var aspOptions = httpContext.RequestServices?.GetService<TrellisAspOptions>() ?? TrellisAspOptions.SystemDefault;
+        var aspOptions = ResolveOptions(httpContext);
 
         // When the failing resource is identified by a ResourceRef whose Id does NOT appear in
         // the request URL (typical for POST-to-collection that references some other missing
@@ -107,7 +110,6 @@ internal static class ResponseFailureWriter
         // request URL under Extensions["request"]. Best-effort: any malformed ResourceRef or
         // resolver error keeps the original behaviour.
         var (instance, originalRequest) = TrySynthesizeInstance(httpContext, error, requestPath, aspOptions);
-        EmitContentLanguage(httpContext, aspOptions);
 
         Microsoft.AspNetCore.Http.IResult inner;
 
@@ -194,7 +196,7 @@ internal static class ResponseFailureWriter
                 extensions: extensions);
         }
 
-        await WriteProblemJsonAsync(httpContext, inner).ConfigureAwait(false);
+        await WriteProblemJsonAsync(httpContext, inner, aspOptions).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -223,10 +225,13 @@ internal static class ResponseFailureWriter
     /// nothing else writes the response afterwards, the hook runs exactly once.
     /// </para>
     /// </remarks>
-    private static async Task WriteProblemJsonAsync(
+    internal static async Task WriteProblemJsonAsync(
         HttpContext httpContext,
-        Microsoft.AspNetCore.Http.IResult inner)
+        Microsoft.AspNetCore.Http.IResult inner,
+        TrellisAspOptions options)
     {
+        EmitContentLanguage(httpContext, options);
+
         // Every construction site above goes through Results.Problem or Results.ValidationProblem,
         // and both return a ProblemHttpResult — ValidationProblem differs only in carrying the
         // derived HttpValidationProblemDetails, which the runtime-typed serialization below keeps

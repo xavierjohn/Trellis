@@ -46,6 +46,8 @@ public sealed partial class DevelopmentActorProvider(
 {
     internal const string HeaderName = "X-Test-Actor";
 
+    internal static readonly JsonDocumentOptions HeaderDocumentOptions = new() { AllowDuplicateProperties = false };
+
     /// <inheritdoc />
     public IReadOnlyCollection<string> VaryByHeaders { get; } = [HeaderName];
 
@@ -79,7 +81,7 @@ public sealed partial class DevelopmentActorProvider(
 
         try
         {
-            if (JsonNode.Parse(header) is not JsonObject obj)
+            if (JsonNode.Parse(header, documentOptions: HeaderDocumentOptions) is not JsonObject obj)
                 return ValueTask.FromResult(Maybe.From(MalformedIdentity("JSON parsed to null or is not an object")));
 
             var id = ReadActorId(obj);
@@ -126,7 +128,7 @@ public sealed partial class DevelopmentActorProvider(
     {
         try
         {
-            var json = JsonNode.Parse(headerValue);
+            var json = JsonNode.Parse(headerValue, documentOptions: HeaderDocumentOptions);
             if (json is not JsonObject obj)
                 return HandleMalformedHeader(headerValue, "JSON parsed to null or is not an object");
 
