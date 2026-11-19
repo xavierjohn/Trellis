@@ -38,6 +38,66 @@ public class AzureServiceBusRegistrationTests
         Resolve<IIntegrationEventPublisher>(services).Should().BeOfType<ServiceBusIntegrationEventPublisher>();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task StartAsync_PublisherRegisteredAfterLocalInboxDelivery_RejectsConflict(bool replacePublisher)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddScoped<IInboxDispatcher, NoOpInbox>();
+        builder.Services.AddLocalInboxDelivery();
+        if (replacePublisher)
+        {
+            builder.Services.AddSingleton(_ => new ServiceBusClient(OfflineConnectionString));
+            builder.Services.AddAzureServiceBusIntegrationEventPublisher(Map);
+        }
+        else
+        {
+            builder.Services.AddSingleton<IIntegrationEventPublisher, NoOpPublisher>();
+        }
+
+        using var host = builder.Build();
+        var start = () => host.StartAsync(ct);
+
+        await start.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Local inbox delivery*only*publisher*");
+    }
+
+    [Fact]
+    public async Task StartAsync_LocalInboxWithKeyedPublisher_AllowsStartup()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddScoped<IInboxDispatcher, NoOpInbox>();
+        builder.Services.AddLocalInboxDelivery();
+        builder.Services.AddKeyedSingleton<IIntegrationEventPublisher, NoOpPublisher>("other");
+
+        using var host = builder.Build();
+        await host.StartAsync(ct);
+        await host.StopAsync(ct);
+    }
+
+    [Fact]
+    public async Task StartAsync_LocalInboxDispatcherNeedsHostedInitialization_AllowsStartup()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var builder = Host.CreateApplicationBuilder();
+        var initializer = new InboxInitializer();
+        builder.Services.AddHostedService(_ => initializer);
+        builder.Services.AddScoped<IInboxDispatcher>(_ => initializer.Started
+            ? new NoOpInbox()
+            : throw new InvalidOperationException("The inbox is not initialized."));
+        builder.Services.AddLocalInboxDelivery();
+
+        using var host = builder.Build();
+        await host.StartAsync(ct);
+        await using var scope = host.Services.CreateAsyncScope();
+        var publisher = scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
+        await publisher.PublishAsync(
+            new OutboundIntegrationMessage(Guid.CreateVersion7(), new OrderPlaced("ORD-1", DateTimeOffset.UnixEpoch)), ct);
+        await host.StopAsync(ct);
+    }
+
     [Fact]
     public void AddConsumer_RegistersTheHostedService()
     {
@@ -208,6 +268,25 @@ public class AzureServiceBusRegistrationTests
 
     private const string OfflineConnectionString =
         "Endpoint=sb://localhost;SharedAccessKeyName=k;SharedAccessKey=v;UseDevelopmentEmulator=true;";
+
+    private sealed class InboxInitializer : IHostedService
+    {
+        public bool Started { get; private set; }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            Started = true;
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class NoOpInbox : IInboxDispatcher
+    {
+        public Task<InboxDispatchOutcome> DispatchAsync(IntegrationEnvelope envelope, CancellationToken cancellationToken) =>
+            Task.FromResult(InboxDispatchOutcome.Processed);
+    }
 
     private static IServiceCollection WithInfrastructure(IServiceCollection services)
     {

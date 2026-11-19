@@ -49,10 +49,12 @@ public static class IntegrationEventDispatchServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     /// <remarks>
     /// Replaces the default best-effort publisher. Register the inbox, its handlers, and the outbox separately.
+    /// Every event published to the built-in inbox needs a local handler. A new message with no handler
+    /// fails delivery instead of being skipped and is retried or parked by the relay.
     /// Publication completes after the inbox processes the message or skips a duplicate; failures propagate to the relay.
     /// This registration is idempotent and can run before or after <see cref="AddIntegrationEventDispatch(IServiceCollection)"/>.
-    /// Do not combine it with another unkeyed publisher, including a broker publisher, which can override it
-    /// if registered later.
+    /// Do not combine it with a broker or another unkeyed publisher. The host rejects a later addition
+    /// or replacement at startup.
     /// </remarks>
     /// <exception cref="InvalidOperationException">A custom unkeyed integration-event publisher is already registered.</exception>
     public static IServiceCollection AddLocalInboxDelivery(this IServiceCollection services)
@@ -71,6 +73,7 @@ public static class IntegrationEventDispatchServiceCollectionExtensions
         foreach (var publisher in publishers)
             services.Remove(publisher);
 
+        services.AddHostedService<LocalInboxDeliveryRegistrationValidator>();
         return services.AddScoped<IIntegrationEventPublisher, LocalInboxIntegrationEventPublisher>();
     }
 

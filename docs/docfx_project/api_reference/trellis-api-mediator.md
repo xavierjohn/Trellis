@@ -1030,8 +1030,11 @@ DI registration helpers for integration-event publishing. Unlike domain-event di
 
 `AddLocalInboxDelivery()` forwards the event, original `MessageId`, metadata, and
 cancellation token. Only `Processed` and `SkippedDuplicate` count as successful
-publication; dispatch failures propagate. Register exactly one unkeyed publisher:
-do not combine local inbox delivery with broker or custom publisher registration.
+publication; dispatch failures propagate. With the built-in inbox, each event type
+needs a local handler: a new message without one fails delivery and can be retried
+or parked by the relay. Do not combine local inbox delivery with any other unkeyed
+publisher. The registration rejects an existing custom publisher, and a Generic
+Host rejects later additions or replacements before starting hosted services.
 Use [the composition builder](trellis-api-servicedefaults.md#local-inbox-delivery)
 for complete wiring.
 

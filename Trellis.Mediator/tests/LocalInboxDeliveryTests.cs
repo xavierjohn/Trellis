@@ -74,6 +74,26 @@ public sealed class LocalInboxDeliveryTests
     }
 
     [Fact]
+    public async Task PublishAsync_UnexpectedOutcome_ReportsOutcomeAndMessageId()
+    {
+        var inbox = new RecordingInbox();
+        var outcome = (InboxDispatchOutcome)42;
+        inbox.Completion.SetResult(outcome);
+        await using var provider = new ServiceCollection()
+            .AddSingleton<IInboxDispatcher>(inbox)
+            .AddLocalInboxDelivery()
+            .BuildServiceProvider(validateScopes: true);
+        await using var scope = provider.CreateAsyncScope();
+        var publisher = scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
+        var message = new OutboundIntegrationMessage(Guid.NewGuid(), new RegEventA(DateTimeOffset.UnixEpoch));
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => publisher.PublishAsync(message, TestContext.Current.CancellationToken).AsTask());
+
+        thrown.Message.Should().Contain(outcome.ToString()).And.Contain(message.MessageId.ToString());
+    }
+
+    [Fact]
     public void AddLocalInboxDelivery_CustomPublisherAlreadyRegistered_RejectsConflict()
     {
         var services = new ServiceCollection();

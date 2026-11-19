@@ -163,6 +163,8 @@ disposed by the application.
 
 `AddAzureServiceBusIntegrationEventPublisher` **replaces** any existing `IIntegrationEventPublisher` registration rather than adding to it. In-process fan-out and broker publication are alternatives, not layers: registering both would deliver each event locally *and* over the wire, so a service subscribed to its own topic would handle everything twice. Replacing also makes the registration order-independent.
 
+Do not combine Service Bus publication with [local inbox delivery](trellis-api-servicedefaults.md#local-inbox-delivery). The local opt-in rejects an earlier broker publisher at registration and a later replacement at host startup.
+
 `AddAzureServiceBusIntegrationEventConsumer` requires an `IInboxDispatcher`
 (`AddTrellisInbox<TContext>()`). The dispatcher is resolved per message from a fresh
 scope, so it need not be registered before this call. Omitting it is not a startup

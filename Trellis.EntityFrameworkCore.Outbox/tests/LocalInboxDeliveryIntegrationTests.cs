@@ -10,6 +10,44 @@ using Trellis.Mediator;
 
 public sealed class LocalInboxDeliveryIntegrationTests
 {
+    [Fact]
+    public async Task DrainAsync_LocalInboxWithNoHandler_ParksWithoutCreatingReceipt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync(ct);
+        await using var provider = new ServiceCollection()
+            .AddLogging()
+            .AddDbContext<DeliveryContext>(options => options.UseSqlite(connection))
+            .AddDomainEventDispatch()
+            .AddTrellisOutbox<DeliveryContext>(options => options.MaxAttempts = 1)
+            .AddTrellisInbox<DeliveryContext>(options => options.ConsumerId = "local")
+            .AddLocalInboxDelivery()
+            .BuildServiceProvider(validateScopes: true);
+        var message = new LocalEvent(DateTimeOffset.UnixEpoch);
+        await using (var seed = provider.CreateAsyncScope())
+        {
+            var db = seed.ServiceProvider.GetRequiredService<DeliveryContext>();
+            await db.Database.EnsureCreatedAsync(ct);
+            db.Add(OutboxMessage.Create(Guid.CreateVersion7(), message.OccurredAt,
+                typeof(LocalEvent).AssemblyQualifiedName!, JsonSerializer.Serialize(message),
+                OutboxMessageKind.Integration));
+            await db.SaveChangesAsync(ct);
+        }
+
+        var relay = provider.GetServices<IHostedService>().OfType<OutboxRelay<DeliveryContext>>().Single();
+        (await relay.DrainAsync(ct)).Should().Be(1);
+        (await relay.DrainAsync(ct)).Should().Be(0);
+
+        await using var scope = provider.CreateAsyncScope();
+        var persisted = scope.ServiceProvider.GetRequiredService<DeliveryContext>();
+        var row = await persisted.Set<OutboxMessage>().SingleAsync(ct);
+        row.ProcessedAt.Should().BeNull();
+        row.Attempts.Should().Be(1);
+        row.LastError.Should().Contain("has no registered").And.Contain(nameof(LocalEvent));
+        (await persisted.Set<InboxMessage>().CountAsync(ct)).Should().Be(0);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

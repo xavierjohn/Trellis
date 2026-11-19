@@ -1,6 +1,8 @@
 ﻿namespace Trellis.Mediator;
 
-internal sealed class LocalInboxIntegrationEventPublisher(IInboxDispatcher inbox) : IIntegrationEventPublisher
+using Microsoft.Extensions.DependencyInjection;
+
+internal sealed class LocalInboxIntegrationEventPublisher(IServiceProvider services) : IIntegrationEventPublisher
 {
     public async ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken)
     {
@@ -14,8 +16,11 @@ internal sealed class LocalInboxIntegrationEventPublisher(IInboxDispatcher inbox
             TraceParent = message.TraceParent,
             TraceState = message.TraceState,
         };
-        var outcome = await inbox.DispatchAsync(envelope, cancellationToken).ConfigureAwait(false);
+        // The host can validate publisher selection before an application's inbox initializer has run.
+        var outcome = await services.GetRequiredService<IInboxDispatcher>()
+            .DispatchAsync(envelope, cancellationToken).ConfigureAwait(false);
         if (outcome is not (InboxDispatchOutcome.Processed or InboxDispatchOutcome.SkippedDuplicate))
-            throw new InvalidOperationException("The inbox did not return a successful dispatch outcome.");
+            throw new InvalidOperationException(
+                $"Inbox dispatch returned unexpected outcome '{outcome}' for message '{message.MessageId}'.");
     }
 }

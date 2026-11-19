@@ -31,8 +31,9 @@
 /// <see cref="OutboundIntegrationMessage.MessageId"/> verbatim onto the wire is what lets consumer-side
 /// <c>(ConsumerId, MessageId)</c> deduplication recognize a redelivery. An adapter that minted its own id
 /// per attempt would make every redelivery look like a new message and silently defeat the inbox.
-/// The default in-process fan-out ignores the id. An adapter routing through <see cref="IInboxDispatcher"/>
-/// must preserve it even within one process; registration alone does not route publication through an inbox.
+/// The default in-process fan-out ignores the id. Registering an <see cref="IInboxDispatcher"/> alone
+/// does not change it. Select <see cref="IntegrationEventDispatchServiceCollectionExtensions.AddLocalInboxDelivery"/>
+/// to use the built-in inbox publisher, which preserves the id and propagates inbox failures to the relay.
 /// </para>
 /// </remarks>
 public interface IIntegrationEventPublisher

@@ -74,7 +74,10 @@ When Shipping runs in the same process but needs durable retries, add
 .UseLocalInboxDelivery()
 ```
 
-Use the local publisher **instead of** a broker publisher. Stage consumer writes
+Use the local publisher **instead of** a broker publisher. With the built-in inbox,
+register a local handler for every integration event this outbox publishes. There
+is no per-event routing to the broker; a new message with no local handler fails
+and is retried or parked instead of being skipped. Stage consumer writes
 on the inbox's `AppDbContext` and return without saving. The inbox receipt and those
 writes commit together. The relay retries handler or save failures; if the inbox
 commits before relay bookkeeping fails, the same message ID lets the next attempt
