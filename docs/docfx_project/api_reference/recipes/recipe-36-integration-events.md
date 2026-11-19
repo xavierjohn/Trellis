@@ -14,7 +14,7 @@ agent_description: "Shows translating a domain event into a stable integration e
 
 **Requires:** `Trellis.Core`, plus `Trellis.EntityFrameworkCore`, `Trellis.EntityFrameworkCore.Outbox`, `Trellis.Mediator`, `Trellis.ServiceDefaults`.
 
-**Problem.** You want to publish that an order was placed to *other* services, but your `OrderPlaced` domain event carries internal value objects (`OrderId`, `CustomerEmail`, `Money`). Relaying it as-is couples external consumers to your domain model, and every refactor becomes a breaking wire change.
+**Problem.** You want to publish that an order was placed to another module or service, but your `OrderPlaced` domain event carries internal value objects (`OrderId`, `CustomerEmail`, `Money`). Relaying it as-is couples consumers to your domain model, and every refactor becomes a breaking contract change.
 
 **Fix.** Keep the domain event internal and publish a deliberately-shaped `IIntegrationEvent` translated from it. The translator is an ordinary domain-event handler that adds to `IIntegrationEventCollector`; the outbox relay stages the integration event durably and later hands it to `IIntegrationEventPublisher`.
 
@@ -62,3 +62,21 @@ services.AddTrellis(trellis => trellis
 - `CausationId` on a translated integration row is the source **domain row** id; the domain row's cause is the inbound envelope `MessageId` when present. Both rows share the persisted W3C trace and optional application-owned business `CorrelationId` (supply one by wrapping the whole command dispatch in `using var _ = IntegrationMessageContext.BeginCorrelation("workflow-id");` in the caller of `Send` or in an outer behavior; calling it inside an async handler has no effect on the commit, which runs after the handler returns, and the row is persisted with a null correlation). Do not derive business correlation from a trace or HTTP request id.
 
 See [trellis-api-efcore-outbox.md](../trellis-api-efcore-outbox.md#integration-events) for the routing contract.
+
+### Optional: reliable local delivery
+
+When Shipping runs in the same process but needs durable retries, add
+`Trellis.EntityFrameworkCore.Inbox`, map and migrate the inbox table via
+`modelBuilder.AddTrellisInbox()`, and add these calls to the builder above:
+
+```csharp
+.UseInbox<AppDbContext>(options => options.ConsumerId = "local")
+.UseLocalInboxDelivery()
+```
+
+Use the local publisher **instead of** a broker publisher. Stage consumer writes
+on the inbox's `AppDbContext` and return without saving. The inbox receipt and those
+writes commit together. The relay retries handler or save failures; if the inbox
+commits before relay bookkeeping fails, the same message ID lets the next attempt
+skip the committed work. External effects need their own idempotency.
+See [local delivery setup](../trellis-api-servicedefaults.md#local-inbox-delivery).

@@ -55,6 +55,8 @@ registration. ServiceDefaults itself does not take a dependency on the versionin
 
 Every `UseIntegrationEvents(...)` overload wires the default **best-effort local** publisher when none is registered. It logs and swallows ordinary consumer failures, so processed integration outbox rows do not retry those consumers. For reliable broker handoff, replace the publisher with an adapter that awaits acceptance and propagates publication failures; acceptance is not consumer success. `UseInbox<TContext>()` supplies a separate non-swallowing consumption seam, not automatic routing: an adapter must call `IInboxDispatcher.DispatchAsync` with the stable message id and expose failures for redelivery.
 
+For reliable same-process delivery without a broker, opt into `UseLocalInboxDelivery()` alongside `UseOutbox<TContext>()`, `UseInbox<TContext>()`, and the handler registrations. The inbox commits the handlers' staged writes with its receipt; failures reach the outbox relay for retry.
+
 See the [complete producer/consumer compositions](../docs/docfx_project/api_reference/trellis-api-servicedefaults.md#messaging-setup-by-deployment-role).
 Transport registrations stay direct so ServiceDefaults does not acquire a vendor SDK.
 

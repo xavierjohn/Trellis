@@ -50,6 +50,7 @@ Event dispatch retains nested aggregate responses until the owning successful un
 11. **Outbox relay** (`UseOutbox<TContext>`) — hosted-service registration, not a pipeline behavior.
 12. **Opt-in outbox readiness** (`UseOutboxReadiness<TContext>(profile)`) — named health-check registration, not a pipeline behavior.
 13. **Inbox dispatcher** (`UseInbox<TContext>`) — inbound service registration, not a pipeline behavior.
+14. **Local inbox delivery** (`UseLocalInboxDelivery`) — opt-in publisher selection, not a pipeline behavior.
 
 This sequence preserves the central pipeline invariant: the transaction surrounds selected application behaviors and the handler, while commit failures remain visible to outer logging/tracing/exception behaviors. Domain events fire after the transaction commits because dispatch is registered before the unit of work.
 
@@ -108,6 +109,7 @@ selects integration handlers and inbox; a broker consumer is registered directly
 | Produce crash-safe external events | `UseDomainEvents`, `UseIntegrationEvents`, `UseEntityFrameworkUnitOfWork`, `UseOutbox` | Context interceptor, outbox model/migration, translators, stable wire-name contracts |
 | Publish to Azure Service Bus | No vendor slot | One shared singleton `ServiceBusClient` + `AddAzureServiceBusIntegrationEventPublisher` |
 | Consume idempotently | `UseIntegrationEvents`, `UseInbox` | Inbox model/migration and integration-event handlers |
+| Deliver reliably within one process | `UseLocalInboxDelivery` alongside the outbox and inbox slots | [Both table mappings and handler setup](../api_reference/trellis-api-servicedefaults.md#local-inbox-delivery); no broker publisher |
 | Receive from Azure Service Bus | No vendor slot | The shared singleton `ServiceBusClient` + `AddAzureServiceBusIntegrationEventConsumer` |
 
 See the canonical [producer and consumer compositions](../api_reference/trellis-api-servicedefaults.md#messaging-setup-by-deployment-role)

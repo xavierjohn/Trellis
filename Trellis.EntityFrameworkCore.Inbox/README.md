@@ -31,6 +31,8 @@ Your transport adapter passes each received event to `IInboxDispatcher.DispatchA
 
 `UseIntegrationEvents(...)` supplies handler bindings shared by the inbox and the default **best-effort local** publisher. `UseInbox<TContext>()` does not route that publisher through the inbox: its swallowed consumer failures still process integration outbox rows without retry. The adapter must actually invoke the non-swallowing inbox dispatcher and expose failures for transport redelivery. Broker publication acceptance alone is not consumer processing.
 
+For same-process delivery with outbox retries, select `UseLocalInboxDelivery()` explicitly. It invokes the inbox with the original outbox message ID and exposes processing failures to the relay.
+
 ## Key Features
 
 - Commits the deduplication row and handler writes atomically in one `DbContext`.

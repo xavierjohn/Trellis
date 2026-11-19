@@ -50,6 +50,7 @@ public sealed class TrellisServiceBuilder
     private Action<IServiceCollection>? _outboxRegistration;
     private Action<IServiceCollection>? _outboxReadinessRegistration;
     private Action<IServiceCollection>? _inboxRegistration;
+    private bool _useLocalInboxDelivery;
     private bool _useAsp;
     private bool _useScalarValueValidation;
     private bool _useProblemDetails;
@@ -757,6 +758,20 @@ public sealed class TrellisServiceBuilder
     }
 
     /// <summary>
+    /// Selects transactional inbox delivery instead of best-effort local fan-out for integration events.
+    /// </summary>
+    /// <remarks>
+    /// Register the inbox, its handlers, and the outbox separately. Do not select a broker publisher as well.
+    /// This slot adds no pipeline behavior and is applied after the selected inbox registration.
+    /// </remarks>
+    /// <returns>The same builder for chaining.</returns>
+    public TrellisServiceBuilder UseLocalInboxDelivery()
+    {
+        _useLocalInboxDelivery = true;
+        return this;
+    }
+
+    /// <summary>
     /// Registers the domain-event dispatch behavior and (optionally) scans assemblies for
     /// <see cref="IDomainEventHandler{TEvent}"/> implementations. Implies <see cref="UseMediator"/>.
     /// </summary>
@@ -1162,6 +1177,8 @@ public sealed class TrellisServiceBuilder
         _outboxRegistration?.Invoke(_services);
         _outboxReadinessRegistration?.Invoke(_services);
         _inboxRegistration?.Invoke(_services);
+        if (_useLocalInboxDelivery)
+            _services.AddLocalInboxDelivery();
     }
 
     private void SetActorProvider(ActorProviderKind kind, Action<IServiceCollection> registration)
