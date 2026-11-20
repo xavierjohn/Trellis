@@ -54,13 +54,39 @@ public sealed class ToHttpResponseTests
     [Fact]
     public void ToHttpResponse_WithoutConfiguration_AllocatesOnlyTheResult()
     {
-        const int iterations = 32;
         var result = Result.Ok("value");
-        GC.KeepAlive(result.ToHttpResponse());
+        AssertResultAllocation(() => result.ToHttpResponse());
+    }
+
+    [Fact]
+    public void ToHttpResponse_UnitWithoutConfiguration_AllocatesOnlyTheResult()
+    {
+        var result = Result.Ok();
+        AssertResultAllocation(() => result.ToHttpResponse());
+    }
+
+    [Fact]
+    public void ToHttpResponse_StandaloneErrorWithoutConfiguration_AllocatesOnlyTheResult()
+    {
+        var error = new Error.NotFound(new ResourceRef("Todo", "1"));
+        AssertResultAllocation(() => error.ToHttpResponse());
+    }
+
+    [Fact]
+    public void ToHttpResponse_PagedFailureWithoutConfiguration_AllocatesOnlyTheResult()
+    {
+        var result = Result.Fail<Page<Todo>>(new Error.NotFound(new ResourceRef("Todo", "1")));
+        AssertResultAllocation(() => result.ToHttpResponse(static (_, _, _) => "/todos", TodoResponse.From));
+    }
+
+    private static void AssertResultAllocation(Func<Microsoft.AspNetCore.Http.IResult> create)
+    {
+        const int iterations = 32;
+        GC.KeepAlive(create());
 
         var before = GC.GetAllocatedBytesForCurrentThread();
         for (var i = 0; i < iterations; i++)
-            GC.KeepAlive(result.ToHttpResponse());
+            GC.KeepAlive(create());
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         allocated.Should().BeLessThan(128 * iterations);

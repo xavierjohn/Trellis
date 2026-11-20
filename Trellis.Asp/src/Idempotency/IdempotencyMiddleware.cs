@@ -174,6 +174,7 @@ public sealed partial class IdempotencyMiddleware
             {
                 var read = await context.Request.Body.ReadAsync(chunk.AsMemory(0, chunkSize), context.RequestAborted).ConfigureAwait(false);
                 if (read == 0)
+                    // MemoryStream keeps its owned array available even after disposal.
                     return new ArraySegment<byte>(buffer.GetBuffer(), 0, (int)buffer.Length);
 
                 if (buffer.Length + read > maxBytes)

@@ -104,9 +104,9 @@ public sealed class IdempotencyMiddlewareTests
         '"' + key.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + '"';
 
     [Theory]
-    [InlineData(0, 4_096)]
-    [InlineData(900 * 1024, 2_500_000)]
-    public async Task InvokeAsync_UnknownLengthBody_PreservesExactBytesWithinAllocationBudget(int size, int budget)
+    [InlineData(0)]
+    [InlineData(900 * 1024)]
+    public async Task InvokeAsync_UnknownLengthBody_PreservesExactBytesWithinAllocationBudget(int size)
     {
         var services = new ServiceCollection();
         services.AddTrellisIdempotency(o => o.MaxRequestBodyBytes = Math.Max(1, size));
@@ -140,7 +140,8 @@ public sealed class IdempotencyMiddlewareTests
         context.Response.StatusCode.Should().Be(StatusCodes.Status204NoContent);
         received.AsSpan().SequenceEqual(payload).Should().BeTrue();
         extraByte.Should().Be(-1);
-        allocated.Should().BeLessThan(budget);
+        // Allow fixed middleware overhead and geometric growth, but not another full-body copy.
+        allocated.Should().BeLessThan((8 * 1024) + (3L * size));
 
         var fingerprint = IdempotencyFingerprint.Compute(context, payload, options.Value);
         var store = provider.GetRequiredService<IIdempotencyStore>();

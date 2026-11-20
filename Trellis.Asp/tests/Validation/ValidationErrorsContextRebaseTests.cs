@@ -42,6 +42,19 @@ public class ValidationErrorsContextRebaseTests
         ValidationErrorsContext.HasReadFailureForField("name").Should().BeTrue();
     }
 
+    [Fact]
+    public void SubtreeLookups_QueryViolation_CountsAtRootWithoutMarkingAReadFailure()
+    {
+        using var scope = ValidationErrorsContext.BeginScope();
+        ValidationErrorsContext.AddError(
+            Error.InvalidInput.ForField(field: InputPointer.ForQuery("a/b"), code: UnspecifiedCode));
+
+        ValidationErrorsContext.HasErrorForField(string.Empty).Should().BeTrue();
+        ValidationErrorsContext.HasErrorForField("a/b").Should().BeTrue();
+        ValidationErrorsContext.HasErrorForField("a").Should().BeFalse();
+        ValidationErrorsContext.HasReadFailureWithinCurrentObject().Should().BeFalse();
+    }
+
     // --- AddBodyError promotes Unspecified to Body, at every depth ---
 
     [Fact]

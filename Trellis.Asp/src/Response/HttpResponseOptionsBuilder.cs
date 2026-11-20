@@ -450,6 +450,7 @@ internal enum LocationKind { None, Literal, Selector, Route, Action }
 
 internal sealed class HttpResponseOptions<TDomain>
 {
+    // Shared across requests: leave mutable members null on the default instance.
     internal static HttpResponseOptions<TDomain> Default { get; } = new();
 
     public Func<TDomain, EntityTagValue?>? ETagSelector { get; init; }
