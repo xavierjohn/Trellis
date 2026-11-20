@@ -14,9 +14,9 @@ Executable conformance suite for `IIdempotencyStore` implementations.
 
 - **Package:** `Trellis.Testing.Idempotency`
 - **Namespace:** `Trellis.Testing.Idempotency`
-- **Depends on:** `Trellis.Asp` (for the contract types), `xunit.v3.extensibility.core` 4.0.1, `FluentAssertions`
+- **Depends on:** `Trellis.Asp` (for the contract types), `xunit.v3.extensibility.core` 4.0.3, `FluentAssertions`
 
-Consuming test projects should use `xunit.v3` 4.0.1 or later with Microsoft.Testing.Platform 2.
+Consuming test projects should use `xunit.v3` 4.0.3 or later with Microsoft.Testing.Platform 2.
 The conformance library references the attributes and extensibility surface only; it does not
 bring in the executable test runner.
 
