@@ -84,7 +84,7 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Install SBOM tool
-      run: dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.1.5
+      run: dotnet tool install --global Microsoft.Sbom.DotNetTool --version 4.1.13
 
     - name: Generate SBOM
       shell: pwsh
