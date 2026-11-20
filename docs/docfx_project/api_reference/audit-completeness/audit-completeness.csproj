@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Trellis.Core.Tests" />
+    <!-- Match DocFX 2.81.0 and the central version used by the recipe audit tests. -->
     <PackageReference Include="Markdig" Version="1.4.0" />
     <PackageReference Include="System.Reflection.MetadataLoadContext" Version="11.0.0" />
   </ItemGroup>

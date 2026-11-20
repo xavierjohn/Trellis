@@ -9,7 +9,7 @@ Executable conformance suite for Trellis `IIdempotencyStore` implementations.
 dotnet add package Trellis.Testing.Idempotency
 ```
 
-Use `xunit.v3` 4.0.1 or later in the consuming test project (Microsoft.Testing.Platform 2).
+Use `xunit.v3` 4.0.3 or later in the consuming test project (Microsoft.Testing.Platform 2).
 The conformance library itself references only `xunit.v3.extensibility.core`, not the runner.
 
 ## Quick Example
