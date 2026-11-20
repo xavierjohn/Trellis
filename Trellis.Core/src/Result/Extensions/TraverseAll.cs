@@ -5,8 +5,8 @@ using System.Runtime.CompilerServices;
 
 /// <summary>
 /// Accumulating-error counterpart to <see cref="TraverseExtensions.Traverse{TIn, TOut}"/>.
-/// Runs the selector over every item (no short-circuit) and folds failures via the existing
-/// <see cref="CombineErrorExtensions.Combine"/> extension. Useful for form-style validation where
+/// Runs the selector over every item (no short-circuit) and accumulates failures with
+/// <see cref="CombineErrorExtensions.Combine"/> semantics. Useful for form-style validation where
 /// every error matters, not just the first one encountered.
 /// </summary>
 [DebuggerStepThrough]
@@ -38,7 +38,7 @@ public static class TraverseAllExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var values = source is ICollection<TIn> coll ? new List<TOut>(coll.Count) : new List<TOut>();
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         bool persistOnFailure = false;
 
         foreach (var item in source)
@@ -50,12 +50,12 @@ public static class TraverseAllExtensions
             }
             else
             {
-                accumulated = accumulated.Combine(result.Error);
+                errors.Add(result.Error);
                 persistOnFailure |= result.PersistOnFailureFlag;
             }
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             activity?.SetStatus(ActivityStatusCode.Error);
             return Result.ProjectFailure<IReadOnlyList<TOut>>(accumulated, persistOnFailure);
@@ -115,7 +115,7 @@ public static class TraverseAllExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var values = source is ICollection<TIn> coll ? new List<TOut>(coll.Count) : new List<TOut>();
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         bool persistOnFailure = false;
 
         foreach (var item in source)
@@ -127,12 +127,12 @@ public static class TraverseAllExtensions
             }
             else
             {
-                accumulated = accumulated.Combine(result.Error);
+                errors.Add(result.Error);
                 persistOnFailure |= result.PersistOnFailureFlag;
             }
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             activity?.SetStatus(ActivityStatusCode.Error);
             return Result.ProjectFailure<IReadOnlyList<TOut>>(accumulated, persistOnFailure);
@@ -167,7 +167,7 @@ public static class TraverseAllExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var values = source is ICollection<TIn> coll ? new List<TOut>(coll.Count) : new List<TOut>();
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         bool persistOnFailure = false;
 
         foreach (var item in source)
@@ -180,12 +180,12 @@ public static class TraverseAllExtensions
             }
             else
             {
-                accumulated = accumulated.Combine(result.Error);
+                errors.Add(result.Error);
                 persistOnFailure |= result.PersistOnFailureFlag;
             }
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             activity?.SetStatus(ActivityStatusCode.Error);
             return Result.ProjectFailure<IReadOnlyList<TOut>>(accumulated, persistOnFailure);
@@ -217,7 +217,7 @@ public static class TraverseAllExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var values = source is ICollection<TIn> coll ? new List<TOut>(coll.Count) : new List<TOut>();
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         bool persistOnFailure = false;
 
         foreach (var item in source)
@@ -229,12 +229,12 @@ public static class TraverseAllExtensions
             }
             else
             {
-                accumulated = accumulated.Combine(result.Error);
+                errors.Add(result.Error);
                 persistOnFailure |= result.PersistOnFailureFlag;
             }
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             activity?.SetStatus(ActivityStatusCode.Error);
             return Result.ProjectFailure<IReadOnlyList<TOut>>(accumulated, persistOnFailure);
@@ -269,7 +269,7 @@ public static class TraverseAllExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var values = source is ICollection<TIn> coll ? new List<TOut>(coll.Count) : new List<TOut>();
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         bool persistOnFailure = false;
 
         foreach (var item in source)
@@ -282,12 +282,12 @@ public static class TraverseAllExtensions
             }
             else
             {
-                accumulated = accumulated.Combine(result.Error);
+                errors.Add(result.Error);
                 persistOnFailure |= result.PersistOnFailureFlag;
             }
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             activity?.SetStatus(ActivityStatusCode.Error);
             return Result.ProjectFailure<IReadOnlyList<TOut>>(accumulated, persistOnFailure);
@@ -320,7 +320,7 @@ public static class TraverseAllExtensions
         ArgumentNullException.ThrowIfNull(selector);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         bool persistOnFailure = false;
 
         foreach (var item in source)
@@ -329,12 +329,12 @@ public static class TraverseAllExtensions
             var result = await selector(item, cancellationToken).ConfigureAwait(false);
             if (result.IsFailure)
             {
-                accumulated = accumulated.Combine(result.Error);
+                errors.Add(result.Error);
                 persistOnFailure |= result.PersistOnFailureFlag;
             }
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             activity?.SetStatus(ActivityStatusCode.Error);
             return Result.ProjectFailure<Unit>(accumulated, persistOnFailure);

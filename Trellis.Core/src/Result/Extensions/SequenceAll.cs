@@ -4,8 +4,8 @@ using System.Diagnostics;
 
 /// <summary>
 /// Accumulating-error counterpart to <see cref="TraverseExtensions.Sequence{T}(IEnumerable{Result{T}})"/>.
-/// Runs through every item; folds failures via the existing <see cref="CombineErrorExtensions.Combine"/>
-/// extension so two <see cref="Error.InvalidInput"/> failures merge their fields/rules and
+/// Runs through every item; accumulates failures with <see cref="CombineErrorExtensions.Combine"/>
+/// semantics so two <see cref="Error.InvalidInput"/> failures merge their fields/rules and
 /// heterogeneous failures flatten into <see cref="Error.Aggregate"/>.
 /// </summary>
 [DebuggerStepThrough]
@@ -30,7 +30,7 @@ public static class SequenceAllExtensions
 
         using var activity = RopTrace.ActivitySource.StartActivity();
         var values = source is ICollection<Result<T>> coll ? new List<T>(coll.Count) : new List<T>();
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         bool persistOnFailure = false;
 
         foreach (var result in source)
@@ -41,12 +41,12 @@ public static class SequenceAllExtensions
             }
             else
             {
-                accumulated = accumulated.Combine(result.Error);
+                errors.Add(result.Error);
                 persistOnFailure |= result.PersistOnFailureFlag;
             }
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             activity?.SetStatus(ActivityStatusCode.Error);
             return Result.ProjectFailure<IReadOnlyList<T>>(accumulated, persistOnFailure);
@@ -70,19 +70,19 @@ public static class SequenceAllExtensions
         ArgumentNullException.ThrowIfNull(source);
 
         using var activity = RopTrace.ActivitySource.StartActivity();
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         bool persistOnFailure = false;
 
         foreach (var result in source)
         {
             if (result.IsFailure)
             {
-                accumulated = accumulated.Combine(result.Error);
+                errors.Add(result.Error);
                 persistOnFailure |= result.PersistOnFailureFlag;
             }
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             activity?.SetStatus(ActivityStatusCode.Error);
             return Result.ProjectFailure<Unit>(accumulated, persistOnFailure);

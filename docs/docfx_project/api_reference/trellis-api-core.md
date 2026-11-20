@@ -1569,7 +1569,7 @@ var guard = Result.Ensure(end != start, () =>
 | `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : class` | `Result<T>` | Reference-type `EnsureNotNull` overload that strips the nullable annotation. |
 | `public static Result<T> EnsureNotNull<T>(this Result<T?> result, Error error) where T : struct` | `Result<T>` | Value-type `EnsureNotNull` overload that unwraps the nullable. |
 | `public static Task<Result<TValue>> EnsureAsync<TValue>(this Task<Result<TValue>> resultTask, Func<TValue, Task<bool>> predicate, Error error)` | `Task<Result<TValue>>` | `EnsureExtensionsAsync` covers all `Result<T>`/`Task<Result<T>>`/`ValueTask<Result<T>>` receivers × `Func<TValue, bool>`/`Task<bool>`/`ValueTask<bool>` predicates × constant-, factory-, async-factory- and embedded-`Result<TValue>` error producers (~34 overloads across the six `Ensure.*` partial files). |
-| `public static Result<TValue> EnsureAll<TValue>(this Result<TValue> result, params (Func<TValue, bool> predicate, Error error)[] checks)` | `Result<TValue>` | Applicative validation: runs every check and folds failures via `error.Combine(...)` into one `Error.Aggregate`. |
+| `public static Result<TValue> EnsureAll<TValue>(this Result<TValue> result, params (Func<TValue, bool> predicate, Error error)[] checks)` | `Result<TValue>` | Applicative validation: runs every check and accumulates failures with `Error.Combine` semantics; homogeneous validation failures merge, while heterogeneous failures aggregate. |
 | `public static Task<Result<TValue>> EnsureAllAsync<TValue>(this Task<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Error error)[] checks)` | `Task<Result<TValue>>` | Task overload of `EnsureAllAsync`. |
 | `public static ValueTask<Result<TValue>> EnsureAllAsync<TValue>(this ValueTask<Result<TValue>> resultTask, params (Func<TValue, bool> predicate, Error error)[] checks)` | `ValueTask<Result<TValue>>` | ValueTask overload of `EnsureAllAsync`. |
 | `public static Result<TValue> EnsureAll<TValue>(this Result<TValue> result, params (Func<TValue, bool> predicate, Func<TValue, Error> errorFactory)[] checks)` | `Result<TValue>` | Lazy accumulation: each failed check calls its factory exactly once with the successful value; passing checks never create errors. |
@@ -1813,7 +1813,12 @@ Result<IReadOnlyList<Money>> subtotals =
 
 #### TraverseAll / SequenceAll — `TraverseAllExtensions`, `SequenceAllExtensions`
 
-Accumulating-error counterparts to `Traverse` / `Sequence`. Run the selector over every item (no short-circuit) and fold failures via the existing `Error.Combine` extension. A single failure returns unchanged (no `Error.Aggregate` wrap); multiple `InvalidInput` failures merge their fields/rules; heterogeneous failures flatten into `Error.Aggregate`. Use these when you need to surface every failure (form-style validation) rather than the first.
+Accumulating-error counterparts to `Traverse` / `Sequence`. Run the selector over every item (no short-circuit) and accumulate failures with the same left-fold semantics as `Error.Combine`. A single failure returns unchanged (no `Error.Aggregate` wrap); leading `InvalidInput` failures merge their fields/rules; heterogeneous failures flatten into `Error.Aggregate`. Once aggregation begins, later validation failures remain separate children. Ordering and duplicates are preserved. Use these when you need to surface every failure (form-style validation) rather than the first.
+
+`TraverseAll`, `SequenceAll`, and `EnsureAll` buffer violations, flat child errors, and
+merged detail text instead of rebuilding the growing immutable error for each failure.
+Accumulation scales linearly with the collected payload and materializes the combined
+result at the end; the binary `Error.Combine` API and its behavior are unchanged.
 
 | Signature | Returns | Description |
 | --- | --- | --- |
@@ -2407,8 +2412,8 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `protected abstract void GetEqualityComponents(ref EqualityComponents components)` | `void` | Appends the ordered components used for equality, comparison, and hash-code generation onto `components`. Components at the same position with different runtime types are ordered by type name before same-typed components use their native comparison. Allocation-free: the base class supplies stack storage for up to 8 components and rents from `ArrayPool<IComparable?>.Shared` beyond that. |
-| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Converts `Maybe<T>` to an equality component by returning the inner value or `null`. Prefer `components.Add(maybe)`, which does the same conversion inline. |
+| `protected abstract void GetEqualityComponents(ref EqualityComponents components)` | `void` | Appends the ordered components used for equality, comparison, and hash-code generation onto `components`. Components at the same position with different runtime types are ordered by type name before same-typed components use their native comparison. The base supplies inline storage for up to 8 components and pooled storage beyond that; typed BCL scalar components avoid boxing after warm-up. |
+| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Converts `Maybe<T>` to an equality component by returning the inner value or `null`. Present value types can box here; prefer `components.Add(maybe)` to preserve the typed, non-boxing path for supported scalars. |
 | `public override bool Equals(object? obj)` | `bool` | Delegates to `Equals(ValueObject? other)`. |
 | `public bool Equals(ValueObject? other)` | `bool` | Structural equality check against the same runtime type. |
 | `public override int GetHashCode()` | `int` | Computes and caches a hash code from the equality components. |
@@ -2431,8 +2436,28 @@ The sink passed to `ValueObject.GetEqualityComponents(ref EqualityComponents)`. 
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public void Add(IComparable? component)` | `void` | Appends one component. Order is significant: equality compares positionally and `CompareTo` returns on the first differing position. |
+| `public void Add<T>(T component) where T : IComparable?` | `void` | Typed append; supported BCL scalar values are stored without boxing, and null references remain null components. |
+| `public void Add<T>(T? component) where T : struct, IComparable` | `void` | Nullable scalar append; present values use the typed path, and absent values become null components. |
 | `public void Add<T>(Maybe<T> component) where T : notnull, IComparable` | `void` | Appends an optional component, adding the inner value when present and `null` when empty. |
 | `public readonly int Count` | `int` | Number of components added so far. |
+
+The non-boxing scalar set is `bool`, `char`, `byte`, `sbyte`, `short`, `ushort`, `int`,
+`uint`, `long`, `ulong`, `nint`, `nuint`, `Int128`, `UInt128`, `Half`, `float`, `double`,
+`decimal`, `Guid`, `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, and `TimeSpan`.
+Their nullable and `Maybe<T>` forms use the same typed storage. Same-typed equality,
+ordering, and uncached hashing avoid per-call allocations after the comparer and any
+required pool storage are warmed. Scalar hashing and comparison retain native semantics,
+including decimal scale equivalence and floating-point NaN equality.
+
+Custom comparable values retain the existing object-based equality, hashing, and
+comparison contract; custom structs can still box. A custom component comparing itself
+to a scalar receives the original boxed scalar, not an internal representation.
+Explicitly preboxed scalars retain their original object identity for custom equality.
+Keep scalar values typed when calling `Add`: explicitly converting them to
+`IComparable` (including through `MaybeComponent`) boxes before the sink can avoid it.
+Existing preboxed calls remain semantically compatible. The optional overload retains
+higher resolution priority, preserving existing `Add<T>(default)` calls as absent
+`Maybe<T>` components; prefer explicit `Maybe<T>.None` in new code.
 
 ```csharp
 public sealed class Address(string street, string city) : ValueObject
@@ -3201,6 +3226,7 @@ public static TSelf Create(string value)
 ```
 
 - `TryCreate(string)` / `TryCreate(string?, string?)` are inherited from the `RequiredEnum<TSelf>` base — an enum's creation is a uniform symbolic lookup, so it is not generated per type. `Create`, `Parse`, and `TryParse` are generated and route through `TryCreate`.
+- Activity names and default field names are cached per enum type. After member discovery, successful `TryCreate` lookups allocate no strings when tracing has no listener; field normalization and failure prose are deferred until validation fails. Null, blank, undefined-name, custom-field, and empty-field behavior is unchanged.
 - The enum JSON converter resolves through `TryCreate`; there is no `TryFromValue` or `TryFromName` API.
 
 ### Building your own primitive
