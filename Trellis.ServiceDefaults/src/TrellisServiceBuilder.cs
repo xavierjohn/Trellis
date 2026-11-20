@@ -761,8 +761,8 @@ public sealed class TrellisServiceBuilder
     /// Selects transactional inbox delivery instead of best-effort local fan-out for integration events.
     /// </summary>
     /// <remarks>
-    /// Select <see cref="UseInbox{TContext}"/> or register an <see cref="IInboxDispatcher"/> before
-    /// applying the builder. Register the outbox and a handler for each event delivered to the built-in inbox.
+    /// Select <see cref="UseInbox{TContext}"/> or register an <see cref="IInboxDispatcher"/> before or
+    /// after applying the builder; host startup rejects a container with no unkeyed dispatcher. Register the outbox and a handler for each event delivered to the built-in inbox.
     /// Missing handlers fail delivery rather than being skipped. Do not select a broker publisher as well.
     /// This slot adds no pipeline behavior and is applied after the selected inbox registration.
     /// </remarks>
@@ -1097,13 +1097,6 @@ public sealed class TrellisServiceBuilder
         Justification = "Apply() only invokes the assembly-scanning AddTrellisFluentValidation / AddResourceAuthorization / AddDomainEventDispatch overloads when the consumer explicitly passed assemblies to the matching builder method, which has already surfaced the IL2026/IL3050 warning at the consumer's call site.")]
     internal void Apply()
     {
-        if (_useLocalInboxDelivery && _inboxRegistration is null
-            && !_services.Any(d => d.ServiceType == typeof(IInboxDispatcher) && !d.IsKeyedService))
-        {
-            throw new InvalidOperationException(
-                "UseLocalInboxDelivery() requires UseInbox<TContext>() or an unkeyed IInboxDispatcher registered before AddTrellis().");
-        }
-
         if (_useAsp)
         {
             if (_configureAsp is null)

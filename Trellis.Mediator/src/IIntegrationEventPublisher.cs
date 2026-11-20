@@ -47,9 +47,10 @@ public interface IIntegrationEventPublisher
     /// </param>
     /// <param name="cancellationToken">A token to observe while publishing.</param>
     /// <returns>
-    /// A <see cref="ValueTask"/> that completes after the implementation's publication step: best-effort
-    /// local fan-out, broker acceptance, or successful dispatch for a local inbox publisher.
-    /// The completion boundary differs by publisher.
+    /// A <see cref="ValueTask"/> that completes after the implementation's publication step.
+    /// Normal completion of best-effort local fan-out or broker publication does not guarantee
+    /// consumer success. The built-in local inbox publisher waits for the inbox to process the
+    /// message or confirm it is a duplicate.
     /// </returns>
     ValueTask PublishAsync(OutboundIntegrationMessage message, CancellationToken cancellationToken);
 }

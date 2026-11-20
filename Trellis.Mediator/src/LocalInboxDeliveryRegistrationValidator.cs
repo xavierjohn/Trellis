@@ -3,24 +3,26 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-internal sealed class LocalInboxDeliveryRegistrationValidator(IServiceScopeFactory scopeFactory) : IHostedLifecycleService
-{
-    public async Task StartingAsync(CancellationToken cancellationToken)
-    {
-        var scope = scopeFactory.CreateAsyncScope();
-        await using (scope.ConfigureAwait(false))
-        {
-            if (scope.ServiceProvider.GetServices<IIntegrationEventPublisher>().ToArray()
-                is not [LocalInboxIntegrationEventPublisher])
-            {
-                throw new InvalidOperationException(
-                    "Local inbox delivery must be the only unkeyed integration-event publisher. " +
-                    "Remove the broker or custom publisher registration, or disable local inbox delivery.");
-            }
+internal sealed record LocalInboxDeliveryRegistrations(IServiceCollection Services);
 
-            if (scope.ServiceProvider.GetService<IServiceProviderIsService>()?.IsService(typeof(IInboxDispatcher)) == false)
-                throw new InvalidOperationException("Local inbox delivery requires an unkeyed IInboxDispatcher registration.");
+internal sealed class LocalInboxDeliveryRegistrationValidator(LocalInboxDeliveryRegistrations registrations) : IHostedLifecycleService
+{
+    public Task StartingAsync(CancellationToken cancellationToken)
+    {
+        var unkeyed = registrations.Services.Where(descriptor => !descriptor.IsKeyedService).ToArray();
+
+        if (unkeyed.Where(descriptor => descriptor.ServiceType == typeof(IIntegrationEventPublisher)).ToArray()
+            is not [{ ImplementationType: var publisher }] || publisher != typeof(LocalInboxIntegrationEventPublisher))
+        {
+            throw new InvalidOperationException(
+                "Local inbox delivery must be the only unkeyed integration-event publisher. " +
+                "Remove the broker or custom publisher registration, or disable local inbox delivery.");
         }
+
+        if (!unkeyed.Any(descriptor => descriptor.ServiceType == typeof(IInboxDispatcher)))
+            throw new InvalidOperationException("Local inbox delivery requires an unkeyed IInboxDispatcher registration.");
+
+        return Task.CompletedTask;
     }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
