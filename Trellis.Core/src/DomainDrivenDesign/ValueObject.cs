@@ -225,7 +225,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// protected override void GetEqualityComponents(ref EqualityComponents components)
     /// {
     ///     components.Add(Street);
-    ///     components.Add(MaybeComponent(Apartment));
+    ///     components.Add(Apartment);
     /// }
     /// </code>
     /// </example>

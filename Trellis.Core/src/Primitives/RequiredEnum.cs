@@ -142,6 +142,9 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 #pragma warning restore CA1711
 {
     private static readonly ConcurrentDictionary<Type, (ReadOnlyCollection<TSelf> Members, Dictionary<string, TSelf> ByName)> s_cache = new();
+    private static readonly string s_typeName = typeof(TSelf).Name;
+    private static readonly string s_activityName = $"{s_typeName}.TryCreate";
+    private static readonly string s_defaultFieldName = s_typeName.ToCamelCase();
 
     /// <summary>
     /// Gets the string value of this enum value object member.
@@ -216,9 +219,7 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// <returns>A <see cref="Result{TSelf}"/> containing the matching member or a validation error.</returns>
     public static Result<TSelf> TryCreate(string? value, string? fieldName = null)
     {
-        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity($"{typeof(TSelf).Name}.TryCreate");
-
-        var field = NormalizeFieldName(fieldName, typeof(TSelf).Name);
+        using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(s_activityName);
 
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -226,7 +227,10 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
             // value.not-empty here would make the same failure carry different codes depending on
             // which producer saw it -- the producer-dependence this vocabulary exists to remove.
             var emptinessCode = value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty;
-            return Result.Fail<TSelf>(Error.InvalidInput.ForField(field: field, code: emptinessCode, detail: $"{typeof(TSelf).Name} cannot be empty."));
+            return Result.Fail<TSelf>(Error.InvalidInput.ForField(
+                field: fieldName.NormalizeFieldName(s_defaultFieldName),
+                code: emptinessCode,
+                detail: $"{s_typeName} cannot be empty."));
         }
 
         var cache = GetCache();
@@ -235,12 +239,12 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 
         var validNames = EnumMemberProse.ListOrNull(cache.ByName.Keys);
         return Result.Fail<TSelf>(Error.InvalidInput.ForField(
-            field: field,
+            field: fieldName.NormalizeFieldName(s_defaultFieldName),
             code: ValidationCodes.EnumNameUndefined,
             args: ValidationArgs.Allowed(cache.ByName.Keys),
             detail: validNames is null
-                ? $"'{value}' is not a valid {typeof(TSelf).Name}."
-                : $"'{value}' is not a valid {typeof(TSelf).Name}. Valid values: {validNames}"));
+                ? $"'{value}' is not a valid {s_typeName}."
+                : $"'{value}' is not a valid {s_typeName}. Valid values: {validNames}"));
     }
 
     /// <summary>
@@ -379,8 +383,5 @@ public abstract class RequiredEnum<[DynamicallyAccessedMembers(DynamicallyAccess
             }
         }
     }
-
-    private static string NormalizeFieldName(string? fieldName, string typeName) =>
-        fieldName.NormalizeFieldName(typeName.ToCamelCase());
 }
 #pragma warning restore CA1000

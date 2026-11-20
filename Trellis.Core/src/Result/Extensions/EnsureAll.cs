@@ -39,7 +39,7 @@ public static class EnsureAllExtensions
         }
 
         result.TryGetValue(out var value);
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         for (var i = 0; i < checks.Length; i++)
         {
             var (predicate, error) = checks[i];
@@ -51,10 +51,10 @@ public static class EnsureAllExtensions
                 throw new ArgumentNullException(nameof(checks), $"checks[{i}].error is null.");
 
             if (!predicate(value!))
-                accumulated = accumulated.Combine(error);
+                errors.Add(error);
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             var output = Result.Fail<TValue>(accumulated);
             output.LogActivityStatus();
@@ -95,7 +95,7 @@ public static class EnsureAllExtensions
         }
 
         result.TryGetValue(out var value);
-        Error? accumulated = null;
+        var errors = new ErrorAccumulator();
         for (var i = 0; i < checks.Length; i++)
         {
             var (predicate, errorFactory) = checks[i];
@@ -108,11 +108,11 @@ public static class EnsureAllExtensions
             {
                 var error = errorFactory(value!)
                     ?? throw new InvalidOperationException($"checks[{i}].errorFactory returned null.");
-                accumulated = accumulated.Combine(error);
+                errors.Add(error);
             }
         }
 
-        if (accumulated is not null)
+        if (errors.Build() is { } accumulated)
         {
             var output = Result.Fail<TValue>(accumulated);
             output.LogActivityStatus();

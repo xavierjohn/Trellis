@@ -10,8 +10,9 @@ using System.Buffers;
 /// A <see langword="ref struct" /> sink passed by reference to
 /// <see cref="ValueObject.GetEqualityComponents(ref EqualityComponents)"/>. Components are written
 /// into a caller-owned inline buffer, so equality, ordering, and hashing traverse a value object's
-/// components without allocating. The previous <c>IEnumerable&lt;IComparable?&gt;</c> contract
-/// allocated an iterator state machine on every comparison.
+/// components without iterator allocations. Value-type components can still box.
+/// The previous <c>IEnumerable&lt;IComparable?&gt;</c> contract allocated
+/// an iterator state machine on every comparison.
 /// </para>
 /// <para>
 /// Add components in a stable, deterministic order. Derived types that extend a base value object
