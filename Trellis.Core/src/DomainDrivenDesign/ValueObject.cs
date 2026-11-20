@@ -1,7 +1,5 @@
 ﻿namespace Trellis;
 
-using System.Runtime.CompilerServices;
-
 /// <summary>
 /// Base class for value objects in Domain-Driven Design.
 /// A value object represents a descriptive aspect of the domain with no conceptual identity.
@@ -177,7 +175,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     [System.Runtime.CompilerServices.InlineArray(InlineComponentCapacity)]
     private struct ComponentBuffer
     {
-        private EqualityComponent element0;
+        private IComparable? element0;
     }
 
     /// <summary>
@@ -227,7 +225,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
     /// protected override void GetEqualityComponents(ref EqualityComponents components)
     /// {
     ///     components.Add(Street);
-    ///     components.Add(MaybeComponent(Apartment));
+    ///     components.Add(Apartment);
     /// }
     /// </code>
     /// </example>
@@ -269,9 +267,8 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
         if (thisHash != UncomputedHashCode && otherHash != UncomputedHashCode && thisHash != otherHash)
             return false;
 
-        // The sink fully initializes the counted prefix before any component is read.
-        Unsafe.SkipInit(out ComponentBuffer leftStorage);
-        Unsafe.SkipInit(out ComponentBuffer rightStorage);
+        ComponentBuffer leftStorage = default;
+        ComponentBuffer rightStorage = default;
         var left = new EqualityComponents(leftStorage);
         var right = new EqualityComponents(rightStorage);
 
@@ -310,7 +307,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
         if (cached != UncomputedHashCode)
             return cached;
 
-        Unsafe.SkipInit(out ComponentBuffer storage);
+        ComponentBuffer storage = default;
         var components = new EqualityComponents(storage);
         int computed;
 
@@ -320,7 +317,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 
             computed = 1;
             foreach (var component in components.AsSpan())
-                computed = HashCode.Combine(computed, component.GetHashCode());
+                computed = HashCode.Combine(computed, component?.GetHashCode() ?? 0);
         }
         finally
         {
@@ -368,8 +365,8 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
         if (thisType != otherType)
             throw new ArgumentException($"Cannot compare objects of different types: {thisType} and {otherType}");
 
-        Unsafe.SkipInit(out ComponentBuffer leftStorage);
-        Unsafe.SkipInit(out ComponentBuffer rightStorage);
+        ComponentBuffer leftStorage = default;
+        ComponentBuffer rightStorage = default;
         var left = new EqualityComponents(leftStorage);
         var right = new EqualityComponents(rightStorage);
 
@@ -384,7 +381,7 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 
             for (var i = 0; i < shared; i++)
             {
-                var comparison = leftComponents[i].CompareTo(rightComponents[i]);
+                var comparison = CompareComponents(leftComponents[i], rightComponents[i]);
                 if (comparison != 0)
                     return comparison;
             }
@@ -409,6 +406,34 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
         ValueObject other => CompareTo(other),
         _ => throw new ArgumentException($"Cannot compare {GetType()} to {obj.GetType()}")
     };
+
+    private static int CompareComponents(IComparable? object1, IComparable? object2)
+    {
+        if (object1 is null && object2 is null)
+            return 0;
+
+        if (object1 is null)
+            return -1;
+
+        if (object2 is null)
+            return 1;
+
+        var type1 = object1.GetType();
+        var type2 = object2.GetType();
+
+        if (type1 != type2)
+        {
+            var typeComparison = string.CompareOrdinal(type1.AssemblyQualifiedName, type2.AssemblyQualifiedName);
+            return typeComparison;
+        }
+
+        // string.CompareTo is culture-sensitive, which would disagree with the ordinal Equals above
+        // (two unequal strings could compare as 0) and make ordering vary by machine.
+        if (object1 is string text1)
+            return string.CompareOrdinal(text1, (string)object2);
+
+        return object1.CompareTo(object2);
+    }
 
     private static int CompareNullable(ValueObject? left, ValueObject? right)
     {

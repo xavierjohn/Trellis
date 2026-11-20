@@ -2412,8 +2412,8 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `protected abstract void GetEqualityComponents(ref EqualityComponents components)` | `void` | Appends the ordered components used for equality, comparison, and hash-code generation onto `components`. Components at the same position with different runtime types are ordered by type name before same-typed components use their native comparison. The base supplies inline storage for up to 8 components and pooled storage beyond that; typed BCL scalar components avoid boxing after warm-up. |
-| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Converts `Maybe<T>` to an equality component by returning the inner value or `null`. Present value types can box here; prefer `components.Add(maybe)` to preserve the typed, non-boxing path for supported scalars. |
+| `protected abstract void GetEqualityComponents(ref EqualityComponents components)` | `void` | Appends the ordered components used for equality, comparison, and hash-code generation onto `components`. Components at the same position with different runtime types are ordered by type name before same-typed components use their native comparison. The base supplies inline storage for up to 8 components and rents from `ArrayPool<IComparable?>.Shared` beyond that, avoiding iterator allocations. Value-type components can still box. |
+| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Converts `Maybe<T>` to an equality component by returning the inner value or `null`. Prefer `components.Add(maybe)`, which does the same conversion inline. |
 | `public override bool Equals(object? obj)` | `bool` | Delegates to `Equals(ValueObject? other)`. |
 | `public bool Equals(ValueObject? other)` | `bool` | Structural equality check against the same runtime type. |
 | `public override int GetHashCode()` | `int` | Computes and caches a hash code from the equality components. |
@@ -2436,28 +2436,11 @@ The sink passed to `ValueObject.GetEqualityComponents(ref EqualityComponents)`. 
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `public void Add(IComparable? component)` | `void` | Appends one component. Order is significant: equality compares positionally and `CompareTo` returns on the first differing position. |
-| `public void Add<T>(T component) where T : IComparable?` | `void` | Typed append; supported BCL scalar values are stored without boxing, and null references remain null components. |
-| `public void Add<T>(T? component) where T : struct, IComparable` | `void` | Nullable scalar append; present values use the typed path, and absent values become null components. |
 | `public void Add<T>(Maybe<T> component) where T : notnull, IComparable` | `void` | Appends an optional component, adding the inner value when present and `null` when empty. |
 | `public readonly int Count` | `int` | Number of components added so far. |
 
-The non-boxing scalar set is `bool`, `char`, `byte`, `sbyte`, `short`, `ushort`, `int`,
-`uint`, `long`, `ulong`, `nint`, `nuint`, `Int128`, `UInt128`, `Half`, `float`, `double`,
-`decimal`, `Guid`, `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, and `TimeSpan`.
-Their nullable and `Maybe<T>` forms use the same typed storage. Same-typed equality,
-ordering, and uncached hashing avoid per-call allocations after the comparer and any
-required pool storage are warmed. Scalar hashing and comparison retain native semantics,
-including decimal scale equivalence and floating-point NaN equality.
-
-Custom comparable values retain the existing object-based equality, hashing, and
-comparison contract; custom structs can still box. A custom component comparing itself
-to a scalar receives the original boxed scalar, not an internal representation.
-Explicitly preboxed scalars retain their original object identity for custom equality.
-Keep scalar values typed when calling `Add`: explicitly converting them to
-`IComparable` (including through `MaybeComponent`) boxes before the sink can avoid it.
-Existing preboxed calls remain semantically compatible. The optional overload retains
-higher resolution priority, preserving existing `Add<T>(default)` calls as absent
-`Maybe<T>` components; prefer explicit `Maybe<T>.None` in new code.
+Value-type components, including present nullable and `Maybe<T>` values, can box.
+The inline and pooled component buffers eliminate iterator allocations, not scalar boxing.
 
 ```csharp
 public sealed class Address(string street, string city) : ValueObject
