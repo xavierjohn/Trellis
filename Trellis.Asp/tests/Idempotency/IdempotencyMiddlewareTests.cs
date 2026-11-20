@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -17,6 +18,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Trellis.Asp.Idempotency;
 using Trellis.Testing;
@@ -100,6 +102,62 @@ public sealed class IdempotencyMiddlewareTests
 
     private static string QuoteKey(string key) =>
         '"' + key.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + '"';
+
+    [Theory]
+    [InlineData(0, 4_096)]
+    [InlineData(900 * 1024, 2_500_000)]
+    public async Task InvokeAsync_UnknownLengthBody_PreservesExactBytesWithinAllocationBudget(int size, int budget)
+    {
+        var services = new ServiceCollection();
+        services.AddTrellisIdempotency(o => o.MaxRequestBodyBytes = Math.Max(1, size));
+        services.AddInMemoryIdempotencyStore();
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<IOptions<IdempotencyOptions>>();
+        var payload = new byte[size];
+        new Random(42).NextBytes(payload);
+        var received = new byte[size];
+        var extraByte = 0;
+        var middleware = new IdempotencyMiddleware(ctx =>
+        {
+            ctx.Request.Body.ReadExactly(received);
+            extraByte = ctx.Request.Body.ReadByte();
+            ctx.Response.StatusCode = StatusCodes.Status204NoContent;
+            return Task.CompletedTask;
+        }, options, NullLogger<IdempotencyMiddleware>.Instance);
+
+        using var warmup = new MemoryStream(payload);
+        await middleware.InvokeAsync(CreateContext(warmup, "\"warmup\""));
+        using var body = new MemoryStream(payload);
+        var context = CreateContext(body, "\"measured\"");
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var request = middleware.InvokeAsync(context);
+        var completedSynchronously = request.IsCompletedSuccessfully;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        await request;
+        completedSynchronously.Should().BeTrue();
+        context.Response.StatusCode.Should().Be(StatusCodes.Status204NoContent);
+        received.AsSpan().SequenceEqual(payload).Should().BeTrue();
+        extraByte.Should().Be(-1);
+        allocated.Should().BeLessThan(budget);
+
+        var fingerprint = IdempotencyFingerprint.Compute(context, payload, options.Value);
+        var store = provider.GetRequiredService<IIdempotencyStore>();
+        var outcome = await store.TryReserveAsync(AnonymousIdempotencyScopeResolver.AnonymousScope, "measured",
+            fingerprint, TestContext.Current.CancellationToken);
+        outcome.Should().BeOfType<IdempotencyReservationOutcome.Replay>();
+
+        DefaultHttpContext CreateContext(Stream stream, string key)
+        {
+            var ctx = new DefaultHttpContext { RequestServices = provider };
+            ctx.SetEndpoint(new Endpoint(null, new EndpointMetadataCollection(new IdempotentAttribute()), null));
+            ctx.Request.Method = HttpMethods.Post;
+            ctx.Request.Headers[KeyHeader] = key;
+            ctx.Request.Body = stream;
+            return ctx;
+        }
+    }
 
     [Fact]
     public async Task Endpoint_without_attribute_is_pass_through()

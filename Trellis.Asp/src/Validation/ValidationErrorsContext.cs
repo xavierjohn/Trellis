@@ -372,6 +372,8 @@ public static class ValidationErrorsContext
         private readonly Dictionary<string, List<FieldViolation>> _fieldErrors = new(StringComparer.Ordinal);
         private readonly List<RuleViolation> _ruleErrors = [];
         private readonly HashSet<string> _failedReads = new(StringComparer.Ordinal);
+        private HashSet<string>? _fieldErrorAncestors;
+        private HashSet<string>? _failedReadAncestors;
 
         public bool HasErrors
         {
@@ -387,16 +389,16 @@ public static class ValidationErrorsContext
         public bool HasErrorForPath(string path)
         {
             lock (_lock)
-            {
-                return _fieldErrors.ContainsKey(path)
-                    || _fieldErrors.Keys.Any(key => key.StartsWith(path + "/", StringComparison.Ordinal));
-            }
+                return path.Length == 0
+                    ? _fieldErrors.Count != 0
+                    : _fieldErrors.ContainsKey(path) || _fieldErrorAncestors?.Contains(path) == true;
         }
 
         public void RecordReadFailure(string path)
         {
             lock (_lock)
-                _failedReads.Add(path);
+                if (_failedReads.Add(path))
+                    IndexAncestors(ref _failedReadAncestors, path);
         }
 
         public bool HasReadFailureForPath(string path)
@@ -408,8 +410,9 @@ public static class ValidationErrorsContext
         public bool HasReadFailureWithinPath(string path)
         {
             lock (_lock)
-                return _failedReads.Any(key =>
-                    key == path || key.StartsWith(path + "/", StringComparison.Ordinal));
+                return path.Length == 0
+                    ? _failedReads.Count != 0
+                    : _failedReads.Contains(path) || _failedReadAncestors?.Contains(path) == true;
         }
 
         public void AddFieldViolation(FieldViolation violation)
@@ -421,6 +424,7 @@ public static class ValidationErrorsContext
                 {
                     errors = [];
                     _fieldErrors[key] = errors;
+                    IndexAncestors(ref _fieldErrorAncestors, key);
                 }
 
                 if (!errors.Contains(violation))
@@ -428,6 +432,24 @@ public static class ValidationErrorsContext
                     errors.Add(violation);
                 }
             }
+        }
+
+        private static void IndexAncestors(ref HashSet<string>? ancestors, string path)
+        {
+            var prefix = path.AsSpan();
+            var separator = prefix.LastIndexOf('/');
+            if (separator <= 0)
+                return;
+
+            var lookup = (ancestors ??= new(StringComparer.Ordinal)).GetAlternateLookup<ReadOnlySpan<char>>();
+            do
+            {
+                prefix = prefix[..separator];
+                // An indexed ancestor already has all of its own ancestors indexed.
+                if (!lookup.Add(prefix))
+                    break;
+                separator = prefix.LastIndexOf('/');
+            } while (separator > 0);
         }
 
         public void AddRuleViolation(RuleViolation violation)

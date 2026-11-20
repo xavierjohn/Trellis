@@ -52,6 +52,21 @@ public sealed class ToHttpResponseTests
     }
 
     [Fact]
+    public void ToHttpResponse_WithoutConfiguration_AllocatesOnlyTheResult()
+    {
+        const int iterations = 32;
+        var result = Result.Ok("value");
+        GC.KeepAlive(result.ToHttpResponse());
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < iterations; i++)
+            GC.KeepAlive(result.ToHttpResponse());
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        allocated.Should().BeLessThan(128 * iterations);
+    }
+
+    [Fact]
     public async Task Result_with_WithETag_emits_ETag_header()
     {
         var ctx = NewContext();

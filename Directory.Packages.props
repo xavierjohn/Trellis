@@ -38,7 +38,6 @@
          Only the native library is upgraded; the managed provider/core remain on
          EF's compatible dependency line (SQLite's C ABI is stable). -->
     <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyModel" Version="11.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="11.0.0" />
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.92.0" />

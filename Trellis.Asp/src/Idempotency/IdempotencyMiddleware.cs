@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Asp.Idempotency;
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -124,15 +125,14 @@ public sealed partial class IdempotencyMiddleware
             return;
         }
 
-        var bodyBuffer = await BufferRequestBodyAsync(context, _options.MaxRequestBodyBytes).ConfigureAwait(false);
-        if (bodyBuffer is null)
+        if (await BufferRequestBodyAsync(context, _options.MaxRequestBodyBytes).ConfigureAwait(false) is not { } bodyBuffer)
         {
             await WriteProblemAsync(context, 413, "idempotency.request_body_too_large",
                 $"Request body exceeds idempotency size limit of {_options.MaxRequestBodyBytes} bytes.").ConfigureAwait(false);
             return;
         }
 
-        context.Request.Body = new MemoryStream(bodyBuffer);
+        context.Request.Body = new MemoryStream(bodyBuffer.Array!, bodyBuffer.Offset, bodyBuffer.Count);
 
         var fingerprint = IdempotencyFingerprint.Compute(context, bodyBuffer, _options);
 
@@ -163,29 +163,29 @@ public sealed partial class IdempotencyMiddleware
         }).ConfigureAwait(false);
     }
 
-    private static async Task<byte[]?> BufferRequestBodyAsync(HttpContext context, long maxBytes)
+    private static async ValueTask<ArraySegment<byte>?> BufferRequestBodyAsync(HttpContext context, long maxBytes)
     {
+        const int chunkSize = 8192;
         using var buffer = new MemoryStream();
-        var chunk = new byte[8192];
-        long total = 0;
-        while (true)
+        var chunk = ArrayPool<byte>.Shared.Rent(chunkSize);
+        try
         {
-            var read = await context.Request.Body.ReadAsync(chunk.AsMemory(0, chunk.Length), context.RequestAborted).ConfigureAwait(false);
-            if (read == 0)
+            while (true)
             {
-                break;
-            }
+                var read = await context.Request.Body.ReadAsync(chunk.AsMemory(0, chunkSize), context.RequestAborted).ConfigureAwait(false);
+                if (read == 0)
+                    return new ArraySegment<byte>(buffer.GetBuffer(), 0, (int)buffer.Length);
 
-            total += read;
-            if (total > maxBytes)
-            {
-                return null;
-            }
+                if (buffer.Length + read > maxBytes)
+                    return null;
 
-            buffer.Write(chunk, 0, read);
+                buffer.Write(chunk, 0, read);
+            }
         }
-
-        return buffer.ToArray();
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(chunk, clearArray: true);
+        }
     }
 
     private static async Task WriteProblemAsync(HttpContext context, int statusCode, string code, string detail)

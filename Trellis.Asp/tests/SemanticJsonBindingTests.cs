@@ -320,6 +320,34 @@ public sealed class SemanticJsonBindingTests
     }
 
     [Theory]
+    [InlineData("{}")]
+    [InlineData("""{"amount":null}""")]
+    public async Task Bind_CallbackBatch_InvalidSiblings_DoNotCauseQuadraticAllocations(string invalid)
+    {
+        const int half = 512;
+        const string valid = """{"amount":{"amount":3,"currency":"USD"}}""";
+        await using var app = await CreateAppAsync("Production", true, static () => { });
+        var options = app.Services.GetRequiredService<
+            IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>().Value.SerializerOptions;
+        var json = """{"items":[""" + string.Join(',', Enumerable.Repeat(invalid, half)
+            .Concat(Enumerable.Repeat(valid, half))) + "]}";
+
+        using (ValidationErrorsContext.BeginScope())
+            _ = JsonSerializer.Deserialize<CallbackBatchRequest>(json, options);
+
+        using var scope = ValidationErrorsContext.BeginScope();
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var request = JsonSerializer.Deserialize<CallbackBatchRequest>(json, options);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        request!.Items.Should().HaveCount(2 * half);
+        request.Items.Take(half).Should().OnlyContain(item => item.ObservedAmount == 0m);
+        request.Items.Skip(half).Should().OnlyContain(item => item.ObservedAmount == 3m);
+        ValidationErrorsContext.GetUnprocessableContent()!.Fields.Items.Should().HaveCount(half);
+        allocated.Should().BeLessThan(8 * 1024 * 1024);
+    }
+
+    [Theory]
     [InlineData("Development", false)]
     [InlineData("Production", false)]
     [InlineData("Development", true)]
@@ -570,6 +598,7 @@ public sealed class SemanticJsonBindingTests
     public sealed record StrictRequest(DcOrderState State, DcInt Quantity, Money Amount, string Name);
     public sealed record RuleRequest(RuleOnlyRange Range, Money Required);
     public sealed record CallbackSiblingRequest(DcInt Quantity, CallbackRequest Nested);
+    public sealed record CallbackBatchRequest(List<CallbackRequest> Items);
 
     public sealed class ConstructorBoundRequest(MonetaryAmount quantity, Money amount)
     {

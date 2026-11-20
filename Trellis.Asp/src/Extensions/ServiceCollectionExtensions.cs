@@ -275,8 +275,10 @@ public static class ServiceCollectionExtensions
                     }
                 }
 
-                if (!hasMissingRequiredValue && !ValidationErrorsContext.HasReadFailureWithinCurrentObject())
-                    existingOnDeserialized?.Invoke(obj);
+                if (existingOnDeserialized is not null
+                    && !hasMissingRequiredValue
+                    && !ValidationErrorsContext.HasReadFailureWithinCurrentObject())
+                    existingOnDeserialized(obj);
             };
         }
     }

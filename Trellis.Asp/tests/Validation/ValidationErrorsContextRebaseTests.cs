@@ -23,6 +23,25 @@ public class ValidationErrorsContextRebaseTests
 {
     private const string UnspecifiedCode = ValidationCodes.Unspecified;
 
+    [Fact]
+    public void SubtreeLookups_EscapedSegment_MatchAncestorsButNotSiblingPrefixes()
+    {
+        using var scope = ValidationErrorsContext.BeginScope();
+        using var container = ValidationErrorsContext.PushPathSegment("items");
+        ValidationErrorsContext.AddBodyError("/a~1b~0/name", "invalid");
+        ValidationErrorsContext.RecordReadFailure("/a~1b~0/name");
+
+        ValidationErrorsContext.HasErrorForField("a/b~").Should().BeTrue();
+        ValidationErrorsContext.HasErrorForField("a").Should().BeFalse();
+        using (ValidationErrorsContext.PushPathSegment("a"))
+            ValidationErrorsContext.HasReadFailureWithinCurrentObject().Should().BeFalse();
+
+        using var item = ValidationErrorsContext.PushPathSegment("a/b~");
+        ValidationErrorsContext.HasReadFailureWithinCurrentObject().Should().BeTrue();
+        ValidationErrorsContext.HasReadFailureForField(string.Empty).Should().BeFalse();
+        ValidationErrorsContext.HasReadFailureForField("name").Should().BeTrue();
+    }
+
     // --- AddBodyError promotes Unspecified to Body, at every depth ---
 
     [Fact]
