@@ -1815,14 +1815,9 @@ Result<IReadOnlyList<Money>> subtotals =
 
 Accumulating-error counterparts to `Traverse` / `Sequence`. Run the selector over every item (no short-circuit) and accumulate failures with the same left-fold semantics as `Error.Combine`. A single failure returns unchanged (no `Error.Aggregate` wrap); leading `InvalidInput` failures merge their fields/rules; heterogeneous failures flatten into `Error.Aggregate`. Once aggregation begins, later validation failures remain separate children. Ordering and duplicates are preserved. Use these when you need to surface every failure (form-style validation) rather than the first.
 
-`TraverseAll`, `SequenceAll`, and `EnsureAll` buffer violations, flat child errors, and
-merged detail text instead of rebuilding the growing immutable error for each failure.
-Accumulation scales linearly with the collected payload and materializes the combined
-result at the end; the binary `Error.Combine` API and its behavior are unchanged.
-
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public static Result<IReadOnlyList<TOut>> TraverseAll<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Result<TOut>> selector)` | `Result<IReadOnlyList<TOut>>` | Accumulating sync traversal; folds every failure via `Error.Combine`. |
+| `public static Result<IReadOnlyList<TOut>> TraverseAll<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Result<TOut>> selector)` | `Result<IReadOnlyList<TOut>>` | Accumulating sync traversal. |
 | `public static Result<IReadOnlyList<TOut>> TraverseAll<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, int, Result<TOut>> selector)` | `Result<IReadOnlyList<TOut>>` | Indexed sync traversal; the selector receives the item's zero-based position in source enumeration order, including failed items. |
 | `public static Task<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, Task<Result<TOut>>> selector)` | `Task<Result<IReadOnlyList<TOut>>>` | Accumulating async traversal; selectors are awaited sequentially. |
 | `public static Task<Result<IReadOnlyList<TOut>>> TraverseAllAsync<TIn, TOut>(this IEnumerable<TIn> source, Func<TIn, CancellationToken, Task<Result<TOut>>> selector, CancellationToken cancellationToken = default)` | `Task<Result<IReadOnlyList<TOut>>>` | Accumulating async traversal with cancellation; mirrors `TraverseAsync` shape. |
@@ -2412,8 +2407,8 @@ public abstract class ValueObject : IComparable<ValueObject>, IComparable, IEqua
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `protected abstract void GetEqualityComponents(ref EqualityComponents components)` | `void` | Appends the ordered components used for equality, comparison, and hash-code generation onto `components`. Components at the same position with different runtime types are ordered by type name before same-typed components use their native comparison. The base supplies inline storage for up to 8 components and rents from `ArrayPool<IComparable?>.Shared` beyond that, avoiding iterator allocations. Value-type components can still box. |
-| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Converts `Maybe<T>` to an equality component by returning the inner value or `null`. Prefer `components.Add(maybe)`, which does the same conversion inline. |
+| `protected abstract void GetEqualityComponents(ref EqualityComponents components)` | `void` | Appends the ordered components used for equality, comparison, and hash-code generation. At each position, components with different runtime types are ordered by type name. |
+| `protected static IComparable? MaybeComponent<T>(Maybe<T> maybe) where T : notnull, IComparable` | `IComparable?` | Returns the inner value or `null`. Prefer `components.Add(maybe)`. |
 | `public override bool Equals(object? obj)` | `bool` | Delegates to `Equals(ValueObject? other)`. |
 | `public bool Equals(ValueObject? other)` | `bool` | Structural equality check against the same runtime type. |
 | `public override int GetHashCode()` | `int` | Computes and caches a hash code from the equality components. |
@@ -2440,7 +2435,6 @@ The sink passed to `ValueObject.GetEqualityComponents(ref EqualityComponents)`. 
 | `public readonly int Count` | `int` | Number of components added so far. |
 
 Value-type components, including present nullable and `Maybe<T>` values, can box.
-The inline and pooled component buffers eliminate iterator allocations, not scalar boxing.
 
 ```csharp
 public sealed class Address(string street, string city) : ValueObject
@@ -3209,7 +3203,6 @@ public static TSelf Create(string value)
 ```
 
 - `TryCreate(string)` / `TryCreate(string?, string?)` are inherited from the `RequiredEnum<TSelf>` base — an enum's creation is a uniform symbolic lookup, so it is not generated per type. `Create`, `Parse`, and `TryParse` are generated and route through `TryCreate`.
-- Activity names and default field names are cached per enum type. After member discovery, successful `TryCreate` lookups allocate no strings when tracing has no listener; field normalization and failure prose are deferred until validation fails. Null, blank, undefined-name, custom-field, and empty-field behavior is unchanged.
 - The enum JSON converter resolves through `TryCreate`; there is no `TryFromValue` or `TryFromName` API.
 
 ### Building your own primitive
