@@ -152,6 +152,50 @@ public class PvoTracingExtensionsTests : IDisposable
         activities[2].Status.Should().Be(ActivityStatusCode.Ok);  // valid
     }
 
+    [Theory]
+    [InlineData("USD", true)]
+    [InlineData("BAD!", false)]
+    public void Money_TryCreate_WithTracing_RecordsStatusOnCurrencyAndMapSpans(string code, bool success)
+    {
+        var resultSpans = new List<Activity>();
+        using var source = new ActivitySource(nameof(Money_TryCreate_WithTracing_RecordsStatusOnCurrencyAndMapSpans));
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = candidate => candidate == source,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = resultSpans.Add,
+        };
+        ActivitySource.AddActivityListener(listener);
+        RopTrace.SetTestActivitySource(source);
+        try
+        {
+            var result = Money.TryCreate(1m, code, "/price");
+            Assert.Equal(success, result.IsSuccess);
+            var primitives = _activityHelper.CapturedActivities;
+            Assert.Equal(2, primitives.Count);
+            var money = Assert.Single(primitives, activity => activity.DisplayName == "Money.TryCreate");
+            var currency = Assert.Single(primitives, activity => activity.DisplayName == "CurrencyCode.TryCreate");
+            var map = Assert.Single(resultSpans);
+
+            Assert.Equal("Map", map.DisplayName);
+            Assert.Equal(money.SpanId, currency.ParentSpanId);
+            Assert.Equal(money.SpanId, map.ParentSpanId);
+            Assert.Equal(ActivityStatusCode.Unset, money.Status);
+            Assert.Null(money.GetTagItem("result.error.code"));
+            Assert.Null(money.GetTagItem("result.error.type"));
+
+            var expectedStatus = success ? ActivityStatusCode.Ok : ActivityStatusCode.Error;
+            Assert.Equal(expectedStatus, currency.Status);
+            Assert.Equal(expectedStatus, map.Status);
+            Assert.Equal(result.Error?.Code, currency.GetTagItem("result.error.code"));
+            Assert.Equal(result.Error?.Code, map.GetTagItem("result.error.code"));
+        }
+        finally
+        {
+            RopTrace.ResetTestActivitySource();
+        }
+    }
+
     [Fact]
     public void PrimitiveValueObjectTrace_HasCorrectVersion()
     {

@@ -2,11 +2,14 @@
 
 namespace Trellis.Primitives.Tests;
 
+using System.Buffers;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Trellis;
 using Trellis.Primitives;
+using Trellis.Primitives.Tests.Helpers;
 
 /// <summary>
 /// Tests for <see cref="CompositeValueObjectJsonConverter{T}"/> covering all primitive read/write
@@ -137,6 +140,54 @@ public class CompositeValueObjectJsonConverterTests
     }
 
     [Fact]
+    public void TryRead_EscapedAndOversizedPropertyNames_PreserveLookupAndReaderPosition()
+    {
+        var longName = new string('x', 512);
+        var first = new JsonSegment("""[{"label":"ok","number":1,"nu\u00"""u8.ToArray());
+        var second = new JsonSegment(System.Text.Encoding.UTF8.GetBytes(
+            $$$"""4Dber":7,"{{{longName}}}":{"nested":[0]}},2]"""), first);
+        var reader = new Utf8JsonReader(new ReadOnlySequence<byte>(first, 0, second, second.Memory.Length));
+        Assert.True(reader.Read());
+        Assert.True(reader.Read());
+
+        var value = new CompositeValueObjectJsonConverter<IntStringVo>()
+            .TryRead(ref reader, typeof(IntStringVo), JsonSerializerOptions.Default).Unwrap();
+
+        Assert.Equal(7, value.Number);
+        Assert.Equal("ok", value.Label);
+        Assert.Equal(JsonTokenType.EndObject, reader.TokenType);
+        Assert.True(reader.Read());
+        Assert.Equal(2, reader.GetInt32());
+    }
+
+    [Fact]
+    public void TryRead_AllPrimitiveTypes_BoundsSuccessfulReadAllocations()
+    {
+        var converter = new CompositeValueObjectJsonConverter<AllPrimitivesVo>();
+        Read(converter).Should().BeSuccess();
+
+        var allocated = AllocationMeasurement.BytesPerOperation(() => Read(converter));
+        var valueBytes = AllocationMeasurement.BytesPerOperation(static () =>
+        {
+            object[] values = [1, 2L, (short)3, (byte)4, 5d, 6f, true, Guid.Empty, DateTime.MinValue, DateTimeOffset.MinValue, 7m];
+            return (values, new bool[values.Length], RuntimeHelpers.GetUninitializedObject(typeof(AllPrimitivesVo)));
+        });
+
+        // Budget for the converter's working storage and output at this runtime's actual sizes.
+        Assert.InRange(allocated, 0, valueBytes + AllocationMeasurement.TolerancePerOperation);
+
+        static Result<AllPrimitivesVo> Read(CompositeValueObjectJsonConverter<AllPrimitivesVo> converter)
+        {
+            var reader = new Utf8JsonReader("""
+                {"i":1,"l":2,"s":3,"by":4,"d":5,"f":6,"b":true,"g":"11111111-2222-3333-4444-555555555555",
+                 "dt":"2024-01-01T00:00:00Z","dto":"2024-01-01T00:00:00+02:00","dec":7}
+                """u8);
+            reader.Read();
+            return converter.TryRead(ref reader, typeof(AllPrimitivesVo), JsonSerializerOptions.Default);
+        }
+    }
+
+    [Fact]
     public void Read_throws_when_int_property_receives_string()
     {
         Action act = () => JsonSerializer.Deserialize<IntStringVo>("{\"number\":\"oops\",\"label\":\"x\"}");
@@ -152,14 +203,18 @@ public class CompositeValueObjectJsonConverterTests
             .WithMessage("*'label' must be a string*");
     }
 
-    [Fact]
-    public void Read_throws_when_guid_value_is_malformed()
+    [Theory]
+    [InlineData("\"not-a-guid\"", ValidationCodes.FormatGuid, "Property 'g' is not a valid GUID.")]
+    [InlineData("\"\\u0020\"", ValidationCodes.ValueNotEmpty, "Property 'g' is required.")]
+    public void Read_InvalidGuidValue_PreservesItsViolation(string token, string code, string detail)
     {
         var json = "{\"i\":0,\"l\":0,\"s\":0,\"by\":0,\"d\":0,\"f\":0,\"b\":false," +
-                   "\"g\":\"not-a-guid\",\"dt\":\"2024-01-01T00:00:00Z\",\"dto\":\"2024-01-01T00:00:00Z\",\"dec\":0}";
-        Action act = () => JsonSerializer.Deserialize<AllPrimitivesVo>(json);
-        act.Should().Throw<TrellisJsonValidationException>()
-            .WithMessage("*'g' is not a valid GUID*");
+                   $"\"g\":{token},\"dt\":\"2024-01-01T00:00:00Z\",\"dto\":\"2024-01-01T00:00:00Z\",\"dec\":0}}";
+        var error = Assert.Throws<TrellisJsonValidationException>(() => JsonSerializer.Deserialize<AllPrimitivesVo>(json));
+        var field = error.InvalidInput!.Fields[0];
+        Assert.Equal("/g", field.Field.Path);
+        Assert.Equal(code, field.ReasonCode);
+        Assert.Equal(detail, field.Detail);
     }
 
     [Fact]
@@ -336,6 +391,19 @@ public class CompositeValueObjectJsonConverterTests
     #endregion
 
     // --- Test fixtures ---
+
+    private sealed class JsonSegment : ReadOnlySequenceSegment<byte>
+    {
+        public JsonSegment(ReadOnlyMemory<byte> memory, JsonSegment? previous = null)
+        {
+            Memory = memory;
+            if (previous is not null)
+            {
+                RunningIndex = previous.RunningIndex + previous.Memory.Length;
+                previous.Next = this;
+            }
+        }
+    }
 
     public abstract class TestVo : ValueObject
     {

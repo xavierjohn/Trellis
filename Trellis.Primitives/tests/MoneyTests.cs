@@ -2,9 +2,12 @@
 
 namespace Trellis.Primitives.Tests;
 
+using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Trellis;
+using Trellis.Primitives.Tests.Helpers;
 using Trellis.Testing;
 using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 
@@ -24,6 +27,35 @@ public class MoneyTests
 
         // Assert
         result.Should().BeSuccess().Which.Currency.Value.Should().Be(currency);
+    }
+
+    [Theory]
+    [InlineData("USD", false)]
+    [InlineData("\t uSd \n", true)]
+    public void TryCreate_ValidInput_BoundsAmountAndCurrencyAllocations(string currencyCode, bool requiresNormalization)
+    {
+        using var source = new ActivitySource($"{nameof(MoneyTests)}.{nameof(TryCreate_ValidInput_BoundsAmountAndCurrencyAllocations)}");
+        PrimitiveValueObjectTrace.SetTestActivitySource(source);
+        try
+        {
+            var valueBytes = AllocationMeasurement.BytesPerOperation(static () =>
+                (RuntimeHelpers.GetUninitializedObject(typeof(Money)), RuntimeHelpers.GetUninitializedObject(typeof(CurrencyCode))));
+            var stringBytes = requiresNormalization ? AllocationMeasurement.BytesPerOperation(static () => new string('A', 3)) : 0;
+            var limit = valueBytes + stringBytes + AllocationMeasurement.TolerancePerOperation;
+            AssertWithinBudget(() => Money.TryCreate(1m, currencyCode), limit);
+            AssertWithinBudget(() => Money.TryCreate(1m, currencyCode, "/items/0/price"), limit);
+            AssertWithinBudget(() => Money.TryCreate(1m, currencyCode, "/items/0/amount", "IsoCurrency"), limit);
+        }
+        finally
+        {
+            PrimitiveValueObjectTrace.ResetTestActivitySource();
+        }
+
+        static void AssertWithinBudget(Func<Result<Money>> create, long limit)
+        {
+            create().Should().BeSuccess();
+            Assert.InRange(AllocationMeasurement.BytesPerOperation(create), 0, limit);
+        }
     }
 
     [Fact]
@@ -688,6 +720,14 @@ public class MoneyTests
     {
         PathOf(Money.TryCreate(-1m, "USD", "", "")).Should().BeEmpty();
         PathOf(Money.TryCreate(1m, "INVALID", "", "")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TryCreate_MalformedPointers_ThrowsEvenForUnusedFields()
+    {
+        Assert.Throws<ArgumentException>("Path", () => Money.TryCreate(1m, "USD", "/items/~2/price"));
+        Assert.Throws<ArgumentException>("Path", () => Money.TryCreate(1m, "USD", "/price~", "/currency"));
+        Assert.Throws<ArgumentException>("Path", () => Money.TryCreate(-1m, "BAD!", "/price", "/currency~"));
     }
 
     private static string PathOf(Result<Money> result)

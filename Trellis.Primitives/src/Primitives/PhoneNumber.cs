@@ -60,14 +60,14 @@ using Trellis;
 [JsonConverter(typeof(ParsableJsonConverter<PhoneNumber>))]
 public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScalarValue<PhoneNumber, string>, IParsable<PhoneNumber>
 {
-    private static readonly FrozenSet<string> s_twoDigitCountryCodes = new[]
+    private static readonly FrozenSet<string>.AlternateLookup<ReadOnlySpan<char>> s_twoDigitCountryCodes = new[]
     {
         "20", "27", "30", "31", "32", "33", "34", "36", "39", "40", "41", "43", "44", "45", "46", "47", "48", "49",
         "51", "52", "53", "54", "55", "56", "57", "58", "60", "61", "62", "63", "64", "65", "66",
         "81", "82", "84", "86", "90", "91", "92", "93", "94", "95", "98"
-    }.ToFrozenSet(StringComparer.Ordinal);
+    }.ToFrozenSet(StringComparer.Ordinal).GetAlternateLookup<ReadOnlySpan<char>>();
 
-    private static readonly FrozenSet<string> s_threeDigitCountryCodes = new[]
+    private static readonly FrozenSet<string>.AlternateLookup<ReadOnlySpan<char>> s_threeDigitCountryCodes = new[]
     {
         "211", "212", "213", "216", "218",
         "220", "221", "222", "223", "224", "225", "226", "227", "228", "229",
@@ -91,7 +91,7 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
         "960", "961", "962", "963", "964", "965", "966", "967", "968",
         "970", "971", "972", "973", "974", "975", "976", "977", "979",
         "992", "993", "994", "995", "996", "998"
-    }.ToFrozenSet(StringComparer.Ordinal);
+    }.ToFrozenSet(StringComparer.Ordinal).GetAlternateLookup<ReadOnlySpan<char>>();
 
     // E.164 max is "+" + 15 digits = 16 chars; allow generous formatting margin
     // (dashes, spaces, parentheses) up to 32 chars before rejecting. Adversarial
@@ -175,16 +175,18 @@ public partial class PhoneNumber : ScalarValueObject<PhoneNumber, string>, IScal
     {
         // E.164 country codes are 1-3 digits and require longest-prefix matching
         // against the assigned calling-code set.
-        var digits = Value[1..]; // Skip the '+'
+        var digits = Value.AsSpan(1);
 
-        if (digits.StartsWith('1') || digits.StartsWith('7'))
-            return Maybe.From(digits[..1]);
+        if (digits[0] == '1')
+            return Maybe.From("1");
+        if (digits[0] == '7')
+            return Maybe.From("7");
 
-        if (digits.Length >= 3 && s_threeDigitCountryCodes.Contains(digits[..3]))
-            return Maybe.From(digits[..3]);
+        if (s_threeDigitCountryCodes.TryGetValue(digits[..3], out var code))
+            return Maybe.From(code);
 
-        if (digits.Length >= 2 && s_twoDigitCountryCodes.Contains(digits[..2]))
-            return Maybe.From(digits[..2]);
+        if (s_twoDigitCountryCodes.TryGetValue(digits[..2], out code))
+            return Maybe.From(code);
 
         return Maybe<string>.None;
     }

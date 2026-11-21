@@ -3,6 +3,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Trellis.Primitives.Tests.Helpers;
 using Trellis.Testing;
 
 public class WeeklyScheduleTests
@@ -188,6 +189,31 @@ public class WeeklyScheduleTests
         schedule.Contains(DayOfWeek.Monday, end).Should().BeFalse();
         schedule.IsActiveAt(new DateTimeOffset(2026, 9, 21, 0, 0, 0, TimeSpan.Zero).AddTicks(start.Ticks))
             .Should().BeTrue();
+    }
+
+    [Fact]
+    public void Contains_ManyPeriods_HandlesTickBoundariesWithoutAllocating()
+    {
+        const int periodCount = 512;
+        var periods = Enumerable.Range(0, periodCount)
+            .Select(i => WeeklyPeriod.Create(DayOfWeek.Monday, new TimeOnly(2L * i), new TimeOnly((2L * i) + 1)))
+            .ToArray();
+        var schedule = WeeklySchedule.Create("UTC", [.. periods, Period(DayOfWeek.Saturday, 22, 2)]);
+        Assert.True(schedule.Contains(DayOfWeek.Sunday, new TimeOnly(1, 59)));
+        Assert.False(schedule.Contains(DayOfWeek.Sunday, new TimeOnly(2, 0)));
+
+        var matchesBoundaries = true;
+        for (var i = 0; i < periodCount; i++)
+        {
+            matchesBoundaries &= schedule.Contains(DayOfWeek.Monday, periods[i].Start);
+            matchesBoundaries &= !schedule.Contains(DayOfWeek.Monday, periods[i].End);
+        }
+
+        Assert.True(matchesBoundaries);
+        var last = periods[^1];
+        var allocated = AllocationMeasurement.BytesPerOperation(() =>
+            (schedule.Contains(DayOfWeek.Monday, last.Start), schedule.Contains(DayOfWeek.Monday, last.End)));
+        Assert.InRange(allocated, 0, AllocationMeasurement.TolerancePerOperation);
     }
 
     [Theory]

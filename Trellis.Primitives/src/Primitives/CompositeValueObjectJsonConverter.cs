@@ -87,8 +87,10 @@ T> : ResultJsonConverter<T>
                 InputPointer.Root));
         }
 
-        var values = new object?[Metadata.Properties.Count];
-        var seen = new bool[Metadata.Properties.Count];
+        var metadata = Metadata;
+        var nameLookup = metadata.IndexByJsonName.GetAlternateLookup<ReadOnlySpan<char>>();
+        var values = new object?[metadata.Properties.Count];
+        var seen = new bool[metadata.Properties.Count];
         List<FieldViolation>? violations = null;
 
         while (reader.Read())
@@ -99,14 +101,14 @@ T> : ResultJsonConverter<T>
             if (reader.TokenType != JsonTokenType.PropertyName)
                 continue;
 
-            var name = reader.GetString();
+            var hasProperty = TryGetPropertyIndex(ref reader, nameLookup, out var idx);
             if (!reader.Read())
                 throw new JsonException($"Incomplete JSON object for {typeof(T).Name} value.");
 
-            if (name is not null && Metadata.IndexByJsonName.TryGetValue(name, out var idx))
+            if (hasProperty)
             {
-                if (!TryReadPrimitive(ref reader, Metadata.Properties[idx].PrimitiveType,
-                    Metadata.Properties[idx].JsonName, out values[idx], out var violation))
+                var property = metadata.Properties[idx];
+                if (!TryReadPrimitive(ref reader, property.PrimitiveType, property.JsonName, out values[idx], out var violation))
                 {
                     (violations ??= []).Add(violation);
                     if (!reader.TrySkip())
@@ -126,10 +128,10 @@ T> : ResultJsonConverter<T>
             throw new JsonException($"Incomplete JSON object for {typeof(T).Name} value.");
 
         List<string>? missing = null;
-        for (var i = 0; i < Metadata.Properties.Count; i++)
+        for (var i = 0; i < metadata.Properties.Count; i++)
         {
             if (!seen[i])
-                (missing ??= []).Add(Metadata.Properties[i].JsonName);
+                (missing ??= []).Add(metadata.Properties[i].JsonName);
         }
 
         if (missing is not null)
@@ -155,7 +157,20 @@ T> : ResultJsonConverter<T>
         if (violations is not null)
             return Result.Fail<T>(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())));
 
-        return Metadata.Invoke(values);
+        return metadata.Invoke(values);
+    }
+
+    private static bool TryGetPropertyIndex(
+        ref Utf8JsonReader reader, Dictionary<string, int>.AlternateLookup<ReadOnlySpan<char>> nameLookup, out int index)
+    {
+        const int maxStackNameBytes = 256;
+        var bytes = reader.HasValueSequence ? reader.ValueSequence.Length : reader.ValueSpan.Length;
+        if (bytes > maxStackNameBytes)
+            return nameLookup.Dictionary.TryGetValue(reader.GetString()!, out index);
+
+        Span<char> buffer = stackalloc char[(int)bytes];
+        var length = reader.CopyString(buffer);
+        return nameLookup.TryGetValue(buffer[..length], out index);
     }
 
     /// <inheritdoc />
@@ -193,15 +208,12 @@ T> : ResultJsonConverter<T>
             : primitiveType == typeof(bool) ? JsonTokenType.True : JsonTokenType.Number;
         var hasExpectedToken = reader.TokenType == expectedToken
             || (primitiveType == typeof(bool) && reader.TokenType == JsonTokenType.False);
-        var isBlankString = primitiveType != typeof(string)
-            && reader.TokenType == JsonTokenType.String
-            && string.IsNullOrWhiteSpace(reader.GetString());
 
         if (!hasExpectedToken)
         {
             violation = new FieldViolation(InputPointer.ForProperty(jsonName),
                 reader.TokenType == JsonTokenType.Null ? NullValueCode
-                    : isBlankString ? ValidationCodes.ValueNotEmpty : ConversionFailureCode,
+                    : IsBlankString(ref reader) ? ValidationCodes.ValueNotEmpty : ConversionFailureCode,
                 Detail: $"Property '{jsonName}' must be {DescribePrimitiveWithArticle(primitiveType)}.");
             return false;
         }
@@ -234,6 +246,7 @@ T> : ResultJsonConverter<T>
         if (value is not null)
             return true;
 
+        var isBlankString = IsBlankString(ref reader);
         violation = new FieldViolation(
             InputPointer.ForProperty(jsonName),
             isBlankString ? ValidationCodes.ValueNotEmpty : FormatCodeFor(primitiveType),
@@ -242,6 +255,9 @@ T> : ResultJsonConverter<T>
                 : $"Property '{jsonName}' is not a valid {DescribePrimitive(primitiveType)}.");
         return false;
     }
+
+    private static bool IsBlankString(ref Utf8JsonReader reader) =>
+        reader.TokenType == JsonTokenType.String && string.IsNullOrWhiteSpace(reader.GetString());
 
     /// <summary>
     /// Builds a structured, composite-relative validation failure.
