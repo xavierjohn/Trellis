@@ -30,7 +30,8 @@ public static class MaybeUpdateExtensions
         ArgumentNullException.ThrowIfNull(propertySelector);
         ArgumentNullException.ThrowIfNull(value);
 
-        InvokeSetProperty(updateSettersBuilder, propertySelector, value, clearValue: false);
+        Expression<Func<TInner>> capturedValue = () => value;
+        InvokeSetProperty(updateSettersBuilder, propertySelector, capturedValue.Body);
         return updateSettersBuilder;
     }
 
@@ -51,15 +52,14 @@ public static class MaybeUpdateExtensions
         ArgumentNullException.ThrowIfNull(updateSettersBuilder);
         ArgumentNullException.ThrowIfNull(propertySelector);
 
-        InvokeSetProperty<TEntity, TInner>(updateSettersBuilder, propertySelector, default, clearValue: true);
+        InvokeSetProperty(updateSettersBuilder, propertySelector, value: null);
         return updateSettersBuilder;
     }
 
     private static void InvokeSetProperty<TEntity, TInner>(
         UpdateSettersBuilder<TEntity> updateSettersBuilder,
         Expression<Func<TEntity, Maybe<TInner>>> propertySelector,
-        TInner? value,
-        bool clearValue)
+        Expression? value)
         where TEntity : class
         where TInner : notnull
     {
@@ -79,12 +79,10 @@ public static class MaybeUpdateExtensions
         // When setting a non-null value for a value type, use the inner type so the
         // expression return type matches what EF Core's TryTranslateSetterValueSelector
         // expects (it strips Nullable<T> from the property type before comparing).
-        var effectiveType = (!clearValue && typeof(TInner).IsValueType)
-            ? typeof(TInner)
-            : descriptor.StoreType;
+        var effectiveType = value?.Type ?? descriptor.StoreType;
 
         var propertyLambda = BuildPropertyLambda<TEntity>(parameter, descriptor.StorageMemberName, effectiveType);
-        var valueLambda = BuildValueLambda<TEntity>(parameter, effectiveType, value, clearValue);
+        var valueLambda = Expression.Lambda(propertyLambda.Type, value ?? Expression.Constant(null, effectiveType), parameter);
         var expressionMethod = SetPropertyMethodCache<TEntity>.ExpressionValueDefinition.MakeGenericMethod(effectiveType);
 
         expressionMethod.Invoke(updateSettersBuilder, [propertyLambda, valueLambda]);
@@ -101,21 +99,6 @@ public static class MaybeUpdateExtensions
             efPropertyMethod,
             Expression.Convert(parameter, typeof(object)),
             Expression.Constant(storageMemberName));
-
-        var delegateType = typeof(Func<,>).MakeGenericType(typeof(TEntity), effectiveType);
-        return Expression.Lambda(delegateType, body, parameter);
-    }
-
-    private static LambdaExpression BuildValueLambda<TEntity>(
-        ParameterExpression parameter,
-        Type effectiveType,
-        object? value,
-        bool clearValue)
-        where TEntity : class
-    {
-        Expression body = clearValue
-            ? Expression.Constant(null, effectiveType)
-            : Expression.Constant(value, effectiveType);
 
         var delegateType = typeof(Func<,>).MakeGenericType(typeof(TEntity), effectiveType);
         return Expression.Lambda(delegateType, body, parameter);

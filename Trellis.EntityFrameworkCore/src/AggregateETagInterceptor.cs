@@ -70,14 +70,13 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
         if (context is null)
             return;
 
-        PromoteAggregatesWithModifiedDependents(context);
+        var tracker = context.ChangeTracker;
+        PromoteAggregatesWithModifiedDependents(tracker.Entries<IAggregate>());
 
-        foreach (var entry in context.ChangeTracker.Entries())
+        // Change-detection and promotion callbacks can edit other tracked entities.
+        foreach (var entry in tracker.Entries<IAggregate>())
         {
             if (entry.State is not (EntityState.Added or EntityState.Modified))
-                continue;
-
-            if (entry.Entity is not IAggregate)
                 continue;
 
             var etagProperty = entry.Properties
@@ -102,14 +101,11 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
     /// <see cref="GenerateETags"/> will generate a new value and EF Core will include it in the
     /// UPDATE statement's WHERE clause.
     /// </summary>
-    private static void PromoteAggregatesWithModifiedDependents(DbContext context)
+    private static void PromoteAggregatesWithModifiedDependents(IEnumerable<EntityEntry<IAggregate>> aggregates)
     {
-        foreach (var entry in context.ChangeTracker.Entries())
+        foreach (var entry in aggregates)
         {
             if (entry.State != EntityState.Unchanged)
-                continue;
-
-            if (entry.Entity is not IAggregate)
                 continue;
 
             if (!ChangeTrackerHelper.HasModifiedDependents(entry))
@@ -132,12 +128,9 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
         if (context is null)
             return;
 
-        foreach (var entry in context.ChangeTracker.Entries())
+        foreach (var entry in GetSavedAggregates(context.ChangeTracker))
         {
             if (entry.State != EntityState.Modified)
-                continue;
-
-            if (entry.Entity is not IAggregate)
                 continue;
 
             var etagProperty = entry.Properties
@@ -146,6 +139,21 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
                 continue;
 
             etagProperty.OriginalValue = etagProperty.CurrentValue;
+        }
+    }
+
+    private static IEnumerable<EntityEntry<IAggregate>> GetSavedAggregates(ChangeTracker tracker)
+    {
+        var autoDetectChanges = tracker.AutoDetectChangesEnabled;
+        try
+        {
+            // Only already-detected modifications from the save need their original ETags synced.
+            tracker.AutoDetectChangesEnabled = false;
+            return tracker.Entries<IAggregate>();
+        }
+        finally
+        {
+            tracker.AutoDetectChangesEnabled = autoDetectChanges;
         }
     }
 }

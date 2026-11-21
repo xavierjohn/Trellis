@@ -407,6 +407,8 @@ Abstract generic repository base class for EF Core aggregate persistence. Provid
 | `public virtual Task<bool> ExistsAsync(Specification<TAggregate> spec, CancellationToken ct = default)` | `Task<bool>` | Checks whether any aggregate matches the specification. |
 | `public virtual Task<int> CountAsync(Specification<TAggregate> spec, CancellationToken ct = default)` | `Task<int>` | Counts aggregates matching the specification. |
 
+`FindByIdAsync` and `ExistsAsync(TId, ...)` parameterize the ID so lookups with different IDs can reuse the same compiled EF query. They still respect their respective virtual query hooks and the configured ID value converter.
+
 #### Staging Methods (never call SaveChanges)
 
 | Signature | Returns | Description |
@@ -585,6 +587,8 @@ For a shared domain specification evaluated both in memory and by EF, keep using
 | `public static IOrderedQueryable<TEntity> ThenByMaybe<TEntity, TInner>(this IOrderedQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull` | `IOrderedQueryable<TEntity>` | Adds a secondary ascending ordering for the mapped `Maybe<TInner>` storage member. |
 | `public static IOrderedQueryable<TEntity> ThenByMaybeDescending<TEntity, TInner>(this IOrderedQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull` | `IOrderedQueryable<TEntity>` | Adds a secondary descending ordering for the mapped `Maybe<TInner>` storage member. |
 
+`WhereEquals` parameterizes the comparison value to keep the query shape stable across values. The property's configured storage mapping and value converter still apply.
+
 ### `MaybeUpdateExtensions`
 
 ```csharp
@@ -595,6 +599,8 @@ public static class MaybeUpdateExtensions
 | --- | --- | --- |
 | `public static UpdateSettersBuilder<TEntity> SetMaybeValue<TEntity, TInner>(this UpdateSettersBuilder<TEntity> updateSettersBuilder, Expression<Func<TEntity, Maybe<TInner>>> propertySelector, TInner value) where TEntity : class where TInner : notnull` | `UpdateSettersBuilder<TEntity>` | Sets a mapped scalar `Maybe<TInner>` property inside `ExecuteUpdate`; throws for composite owned types. |
 | `public static UpdateSettersBuilder<TEntity> SetMaybeNone<TEntity, TInner>(this UpdateSettersBuilder<TEntity> updateSettersBuilder, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull` | `UpdateSettersBuilder<TEntity>` | Clears a mapped scalar `Maybe<TInner>` property inside `ExecuteUpdate`; throws for composite owned types. |
+
+`SetMaybeValue` parameterizes the assigned value. `SetMaybeNone` still writes SQL `NULL`.
 
 ### `MaybeEntityTypeBuilderExtensions`
 

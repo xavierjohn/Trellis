@@ -126,9 +126,10 @@ public static class MaybeQueryableExtensions
         var parameter = propertySelector.Parameters[0];
         var efProperty = MaybePropertyResolver.BuildEfPropertyAccess(parameter, descriptor);
 
+        Expression<Func<TInner>> capturedValue = () => value;
         Expression valueExpr = typeof(TInner).IsValueType
-            ? Expression.Convert(Expression.Constant(value), descriptor.StoreType)
-            : Expression.Constant(value, descriptor.StoreType);
+            ? Expression.Convert(capturedValue.Body, descriptor.StoreType)
+            : capturedValue.Body;
 
         var equals = Expression.Equal(efProperty, valueExpr);
         var lambda = Expression.Lambda<Func<TEntity, bool>>(equals, parameter);
