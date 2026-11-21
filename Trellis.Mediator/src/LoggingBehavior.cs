@@ -63,6 +63,10 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
 
         if (response.TryGetError(out var error))
         {
+            var logLevel = ClassifyFailureLogLevel(error);
+            if (!_logger.IsEnabled(logLevel))
+                return response;
+
             // Always log the stable code; only include Detail when explicitly opted in,
             // because Detail can contain user input / PII (ga-12). Code rather than Kind so an
             // operator can grep the log for a code taken off a response body — and the error type
@@ -70,8 +74,6 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
             var summary = _options.IncludeErrorDetail
                 ? error.GetDisplayMessage()
                 : $"{ErrorTelemetryNaming.FormatErrorTypeName(error.GetType())} ({error.Code})";
-            var logLevel = ClassifyFailureLogLevel(error);
-
             if (logLevel == LogLevel.Warning)
             {
                 LogHandledWithUnexpectedFailure(_logger, messageName, elapsed.TotalMilliseconds, summary);
@@ -118,9 +120,9 @@ public sealed partial class LoggingBehavior<TMessage, TResponse>
     [LoggerMessage(Level = LogLevel.Debug, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms")]
     private static partial void LogHandled(ILogger logger, string messageName, double elapsedMs);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms — Failed: {ErrorSummary}")]
+    [LoggerMessage(Level = LogLevel.Information, SkipEnabledCheck = true, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms — Failed: {ErrorSummary}")]
     private static partial void LogHandledWithExpectedFailure(ILogger logger, string messageName, double elapsedMs, string errorSummary);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms — Failed: {ErrorSummary}")]
+    [LoggerMessage(Level = LogLevel.Warning, SkipEnabledCheck = true, Message = "Handled {MessageName} in {ElapsedMs:0.00}ms — Failed: {ErrorSummary}")]
     private static partial void LogHandledWithUnexpectedFailure(ILogger logger, string messageName, double elapsedMs, string errorSummary);
 }

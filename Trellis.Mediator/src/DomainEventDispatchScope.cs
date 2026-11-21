@@ -4,7 +4,8 @@ internal sealed class DomainEventDispatchScope : IDisposable
 {
     private static readonly AsyncLocal<DomainEventDispatchScope?> s_current = new();
     private readonly DomainEventDispatchScope? _parent;
-    private readonly List<(IAggregate Aggregate, IDomainEventPublisher Publisher)> _pending = [];
+    private List<(IAggregate Aggregate, IDomainEventPublisher Publisher)>? _pending;
+    private HashSet<IAggregate>? _pendingIndex;
     private IUnitOfWork? _unitOfWork;
     private bool _ownsCommit;
     private bool _committed;
@@ -35,7 +36,22 @@ internal sealed class DomainEventDispatchScope : IDisposable
 
     internal void Add(IAggregate aggregate, IDomainEventPublisher publisher)
     {
-        if (!_pending.Any(item => ReferenceEquals(item.Aggregate, aggregate)))
+        if (_pending is null)
+        {
+            _pending = [(aggregate, publisher)];
+            return;
+        }
+
+        if (_pendingIndex is null)
+        {
+            // A response-shaped dispatch usually contributes just one aggregate.
+            var first = _pending[0].Aggregate;
+            if (ReferenceEquals(first, aggregate))
+                return;
+            _pendingIndex = new(ReferenceEqualityComparer.Instance) { first };
+        }
+
+        if (_pendingIndex.Add(aggregate))
             _pending.Add((aggregate, publisher));
     }
 
@@ -48,8 +64,9 @@ internal sealed class DomainEventDispatchScope : IDisposable
                 if (!owner._active || owner._publishing || !owner._ownsCommit
                     || !ReferenceEquals(owner._unitOfWork, _unitOfWork))
                     continue;
-                foreach (var (aggregate, publisher) in _pending)
-                    owner.Add(aggregate, publisher);
+                if (_pending is not null)
+                    foreach (var (aggregate, publisher) in _pending)
+                        owner.Add(aggregate, publisher);
                 return;
             }
 
@@ -59,10 +76,10 @@ internal sealed class DomainEventDispatchScope : IDisposable
                 "DispatchAggregateEventsAsync after the manual owning commit succeeds.");
         }
 
-        if (_unitOfWork is not null && !_committed)
+        if (_pending is null || (_unitOfWork is not null && !_committed))
             return;
 
-        var snapshots = _pending.Select(item =>
+        var snapshots = _pending.Select(static item =>
             (item.Aggregate, item.Publisher, Events: item.Aggregate.UncommittedEvents().ToArray())).ToArray();
         _publishing = true;
         try
@@ -93,7 +110,8 @@ internal sealed class DomainEventDispatchScope : IDisposable
     public void Dispose()
     {
         _active = false;
-        _pending.Clear();
+        _pending = null;
+        _pendingIndex = null;
         s_current.Value = _parent;
     }
 }

@@ -68,8 +68,8 @@ public sealed class ValidationBehavior<TMessage, TResponse>
         MessageHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken)
     {
-        List<FieldViolation>? violations = null;
-        List<RuleViolation>? rules = null;
+        var fields = new ViolationBuffer<FieldViolation>();
+        var rules = new ViolationBuffer<RuleViolation>();
         var sawInvalidInput = false;
 
         if (message is IValidate validatable)
@@ -77,23 +77,12 @@ public sealed class ValidationBehavior<TMessage, TResponse>
             var validateResult = validatable.Validate();
             if (validateResult.TryGetError(out var error))
             {
-                if (error is Error.InvalidInput upc)
-                {
-                    sawInvalidInput = true;
-                    if (upc.Fields.Items.Length > 0)
-                    {
-                        violations ??= [];
-                        violations.AddRange(upc.Fields.Items);
-                    }
-
-                    if (upc.Rules.Items.Length > 0)
-                    {
-                        rules ??= [];
-                        rules.AddRange(upc.Rules.Items);
-                    }
-                }
-                else
+                if (error is not Error.InvalidInput invalid)
                     return TResponse.CreateFailure(error);
+
+                sawInvalidInput = true;
+                fields.Add(invalid.Fields);
+                rules.Add(invalid.Rules);
             }
         }
 
@@ -106,38 +95,45 @@ public sealed class ValidationBehavior<TMessage, TResponse>
             if (!externalResult.TryGetError(out var error))
                 continue;
 
-            if (error is Error.InvalidInput upc)
-            {
-                sawInvalidInput = true;
-                if (upc.Fields.Items.Length > 0)
-                {
-                    violations ??= [];
-                    violations.AddRange(upc.Fields.Items);
-                }
+            if (error is not Error.InvalidInput invalid)
+                return TResponse.CreateFailure(error);
 
-                if (upc.Rules.Items.Length > 0)
-                {
-                    rules ??= [];
-                    rules.AddRange(upc.Rules.Items);
-                }
-
-                continue;
-            }
-
-            return TResponse.CreateFailure(error);
+            sawInvalidInput = true;
+            fields.Add(invalid.Fields);
+            rules.Add(invalid.Rules);
         }
 
         if (sawInvalidInput)
-        {
-            var fieldsArray = violations is { Count: > 0 }
-                ? EquatableArray.Create(violations.ToArray())
-                : EquatableArray<FieldViolation>.Empty;
-            var rulesArray = rules is { Count: > 0 }
-                ? EquatableArray.Create(rules.ToArray())
-                : EquatableArray<RuleViolation>.Empty;
-            return TResponse.CreateFailure(new Error.InvalidInput(fieldsArray, rulesArray));
-        }
+            return TResponse.CreateFailure(new Error.InvalidInput(fields.ToEquatableArray(), rules.ToEquatableArray()));
 
         return await next(message, cancellationToken).ConfigureAwait(false);
+    }
+
+    private struct ViolationBuffer<T>
+    {
+        private EquatableArray<T> _first;
+        private List<T>? _combined;
+
+        public void Add(EquatableArray<T> items)
+        {
+            if (items.IsEmpty)
+                return;
+            if (_first.IsEmpty)
+            {
+                _first = items;
+                return;
+            }
+
+            if (_combined is null)
+            {
+                _combined = new List<T>(_first.Length + items.Length);
+                _combined.AddRange(_first.Items);
+            }
+
+            _combined.AddRange(items.Items);
+        }
+
+        public readonly EquatableArray<T> ToEquatableArray()
+            => _combined is null ? _first : EquatableArray.From(_combined);
     }
 }

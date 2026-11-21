@@ -121,31 +121,18 @@ internal sealed partial class MediatorIntegrationEventPublisher : IIntegrationEv
     private sealed class HandlerInvoker
     {
         private readonly Type _enumerableType;
-        private readonly MethodInfo _handleAsync;
+        private readonly MethodInvoker _handleAsync;
 
         public HandlerInvoker(Type enumerableType, MethodInfo handleAsync)
         {
             _enumerableType = enumerableType;
-            _handleAsync = handleAsync;
+            _handleAsync = MethodInvoker.Create(handleAsync);
         }
 
         public IEnumerable ResolveHandlers(IServiceProvider provider)
             => (IEnumerable)provider.GetRequiredService(_enumerableType);
 
-        public ValueTask InvokeAsync(object handler, IIntegrationEvent integrationEvent, CancellationToken cancellationToken)
-        {
-            object? result;
-            try
-            {
-                result = _handleAsync.Invoke(handler, [integrationEvent, cancellationToken]);
-            }
-            catch (TargetInvocationException ex) when (ex.InnerException is not null)
-            {
-                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
-                throw; // unreachable
-            }
-
-            return (ValueTask)result!;
-        }
+        public ValueTask InvokeAsync(object handler, IIntegrationEvent integrationEvent, CancellationToken cancellationToken) =>
+            (ValueTask)_handleAsync.Invoke(handler, integrationEvent, cancellationToken)!;
     }
 }
