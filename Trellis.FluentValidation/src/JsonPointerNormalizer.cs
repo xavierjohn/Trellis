@@ -1,5 +1,6 @@
 ﻿namespace Trellis.FluentValidation;
 
+using System.Buffers;
 using System.Text;
 using Trellis;
 
@@ -7,7 +8,7 @@ using Trellis;
 /// Converts FluentValidation member-chain property names (e.g., <c>Address.PostCode</c>,
 /// <c>Items[0].Sku</c>) into camelCase RFC 6901 JSON Pointers (e.g., <c>/address/postCode</c>,
 /// <c>/items/0/sku</c>) so they can be carried through Trellis <see cref="InputPointer"/> values.
-/// Each name segment's first character is lower-cased (via <see cref="StringExtensions.ToCamelCase"/>)
+/// Each name segment's first character is lower-cased
 /// so FluentValidation error keys match the camelCase JSON wire and the rest of Trellis's validation
 /// field names; indexer segments are left unchanged.
 /// </summary>
@@ -23,6 +24,8 @@ using Trellis;
 /// </remarks>
 public static class JsonPointerNormalizer
 {
+    private static readonly SearchValues<char> PathSyntax = SearchValues.Create(".[~/");
+
     /// <summary>
     /// Converts a FluentValidation <c>PropertyName</c> to an RFC 6901 JSON Pointer string.
     /// </summary>
@@ -42,6 +45,14 @@ public static class JsonPointerNormalizer
 
         if (propertyName[0] == '/')
             return propertyName;
+
+        if (!propertyName.AsSpan().ContainsAny(PathSyntax))
+            return string.Create(propertyName.Length + 1, propertyName, static (pointer, name) =>
+            {
+                pointer[0] = '/';
+                pointer[1] = char.ToLowerInvariant(name[0]);
+                name.AsSpan(1).CopyTo(pointer[2..]);
+            });
 
         var sb = new StringBuilder(propertyName.Length + 1);
         var i = 0;

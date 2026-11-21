@@ -195,7 +195,7 @@ validator.RuleFor(x => x).NotEmpty();
 Result<string?> result = validator.ValidateToResult(alias, message: "Alias is required.");
 ```
 
-`validator.Validate(null!)` is **not** called; the helper synthesizes a single `FieldViolation` for `paramName` from a `NotNullValidator` failure, which projects to reason code `ValidationCodes.ValueNotNull` (`"value.not-null"`).
+`validator.Validate(null!)` is **not** called. The helper creates a single `FieldViolation` at the normalized `paramName` with reason code `ValidationCodes.ValueNotNull` (`"value.not-null"`).
 
 ## Converting an existing `ValidationResult`
 

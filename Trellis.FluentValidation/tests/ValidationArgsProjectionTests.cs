@@ -123,14 +123,17 @@ public class ValidationArgsProjectionTests
             "the pattern 'A' is a substring of \"'A' is not in the correct format\" only because the property is also named A; plain containment alone would disclose it");
     }
 
-    [Fact]
-    public void A_comparison_against_a_literal_emits_the_value_the_default_message_already_shows()
+    [Theory]
+    [InlineData("expected-literal")]
+    [InlineData("0123456789012345678901234567890123456789012345678901234567890123")]
+    public void Project_ComparisonLiteral_CleanStringWithinLimit_ReusesTheValue(string expected)
     {
         var violation = Violate(
-            v => v.RuleFor(x => x.A).Equal("expected-literal"),
+            v => v.RuleFor(x => x.A).Equal(expected),
             new Subject(A: "other"));
 
-        violation.Args!["comparisonValue"].Should().Be(new ValidationArgValue.Text("expected-literal"));
+        violation.Args!["comparisonValue"].Should().BeOfType<ValidationArgValue.Text>()
+            .Which.Value.Should().BeSameAs(expected);
     }
 
     [Fact]
