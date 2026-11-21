@@ -98,6 +98,25 @@ public class ValidationBehaviorTests
     }
 
     [Fact]
+    public async Task Handle_SingleInvalidSource_ReusesImmutableViolations()
+    {
+        var invalid = new Error.InvalidInput(
+            EquatableArray.Create(FieldViolation.Required("Name")),
+            EquatableArray.Create(new RuleViolation("rule.invalid"))) { Detail = "validator summary" };
+        var external = new StubMessageValidator<TestCommandNoValidation>(Result.Fail(invalid));
+        var behavior = new ValidationBehavior<TestCommandNoValidation, Result<string>>([external]);
+        var (next, tracker) = NextDelegate.TrackingAsync<TestCommandNoValidation, Result<string>>(Result.Ok("nope"));
+
+        var result = await behavior.Handle(new TestCommandNoValidation("x"), next, CancellationToken.None);
+
+        tracker.WasInvoked.Should().BeFalse();
+        var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        error.Fields.Items.Equals(invalid.Fields.Items).Should().BeTrue("the field violations are already immutable");
+        error.Rules.Items.Equals(invalid.Rules.Items).Should().BeTrue("the rule violations are already immutable");
+        error.Detail.Should().BeNull("aggregate errors do not forward validator-level summaries");
+    }
+
+    [Fact]
     public async Task Handle_external_validator_success_calls_next()
     {
         var external = new StubMessageValidator<TestCommandNoValidation>(Result.Ok());
@@ -157,9 +176,7 @@ public class ValidationBehaviorTests
 
         tracker.WasInvoked.Should().BeFalse();
         var error = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
-        error.Fields.Items.Should().HaveCount(2);
-        error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/A");
-        error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/B");
+        error.Fields.Items.Select(fv => fv.Field.Path).Should().Equal("/A", "/B");
     }
 
     [Fact]
@@ -223,7 +240,7 @@ public class ValidationBehaviorTests
         error.Fields.Items.Should().HaveCount(1);
         error.Fields.Items.Should().Contain(fv => fv.Field.Path == "/Email");
         error.Rules.Items.Should().HaveCount(2);
-        error.Rules.Items.Select(r => r.ReasonCode).Should().BeEquivalentTo(["rule.a", "rule.b"]);
+        error.Rules.Items.Select(r => r.ReasonCode).Should().Equal("rule.a", "rule.b");
     }
 
     [Fact]

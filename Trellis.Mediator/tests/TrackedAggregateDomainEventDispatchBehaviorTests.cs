@@ -107,16 +107,16 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
     }
 
     [Fact]
-    public async Task Multiple_aggregates_each_dispatched()
+    public async Task Multiple_aggregates_dispatch_in_first_seen_reference_order()
     {
         var aggregateA = new TestAggregate(Id1);
-        var aggregateB = new TestAggregate(Id2);
+        var aggregateB = new TestAggregate(Id1);
         var eventFromA = new TestEventA("from-A", DateTimeOffset.UtcNow);
         var eventFromB = new TestEventB(99, DateTimeOffset.UtcNow);
         aggregateA.RaiseEvent(eventFromA);
         aggregateB.RaiseEvent(eventFromB);
 
-        var source = new FakeTrackedAggregateSource(aggregateA, aggregateB);
+        var source = new FakeTrackedAggregateSource(aggregateB, aggregateA, aggregateB);
         var publisher = new RecordingPublisher();
         var behavior = NewBehavior<OutcomeDtoCommand, Result<OutcomeDto>>(source, publisher);
 
@@ -126,11 +126,32 @@ public class TrackedAggregateDomainEventDispatchBehaviorTests
             CancellationToken.None);
 
         response.IsSuccess.Should().BeTrue();
-        publisher.Published.Should().Contain(eventFromA);
-        publisher.Published.Should().Contain(eventFromB);
-        publisher.Published.Should().HaveCount(2);
+        publisher.Published.Should().Equal(eventFromB, eventFromA);
         aggregateA.UncommittedEvents().Should().BeEmpty();
         aggregateB.UncommittedEvents().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Add_AlreadyPendingAggregate_KeepsFirstPublisherWithoutAllocating()
+    {
+        var aggregate = new TestAggregate(Id1);
+        var domainEvent = new TestEventA("payload", DateTimeOffset.UtcNow);
+        aggregate.RaiseEvent(domainEvent);
+        var first = new RecordingPublisher();
+        var duplicate = new RecordingPublisher();
+        using var scope = DomainEventDispatchScope.Enter();
+        scope.Add(aggregate, first);
+        scope.Add(aggregate, duplicate);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 128; i++)
+            scope.Add(aggregate, duplicate);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        allocated.Should().Be(0);
+        await scope.CompleteAsync();
+        first.Published.Should().Equal(domainEvent);
+        duplicate.Published.Should().BeEmpty();
     }
 
     [Fact]
