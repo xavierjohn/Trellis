@@ -222,11 +222,12 @@ public class StateMachineExtensionsTests
     }
 
     [Fact]
-    public void FireResult_GuardThrowsInvalidOperationException_ReturnsFailure()
+    public void FireResult_GuardedTransition_GuardThrowsInvalidOperationException_ReturnsFailureWithOneStackTraceRead()
     {
+        var guardException = new StackTraceCountingException("guard blocked");
         var machine = new StateMachine<State, Trigger>(State.Idle);
         machine.Configure(State.Idle)
-            .PermitIf(Trigger.Start, State.Running, () => throw new InvalidOperationException("guard blocked"));
+            .PermitIf(Trigger.Start, State.Running, () => throw guardException);
 
         var result = machine.FireResult(Trigger.Start);
 
@@ -237,6 +238,7 @@ public class StateMachineExtensionsTests
         var invariant = err!.Should().BeOfType<Error.InvariantViolation>().Subject;
         invariant.Code.Should().Be(FaultCodes.StateMachineInvalidTransition);
         machine.State.Should().Be(State.Idle);
+        guardException.StackTraceReadCount.Should().Be(1);
     }
 
     [Fact]
@@ -396,4 +398,18 @@ public class StateMachineExtensionsTests
     }
 
     #endregion
+
+    private sealed class StackTraceCountingException(string message) : InvalidOperationException(message)
+    {
+        public int StackTraceReadCount { get; private set; }
+
+        public override string? StackTrace
+        {
+            get
+            {
+                StackTraceReadCount++;
+                return base.StackTrace;
+            }
+        }
+    }
 }

@@ -37,6 +37,8 @@ using Trellis;
 /// </remarks>
 public static class StateMachineExtensions
 {
+    private static readonly string? s_statelessAssemblyName = typeof(StateMachine<,>).Assembly.GetName().Name;
+
     /// <summary>
     /// Fires the trigger and returns the outcome as a <see cref="Result{TState}"/>. Short-circuits
     /// with <see cref="Error.InvariantViolation"/> when the transition is not permitted in the current
@@ -128,9 +130,10 @@ public static class StateMachineExtensions
     }
 
     private static bool WasThrownByGuardEvaluation(InvalidOperationException exception) =>
-        exception.Source != typeof(StateMachine<,>).Assembly.GetName().Name
-        && exception.StackTrace?.Contains("Stateless.StateMachine", StringComparison.Ordinal) == true
-        && exception.StackTrace.Contains("GuardCondition", StringComparison.Ordinal);
+        exception.Source != s_statelessAssemblyName
+        && exception.StackTrace is { } stackTrace
+        && stackTrace.Contains("Stateless.StateMachine", StringComparison.Ordinal)
+        && stackTrace.Contains("GuardCondition", StringComparison.Ordinal);
 
     private static Result<TState> InvalidTransition<TState>(string detail) =>
         Result.Fail<TState>(
