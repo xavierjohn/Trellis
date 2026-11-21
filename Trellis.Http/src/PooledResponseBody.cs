@@ -3,28 +3,36 @@ namespace Trellis.Http;
 using System.Buffers;
 using System.IO;
 using System.Net.Http;
+using System.Numerics;
 
 internal sealed class PooledResponseBody : Stream
 {
     private const int MaxPooledLength = 1024 * 1024;
+    private const int MaxLengthHintMultiplier = 4;
 
     private byte[] _buffer = [];
     private int _length;
+    private int _lengthHint;
     private bool _rented;
     private bool _released;
 
     internal ReadOnlySpan<byte> WrittenSpan => _buffer.AsSpan(0, _length);
 
     // Finish reading before parsing so truncated data still surfaces as a transport failure.
-    internal Task CopyFromAsync(HttpContent content, CancellationToken ct) =>
-        content.Headers.ContentLength > int.MaxValue
-            ? CopyWithPlatformLimitAsync(content, ct)
-            : content.CopyToAsync(this, ct);
+    internal Task CopyFromAsync(HttpContent content, CancellationToken ct)
+    {
+        var contentLength = content.Headers.ContentLength.GetValueOrDefault();
+        if (contentLength > Array.MaxLength)
+            return CopyWithPlatformLimitAsync(content, ct);
+
+        _lengthHint = (int)contentLength;
+        return content.CopyToAsync(this, ct);
+    }
 
     private async Task CopyWithPlatformLimitAsync(HttpContent content, CancellationToken ct)
     {
         // Let HttpContent enforce its limit only if the body hasn't already been buffered.
-        await content.LoadIntoBufferAsync(ct).ConfigureAwait(false);
+        await content.LoadIntoBufferAsync(Array.MaxLength, ct).ConfigureAwait(false);
         await content.CopyToAsync(this, ct).ConfigureAwait(false);
     }
 
@@ -43,7 +51,16 @@ internal sealed class PooledResponseBody : Stream
         var required = _length + buffer.Length;
         if (required > _buffer.Length)
         {
-            var capacity = Math.Max(required, (int)Math.Min((long)_buffer.Length * 2, Array.MaxLength));
+            var growth = (long)_buffer.Length * 2;
+            // An understated hint must not inflate the next geometric growth step.
+            if (_lengthHint != 0 && _buffer.Length == _lengthHint)
+                growth = Math.Min(growth, BitOperations.RoundUpToPowerOf2((uint)required));
+
+            var capacity = (int)Math.Clamp(growth, required, Array.MaxLength);
+            // Use the advertised size once enough data has arrived to justify the reservation.
+            if (_lengthHint >= required && _lengthHint <= (long)capacity * MaxLengthHintMultiplier)
+                capacity = _lengthHint;
+
             var rent = capacity <= MaxPooledLength;
             var next = rent ? ArrayPool<byte>.Shared.Rent(capacity) : GC.AllocateUninitializedArray<byte>(capacity);
             WrittenSpan.CopyTo(next);

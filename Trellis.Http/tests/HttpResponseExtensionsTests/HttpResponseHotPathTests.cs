@@ -56,6 +56,54 @@ public class HttpResponseHotPathTests
     }
 
     [Fact]
+    public void ReadJsonAsync_LargeStreamWithKnownLength_AllocatesOneTransientBodyBuffer()
+    {
+        const int bodyLength = 1536 * 1024;
+        var bytes = MakeBody(bodyLength);
+        var allocation = BytesPerRead(
+            () => CreateChunkedResponse(bytes, bodyLength),
+            static response => Read(JsonReader.Required, response, CancellationToken.None),
+            AssertPerson);
+
+        allocation.Should().BeInRange(bodyLength, bodyLength + (16 * 1024));
+    }
+
+    [Fact]
+    public void ReadJsonAsync_LargeStreamWithUnderstatedLength_DoesNotDoubleTheAdvertisedSize()
+    {
+        const int advertisedLength = 1536 * 1024;
+        var bytes = MakeBody(advertisedLength + (16 * 1024));
+        var allocation = BytesPerRead(
+            () => CreateChunkedResponse(bytes, advertisedLength),
+            static response => Read(JsonReader.Required, response, CancellationToken.None),
+            AssertPerson);
+
+        allocation.Should().BeLessThan(advertisedLength + ((2048 + 16) * 1024));
+    }
+
+    [Fact]
+    public async Task ReadJsonAsync_LargeStreamWithUnknownLength_PreservesDataAcrossBufferGrowth()
+    {
+        var response = CreateChunkedResponse(MakeBody(1536 * 1024), contentLength: null);
+
+        AssertPerson(await Task.FromResult(Result.Ok<HttpResponseMessage>(response))
+            .ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson, TestContext.Current.CancellationToken));
+        response.Disposed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ReadJsonAsync_SmallStreamWithOverstatedLength_DoesNotReserveTheAdvertisedSize()
+    {
+        var bytes = MakeBody(4096);
+        var allocation = BytesPerRead(
+            () => CreateChunkedResponse(bytes, contentLength: 64 * 1024 * 1024),
+            static response => Read(JsonReader.Required, response, CancellationToken.None),
+            AssertPerson);
+
+        allocation.Should().BeLessThan(64 * 1024);
+    }
+
+    [Fact]
     public async Task ReadJsonMaybeAsync_ContentClosesTheDestination_ThrowsAndDisposesTheResponse()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -118,15 +166,17 @@ public class HttpResponseHotPathTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task ReadJsonAsync_OversizedContentLength_OnlyRejectsUnbufferedContent(bool prebuffered)
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task ReadJsonAsync_OversizedContentLength_OnlyRejectsUnbufferedContent(bool prebuffered, bool exceedsIntMax)
     {
         var ct = TestContext.Current.CancellationToken;
         var response = new TrackingHttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
         if (prebuffered)
             await response.Content.LoadIntoBufferAsync(ct);
-        response.Content.Headers.ContentLength = (long)int.MaxValue + 1;
+        response.Content.Headers.ContentLength = exceedsIntMax ? (long)int.MaxValue + 1 : (long)Array.MaxLength + 1;
 
         var reading = Task.FromResult(Result.Ok<HttpResponseMessage>(response))
             .ReadJsonAsync(SourceGenerationContext.Default.camelcasePerson, ct);
@@ -155,8 +205,17 @@ public class HttpResponseHotPathTests
     {
         var bytes = new byte[length];
         Array.Fill(bytes, (byte)' ');
-        """{"firstName":"Ada","age":37}"""u8.CopyTo(bytes);
+        """{"firstName":"Ada","""u8.CopyTo(bytes);
+        ReadOnlySpan<byte> tail = "\"age\":37}"u8;
+        tail.CopyTo(bytes.AsSpan(length - tail.Length));
         return bytes;
+    }
+
+    private static TrackingHttpResponseMessage CreateChunkedResponse(byte[] bytes, long? contentLength)
+    {
+        var content = new ChunkedContent(bytes);
+        content.Headers.ContentLength = contentLength;
+        return new TrackingHttpResponseMessage(HttpStatusCode.OK) { Content = content };
     }
 
     private static void AssertPerson(Task completed)
@@ -164,6 +223,13 @@ public class HttpResponseHotPathTests
         var person = completed is Task<Result<camelcasePerson>> required
             ? required.Result.Should().BeSuccess().Which
             : ((Task<Result<Maybe<camelcasePerson>>>)completed).Result.Should().BeSuccess().Which.Should().HaveValue().Which;
+        AssertPerson(person);
+    }
+
+    private static void AssertPerson(Result<camelcasePerson> result) => AssertPerson(result.Should().BeSuccess().Which);
+
+    private static void AssertPerson(camelcasePerson person)
+    {
         person.firstName.Should().Be("Ada");
         person.age.Should().Be(37);
     }
