@@ -95,11 +95,28 @@ public sealed class WeeklySchedule : ValueObject
 
     private bool ContainsTickOfWeek(long tick)
     {
-        foreach (var period in _periods)
-            if ((tick - period.StartTickOfWeek + WeeklyPeriod.TicksPerWeek) % WeeklyPeriod.TicksPerWeek < period.DurationTicks)
-                return true;
+        var count = _periods.Count;
+        if (count == 0)
+            return false;
 
-        return false;
+        var low = 0;
+        var high = count;
+        while (low < high)
+        {
+            var middle = low + ((high - low) / 2);
+            if (_periods[middle].StartTickOfWeek <= tick)
+                low = middle + 1;
+            else
+                high = middle;
+        }
+
+        // Disjoint periods can only match at the preceding start, including across the week boundary.
+        var candidate = _periods[low == 0 ? count - 1 : low - 1];
+        var elapsed = tick - candidate.StartTickOfWeek;
+        if (elapsed < 0)
+            elapsed += WeeklyPeriod.TicksPerWeek;
+
+        return elapsed < candidate.DurationTicks;
     }
 
     private static Result<TimeZoneInfo> ValidateTimeZone(string? id, InputPointer field) =>

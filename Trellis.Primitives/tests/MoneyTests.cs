@@ -2,6 +2,7 @@
 
 namespace Trellis.Primitives.Tests;
 
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Trellis;
@@ -24,6 +25,40 @@ public class MoneyTests
 
         // Assert
         result.Should().BeSuccess().Which.Currency.Value.Should().Be(currency);
+    }
+
+    [Fact]
+    public void TryCreate_ValidInput_AllocatesOnlyTheMonetaryValues()
+    {
+        using var source = new ActivitySource($"{nameof(MoneyTests)}.{nameof(TryCreate_ValidInput_AllocatesOnlyTheMonetaryValues)}");
+        PrimitiveValueObjectTrace.SetTestActivitySource(source);
+        try
+        {
+            var currencyBytes = AllocatedBytes(static () => CurrencyCode.TryCreate("USD").IsSuccess);
+            var defaultBytes = AllocatedBytes(static () => Money.TryCreate(1m, "USD").IsSuccess);
+            var nestedBytes = AllocatedBytes(static () => Money.TryCreate(1m, "USD", "/items/0/price").IsSuccess);
+            var flatBytes = AllocatedBytes(static () => Money.TryCreate(1m, "USD", "/items/0/amount", "IsoCurrency").IsSuccess);
+
+            // Allow for the Money instance without tying the check to its exact object size.
+            Assert.InRange(defaultBytes - currencyBytes, 0, 96);
+            Assert.Equal(defaultBytes, nestedBytes);
+            Assert.Equal(defaultBytes, flatBytes);
+        }
+        finally
+        {
+            PrimitiveValueObjectTrace.ResetTestActivitySource();
+        }
+
+        static long AllocatedBytes(Func<bool> tryCreate)
+        {
+            const int iterations = 64;
+            Assert.True(tryCreate());
+
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < iterations; i++)
+                _ = tryCreate();
+            return (GC.GetAllocatedBytesForCurrentThread() - before) / iterations;
+        }
     }
 
     [Fact]
@@ -688,6 +723,14 @@ public class MoneyTests
     {
         PathOf(Money.TryCreate(-1m, "USD", "", "")).Should().BeEmpty();
         PathOf(Money.TryCreate(1m, "INVALID", "", "")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TryCreate_MalformedPointers_ThrowsEvenForUnusedFields()
+    {
+        Assert.Throws<ArgumentException>("Path", () => Money.TryCreate(1m, "USD", "/items/~2/price"));
+        Assert.Throws<ArgumentException>("Path", () => Money.TryCreate(1m, "USD", "/price~", "/currency"));
+        Assert.Throws<ArgumentException>("Path", () => Money.TryCreate(-1m, "BAD!", "/price", "/currency~"));
     }
 
     private static string PathOf(Result<Money> result)

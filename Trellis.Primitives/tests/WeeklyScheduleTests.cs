@@ -190,6 +190,31 @@ public class WeeklyScheduleTests
             .Should().BeTrue();
     }
 
+    [Fact]
+    public void Contains_ManyPeriods_HandlesTickBoundariesWithoutAllocating()
+    {
+        const int periodCount = 512;
+        var periods = Enumerable.Range(0, periodCount)
+            .Select(i => WeeklyPeriod.Create(DayOfWeek.Monday, new TimeOnly(2L * i), new TimeOnly((2L * i) + 1)))
+            .ToArray();
+        var schedule = WeeklySchedule.Create("UTC", [.. periods, Period(DayOfWeek.Saturday, 22, 2)]);
+        Assert.True(schedule.Contains(DayOfWeek.Sunday, new TimeOnly(1, 59)));
+        Assert.False(schedule.Contains(DayOfWeek.Sunday, new TimeOnly(2, 0)));
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var matchesBoundaries = true;
+        for (var i = 0; i < periodCount; i++)
+        {
+            matchesBoundaries &= schedule.Contains(DayOfWeek.Monday, periods[i].Start);
+            matchesBoundaries &= !schedule.Contains(DayOfWeek.Monday, periods[i].End);
+        }
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(matchesBoundaries);
+        Assert.Equal(0, allocated);
+    }
+
     [Theory]
     [InlineData(DayOfWeek.Saturday, 21, false)]
     [InlineData(DayOfWeek.Saturday, 22, true)]

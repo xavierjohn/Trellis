@@ -151,6 +151,7 @@ public class PhoneNumberTests
 
     [Theory]
     [InlineData("+14155551234", "1")]
+    [InlineData("+79123456789", "7")]
     [InlineData("+442071234567", "44")]
     [InlineData("+33123456789", "33")]
     [InlineData("+212612345678", "212")]
@@ -172,11 +173,29 @@ public class PhoneNumberTests
     [InlineData("+99912345678")]    // "999" not in 3-digit; "99" not in 2-digit
     [InlineData("+88812345678")]    // "888" not in 3-digit; "88" not in 2-digit
     [InlineData("+28012345678")]    // "280" not in 3-digit; "28" not in 2-digit
+    [InlineData("+4\u0664071234567")] // E.164 shape allows the Unicode digit, but the code table is ASCII.
     public void GetCountryCode_UnassignedPrefix_ReturnsNone(string phone)
     {
         var phoneNumber = PhoneNumber.TryCreate(phone).Unwrap();
 
         phoneNumber.GetCountryCode().Should().BeNone();
+    }
+
+    [Fact]
+    public void GetCountryCode_RecognizedAndUnassignedPrefixes_DoNotAllocate()
+    {
+        string[] numbers = ["+14155551234", "+79123456789", "+442071234567", "+212612345678", "+99912345678"];
+        var phones = Array.ConvertAll(numbers, PhoneNumber.Create);
+        foreach (var phone in phones)
+            _ = phone.GetCountryCode();
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 64; i++)
+            foreach (var phone in phones)
+                _ = phone.GetCountryCode();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(0, allocated);
     }
 
     [Fact]

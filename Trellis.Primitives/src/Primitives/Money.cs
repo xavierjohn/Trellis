@@ -81,11 +81,7 @@ public class Money : ValueObject
     /// <param name="fieldName">Optional name of the money field itself; component errors are reported beneath it.</param>
     /// <returns>Result containing the Money instance or validation errors.</returns>
     public static Result<Money> TryCreate(decimal amount, string currencyCode, string? fieldName = null) =>
-        TryCreateCore(
-            amount,
-            currencyCode,
-            ComponentPointer(fieldName, AmountFieldName),
-            ComponentPointer(fieldName, CurrencyFieldName));
+        TryCreateCore(amount, currencyCode, fieldName, fieldName, nested: true);
 
     /// <summary>
     /// Creates a Money instance whose amount and currency are validated against independently
@@ -103,27 +99,40 @@ public class Money : ValueObject
     /// <param name="currencyFieldName">Field carrying the currency; defaults to <c>currency</c> when null. An empty string explicitly targets the document root.</param>
     /// <returns>Result containing the Money instance or validation errors.</returns>
     public static Result<Money> TryCreate(decimal amount, string currencyCode, string? amountFieldName, string? currencyFieldName) =>
-        TryCreateCore(
-            amount,
-            currencyCode,
-            InputPointer.ForProperty(amountFieldName.NormalizeFieldName(AmountFieldName)),
-            InputPointer.ForProperty(currencyFieldName.NormalizeFieldName(CurrencyFieldName)));
+        TryCreateCore(amount, currencyCode, amountFieldName, currencyFieldName, nested: false);
 
     private const string AmountFieldName = "amount";
     private const string CurrencyFieldName = "currency";
 
-    private static InputPointer ComponentPointer(string? fieldName, string component) =>
-        new(InputPointer.ForProperty(fieldName.NormalizeFieldName(string.Empty)).Path + '/' + component);
+    private static InputPointer ComponentPointer(string? fieldName, string component, bool nested) =>
+        nested
+            ? InputPointer.ForProperty(fieldName.NormalizeFieldName(string.Empty)).AppendProperty(component)
+            : InputPointer.ForProperty(fieldName.NormalizeFieldName(component));
 
-    private static Result<Money> TryCreateCore(decimal amount, string currencyCode, InputPointer amountField, InputPointer currencyField)
+    private static void ValidateExplicitPointer(string? fieldName)
     {
+        if (fieldName is not null && fieldName.StartsWith('/'))
+            _ = new InputPointer(fieldName);
+    }
+
+    private static Result<Money> TryCreateCore(decimal amount, string currencyCode, string? amountFieldName, string? currencyFieldName, bool nested)
+    {
+        // Explicit pointers are caller arguments, so reject malformed ones even if neither value fails validation.
+        ValidateExplicitPointer(amountFieldName);
+        if (!nested)
+            ValidateExplicitPointer(currencyFieldName);
+
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(Money) + '.' + nameof(TryCreate));
 
         if (amount < 0)
-            return Result.Fail<Money>(Error.InvalidInput.ForField(field: amountField, code: ValidationCodes.ValueGreaterThanOrEqual, args: ZeroArgs, detail: "Amount cannot be negative."));
+            return Result.Fail<Money>(Error.InvalidInput.ForField(
+                field: ComponentPointer(amountFieldName, AmountFieldName, nested),
+                code: ValidationCodes.ValueGreaterThanOrEqual, args: ZeroArgs, detail: "Amount cannot be negative."));
 
-        return CurrencyCode.TryCreate(currencyCode, currencyField.Path)
-            .Map(currency => new Money(Math.Round(amount, GetDecimalPlaces(currency), MidpointRounding.AwayFromZero), currency));
+        return CurrencyCode.TryCreate(currencyCode, (amount, currencyFieldName, nested),
+            static state => ComponentPointer(state.currencyFieldName, CurrencyFieldName, state.nested),
+            static (currency, state) => (state.amount, currency))
+            .Map(static (value, code) => new Money(Math.Round(value, GetDecimalPlaces(code), MidpointRounding.AwayFromZero), code));
     }
 
     /// <summary>

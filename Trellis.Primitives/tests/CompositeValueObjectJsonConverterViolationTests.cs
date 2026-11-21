@@ -83,13 +83,15 @@ public sealed class CompositeValueObjectJsonConverterViolationTests
         ex.InvalidInput!.Fields[0].Field.Path.Should().Be("/count");
     }
 
-    [Fact]
-    public void A_wrong_token_type_reports_at_that_property()
+    [Theory]
+    [InlineData("\"not-a-number\"", ValidationCodes.FormatConversion)]
+    [InlineData("\"\\t\"", ValidationCodes.ValueNotEmpty)]
+    public void A_wrong_token_type_reports_at_that_property(string token, string code)
     {
-        var ex = Deserialize("""{"name": "n", "count": "not-a-number", "label": "l"}""");
+        var ex = Deserialize($$"""{"name": "n", "count": {{token}}, "label": "l"}""");
 
         ex.InvalidInput!.Should().HaveFieldViolationCount(1);
-        ex.InvalidInput!.Fields[0].Field.Path.Should().Be("/count");
+        ex.InvalidInput!.Should().HaveFieldViolation(new InputPointer("/count"), code);
     }
 
     [Fact]
