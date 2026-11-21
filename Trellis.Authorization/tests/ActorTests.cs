@@ -1,5 +1,6 @@
 ﻿namespace Trellis.Authorization.Tests;
 
+using System.Collections.Frozen;
 using Trellis.Testing;
 
 /// <summary>
@@ -10,6 +11,7 @@ public class ActorTests
     private static readonly HashSet<string> NoPermissions = [];
     private static readonly HashSet<string> NoForbidden = [];
     private static readonly Dictionary<string, string> NoAttributes = [];
+    private const int AllocationTolerancePerOperation = 8;
 
     private static Actor CreateActor(
         string id = "user-1",
@@ -220,6 +222,37 @@ public class ActorTests
         actor.HasAnyPermission(["Orders.Read", "Orders.Write"]).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void BatchPermissionChecks_ArrayOrList_DecisivePermission_ShortCircuitWithoutAllocating(bool useList, bool checkAll)
+    {
+        var actor = CreateActor(
+            permissions: ["Orders.Read", "Orders.Write"],
+            forbidden: ["Orders.Write"]);
+        string[] entries = ["Orders.Write", "Orders.Read", null!];
+        IEnumerable<string> permissions = useList ? new List<string>(entries) : entries;
+
+        Func<bool> check = checkAll
+            ? () => actor.HasAllPermissions(permissions)
+            : () => actor.HasAnyPermission(permissions);
+
+        check().Should().Be(!checkAll);
+        MeasureBytesPerOperation(check).Should().BeLessThanOrEqualTo(AllocationTolerancePerOperation);
+    }
+
+    [Fact]
+    public void HasAllAndAnyPermissions_ListSubclass_CustomEnumeration_UsesEnumeratedPermissions()
+    {
+        var actor = CreateActor(permissions: ["Orders.Read"]);
+        var permissions = new EnumeratedPermissions();
+
+        actor.HasAllPermissions(permissions).Should().BeTrue();
+        actor.HasAnyPermission(permissions).Should().BeTrue();
+    }
+
     #endregion
 
     #region IsOwner
@@ -376,6 +409,57 @@ public class ActorTests
 
         actor.GetAttribute(ActorAttributes.TenantId).Should().Be("tenant-a");
         actor.HasAttribute(ActorAttributes.MfaAuthenticated).Should().BeFalse("Actor should snapshot attributes at construction time");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Constructor_OrdinalFrozenAttributes_NonEmpty_ReusesSnapshot(bool explicitOrdinalComparer)
+    {
+        var attributes = new Dictionary<string, string> { ["Tenant"] = "tenant-a" }
+            .ToFrozenDictionary(explicitOrdinalComparer ? StringComparer.Ordinal : EqualityComparer<string>.Default);
+
+        var actor = new Actor(ActorId.Create("user-1"), NoPermissions, NoForbidden, attributes);
+
+        actor.Attributes.Should().BeSameAs(attributes);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Constructor_MutableOrdinalAttributes_NonEmpty_FreezesWithoutStagingCopy(bool explicitOrdinalComparer)
+    {
+        var id = ActorId.Create("user-1");
+        var attributes = new Dictionary<string, string>(
+            explicitOrdinalComparer ? StringComparer.Ordinal : EqualityComparer<string>.Default)
+        {
+            ["Tenant"] = "tenant-a",
+            ["Client"] = "service-a",
+            ["Mfa"] = "true",
+            ["Ip"] = "10.0.0.1",
+        };
+
+        var actorBytes = MeasureBytesPerOperation(() => new Actor(id, NoPermissions, NoForbidden, NoAttributes));
+        var snapshotBytes = MeasureBytesPerOperation(() => attributes.ToFrozenDictionary(attributes.Comparer));
+
+        MeasureBytesPerOperation(() => new Actor(id, NoPermissions, NoForbidden, attributes))
+            .Should().BeLessThanOrEqualTo(actorBytes + snapshotBytes + AllocationTolerancePerOperation);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Constructor_NonOrdinalAttributes_CaseInsensitiveInput_UsesOrdinalSnapshot(bool freezeInput)
+    {
+        var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Tenant"] = "tenant-a" };
+        IReadOnlyDictionary<string, string> input = freezeInput
+            ? attributes.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase)
+            : attributes;
+
+        var actor = new Actor(ActorId.Create("user-1"), NoPermissions, NoForbidden, input);
+
+        actor.GetAttribute("Tenant").Should().Be("tenant-a");
+        actor.HasAttribute("tenant").Should().BeFalse();
     }
 
     #endregion
@@ -652,4 +736,25 @@ public class ActorTests
     }
 
     #endregion
+
+    private static long MeasureBytesPerOperation<T>(Func<T> operation)
+    {
+        const int iterations = 512;
+        var result = operation();
+        for (var i = 1; i < iterations; i++)
+            result = operation();
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < iterations; i++)
+            result = operation();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        GC.KeepAlive(result);
+        return allocated / iterations;
+    }
+
+    private sealed class EnumeratedPermissions() : List<string>(["Orders.Write"]), IEnumerable<string>
+    {
+        IEnumerator<string> IEnumerable<string>.GetEnumerator() => Enumerable.Repeat("Orders.Read", 1).GetEnumerator();
+    }
 }
