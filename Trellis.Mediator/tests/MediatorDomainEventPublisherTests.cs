@@ -187,6 +187,25 @@ public class MediatorDomainEventPublisherTests
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    [Fact]
+    public async Task PublishReportingAsync_SynchronousHandlerThrows_ReportsTheOriginalExceptionUnwrapped()
+    {
+        using var provider = new ServiceCollection()
+            .AddSingleton<IDomainEventHandler<TestEventA>, ThrowingHandlerA>()
+            .BuildServiceProvider();
+        var publisher = new MediatorDomainEventPublisher(provider, NullLogger<MediatorDomainEventPublisher>.Instance);
+
+        var report = await publisher.PublishReportingAsync(
+            new TestEventA("payload", DateTimeOffset.UtcNow), null, CancellationToken.None);
+
+        var failure = report.Failures.Should().ContainSingle().Subject;
+        failure.HandlerType.Should().Be(DomainEventDispatchReport.HandlerIdentity(typeof(ThrowingHandlerA)));
+        var error = failure.Error.Should().BeOfType<InvalidOperationException>().Subject;
+        error.Message.Should().Be("handler-failed-on-purpose");
+        error.InnerException.Should().BeNull("the outbox retry bookkeeping must see the handler's own exception");
+        report.CompletedHandlers.Should().BeEmpty();
+    }
+
     private sealed class SynchronousCancellingHandler : IDomainEventHandler<TestEventA>
     {
         public ValueTask HandleAsync(TestEventA domainEvent, CancellationToken cancellationToken)
