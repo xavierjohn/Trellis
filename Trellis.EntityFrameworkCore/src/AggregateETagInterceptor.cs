@@ -128,11 +128,8 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
         if (context is null)
             return;
 
-        foreach (var entry in GetSavedAggregates(context.ChangeTracker))
+        foreach (var entry in GetModifiedAggregates(context.ChangeTracker))
         {
-            if (entry.State != EntityState.Modified)
-                continue;
-
             var etagProperty = entry.Properties
                 .FirstOrDefault(p => p.Metadata.Name == ETagPropertyName);
             if (etagProperty is null)
@@ -142,14 +139,14 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
         }
     }
 
-    private static List<EntityEntry<IAggregate>> GetSavedAggregates(ChangeTracker tracker)
+    private static List<EntityEntry<IAggregate>> GetModifiedAggregates(ChangeTracker tracker)
     {
         var autoDetectChanges = tracker.AutoDetectChangesEnabled;
         try
         {
             // Only already-detected modifications from the save need their original ETags synced.
             tracker.AutoDetectChangesEnabled = false;
-            return tracker.Entries<IAggregate>().ToList();
+            return tracker.Entries<IAggregate>().Where(entry => entry.State == EntityState.Modified).ToList();
         }
         finally
         {
