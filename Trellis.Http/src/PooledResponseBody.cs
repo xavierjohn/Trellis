@@ -51,16 +51,7 @@ internal sealed class PooledResponseBody : Stream
         var required = _length + buffer.Length;
         if (required > _buffer.Length)
         {
-            var growth = (long)_buffer.Length * 2;
-            // An understated hint must not inflate the next geometric growth step.
-            if (_lengthHint != 0 && _buffer.Length == _lengthHint)
-                growth = Math.Min(growth, BitOperations.RoundUpToPowerOf2((uint)required));
-
-            var capacity = (int)Math.Clamp(growth, required, Array.MaxLength);
-            // Use the advertised size once enough data has arrived to justify the reservation.
-            if (_lengthHint >= required && _lengthHint <= (long)capacity * MaxLengthHintMultiplier)
-                capacity = _lengthHint;
-
+            var capacity = NextCapacity(required);
             var rent = capacity <= MaxPooledLength;
             var next = rent ? ArrayPool<byte>.Shared.Rent(capacity) : GC.AllocateUninitializedArray<byte>(capacity);
             WrittenSpan.CopyTo(next);
@@ -71,6 +62,18 @@ internal sealed class PooledResponseBody : Stream
 
         buffer.CopyTo(_buffer.AsSpan(_length));
         _length = required;
+    }
+
+    private int NextCapacity(int required)
+    {
+        var growth = (long)_buffer.Length * 2;
+        var outgrewLengthHint = _lengthHint != 0 && _buffer.Length == _lengthHint;
+        if (outgrewLengthHint)
+            growth = Math.Min(growth, BitOperations.RoundUpToPowerOf2((uint)required));
+
+        var capacity = (int)Math.Clamp(growth, required, Array.MaxLength);
+        var canReserveLengthHint = _lengthHint >= required && _lengthHint <= (long)capacity * MaxLengthHintMultiplier;
+        return canReserveLengthHint ? _lengthHint : capacity;
     }
 
     public override void Write(byte[] buffer, int offset, int count)

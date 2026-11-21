@@ -15,7 +15,7 @@ public class HttpResponseHotPathTests
     [InlineData(JsonReader.Optional, false)]
     [InlineData(JsonReader.OptionalOn404, true)]
     [InlineData(JsonReader.OptionalOn404, false)]
-    public void ReadJson_LargeBody_DoesNotAllocateAnotherPayload(JsonReader reader, bool prebuffered)
+    public void ReadJson_AllReaders_LargeBody_DoesNotAllocateAnotherPayload(JsonReader reader, bool prebuffered)
     {
         const int bodyLength = 256 * 1024;
         var bytes = MakeBody(bodyLength);
@@ -38,7 +38,7 @@ public class HttpResponseHotPathTests
     }
 
     [Fact]
-    public void ReadJsonAsync_VeryLargePrebufferedBody_UsesAnExactTransientCopy()
+    public void ReadJsonAsync_Prebuffered_VeryLargeBody_UsesAnExactTransientCopy()
     {
         const int bodyLength = 1536 * 1024;
         var bytes = MakeBody(bodyLength);
@@ -56,7 +56,7 @@ public class HttpResponseHotPathTests
     }
 
     [Fact]
-    public void ReadJsonAsync_LargeStreamWithKnownLength_AllocatesOneTransientBodyBuffer()
+    public void ReadJsonAsync_Unbuffered_LargeBodyWithKnownLength_AllocatesOneTransientBodyBuffer()
     {
         const int bodyLength = 1536 * 1024;
         var bytes = MakeBody(bodyLength);
@@ -69,20 +69,22 @@ public class HttpResponseHotPathTests
     }
 
     [Fact]
-    public void ReadJsonAsync_LargeStreamWithUnderstatedLength_DoesNotDoubleTheAdvertisedSize()
+    public void ReadJsonAsync_Unbuffered_LargeBodyWithUnderstatedLength_DoesNotDoubleTheAdvertisedSize()
     {
         const int advertisedLength = 1536 * 1024;
+        const int allocationBudget = 4 * 1024 * 1024;
         var bytes = MakeBody(advertisedLength + (16 * 1024));
         var allocation = BytesPerRead(
             () => CreateChunkedResponse(bytes, advertisedLength),
             static response => Read(JsonReader.Required, response, CancellationToken.None),
             AssertPerson);
 
-        allocation.Should().BeLessThan(advertisedLength + ((2048 + 16) * 1024));
+        allocation.Should().BeLessThan(allocationBudget,
+            "doubling the advertised 1.5 MiB buffer would allocate 4.5 MiB across the two buffers");
     }
 
     [Fact]
-    public async Task ReadJsonAsync_LargeStreamWithUnknownLength_PreservesDataAcrossBufferGrowth()
+    public async Task ReadJsonAsync_Unbuffered_LargeBodyWithUnknownLength_PreservesDataAcrossBufferGrowth()
     {
         var response = CreateChunkedResponse(MakeBody(1536 * 1024), contentLength: null);
 
@@ -92,7 +94,7 @@ public class HttpResponseHotPathTests
     }
 
     [Fact]
-    public void ReadJsonAsync_SmallStreamWithOverstatedLength_DoesNotReserveTheAdvertisedSize()
+    public void ReadJsonAsync_Unbuffered_SmallBodyWithOverstatedLength_DoesNotReserveTheAdvertisedSize()
     {
         var bytes = MakeBody(4096);
         var allocation = BytesPerRead(
@@ -104,7 +106,7 @@ public class HttpResponseHotPathTests
     }
 
     [Fact]
-    public async Task ReadJsonMaybeAsync_ContentClosesTheDestination_ThrowsAndDisposesTheResponse()
+    public async Task ReadJsonMaybeAsync_OptionalBody_ContentClosesTheDestination_ThrowsAndDisposesTheResponse()
     {
         var ct = TestContext.Current.CancellationToken;
         var response = new TrackingHttpResponseMessage(HttpStatusCode.OK) { Content = new ClosingWriterContent() };
@@ -115,7 +117,7 @@ public class HttpResponseHotPathTests
     }
 
     [Fact]
-    public void ReadJsonOrNoneOn404Async_NoContent_DoesNotAddTasksToTheOptionalReader()
+    public void ReadJsonOrNoneOn404Async_OptionalResource_NoContent_DoesNotAddIntermediateTasks()
     {
         var optional = BytesPerRead(
             static () => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent)),
@@ -130,7 +132,7 @@ public class HttpResponseHotPathTests
     }
 
     [Fact]
-    public void ToResultAsync_StrictUnauthorized_AllocatesLikeTheSameCustomMapping()
+    public void ToResultAsync_Strict_Unauthorized_AllocatesLikeTheSameCustomMapping()
     {
         var strict = BytesPerRead(
             static () => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)),
@@ -151,7 +153,7 @@ public class HttpResponseHotPathTests
     [InlineData(JsonReader.Required)]
     [InlineData(JsonReader.Optional)]
     [InlineData(JsonReader.OptionalOn404)]
-    public async Task ReadJson_IncompleteTransportFailure_PropagatesInsteadOfMappingPartialJson(JsonReader reader)
+    public async Task ReadJson_AllReaders_IncompleteTransportFailure_PropagatesInsteadOfMappingPartialJson(JsonReader reader)
     {
         var response = new TrackingHttpResponseMessage(HttpStatusCode.OK)
         {
@@ -170,7 +172,7 @@ public class HttpResponseHotPathTests
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(false, false)]
-    public async Task ReadJsonAsync_OversizedContentLength_OnlyRejectsUnbufferedContent(bool prebuffered, bool exceedsIntMax)
+    public async Task ReadJsonAsync_BufferedOrUnbuffered_OversizedContentLength_OnlyRejectsUnbufferedContent(bool prebuffered, bool exceedsIntMax)
     {
         var ct = TestContext.Current.CancellationToken;
         var response = new TrackingHttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
