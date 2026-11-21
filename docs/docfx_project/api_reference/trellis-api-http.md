@@ -97,7 +97,7 @@ The Trellis.Http extensions deliberately do **not** swallow non-Result-shaped ex
 
 - **`HttpRequestException`** — propagates from any extension when the underlying `Task<HttpResponseMessage>` faults (DNS failure, connection refused, TLS handshake error, etc.).
 - **`OperationCanceledException` / `TaskCanceledException`** — propagates when the `CancellationToken` is signaled or the upstream `HttpClient` times out.
-- **`JsonException`** — caught and mapped to `Fail<Unexpected>` by `ReadJsonAsync<T>`, `ReadJsonMaybeAsync<T>`, and `ReadJsonOrNoneOn404Async<T>` (which delegates to `ReadJsonMaybeAsync<T>` after the 404 check). Parser details are sanitized to structured line / byte position only.
+- **`JsonException`** — caught and mapped to `Fail<Unexpected>` by `ReadJsonAsync<T>`, `ReadJsonMaybeAsync<T>`, and `ReadJsonOrNoneOn404Async<T>`. Parser details are sanitized to structured line / byte position only. The readers finish buffering the response before parsing; a transport failure propagates even if the partial body is already malformed.
 
 Any of these cases that surface inside a `try` block where a response has already been awaited still trigger the disposal contract described below before the exception escapes.
 

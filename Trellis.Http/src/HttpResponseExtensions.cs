@@ -52,6 +52,8 @@ using Trellis;
 /// </remarks>
 public static class HttpResponseExtensions
 {
+    private static readonly ResourceRef s_httpResponseResource = ResourceRef.For("HttpResponse");
+
     /// <summary>
     /// Bridges a <see cref="Task{HttpResponseMessage}"/> into a
     /// <see cref="Task{Result}"/> of <see cref="HttpResponseMessage"/>.
@@ -155,36 +157,35 @@ public static class HttpResponseExtensions
             return Result.Fail<Maybe<T>>(error);
         }
 
-        return await Result.Ok(message)
-            .AsTask()
-            .ReadJsonMaybeAsync(jsonTypeInfo, ct)
-            .ConfigureAwait(false);
+        return await ReadJsonMaybeCoreAsync(Result.Ok(message), jsonTypeInfo, ct).ConfigureAwait(false);
     }
 
     private static Error MapStatusToError(HttpResponseMessage response)
     {
         var statusCode = response.StatusCode;
         var detail = $"HTTP response returned status code {(int)statusCode} ({statusCode}).";
-        var resource = ResourceRef.For("HttpResponse");
-
-        Error error = statusCode switch
+        return statusCode switch
         {
-            HttpStatusCode.BadRequest => Error.InvalidInput.ForRule(code: ValidationCodes.HttpBadRequest),
-            HttpStatusCode.Unauthorized => new Error.AuthenticationRequired(),
-            HttpStatusCode.Forbidden => new Error.Forbidden(ValidationCodes.HttpForbidden),
-            HttpStatusCode.NotFound => new Error.NotFound(resource),
+            HttpStatusCode.BadRequest => CreateInvalidResponseError(ValidationCodes.HttpBadRequest, detail),
+            HttpStatusCode.Unauthorized => new Error.AuthenticationRequired { Detail = detail },
+            HttpStatusCode.Forbidden => new Error.Forbidden(ValidationCodes.HttpForbidden) { Detail = detail },
+            HttpStatusCode.NotFound => new Error.NotFound(s_httpResponseResource) { Detail = detail },
             // RFC 9110 §15.5.6 says a 405 response MUST include the Allow header. When the
             // upstream is non-conforming and omits it, fall through to InternalServerError
             // rather than synthesizing a transport fault with an empty Allow set — that would
             // produce a misleading wire-level `Allow:` header on round-trip through ASP.
             HttpStatusCode.MethodNotAllowed when ExtractAllow(response) is { IsEmpty: false } allow
-                => new Error.TransportFault(new HttpError.MethodNotAllowed(allow)),
-            HttpStatusCode.NotAcceptable => new Error.TransportFault(new HttpError.NotAcceptable(EquatableArray<string>.Empty)),
-            HttpStatusCode.Conflict => new Error.Conflict(Resource: null, Code: ValidationCodes.HttpConflict),
-            HttpStatusCode.Gone => new Error.Gone(resource),
-            HttpStatusCode.PreconditionFailed => new Error.TransportFault(new HttpError.PreconditionFailed(resource, PreconditionKind.IfMatch)),
-            HttpStatusCode.RequestEntityTooLarge => new Error.TransportFault(new HttpError.ContentTooLarge()),
-            HttpStatusCode.UnsupportedMediaType => new Error.TransportFault(new HttpError.UnsupportedMediaType(EquatableArray<string>.Empty)),
+                => new Error.TransportFault(new HttpError.MethodNotAllowed(allow)) { Detail = detail },
+            HttpStatusCode.NotAcceptable
+                => new Error.TransportFault(new HttpError.NotAcceptable(EquatableArray<string>.Empty)) { Detail = detail },
+            HttpStatusCode.Conflict => new Error.Conflict(Resource: null, Code: ValidationCodes.HttpConflict) { Detail = detail },
+            HttpStatusCode.Gone => new Error.Gone(s_httpResponseResource) { Detail = detail },
+            HttpStatusCode.PreconditionFailed
+                => new Error.TransportFault(new HttpError.PreconditionFailed(s_httpResponseResource, PreconditionKind.IfMatch)) { Detail = detail },
+            HttpStatusCode.RequestEntityTooLarge
+                => new Error.TransportFault(new HttpError.ContentTooLarge()) { Detail = detail },
+            HttpStatusCode.UnsupportedMediaType
+                => new Error.TransportFault(new HttpError.UnsupportedMediaType(EquatableArray<string>.Empty)) { Detail = detail },
             // RFC 9110 §15.5.17 says a 416 response SHOULD include Content-Range. Key the
             // typed-error mapping on header *presence* with a known length, not on
             // Length > 0: `bytes */0` is a legitimate response for an empty resource and
@@ -195,17 +196,20 @@ public static class HttpResponseExtensions
             // Length component.
             HttpStatusCode.RequestedRangeNotSatisfiable
                 when response.Content?.Headers.ContentRange is { Length: { } length } cr
-                => new Error.TransportFault(new HttpError.RangeNotSatisfiable(length, cr.Unit ?? "bytes")),
-            HttpStatusCode.UnprocessableEntity => Error.InvalidInput.ForRule(code: ValidationCodes.HttpUnprocessableContent),
-            (HttpStatusCode)428 => new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch)),
-            (HttpStatusCode)429 => new Error.RateLimited(ExtractRetryAdvice(response)),
-            HttpStatusCode.NotImplemented => new Error.Unexpected(Code: FaultCodes.NotImplemented),
-            HttpStatusCode.ServiceUnavailable => new Error.Unavailable(Retry: ExtractRetryAdvice(response)),
-            _ => new Error.Unexpected(Code: FaultCodes.HttpResponseFault, FaultId: Guid.NewGuid().ToString("N")),
+                => new Error.TransportFault(new HttpError.RangeNotSatisfiable(length, cr.Unit ?? "bytes")) { Detail = detail },
+            HttpStatusCode.UnprocessableEntity => CreateInvalidResponseError(ValidationCodes.HttpUnprocessableContent, detail),
+            (HttpStatusCode)428 => new Error.TransportFault(new HttpError.PreconditionRequired(PreconditionKind.IfMatch)) { Detail = detail },
+            (HttpStatusCode)429 => new Error.RateLimited(ExtractRetryAdvice(response)) { Detail = detail },
+            HttpStatusCode.NotImplemented => new Error.Unexpected(Code: FaultCodes.NotImplemented) { Detail = detail },
+            HttpStatusCode.ServiceUnavailable => new Error.Unavailable(Retry: ExtractRetryAdvice(response)) { Detail = detail },
+            _ => CreateUnexpectedResponseError(FaultCodes.HttpResponseFault, detail),
         };
-
-        return error with { Detail = detail };
     }
+
+    // The status detail belongs to the error envelope, not to its individual rule.
+    private static Error.InvalidInput CreateInvalidResponseError(string code, string detail) =>
+        new(EquatableArray<FieldViolation>.Empty, new EquatableArray<RuleViolation>([new RuleViolation(code)]))
+        { Detail = detail };
 
     /// <summary>
     /// Extracts the response's <c>Allow</c> header values into an <see cref="EquatableArray{T}"/>.
@@ -407,6 +411,7 @@ public static class HttpResponseExtensions
         if (!result.TryGetValue(out var message, out var error))
             return Result.Fail<T>(error);
 
+        PooledResponseBody? body = null;
         // The response was awaited and is now owned by this method; the disposal contract
         // (always-dispose) requires the try/finally to cover any exception path including the
         // jsonTypeInfo null-guard. Move the null check INSIDE the try block.
@@ -426,17 +431,14 @@ public static class HttpResponseExtensions
                     FaultCodes.HttpResponseNoBody,
                     $"HTTP response had no body for value {typeof(T).Name}."));
 
-            // No `Content is null` guard: HttpResponseMessage.Content's getter substitutes an
-            // EmptyContent when the backing field is null, so the property never observes null
-            // even after `Content = null`. The zero-length check below is what actually covers
-            // a bodiless response.
-            var bytes = await message.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
-            if (bytes.Length == 0)
+            body = new PooledResponseBody();
+            await body.CopyFromAsync(message.Content, ct).ConfigureAwait(false);
+            if (body.Length == 0)
                 return Result.Fail<T>(CreateUnexpectedResponseError(
                     FaultCodes.HttpResponseNoBody,
                     $"HTTP response body was empty for value {typeof(T).Name}."));
 
-            if (!TryDeserializeJson(bytes, jsonTypeInfo, out var value, out error))
+            if (!TryDeserializeJson(body.WrittenSpan, jsonTypeInfo, out var value, out error))
                 return Result.Fail<T>(error);
 
             return value is null
@@ -447,6 +449,7 @@ public static class HttpResponseExtensions
         }
         finally
         {
+            body?.Release();
             message.Dispose();
         }
     }
@@ -482,9 +485,17 @@ public static class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(response);
 
         var result = await response.ConfigureAwait(false);
+        return await ReadJsonMaybeCoreAsync(result, jsonTypeInfo, ct).ConfigureAwait(false);
+    }
+
+    private static async ValueTask<Result<Maybe<T>>> ReadJsonMaybeCoreAsync<T>(
+        Result<HttpResponseMessage> result, JsonTypeInfo<T> jsonTypeInfo, CancellationToken ct)
+        where T : notnull
+    {
         if (!result.TryGetValue(out var message, out var error))
             return Result.Fail<Maybe<T>>(error);
 
+        PooledResponseBody? body = null;
         // Same disposal-contract reasoning as ReadJsonAsync: the jsonTypeInfo null-guard
         // must run inside the try/finally so a null arg cannot leak the awaited response.
         try
@@ -501,24 +512,25 @@ public static class HttpResponseExtensions
             if (message.StatusCode is HttpStatusCode.NoContent or HttpStatusCode.ResetContent)
                 return Result.Ok(Maybe<T>.None);
 
-            // See ReadJsonAsync: Content never observes null, so the zero-length check covers it.
-            var bytes = await message.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
-            if (bytes.Length == 0)
+            body = new PooledResponseBody();
+            await body.CopyFromAsync(message.Content, ct).ConfigureAwait(false);
+            if (body.Length == 0)
                 return Result.Ok(Maybe<T>.None);
 
-            if (!TryDeserializeJson(bytes, jsonTypeInfo, out var value, out error))
+            if (!TryDeserializeJson(body.WrittenSpan, jsonTypeInfo, out var value, out error))
                 return Result.Fail<Maybe<T>>(error);
 
             return Result.Ok(value is null ? Maybe<T>.None : Maybe.From(value));
         }
         finally
         {
+            body?.Release();
             message.Dispose();
         }
     }
 
     private static bool TryDeserializeJson<T>(
-        byte[] bytes,
+        ReadOnlySpan<byte> bytes,
         JsonTypeInfo<T> jsonTypeInfo,
         out T? value,
         [NotNullWhen(false)] out Error? error)
