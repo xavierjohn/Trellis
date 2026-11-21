@@ -44,6 +44,8 @@ public partial class ReadJsonFailureDetailTests
         new("converter-throws-with-secret-message",
             """{"ledger":"x"}""",
             " at line 0, byte 13"),
+        new("whitespace is not an empty body", " ", " at line 0, byte 1"),
+        new("a leading UTF-8 BOM is invalid", "\uFEFF{}", " at line 0, byte 0"),
     ];
 
     public static TheoryData<string, string> BodyNames()
