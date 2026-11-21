@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text;
 using global::FluentValidation;
 using global::FluentValidation.Results;
@@ -87,6 +88,8 @@ public static class ValidationArgsProjection
     /// <see cref="ValidationCodeProjection"/> maps to <see cref="ValidationCodes.EnumUndefined"/>.
     /// </summary>
     private const string EnumValidatorCode = "EnumValidator";
+
+    private static readonly ConditionalWeakTable<Type, ImmutableDictionary<string, ValidationArgValue>> EnumMemberArgs = new();
 
     /// <summary>
     /// Combines the framework allowlist with the application's widening for one error code.
@@ -173,7 +176,7 @@ public static class ValidationArgsProjection
 
         var attemptedType = failure.AttemptedValue?.GetType();
         return attemptedType is { IsEnum: true }
-            ? ValidationArgs.Allowed(Enum.GetNames(attemptedType))
+            ? EnumMemberArgs.GetValue(attemptedType, static type => ValidationArgs.Allowed(Enum.GetNames(type)))
             : null;
     }
 
@@ -423,17 +426,27 @@ public static class ValidationArgsProjection
         if (string.IsNullOrEmpty(value))
             return value;
 
+        var prefixLength = 0;
+        var limit = Math.Min(value.Length, MaxStringLength);
+        while (prefixLength < limit && !char.IsControl(value[prefixLength]))
+            prefixLength++;
+
+        if (prefixLength == value.Length)
+            return value;
+
         var builder = new StringBuilder(MaxStringLength + 3);
-        foreach (var c in value)
+        builder.Append(value.AsSpan(0, prefixLength));
+        foreach (var c in value.AsSpan(prefixLength))
         {
-            var encodedLength = char.IsControl(c) ? 6 : 1;
+            var isControl = char.IsControl(c);
+            var encodedLength = isControl ? 6 : 1;
             if (builder.Length + encodedLength > MaxStringLength)
             {
                 builder.Append("...");
                 return builder.ToString();
             }
 
-            if (char.IsControl(c))
+            if (isControl)
                 builder.Append("\\u").Append(((int)c).ToString("X4", CultureInfo.InvariantCulture));
             else
                 builder.Append(c);

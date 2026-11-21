@@ -223,7 +223,7 @@ This is the one arg the containment gate does not judge, and must not. The gate 
 
 An application that widens the allowlist for `EnumValidator` through `ValidationArgsOptions` gets its placeholders **in addition to** `allowed`, not instead of it.
 
-An enum with more than `ValidationArgs.MaxAllowedMembers` (64) members sends `allowedCount` instead of the list, on this path as on every other — see `trellis-api-core.md`.
+An enum with more than `ValidationArgs.MaxAllowedMembers` (64) members sends `allowedCount` instead of the list, on this path as on every other — see `trellis-api-core.md`. Only this type-derived immutable metadata is cached, without keeping collectible enum types alive. Placeholders and rendered messages are still evaluated per failure.
 
 > [!WARNING]
 > **`IsInEnum()` does not work on a `RequiredEnum<T>`, and fails open the wrong way.** `RequiredEnum<T>` is a registry of declared statics rather than a CLR enum, and FluentValidation's `EnumValidator` rejects any type that is not a CLR enum — so the rule fails **every** value, including a perfectly valid member, with `enum.undefined`. This is FluentValidation's own behaviour and predates the `allowed` arg. Validate a `RequiredEnum<T>` through its own `TryCreate` or the scalar-value binding pipeline, both of which do carry `allowed`; if you need a FluentValidation rule, write it against the underlying `string`. Such a violation carries no `allowed`, because the members are read from the attempted value's type and a `RequiredEnum<T>` has no CLR members to read — a spurious rejection is not given the authority of a member list.
@@ -321,13 +321,13 @@ public static async Task<Result<T>> ValidateToResultAsync<T>(
 
 ### Standalone helpers (`FluentValidationResultExtensions`)
 
-- The extension methods are stateless; they do not keep shared mutable state or add synchronization.
+- The extension methods retain no per-validation state.
 - Shared validator instances are only as concurrency-safe as the underlying `IValidator<T>` implementation; these helpers do not change that.
 - `ToResult<T>` only null-checks `validationResult`; it does not independently reject a `null` `value`.
 - Validation failures are converted into `Error.InvalidInput` whose `Fields` collection is built from one `FieldViolation` per FluentValidation failure (no grouping; multiple failures on the same property emit multiple violations).
 - Field-name selection rule: `string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName` (FluentValidation root-level failures fall back to the caller-captured `paramName`).
 - `ValidateToResult<T>` and `ValidateToResultAsync<T>` short-circuit `null` input before invoking FluentValidation.
-- Null-input failures are created as `new ValidationResult([new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.") { ErrorCode = "NotNullValidator" }])`, which projects to the reason code `value.not-null`.
+- Null input directly produces one `FieldViolation` with the normalized `paramName`, reason code `value.not-null`, and `message ?? $"'{paramName}' must not be empty."` as its detail. It has no placeholder args.
 - `ValidateToResultAsync<T>` observes `cancellationToken` BEFORE the null-value short-circuit (so a cancelled token always wins over the synchronous fallback) AND propagates cancellation through `validator.ValidateAsync(value, cancellationToken)`.
 - Exceptions from FluentValidation itself are not caught, except for the explicit `ArgumentNullException.ThrowIfNull(...)` guards on `validationResult` and `validator`.
 

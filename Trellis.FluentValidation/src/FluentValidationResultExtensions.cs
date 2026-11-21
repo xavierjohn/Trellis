@@ -1,6 +1,6 @@
 ﻿namespace Trellis.FluentValidation;
 
-using System.Linq;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using global::FluentValidation;
 using global::FluentValidation.Results;
@@ -210,17 +210,18 @@ public static class FluentValidationResultExtensions
         if (validationResult.IsValid)
             return Result.Ok(value);
 
-        var violations = validationResult.Errors
-            .Select(e =>
-            {
-                var rawName = string.IsNullOrWhiteSpace(e.PropertyName) ? paramName : e.PropertyName;
-                var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
-                var reasonCode = ValidationCodeProjection.Project(e.ErrorCode, e.AttemptedValue);
-                return new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(e, argsOptions)) { Detail = e.ErrorMessage };
-            })
-            .ToArray();
+        var errors = validationResult.Errors;
+        var violations = ImmutableArray.CreateBuilder<FieldViolation>(errors.Count);
+        foreach (var failure in errors)
+        {
+            var rawName = string.IsNullOrWhiteSpace(failure.PropertyName) ? paramName : failure.PropertyName;
+            var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
+            var reasonCode = ValidationCodeProjection.Project(failure.ErrorCode, failure.AttemptedValue);
+            violations.Add(new FieldViolation(new InputPointer(pointerPath), reasonCode,
+                ValidationArgsProjection.Project(failure, argsOptions), failure.ErrorMessage));
+        }
 
-        return Result.Fail<T>(new Error.InvalidInput(EquatableArray.Create(violations)));
+        return Result.Fail<T>(new Error.InvalidInput(violations.MoveToImmutable()));
     }
 
     /// <summary>
@@ -319,11 +320,7 @@ public static class FluentValidationResultExtensions
         ArgumentNullException.ThrowIfNull(validator);
 
         if (value is null)
-        {
-            var nullFailure = new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.") { ErrorCode = "NotNullValidator" };
-            var nullResult = new ValidationResult([nullFailure]);
-            return nullResult.ToResult(value!, paramName, argsOptions);
-        }
+            return NullInputFailure<T>(paramName, message);
 
         return validator.Validate(value).ToResult(value, paramName, argsOptions);
     }
@@ -457,13 +454,15 @@ public static class FluentValidationResultExtensions
         cancellationToken.ThrowIfCancellationRequested();
 
         if (value is null)
-        {
-            var nullFailure = new ValidationFailure(paramName, message ?? $"'{paramName}' must not be empty.") { ErrorCode = "NotNullValidator" };
-            var nullResult = new ValidationResult([nullFailure]);
-            return nullResult.ToResult(value!, paramName, argsOptions);
-        }
+            return NullInputFailure<T>(paramName, message);
 
         var result = await validator.ValidateAsync(value, cancellationToken).ConfigureAwait(false);
         return result.ToResult(value, paramName, argsOptions);
+    }
+
+    private static Result<T> NullInputFailure<T>(string paramName, string? message)
+    {
+        var pointer = new InputPointer(JsonPointerNormalizer.ToJsonPointer(paramName));
+        return Result.Fail<T>(Error.InvalidInput.Required(pointer, message ?? $"'{paramName}' must not be empty."));
     }
 }
