@@ -97,7 +97,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         _result.TryGetValue(out var domain);
         var response = httpContext.Response;
 
-        ApplyMetadata(response, domain!);
+        ApplyMetadata(response, domain!, out var etag, out var lastModified);
 
         if (_options.HonorPrefer)
             AppendVaryUnique(response, "Prefer");
@@ -115,7 +115,7 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
             var method = httpContext.Request.Method;
             if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
             {
-                var metadata = BuildMetadataForEvaluation(domain!);
+                var metadata = BuildMetadataForEvaluation(etag, lastModified);
                 if (metadata is not null)
                 {
                     var decision = ConditionalRequestEvaluator.Evaluate(httpContext.Request, metadata, out var failedKind);
@@ -189,37 +189,23 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         return ResponseFailureWriter.WriteAsync(httpContext, error, ResolveErrorStatusCode(httpContext, error, options));
     }
 
-    private RepresentationMetadata? BuildMetadataForEvaluation(TDomain domain)
+    private static RepresentationMetadata? BuildMetadataForEvaluation(EntityTagValue? etag, DateTimeOffset? lastModified)
     {
-        // Same domain-null guard as ApplyMetadata: the selectors would NPE on null TDomain.
-        // Returning null here means EvaluatePreconditions has nothing to evaluate against —
-        // 304/412 short-circuit logic is skipped, and the response continues as a normal 200
-        // (with a null body for Result.Ok<TValue>(null!)).
-        if (domain is null)
-            return null;
-
-        var etag = _options.ETagSelector?.Invoke(domain);
-        var lastModRaw = _options.LastModifiedSelector?.Invoke(domain);
-        // Truncate the metadata value to match what was emitted on the wire (see ApplyMetadata
-        // comment above) so revalidation requests bearing the exact emitted Last-Modified
-        // value hit the 304 path instead of being treated as "client sent stale timestamp".
-        var lastMod = lastModRaw.HasValue
-            ? lastModRaw.Value.AddTicks(-(lastModRaw.Value.Ticks % TimeSpan.TicksPerSecond))
-            : (DateTimeOffset?)null;
-        if (etag is null && lastMod is null)
+        if (etag is null && lastModified is null)
             return null;
 
         var b = RepresentationMetadata.Create();
         if (etag is not null)
             b = b.SetETag(etag);
 
-        if (lastMod.HasValue)
-            b = b.SetLastModified(lastMod.Value);
+        if (lastModified.HasValue)
+            b = b.SetLastModified(lastModified.Value);
 
         return b.Build();
     }
 
-    private void ApplyMetadata(HttpResponse response, TDomain domain)
+    private void ApplyMetadata(
+        HttpResponse response, TDomain domain, out EntityTagValue? etag, out DateTimeOffset? lastModified)
     {
         // Result.Ok<TValue>(...) carries no null guard on the value (Trellis.Core/src/Result.cs:29),
         // so reference-type TDomain on the success path may arrive here with domain = null.
@@ -228,25 +214,17 @@ internal sealed class TrellisHttpResult<TDomain, TBody> :
         // Non-domain headers (Vary / ContentLanguage) still apply.
         var hasDomain = domain is not null;
 
-        if (hasDomain && _options.ETagSelector is { } et)
-        {
-            var v = et(domain);
-            if (v is not null)
-                response.Headers.ETag = v.ToHeaderValue();
-        }
+        etag = hasDomain ? _options.ETagSelector?.Invoke(domain) : null;
+        if (etag is not null)
+            response.Headers.ETag = etag.ToHeaderValue();
 
-        if (hasDomain && _options.LastModifiedSelector is { } lm)
+        lastModified = hasDomain ? _options.LastModifiedSelector?.Invoke(domain) : null;
+        if (lastModified is { } modified)
         {
-            var d = lm(domain);
-            if (d.HasValue)
-            {
-                // Truncate to second precision so the emitted RFC1123 header matches the
-                // value the precondition evaluator sees on the next request — preserving
-                // sub-second ticks would cause `If-Modified-Since: <emitted-value>` to miss
-                // the 304 short-circuit because `selectorTicks > Parse(headerString).Ticks`.
-                var truncated = d.Value.AddTicks(-(d.Value.Ticks % TimeSpan.TicksPerSecond));
-                response.Headers["Last-Modified"] = truncated.ToString("R");
-            }
+            // HTTP dates have second precision; compare the same value that the client sees.
+            var truncated = modified.AddTicks(-(modified.Ticks % TimeSpan.TicksPerSecond));
+            lastModified = truncated;
+            response.Headers["Last-Modified"] = truncated.ToString("R");
         }
 
         if (_options.Vary is { Count: > 0 })

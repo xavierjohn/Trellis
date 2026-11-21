@@ -408,6 +408,16 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
         return this;
     }
 
+    internal static HttpResponseOptions<TDomain> Build(Action<HttpResponseOptionsBuilder<TDomain>>? configure)
+    {
+        if (configure is null)
+            return HttpResponseOptions<TDomain>.Default;
+
+        var builder = new HttpResponseOptionsBuilder<TDomain>();
+        configure(builder);
+        return builder.Build();
+    }
+
     internal HttpResponseOptions<TDomain> Build() => new()
     {
         ETagSelector = _eTagSelector,
@@ -440,6 +450,9 @@ internal enum LocationKind { None, Literal, Selector, Route, Action }
 
 internal sealed class HttpResponseOptions<TDomain>
 {
+    // Shared across requests: leave mutable members null on the default instance.
+    internal static HttpResponseOptions<TDomain> Default { get; } = new();
+
     public Func<TDomain, EntityTagValue?>? ETagSelector { get; init; }
     public Func<TDomain, DateTimeOffset?>? LastModifiedSelector { get; init; }
     public List<string>? Vary { get; init; }
@@ -531,6 +544,16 @@ public sealed class HttpResponseOptionsBuilder
         _errorOverrides ??= new();
         _errorOverrides[typeof(TError)] = statusCode;
         return this;
+    }
+
+    internal static HttpResponseOptions<object> Build(Action<HttpResponseOptionsBuilder>? configure)
+    {
+        if (configure is null)
+            return HttpResponseOptions<object>.Default;
+
+        var builder = new HttpResponseOptionsBuilder();
+        configure(builder);
+        return builder.Build();
     }
 
     internal HttpResponseOptions<object> Build() => new()

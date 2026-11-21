@@ -117,6 +117,34 @@ public sealed class TrellisHttpResultExtraTests
         ctx.Response.StatusCode.Should().Be(200);
     }
 
+    [Theory]
+    [InlineData("GET", true)]
+    [InlineData("HEAD", false)]
+    public async Task ToHttpResponse_ConditionalRead_UsesTheEmittedValidatorsForPreconditions(
+        string method, bool compareETag)
+    {
+        var ctx = NewContext();
+        ctx.Request.Method = method;
+        var modified = new DateTimeOffset(2024, 1, 1, 0, 0, 0, 500, TimeSpan.Zero);
+        if (compareETag)
+            ctx.Request.Headers.IfNoneMatch = "\"v1\"";
+        else
+            ctx.Request.Headers.IfModifiedSince = modified.ToString("R");
+        var etagCalls = 0;
+        var lastModifiedCalls = 0;
+
+        await Result.Ok(new Todo(1, "x", "v1", modified)).ToHttpResponse(TodoBody.From, o => o
+            .WithETag(t => ++etagCalls == 1 ? t.ETag : "v2")
+            .WithLastModified(t => ++lastModifiedCalls == 1 ? t.Modified : t.Modified.AddDays(1))
+            .EvaluatePreconditions()).ExecuteAsync(ctx);
+
+        ctx.Response.StatusCode.Should().Be(304);
+        ctx.Response.Headers.ETag.ToString().Should().Be("\"v1\"");
+        ctx.Response.Headers.LastModified.ToString().Should().Be(modified.ToString("R"));
+        etagCalls.Should().Be(1);
+        lastModifiedCalls.Should().Be(1);
+    }
+
     [Fact]
     public async Task Response_is_412_when_If_Match_does_not_match_current_ETag()
     {

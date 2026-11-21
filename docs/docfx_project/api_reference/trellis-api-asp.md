@@ -307,6 +307,8 @@ public sealed class HttpResponseOptionsBuilder<TDomain>
 
 Fluent options builder used by every generic `ToHttpResponse` overload. Selectors run against the `TDomain` value (not the projected response body). All methods return `this` for chaining.
 
+On conditional reads, the ETag and Last-Modified selectors each run at most once per response execution. The precondition check uses the same values emitted in the response headers (with Last-Modified truncated to whole seconds).
+
 | Signature | Returns | Description |
 | --- | --- | --- |
 | `WithETag(Func<TDomain, string> selector)` | `HttpResponseOptionsBuilder<TDomain>` | Sets a strong ETag (wraps the string in `EntityTagValue.Strong`). |

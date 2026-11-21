@@ -41,9 +41,7 @@ public static class HttpResponseExtensions
         Action<HttpResponseOptionsBuilder>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(error);
-        var builder = new HttpResponseOptionsBuilder();
-        configure?.Invoke(builder);
-        return new TrellisErrorOnlyResult(error, builder.Build());
+        return new TrellisErrorOnlyResult(error, HttpResponseOptionsBuilder.Build(configure));
     }
 
     #endregion
@@ -61,9 +59,7 @@ public static class HttpResponseExtensions
         this Result<T> result,
         Action<HttpResponseOptionsBuilder<T>>? configure = null)
     {
-        var builder = new HttpResponseOptionsBuilder<T>();
-        configure?.Invoke(builder);
-        var opts = builder.Build();
+        var opts = HttpResponseOptionsBuilder<T>.Build(configure);
         return new TrellisHttpResult<T, T>(result, null, opts);
     }
 
@@ -77,9 +73,7 @@ public static class HttpResponseExtensions
         Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(body);
-        var builder = new HttpResponseOptionsBuilder<TDomain>();
-        configure?.Invoke(builder);
-        var opts = builder.Build();
+        var opts = HttpResponseOptionsBuilder<TDomain>.Build(configure);
         return new TrellisHttpResult<TDomain, TBody>(result, body, opts);
     }
 
@@ -129,9 +123,7 @@ public static class HttpResponseExtensions
         this Result<WriteOutcome<T>> result,
         Action<HttpResponseOptionsBuilder<T>>? configure = null)
     {
-        var builder = new HttpResponseOptionsBuilder<T>();
-        configure?.Invoke(builder);
-        var opts = builder.Build();
+        var opts = HttpResponseOptionsBuilder<T>.Build(configure);
         return new TrellisWriteOutcomeResult<T, T>(result, null, opts);
     }
 
@@ -144,9 +136,7 @@ public static class HttpResponseExtensions
         Action<HttpResponseOptionsBuilder<TDomain>>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(body);
-        var builder = new HttpResponseOptionsBuilder<TDomain>();
-        configure?.Invoke(builder);
-        var opts = builder.Build();
+        var opts = HttpResponseOptionsBuilder<TDomain>.Build(configure);
         return new TrellisWriteOutcomeResult<TDomain, TBody>(result, body, opts);
     }
 
@@ -220,19 +210,18 @@ public static class HttpResponseExtensions
         ArgumentNullException.ThrowIfNull(urlBuilder);
         ArgumentNullException.ThrowIfNull(body);
 
-        var builder = new HttpResponseOptionsBuilder<Page<T>>();
-        configure?.Invoke(builder);
-        var opts = builder.Build();
+        var opts = HttpResponseOptionsBuilder<Page<T>>.Build(configure);
 
         if (!result.TryGetValue(out var page, out var pageError))
         {
-            return new TrellisErrorOnlyResult(pageError, new HttpResponseOptions<object>
+            var errorOptions = configure is null ? HttpResponseOptions<object>.Default : new HttpResponseOptions<object>
             {
                 ErrorMapper = opts.ErrorMapper,
                 ErrorOverrides = opts.ErrorOverrides,
                 VaryForActor = opts.VaryForActor,
                 CacheControl = opts.CacheControl,
-            });
+            };
+            return new TrellisErrorOnlyResult(pageError, errorOptions);
         }
 
         // Detect any builder-option that the bare Results.Ok / PagedHttpResult would silently
