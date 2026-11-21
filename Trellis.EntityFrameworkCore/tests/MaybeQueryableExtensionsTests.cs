@@ -4,6 +4,7 @@ namespace Trellis.EntityFrameworkCore.Tests;
 using System.Linq.Expressions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 using Trellis.Primitives;
 
@@ -123,6 +124,35 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #endregion
 
     #region WhereEquals — reference type inner (PhoneNumber)
+
+    [Fact]
+    public void WhereEquals_NullReferenceValue_ThrowsArgumentNullException()
+    {
+        var act = () => _context.Customers.WhereEquals(c => c.Phone, value: null!);
+
+        act.ShouldRejectNull("value");
+    }
+
+    [Fact]
+    public async Task WhereEquals_DistinctConvertedValues_ReusesQueryShape()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var compilations = 0;
+        using var context = CreateQueryCompilationContext(_ => compilations++);
+        var alice = CreateCustomer("Alice", "+1-555-0100");
+        var bob = CreateCustomer("Bob", "+1-555-0200");
+        context.Customers.AddRange(alice, bob, CreateCustomer("WithoutPhone"));
+        (await context.SaveChangesResultAsync(ct)).Should().BeSuccess();
+        context.ChangeTracker.Clear();
+
+        foreach (var (phone, id) in new[] { ("+1-555-0100", alice.Id), ("+1-555-0200", bob.Id) })
+        {
+            var found = await context.Customers.WhereEquals(c => c.Phone, PhoneNumber.Create(phone)).SingleAsync(ct);
+            found.Id.Should().Be(id);
+        }
+
+        compilations.Should().Be(1);
+    }
 
     [Fact]
     public async Task WhereEquals_MatchingValue_ReturnsMatchingEntities()
@@ -612,6 +642,34 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #region ExecuteUpdate helpers
 
     [Fact]
+    public async Task SetMaybeValue_DistinctValueTypeValues_ReusesQueryShape()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var compilations = 0;
+        using var context = CreateQueryCompilationContext(_ => compilations++);
+        var customer = CreateCustomer("Alice");
+        context.Customers.Add(customer);
+        var order = CreateOrder(customer.Id);
+        context.Orders.Add(order);
+        (await context.SaveChangesResultAsync(ct)).Should().BeSuccess();
+        context.ChangeTracker.Clear();
+
+        var initial = new DateTime(2026, 4, 15, 9, 30, 0, DateTimeKind.Utc);
+        var latest = initial.AddDays(1);
+        var id = order.Id;
+        foreach (var value in new[] { initial, latest })
+        {
+            var updated = await context.Orders.Where(o => o.Id == id)
+                .ExecuteUpdateAsync(setters => setters.SetMaybeValue(o => o.SubmittedAt, value), ct);
+            updated.Should().Be(1);
+        }
+
+        compilations.Should().Be(1);
+        var loaded = await context.Orders.SingleAsync(ct);
+        loaded.SubmittedAt.Should().HaveValue().Which.Should().Be(latest);
+    }
+
+    [Fact]
     public async Task SetMaybeValue_ExecuteUpdate_SetsMappedStorageMember()
     {
         // Arrange
@@ -801,6 +859,13 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #endregion
 
     #region Helpers
+
+    private TestDbContext CreateQueryCompilationContext(Action<string> onCompilation) =>
+        new(new DbContextOptionsBuilder<TestDbContext>()
+            .UseSqlite(_connection)
+            .EnableServiceProviderCaching(false)
+            .LogTo(onCompilation, [CoreEventId.QueryCompilationStarting])
+            .Options);
 
     private static TestCustomer CreateCustomer(string name, string? phone = null)
     {

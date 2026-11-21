@@ -97,6 +97,71 @@ public class AggregateETagTests : IDisposable
         new[] { etag0, etag1, etag2 }.Should().OnlyHaveUniqueItems("each save should produce a unique ETag");
     }
 
+    [Theory]
+    [InlineData(false, 4)]
+    [InlineData(true, 5)]
+    public async Task SaveChanges_AggregateUpdate_AvoidsRedundantChangeDetection(bool throughUnitOfWork, int maxScans)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var detections = 0;
+        var options = new DbContextOptionsBuilder<ConcurrencyTestDbContext>()
+            .UseSqlite(_connection)
+            .AddTrellisInterceptors()
+            .LogTo(_ => detections++, [CoreEventId.DetectChangesStarting])
+            .Options;
+        using var context = new ConcurrencyTestDbContext(options);
+        var aggregate = TestAggregate.Create("tracked-update", "Before");
+        context.TestAggregates.Add(aggregate);
+        (await context.SaveChangesResultUnitAsync(ct)).Should().BeSuccess();
+        var initialETag = aggregate.ETag;
+        aggregate.Rename("After");
+        detections = 0;
+
+        if (throughUnitOfWork)
+        {
+            var unitOfWork = new EfUnitOfWork<ConcurrencyTestDbContext>(context);
+            (await unitOfWork.CommitAsync(ct)).Should().BeSuccess();
+            unitOfWork.CommittedAggregates.Should().ContainSingle().Which.Should().BeSameAs(aggregate);
+        }
+        else
+        {
+            (await context.SaveChangesResultUnitAsync(ct)).Should().BeSuccess();
+        }
+
+        // Two ETag scans preserve callback edits; timestamping and EF's save each detect once.
+        // The unit of work adds a scan to capture the pre-save aggregate snapshot.
+        detections.Should().BeLessThanOrEqualTo(maxScans);
+        aggregate.ETag.Should().NotBe(initialETag);
+        context.ChangeTracker.AutoDetectChangesEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SaveChanges_EditFromDetectedAllChanges_RotatesPersistedETag()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var first = TestAggregate.Create("first", "Before");
+        var second = TestAggregate.Create("second", "Before");
+        _context.TestAggregates.AddRange(first, second);
+        (await _context.SaveChangesResultUnitAsync(ct)).Should().BeSuccess();
+        var initialETag = second.ETag;
+        var callbackRan = false;
+        _context.ChangeTracker.DetectedAllChanges += (_, _) =>
+        {
+            if (callbackRan)
+                return;
+
+            callbackRan = true;
+            second.Rename("Edited by callback");
+        };
+        first.Rename("After");
+
+        (await _context.SaveChangesResultUnitAsync(ct)).Should().BeSuccess();
+        _context.ChangeTracker.Clear();
+        var reloaded = await _context.TestAggregates.SingleAsync(a => a.Id == second.Id, ct);
+        reloaded.Name.Should().Be("Edited by callback");
+        reloaded.ETag.Should().NotBe(initialETag);
+    }
+
     [Fact]
     public async Task Interceptor_UnmodifiedAggregate_ETagStaysSame()
     {

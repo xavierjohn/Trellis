@@ -4,6 +4,7 @@ namespace Trellis.EntityFrameworkCore.Tests;
 using System.Linq.Expressions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Trellis.EntityFrameworkCore.Tests.Helpers;
 
 public partial class RepositoryBaseTests : IDisposable
@@ -65,6 +66,40 @@ public partial class RepositoryBaseTests : IDisposable
 
         // Assert
         result.Should().BeNone();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LookupAsync_DistinctConvertedIds_ReusesQueryShape(bool existsOnly)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var compilations = 0;
+        var options = new DbContextOptionsBuilder<RepoTestDbContext>()
+            .UseSqlite(_connection)
+            .EnableServiceProviderCaching(false)
+            .LogTo(_ => compilations++, [CoreEventId.QueryCompilationStarting])
+            .Options;
+        using var context = new RepoTestDbContext(options);
+        var repository = new TestItemRepository(context);
+        var present = TestItemId.NewUniqueV4();
+        var missing = TestItemId.NewUniqueV4();
+        context.Items.Add(TestItem.Create(present, TestItemName.Create("Present")));
+        (await context.SaveChangesResultAsync(ct)).Should().BeSuccess();
+        context.ChangeTracker.Clear();
+
+        if (existsOnly)
+        {
+            (await repository.ExistsAsync(present, ct)).Should().BeTrue();
+            (await repository.ExistsAsync(missing, ct)).Should().BeFalse();
+        }
+        else
+        {
+            (await repository.FindByIdAsync(present, ct)).Should().HaveValue().Which.Id.Should().Be(present);
+            (await repository.FindByIdAsync(missing, ct)).Should().BeNone();
+        }
+
+        compilations.Should().Be(1);
     }
 
     #endregion

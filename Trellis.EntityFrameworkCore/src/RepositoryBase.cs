@@ -244,8 +244,8 @@ public abstract class RepositoryBase<TAggregate, TId>
     {
         var parameter = s_idSelector.Parameters[0];
         var idAccess = s_idSelector.Body;
-        var constant = Expression.Constant(id, typeof(TId));
-        var equality = Expression.Equal(idAccess, constant);
+        Expression<Func<TId>> capturedId = () => id;
+        var equality = Expression.Equal(idAccess, capturedId.Body);
         return Expression.Lambda<Func<TAggregate, bool>>(equality, parameter);
     }
 }

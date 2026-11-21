@@ -102,8 +102,11 @@ public static class MaybeQueryableExtensions
     /// <param name="propertySelector">
     /// An expression selecting the <see cref="Maybe{T}"/> property (e.g., <c>c =&gt; c.Phone</c>).
     /// </param>
-    /// <param name="value">The value to compare against.</param>
+    /// <param name="value">The non-null value to compare against.</param>
     /// <returns>A filtered queryable where the mapped storage field equals the value.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="source"/>, <paramref name="propertySelector"/>, or <paramref name="value"/> is null.
+    /// </exception>
     /// <example>
     /// <code>
     /// var phone = PhoneNumber.Create("+15550100");
@@ -121,14 +124,16 @@ public static class MaybeQueryableExtensions
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(propertySelector);
+        ArgumentNullException.ThrowIfNull(value);
 
         var descriptor = MaybePropertyResolver.Resolve(propertySelector);
         var parameter = propertySelector.Parameters[0];
         var efProperty = MaybePropertyResolver.BuildEfPropertyAccess(parameter, descriptor);
 
+        Expression<Func<TInner>> capturedValue = () => value;
         Expression valueExpr = typeof(TInner).IsValueType
-            ? Expression.Convert(Expression.Constant(value), descriptor.StoreType)
-            : Expression.Constant(value, descriptor.StoreType);
+            ? Expression.Convert(capturedValue.Body, descriptor.StoreType)
+            : capturedValue.Body;
 
         var equals = Expression.Equal(efProperty, valueExpr);
         var lambda = Expression.Lambda<Func<TEntity, bool>>(equals, parameter);
