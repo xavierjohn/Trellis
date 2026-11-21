@@ -51,6 +51,39 @@ public class MediatorIntegrationEventPublisherTests
     }
 
     [Fact]
+    public async Task PublishAsync_SeveralHandlers_BoundsInvocationAllocations()
+    {
+        const int handlerCount = 8;
+        const int iterations = 128;
+        var handler = new RecordingHandler();
+        handler.Received.EnsureCapacity(handlerCount * (iterations + 1));
+        var services = new ServiceCollection();
+        for (var i = 0; i < handlerCount; i++)
+            services.AddSingleton<IIntegrationEventHandler<TestIntegrationEvent>>(handler);
+        using var provider = services.BuildServiceProvider();
+        using var emptyProvider = new ServiceCollection().BuildServiceProvider();
+        var publisher = new MediatorIntegrationEventPublisher(provider, NullLogger<MediatorIntegrationEventPublisher>.Instance);
+        var emptyPublisher = new MediatorIntegrationEventPublisher(emptyProvider, NullLogger<MediatorIntegrationEventPublisher>.Instance);
+        var message = new OutboundIntegrationMessage(Guid.CreateVersion7(), new TestIntegrationEvent("payload", DateTimeOffset.UtcNow));
+
+        var baseline = await MeasureAllocationsAsync(emptyPublisher);
+        var allocated = await MeasureAllocationsAsync(publisher);
+
+        (allocated - baseline).Should().BeLessThan(iterations * handlerCount * 80L,
+            "handler invocation should not allocate an argument array in addition to the boxed value types");
+        handler.Received.Should().HaveCount(handlerCount * (iterations + 1));
+
+        async Task<long> MeasureAllocationsAsync(MediatorIntegrationEventPublisher instance)
+        {
+            await instance.PublishAsync(message, CancellationToken.None);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < iterations; i++)
+                await instance.PublishAsync(message, CancellationToken.None);
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+    }
+
+    [Fact]
     public async Task PublishAsync_NoHandlersRegistered_IsNoOp()
     {
         var services = new ServiceCollection();

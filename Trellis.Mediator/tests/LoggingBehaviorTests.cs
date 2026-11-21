@@ -1,6 +1,7 @@
 ﻿namespace Trellis.Mediator.Tests;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Trellis.Mediator.Tests.Helpers;
 
 /// <summary>
@@ -69,6 +70,30 @@ public class LoggingBehaviorTests
         // TrellisMediatorTelemetryOptions.IncludeErrorDetail is opted in.
         logEntries[1].Message.Should().Contain(error.Code);
         logEntries[1].Message.Should().NotContain("Something failed.");
+    }
+
+    [Fact]
+    public async Task Handle_FailureLogLevelDisabled_DoesNotAllocateSummary()
+    {
+        var behavior = new LoggingBehavior<TestCommand, Result<string>>(
+            NullLogger<LoggingBehavior<TestCommand, Result<string>>>.Instance);
+        var command = new TestCommand("Alice");
+        var error = Error.InvalidInput.ForField(field: "Name", code: ValidationCodes.Unspecified);
+
+        var successBytes = await MeasureAllocationsAsync(Result.Ok("ok"));
+        var failureBytes = await MeasureAllocationsAsync(Result.Fail<string>(error));
+
+        failureBytes.Should().BeLessThanOrEqualTo(successBytes);
+
+        async Task<long> MeasureAllocationsAsync(Result<string> response)
+        {
+            var next = NextDelegate.ReturningAsync<TestCommand, Result<string>>(response);
+            _ = await behavior.Handle(command, next, CancellationToken.None);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 128; i++)
+                _ = await behavior.Handle(command, next, CancellationToken.None);
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
     }
 
     [Fact]

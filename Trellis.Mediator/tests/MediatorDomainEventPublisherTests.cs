@@ -33,6 +33,34 @@ public class MediatorDomainEventPublisherTests
     }
 
     [Fact]
+    public async Task PublishAsync_BestEffort_AllocatesLessThanReporting()
+    {
+        const int iterations = 128;
+        var handler = new RecordingHandlerA();
+        handler.Received.EnsureCapacity(2 * (iterations + 1));
+        using var provider = new ServiceCollection()
+            .AddSingleton<IDomainEventHandler<TestEventA>>(handler)
+            .BuildServiceProvider();
+        var publisher = new MediatorDomainEventPublisher(provider, NullLogger<MediatorDomainEventPublisher>.Instance);
+        var evt = new TestEventA("payload", DateTimeOffset.UtcNow);
+        await publisher.PublishAsync(evt, CancellationToken.None);
+        _ = await publisher.PublishReportingAsync(evt, null, CancellationToken.None);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < iterations; i++)
+            await publisher.PublishAsync(evt, CancellationToken.None);
+        var bestEffortBytes = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < iterations; i++)
+            _ = await publisher.PublishReportingAsync(evt, null, CancellationToken.None);
+        var reportingBytes = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        bestEffortBytes.Should().BeLessThan(reportingBytes / 2);
+        handler.Received.Should().HaveCount(2 * (iterations + 1));
+    }
+
+    [Fact]
     public async Task PublishAsync_NoHandlersRegistered_IsNoOp()
     {
         var services = new ServiceCollection();
@@ -156,8 +184,7 @@ public class MediatorDomainEventPublisherTests
             new TestEventA("payload", DateTimeOffset.UtcNow),
             cts.Token);
 
-        await act.Should().ThrowAsync<OperationCanceledException>(
-            "MethodInfo.Invoke wraps synchronous handler exceptions in TargetInvocationException; the publisher must unwrap so cancellation isn't logged + swallowed.");
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
     private sealed class SynchronousCancellingHandler : IDomainEventHandler<TestEventA>
