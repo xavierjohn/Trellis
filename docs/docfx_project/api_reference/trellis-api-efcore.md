@@ -587,7 +587,7 @@ For a shared domain specification evaluated both in memory and by EF, keep using
 | `public static IOrderedQueryable<TEntity> ThenByMaybe<TEntity, TInner>(this IOrderedQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull` | `IOrderedQueryable<TEntity>` | Adds a secondary ascending ordering for the mapped `Maybe<TInner>` storage member. |
 | `public static IOrderedQueryable<TEntity> ThenByMaybeDescending<TEntity, TInner>(this IOrderedQueryable<TEntity> source, Expression<Func<TEntity, Maybe<TInner>>> propertySelector) where TEntity : class where TInner : notnull` | `IOrderedQueryable<TEntity>` | Adds a secondary descending ordering for the mapped `Maybe<TInner>` storage member. |
 
-`WhereEquals` parameterizes the comparison value to keep the query shape stable across values. The property's configured storage mapping and value converter still apply.
+`WhereEquals` parameterizes the comparison value to keep the query shape stable across values. The property's configured storage mapping and value converter still apply. A null `value` throws `ArgumentNullException`; use `WhereNone` to match missing values.
 
 ### `MaybeUpdateExtensions`
 

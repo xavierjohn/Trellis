@@ -126,6 +126,14 @@ public class MaybeQueryableExtensionsTests : IDisposable
     #region WhereEquals — reference type inner (PhoneNumber)
 
     [Fact]
+    public void WhereEquals_NullReferenceValue_ThrowsArgumentNullException()
+    {
+        var act = () => _context.Customers.WhereEquals(c => c.Phone, value: null!);
+
+        act.ShouldRejectNull("value");
+    }
+
+    [Fact]
     public async Task WhereEquals_DistinctConvertedValues_ReusesQueryShape()
     {
         var ct = TestContext.Current.CancellationToken;

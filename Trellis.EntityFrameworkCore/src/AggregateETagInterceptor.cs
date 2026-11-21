@@ -142,14 +142,14 @@ internal sealed class AggregateETagInterceptor : SaveChangesInterceptor
         }
     }
 
-    private static IEnumerable<EntityEntry<IAggregate>> GetSavedAggregates(ChangeTracker tracker)
+    private static List<EntityEntry<IAggregate>> GetSavedAggregates(ChangeTracker tracker)
     {
         var autoDetectChanges = tracker.AutoDetectChangesEnabled;
         try
         {
             // Only already-detected modifications from the save need their original ETags synced.
             tracker.AutoDetectChangesEnabled = false;
-            return tracker.Entries<IAggregate>();
+            return tracker.Entries<IAggregate>().ToList();
         }
         finally
         {

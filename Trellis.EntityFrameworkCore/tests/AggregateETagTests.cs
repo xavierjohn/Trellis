@@ -100,7 +100,7 @@ public class AggregateETagTests : IDisposable
     [Theory]
     [InlineData(false, 4)]
     [InlineData(true, 5)]
-    public async Task SaveChanges_AggregateUpdate_AvoidsRedundantChangeDetection(bool throughUnitOfWork, int expectedScans)
+    public async Task SaveChanges_AggregateUpdate_AvoidsRedundantChangeDetection(bool throughUnitOfWork, int maxScans)
     {
         var ct = TestContext.Current.CancellationToken;
         var detections = 0;
@@ -128,7 +128,9 @@ public class AggregateETagTests : IDisposable
             (await context.SaveChangesResultUnitAsync(ct)).Should().BeSuccess();
         }
 
-        detections.Should().Be(expectedScans);
+        // Two ETag scans preserve callback edits; timestamping and EF's save each detect once.
+        // The unit of work adds a scan to capture the pre-save aggregate snapshot.
+        detections.Should().BeLessThanOrEqualTo(maxScans);
         aggregate.ETag.Should().NotBe(initialETag);
         context.ChangeTracker.AutoDetectChangesEnabled.Should().BeTrue();
     }

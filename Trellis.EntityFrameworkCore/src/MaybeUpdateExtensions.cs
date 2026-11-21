@@ -76,9 +76,8 @@ public static class MaybeUpdateExtensions
 
         var parameter = propertySelector.Parameters[0];
 
-        // When setting a non-null value for a value type, use the inner type so the
-        // expression return type matches what EF Core's TryTranslateSetterValueSelector
-        // expects (it strips Nullable<T> from the property type before comparing).
+        // SetMaybeValue supplies a TInner expression to match EF's unwrapped setter type.
+        // SetMaybeNone uses the storage type to represent null: Nullable<TInner> for structs, TInner for references.
         var effectiveType = value?.Type ?? descriptor.StoreType;
 
         var propertyLambda = BuildPropertyLambda<TEntity>(parameter, descriptor.StorageMemberName, effectiveType);
