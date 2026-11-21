@@ -58,15 +58,39 @@ public class CurrencyCode : ScalarValueObject<CurrencyCode, string>, IScalarValu
     {
         using var activity = PrimitiveValueObjectTrace.ActivitySource.StartActivity(nameof(CurrencyCode) + '.' + nameof(TryCreate));
 
-        if (string.IsNullOrWhiteSpace(value))
+        var code = value.AsSpan().Trim();
+        if (value is null || code.IsEmpty)
             return Invalid<TValue>(getField(state), value is null ? ValidationCodes.ValueNotNull : ValidationCodes.ValueNotEmpty, "Currency code is required.");
 
-        var code = value.Trim();
-        if (code.Length != 3 || !code.All(char.IsAsciiLetter))
-            return Invalid<TValue>(getField(state), ValidationCodes.StringCurrencyCode, "Currency code must be a 3-letter ISO 4217 code.");
+        var normalized = NormalizeCode(value, code);
+        return normalized is null
+            ? Invalid<TValue>(getField(state), ValidationCodes.StringCurrencyCode, "Currency code must be a 3-letter ISO 4217 code.")
+            : Result.Ok(project(new CurrencyCode(normalized), state));
+    }
 
-        var upper = code.ToUpperInvariant();
-        return Result.Ok(project(new CurrencyCode(upper), state));
+    private static string? NormalizeCode(string value, ReadOnlySpan<char> trimmed)
+    {
+        if (trimmed.Length != 3)
+            return null;
+
+        var alreadyNormalized = value.Length == trimmed.Length;
+        Span<char> normalized = stackalloc char[3];
+        for (var i = 0; i < trimmed.Length; i++)
+        {
+            var letter = trimmed[i];
+            if (!char.IsAsciiLetterUpper(letter))
+            {
+                if (!char.IsAsciiLetterLower(letter))
+                    return null;
+
+                letter = char.ToUpperInvariant(letter);
+                alreadyNormalized = false;
+            }
+
+            normalized[i] = letter;
+        }
+
+        return alreadyNormalized ? value : new string(normalized);
     }
 
     /// <summary>

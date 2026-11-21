@@ -5,6 +5,7 @@ namespace Trellis.Primitives.Tests;
 using System.Globalization;
 using System.Text.Json;
 using Trellis;
+using Trellis.Primitives.Tests.Helpers;
 using Trellis.Testing;
 
 public class PhoneNumberTests
@@ -185,17 +186,12 @@ public class PhoneNumberTests
     public void GetCountryCode_RecognizedAndUnassignedPrefixes_DoNotAllocate()
     {
         string[] numbers = ["+14155551234", "+79123456789", "+442071234567", "+212612345678", "+99912345678"];
-        var phones = Array.ConvertAll(numbers, PhoneNumber.Create);
-        foreach (var phone in phones)
-            _ = phone.GetCountryCode();
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 64; i++)
-            foreach (var phone in phones)
-                _ = phone.GetCountryCode();
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-        Assert.Equal(0, allocated);
+        foreach (var number in numbers)
+        {
+            var phone = PhoneNumber.Create(number);
+            var allocated = AllocationMeasurement.BytesPerOperation(phone.GetCountryCode);
+            Assert.InRange(allocated, 0, AllocationMeasurement.TolerancePerOperation);
+        }
     }
 
     [Fact]

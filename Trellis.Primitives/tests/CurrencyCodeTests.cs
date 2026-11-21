@@ -27,6 +27,8 @@ public class CurrencyCodeTests
     [InlineData("usd", "USD")]
     [InlineData("eur", "EUR")]
     [InlineData("Gbp", "GBP")]
+    [InlineData(" \tJPY\r\n", "JPY")]
+    [InlineData("\u00A0uSd\u2002", "USD")]
     public void CurrencyCode_is_uppercase(string input, string expected)
     {
         // Act
@@ -37,16 +39,18 @@ public class CurrencyCodeTests
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    public void Cannot_create_empty_CurrencyCode(string? code)
+    [InlineData("", ValidationCodes.ValueNotEmpty)]
+    [InlineData("   ", ValidationCodes.ValueNotEmpty)]
+    [InlineData("\t\u00A0\u2002", ValidationCodes.ValueNotEmpty)]
+    [InlineData(null, ValidationCodes.ValueNotNull)]
+    public void Cannot_create_empty_CurrencyCode(string? code, string reason)
     {
         // Act
         var result = CurrencyCode.TryCreate(code);
 
         // Assert
         var validation = result.Should().BeFailureOfType<Error.InvalidInput>().Which;
+        validation.Fields[0].ReasonCode.Should().Be(reason);
         validation.Fields[0].Detail.Should().Be("Currency code is required.");
     }
 

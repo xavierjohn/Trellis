@@ -4,10 +4,12 @@ namespace Trellis.Primitives.Tests;
 
 using System.Buffers;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Trellis;
 using Trellis.Primitives;
+using Trellis.Primitives.Tests.Helpers;
 
 /// <summary>
 /// Tests for <see cref="CompositeValueObjectJsonConverter{T}"/> covering all primitive read/write
@@ -162,25 +164,26 @@ public class CompositeValueObjectJsonConverterTests
     public void TryRead_AllPrimitiveTypes_BoundsSuccessfulReadAllocations()
     {
         var converter = new CompositeValueObjectJsonConverter<AllPrimitivesVo>();
-        Assert.True(Read(converter));
+        Read(converter).Should().BeSuccess();
 
-        const int iterations = 64;
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < iterations; i++)
-            _ = Read(converter);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var allocated = AllocationMeasurement.BytesPerOperation(() => Read(converter));
+        var valueBytes = AllocationMeasurement.BytesPerOperation(static () =>
+        {
+            object[] values = [1, 2L, (short)3, (byte)4, 5d, 6f, true, Guid.Empty, DateTime.MinValue, DateTimeOffset.MinValue, 7m];
+            return (values, new bool[values.Length], RuntimeHelpers.GetUninitializedObject(typeof(AllPrimitivesVo)));
+        });
 
-        // Leave room for value arrays, boxing, and the composite, but not temporary token strings.
-        Assert.InRange(allocated / iterations, 0, 650);
+        // Budget for the converter's working storage and output at this runtime's actual sizes.
+        Assert.InRange(allocated, 0, valueBytes + AllocationMeasurement.TolerancePerOperation);
 
-        static bool Read(CompositeValueObjectJsonConverter<AllPrimitivesVo> converter)
+        static Result<AllPrimitivesVo> Read(CompositeValueObjectJsonConverter<AllPrimitivesVo> converter)
         {
             var reader = new Utf8JsonReader("""
                 {"i":1,"l":2,"s":3,"by":4,"d":5,"f":6,"b":true,"g":"11111111-2222-3333-4444-555555555555",
                  "dt":"2024-01-01T00:00:00Z","dto":"2024-01-01T00:00:00+02:00","dec":7}
                 """u8);
             reader.Read();
-            return converter.TryRead(ref reader, typeof(AllPrimitivesVo), JsonSerializerOptions.Default).IsSuccess;
+            return converter.TryRead(ref reader, typeof(AllPrimitivesVo), JsonSerializerOptions.Default);
         }
     }
 

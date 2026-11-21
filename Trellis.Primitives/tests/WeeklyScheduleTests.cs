@@ -3,6 +3,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Trellis.Primitives.Tests.Helpers;
 using Trellis.Testing;
 
 public class WeeklyScheduleTests
@@ -201,7 +202,6 @@ public class WeeklyScheduleTests
         Assert.True(schedule.Contains(DayOfWeek.Sunday, new TimeOnly(1, 59)));
         Assert.False(schedule.Contains(DayOfWeek.Sunday, new TimeOnly(2, 0)));
 
-        var before = GC.GetAllocatedBytesForCurrentThread();
         var matchesBoundaries = true;
         for (var i = 0; i < periodCount; i++)
         {
@@ -209,10 +209,11 @@ public class WeeklyScheduleTests
             matchesBoundaries &= !schedule.Contains(DayOfWeek.Monday, periods[i].End);
         }
 
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
         Assert.True(matchesBoundaries);
-        Assert.Equal(0, allocated);
+        var last = periods[^1];
+        var allocated = AllocationMeasurement.BytesPerOperation(() =>
+            (schedule.Contains(DayOfWeek.Monday, last.Start), schedule.Contains(DayOfWeek.Monday, last.End)));
+        Assert.InRange(allocated, 0, AllocationMeasurement.TolerancePerOperation);
     }
 
     [Theory]

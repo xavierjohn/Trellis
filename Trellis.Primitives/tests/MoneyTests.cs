@@ -4,8 +4,10 @@ namespace Trellis.Primitives.Tests;
 
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Trellis;
+using Trellis.Primitives.Tests.Helpers;
 using Trellis.Testing;
 using NullGuard = Trellis.Testing.ArgumentNullAssertionsExtensions;
 
@@ -27,37 +29,32 @@ public class MoneyTests
         result.Should().BeSuccess().Which.Currency.Value.Should().Be(currency);
     }
 
-    [Fact]
-    public void TryCreate_ValidInput_AllocatesOnlyTheMonetaryValues()
+    [Theory]
+    [InlineData("USD", false)]
+    [InlineData("\t uSd \n", true)]
+    public void TryCreate_ValidInput_BoundsAmountAndCurrencyAllocations(string currencyCode, bool requiresNormalization)
     {
-        using var source = new ActivitySource($"{nameof(MoneyTests)}.{nameof(TryCreate_ValidInput_AllocatesOnlyTheMonetaryValues)}");
+        using var source = new ActivitySource($"{nameof(MoneyTests)}.{nameof(TryCreate_ValidInput_BoundsAmountAndCurrencyAllocations)}");
         PrimitiveValueObjectTrace.SetTestActivitySource(source);
         try
         {
-            var currencyBytes = AllocatedBytes(static () => CurrencyCode.TryCreate("USD").IsSuccess);
-            var defaultBytes = AllocatedBytes(static () => Money.TryCreate(1m, "USD").IsSuccess);
-            var nestedBytes = AllocatedBytes(static () => Money.TryCreate(1m, "USD", "/items/0/price").IsSuccess);
-            var flatBytes = AllocatedBytes(static () => Money.TryCreate(1m, "USD", "/items/0/amount", "IsoCurrency").IsSuccess);
-
-            // Allow for the Money instance without tying the check to its exact object size.
-            Assert.InRange(defaultBytes - currencyBytes, 0, 96);
-            Assert.Equal(defaultBytes, nestedBytes);
-            Assert.Equal(defaultBytes, flatBytes);
+            var valueBytes = AllocationMeasurement.BytesPerOperation(static () =>
+                (RuntimeHelpers.GetUninitializedObject(typeof(Money)), RuntimeHelpers.GetUninitializedObject(typeof(CurrencyCode))));
+            var stringBytes = requiresNormalization ? AllocationMeasurement.BytesPerOperation(static () => new string('A', 3)) : 0;
+            var limit = valueBytes + stringBytes + AllocationMeasurement.TolerancePerOperation;
+            AssertWithinBudget(() => Money.TryCreate(1m, currencyCode), limit);
+            AssertWithinBudget(() => Money.TryCreate(1m, currencyCode, "/items/0/price"), limit);
+            AssertWithinBudget(() => Money.TryCreate(1m, currencyCode, "/items/0/amount", "IsoCurrency"), limit);
         }
         finally
         {
             PrimitiveValueObjectTrace.ResetTestActivitySource();
         }
 
-        static long AllocatedBytes(Func<bool> tryCreate)
+        static void AssertWithinBudget(Func<Result<Money>> create, long limit)
         {
-            const int iterations = 64;
-            Assert.True(tryCreate());
-
-            var before = GC.GetAllocatedBytesForCurrentThread();
-            for (var i = 0; i < iterations; i++)
-                _ = tryCreate();
-            return (GC.GetAllocatedBytesForCurrentThread() - before) / iterations;
+            create().Should().BeSuccess();
+            Assert.InRange(AllocationMeasurement.BytesPerOperation(create), 0, limit);
         }
     }
 
