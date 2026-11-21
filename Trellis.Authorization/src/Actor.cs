@@ -3,6 +3,7 @@
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 
 /// <summary>
@@ -231,7 +232,14 @@ public sealed class Actor : IEquatable<Actor>
     public bool HasAllPermissions(IEnumerable<string> permissions)
     {
         ArgumentNullException.ThrowIfNull(permissions);
-        return permissions.All(HasPermission);
+        if (!TryGetPermissionSpan(permissions, out var span))
+            return permissions.All(HasPermission);
+
+        foreach (var permission in span)
+            if (!HasPermission(permission))
+                return false;
+
+        return true;
     }
 
     /// <summary>
@@ -244,7 +252,14 @@ public sealed class Actor : IEquatable<Actor>
     public bool HasAnyPermission(IEnumerable<string> permissions)
     {
         ArgumentNullException.ThrowIfNull(permissions);
-        return permissions.Any(HasPermission);
+        if (!TryGetPermissionSpan(permissions, out var span))
+            return permissions.Any(HasPermission);
+
+        foreach (var permission in span)
+            if (HasPermission(permission))
+                return true;
+
+        return false;
     }
 
     /// <summary>
@@ -416,13 +431,49 @@ public sealed class Actor : IEquatable<Actor>
     /// <returns><see langword="true"/> when the actors have different <see cref="Id"/>s or exactly one is <see langword="null"/>; otherwise <see langword="false"/>.</returns>
     public static bool operator !=(Actor? left, Actor? right) => !(left == right);
 
+    private static bool TryGetPermissionSpan(IEnumerable<string> permissions, out ReadOnlySpan<string> span)
+    {
+        if (permissions is string[] array)
+        {
+            span = array;
+            return true;
+        }
+
+        if (permissions.GetType() == typeof(List<string>))
+        {
+            span = CollectionsMarshal.AsSpan((List<string>)permissions);
+            return true;
+        }
+
+        span = default;
+        return false;
+    }
+
     private static FrozenSet<string> SnapshotSet(IReadOnlySet<string> values) =>
         values.Count == 0
             ? FrozenSet<string>.Empty
             : values.ToFrozenSet(StringComparer.Ordinal);
 
-    private static FrozenDictionary<string, string> SnapshotDictionary(IReadOnlyDictionary<string, string> values) =>
-        values.Count == 0
-            ? FrozenDictionary<string, string>.Empty
-            : values.ToFrozenDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+    private static FrozenDictionary<string, string> SnapshotDictionary(IReadOnlyDictionary<string, string> values)
+    {
+        if (values.Count == 0)
+            return FrozenDictionary<string, string>.Empty;
+
+        if (values is FrozenDictionary<string, string> frozen && IsOrdinalComparer(frozen.Comparer))
+            return frozen;
+
+        if (values.GetType() == typeof(Dictionary<string, string>))
+        {
+            var dictionary = (Dictionary<string, string>)values;
+            var comparer = dictionary.Comparer;
+            if (IsOrdinalComparer(comparer))
+                return dictionary.ToFrozenDictionary(comparer);
+        }
+
+        // Other sources can contain duplicate ordinal keys; preserve rejection rather than overwriting them.
+        return values.ToFrozenDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal);
+    }
+
+    private static bool IsOrdinalComparer(IEqualityComparer<string> comparer) =>
+        ReferenceEquals(comparer, StringComparer.Ordinal) || ReferenceEquals(comparer, EqualityComparer<string>.Default);
 }
