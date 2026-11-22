@@ -189,9 +189,9 @@ public sealed class ServiceBusInboxConsumer : BackgroundService
             await processor.StopProcessingAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ProcessMessageAsync(ProcessMessageEventArgs args) =>
-        await _handler.HandleAsync(args.Message, new ProcessMessageEventArgsSettler(args), args.CancellationToken)
-            .ConfigureAwait(false);
+    // Forwarding the task is safe because HandleAsync captures failures before its first await too.
+    private Task ProcessMessageAsync(ProcessMessageEventArgs args) =>
+        _handler.HandleAsync(args.Message, new ProcessMessageEventArgsSettler(args), args.CancellationToken);
 
     private Task ProcessErrorAsync(ProcessErrorEventArgs args)
     {

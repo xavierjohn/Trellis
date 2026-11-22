@@ -72,6 +72,33 @@ public class EntityTagValueBoundaryTests
         ShouldBeMalformed(EntityTagValue.TryParse($"W/\"{Tag(codePoint)}\""));
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("W/")]
+    public void TryParse_MalformedQuotedTag_AllocationDoesNotGrowWithTagLength(string prefix)
+    {
+        const int iterations = 64;
+        const int allocationTolerance = 16 * iterations;
+        var shortTag = $"{prefix}\"a b\"";
+        var longTag = $"{prefix}\"{new string('a', 2048)} b\"";
+
+        ShouldBeMalformed(EntityTagValue.TryParse(shortTag));
+        ShouldBeMalformed(EntityTagValue.TryParse(longTag));
+
+        var shortBytes = AllocatedByParse(shortTag);
+        var longBytes = AllocatedByParse(longTag);
+
+        longBytes.Should().BeLessThanOrEqualTo(shortBytes + allocationTolerance);
+
+        static long AllocatedByParse(string input)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < iterations; i++)
+                _ = EntityTagValue.TryParse(input);
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+    }
+
     #endregion
 
     #region Header shape

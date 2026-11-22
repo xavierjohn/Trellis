@@ -24,6 +24,52 @@ public class ConditionalRequestEvaluatorTests
 
     #endregion
 
+    #region ETag list comparisons
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Evaluate_ETagList_LateMatchDoesNotAllocateMoreThanEarlyMatch(bool useIfMatch)
+    {
+        const int iterations = 64;
+        var request = new DefaultHttpContext().Request;
+        request.Method = HttpMethods.Get;
+        var first = new string('a', 32);
+        var last = new string('c', 32);
+        var prefix = useIfMatch ? "" : "W/";
+        request.Headers[useIfMatch ? HeaderNames.IfMatch : HeaderNames.IfNoneMatch] =
+            $"{prefix}\"{first}\", {prefix}\"{new string('b', 32)}\", {prefix}\"{last}\"";
+        var earlyMatch = RepresentationMetadata.WithStrongETag(first);
+        var lateMatch = RepresentationMetadata.WithStrongETag(last);
+        var expected = useIfMatch ? ConditionalDecision.PreconditionsSatisfied : ConditionalDecision.NotModified;
+        var caseMismatch = RepresentationMetadata.WithStrongETag(first.ToUpperInvariant());
+
+        ConditionalRequestEvaluator.Evaluate(request, earlyMatch).Should().Be(expected);
+        ConditionalRequestEvaluator.Evaluate(request, lateMatch).Should().Be(expected);
+        ConditionalRequestEvaluator.Evaluate(request, caseMismatch).Should().Be(
+            useIfMatch ? ConditionalDecision.PreconditionFailed : ConditionalDecision.PreconditionsSatisfied);
+
+        var earlyBytes = long.MaxValue;
+        var lateBytes = long.MaxValue;
+        for (var sample = 0; sample < 5; sample++)
+        {
+            earlyBytes = Math.Min(earlyBytes, AllocatedByEvaluation(earlyMatch));
+            lateBytes = Math.Min(lateBytes, AllocatedByEvaluation(lateMatch));
+        }
+
+        lateBytes.Should().BeLessThanOrEqualTo(earlyBytes);
+
+        long AllocatedByEvaluation(RepresentationMetadata metadata)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < iterations; i++)
+                _ = ConditionalRequestEvaluator.Evaluate(request, metadata);
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+    }
+
+    #endregion
+
     #region If-Match (Step 1)
 
     [Fact]

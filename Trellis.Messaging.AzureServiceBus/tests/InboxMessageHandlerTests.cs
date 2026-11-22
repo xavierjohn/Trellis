@@ -4,6 +4,7 @@ using System.Text.Json;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Trellis.Mediator;
 
 /// <summary>
@@ -37,6 +38,57 @@ public class InboxMessageHandlerTests
         // Abandoning would redeliver forever: every attempt reaches the same "already processed" conclusion.
         settler.Completed.Should().BeTrue();
         settler.DeadLetterReason.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ProcessMessageAsync_PendingSettlement_DoesNotAllocateAnExtraTask()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var patience = TimeSpan.FromSeconds(10);
+        var processor = new ServiceBusInboxConsumerLifecycleTests.ControlledProcessor();
+        var directProcessor = new ServiceBusInboxConsumerLifecycleTests.ControlledProcessor();
+        var client = new ServiceBusInboxConsumerLifecycleTests.ControlledClient(processor);
+        using var provider = new ServiceCollection()
+            .AddSingleton<IInboxDispatcher>(new RecordingDispatcher(InboxDispatchOutcome.SkippedDuplicate))
+            .BuildServiceProvider();
+        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
+        var options = new AzureServiceBusConsumerOptions().Subscribe(OrderPlaced.WireName, "billing");
+        var logger = NullLogger<ServiceBusInboxConsumer>.Instance;
+        var handler = new InboxMessageHandler(scopeFactory, Map, options.JsonSerializerOptions, logger);
+        directProcessor.ProcessMessageAsync += args =>
+            handler.HandleAsync(args.Message, new ProcessMessageEventArgsSettler(args), args.CancellationToken);
+        using var consumer = new ServiceBusInboxConsumer(client, scopeFactory, Map, Options.Create(options), logger);
+        var message = ValidMessage();
+        await consumer.StartAsync(cancellationToken);
+        await processor.Started.Task.WaitAsync(patience, cancellationToken);
+
+        var directBytes = long.MaxValue;
+        var consumerBytes = long.MaxValue;
+        for (var sample = 0; sample < 5; sample++)
+        {
+            directBytes = Math.Min(directBytes, await MeasureAsync(directProcessor));
+            consumerBytes = Math.Min(consumerBytes, await MeasureAsync(processor));
+        }
+
+        await consumer.StopAsync(cancellationToken);
+
+        consumerBytes.Should().BeLessThanOrEqualTo(directBytes + 32);
+
+        async Task<long> MeasureAsync(ServiceBusInboxConsumerLifecycleTests.ControlledProcessor source)
+        {
+            var receiver = new BlockingReceiver();
+            var args = new ProcessMessageEventArgs(message, receiver, cancellationToken);
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var delivery = source.DeliverAsync(args);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            var completedBeforeSettlement = delivery.IsCompleted;
+            receiver.Settlement.SetResult();
+            await delivery.WaitAsync(patience, cancellationToken);
+
+            completedBeforeSettlement.Should().BeFalse();
+            receiver.Completed.Should().BeTrue();
+            return allocated;
+        }
     }
 
     [Fact]
@@ -181,6 +233,18 @@ public class InboxMessageHandlerTests
             DeadLetterReason = reason;
             DeadLetterDescription = description;
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class BlockingReceiver : ServiceBusReceiver
+    {
+        public TaskCompletionSource Settlement { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool Completed { get; private set; }
+
+        public override Task CompleteMessageAsync(ServiceBusReceivedMessage message, CancellationToken cancellationToken = default)
+        {
+            Completed = true;
+            return Settlement.Task;
         }
     }
 

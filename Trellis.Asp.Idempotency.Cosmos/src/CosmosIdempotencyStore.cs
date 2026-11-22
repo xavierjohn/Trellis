@@ -321,13 +321,11 @@ public sealed class CosmosIdempotencyStore : IIdempotencyStore
     private static ItemRequestOptions NoContentResponse { get; } =
         new() { EnableContentResponseOnWrite = false };
 
-    private static MemoryStream Serialize(CosmosIdempotencyDocument document)
+    internal static MemoryStream Serialize(CosmosIdempotencyDocument document)
     {
-        var stream = new MemoryStream();
-        JsonSerializer.Serialize(
-            stream, document, CosmosIdempotencyJsonContext.Default.CosmosIdempotencyDocument);
-        stream.Position = 0;
-        return stream;
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(
+            document, CosmosIdempotencyJsonContext.Default.CosmosIdempotencyDocument);
+        return new MemoryStream(bytes, 0, bytes.Length, writable: true, publiclyVisible: true);
     }
 
     private static IdempotencyResponseSnapshot ToSnapshot(CosmosResponseSnapshotDocument stored)

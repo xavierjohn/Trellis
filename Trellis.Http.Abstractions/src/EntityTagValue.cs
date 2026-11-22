@@ -1,5 +1,7 @@
 ﻿namespace Trellis;
 
+using System.Diagnostics;
+
 /// <summary>
 /// Represents an RFC 9110 §8.8.1 entity tag (ETag) value with explicit weak/strong semantics.
 /// </summary>
@@ -49,48 +51,46 @@ public sealed record EntityTagValue
 
     private EntityTagValue(string opaqueTag, bool isWeak, bool isWildcard = false)
     {
-        ArgumentNullException.ThrowIfNull(opaqueTag);
-        if (!isWildcard)
-            ValidateOpaqueTag(opaqueTag);
+        Debug.Assert(opaqueTag is not null && IndexOfInvalidOpaqueTagChar(opaqueTag) < 0,
+            "Construction requires an already validated opaque tag.");
         OpaqueTag = opaqueTag;
         IsWeak = isWeak;
         IsWildcard = isWildcard;
     }
 
-    private static bool HasInvalidOpaqueTagChars(string opaqueTag)
+    private static int IndexOfInvalidOpaqueTagChar(ReadOnlySpan<char> opaqueTag)
     {
-        foreach (var c in opaqueTag)
+        for (var i = 0; i < opaqueTag.Length; i++)
         {
             // RFC 9110 §8.8.1: etagc = %x21 / %x23-7E / obs-text (0x80-FF)
-            if (c is < '\x21' or '"' or '\x7F' or > '\xFF')
-                return true;
+            if (opaqueTag[i] is < '\x21' or '"' or '\x7F' or > '\xFF')
+                return i;
         }
 
-        return false;
+        return -1;
     }
 
-    private static void ValidateOpaqueTag(string opaqueTag)
+    private static EntityTagValue Create(string opaqueTag, bool isWeak)
     {
-        foreach (var c in opaqueTag)
-        {
-            // RFC 9110 §8.8.1: etagc = %x21 / %x23-7E / obs-text (0x80-FF)
-            if (c is < '\x21' or '"' or '\x7F' or > '\xFF')
-                throw new ArgumentException(
-                    $"Invalid character in opaque tag: U+{(int)c:X4}. " +
-                    "Opaque tags may only contain %x21, %x23-7E, and obs-text (0x80-FF) per RFC 9110 §8.8.1.",
-                    nameof(opaqueTag));
-        }
+        ArgumentNullException.ThrowIfNull(opaqueTag);
+        var invalidIndex = IndexOfInvalidOpaqueTagChar(opaqueTag);
+        if (invalidIndex >= 0)
+            throw new ArgumentException(
+                $"Invalid character in opaque tag: U+{(int)opaqueTag[invalidIndex]:X4}. " +
+                "Opaque tags may only contain %x21, %x23-7E, and obs-text (0x80-FF) per RFC 9110 §8.8.1.",
+                nameof(opaqueTag));
+        return new EntityTagValue(opaqueTag, isWeak);
     }
 
     /// <summary>Creates a strong entity tag.</summary>
     /// <param name="opaqueTag">The opaque tag string.</param>
     /// <returns>A new strong <see cref="EntityTagValue"/>.</returns>
-    public static EntityTagValue Strong(string opaqueTag) => new(opaqueTag, false);
+    public static EntityTagValue Strong(string opaqueTag) => Create(opaqueTag, isWeak: false);
 
     /// <summary>Creates a weak entity tag.</summary>
     /// <param name="opaqueTag">The opaque tag string.</param>
     /// <returns>A new weak <see cref="EntityTagValue"/>.</returns>
-    public static EntityTagValue Weak(string opaqueTag) => new(opaqueTag, true);
+    public static EntityTagValue Weak(string opaqueTag) => Create(opaqueTag, isWeak: true);
 
     /// <summary>
     /// Creates the RFC 9110 wildcard entity tag (<c>*</c>), which matches any current entity.
@@ -124,23 +124,21 @@ public sealed record EntityTagValue
             return Result.Ok(Wildcard());
 
         if (headerValue.StartsWith("W/\"", StringComparison.Ordinal) && headerValue.EndsWith('"') && headerValue.Length >= 4)
-        {
-            var tag = headerValue[3..^1];
-            if (HasInvalidOpaqueTagChars(tag))
-                return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule(code: ValidationCodes.EtagMalformed, detail: "Invalid ETag format."));
-            return Result.Ok(new EntityTagValue(tag, true));
-        }
+            return ParseOpaqueTag(headerValue.AsSpan(3, headerValue.Length - 4), isWeak: true);
 
         if (headerValue.StartsWith('"') && headerValue.EndsWith('"') && headerValue.Length >= 2)
-        {
-            var tag = headerValue[1..^1];
-            if (HasInvalidOpaqueTagChars(tag))
-                return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule(code: ValidationCodes.EtagMalformed, detail: "Invalid ETag format."));
-            return Result.Ok(new EntityTagValue(tag, false));
-        }
+            return ParseOpaqueTag(headerValue.AsSpan(1, headerValue.Length - 2), isWeak: false);
 
-        return Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule(code: ValidationCodes.EtagMalformed, detail: "Invalid ETag format."));
+        return MalformedTag();
     }
+
+    private static Result<EntityTagValue> ParseOpaqueTag(ReadOnlySpan<char> tag, bool isWeak) =>
+        IndexOfInvalidOpaqueTagChar(tag) < 0
+            ? Result.Ok(new EntityTagValue(tag.ToString(), isWeak))
+            : MalformedTag();
+
+    private static Result<EntityTagValue> MalformedTag() =>
+        Result.Fail<EntityTagValue>(Error.InvalidInput.ForRule(code: ValidationCodes.EtagMalformed, detail: "Invalid ETag format."));
 
     /// <summary>
     /// Performs a strong comparison per RFC 9110 §8.8.3.2.
