@@ -24,6 +24,44 @@ public class ConditionalRequestEvaluatorTests
 
     #endregion
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Evaluate_ETagList_LateMatchDoesNotAllocateMoreThanEarlyMatch(bool useIfMatch)
+    {
+        const int iterations = 64;
+        const int allocationTolerance = 16 * iterations;
+        var request = new DefaultHttpContext().Request;
+        request.Method = HttpMethods.Get;
+        var first = new string('a', 32);
+        var last = new string('c', 32);
+        var prefix = useIfMatch ? "" : "W/";
+        request.Headers[useIfMatch ? HeaderNames.IfMatch : HeaderNames.IfNoneMatch] =
+            $"{prefix}\"{first}\", {prefix}\"{new string('b', 32)}\", {prefix}\"{last}\"";
+        var earlyMatch = RepresentationMetadata.WithStrongETag(first);
+        var lateMatch = RepresentationMetadata.WithStrongETag(last);
+        var expected = useIfMatch ? ConditionalDecision.PreconditionsSatisfied : ConditionalDecision.NotModified;
+        var caseMismatch = RepresentationMetadata.WithStrongETag(first.ToUpperInvariant());
+
+        ConditionalRequestEvaluator.Evaluate(request, earlyMatch).Should().Be(expected);
+        ConditionalRequestEvaluator.Evaluate(request, lateMatch).Should().Be(expected);
+        ConditionalRequestEvaluator.Evaluate(request, caseMismatch).Should().Be(
+            useIfMatch ? ConditionalDecision.PreconditionFailed : ConditionalDecision.PreconditionsSatisfied);
+
+        var earlyBytes = AllocatedByEvaluation(earlyMatch);
+        var lateBytes = AllocatedByEvaluation(lateMatch);
+
+        lateBytes.Should().BeLessThanOrEqualTo(earlyBytes + allocationTolerance);
+
+        long AllocatedByEvaluation(RepresentationMetadata metadata)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < iterations; i++)
+                _ = ConditionalRequestEvaluator.Evaluate(request, metadata);
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+    }
+
     #region If-Match (Step 1)
 
     [Fact]

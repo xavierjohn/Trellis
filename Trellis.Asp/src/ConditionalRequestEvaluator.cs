@@ -121,7 +121,7 @@ internal static class ConditionalRequestEvaluator
         {
             if (tag.IsWeak)
                 continue; // Strong comparison excludes weak tags
-            if (string.Equals(tag.Tag.ToString().Trim('"'), metadata.ETag.OpaqueTag, StringComparison.Ordinal))
+            if (tag.Tag.AsSpan().Trim('"').SequenceEqual(metadata.ETag.OpaqueTag))
                 return true;
         }
 
@@ -143,7 +143,7 @@ internal static class ConditionalRequestEvaluator
         foreach (var tag in ifNoneMatch)
         {
             // Weak comparison: opaque-tags match regardless of weakness
-            if (string.Equals(tag.Tag.ToString().Trim('"'), metadata.ETag.OpaqueTag, StringComparison.Ordinal))
+            if (tag.Tag.AsSpan().Trim('"').SequenceEqual(metadata.ETag.OpaqueTag))
                 return true;
         }
 

@@ -402,6 +402,8 @@ public sealed class ServiceBusInboxConsumerLifecycleTests
         public void ReleaseStart() => _start.TrySetResult();
         public void ReleaseStop() => _stop.TrySetResult();
 
+        public Task DeliverAsync(ProcessMessageEventArgs args) => OnProcessMessageAsync(args);
+
         public override Task StartProcessingAsync(CancellationToken cancellationToken = default)
         {
             Started.TrySetResult();
