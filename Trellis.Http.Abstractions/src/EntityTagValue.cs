@@ -1,5 +1,7 @@
 ﻿namespace Trellis;
 
+using System.Diagnostics;
+
 /// <summary>
 /// Represents an RFC 9110 §8.8.1 entity tag (ETag) value with explicit weak/strong semantics.
 /// </summary>
@@ -49,6 +51,8 @@ public sealed record EntityTagValue
 
     private EntityTagValue(string opaqueTag, bool isWeak, bool isWildcard = false)
     {
+        Debug.Assert(opaqueTag is not null && IndexOfInvalidOpaqueTagChar(opaqueTag) < 0,
+            "Construction requires an already validated opaque tag.");
         OpaqueTag = opaqueTag;
         IsWeak = isWeak;
         IsWildcard = isWildcard;

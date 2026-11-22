@@ -321,7 +321,7 @@ public sealed class CosmosIdempotencyStore : IIdempotencyStore
     private static ItemRequestOptions NoContentResponse { get; } =
         new() { EnableContentResponseOnWrite = false };
 
-    private static MemoryStream Serialize(CosmosIdempotencyDocument document)
+    internal static MemoryStream Serialize(CosmosIdempotencyDocument document)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(
             document, CosmosIdempotencyJsonContext.Default.CosmosIdempotencyDocument);

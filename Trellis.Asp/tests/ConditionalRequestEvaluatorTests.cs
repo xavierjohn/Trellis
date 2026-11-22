@@ -24,13 +24,14 @@ public class ConditionalRequestEvaluatorTests
 
     #endregion
 
+    #region ETag list comparisons
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public void Evaluate_ETagList_LateMatchDoesNotAllocateMoreThanEarlyMatch(bool useIfMatch)
     {
         const int iterations = 64;
-        const int allocationTolerance = 16 * iterations;
         var request = new DefaultHttpContext().Request;
         request.Method = HttpMethods.Get;
         var first = new string('a', 32);
@@ -48,10 +49,15 @@ public class ConditionalRequestEvaluatorTests
         ConditionalRequestEvaluator.Evaluate(request, caseMismatch).Should().Be(
             useIfMatch ? ConditionalDecision.PreconditionFailed : ConditionalDecision.PreconditionsSatisfied);
 
-        var earlyBytes = AllocatedByEvaluation(earlyMatch);
-        var lateBytes = AllocatedByEvaluation(lateMatch);
+        var earlyBytes = long.MaxValue;
+        var lateBytes = long.MaxValue;
+        for (var sample = 0; sample < 5; sample++)
+        {
+            earlyBytes = Math.Min(earlyBytes, AllocatedByEvaluation(earlyMatch));
+            lateBytes = Math.Min(lateBytes, AllocatedByEvaluation(lateMatch));
+        }
 
-        lateBytes.Should().BeLessThanOrEqualTo(earlyBytes + allocationTolerance);
+        lateBytes.Should().BeLessThanOrEqualTo(earlyBytes);
 
         long AllocatedByEvaluation(RepresentationMetadata metadata)
         {
@@ -61,6 +67,8 @@ public class ConditionalRequestEvaluatorTests
             return GC.GetAllocatedBytesForCurrentThread() - before;
         }
     }
+
+    #endregion
 
     #region If-Match (Step 1)
 

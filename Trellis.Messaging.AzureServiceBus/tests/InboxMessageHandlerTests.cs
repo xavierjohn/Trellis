@@ -62,10 +62,14 @@ public class InboxMessageHandlerTests
         await consumer.StartAsync(cancellationToken);
         await processor.Started.Task.WaitAsync(patience, cancellationToken);
 
-        _ = await MeasureAsync(directProcessor);
-        _ = await MeasureAsync(processor);
-        var directBytes = await MeasureAsync(directProcessor);
-        var consumerBytes = await MeasureAsync(processor);
+        var directBytes = long.MaxValue;
+        var consumerBytes = long.MaxValue;
+        for (var sample = 0; sample < 5; sample++)
+        {
+            directBytes = Math.Min(directBytes, await MeasureAsync(directProcessor));
+            consumerBytes = Math.Min(consumerBytes, await MeasureAsync(processor));
+        }
+
         await consumer.StopAsync(cancellationToken);
 
         consumerBytes.Should().BeLessThanOrEqualTo(directBytes + 32);
