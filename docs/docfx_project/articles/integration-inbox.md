@@ -220,7 +220,12 @@ foreach (var row in window.Where(r => todo.Contains(r.MessageId)))
 
 `FilterUnprocessedAsync` is an optimization, not the correctness boundary — between the query and `DispatchAsync` another worker may process a row, and `DispatchAsync` still deduplicates it (returning `SkippedDuplicate`). Correctness always lives in the committed dedup row; the filter just keeps you from invoking handlers for messages you can already see are done.
 
-If large pull windows are a bottleneck, see the [provider-specific tuning guidance](../api_reference/trellis-api-efcore-inbox.md#iinboxstore) before changing EF's collection parameterization defaults.
+If `FilterUnprocessedAsync` is a bottleneck for large pull windows, benchmark EF Core's
+`UseParameterizedCollectionMode(ParameterTranslationMode.Parameter)` in the provider options for the
+`TContext` registered with `AddTrellisInbox<TContext>`, not the source feed's context. This changes
+all parameterized collection queries on the inbox context, so keep the default unless representative
+query plans improve. SQL Server uses `OPENJSON` for this mode and requires compatibility level 130
+or later in both the database and EF provider configuration.
 
 ### Optional: a resume checkpoint
 

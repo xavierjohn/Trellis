@@ -208,11 +208,6 @@ public interface IInboxStore
 
 `FilterUnprocessedAsync` returns the subset of `messageIds` that `consumerId` has **not** yet processed (those without a dedup row), preserving the input order. It powers the gap-free **inbox-as-cursor / anti-join** pull model: read a window of the source feed and dispatch every row whose `MessageId` this query returns, rather than tracking a fragile high-water cursor that can skip a row committed out of sequence order. It is an optimization, not the correctness boundary — a row may be processed by another worker between this query and `DispatchAsync`, which still deduplicates — and it is a pure read that stages nothing. `EfInboxStore` runs it as a single anti-join query (`AsNoTracking`); it throws `ArgumentException` if `consumerId` is blank or exceeds `InboxOptions.MaxConsumerIdLength`.
 
-For large pull windows, benchmark EF Core's `UseParameterizedCollectionMode(ParameterTranslationMode.Parameter)`
-in the provider options for the `TContext` registered with `AddTrellisInbox<TContext>()`. It affects all
-parameterized collection queries on that context, so keep the default unless representative plans improve.
-SQL Server uses `OPENJSON` for this mode and requires database and EF provider compatibility level 130 or later.
-
 ## Pull-consumer checkpoint (resume cursor)
 
 `IConsumerCheckpointStore` is an optional, durable **resume cursor** for a pull consumer — it remembers per-`ConsumerId` where in the source feed the consumer last advanced to, so it resumes there instead of rescanning the whole log on every poll or restart.
