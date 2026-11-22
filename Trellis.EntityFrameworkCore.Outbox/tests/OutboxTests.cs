@@ -1,7 +1,9 @@
 ﻿namespace Trellis.EntityFrameworkCore.Outbox.Tests;
 
 using System.Collections.Concurrent;
+using System.Data.Common;
 using System.Diagnostics;
+using System.Text.Json;
 using global::Trellis.Mediator;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -585,6 +587,44 @@ public sealed class OutboxTests
     }
 
     [Fact]
+    public void SaveInterception_TrackedNonAggregates_DoNotAllocateEntryWrappers()
+    {
+        const int count = 512;
+        using var context = new OutboxTestDbContext(new DbContextOptionsBuilder<OutboxTestDbContext>()
+            .UseSqlite("Data Source=:memory:")
+            .Options);
+        context.ChangeTracker.AutoDetectChangesEnabled = false;
+        var interceptor = new OutboxCaptureInterceptor();
+        var saving = new DbContextEventData(null!, (_, _) => string.Empty, context);
+        var saved = new SaveChangesCompletedEventData(null!, (_, _) => string.Empty, context, 0);
+
+        var emptyBytes = MeasureCallbacks();
+        context.AddRange(Enumerable.Range(0, count).Select(_ =>
+            OutboxMessage.Create(Guid.NewGuid(), DateTimeOffset.UnixEpoch, "unused", "{}", OutboxMessageKind.Domain)));
+
+        (MeasureCallbacks() - emptyBytes).Should().BeLessThan(count * IntPtr.Size,
+            "neither capture nor clearing should allocate a tracking wrapper for unrelated rows");
+
+        long MeasureCallbacks()
+        {
+            const int iterations = 32;
+            for (var i = 0; i < iterations; i++)
+                RunCallbacks();
+
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < iterations; i++)
+                RunCallbacks();
+            return (GC.GetAllocatedBytesForCurrentThread() - before) / iterations;
+        }
+
+        void RunCallbacks()
+        {
+            interceptor.SavingChanges(saving, default);
+            interceptor.SavedChanges(saved, 0);
+        }
+    }
+
+    [Fact]
     public async Task Relay_retries_then_parks_a_poison_message_without_blocking_others()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -1057,6 +1097,149 @@ public sealed class OutboxTests
 
         drained.Should().Be(1, "an expired lease must be reclaimed by the relay");
         captured.Should().ContainSingle().Which.Name.Should().Be("gamma");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DrainAsync_Claim_RespectsCandidateSnapshotAndRechecksEligibility(bool hasGap)
+    {
+        const int batchSize = 100;
+        var ct = TestContext.Current.CancellationToken;
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync(ct);
+        var now = DateTimeOffset.UnixEpoch;
+        var clock = new FakeTimeProvider(now);
+        var leaseEnd = now.UtcDateTime.AddMinutes(10);
+        var captured = new List<ThingCreated>();
+        await using var setup = new OutboxTestDbContext(new DbContextOptionsBuilder<OutboxTestDbContext>()
+            .UseSqlite(connection)
+            .AddTrellisOutboxInterceptor()
+            .Options);
+        await setup.Database.EnsureCreatedAsync(ct);
+        setup.Things.AddRange(Enumerable.Range(0, batchSize + 2)
+            .Select(i => Thing.Create(ThingId.NewUniqueV7(), $"message-{i}", now)));
+        await setup.SaveChangesAsync(ct);
+        var outbox = setup.Set<OutboxMessage>();
+        var sequences = await outbox.OrderBy(row => row.Sequence).Select(row => row.Sequence).ToArrayAsync(ct);
+        if (hasGap)
+            await outbox.Where(row => row.Sequence == sequences[1])
+                .ExecuteUpdateAsync(update => update.SetProperty(row => row.LockedUntil, leaseEnd), ct);
+
+        var probe = new ClaimCommandProbe(async token =>
+        {
+            if (hasGap)
+                await outbox.Where(row => row.Sequence == sequences[1])
+                    .ExecuteUpdateAsync(update => update.SetProperty(row => row.LockedUntil, (DateTime?)null), token);
+
+            await outbox.Where(row => row.Sequence == sequences[2])
+                .ExecuteUpdateAsync(update => update.SetProperty(row => row.Attempts, 1), token);
+            await outbox.Where(row => row.Sequence == sequences[3])
+                .ExecuteUpdateAsync(update => update.SetProperty(row => row.ProcessedAt, now), token);
+            await outbox.Where(row => row.Sequence == sequences[4])
+                .ExecuteUpdateAsync(update => update.SetProperty(row => row.LockedUntil, leaseEnd), token);
+        });
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<TimeProvider>(clock);
+        services.AddSingleton(captured);
+        services.AddDbContext<OutboxTestDbContext>(options => options
+            .UseSqlite(connection, sqlite => sqlite.UseParameterizedCollectionMode(ParameterTranslationMode.MultipleParameters))
+            .AddInterceptors(probe));
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, CapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>(options =>
+        {
+            options.BatchSize = batchSize;
+            options.MaxAttempts = 1;
+        });
+        await using var provider = services.BuildServiceProvider();
+        var relay = provider.GetServices<IHostedService>().OfType<OutboxRelay<OutboxTestDbContext>>().Single();
+
+        var drained = await relay.DrainAsync(ct);
+
+        var expected = Enumerable.Range(0, batchSize + (hasGap ? 1 : 0))
+            .Where(i => i is not (2 or 3 or 4) && (!hasGap || i != 1));
+        drained.Should().Be(batchSize - 3);
+        captured.Select(message => message.Name).Should().Equal(expected.Select(i => $"message-{i}"));
+        var parameters = probe.ParameterCounts.Should().ContainSingle().Which;
+        if (!hasGap)
+            parameters.Should().BeLessThanOrEqualTo(6);
+    }
+
+    [Fact]
+    public async Task DrainAsync_RepeatedEventType_ReducesResolutionAllocationsAndPreservesPayloads()
+    {
+        const int count = 100;
+        var ct = TestContext.Current.CancellationToken;
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync(ct);
+        var captured = new List<ThingCreated>();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(captured);
+        services.AddDbContext<OutboxTestDbContext>(options => options.UseSqlite(connection));
+        services.AddDomainEventDispatch();
+        services.AddDomainEventHandler<ThingCreated, CapturingHandler>();
+        services.AddTrellisOutbox<OutboxTestDbContext>();
+        await using var provider = services.BuildServiceProvider();
+        var relay = provider.GetServices<IHostedService>().OfType<OutboxRelay<OutboxTestDbContext>>().Single();
+        await using var scope = provider.CreateAsyncScope();
+        var setup = scope.ServiceProvider.GetRequiredService<OutboxTestDbContext>();
+        await setup.Database.EnsureCreatedAsync(ct);
+        var outbox = setup.Set<OutboxMessage>();
+        var events = Enumerable.Range(0, count)
+            .Select(i => new ThingCreated(ThingId.NewUniqueV7(), $"message-{i}", DateTimeOffset.UnixEpoch))
+            .ToArray();
+        var payloads = events.Select(message => JsonSerializer.Serialize(message, OutboxEventSerialization.Options)).ToArray();
+        var type = typeof(ThingCreated);
+        // Use equivalent names of equal length so both batches deserialize the same type and payloads.
+        var names = Enumerable.Range(0, count).Select(i =>
+            $"{type.FullName},{new string(' ', i + 1)}{type.Assembly.FullName}{new string(' ', count - 1 - i)}").ToArray();
+
+        _ = await MeasureDrainAsync(repeated: true);
+        _ = await MeasureDrainAsync(repeated: false);
+        var repeatedBytes = await MeasureDrainAsync(repeated: true);
+        var distinctBytes = await MeasureDrainAsync(repeated: false);
+
+        repeatedBytes.Should().BeLessThan(distinctBytes - (count * 200),
+            "repeated type names in a batch should avoid repeated CLR type resolution");
+
+        async Task<long> MeasureDrainAsync(bool repeated)
+        {
+            await outbox.ExecuteDeleteAsync(ct);
+            outbox.AddRange(payloads.Select((payload, i) => OutboxMessage.Create(
+                Guid.NewGuid(), DateTimeOffset.UnixEpoch, names[repeated ? 0 : i], payload, OutboxMessageKind.Domain)));
+            await setup.SaveChangesAsync(ct);
+            setup.ChangeTracker.Clear();
+            captured.Clear();
+
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var operation = relay.DrainAsync(ct);
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            operation.IsCompletedSuccessfully.Should().BeTrue("SQLite and the handler complete synchronously in this fixture");
+            (await operation).Should().Be(count);
+            captured.Should().Equal(events);
+            return allocated;
+        }
+    }
+
+    private sealed class ClaimCommandProbe(Func<CancellationToken, Task> beforeClaim) : DbCommandInterceptor
+    {
+        public List<int> ParameterCounts { get; } = [];
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.StartsWith("UPDATE", StringComparison.Ordinal))
+            {
+                ParameterCounts.Add(command.Parameters.Count);
+                await beforeClaim(cancellationToken);
+            }
+
+            return result;
+        }
     }
 }
 

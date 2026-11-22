@@ -1,6 +1,8 @@
 ﻿namespace Trellis.Mediator.FluentValidation.Tests;
 
+using System.Diagnostics;
 using global::FluentValidation;
+using global::FluentValidation.Results;
 using global::Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -27,6 +29,120 @@ public class FluentValidationMessageValidatorAdapterTests
         var result = await adapter.ValidateAsync(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateAsync_EmptySequence_AvoidsBoxingAndStillTracesSuccess()
+    {
+        var adapter = new FluentValidationMessageValidatorAdapter<CreateUserCommand>([]);
+        var command = new CreateUserCommand("Alice", "alice@example.com");
+        var result = ReadCompleted(adapter.ValidateAsync(command, CancellationToken.None));
+        result.IsSuccess.Should().BeTrue();
+
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == ResultsTraceProviderBuilderExtensions.ActivitySourceName,
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var traced = Result.Ok(command).Map(message =>
+        {
+            var validation = ReadCompleted(adapter.ValidateAsync(message, CancellationToken.None));
+            Activity.Current!.Status.Should().Be(ActivityStatusCode.Ok);
+            return validation;
+        });
+        traced.Unwrap().Should().BeSameAs(result, "the adapter should not allocate another success box");
+    }
+
+    [Fact]
+    public void ValidateAsync_RootFailures_ReuseNormalizedPointer()
+    {
+        var command = new CreateUserCommand("Alice", "alice@example.com");
+        var root = new ValidationFailure("", "Required") { ErrorCode = "NotNullValidator" };
+        var blank = new ValidationFailure(" \t", "Required") { ErrorCode = "NotNullValidator" };
+        var pointer = new ValidationFailure("/createUserCommand", "Required") { ErrorCode = "NotNullValidator" };
+        var rootAdapter = new FluentValidationMessageValidatorAdapter<CreateUserCommand>(
+            [FailureValidator(root, blank)]);
+        var pointerAdapter = new FluentValidationMessageValidatorAdapter<CreateUserCommand>(
+            [FailureValidator(pointer, pointer)]);
+
+        var (pointerBytes, _) = Measure(() => ReadCompleted(pointerAdapter.ValidateAsync(command, CancellationToken.None)));
+        var (rootBytes, result) = Measure(() => ReadCompleted(rootAdapter.ValidateAsync(command, CancellationToken.None)));
+
+        var error = ExtractError(result).Should().BeOfType<Error.InvalidInput>().Which;
+        error.Fields.Items.Select(field => field.Field.Path).Should().Equal(["/createUserCommand", "/createUserCommand"]);
+        rootBytes.Should().BeLessThanOrEqualTo(pointerBytes + 16);
+    }
+
+    [Fact]
+    public void ValidateAsync_ManyFailures_PreservesOrderAndDuplicatesWithoutAnExtraArray()
+    {
+        const int count = 128;
+        var command = new CreateUserCommand("Alice", "alice@example.com");
+        var missing = new ValidationFailure("/name", "Required") { ErrorCode = "NotNullValidator" };
+        var invalid = new ValidationFailure("/email", "Invalid") { ErrorCode = "EmailValidator" };
+        var first = FailureValidator(Enumerable.Repeat(missing, count / 2).ToArray());
+        var second = FailureValidator(Enumerable.Repeat(invalid, count / 2).ToArray());
+        var adapter = new FluentValidationMessageValidatorAdapter<CreateUserCommand>([first, second]);
+        var (validatorBytes, _) = Measure(() =>
+            (first.ValidateAsync(command).GetAwaiter().GetResult(), second.ValidateAsync(command).GetAwaiter().GetResult()));
+        var (fieldBytes, _) = Measure(static () => new FieldViolation(new InputPointer("/name"), ValidationCodes.ValueNotNull));
+
+        var (bytes, result) = Measure(() => ReadCompleted(adapter.ValidateAsync(command, CancellationToken.None)));
+
+        var error = ExtractError(result).Should().BeOfType<Error.InvalidInput>().Which;
+        error.Fields.Items.Select(field => (field.Field.Path, field.ReasonCode, field.Detail)).Should().Equal(
+            Enumerable.Repeat(("/name", ValidationCodes.ValueNotNull, (string?)"Required"), count / 2)
+                .Concat(Enumerable.Repeat(("/email", ValidationCodes.StringEmail, (string?)"Invalid"), count / 2)));
+        bytes.Should().BeLessThan(validatorBytes + (count * (fieldBytes + (3 * IntPtr.Size))) + 640,
+            "projection needs the fields, the growing list and one immutable array, but no intermediate copy");
+    }
+
+    [Fact]
+    public async Task ValidateAsync_LazyValidators_CancellationDisposesWithoutEnumeratingNextValidator()
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var disposed = false;
+        var secondEnumerated = false;
+        var validator = new InlineValidator<CreateUserCommand>();
+        validator.RuleFor(message => message).CustomAsync(async (_, _, token) =>
+        {
+            token.Should().Be(cancellation.Token);
+            entered.SetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+        });
+        var adapter = new FluentValidationMessageValidatorAdapter<CreateUserCommand>(Validators());
+
+        var validation = adapter.ValidateAsync(new CreateUserCommand("Alice", "alice@example.com"), cancellation.Token).AsTask();
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellation.Token);
+            secondEnumerated.Should().BeFalse();
+        }
+        finally
+        {
+            await cancellation.CancelAsync();
+        }
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => validation);
+        disposed.Should().BeTrue();
+        secondEnumerated.Should().BeFalse();
+
+        IEnumerable<IValidator<CreateUserCommand>> Validators()
+        {
+            try
+            {
+                yield return validator;
+                secondEnumerated = true;
+                yield return validator;
+            }
+            finally
+            {
+                disposed = true;
+            }
+        }
     }
 
     [Fact]
@@ -454,6 +570,38 @@ public class FluentValidationMessageValidatorAdapterTests
     {
         result.TryGetError(out var error).Should().BeTrue();
         return error!;
+    }
+
+    private static InlineValidator<CreateUserCommand> FailureValidator(params ValidationFailure[] failures)
+    {
+        var validator = new InlineValidator<CreateUserCommand>();
+        validator.RuleFor(message => message).Custom((_, context) =>
+        {
+            foreach (var failure in failures)
+                context.AddFailure(failure);
+        });
+        return validator;
+    }
+
+    private static (long BytesPerCall, T Result) Measure<T>(Func<T> action)
+    {
+        const int iterations = 256;
+        for (var i = 0; i < iterations; i++)
+            _ = action();
+
+        var result = action();
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < iterations; i++)
+            result = action();
+        return ((GC.GetAllocatedBytesForCurrentThread() - before) / iterations, result);
+    }
+
+    private static IResult ReadCompleted(ValueTask<IResult> operation)
+    {
+        if (!operation.IsCompletedSuccessfully)
+            throw new InvalidOperationException("The validation fixture must complete synchronously.");
+
+        return operation.Result;
     }
 
     #endregion

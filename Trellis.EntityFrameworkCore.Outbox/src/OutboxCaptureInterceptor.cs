@@ -133,12 +133,9 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
         string? traceParent = null;
         string? traceState = null;
 
-        foreach (var entry in context.ChangeTracker.Entries())
+        foreach (var entry in context.ChangeTracker.Entries<IAggregate>())
         {
-            if (entry.Entity is not IAggregate aggregate)
-                continue;
-
-            var events = aggregate.UncommittedEvents();
+            var events = entry.Entity.UncommittedEvents();
             if (events.Count == 0)
                 continue;
 
@@ -202,9 +199,10 @@ internal sealed class OutboxCaptureInterceptor : SaveChangesInterceptor
         if (context is null)
             return;
 
-        foreach (var entry in context.ChangeTracker.Entries())
+        foreach (var entry in context.ChangeTracker.Entries<IAggregate>())
         {
-            if (entry.Entity is IAggregate aggregate && aggregate.UncommittedEvents().Count > 0)
+            var aggregate = entry.Entity;
+            if (aggregate.UncommittedEvents().Count > 0)
                 aggregate.AcceptChanges();
         }
     }

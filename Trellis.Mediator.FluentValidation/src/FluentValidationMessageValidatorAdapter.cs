@@ -37,6 +37,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
     : IMessageValidator<TMessage>
     where TMessage : global::Mediator.IMessage
 {
+    private static IResult? s_boxedSuccess;
     private readonly IEnumerable<IValidator<TMessage>> _validators;
     private readonly ValidationArgsOptions _argsOptions;
 
@@ -103,10 +104,9 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
             violations ??= [];
             foreach (var failure in validationResult.Errors)
             {
-                var rawName = string.IsNullOrWhiteSpace(failure.PropertyName)
-                    ? typeof(TMessage).Name
-                    : failure.PropertyName;
-                var pointerPath = JsonPointerNormalizer.ToJsonPointer(rawName);
+                var pointerPath = string.IsNullOrWhiteSpace(failure.PropertyName)
+                    ? RootFailure.Path
+                    : JsonPointerNormalizer.ToJsonPointer(failure.PropertyName);
                 var reasonCode = ValidationCodeProjection.Project(failure.ErrorCode, failure.AttemptedValue);
                 violations.Add(new FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(failure, _argsOptions))
                 {
@@ -116,8 +116,20 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
         }
 
         if (violations is { Count: > 0 })
-            return Result.Fail(new Error.InvalidInput(EquatableArray.Create(violations.ToArray())));
+            return Result.Fail(new Error.InvalidInput(EquatableArray.From(violations)));
 
-        return Result.Ok();
+        var success = Result.Ok(); // Stamp any active Trellis result span even when reusing the box.
+        if (Volatile.Read(ref s_boxedSuccess) is { } boxed)
+            return boxed;
+
+        IResult newBox = success;
+        return Interlocked.CompareExchange(ref s_boxedSuccess, newBox, null) ?? newBox;
+    }
+
+    private static class RootFailure
+    {
+        internal static readonly string Path;
+
+        static RootFailure() => Path = JsonPointerNormalizer.ToJsonPointer(typeof(TMessage).Name);
     }
 }

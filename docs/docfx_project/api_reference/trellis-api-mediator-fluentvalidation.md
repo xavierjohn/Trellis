@@ -83,7 +83,7 @@ public sealed class FluentValidationMessageValidatorAdapter<TMessage>
 
 | Signature | Returns | Description |
 | --- | --- | --- |
-| `public ValueTask<IResult> ValidateAsync(TMessage message, CancellationToken cancellationToken)` | `ValueTask<IResult>` | Runs every injected `IValidator<TMessage>` against `message`. Returns `Result.Ok()` when all validators pass (or none are registered — the empty injected sequence allocates no violations). Otherwise aggregates every `ValidationFailure` into a single `new Error.InvalidInput(EquatableArray.Create(violations))`, where `violations` is the collected `FieldViolation` set. Each FluentValidation failure becomes a `FieldViolation(new InputPointer(pointerPath), reasonCode, ValidationArgsProjection.Project(failure, options)) { Detail = failure.ErrorMessage }`, with `options` supplied by the selected constructor. `pointerPath` is derived by `JsonPointerNormalizer.ToJsonPointer` from the FV property name; `reasonCode` is `ValidationCodeProjection.Project(failure.ErrorCode, failure.AttemptedValue)`, which maps both a blank code and the legacy `validation.error` placeholder to `error.unspecified` — so `validation.error` is never emitted. Root-level failures (whitespace `PropertyName`) use `typeof(TMessage).Name`. |
+| `public ValueTask<IResult> ValidateAsync(TMessage message, CancellationToken cancellationToken)` | `ValueTask<IResult>` | Returns `Result.Ok()` when all validators pass or none are registered. Otherwise returns one `Error.InvalidInput` with a `FieldViolation` per failure, preserving order and duplicates. `Detail` carries the FluentValidation message; the sections below describe the pointer, reason code, and args. |
 
 ### Pointer normalization (RFC 6901)
 
@@ -97,9 +97,11 @@ FluentValidation property names are converted to JSON Pointers via [`JsonPointer
 
 Dotted FluentValidation paths split into separate JSON-pointer segments; bracketed indexers become numeric segments. Other producers (e.g., the ASP integration) build `InputPointer` values directly via `InputPointer.ForProperty(...)`, which does **not** split on `.`, so the normalizer is FluentValidation-specific.
 
+Root-level failures (blank `PropertyName`) use the normalized `typeof(TMessage).Name`.
+
 ### Reason-code projection
 
-Each `ValidationFailure.ErrorCode` is projected through [`ValidationCodeProjection.Project`](trellis-api-fluentvalidation.md#validationcodeprojection) before it reaches `FieldViolation.ReasonCode`, so a `MaximumLengthValidator` failure arriving through the Mediator pipeline reports the same `string.max-length` a generated `TryCreate` would. `NotEmptyValidator` is refined against the rejected value — `null` becomes `value.not-null`, a string or collection becomes `value.not-empty`, and a value type left at its default such as `Guid.Empty` or `0` becomes `value.not-default` — because those are three failures a client acts on differently. Custom `WithErrorCode` values pass through verbatim; `Must(...)` predicates project to `error.unspecified`.
+Each `ValidationFailure.ErrorCode` is projected through [`ValidationCodeProjection.Project`](trellis-api-fluentvalidation.md#validationcodeprojection) before it reaches `FieldViolation.ReasonCode`, so a `MaximumLengthValidator` failure arriving through the Mediator pipeline reports the same `string.max-length` a generated `TryCreate` would. `NotEmptyValidator` is refined against the rejected value — `null` becomes `value.not-null`, a string or collection becomes `value.not-empty`, and a value type left at its default such as `Guid.Empty` or `0` becomes `value.not-default` — because those are three failures a client acts on differently. Custom `WithErrorCode` values pass through verbatim; uncoded `Must(...)` predicates, blank codes, and legacy `validation.error` project to `error.unspecified`.
 
 ### Validation argument configuration
 
@@ -113,7 +115,6 @@ the one-argument constructor intentionally uses the immutable default allowlist.
 
 - FluentValidation does **not** add an additional pipeline behavior. It plugs into the existing `ValidationBehavior<TMessage,TResponse>` via the open-generic `IMessageValidator<TMessage>` extension point.
 - The adapter is registered scoped, matching the typical scoped lifetime of FluentValidation validators.
-- When no `IValidator<TMessage>` is registered for a message type, `IEnumerable<IValidator<TMessage>>` is empty, the adapter returns `Result.Ok()`, and no allocations are performed.
 - All validators are awaited sequentially; failures from every validator are aggregated into a single `Error.InvalidInput` rather than short-circuiting on the first failure.
 - The adapter forwards the ambient `CancellationToken` to `validator.ValidateAsync`.
 - `AddTrellisFluentValidation()` is **idempotent** — calling it multiple times (directly, or via the scanning overload) only registers the open-generic adapter once.
