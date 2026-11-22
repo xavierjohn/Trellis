@@ -157,11 +157,13 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         var claimToken = Guid.NewGuid();
         var leaseExpiry = now + _options.LeaseDuration;
 
-        // 1. Find eligible rows (pending, under the attempt cap, not under a live lease), oldest first.
-        var candidates = await context.Set<OutboxMessage>()
+        var eligible = context.Set<OutboxMessage>()
             .Where(m => m.ProcessedAt == null
                         && m.Attempts < _options.MaxAttempts
-                        && (m.LockedUntil == null || m.LockedUntil <= now))
+                        && (m.LockedUntil == null || m.LockedUntil <= now));
+
+        // 1. Find eligible rows (pending, under the attempt cap, not under a live lease), oldest first.
+        var candidates = await eligible
             .OrderBy(m => m.Sequence)
             .Take(_options.BatchSize)
             .Select(m => m.Sequence)
@@ -176,11 +178,15 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
         //    instance — the scale-out safety the relay depends on. The predicate mirrors the candidate
         //    filter (including the attempt cap) so a row another instance just parked between the read and
         //    this claim is not re-claimed.
-        await context.Set<OutboxMessage>()
-            .Where(m => candidates.Contains(m.Sequence)
-                        && m.ProcessedAt == null
-                        && m.Attempts < _options.MaxAttempts
-                        && (m.LockedUntil == null || m.LockedUntil <= now))
+        var first = candidates[0];
+        var last = candidates[^1];
+        var sequenceSpan = candidates.Count - 1;
+        // A range is equivalent only if the selected unique keys fill it. A skipped row in a gap
+        // could become eligible before the claim and must not be added to this batch.
+        var claim = sequenceSpan > 0 && first <= long.MaxValue - sequenceSpan && last == first + sequenceSpan
+            ? eligible.Where(m => m.Sequence >= first && m.Sequence <= last)
+            : eligible.Where(m => candidates.Contains(m.Sequence));
+        await claim
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(m => m.LockedBy, claimToken)
                 .SetProperty(m => m.LockedUntil, leaseExpiry), cancellationToken)
@@ -198,6 +204,7 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
 
         List<(OutboxMessage Message, Exception Error)>? failures = null;
         Dictionary<OutboxMessage, List<OutboxMessage>>? stagedBySource = null;
+        Dictionary<string, Type>? resolvedTypes = batch.Count > 1 ? new(StringComparer.Ordinal) : null;
         foreach (var message in batch)
         {
             try
@@ -205,12 +212,12 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
                 using var delivery = StartDeliveryActivity(message);
                 if (message.Kind == OutboxMessageKind.Integration)
                 {
-                    var integrationEvent = Deserialize<IIntegrationEvent>(message);
+                    var integrationEvent = Deserialize<IIntegrationEvent>(message, resolvedTypes);
                     await PublishIntegrationAsync(message, integrationEvent, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
-                    var domainEvent = Deserialize<IDomainEvent>(message);
+                    var domainEvent = Deserialize<IDomainEvent>(message, resolvedTypes);
                     var dispatch = await PublishDomainAndCollectAsync(
                         domainEvent, message.CompletedHandlers, cancellationToken).ConfigureAwait(false);
                     if (dispatch.Produced.Count > 0)
@@ -423,12 +430,16 @@ internal sealed class OutboxRelay<TContext> : BackgroundService
             _timeProvider.GetUtcNow().UtcDateTime);
     }
 
-    private static T Deserialize<T>(OutboxMessage message)
+    private static T Deserialize<T>(OutboxMessage message, Dictionary<string, Type>? resolvedTypes)
         where T : class
     {
-        var type = Type.GetType(message.EventType)
-            ?? throw new InvalidOperationException(
-                $"Cannot resolve outbox event type '{message.EventType}'. The producing assembly must be loaded by the relay.");
+        if (resolvedTypes is null || !resolvedTypes.TryGetValue(message.EventType, out var type))
+        {
+            type = Type.GetType(message.EventType)
+                ?? throw new InvalidOperationException(
+                    $"Cannot resolve outbox event type '{message.EventType}'. The producing assembly must be loaded by the relay.");
+            resolvedTypes?.Add(message.EventType, type);
+        }
 
         return JsonSerializer.Deserialize(message.Payload, type, OutboxEventSerialization.Options) as T
             ?? throw new InvalidOperationException(

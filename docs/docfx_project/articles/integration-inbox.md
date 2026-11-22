@@ -220,6 +220,13 @@ foreach (var row in window.Where(r => todo.Contains(r.MessageId)))
 
 `FilterUnprocessedAsync` is an optimization, not the correctness boundary — between the query and `DispatchAsync` another worker may process a row, and `DispatchAsync` still deduplicates it (returning `SkippedDuplicate`). Correctness always lives in the committed dedup row; the filter just keeps you from invoking handlers for messages you can already see are done.
 
+If `FilterUnprocessedAsync` is a bottleneck for large pull windows, benchmark EF Core's
+`UseParameterizedCollectionMode(ParameterTranslationMode.Parameter)` in the provider options for the
+`TContext` registered with `AddTrellisInbox<TContext>`, not the source feed's context. This changes
+all parameterized collection queries on the inbox context, so keep the default unless representative
+query plans improve. SQL Server uses `OPENJSON` for this mode and requires compatibility level 130
+or later in both the database and EF provider configuration.
+
 ### Optional: a resume checkpoint
 
 The anti-join keeps a scanned window gap-free, but on each poll you still choose where the window starts — and rescanning a large feed from the beginning every time is wasteful. `IConsumerCheckpointStore` is an optional, durable resume cursor — `GetAsync(consumerId)` / `SetAsync(consumerId, position)` — that remembers where you advanced to. Register it with `services.AddTrellisConsumerCheckpointStore<TContext>()` plus `modelBuilder.AddTrellisConsumerCheckpoints()`.
