@@ -70,6 +70,7 @@ public static class HttpFileParser
             }
         }
 
+        var variableLookup = merged.GetAlternateLookup<ReadOnlySpan<char>>();
         var results = new List<HttpFileRequest>();
 
         // Working state for the current request.
@@ -124,18 +125,18 @@ public static class HttpFileParser
 
             // Substitute only file-level vars at parse time. Response placeholders
             // are deferred to execution time.
-            var substitutedUrl = SubstituteStaticVars(url, merged);
-            // Only expand surviving values; earlier duplicate headers have been overwritten.
+            var substitutedUrl = SubstituteStaticVars(url, variableLookup);
+            // Expand only surviving values, updating entries without changing the keys being enumerated.
             foreach (var (key, value) in headers)
             {
-                var substituted = SubstituteStaticVars(value, merged);
+                var substituted = SubstituteStaticVars(value, variableLookup);
                 if (!ReferenceEquals(substituted, value))
                 {
                     CollectionsMarshal.GetValueRefOrNullRef(headers, key) = substituted;
                 }
             }
 
-            var substitutedBody = bodyText is null ? null : SubstituteStaticVars(bodyText, merged);
+            var substitutedBody = bodyText is null ? null : SubstituteStaticVars(bodyText, variableLookup);
 
             results.Add(new HttpFileRequest(
                 Title: title ?? $"Request {results.Count + 1}",
@@ -303,9 +304,9 @@ public static class HttpFileParser
     /// <see cref="HttpFileRunner"/>.
     /// </summary>
     /// <param name="input">Text to transform.</param>
-    /// <param name="vars">Variable bag.</param>
+    /// <param name="vars">Case-insensitive span lookup over the merged variables.</param>
     /// <returns>Input with matching <c>{{var}}</c> tokens replaced.</returns>
-    private static string SubstituteStaticVars(string input, Dictionary<string, string> vars)
+    private static string SubstituteStaticVars(string input, Dictionary<string, string>.AlternateLookup<ReadOnlySpan<char>> vars)
     {
         var start = input.IndexOf("{{", StringComparison.Ordinal);
         if (start < 0)
@@ -313,7 +314,6 @@ public static class HttpFileParser
             return input;
         }
 
-        var lookup = vars.GetAlternateLookup<ReadOnlySpan<char>>();
         StringBuilder? output = null;
         var copied = 0;
         while (start >= 0)
@@ -327,7 +327,7 @@ public static class HttpFileParser
 
             var token = input.AsSpan(tokenStart, end - tokenStart).Trim();
             // Response tokens and dynamic GUIDs must be resolved at execution time.
-            if (!token.Contains('.') && !token.SequenceEqual("$guid") && lookup.TryGetValue(token, out var value))
+            if (!token.Contains('.') && !token.SequenceEqual("$guid") && vars.TryGetValue(token, out var value))
             {
                 output ??= new StringBuilder(input.Length);
                 output.Append(input, copied, start - copied).Append(value);

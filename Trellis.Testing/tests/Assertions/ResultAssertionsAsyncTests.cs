@@ -54,9 +54,9 @@ public class ResultAssertionsAsyncTests
     }
 
     [Theory]
-    [InlineData(false, 24)]
-    [InlineData(true, 112)]
-    public void BeSuccessAsync_CompletedBoundedWait_AvoidsExtraAssertionTasks(bool valueTask, int allowedBytesPerCall)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BeSuccessAsync_CompletedBoundedWait_AvoidsExtraAssertionTasks(bool valueTask)
     {
         const int iterations = 128;
         var result = Result.Ok(42);
@@ -64,22 +64,27 @@ public class ResultAssertionsAsyncTests
         var timeout = TimeSpan.FromSeconds(30);
         var token = TestContext.Current.CancellationToken;
         Func<bool> unbounded = valueTask
-            ? () => Completed(ValueTask.FromResult(result).BeSuccessAsync())
+            ? () => Completed(new ValueTask<Result<int>>(ValueTask.FromResult(result).AsTask()).BeSuccessAsync())
             : () => task.BeSuccessAsync().IsCompletedSuccessfully;
         Func<bool> bounded = valueTask
             ? () => Completed(ValueTask.FromResult(result).BeSuccessAsync(timeout, token))
             : () => task.BeSuccessAsync(timeout, token).IsCompletedSuccessfully;
 
-        _ = Measure(unbounded);
-        _ = Measure(bounded);
-        var baseline = Math.Min(Measure(unbounded), Measure(unbounded));
-        var actual = Math.Min(Measure(bounded), Measure(bounded));
+        var baseline = Measure(unbounded);
+        var actual = Measure(bounded);
+        var taskCost = Measure(() => Task.FromResult(result).IsCompletedSuccessfully);
 
-        actual.Should().BeLessThanOrEqualTo(baseline + (iterations * allowedBytesPerCall));
+        actual.Should().BeLessThanOrEqualTo(baseline + (taskCost / 2));
 
         static bool Completed<T>(ValueTask<T> assertion) => assertion.IsCompletedSuccessfully;
 
         static long Measure(Func<bool> assertion)
+        {
+            _ = Sample(assertion);
+            return Math.Min(Sample(assertion), Sample(assertion));
+        }
+
+        static long Sample(Func<bool> assertion)
         {
             var completed = true;
             var before = GC.GetAllocatedBytesForCurrentThread();

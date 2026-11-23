@@ -36,26 +36,23 @@ public class ControlledAsyncSingleUseTests
     [Fact]
     public void SingleUse_TryComplete_DoesNotAllocatePerTransition()
     {
-        const int iterations = 128;
-        _ = Measure(complete: false);
-        _ = Measure(complete: true);
-        var baseline = Math.Min(Measure(complete: false), Measure(complete: false));
-        var actual = Math.Min(Measure(complete: true), Measure(complete: true));
+        _ = Measure();
+        Math.Min(Measure(), Measure()).Should().BeLessThanOrEqualTo(512);
 
-        actual.Should().BeLessThanOrEqualTo(baseline + (iterations * 24));
-
-        static long Measure(bool complete)
+        static long Measure()
         {
-            var before = GC.GetAllocatedBytesForCurrentThread();
-            for (var i = 0; i < iterations; i++)
-            {
-                var source = ControlledAsync.SingleUse<int>();
-                if (complete)
-                    source.TryComplete(i);
-                GC.KeepAlive(source);
-            }
+            var sources = new ControlledAsync<int>[128];
+            for (var i = 0; i < sources.Length; i++)
+                sources[i] = ControlledAsync.SingleUse<int>();
 
-            return GC.GetAllocatedBytesForCurrentThread() - before;
+            var completed = true;
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < sources.Length; i++)
+                completed &= sources[i].TryComplete(i);
+
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            completed.Should().BeTrue();
+            return allocated;
         }
     }
 

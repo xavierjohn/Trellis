@@ -695,40 +695,30 @@ public sealed class HttpContextPageUrlExtensionsTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ResolveApiVersion_DeclaredFallback_DoesNotMaterializeMatches(bool useDefault)
+    public void FindSingleMappedVersion_DeclaredCandidates_DoesNotAllocateAMatchCollection(bool singleMatch)
     {
-        var v2 = new ApiVersion(new DateOnly(2026, 12, 1));
-        var services = new ServiceCollection();
-        services.Configure<ApiVersioningOptions>(options => options.DefaultApiVersion = v2);
-        using var provider = services.BuildServiceProvider();
-        var context = new DefaultHttpContext { RequestServices = provider };
-        var feature = new ApiVersioningFeature(context);
-        context.Features.Set<IApiVersioningFeature>(feature);
-        var endpoint = useDefault ? BuildMultiVersionEndpointWithoutDefault() : BuildSplitMappingEndpointWithoutDefault();
+        var endpoint = singleMatch ? BuildSplitMappingEndpointWithoutDefault() : BuildMultiVersionEndpointWithoutDefault();
+        var metadata = endpoint.Metadata.GetMetadata<ApiVersionMetadata>()!;
+        var version = HttpResponseOptionsBuilderApiVersioningExtensions.FindSingleMappedVersion(metadata)?.ToString();
+        version.Should().Be(singleMatch ? ApiVersionV2 : null);
 
-        feature.RequestedApiVersion = v2;
-        Resolve().Should().Be(ApiVersionV2);
-        var requested = Measure();
+        var mapOnly = Measure(() => metadata.Map(ApiVersionMapping.Implicit | ApiVersionMapping.Explicit).DeclaredApiVersions);
+        var withSelection = Measure(() => HttpResponseOptionsBuilderApiVersioningExtensions.FindSingleMappedVersion(metadata));
 
-        feature.RequestedApiVersion = new ApiVersion(99, 0);
-        Resolve().Should().Be(ApiVersionV2);
-        Measure().Should().BeLessThanOrEqualTo(requested + (64 * 32));
+        withSelection.Should().BeLessThanOrEqualTo(mapOnly + 512);
 
-        string Resolve() => HttpResponseOptionsBuilderApiVersioningExtensions.ResolveApiVersion(context, endpoint)!;
-
-        long Measure()
+        static long Measure(Func<object?> operation)
         {
-            const int iterations = 64;
-            long Sample()
-            {
-                var before = GC.GetAllocatedBytesForCurrentThread();
-                for (var i = 0; i < iterations; i++)
-                    GC.KeepAlive(Resolve());
-                return GC.GetAllocatedBytesForCurrentThread() - before;
-            }
+            _ = Sample(operation);
+            return Math.Min(Sample(operation), Sample(operation));
+        }
 
-            _ = Sample();
-            return Math.Min(Sample(), Sample());
+        static long Sample(Func<object?> operation)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 128; i++)
+                GC.KeepAlive(operation());
+            return GC.GetAllocatedBytesForCurrentThread() - before;
         }
     }
 

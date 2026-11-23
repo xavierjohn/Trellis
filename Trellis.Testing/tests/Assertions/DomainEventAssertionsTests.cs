@@ -76,14 +76,22 @@ public class DomainEventAssertionsTests
             new OrderShipped("second", DateTimeOffset.UnixEpoch)
         ];
 
-        _ = Measure();
-        Math.Min(Measure(), Measure()).Should().BeLessThan(128 * 1856);
+        var countOnly = Measure(() => events.Should().HaveRaisedCount<OrderPlaced>(2));
+        var withMatch = Measure(() => events.Should().HaveRaised<OrderPlaced>(static evt => evt.OrderId == "first"));
 
-        long Measure()
+        withMatch.Should().BeLessThanOrEqualTo(countOnly + (countOnly / 10));
+
+        static long Measure(Func<object> assertion)
+        {
+            _ = Sample(assertion);
+            return Math.Min(Sample(assertion), Sample(assertion));
+        }
+
+        static long Sample(Func<object> assertion)
         {
             var before = GC.GetAllocatedBytesForCurrentThread();
             for (var i = 0; i < 128; i++)
-                GC.KeepAlive(events.Should().HaveRaised<OrderPlaced>(static evt => evt.OrderId == "first"));
+                GC.KeepAlive(assertion());
             return GC.GetAllocatedBytesForCurrentThread() - before;
         }
     }

@@ -194,7 +194,7 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
     /// <summary>
     /// Uses Asp.Versioning's combined mapping so explicit action declarations take precedence.
     /// </summary>
-    private static ApiVersion? FindSingleMappedVersion(ApiVersionMetadata metadata)
+    internal static ApiVersion? FindSingleMappedVersion(ApiVersionMetadata metadata)
     {
         var versions = metadata.Map(ApiVersionMapping.Implicit | ApiVersionMapping.Explicit).DeclaredApiVersions;
         ApiVersion? match = null;

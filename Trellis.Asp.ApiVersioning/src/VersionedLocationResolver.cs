@@ -73,18 +73,19 @@ internal static class VersionedLocationResolver
                 continue;
             if (match is not null)
                 throw new InvalidOperationException(
-                    $"WithVersionedRoute: the Location destination {DescribeDestination()} is ambiguous. Use a uniquely named destination route.");
+                    $"WithVersionedRoute: the Location destination {DescribeDestination(context, controller, customActionDescription)} is ambiguous. Use a uniquely named destination route.");
             match = candidate;
         }
 
         return match ?? throw new InvalidOperationException(
-            $"WithVersionedRoute: no registered endpoint matches the Location destination {DescribeDestination()}. Register the destination with endpoint routing.");
+            $"WithVersionedRoute: no registered endpoint matches the Location destination {DescribeDestination(context, controller, customActionDescription)}. Register the destination with endpoint routing.");
+    }
 
-        string DescribeDestination() => customActionDescription ?? (routeName is not null
+    private static string DescribeDestination(LocationRouteContext context, object? controller, string? customActionDescription) =>
+        customActionDescription ?? (context.RouteName is { } routeName
             ? $"named route '{routeName}'"
             : DescribeAction(context.ActionName, controller));
 
-        static string DescribeAction(string? action, object? controller) =>
-            $"action '{action}' on controller '{controller}'";
-    }
+    private static string DescribeAction(string? action, object? controller) =>
+        $"action '{action}' on controller '{controller}'";
 }
