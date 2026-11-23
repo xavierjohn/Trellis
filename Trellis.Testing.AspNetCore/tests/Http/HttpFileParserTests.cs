@@ -29,6 +29,65 @@ public class HttpFileParserTests
     }
 
     [Fact]
+    public void Parse_MixedLineEndings_PreservesBodyAndDeferredTokens()
+    {
+        const string content = "@host = http://local\r\n@alias = {{$guid}}\n### Send\r\n" +
+            "# @name sent\n  post   {{HOST}}/{{prior.response.status}} HTTP/1.1\r\n" +
+            "X-Key: old\nx-key: {{alias}}:{{ host }}\r\n\r\n" +
+            "  first\r\n    ### is body text\nlast\rinside\r\r\n\r\n" +
+            "### Read\nGET {{host}}/{{sent.response.status}}\r\n";
+
+        var requests = HttpFileParser.Parse(content);
+
+        requests.Should().HaveCount(2);
+        requests[0].Method.Should().Be("POST");
+        requests[0].Url.Should().Be("http://local/{{prior.response.status}}");
+        requests[0].Name.Should().Be("sent");
+        requests[0].Headers.Should().ContainSingle().Which.Key.Should().Be("X-Key");
+        requests[0].Headers["x-key"].Should().Be("{{$guid}}:http://local");
+        requests[0].Body.Should().Be(string.Join(Environment.NewLine, "  first", "    ### is body text", "last\rinside"));
+        requests[1].Url.Should().Be("http://local/{{sent.response.status}}");
+        requests[1].Headers.Should().BeEmpty();
+        requests[1].Body.Should().BeNull();
+    }
+
+    [Fact]
+    public void Parse_IgnoredCommentLines_DoNotAllocateInProportionToInputSize()
+    {
+        const string request = "GET http://local/items";
+        var withComments = string.Concat(Enumerable.Repeat("  // " + new string('x', 256) + "\r\n", 128)) + request;
+
+        _ = HttpFileParser.Parse(withComments);
+        var baseline = Math.Min(Measure(request), Measure(request));
+
+        Math.Min(Measure(withComments), Measure(withComments)).Should().BeLessThanOrEqualTo(baseline + 4096);
+    }
+
+    [Fact]
+    public void Parse_DuplicateHeaders_OnlySubstitutesTheLastValue()
+    {
+        var options = new Dictionary<string, string> { ["message"] = new string('x', 1024), ["final"] = "selected" };
+        var template = "GET http://local/items\n" +
+            string.Concat(Enumerable.Repeat("X-Note: {{missing}}\n", 16)) +
+            "x-note: {{final}}";
+        var withOverwrittenValues = template.Replace("{{missing}}", "{{message}}", StringComparison.Ordinal);
+
+        var headers = HttpFileParser.Parse(withOverwrittenValues, options).Single().Headers;
+        headers.Should().ContainSingle().Which.Value.Should().Be("selected");
+        var baseline = Math.Min(Measure(template, options), Measure(template, options));
+        var actual = Math.Min(Measure(withOverwrittenValues, options), Measure(withOverwrittenValues, options));
+
+        actual.Should().BeLessThanOrEqualTo(baseline + 4096);
+    }
+
+    private static long Measure(string content, IReadOnlyDictionary<string, string>? vars = null)
+    {
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        GC.KeepAlive(HttpFileParser.Parse(content, vars));
+        return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
+
+    [Fact]
     public void Captures_at_name_metadata()
     {
         const string content = """

@@ -47,6 +47,48 @@ public class DomainEventAssertionsTests
     }
 
     [Fact]
+    public void HaveRaised_PredicateChangesSource_EvaluatesEntireSnapshotInOrder()
+    {
+        var first = new OrderPlaced("first", DateTimeOffset.UnixEpoch);
+        var last = new OrderPlaced("last", DateTimeOffset.UnixEpoch);
+        List<IDomainEvent> events = [first, new OrderShipped("first", DateTimeOffset.UnixEpoch), last];
+        var visited = new List<OrderPlaced>();
+
+        var raised = events.Should().HaveRaised<OrderPlaced>(placed =>
+        {
+            visited.Add(placed);
+            events.Clear();
+            return ReferenceEquals(placed, first);
+        });
+
+        visited.Should().Equal([first, last]);
+        raised.Which.Should().BeSameAs(first);
+    }
+
+    [Fact]
+    public void HaveRaised_MixedEvents_DoesNotAllocateAMatchCollection()
+    {
+        IDomainEvent[] events =
+        [
+            new OrderPlaced("first", DateTimeOffset.UnixEpoch),
+            new OrderShipped("first", DateTimeOffset.UnixEpoch),
+            new OrderPlaced("second", DateTimeOffset.UnixEpoch),
+            new OrderShipped("second", DateTimeOffset.UnixEpoch)
+        ];
+
+        _ = Measure();
+        Math.Min(Measure(), Measure()).Should().BeLessThan(128 * 1856);
+
+        long Measure()
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 128; i++)
+                GC.KeepAlive(events.Should().HaveRaised<OrderPlaced>(static evt => evt.OrderId == "first"));
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+    }
+
+    [Fact]
     public void HaveRaised_NoMatch_FailsNamingTheEventTypeAndWhatWasRaised()
     {
         var events = new Order("o-1").Ship().UncommittedEvents();

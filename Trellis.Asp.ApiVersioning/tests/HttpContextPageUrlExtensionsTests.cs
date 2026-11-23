@@ -692,6 +692,46 @@ public sealed class HttpContextPageUrlExtensionsTests
         version.Should().Be(ApiVersionV2);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResolveApiVersion_DeclaredFallback_DoesNotMaterializeMatches(bool useDefault)
+    {
+        var v2 = new ApiVersion(new DateOnly(2026, 12, 1));
+        var services = new ServiceCollection();
+        services.Configure<ApiVersioningOptions>(options => options.DefaultApiVersion = v2);
+        using var provider = services.BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = provider };
+        var feature = new ApiVersioningFeature(context);
+        context.Features.Set<IApiVersioningFeature>(feature);
+        var endpoint = useDefault ? BuildMultiVersionEndpointWithoutDefault() : BuildSplitMappingEndpointWithoutDefault();
+
+        feature.RequestedApiVersion = v2;
+        Resolve().Should().Be(ApiVersionV2);
+        var requested = Measure();
+
+        feature.RequestedApiVersion = new ApiVersion(99, 0);
+        Resolve().Should().Be(ApiVersionV2);
+        Measure().Should().BeLessThanOrEqualTo(requested + (64 * 32));
+
+        string Resolve() => HttpResponseOptionsBuilderApiVersioningExtensions.ResolveApiVersion(context, endpoint)!;
+
+        long Measure()
+        {
+            const int iterations = 64;
+            long Sample()
+            {
+                var before = GC.GetAllocatedBytesForCurrentThread();
+                for (var i = 0; i < iterations; i++)
+                    GC.KeepAlive(Resolve());
+                return GC.GetAllocatedBytesForCurrentThread() - before;
+            }
+
+            _ = Sample();
+            return Math.Min(Sample(), Sample());
+        }
+    }
+
     [Fact]
     public void TargetDeclaresVersion_ActionMapping_RejectsControllerOnlyVersion()
     {

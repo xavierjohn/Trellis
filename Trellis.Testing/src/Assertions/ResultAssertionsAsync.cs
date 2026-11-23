@@ -20,7 +20,8 @@ public static class ResultAssertionsAsyncExtensions
         string because = "", params object[] becauseArgs)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
-        return await resultTask.WaitAsync(timeout, cancellationToken).BeSuccessAsync(because, becauseArgs).ConfigureAwait(false);
+        var result = await resultTask.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+        return new ResultAssertions<TValue>(result).BeSuccess(because, becauseArgs);
     }
 
     /// <summary>Asserts failure within a bounded wait, without canceling the source operation.</summary>
@@ -36,7 +37,8 @@ public static class ResultAssertionsAsyncExtensions
         string because = "", params object[] becauseArgs)
     {
         ArgumentNullException.ThrowIfNull(resultTask);
-        return await resultTask.WaitAsync(timeout, cancellationToken).BeFailureAsync(because, becauseArgs).ConfigureAwait(false);
+        var result = await resultTask.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+        return new ResultAssertions<TValue>(result).BeFailure(because, becauseArgs);
     }
 
     /// <summary>Asserts the failure type within a bounded wait, without canceling the source operation.</summary>
@@ -53,7 +55,8 @@ public static class ResultAssertionsAsyncExtensions
         string because = "", params object[] becauseArgs) where TError : Error
     {
         ArgumentNullException.ThrowIfNull(resultTask);
-        return await resultTask.WaitAsync(timeout, cancellationToken).BeFailureOfTypeAsync<TValue, TError>(because, becauseArgs).ConfigureAwait(false);
+        var result = await resultTask.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+        return new ResultAssertions<TValue>(result).BeFailureOfType<TError>(because, becauseArgs);
     }
 
     /// <summary>Asserts success within a bounded wait, consuming the ValueTask once.</summary>
@@ -66,8 +69,11 @@ public static class ResultAssertionsAsyncExtensions
     /// <returns>The original success value constraint.</returns>
     public static async ValueTask<AndWhichConstraint<ResultAssertions<TValue>, TValue>> BeSuccessAsync<TValue>(
         this ValueTask<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
-        string because = "", params object[] becauseArgs) =>
-        await resultTask.AsTask().BeSuccessAsync(timeout, cancellationToken, because, becauseArgs).ConfigureAwait(false);
+        string because = "", params object[] becauseArgs)
+    {
+        var result = await resultTask.AsTask().WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+        return new ResultAssertions<TValue>(result).BeSuccess(because, becauseArgs);
+    }
 
     /// <summary>Asserts failure within a bounded wait, consuming the ValueTask once.</summary>
     /// <typeparam name="TValue">The result value type.</typeparam>
@@ -79,8 +85,11 @@ public static class ResultAssertionsAsyncExtensions
     /// <returns>The original error constraint.</returns>
     public static async ValueTask<AndWhichConstraint<ResultAssertions<TValue>, Error>> BeFailureAsync<TValue>(
         this ValueTask<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
-        string because = "", params object[] becauseArgs) =>
-        await resultTask.AsTask().BeFailureAsync(timeout, cancellationToken, because, becauseArgs).ConfigureAwait(false);
+        string because = "", params object[] becauseArgs)
+    {
+        var result = await resultTask.AsTask().WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+        return new ResultAssertions<TValue>(result).BeFailure(because, becauseArgs);
+    }
 
     /// <summary>Asserts the failure type within a bounded wait, consuming the ValueTask once.</summary>
     /// <typeparam name="TValue">The result value type.</typeparam>
@@ -93,8 +102,11 @@ public static class ResultAssertionsAsyncExtensions
     /// <returns>The original typed error constraint.</returns>
     public static async ValueTask<AndWhichConstraint<ResultAssertions<TValue>, TError>> BeFailureOfTypeAsync<TValue, TError>(
         this ValueTask<Result<TValue>> resultTask, TimeSpan timeout, CancellationToken cancellationToken,
-        string because = "", params object[] becauseArgs) where TError : Error =>
-        await resultTask.AsTask().BeFailureOfTypeAsync<TValue, TError>(timeout, cancellationToken, because, becauseArgs).ConfigureAwait(false);
+        string because = "", params object[] becauseArgs) where TError : Error
+    {
+        var result = await resultTask.AsTask().WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+        return new ResultAssertions<TValue>(result).BeFailureOfType<TError>(because, becauseArgs);
+    }
 
     /// <summary>
     /// Asserts that the async result is a success.

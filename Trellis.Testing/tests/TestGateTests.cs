@@ -32,6 +32,30 @@ public class TestGateTests
     }
 
     [Fact]
+    public void WaitForArrivalAsync_AlreadyArrived_AvoidsAllocatingAWaiter()
+    {
+        using var gate = new TestGate();
+        gate.Signal();
+        var token = Token;
+
+#if DEBUG
+        const int bytesPerWait = 112; // Debug builds allocate the async state machine.
+#else
+        const int bytesPerWait = 48;
+#endif
+        _ = Measure();
+        Math.Min(Measure(), Measure()).Should().BeLessThan(128 * bytesPerWait);
+
+        long Measure()
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 128; i++)
+                GC.KeepAlive(gate.WaitForArrivalAsync(Wait, token));
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+    }
+
+    [Fact]
     public async Task WaitForArrivalAsync_NoArrival_TimesOutNamingTheCounts()
     {
         using var gate = new TestGate();

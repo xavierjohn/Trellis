@@ -131,6 +131,28 @@ public class CallbackRecorderAssertionsTests
         ArgumentRecorderCalledWith("a", "b").Should().HaveBeenCalledTimes(2);
 
     [Fact]
+    public void Generic_HaveBeenCalledAtLeastOnce_PassingAssertion_DoesNotCopyArguments()
+    {
+        var small = ArgumentRecorderCalledWith("first").Should();
+        var large = ArgumentRecorderCalledWith(Enumerable.Repeat("entry", 512).ToArray()).Should();
+
+        _ = Measure(() => small.HaveBeenCalledAtLeastOnce());
+        _ = Measure(() => large.HaveBeenCalledAtLeastOnce());
+        var baseline = Math.Min(Measure(() => small.HaveBeenCalledAtLeastOnce()), Measure(() => small.HaveBeenCalledAtLeastOnce()));
+        var actual = Math.Min(Measure(() => large.HaveBeenCalledAtLeastOnce()), Measure(() => large.HaveBeenCalledAtLeastOnce()));
+
+        actual.Should().BeLessThanOrEqualTo(baseline + 4096);
+
+        static long Measure(Action assert)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 32; i++)
+                assert();
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+    }
+
+    [Fact]
     public void Generic_HaveBeenCalledTimes_NegativeExpected_ThrowsArgumentOutOfRange()
     {
         var act = () => ArgumentRecorderCalledWith().Should().HaveBeenCalledTimes(-1);

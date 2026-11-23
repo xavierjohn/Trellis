@@ -67,7 +67,8 @@ public class CallbackRecorderAssertions : ReferenceTypeAssertions<CallbackRecord
 
     private AndConstraint<CallbackRecorderAssertions> Verify(Func<int, bool> isExpected, string expectation, string because, object[] becauseArgs)
     {
-        CallCountVerification.Verify(Subject is null ? null : Subject.CallCount, isExpected, expectation, null, because, becauseArgs);
+        var count = Subject?.CallCount;
+        CallCountVerification.Verify(count, count is { } observed && isExpected(observed), expectation, null, because, becauseArgs);
         return new AndConstraint<CallbackRecorderAssertions>(this);
     }
 }
@@ -121,15 +122,16 @@ public class CallbackRecorderAssertions<TArgument> : ReferenceTypeAssertions<Cal
 
     private AndConstraint<CallbackRecorderAssertions<TArgument>> Verify(Func<int, bool> isExpected, string expectation, string because, object[] becauseArgs)
     {
-        var recorded = Subject is null ? null : Subject.Arguments;
-        CallCountVerification.Verify(recorded?.Count, isExpected, expectation, recorded, because, becauseArgs);
+        var observed = Subject?.ObserveCallCount(isExpected);
+        var arguments = observed?.FailureArguments;
+        CallCountVerification.Verify(observed?.Count, arguments is null, expectation, arguments, because, becauseArgs);
         return new AndConstraint<CallbackRecorderAssertions<TArgument>>(this);
     }
 }
 
 internal static class CallCountVerification
 {
-    internal static void Verify(int? callCount, Func<int, bool> isExpected, string expectation, System.Collections.IEnumerable? recordedArguments, string because, object[] becauseArgs)
+    internal static void Verify(int? callCount, bool isExpected, string expectation, System.Collections.IEnumerable? recordedArguments, string because, object[] becauseArgs)
     {
         var present = Execute.Assertion
             .BecauseOf(because, becauseArgs)
@@ -141,7 +143,7 @@ internal static class CallCountVerification
         var count = callCount!.Value;
         var assertion = Execute.Assertion
             .BecauseOf(because, becauseArgs)
-            .ForCondition(isExpected(count));
+            .ForCondition(isExpected);
         if (recordedArguments is null)
             assertion.FailWith("Expected {context:callback recorder} " + expectation + "{reason}, but it was called {0} time(s).", count);
         else
