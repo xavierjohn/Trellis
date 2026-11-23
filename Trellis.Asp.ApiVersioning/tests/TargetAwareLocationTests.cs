@@ -123,6 +123,17 @@ public sealed class TargetAwareLocationTests
     }
 
     [Fact]
+    public async Task WithVersionedRoute_CustomControllerValue_PreservesFormattingOnSuccessPath()
+    {
+        using var host = CreateHost();
+        using var client = host.GetTestClient();
+        var act = () => client.PostAsync("/target-location/source/custom-controller-value?api-version=2.0",
+            null, TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("Custom controller formatting.");
+    }
+
+    [Fact]
     public async Task WithVersionedRoute_NeutralSourceToVersionedTarget_UsesTargetVersion()
     {
         using var host = CreateHost();
@@ -243,6 +254,13 @@ public sealed class TargetLocationSourceController : ControllerBase
                         ["controller"] = "TargetLocationAction"
                     }).WithVersionedRoute();
                     break;
+                case "custom-controller-value":
+                    options.CreatedAtAction("Get", id => new RouteValueDictionary
+                    {
+                        ["id"] = id,
+                        ["controller"] = new CustomControllerValue()
+                    }).WithVersionedRoute();
+                    break;
                 case "area-action":
                     options.CreatedAtAction("Get", id => new RouteValueDictionary
                     {
@@ -321,6 +339,16 @@ public sealed class TargetLocationSourceController : ControllerBase
         return writeOutcome
             ? Result.Ok(WriteOutcome.Created(42, location)).ToHttpResponse(Configure)
             : Result.Ok(42).ToHttpResponse(Configure);
+    }
+
+    private sealed class CustomControllerValue : ISpanFormattable
+    {
+        public override string ToString() => "TargetLocationAction";
+
+        public string ToString(string? format, IFormatProvider? formatProvider) => ToString();
+
+        public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider) =>
+            throw new InvalidOperationException("Custom controller formatting.");
     }
 }
 

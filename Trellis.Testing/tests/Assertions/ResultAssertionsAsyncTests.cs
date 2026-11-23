@@ -56,6 +56,67 @@ public class ResultAssertionsAsyncTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void BeSuccessAsync_CompletedBoundedWait_AvoidsExtraAssertionTasks(bool valueTask)
+    {
+        const int iterations = 128;
+        var result = Result.Ok(42);
+        var task = Task.FromResult(result);
+        var timeout = TimeSpan.FromSeconds(30);
+        var token = TestContext.Current.CancellationToken;
+        Func<bool> unbounded = valueTask
+            ? () => Completed(new ValueTask<Result<int>>(ValueTask.FromResult(result).AsTask()).BeSuccessAsync())
+            : () => task.BeSuccessAsync().IsCompletedSuccessfully;
+        Func<bool> bounded = valueTask
+            ? () => Completed(ValueTask.FromResult(result).BeSuccessAsync(timeout, token))
+            : () => task.BeSuccessAsync(timeout, token).IsCompletedSuccessfully;
+
+        var baseline = Measure(unbounded);
+        var actual = Measure(bounded);
+        var taskCost = Measure(() => Task.FromResult(result).IsCompletedSuccessfully);
+
+        actual.Should().BeLessThanOrEqualTo(baseline + (taskCost / 2));
+
+        static bool Completed<T>(ValueTask<T> assertion) => assertion.IsCompletedSuccessfully;
+
+        static long Measure(Func<bool> assertion)
+        {
+            _ = Sample(assertion);
+            return Math.Min(Sample(assertion), Sample(assertion));
+        }
+
+        static long Sample(Func<bool> assertion)
+        {
+            var completed = true;
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < iterations; i++)
+                completed &= assertion();
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            completed.Should().BeTrue();
+            return allocated;
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BeSuccessAsync_CompletedSource_StillRejectsInvalidTimeout(bool valueTask)
+    {
+        var result = Result.Ok(42);
+        var invalidTimeout = TimeSpan.FromMilliseconds(-2);
+        Func<Task> act = async () =>
+        {
+            if (valueTask)
+                await ValueTask.FromResult(result).BeSuccessAsync(invalidTimeout, CancellationToken.None);
+            else
+                await Task.FromResult(result).BeSuccessAsync(invalidTimeout, CancellationToken.None);
+        };
+
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().WithParameterName("timeout");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task BeFailureAsync_BoundedWait_ReturnsOriginalError(bool valueTask)
     {
         var expected = new Error.Forbidden("test.denied");

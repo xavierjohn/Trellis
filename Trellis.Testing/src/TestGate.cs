@@ -85,13 +85,14 @@ public sealed class TestGate : IDisposable
     public async Task WaitForArrivalsAsync(int count, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(count, 1);
-        var signal = NewSignal();
+        TaskCompletionSource signal;
         lock (_lock)
         {
             if (_arrivals >= count)
                 return;
 
             ObjectDisposedException.ThrowIf(_disposed, this);
+            signal = NewSignal();
             _arrivalWaiters.Add((count, signal));
         }
 
@@ -106,7 +107,7 @@ public sealed class TestGate : IDisposable
         finally
         {
             lock (_lock)
-                _arrivalWaiters.RemoveAll(waiter => ReferenceEquals(waiter.Signal, signal));
+                _arrivalWaiters.Remove((count, signal));
         }
     }
 

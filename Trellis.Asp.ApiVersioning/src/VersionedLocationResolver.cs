@@ -32,13 +32,14 @@ internal static class VersionedLocationResolver
     private static Endpoint FindTarget(LocationRouteContext context)
     {
         IEnumerable<Endpoint> candidates;
-        string description;
-        if (context.RouteName is { } routeName)
+        var routeName = context.RouteName;
+        object? controller = null;
+        string? customActionDescription = null;
+        if (routeName is not null)
         {
             candidates = context.HttpContext.RequestServices
                 .GetRequiredService<IEndpointAddressScheme<string>>()
                 .FindEndpoints(routeName);
-            description = $"named route '{routeName}'";
         }
         else
         {
@@ -59,7 +60,10 @@ internal static class VersionedLocationResolver
                     ExplicitValues = values,
                     AmbientValues = context.HttpContext.Request.RouteValues
                 });
-            description = $"action '{context.ActionName}' on controller '{values["controller"]}'";
+            controller = values["controller"];
+            // Keep custom route-value formatting before enumeration, even on success.
+            if (controller is not null and not string)
+                customActionDescription = DescribeAction(context.ActionName, controller);
         }
 
         Endpoint? match = null;
@@ -69,11 +73,19 @@ internal static class VersionedLocationResolver
                 continue;
             if (match is not null)
                 throw new InvalidOperationException(
-                    $"WithVersionedRoute: the Location destination {description} is ambiguous. Use a uniquely named destination route.");
+                    $"WithVersionedRoute: the Location destination {DescribeDestination(context, controller, customActionDescription)} is ambiguous. Use a uniquely named destination route.");
             match = candidate;
         }
 
         return match ?? throw new InvalidOperationException(
-            $"WithVersionedRoute: no registered endpoint matches the Location destination {description}. Register the destination with endpoint routing.");
+            $"WithVersionedRoute: no registered endpoint matches the Location destination {DescribeDestination(context, controller, customActionDescription)}. Register the destination with endpoint routing.");
     }
+
+    private static string DescribeDestination(LocationRouteContext context, object? controller, string? customActionDescription) =>
+        customActionDescription ?? (context.RouteName is { } routeName
+            ? $"named route '{routeName}'"
+            : DescribeAction(context.ActionName, controller));
+
+    private static string DescribeAction(string? action, object? controller) =>
+        $"action '{action}' on controller '{controller}'";
 }

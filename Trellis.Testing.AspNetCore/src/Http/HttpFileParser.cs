@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -54,9 +55,10 @@ public static class HttpFileParser
         // would defeat the `line.StartsWith("###")` and `line[0] == '@'` dispatch
         // checks below, so a file beginning with `@host = ...` would be misparsed
         // as a bogus request with method `\uFEFF@HOST` and URL `=`. (N-TA-1.)
-        if (content.Length > 0 && content[0] == '\uFEFF')
+        var text = content.AsSpan();
+        if (text.Length > 0 && text[0] == '\uFEFF')
         {
-            content = content.Substring(1);
+            text = text[1..];
         }
 
         var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -68,8 +70,8 @@ public static class HttpFileParser
             }
         }
 
+        var variableLookup = merged.GetAlternateLookup<ReadOnlySpan<char>>();
         var results = new List<HttpFileRequest>();
-        var lines = content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
 
         // Working state for the current request.
         string? title = null;
@@ -123,20 +125,24 @@ public static class HttpFileParser
 
             // Substitute only file-level vars at parse time. Response placeholders
             // are deferred to execution time.
-            var substitutedUrl = SubstituteStaticVars(url, merged);
-            var substitutedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var h in headers)
+            var substitutedUrl = SubstituteStaticVars(url, variableLookup);
+            // Expand only surviving values, updating entries without changing the keys being enumerated.
+            foreach (var (key, value) in headers)
             {
-                substitutedHeaders[h.Key] = SubstituteStaticVars(h.Value, merged);
+                var substituted = SubstituteStaticVars(value, variableLookup);
+                if (!ReferenceEquals(substituted, value))
+                {
+                    CollectionsMarshal.GetValueRefOrNullRef(headers, key) = substituted;
+                }
             }
 
-            var substitutedBody = bodyText is null ? null : SubstituteStaticVars(bodyText, merged);
+            var substitutedBody = bodyText is null ? null : SubstituteStaticVars(bodyText, variableLookup);
 
             results.Add(new HttpFileRequest(
                 Title: title ?? $"Request {results.Count + 1}",
                 Method: method,
                 Url: substitutedUrl,
-                Headers: substitutedHeaders,
+                Headers: headers,
                 Body: substitutedBody,
                 Name: name,
                 Expected: expected,
@@ -145,9 +151,9 @@ public static class HttpFileParser
             ResetCurrent();
         }
 
-        foreach (var rawLine in lines)
+        foreach (var range in text.Split('\n'))
         {
-            var line = rawLine.TrimEnd('\r');
+            var line = text[range].TrimEnd('\r');
 
             // Body mode: capture everything verbatim until the next ### separator.
             if (inBody)
@@ -160,7 +166,7 @@ public static class HttpFileParser
                 }
 
                 body ??= new StringBuilder();
-                body.AppendLine(line);
+                body.Append(line).AppendLine();
                 continue;
             }
 
@@ -202,7 +208,7 @@ public static class HttpFileParser
             // and we're not parsing headers).
             if (method is null && line.Length > 0 && line[0] == '@')
             {
-                var m = VariableLineRegex.Match(line);
+                var m = VariableLineRegex.Match(line.ToString());
                 if (m.Success)
                 {
                     merged[m.Groups[1].Value] = m.Groups[2].Value.Trim();
@@ -222,19 +228,19 @@ public static class HttpFileParser
                 var after = trimmed.TrimStart('#').TrimStart();
                 if (after.StartsWith("@name", StringComparison.OrdinalIgnoreCase))
                 {
-                    name = after.Substring("@name".Length).Trim();
+                    name = after["@name".Length..].Trim().ToString();
                     continue;
                 }
 
                 if (after.StartsWith("@expect", StringComparison.OrdinalIgnoreCase))
                 {
-                    ParseExpect(after.Substring("@expect".Length).Trim(), ref statusMin, ref statusMax, ref contentType, requiredHeaders);
+                    ParseExpect(after["@expect".Length..].Trim(), ref statusMin, ref statusMax, ref contentType, requiredHeaders);
                     continue;
                 }
 
                 if (after.StartsWith("@parity", StringComparison.OrdinalIgnoreCase))
                 {
-                    parity = ExtractParity(after.Substring("@parity".Length).Trim());
+                    parity = ExtractParity(after["@parity".Length..].Trim());
                     continue;
                 }
 
@@ -265,7 +271,7 @@ public static class HttpFileParser
                 var hValue = line[(colon + 1)..].Trim();
                 if (hName.Length > 0)
                 {
-                    headers[hName] = hValue;
+                    headers[hName.ToString()] = hValue.ToString();
                 }
             }
         }
@@ -298,50 +304,43 @@ public static class HttpFileParser
     /// <see cref="HttpFileRunner"/>.
     /// </summary>
     /// <param name="input">Text to transform.</param>
-    /// <param name="vars">Variable bag.</param>
+    /// <param name="vars">Case-insensitive span lookup over the merged variables.</param>
     /// <returns>Input with matching <c>{{var}}</c> tokens replaced.</returns>
-    internal static string SubstituteStaticVars(string input, IReadOnlyDictionary<string, string> vars)
+    private static string SubstituteStaticVars(string input, Dictionary<string, string>.AlternateLookup<ReadOnlySpan<char>> vars)
     {
-        if (string.IsNullOrEmpty(input) || input.IndexOf("{{", StringComparison.Ordinal) < 0)
+        var start = input.IndexOf("{{", StringComparison.Ordinal);
+        if (start < 0)
         {
             return input;
         }
 
-        var sb = new StringBuilder(input.Length);
-        int i = 0;
-        while (i < input.Length)
+        StringBuilder? output = null;
+        var copied = 0;
+        while (start >= 0)
         {
-            if (i + 1 < input.Length && input[i] == '{' && input[i + 1] == '{')
+            var tokenStart = start + 2;
+            var end = input.IndexOf("}}", tokenStart, StringComparison.Ordinal);
+            if (end < 0)
             {
-                var end = input.IndexOf("}}", i + 2, StringComparison.Ordinal);
-                if (end > 0)
-                {
-                    var token = input.Substring(i + 2, end - (i + 2)).Trim();
-                    // Response tokens and dynamic GUIDs must be resolved at execution time.
-                    if (!token.Contains('.')
-                        && !string.Equals(token, "$guid", StringComparison.Ordinal)
-                        && vars.TryGetValue(token, out var value))
-                    {
-                        sb.Append(value);
-                        i = end + 2;
-                        continue;
-                    }
-
-                    // Unknown or deferred: keep verbatim.
-                    sb.Append(input, i, end + 2 - i);
-                    i = end + 2;
-                    continue;
-                }
+                break;
             }
 
-            sb.Append(input[i]);
-            i++;
+            var token = input.AsSpan(tokenStart, end - tokenStart).Trim();
+            // Response tokens and dynamic GUIDs must be resolved at execution time.
+            if (!token.Contains('.') && !token.SequenceEqual("$guid") && vars.TryGetValue(token, out var value))
+            {
+                output ??= new StringBuilder(input.Length);
+                output.Append(input, copied, start - copied).Append(value);
+                copied = end + 2;
+            }
+
+            start = input.IndexOf("{{", end + 2, StringComparison.Ordinal);
         }
 
-        return sb.ToString();
+        return output is null ? input : output.Append(input, copied, input.Length - copied).ToString();
     }
 
-    private static bool IsRule(string line)
+    private static bool IsRule(ReadOnlySpan<char> line)
     {
         foreach (var c in line)
         {
@@ -354,16 +353,10 @@ public static class HttpFileParser
         return line.Length > 0;
     }
 
-    private static void HandleSeparator(string line, ref string? title, ref string? parity)
+    private static void HandleSeparator(ReadOnlySpan<char> line, ref string? title, ref string? parity)
     {
         // Take everything after leading '#' characters as the title (trimmed).
-        var idx = 0;
-        while (idx < line.Length && line[idx] == '#')
-        {
-            idx++;
-        }
-
-        var raw = line.Substring(idx).Trim();
+        var raw = line.TrimStart('#').Trim();
 
         // Skip pure decoration lines like "══════════════" or lines that are empty.
         if (raw.Length == 0 || IsDecoration(raw))
@@ -379,17 +372,17 @@ public static class HttpFileParser
             var directive = raw.TrimStart('@');
             if (directive.StartsWith("parity", StringComparison.OrdinalIgnoreCase))
             {
-                parity = ExtractParity(directive.Substring("parity".Length).Trim());
+                parity = ExtractParity(directive["parity".Length..].Trim());
             }
 
             return;
         }
 
         // If we already set a title for this request, append additional titles.
-        title = title is null ? raw : title + " / " + raw;
+        title = title is null ? raw.ToString() : string.Concat(title, " / ", raw);
     }
 
-    private static bool IsDecoration(string s)
+    private static bool IsDecoration(ReadOnlySpan<char> s)
     {
         foreach (var c in s)
         {
@@ -402,18 +395,21 @@ public static class HttpFileParser
         return true;
     }
 
-    private static (string? method, string? url) ParseRequestLine(string line)
+    private static (string? method, string? url) ParseRequestLine(ReadOnlySpan<char> line)
     {
-        var parts = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 2)
+        line = line.Trim();
+        var separator = line.IndexOf(' ');
+        if (separator < 0)
         {
             return (null, null);
         }
 
-        return (parts[0].ToUpperInvariant(), parts[1]);
+        var url = line[(separator + 1)..].TrimStart(' ');
+        var urlEnd = url.IndexOf(' ');
+        return (line[..separator].ToString().ToUpperInvariant(), (urlEnd < 0 ? url : url[..urlEnd]).ToString());
     }
 
-    private static void ParseExpect(string payload, ref int? statusMin, ref int? statusMax, ref string? contentType, List<string> requiredHeaders)
+    private static void ParseExpect(ReadOnlySpan<char> payload, ref int? statusMin, ref int? statusMax, ref string? contentType, List<string> requiredHeaders)
     {
         // payload like "status: 201" or "header: ETag" or "status: 2xx"
         // or "content-type: application/problem+json"
@@ -425,27 +421,27 @@ public static class HttpFileParser
 
         var key = payload[..colon].Trim();
         var value = payload[(colon + 1)..].Trim();
-        if (string.Equals(key, "status", StringComparison.OrdinalIgnoreCase))
+        if (key.Equals("status", StringComparison.OrdinalIgnoreCase))
         {
-            var (min, max) = ParseStatusExpression(value);
+            var (min, max) = ParseStatusExpression(value.ToString());
             if (min.HasValue)
             {
                 statusMin = min;
                 statusMax = max;
             }
         }
-        else if (string.Equals(key, "content-type", StringComparison.OrdinalIgnoreCase))
+        else if (key.Equals("content-type", StringComparison.OrdinalIgnoreCase))
         {
             if (value.Length > 0)
             {
-                contentType = value;
+                contentType = value.ToString();
             }
         }
-        else if (string.Equals(key, "header", StringComparison.OrdinalIgnoreCase))
+        else if (key.Equals("header", StringComparison.OrdinalIgnoreCase))
         {
             if (value.Length > 0)
             {
-                requiredHeaders.Add(value);
+                requiredHeaders.Add(value.ToString());
             }
         }
     }
@@ -477,9 +473,14 @@ public static class HttpFileParser
         return (null, null);
     }
 
-    private static string ExtractParity(string payload)
+    private static string ExtractParity(ReadOnlySpan<char> payload)
     {
         var colon = payload.IndexOf(':');
-        return colon < 0 ? payload.Trim() : payload[(colon + 1)..].Trim();
+        if (colon >= 0)
+        {
+            payload = payload[(colon + 1)..];
+        }
+
+        return payload.Trim().ToString();
     }
 }

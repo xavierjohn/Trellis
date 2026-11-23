@@ -81,12 +81,12 @@ public sealed class ControlledAsync<T>
 
         public ValueTask<T> CreateValueTask() => new(this, _core.Version);
 
-        public bool TryComplete(T value) => Transition(() => _core.SetResult(value));
+        public bool TryComplete(T value) => Transition(value, static (source, result) => source._core.SetResult(result));
 
-        public bool TryFail(Exception exception) => Transition(() => _core.SetException(exception));
+        public bool TryFail(Exception exception) => Transition(exception, static (source, error) => source._core.SetException(error));
 
         public bool TryCancel(CancellationToken cancellationToken) =>
-            Transition(() => _core.SetException(new OperationCanceledException(cancellationToken)));
+            Transition(cancellationToken, static (source, token) => source._core.SetException(new OperationCanceledException(token)));
 
         T IValueTaskSource<T>.GetResult(short token)
         {
@@ -105,7 +105,7 @@ public sealed class ControlledAsync<T>
             Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) =>
             _core.OnCompleted(continuation, state, token, flags);
 
-        private bool Transition(Action apply)
+        private bool Transition<TState>(TState state, Action<SingleUseCore, TState> apply)
         {
             lock (_gate)
             {
@@ -113,7 +113,7 @@ public sealed class ControlledAsync<T>
                     return false;
 
                 _terminal = true;
-                apply();
+                apply(this, state);
                 return true;
             }
         }

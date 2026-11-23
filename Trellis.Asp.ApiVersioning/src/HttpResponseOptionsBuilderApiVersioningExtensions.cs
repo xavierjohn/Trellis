@@ -161,9 +161,8 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
         if (requested is not null && TargetDeclaresVersion(metadata, requested))
             return requested.ToString();
 
-        var declared = MappedVersions(metadata);
-        if (declared.Length == 1)
-            return declared[0].ToString();
+        if (FindSingleMappedVersion(metadata) is { } declared)
+            return declared.ToString();
 
         // 3. ApiVersioningOptions.DefaultApiVersion — host-level fallback. Validate that the
         //    configured default is declared by the TARGET endpoint before using it. Asp.Versioning
@@ -195,9 +194,22 @@ public static class HttpResponseOptionsBuilderApiVersioningExtensions
     /// <summary>
     /// Uses Asp.Versioning's combined mapping so explicit action declarations take precedence.
     /// </summary>
-    private static ApiVersion[] MappedVersions(ApiVersionMetadata metadata) =>
-        metadata.Map(ApiVersionMapping.Implicit | ApiVersionMapping.Explicit).DeclaredApiVersions
-            .Where(metadata.IsMappedTo).ToArray();
+    internal static ApiVersion? FindSingleMappedVersion(ApiVersionMetadata metadata)
+    {
+        var versions = metadata.Map(ApiVersionMapping.Implicit | ApiVersionMapping.Explicit).DeclaredApiVersions;
+        ApiVersion? match = null;
+        for (var i = 0; i < versions.Count; i++)
+        {
+            var version = versions[i];
+            if (!metadata.IsMappedTo(version))
+                continue;
+            if (match is not null)
+                return null;
+            match = version;
+        }
+
+        return match;
+    }
 
     /// <summary>
     /// Returns <c>true</c> when the api-version resolver must NOT inject a route value for the

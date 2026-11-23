@@ -101,6 +101,15 @@ public sealed class CallbackRecorder<TArgument>
         }
     }
 
+    internal (int Count, TArgument[]? FailureArguments) ObserveCallCount(Func<int, bool> isExpected)
+    {
+        lock (_lock)
+        {
+            var count = _arguments.Count;
+            return (count, isExpected(count) ? null : _arguments.ToArray());
+        }
+    }
+
     /// <summary>Records one argument before the callback executes.</summary>
     /// <param name="argument">The argument to capture without cloning.</param>
     public void Record(TArgument argument)

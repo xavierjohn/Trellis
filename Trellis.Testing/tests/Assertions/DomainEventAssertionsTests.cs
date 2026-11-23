@@ -47,6 +47,56 @@ public class DomainEventAssertionsTests
     }
 
     [Fact]
+    public void HaveRaised_PredicateChangesSource_EvaluatesEntireSnapshotInOrder()
+    {
+        var first = new OrderPlaced("first", DateTimeOffset.UnixEpoch);
+        var last = new OrderPlaced("last", DateTimeOffset.UnixEpoch);
+        List<IDomainEvent> events = [first, new OrderShipped("first", DateTimeOffset.UnixEpoch), last];
+        var visited = new List<OrderPlaced>();
+
+        var raised = events.Should().HaveRaised<OrderPlaced>(placed =>
+        {
+            visited.Add(placed);
+            events.Clear();
+            return ReferenceEquals(placed, first);
+        });
+
+        visited.Should().Equal([first, last]);
+        raised.Which.Should().BeSameAs(first);
+    }
+
+    [Fact]
+    public void HaveRaised_MixedEvents_DoesNotAllocateAMatchCollection()
+    {
+        IDomainEvent[] events =
+        [
+            new OrderPlaced("first", DateTimeOffset.UnixEpoch),
+            new OrderShipped("first", DateTimeOffset.UnixEpoch),
+            new OrderPlaced("second", DateTimeOffset.UnixEpoch),
+            new OrderShipped("second", DateTimeOffset.UnixEpoch)
+        ];
+
+        var countOnly = Measure(() => events.Should().HaveRaisedCount<OrderPlaced>(2));
+        var withMatch = Measure(() => events.Should().HaveRaised<OrderPlaced>(static evt => evt.OrderId == "first"));
+
+        withMatch.Should().BeLessThanOrEqualTo(countOnly + (countOnly / 10));
+
+        static long Measure(Func<object> assertion)
+        {
+            _ = Sample(assertion);
+            return Math.Min(Sample(assertion), Sample(assertion));
+        }
+
+        static long Sample(Func<object> assertion)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 128; i++)
+                GC.KeepAlive(assertion());
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+    }
+
+    [Fact]
     public void HaveRaised_NoMatch_FailsNamingTheEventTypeAndWhatWasRaised()
     {
         var events = new Order("o-1").Ship().UncommittedEvents();

@@ -692,6 +692,36 @@ public sealed class HttpContextPageUrlExtensionsTests
         version.Should().Be(ApiVersionV2);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FindSingleMappedVersion_DeclaredCandidates_DoesNotAllocateAMatchCollection(bool singleMatch)
+    {
+        var endpoint = singleMatch ? BuildSplitMappingEndpointWithoutDefault() : BuildMultiVersionEndpointWithoutDefault();
+        var metadata = endpoint.Metadata.GetMetadata<ApiVersionMetadata>()!;
+        var version = HttpResponseOptionsBuilderApiVersioningExtensions.FindSingleMappedVersion(metadata)?.ToString();
+        version.Should().Be(singleMatch ? ApiVersionV2 : null);
+
+        var mapOnly = Measure(() => metadata.Map(ApiVersionMapping.Implicit | ApiVersionMapping.Explicit).DeclaredApiVersions);
+        var withSelection = Measure(() => HttpResponseOptionsBuilderApiVersioningExtensions.FindSingleMappedVersion(metadata));
+
+        withSelection.Should().BeLessThanOrEqualTo(mapOnly + 512);
+
+        static long Measure(Func<object?> operation)
+        {
+            _ = Sample(operation);
+            return Math.Min(Sample(operation), Sample(operation));
+        }
+
+        static long Sample(Func<object?> operation)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 128; i++)
+                GC.KeepAlive(operation());
+            return GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+    }
+
     [Fact]
     public void TargetDeclaresVersion_ActionMapping_RejectsControllerOnlyVersion()
     {

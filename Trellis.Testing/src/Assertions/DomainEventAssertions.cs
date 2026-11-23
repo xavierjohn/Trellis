@@ -30,17 +30,25 @@ public static class DomainEventAssertionsExtensions
     {
         ArgumentNullException.ThrowIfNull(assertions);
         var raised = RaisedEvents(assertions);
-        var matches = raised.OfType<TEvent>().Where(evt => predicate?.Invoke(evt) ?? true).ToArray();
+        TEvent? firstMatch = default;
+        var matchCount = 0;
+        foreach (var evt in raised)
+        {
+            if (evt is not TEvent match || predicate?.Invoke(match) == false)
+                continue;
+            if (matchCount++ == 0)
+                firstMatch = match;
+        }
 
         Execute.Assertion
             .BecauseOf(because, becauseArgs)
-            .ForCondition(matches.Length == 1)
+            .ForCondition(matchCount == 1)
             .FailWith(
                 "Expected {context:domain events} to contain exactly one {0}{reason}, but found {1}. Raised: {2}.",
-                typeof(TEvent).Name, matches.Length, Describe(raised));
+                typeof(TEvent).Name, matchCount, Describe(raised));
 
         return new AndWhichConstraint<GenericCollectionAssertions<IDomainEvent>, TEvent>(
-            assertions, matches.FirstOrDefault()!);
+            assertions, firstMatch!);
     }
 
     /// <summary>Asserts no event of <typeparamref name="TEvent"/> was raised.</summary>

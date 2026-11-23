@@ -32,6 +32,36 @@ public class TestGateTests
     }
 
     [Fact]
+    public void WaitForArrivalAsync_AlreadyArrived_AvoidsAllocatingAWaiter()
+    {
+        using var gate = new TestGate();
+        gate.Signal();
+        var token = Token;
+
+        var completed = Measure(static () => CompleteAsync());
+        var signal = Measure(static () => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+        var arrived = Measure(() => gate.WaitForArrivalAsync(Wait, token));
+
+        arrived.Should().BeLessThan(completed + (signal * 3 / 4));
+
+        static async Task CompleteAsync() => await Task.CompletedTask;
+
+        static long Measure(Func<object> operation)
+        {
+            _ = Sample(operation);
+            return Math.Min(Sample(operation), Sample(operation));
+        }
+
+        static long Sample(Func<object> operation)
+        {
+            var start = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 128; i++)
+                GC.KeepAlive(operation());
+            return GC.GetAllocatedBytesForCurrentThread() - start;
+        }
+    }
+
+    [Fact]
     public async Task WaitForArrivalAsync_NoArrival_TimesOutNamingTheCounts()
     {
         using var gate = new TestGate();
