@@ -70,8 +70,9 @@ internal sealed class WorkerTickSignal : IWorkerTickSignal
         ArgumentNullException.ThrowIfNull(name);
         cancellationToken.ThrowIfCancellationRequested();
 
-        List<Waiter>? released = null;
-        int releasedIndex = 0;
+        Waiter? firstReleased = null;
+        List<Waiter>? additionalReleased = null;
+        int releasedIndex;
 
         lock (_gate)
         {
@@ -80,17 +81,21 @@ internal sealed class WorkerTickSignal : IWorkerTickSignal
 
             for (var i = _waiters.Count - 1; i >= 0; i--)
             {
-                if (_waiters[i].Matches(name, releasedIndex))
-                {
-                    released ??= [];
-                    released.Add(_waiters[i]);
-                    _waiters.RemoveAt(i);
-                }
+                var waiter = _waiters[i];
+                if (!waiter.Matches(name, releasedIndex))
+                    continue;
+
+                if (firstReleased is null)
+                    firstReleased = waiter;
+                else
+                    (additionalReleased ??= []).Add(waiter);
+                _waiters.RemoveAt(i);
             }
         }
 
-        if (released is not null)
-            foreach (var waiter in released)
+        firstReleased?.Complete(releasedIndex);
+        if (additionalReleased is not null)
+            foreach (var waiter in additionalReleased)
                 waiter.Complete(releasedIndex);
 
         return ValueTask.CompletedTask;

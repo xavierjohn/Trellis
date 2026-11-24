@@ -192,6 +192,68 @@ public class WorkerHarnessTests
     }
 
     [Fact]
+    public async Task SignalAsync_SingleMatchingWaiter_DoesNotAllocateAReleaseList()
+    {
+        await using var harness = await CreateMinimalHarnessAsync();
+        var signal = harness.TickSignal;
+        var ct = TestContext.Current.CancellationToken;
+        var minNonMatching = long.MaxValue;
+        var minMatching = long.MaxValue;
+
+        for (var i = 0; i < 32; i++)
+        {
+            var cursor = harness.TickCount - 1;
+            var waiter = harness.WaitForTickAsync("probe", after: cursor, cancellationToken: ct);
+            var nonMatching = SignalAndMeasure(signal, "other", ct, out var nonMatchingBytes);
+            var matching = SignalAndMeasure(signal, "probe", ct, out var matchingBytes);
+            await nonMatching;
+            await matching;
+            (await waiter).Should().Be(cursor + 2);
+
+            minNonMatching = Math.Min(minNonMatching, nonMatchingBytes);
+            minMatching = Math.Min(minMatching, matchingBytes);
+        }
+
+        minMatching.Should().Be(minNonMatching);
+
+        static ValueTask SignalAndMeasure(IWorkerTickSignal signal, string name, CancellationToken ct, out long allocated)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            var completion = signal.SignalAsync(name, ct);
+            allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+            return completion;
+        }
+    }
+
+    [Fact]
+    public async Task SignalAsync_MultiplePendingWaiters_CompletesOnlyEligibleWaiters()
+    {
+        await using var harness = await CreateMinimalHarnessAsync();
+        var signal = harness.TickSignal;
+        var ct = TestContext.Current.CancellationToken;
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var any = harness.WaitForTickAsync(cancellationToken: ct);
+        var named = harness.WaitForTickAsync("probe", cancellationToken: ct);
+        var canceled = harness.WaitForTickAsync("probe", cancellationToken: cancellation.Token);
+        var otherName = harness.WaitForTickAsync("Probe", cancellationToken: ct);
+        var later = harness.WaitForTickAsync("probe", after: 0, cancellationToken: ct);
+
+        await cancellation.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceled);
+
+        await signal.SignalAsync("probe", ct);
+        (await any).Should().Be(0);
+        (await named).Should().Be(0);
+        otherName.IsCompleted.Should().BeFalse();
+        later.IsCompleted.Should().BeFalse();
+
+        await signal.SignalAsync("Probe", ct);
+        (await otherName).Should().Be(1);
+        await signal.SignalAsync("probe", ct);
+        (await later).Should().Be(2);
+    }
+
+    [Fact]
     public async Task WaitForTickAsync_with_name_matches_only_named_signal()
     {
         const string named = "reminder-job";
