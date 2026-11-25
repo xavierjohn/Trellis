@@ -81,7 +81,12 @@ public sealed class InboxRegistrationTests
         // Guards the hand-written Clone() against a property being added and not copied,
         // which would silently drop that setting on a repeated registration.
         using var activitySource = new ActivitySource("consumer-42-source");
-        var source = new InboxOptions { ConsumerId = "consumer-42", ActivitySource = activitySource };
+        var source = new InboxOptions
+        {
+            ConsumerId = "consumer-42",
+            ActivitySource = activitySource,
+            UseSingleParameterForFilterUnprocessed = true,
+        };
 
         var clone = source.Clone();
 

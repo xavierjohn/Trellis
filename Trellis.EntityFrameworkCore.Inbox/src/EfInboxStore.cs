@@ -12,11 +12,13 @@ internal sealed class EfInboxStore<TContext> : IInboxStore
 {
     private readonly TContext _context;
     private readonly TimeProvider _timeProvider;
+    private readonly bool _useSingleParameterForFilterUnprocessed;
 
-    public EfInboxStore(TContext context, TimeProvider timeProvider)
+    public EfInboxStore(TContext context, TimeProvider timeProvider, InboxOptions options)
     {
         _context = context;
         _timeProvider = timeProvider;
+        _useSingleParameterForFilterUnprocessed = options.UseSingleParameterForFilterUnprocessed;
     }
 
     /// <inheritdoc />
@@ -47,11 +49,17 @@ internal sealed class EfInboxStore<TContext> : IInboxStore
         if (messageIds.Count == 0)
             return [];
 
+        if (_useSingleParameterForFilterUnprocessed && _context.Database.ProviderName != "Microsoft.EntityFrameworkCore.SqlServer")
+            throw new InvalidOperationException(
+                $"InboxOptions.{nameof(InboxOptions.UseSingleParameterForFilterUnprocessed)} requires the EF Core SQL Server provider (SQL Server or Azure SQL).");
+
         // Anti-join: fetch the already-recorded ids from this window in one round trip, then keep the rest
         // in the caller's order. A pure read — nothing is staged in the unit of work.
-        var processed = (await _context.Set<InboxMessage>()
-            .AsNoTracking()
-            .Where(m => m.ConsumerId == consumerId && messageIds.Contains(m.MessageId))
+        var messages = _context.Set<InboxMessage>().AsNoTracking();
+        var processedMessages = _useSingleParameterForFilterUnprocessed
+            ? messages.Where(m => m.ConsumerId == consumerId && EF.Parameter(messageIds).Contains(m.MessageId))
+            : messages.Where(m => m.ConsumerId == consumerId && messageIds.Contains(m.MessageId));
+        var processed = (await processedMessages
             .Select(m => m.MessageId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false))

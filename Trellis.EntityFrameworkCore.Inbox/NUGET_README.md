@@ -43,6 +43,10 @@ For same-process delivery with outbox retries, select `UseLocalInboxDelivery()` 
 - Uses a composite `(ConsumerId, MessageId)` key as the concurrency guard.
 - Supports anti-join filtering and optional pull-consumer checkpoints.
 
+For large pull windows on SQL Server or Azure SQL, `InboxOptions.UseSingleParameterForFilterUnprocessed`
+opts only the inbox lookup into one JSON parameter. It requires database and EF provider compatibility
+level 130 or later. See [single-parameter lookup](https://xavierjohn.github.io/Trellis/api_reference/trellis-api-efcore-inbox.html#single-parameter-lookup-on-sql-server-and-azure-sql).
+
 Keep `ConsumerId` stable across deployments and carry the producer's outbox row ID unchanged as `MessageId`. External calls are outside the inbox transaction and require their own idempotency. The built-in EF dispatcher requires its matching EF store; pair a custom `IInboxStore` with a custom dispatcher that owns the same unit of work.
 
 ## Operations

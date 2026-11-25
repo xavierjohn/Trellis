@@ -1,7 +1,9 @@
 ﻿namespace Trellis.EntityFrameworkCore.Inbox.Tests;
 
+using System.Data.Common;
 using global::Trellis.Mediator;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 #pragma warning disable CA1707 // readable xUnit test names
@@ -17,18 +19,17 @@ using Microsoft.Extensions.DependencyInjection;
 [Trait("Category", "Integration")]
 public sealed class InboxSqlServerIntegrationTests : IAsyncLifetime
 {
-    private const string ConnectionString =
-        "Server=(localdb)\\MSSQLLocalDB;Database=TrellisInboxIntegrationTests;Trusted_Connection=True;TrustServerCertificate=True";
+    private readonly string _connectionString =
+        $"Server=(localdb)\\MSSQLLocalDB;Database=TrellisInboxIntegrationTests_{Guid.NewGuid():N};Trusted_Connection=True;TrustServerCertificate=True";
 
     private const string ConsumerId = "billing";
 
-    private static DbContextOptions<InboxTestDbContext> SchemaOptions() =>
-        new DbContextOptionsBuilder<InboxTestDbContext>().UseSqlServer(ConnectionString).Options;
+    private DbContextOptions<InboxTestDbContext> SchemaOptions() =>
+        new DbContextOptionsBuilder<InboxTestDbContext>().UseSqlServer(_connectionString).Options;
 
     public async ValueTask InitializeAsync()
     {
         await using var context = new InboxTestDbContext(SchemaOptions());
-        await context.Database.EnsureDeletedAsync(TestContext.Current.CancellationToken);
         await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
     }
 
@@ -94,7 +95,7 @@ public sealed class InboxSqlServerIntegrationTests : IAsyncLifetime
 
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDbContext<InboxTestDbContext>(o => o.UseSqlServer(ConnectionString));
+        services.AddDbContext<InboxTestDbContext>(o => o.UseSqlServer(_connectionString));
         services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, DuplicateLedgerHandler>();
         services.AddTrellisInbox<InboxTestDbContext>(o => o.ConsumerId = ConsumerId);
         await using var provider = services.BuildServiceProvider();
@@ -154,16 +155,17 @@ public sealed class InboxSqlServerIntegrationTests : IAsyncLifetime
         (await db.Receipts.CountAsync(ct)).Should().Be(1, "the loser's handler side effect rolled back with its failed save");
     }
 
-    [Fact]
-    public async Task FilterUnprocessedAsync_handles_a_window_far_larger_than_the_sql_parameter_limit()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FilterUnprocessedAsync_handles_a_window_far_larger_than_the_sql_parameter_limit(
+        bool useSingleParameter)
     {
         var ct = TestContext.Current.CancellationToken;
-        await using var provider = BuildProvider();
+        await using var provider = BuildProvider(useSingleParameter: useSingleParameter);
         var dispatcher = provider.GetRequiredService<IInboxDispatcher>();
 
-        // Process a handful, then query a window with far more candidate ids than SQL Server's 2100-parameter
-        // limit. EF Core parameterizes the Contains collection as a single OPENJSON argument, so this must not
-        // fail with "too many parameters" regardless of window size.
+        // Both provider-selected translation and the explicit opt-in must handle windows over SQL Server's parameter limit.
         var processed = Enumerable.Range(0, 5)
             .Select(_ => new IntegrationEnvelope(
                 Guid.CreateVersion7(), new OrderPlacedIntegrationEvent(Guid.NewGuid(), DateTimeOffset.UnixEpoch)))
@@ -181,25 +183,98 @@ public sealed class InboxSqlServerIntegrationTests : IAsyncLifetime
         unprocessed.Should().HaveCount(5000, "the 5 processed ids are excluded and the 5000-id window did not hit the parameter limit");
     }
 
-    private static ServiceProvider BuildProvider()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task FilterUnprocessedAsync_single_parameter_option_changes_only_the_inbox_lookup(
+        bool useAzureSql, bool useSingleParameter)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var probe = new ReaderCommandProbe();
+        await using var provider = BuildProvider(o =>
+        {
+            if (useAzureSql)
+                o.UseAzureSql(_connectionString, sql => sql
+                    .UseCompatibilityLevel(130)
+                    .UseParameterizedCollectionMode(ParameterTranslationMode.MultipleParameters));
+            else
+                o.UseSqlServer(_connectionString, sql => sql
+                    .UseCompatibilityLevel(160)
+                    .UseParameterizedCollectionMode(ParameterTranslationMode.MultipleParameters));
+            o.AddInterceptors(probe);
+        }, useSingleParameter);
+        await using var scope = provider.CreateAsyncScope();
+        var store = scope.ServiceProvider.GetRequiredService<IInboxStore>();
+        var db = scope.ServiceProvider.GetRequiredService<InboxTestDbContext>();
+
+        var processed = Guid.CreateVersion7();
+        var otherConsumer = Guid.CreateVersion7();
+        var pending = Guid.CreateVersion7();
+        await store.TryRecordAsync(ConsumerId, new InboxRecord(processed, "event", DateTimeOffset.UnixEpoch), ct);
+        await store.TryRecordAsync("shipping", new InboxRecord(otherConsumer, "event", DateTimeOffset.UnixEpoch), ct);
+        await db.SaveChangesAsync(ct);
+        probe.Commands.Clear();
+
+        Guid[] window = [pending, processed, otherConsumer, pending];
+        var unprocessed = await store.FilterUnprocessedAsync(ConsumerId, window, ct);
+
+        unprocessed.Should().Equal(pending, otherConsumer, pending);
+        var lookup = probe.Commands.Should().ContainSingle().Which;
+        if (useSingleParameter)
+        {
+            lookup.Sql.Should().Contain("OPENJSON");
+            lookup.ParameterCount.Should().Be(2, "the query needs one consumer ID and one collection parameter");
+        }
+        else
+        {
+            lookup.Sql.Should().NotContain("OPENJSON");
+            lookup.ParameterCount.Should().BeGreaterThan(2);
+        }
+
+        probe.Commands.Clear();
+        await db.Set<InboxMessage>().Where(m => window.Contains(m.MessageId)).ToListAsync(ct);
+        var otherQuery = probe.Commands.Should().ContainSingle().Which;
+        otherQuery.Sql.Should().NotContain("OPENJSON");
+        otherQuery.ParameterCount.Should().BeGreaterThan(1, "other queries keep the context's translation mode");
+    }
+
+    private ServiceProvider BuildProvider(Action<DbContextOptionsBuilder>? configureContext = null, bool useSingleParameter = false)
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDbContext<InboxTestDbContext>(o => o.UseSqlServer(ConnectionString));
+        services.AddDbContext<InboxTestDbContext>(configureContext ?? (o => o.UseSqlServer(_connectionString)));
         services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, ReceiptHandler>();
-        services.AddTrellisInbox<InboxTestDbContext>(o => o.ConsumerId = ConsumerId);
+        services.AddTrellisInbox<InboxTestDbContext>(o =>
+        {
+            o.ConsumerId = ConsumerId;
+            o.UseSingleParameterForFilterUnprocessed = useSingleParameter;
+        });
         return services.BuildServiceProvider();
     }
 
-    private static ServiceProvider BuildBarrierProvider(DispatchBarrier barrier)
+    private ServiceProvider BuildBarrierProvider(DispatchBarrier barrier)
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDbContext<InboxTestDbContext>(o => o.UseSqlServer(ConnectionString));
+        services.AddDbContext<InboxTestDbContext>(o => o.UseSqlServer(_connectionString));
         services.AddSingleton(barrier);
         services.AddIntegrationEventHandler<OrderPlacedIntegrationEvent, BarrierReceiptHandler>();
         services.AddTrellisInbox<InboxTestDbContext>(o => o.ConsumerId = ConsumerId);
         return services.BuildServiceProvider();
+    }
+
+    private sealed class ReaderCommandProbe : DbCommandInterceptor
+    {
+        public List<(string Sql, int ParameterCount)> Commands { get; } = [];
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            Commands.Add((command.CommandText, command.Parameters.Count));
+            return ValueTask.FromResult(result);
+        }
     }
 }
 

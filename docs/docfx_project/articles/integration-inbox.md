@@ -220,12 +220,25 @@ foreach (var row in window.Where(r => todo.Contains(r.MessageId)))
 
 `FilterUnprocessedAsync` is an optimization, not the correctness boundary — between the query and `DispatchAsync` another worker may process a row, and `DispatchAsync` still deduplicates it (returning `SkippedDuplicate`). Correctness always lives in the committed dedup row; the filter just keeps you from invoking handlers for messages you can already see are done.
 
-If `FilterUnprocessedAsync` is a bottleneck for large pull windows, benchmark EF Core's
-`UseParameterizedCollectionMode(ParameterTranslationMode.Parameter)` in the provider options for the
-`TContext` registered with `AddTrellisInbox<TContext>`, not the source feed's context. This changes
-all parameterized collection queries on the inbox context, so keep the default unless representative
-query plans improve. SQL Server uses `OPENJSON` for this mode and requires compatibility level 130
-or later in both the database and EF provider configuration.
+### Optional: a single parameter for large SQL Server or Azure SQL windows
+
+If `FilterUnprocessedAsync` is a bottleneck, compare plans and timings for representative windows
+with the inbox-specific option enabled:
+
+```csharp
+services.AddTrellisInbox<AppDbContext>(options =>
+{
+    options.ConsumerId = "orders-service";
+    options.UseSingleParameterForFilterUnprocessed = true;
+});
+```
+
+The same property can be set in the `UseInbox<AppDbContext>(...)` callback. The option uses
+`OPENJSON` to pass candidate IDs as one parameter for this lookup only. Check the actual inbox
+database with `SELECT compatibility_level FROM sys.databases WHERE name = DB_NAME();`. It must be
+at least 130; configure the EF provider to match. Do not enable this on Azure Synapse. The option
+is off by default and does not change the provider's context-wide `UseParameterizedCollectionMode`
+or affect the source feed's context. See the [API reference](../api_reference/trellis-api-efcore-inbox.md#single-parameter-lookup-on-sql-server-and-azure-sql).
 
 ### Optional: a resume checkpoint
 

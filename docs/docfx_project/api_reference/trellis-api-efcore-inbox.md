@@ -36,6 +36,7 @@ See also: [trellis-start-here.md](trellis-start-here.md#task---recipe-lookup) �
 | Make a consumer idempotent against redeliveries | `services.AddTrellisInbox<TContext>(o => o.ConsumerId = "...")` or `trellis.UseInbox<TContext>(...)` + `modelBuilder.AddTrellisInbox()` | [Wiring: two required calls](#wiring-two-required-calls), [InboxServiceCollectionExtensions](#inboxservicecollectionextensions) |
 | Hand a received message to the inbox | `IInboxDispatcher.DispatchAsync(envelope, ct)` from your transport adapter — returns `Processed` or `SkippedDuplicate` | [IInboxDispatcher](#iinboxdispatcher), [InboxDispatchOutcome](#inboxdispatchoutcome) |
 | Drive a gap-free pull / anti-join consumer | `IInboxStore.FilterUnprocessedAsync(consumerId, ids, ct)` to skip already-processed feed rows | [IInboxStore](#iinboxstore) |
+| Tune large pull-window lookups without changing other SQL Server or Azure SQL queries | Set `InboxOptions.UseSingleParameterForFilterUnprocessed` | [Single-parameter lookup](#single-parameter-lookup-on-sql-server-and-azure-sql) |
 | Resume a pull consumer without rescanning the whole feed | `services.AddTrellisConsumerCheckpointStore<TContext>()` + `modelBuilder.AddTrellisConsumerCheckpoints()`; `IConsumerCheckpointStore.GetAsync` / `SetAsync` | [Pull-consumer checkpoint](#pull-consumer-checkpoint-resume-cursor) |
 | Map the deduplication table | `modelBuilder.AddTrellisInbox()` in `OnModelCreating` | [InboxModelBuilderExtensions](#inboxmodelbuilderextensions), [InboxMessage](#inboxmessage) |
 | Identify this subscriber for per-consumer dedup | `InboxOptions.ConsumerId` (required) | [InboxOptions](#inboxoptions) |
@@ -208,6 +209,27 @@ public interface IInboxStore
 
 `FilterUnprocessedAsync` returns the subset of `messageIds` that `consumerId` has **not** yet processed (those without a dedup row), preserving the input order. It powers the gap-free **inbox-as-cursor / anti-join** pull model: read a window of the source feed and dispatch every row whose `MessageId` this query returns, rather than tracking a fragile high-water cursor that can skip a row committed out of sequence order. It is an optimization, not the correctness boundary — a row may be processed by another worker between this query and `DispatchAsync`, which still deduplicates — and it is a pure read that stages nothing. `EfInboxStore` runs it as a single anti-join query (`AsNoTracking`); it throws `ArgumentException` if `consumerId` is blank or exceeds `InboxOptions.MaxConsumerIdLength`.
 
+### Single-parameter lookup on SQL Server and Azure SQL
+
+The EF store uses its provider's normal collection translation by default. To send candidate message IDs
+as one JSON parameter (`OPENJSON`) for **this lookup only**, use the existing registration callback:
+
+```csharp
+services.AddTrellisInbox<AppDbContext>(options =>
+{
+    options.ConsumerId = "orders-service";
+    options.UseSingleParameterForFilterUnprocessed = true;
+});
+```
+
+The same option works in `UseInbox<AppDbContext>(...)`. Enable it only for SQL Server or Azure SQL
+(not Azure Synapse). Match the EF provider compatibility level to the database's compatibility level,
+which must be 130 or later. A nonempty lookup rejects other EF providers when the option is enabled.
+That check does not verify the connected engine or its database compatibility level. For SQL Server
+and Azure SQL, EF rejects translation if its configured compatibility level is too low. This setting
+does not change the database, schema, other context queries, or dispatch's deduplication semantics.
+Compare plans and timings with representative window sizes before enabling it in production.
+
 ## Pull-consumer checkpoint (resume cursor)
 
 `IConsumerCheckpointStore` is an optional, durable **resume cursor** for a pull consumer — it remembers per-`ConsumerId` where in the source feed the consumer last advanced to, so it resumes there instead of rescanning the whole log on every poll or restart.
@@ -336,6 +358,7 @@ Configuration for the inbox.
 |---|---|---|---|
 | `ConsumerId` | `string` | `""` (must be set) | **Required.** A stable identifier for this subscriber / consumer-group; part of the dedup key, so two services consuming the same message each get one effective processing. Keep it stable across deploys — renaming it resets dedup history. `Validate()` throws `InvalidOperationException` if it is blank, or if it exceeds `MaxConsumerIdLength`. |
 | `ActivitySource` | `ActivitySource` | `null` (dispatcher creates and owns its own) | The source the dispatcher starts consumer activities on. Left unset, `InboxDispatcher<TContext>` creates a default-named source and disposes it with itself; supplying one hands ownership to the caller. Tests that assert on sampled activities should supply their own uniquely-named source rather than subscribing to the shared default by name, since an `ActivityListener` is process-wide and matches by source name. |
+| `UseSingleParameterForFilterUnprocessed` | `bool` | `false` | Opt into a single collection parameter for `IInboxStore.FilterUnprocessedAsync` only. Requires SQL Server or Azure SQL at compatibility level 130 or later. See [single-parameter lookup](#single-parameter-lookup-on-sql-server-and-azure-sql). |
 
 | Constant | Value | Notes |
 |---|---|---|

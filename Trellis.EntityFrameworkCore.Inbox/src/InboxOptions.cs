@@ -29,6 +29,14 @@ public sealed class InboxOptions
     public ActivitySource ActivitySource { get; set; } = null!;
 
     /// <summary>
+    /// Uses one JSON parameter for candidate message IDs in <see cref="IInboxStore.FilterUnprocessedAsync"/>
+    /// without changing other queries. Defaults to <see langword="false"/> (provider-selected translation).
+    /// Enable only for SQL Server or Azure SQL (not Azure Synapse). Match the EF provider compatibility
+    /// level to the database's compatibility level, which must be 130 or later.
+    /// </summary>
+    public bool UseSingleParameterForFilterUnprocessed { get; set; }
+
+    /// <summary>
     /// Creates an independent copy so a repeated registration can apply its <c>configure</c> callback
     /// and validate the result before the new state is committed to the container. Keep in sync with
     /// the properties above; <c>InboxRegistrationTests.InboxOptions_Clone_copies_every_public_settable_property</c>
@@ -38,6 +46,7 @@ public sealed class InboxOptions
     {
         ConsumerId = ConsumerId,
         ActivitySource = ActivitySource,
+        UseSingleParameterForFilterUnprocessed = UseSingleParameterForFilterUnprocessed,
     };
 
     /// <summary>

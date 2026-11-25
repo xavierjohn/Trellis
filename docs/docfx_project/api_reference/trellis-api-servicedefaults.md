@@ -185,6 +185,11 @@ would force every `Trellis.ServiceDefaults` consumer to reference the Azure SDK.
 [wire format](trellis-api-messaging-azureservicebus.md#wire-format), and
 [settlement rules](trellis-api-messaging-azureservicebus.md#settlement).
 
+For pull consumers on supported SQL Server or Azure SQL databases, the existing
+`UseInbox<TContext>(...)` callback can set `InboxOptions.UseSingleParameterForFilterUnprocessed`.
+This tunes only the [inbox lookup](trellis-api-efcore-inbox.md#single-parameter-lookup-on-sql-server-and-azure-sql),
+not other queries on the context.
+
 ## AOT compatibility
 
 `Trellis.ServiceDefaults` is **AOT- and trim-compatible** (`<IsAotCompatible>true</IsAotCompatible>`, `<IsTrimmable>true</IsTrimmable>`, `<EnableAotAnalyzer>true</EnableAotAnalyzer>`, `<EnableTrimAnalyzer>true</EnableTrimAnalyzer>`). The compatibility surface is split across two overload shapes per assembly-scanning slot:
