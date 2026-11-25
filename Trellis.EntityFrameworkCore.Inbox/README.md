@@ -44,6 +44,10 @@ For same-process delivery with outbox retries, select `UseLocalInboxDelivery()` 
 - Exposes a store-neutral `IInboxStore` contract and an EF Core implementation.
 - Supports anti-join filtering and optional pull-consumer checkpoints.
 
+For large pull windows on SQL Server or Azure SQL, `InboxOptions.UseSingleParameterForFilterUnprocessed`
+opts only the inbox lookup into one JSON parameter. It requires database and EF provider compatibility
+level 130 or later. See [single-parameter lookup](../docs/docfx_project/api_reference/trellis-api-efcore-inbox.md#single-parameter-lookup-on-sql-server-and-azure-sql).
+
 ## Delivery Contract
 
 - Keep `ConsumerId` stable across deployments.

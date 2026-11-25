@@ -318,6 +318,40 @@ public sealed class InboxTests
     }
 
     [Fact]
+    public async Task FilterUnprocessedAsync_single_parameter_option_rejects_non_sql_server_providers()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var options = new DbContextOptionsBuilder<InboxTestDbContext>()
+            .UseSqlite("DataSource=:memory:").Options;
+        await using var db = new InboxTestDbContext(options);
+        var store = new EfInboxStore<InboxTestDbContext>(db, TimeProvider.System,
+            new InboxOptions { UseSingleParameterForFilterUnprocessed = true });
+
+        (await store.FilterUnprocessedAsync("billing", [], ct)).Should().BeEmpty();
+        var act = () => store.FilterUnprocessedAsync("billing", [Guid.CreateVersion7()], ct);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*UseSingleParameterForFilterUnprocessed*SQL Server*");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FilterUnprocessedAsync_single_parameter_option_requires_compatibility_level_130(bool useAzureSql)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var builder = new DbContextOptionsBuilder<InboxTestDbContext>();
+        if (useAzureSql)
+            builder.UseAzureSql(sql => sql.UseCompatibilityLevel(120));
+        else
+            builder.UseSqlServer(sql => sql.UseCompatibilityLevel(120));
+        await using var db = new InboxTestDbContext(builder.Options);
+        var store = new EfInboxStore<InboxTestDbContext>(db, TimeProvider.System,
+            new InboxOptions { UseSingleParameterForFilterUnprocessed = true });
+
+        var act = () => store.FilterUnprocessedAsync("billing", [Guid.CreateVersion7()], ct);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*compatibility level*130*");
+    }
+
+    [Fact]
     public async Task FilterUnprocessedAsync_requires_a_consumerId()
     {
         var ct = TestContext.Current.CancellationToken;
