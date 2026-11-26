@@ -240,6 +240,16 @@ at least 130; configure the EF provider to match. Do not enable this on Azure Sy
 is off by default and does not change the provider's context-wide `UseParameterizedCollectionMode`
 or affect the source feed's context. See the [API reference](../api_reference/trellis-api-efcore-inbox.md#single-parameter-lookup-on-sql-server-and-azure-sql).
 
+In a single-machine SQL Server 2025 LocalDB benchmark (compatibility level 170, 400,000
+inbox rows, roughly half the candidate IDs already processed, no concurrent load), median
+latency barely changed at 1 to 10 IDs and the gain became noticeable around 50 to 100 IDs.
+At 1,000 IDs, the median fell from 8.57 ms to 1.84 ms. With windows varying from 1 to 1,000
+IDs, the query used 2 cached plans instead of 30.
+At 5,000 IDs, timings were effectively identical: EF Core 11
+[already falls back to one JSON parameter](https://github.com/dotnet/efcore/blob/v11.0.0/src/EFCore.SqlServer/Query/Internal/SqlServerSqlNullabilityProcessor.cs#L367-L398)
+when the expanded query would exceed SQL Server's parameter budget and JSON functions are
+available. Measure on your own database and workload before enabling the option.
+
 ### Optional: a resume checkpoint
 
 The anti-join keeps a scanned window gap-free, but on each poll you still choose where the window starts — and rescanning a large feed from the beginning every time is wasteful. `IConsumerCheckpointStore` is an optional, durable resume cursor — `GetAsync(consumerId)` / `SetAsync(consumerId, position)` — that remembers where you advanced to. Register it with `services.AddTrellisConsumerCheckpointStore<TContext>()` plus `modelBuilder.AddTrellisConsumerCheckpoints()`.
